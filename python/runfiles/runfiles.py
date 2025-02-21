@@ -323,6 +323,9 @@ class Runfiles:
         Otherwise, if `env` contains "RUNFILES_DIR" with non-empty value (checked in
         this priority order), this method returns a directory-based implementation.
 
+        Otherwise, if a valid runfiles folder is found relative to this file, this
+        method returns a directory-based implementation.
+
         If neither cases apply, this method returns null.
 
         Args:
@@ -338,6 +341,10 @@ class Runfiles:
 
         directory = env_map.get("RUNFILES_DIR")
         if directory:
+            return CreateDirectoryBased(directory)
+        
+        directory =  _FindPythonRunfilesRoot()
+        if os.path.exists(os.path.join(directory, "_repo_mapping")):
             return CreateDirectoryBased(directory)
 
         return None
