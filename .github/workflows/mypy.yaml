@@ -18,13 +18,13 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       # Checkout the code
-      - uses: actions/checkout@v2
-      - uses: jpetrucciani/mypy-check@master
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: jpetrucciani/mypy-check@f5346c698c77f7365182de7e20ea71f85b1fe8cf # v1.15.0
         with:
           requirements: 1.6.0
           python_version: 3.8
           path: 'python/runfiles'
-      - uses: jpetrucciani/mypy-check@master
+      - uses: jpetrucciani/mypy-check@f5346c698c77f7365182de7e20ea71f85b1fe8cf # v1.15.0
         with:
           requirements: 1.6.0
           python_version: 3.8
