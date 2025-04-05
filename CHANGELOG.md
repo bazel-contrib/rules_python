@@ -90,6 +90,7 @@ Unreleased changes template.
   transitions transitioning on the `python_version` flag.
   Fixes [#2685](https://github.com/bazel-contrib/rules_python/issues/2685).
 * (toolchains) Run the check on the Python interpreter in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
+* (py_wheel) Ensure the filename segment is escaped in when using stamping wheel names.
 
 {#v0-0-0-added}
 ### Added

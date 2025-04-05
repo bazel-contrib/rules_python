@@ -440,7 +440,7 @@ Tag: cp38-abi3-{os_string}_{arch}
 
     def test_rule_expands_workspace_status_keys_in_wheel_metadata(self):
         filename = self._get_path(
-            "example_minimal_library{BUILD_USER}-0.1.{BUILD_TIMESTAMP}-py3-none-any.whl"
+            "example_minimal_library{BUILD_USER}-0.1._BUILD_TIMESTAMP_-py3-none-any.whl"
         )
 
         with zipfile.ZipFile(filename) as zf:
