@@ -19,7 +19,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":attributes.bzl", "NATIVE_RULES_ALLOWLIST_ATTRS")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
-load(":py_runtime_info.bzl", "DEFAULT_BOOTSTRAP_TEMPLATE", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
+load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
 load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
@@ -201,7 +201,7 @@ If not set, then it will be set based on flags.
             ),
             "bootstrap_template": attr.label(
                 allow_single_file = True,
-                default = DEFAULT_BOOTSTRAP_TEMPLATE,
+                default = Label("//python/private:bootstrap_template"),
                 doc = """
 The bootstrap script template file to use. Should have %python_binary%,
 %workspace_name%, %main%, and %imports%.
