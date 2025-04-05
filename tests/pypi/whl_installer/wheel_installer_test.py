@@ -71,7 +71,6 @@ class TestWhlFilegroup(unittest.TestCase):
             installation_dir=Path(self.wheel_dir),
             extras={},
             enable_implicit_namespace_pkgs=False,
-            platforms=[],
         )
 
         want_files = [
@@ -92,11 +91,13 @@ class TestWhlFilegroup(unittest.TestCase):
             metadata_file_content = json.load(metadata_file)
 
         want = dict(
+            abi="cp311",
             version="0.0.1",
             name="example-minimal-package",
-            deps=[],
-            deps_by_platform={},
             entry_points=[],
+            extras=[],
+            python_version="3.11.11",
+            requires_dist=[],
         )
         self.assertEqual(want, metadata_file_content)
 

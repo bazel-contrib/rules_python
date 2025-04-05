@@ -21,8 +21,10 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(":parse_requirements.bzl", "host_platform")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
+load(":pep508_deps.bzl", "deps")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
@@ -357,7 +359,7 @@ def _whl_library_impl(rctx):
         arguments = args + [
             "--whl-file",
             whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
+        ],
         srcs = rctx.attr._python_srcs,
         environment = environment,
         quiet = rctx.attr.quiet,
@@ -392,11 +394,51 @@ def _whl_library_impl(rctx):
         )
         entry_points[entry_point_without_py] = entry_point_script_name
 
+    # TODO @aignas 2025-04-04: move this to whl_library_targets.bzl to have
+    # this in the analysis phase.
+    #
+    # This means that whl_library_targets will have to accept the following args:
+    # * name - the name of the package in the METADATA.
+    # * requires_dist - the list of METADATA RequiresDist.
+    # * platforms - the list of target platforms. The target_platforms
+    #   should come from the hub repo via a 'load' statement so that they don't
+    #   need to be passed as an argument to `whl_library`.
+    # * extras - the list of required extras. This comes from the
+    #   `rctx.attr.requirement` for now. In the future the required extras could
+    #   stay in the hub repo, where we calculate the extra aliases that we need
+    #   to create automatically and this way expose the targets for the specific
+    #   extras. The first step will be to generate a target per extra for the
+    #   `py_library` and `filegroup`. Maybe we need to have a special provider
+    #   or an output group so that we can return the `whl` file from the
+    #   `py_library` target? filegroup can use output groups to expose files.
+    # * host_python_version/versons - the list of python versions to support
+    #   should come from the hub, similar to how the target platforms are specified.
+    #
+    # Extra things that we should move at the same time:
+    # * group_name, group_deps - this info can stay in the hub repository so that
+    #   it is piped at the analysis time and changing the requirement groups does
+    #   cause to re-fetch the deps.
+    package_deps = deps(
+        # TODO @aignas 2025-04-04: get the following from manually parsing
+        # METADATA to avoid Python dependency:
+        # * name of the package
+        # * version of the package
+        # * RequiresDist
+        # * ProvidesExtras
+        name = metadata["name"],
+        requires_dist = metadata["requires_dist"],
+        platforms = target_platforms or [
+            "{}_{}".format(metadata["abi"], host_platform(rctx)),
+        ],
+        extras = metadata["extras"],
+        host_python_version = metadata["python_version"],
+    )
+
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
         dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-        dependencies = metadata["deps"],
-        dependencies_by_platform = metadata["deps_by_platform"],
+        dependencies = package_deps.deps,
+        dependencies_by_platform = package_deps.deps_select,
         group_name = rctx.attr.group_name,
         group_deps = rctx.attr.group_deps,
         data_exclude = rctx.attr.pip_data_exclude,

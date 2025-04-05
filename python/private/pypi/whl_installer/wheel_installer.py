@@ -23,7 +23,7 @@ import subprocess
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 from pip._vendor.packaging.utils import canonicalize_name
 
@@ -105,7 +105,6 @@ def _extract_wheel(
     wheel_file: str,
     extras: Dict[str, Set[str]],
     enable_implicit_namespace_pkgs: bool,
-    platforms: List[wheel.Platform],
     installation_dir: Path = Path("."),
 ) -> None:
     """Extracts wheel into given directory and creates py_library and filegroup targets.
@@ -124,24 +123,27 @@ def _extract_wheel(
         _setup_namespace_pkg_compatibility(installation_dir)
 
     extras_requested = extras[whl.name] if whl.name in extras else set()
-
-    dependencies = whl.dependencies(extras_requested, platforms)
+    requires_dist = whl.metadata.get_all("Requires-Dist", [])
+    abi = f"cp{sys.version_info.major}{sys.version_info.minor}"
+    metadata = {
+        "name": whl.name,
+        "version": whl.version,
+        "extras": list(extras_requested),
+        "python_version": sys.version.partition(" ")[0],
+        "requires_dist": requires_dist,
+        "abi": abi,
+        "entry_points": [
+            {
+                "name": name,
+                "module": module,
+                "attribute": attribute,
+            }
+            for name, (module, attribute) in sorted(whl.entry_points().items())
+        ],
+    }
+    print(metadata)
 
     with open(os.path.join(installation_dir, "metadata.json"), "w") as f:
-        metadata = {
-            "name": whl.name,
-            "version": whl.version,
-            "deps": dependencies.deps,
-            "deps_by_platform": dependencies.deps_select,
-            "entry_points": [
-                {
-                    "name": name,
-                    "module": module,
-                    "attribute": attribute,
-                }
-                for name, (module, attribute) in sorted(whl.entry_points().items())
-            ],
-        }
         json.dump(metadata, f)
 
 
@@ -161,7 +163,6 @@ def main() -> None:
             wheel_file=whl,
             extras=extras,
             enable_implicit_namespace_pkgs=args.enable_implicit_namespace_pkgs,
-            platforms=arguments.get_platforms(args),
         )
         return
 

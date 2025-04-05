@@ -77,7 +77,8 @@ bzl_library(
     deps = [
         ":pep508_env_bzl",
         ":pep508_evaluate_bzl",
-        ":pep508_req_bzl",
+        ":pep508_platform_bzl",
+        ":pep508_requirement_bzl",
     ],
 )
 
@@ -221,8 +222,23 @@ bzl_library(
 )
 
 bzl_library(
+    name = "pep508_deps_bzl",
+    srcs = ["pep508_deps.bzl"],
+    deps = [
+        ":pep508_env_bzl",
+        ":pep508_evaluate_bzl",
+        ":pep508_platform_bzl",
+        ":pep508_requirement_bzl",
+        "//python/private:normalize_name_bzl",
+    ],
+)
+
+bzl_library(
     name = "pep508_env_bzl",
     srcs = ["pep508_env.bzl"],
+    deps = [
+        ":pep508_platform_bzl",
+    ],
 )
 
 bzl_library(
@@ -235,8 +251,13 @@ bzl_library(
 )
 
 bzl_library(
-    name = "pep508_req_bzl",
-    srcs = ["pep508_req.bzl"],
+    name = "pep508_platform_bzl",
+    srcs = ["pep508_platform.bzl"],
+)
+
+bzl_library(
+    name = "pep508_requirement_bzl",
+    srcs = ["pep508_requirement.bzl"],
     deps = [
         "//python/private:normalize_name_bzl",
     ],
@@ -359,6 +380,7 @@ bzl_library(
         ":generate_whl_library_build_bazel_bzl",
         ":parse_whl_name_bzl",
         ":patch_whl_bzl",
+        ":pep508_deps_bzl",
         ":pypi_repo_utils_bzl",
         ":whl_target_platforms_bzl",
         "//python/private:auth_bzl",
