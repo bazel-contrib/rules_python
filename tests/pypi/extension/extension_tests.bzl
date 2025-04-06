@@ -22,12 +22,12 @@ load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # bu
 
 _tests = []
 
-def _mock_mctx(*modules, environ = {}, read = None):
+def _mock_mctx(*modules, environ = {}, os_name = "unittest", os_arch = "exotic", read = None):
     return struct(
         os = struct(
             environ = environ,
-            name = "unittest",
-            arch = "exotic",
+            name = os_name,
+            arch = os_arch,
         ),
         read = read or (lambda _: """\
 simple==0.0.1 \
@@ -49,7 +49,7 @@ simple==0.0.1 \
         ],
     )
 
-def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True):
+def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True, os = {}):
     return struct(
         name = name,
         tags = struct(
@@ -58,6 +58,7 @@ def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True):
             whl_mods = whl_mods,
         ),
         is_root = is_root,
+        os = os,
     )
 
 def _parse_modules(env, **kwargs):
@@ -87,6 +88,7 @@ def _parse(
         experimental_target_platforms = [],
         extra_hub_aliases = {},
         extra_pip_args = [],
+        extra_pip_args_by_platform = {},
         isolated = True,
         netrc = None,
         parse_all_requirements_files = True,
@@ -115,6 +117,7 @@ def _parse(
         experimental_target_platforms = experimental_target_platforms,
         extra_hub_aliases = extra_hub_aliases,
         extra_pip_args = extra_pip_args,
+        extra_pip_args_by_platform = extra_pip_args_by_platform,
         hub_name = hub_name,
         isolated = isolated,
         netrc = netrc,
@@ -181,6 +184,46 @@ def _test_simple(env):
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_simple)
+
+def _test_simple_platform_pip_args(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        requirements_darwin = "darwin.txt",
+                        extra_pip_args_by_platform = {
+                            "macosx_*": ["--only-binary=simple"],
+                        },
+                    ),
+                ],
+            ),
+            os_name = "mac os x",
+            os_arch = "arch64",
+            read = lambda x: {
+                "darwin.txt": "simple==0.0.2 --hash=sha256:deadb00f",
+            }[x],
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+    )
+
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple": {
+            "dep_template": "@pypi//{name}:{target}",
+            "extra_pip_args": ["--only-binary=simple"],
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "repo": "pypi_315",
+            "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
+        },
+    })
+
+_tests.append(_test_simple_platform_pip_args)
 
 def _test_simple_multiple_requirements(env):
     pypi = _parse_modules(

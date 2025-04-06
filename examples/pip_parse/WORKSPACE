@@ -40,6 +40,12 @@ pip_parse(
     # Here, make pip output verbose (this is usable with `quiet = False`).
     # extra_pip_args = ["-v"],
 
+    # (Optional) You can provide extra parameters to pip, keyed by the host platform.
+    # For example, set `--only-binary=...` on Linux platforms.
+    # extra_pip_args_by_platform = {
+    #     "linux_*": ["--only-binary=grpcio"],
+    # },
+
     # (Optional) You can exclude custom elements in the data section of the generated BUILD files for pip packages.
     # Exclude directories with spaces in their names in this example (avoids build errors if there are such directories).
     #pip_data_exclude = ["**/* */**"],

@@ -21,6 +21,21 @@ repositories."""
 load(":attrs.bzl", COMMON_ATTRS = "ATTRS")
 
 ATTRS = {
+    "extra_pip_args_by_platform": attr.string_list_dict(
+        doc = """Similar to `extra_pip_args`.
+
+Extra arguments to pass on to pip on the assoicated platform specifiers. Args must not contain spaces.
+
+The keys in the dict take the form `<os>_<cpu>`, wildcards in the form `<os>_*` are supported.
+Key values are as those returned in Bazels `repository_os` struct, with spaces removed.
+
+Supports environment variables using the syntax `$VARNAME` or
+`${VARNAME}` (expanding to empty string if unset) or
+`${VARNAME:-default}` (expanding to default if the variable is unset
+or empty in the environment), if `"VARNAME"` is listed in the
+`envsubst` attribute. See also `envsubst`.
+""",
+    ),
     "requirements_by_platform": attr.label_keyed_string_dict(
         doc = """\
 The requirements files and the comma delimited list of target platforms as values.

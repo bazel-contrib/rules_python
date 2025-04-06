@@ -26,6 +26,7 @@ load(":evaluate_markers.bzl", "evaluate_markers")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
+load(":pip_args.bzl", "resolve_extra_pip_args")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
@@ -153,6 +154,7 @@ def _create_whl_repos(
         whl_group_mapping = {}
         requirement_cycles = {}
 
+    extra_pip_args = resolve_extra_pip_args(module_ctx, pip_attr.extra_pip_args, pip_attr.extra_pip_args_by_platform)
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -161,11 +163,11 @@ def _create_whl_repos(
             requirements_lock = pip_attr.requirements_lock,
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
-            extra_pip_args = pip_attr.extra_pip_args,
+            extra_pip_args = extra_pip_args,
             python_version = major_minor,
             logger = logger,
         ),
-        extra_pip_args = pip_attr.extra_pip_args,
+        extra_pip_args = extra_pip_args,
         get_index_urls = get_index_urls,
         # NOTE @aignas 2025-02-24: we will use the "cp3xx_os_arch" platform labels
         # for converting to the PEP508 environment and will evaluate them in starlark

@@ -20,6 +20,7 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR")
 load("//python/private:text_util.bzl", "render")
 load(":evaluate_markers.bzl", "evaluate_markers")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
+load(":pip_args.bzl", "resolve_extra_pip_args")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
@@ -71,6 +72,8 @@ exports_files(["requirements.bzl"])
 """
 
 def _pip_repository_impl(rctx):
+    extra_pip_args = resolve_extra_pip_args(rctx, rctx.attr.extra_pip_args, rctx.attr.extra_pip_args_by_platform)
+
     requirements_by_platform = parse_requirements(
         rctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -79,9 +82,9 @@ def _pip_repository_impl(rctx):
             requirements_lock = rctx.attr.requirements_lock,
             requirements_osx = rctx.attr.requirements_darwin,
             requirements_windows = rctx.attr.requirements_windows,
-            extra_pip_args = rctx.attr.extra_pip_args,
+            extra_pip_args = extra_pip_args,
         ),
-        extra_pip_args = rctx.attr.extra_pip_args,
+        extra_pip_args = extra_pip_args,
         evaluate_markers = evaluate_markers,
     )
     selected_requirements = {}
