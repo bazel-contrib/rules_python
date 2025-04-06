@@ -529,6 +529,10 @@ def Main():
   # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
   new_env['PYTHONSAFEPATH'] = '1'
 
+  # Set the PYTHONNOUSERSITE environment variable to prevent Python from adding
+  # directories uknown to bazel to sys.path. This is important for reproducibility.
+  new_env['PYTHONNOUSERSITE'] = '1'
+
   main_filename = os.path.join(module_space, main_rel_path)
   main_filename = GetWindowsPathWithUNCPrefix(main_filename)
   assert os.path.exists(main_filename), \
