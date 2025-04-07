@@ -103,7 +103,14 @@ def whl_library_targets(
     for filegroup_name, glob in filegroups.items():
         native.filegroup(
             name = filegroup_name,
-            srcs = native.glob(glob, allow_empty = True),
+            srcs = native.glob(
+                glob,
+                exclude = [
+                    # File names with spaces should be excluded.
+                    "**/* *",
+                ],
+                allow_empty = True,
+            ),
             visibility = ["//visibility:public"],
         )
 
@@ -229,10 +236,13 @@ def whl_library_targets(
             "**/*.py",
             "**/*.pyc",
             "**/*.pyc.*",  # During pyc creation, temp files named *.pyc.NNNN are created
+            "**/*.pyo.*",  # During pyo creation, temp files named *.pyo.NNNN are created
             # RECORD is known to contain sha256 checksums of files which might include the checksums
             # of generated files produced when wheels are installed. The file is ignored to avoid
             # Bazel caching issues.
             "**/*.dist-info/RECORD",
+            # File names with spaces should be excluded.
+            "**/* *",
         ] + glob_excludes.version_dependent_exclusions()
         for item in data_exclude:
             if item not in _data_exclude:
@@ -242,7 +252,10 @@ def whl_library_targets(
             name = py_library_label,
             srcs = native.glob(
                 ["site-packages/**/*.py"],
-                exclude = srcs_exclude,
+                exclude = srcs_exclude + [
+                    # File names with spaces should be excluded.
+                    "**/* *",
+                ],
                 # Empty sources are allowed to support wheels that don't have any
                 # pure-Python code, e.g. pymssql, which is written in Cython.
                 allow_empty = True,

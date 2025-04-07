@@ -76,8 +76,11 @@ def define_hermetic_runtime_toolchain_impl(
                 # tests for the standard libraries.
                 "lib/python{major}.{minor}*/**/test/**".format(**version_dict),
                 "lib/python{major}.{minor}*/**/tests/**".format(**version_dict),
-                # During pyc creation, temp files named *.pyc.NNN are created
+                # During pyc and pyo creation, temp files named *.pyc.NNN and *.pyo.NNN are created.
                 "**/__pycache__/*.pyc.*",
+                "**/__pycache__/*.pyo.*",
+                # File names with spaces should also be ignored.
+                "**/* *",
             ] + glob_excludes.version_dependent_exclusions() + extra_files_glob_exclude,
         ),
     )
