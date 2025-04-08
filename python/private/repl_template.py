@@ -4,7 +4,6 @@ from pathlib import Path
 
 from python.runfiles import runfiles
 
-
 STUB_PATH = "%stub_path%"
 
 

@@ -26,8 +26,8 @@ label_flag(
 
 py_repl_binary(
     name = "repl",
-    visibility = ["//visibility:public"],
     stub = ":repl_stub",
+    visibility = ["//visibility:public"],
     deps = [
         ":repl_dep",
         ":repl_stub_dep",

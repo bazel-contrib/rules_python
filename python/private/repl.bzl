@@ -34,7 +34,7 @@ _generate_repl_main = rule(
     },
 )
 
-def py_repl_binary(name, stub, deps=[], data=[], **kwargs):
+def py_repl_binary(name, stub, deps = [], data = [], **kwargs):
     _generate_repl_main(
         name = "%s_py" % name,
         src = stub,
@@ -52,5 +52,5 @@ def py_repl_binary(name, stub, deps=[], data=[], **kwargs):
         deps = deps + [
             "//python/runfiles",
         ],
-        **kwargs,
+        **kwargs
     )
