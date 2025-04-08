@@ -453,6 +453,7 @@ def main():
             _run_py_path(main_filename, args=sys.argv[1:])
         else:
             _run_py_module(MAIN_MODULE)
+        sys.exit(0)
 
 
 main()
