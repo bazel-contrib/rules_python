@@ -1,9 +1,11 @@
 import os
+import runpy
 from pathlib import Path
 
+from python.runfiles import runfiles
 
-def repl_stub():
-    pass  # %REPLACE_WHOLE_LINE_WITH_STUB%
+
+STUB_PATH = "%stub_path%"
 
 
 def start_repl():
@@ -19,7 +21,8 @@ def start_repl():
             compiled_code = compile(source_code, filename=startup_file, mode="exec")
             eval(compiled_code, {})
 
-    repl_stub()
+    bazel_runfiles = runfiles.Create()
+    runpy.run_path(bazel_runfiles.Rlocation(STUB_PATH), run_name="__main__")
 
 
 if __name__ == "__main__":

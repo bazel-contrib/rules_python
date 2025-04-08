@@ -1,19 +1,13 @@
 def _generate_repl_main_impl(ctx):
-    args = ctx.actions.args()
-    args.add_all([
-        ctx.file._template,
-        ctx.file.src,
-        ctx.outputs.out,
-    ])
+    stub_repo = ctx.attr.src.label.repo_name or ctx.workspace_name
+    stub_path = "/".join([stub_repo, ctx.file.src.short_path])
 
-    ctx.actions.run(
-        executable = ctx.executable._generator,
-        inputs = [
-            ctx.file._template,
-            ctx.file.src,
-        ],
-        outputs = [ctx.outputs.out],
-        arguments = [args],
+    ctx.actions.expand_template(
+        template = ctx.file._template,
+        output = ctx.outputs.out,
+        substitutions = {
+            "%stub_path%": stub_path,
+        },
     )
 
 generate_repl_main = rule(

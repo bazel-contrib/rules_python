@@ -27,7 +27,7 @@ label_flag(
 
 generate_repl_main(
     name = "repl_py",
-    src = "repl_stub.py",
+    src = "repl_stub",
     out = "repl.py",
 )
 
@@ -50,9 +50,13 @@ py_binary(
     name = "repl",
     srcs = [":repl.py"],
     visibility = ["//visibility:public"],
+    data = [
+        ":repl_stub",
+    ],
     deps = [
         ":repl_dep",
         ":repl_stub_dep",
+        "//python/runfiles",
     ],
 )
 
