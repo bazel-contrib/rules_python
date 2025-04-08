@@ -90,6 +90,7 @@ bzl_library(
         ":hub_repository_bzl",
         ":parse_requirements_bzl",
         ":parse_whl_name_bzl",
+        ":pip_args_bzl",
         ":pip_repository_attrs_bzl",
         ":simpleapi_download_bzl",
         ":whl_config_setting_bzl",
@@ -243,6 +244,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "pip_args_bzl",
+    srcs = ["pip_args.bzl"],
+)
+
+bzl_library(
     name = "pip_bzl",
     srcs = ["pip.bzl"],
     deps = [
@@ -267,6 +273,7 @@ bzl_library(
         ":attrs_bzl",
         ":evaluate_markers_bzl",
         ":parse_requirements_bzl",
+        ":pip_args_bzl",
         ":pip_repository_attrs_bzl",
         ":render_pkg_aliases_bzl",
         ":whl_config_setting_bzl",

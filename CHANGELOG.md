@@ -116,6 +116,7 @@ Unreleased changes template.
   allow specifying links to create within the venv site packages (only
   applicable with {obj}`--bootstrap_impl=script`)
   ([#2156](https://github.com/bazelbuild/rules_python/issues/2156)).
+* (pypi) Add support for passing different extra pip args depending on the platform via `extra_pip_args_by_platform`.
 
 {#v0-0-0-removed}
 ### Removed
