@@ -789,6 +789,13 @@ py_library(
     ],
 )
 
+py_binary(
+    name = "repl_main_generator",
+    srcs = [
+        "repl_main_generator.py",
+    ],
+)
+
 # The current toolchain's interpreter as an excutable, usable with
 # executable=True attributes.
 current_interpreter_executable(
@@ -796,6 +803,10 @@ current_interpreter_executable(
     # Not actually public. Only public because it's an implicit dependency of
     # py_exec_tools_toolchain.
     visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "empty",
 )
 
 sentinel(
