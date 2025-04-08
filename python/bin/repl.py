@@ -2,6 +2,10 @@ import os
 from pathlib import Path
 
 def start_repl():
+    # Point libedit/readline at the correct terminfo databases.
+    # https://github.com/astral-sh/python-build-standalone/blob/f0abfc9cb1f6a985fc5561cf5435f7f6e8a64e5b/docs/quirks.rst#backspace-key-doesnt-work-in-python-repl
+    os.environ["TERMINFO_DIRS"] = "/etc/terminfo:/lib/terminfo:/usr/share/terminfo"
+
     # Simulate Python's behavior when a valid startup script is defined by the
     # PYTHONSTARTUP variable. If this file path fails to load, print the error
     # and revert to the default behavior.

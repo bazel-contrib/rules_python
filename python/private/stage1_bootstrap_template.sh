@@ -238,10 +238,6 @@ command=(
   "$@"
 )
 
-# Point libedit/readline at the correct terminfo databases.
-# https://github.com/astral-sh/python-build-standalone/blob/f0abfc9cb1f6a985fc5561cf5435f7f6e8a64e5b/docs/quirks.rst#backspace-key-doesnt-work-in-python-repl
-export TERMINFO_DIRS=/etc/terminfo:/lib/terminfo:/usr/share/terminfo
-
 # We use `exec` instead of a child process so that signals sent directly (e.g.
 # using `kill`) to this process (the PID seen by the calling process) are
 # received by the Python process. Otherwise, this process receives the signal

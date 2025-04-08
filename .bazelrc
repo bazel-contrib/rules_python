@@ -36,5 +36,3 @@ build:rtd --enable_bzlmod
 common --incompatible_python_disallow_native_rules
 
 build --lockfile_mode=update
-
-run:repl --//python/config_settings:bootstrap_impl=script //python/bin:repl
