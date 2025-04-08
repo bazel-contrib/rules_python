@@ -275,7 +275,14 @@ assert want_python == got_python, \
     repo_utils.execute_checked(
         rctx,
         op = "CheckHostInterpreter",
-        arguments = [rctx.path(python_binary), python_tester],
+        arguments = [
+            rctx.path(python_binary),
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # This ensures that environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
+            python_tester,
+        ],
     )
     if not rctx.delete(python_tester):
         fail("Failed to delete the python tester")

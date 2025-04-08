@@ -273,6 +273,7 @@ def _test_whl_and_library_deps(env):
             ),
             "tags": ["tag1", "tag2"],
             "visibility": ["//visibility:public"],
+            "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
         },
     ])  # buildifier: @unsorted-dict-items
 
@@ -335,6 +336,7 @@ def _test_group(env):
             }),
             "tags": [],
             "visibility": ["@pypi__groups//:__pkg__"],
+            "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
         },
     ])  # buildifier: @unsorted-dict-items
 

@@ -16,10 +16,8 @@
 """
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
-load("//python/private:full_version.bzl", "full_version")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 
@@ -75,15 +73,15 @@ def _args(ctx):
 
 def _lock_impl(ctx):
     srcs = ctx.files.srcs
-    python_version = full_version(
-        version = ctx.attr.python_version or DEFAULT_PYTHON_VERSION,
-        minor_mapping = MINOR_MAPPING,
-    )
-    output = ctx.actions.declare_file("{}.{}.out".format(
-        ctx.label.name,
-        python_version.replace(".", "_"),
-    ))
+    fname = "{}.out".format(ctx.label.name)
+    python_version = ctx.attr.python_version
+    if python_version:
+        fname = "{}.{}.out".format(
+            ctx.label.name,
+            python_version.replace(".", "_"),
+        )
 
+    output = ctx.actions.declare_file(fname)
     toolchain_info = ctx.toolchains[UV_TOOLCHAIN_TYPE]
     uv = toolchain_info.uv_toolchain_info.uv[DefaultInfo].files_to_run.executable
 
@@ -166,15 +164,7 @@ def _transition_impl(input_settings, attr):
         _PYTHON_VERSION_FLAG: input_settings[_PYTHON_VERSION_FLAG],
     }
     if attr.python_version:
-        # FIXME @aignas 2025-03-20: using `full_version` is a workaround for a bug in
-        # how we order toolchains in bazel. If I set the `python_version` flag
-        # to `3.12`, I would expect the latest version to be selected, i.e. the
-        # one that is in MINOR_MAPPING, but it seems that 3.12.0 is selected,
-        # because of how the targets are ordered.
-        settings[_PYTHON_VERSION_FLAG] = full_version(
-            version = attr.python_version,
-            minor_mapping = MINOR_MAPPING,
-        )
+        settings[_PYTHON_VERSION_FLAG] = attr.python_version
     return settings
 
 _python_version_transition = transition(
@@ -436,9 +426,6 @@ def lock(
     if not BZLMOD_ENABLED:
         kwargs["target_compatible_with"] = ["@platforms//:incompatible"]
 
-    # FIXME @aignas 2025-03-17: should we have one more target that transitions
-    # the python_version to ensure that if somebody calls `bazel build
-    # :requirements` that it is locked with the right `python_version`?
     _lock(
         name = name,
         args = args,

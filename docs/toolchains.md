@@ -265,7 +265,7 @@ use_repo(python, "python_3_10", "python_3_10_host")
 ```
 
 Note, the user has to import the `*_host` repository to use the python interpreter in the
-{bzl:obj}`pip_parse` and {bzl:obj}`whl_library` repository rules and once that is done
+{bzl:obj}`pip_parse` and `whl_library` repository rules and once that is done
 users should be able to ensure the setting of the default toolchain even during the
 transition period when some of the code is still defined in `WORKSPACE`.
 
@@ -364,7 +364,7 @@ toolchains a "toolchain suite".
 
 One of the underlying design goals of the toolchains is to support complex and
 bespoke environments. Such environments may use an arbitrary combination of
-{obj}`RBE`, cross-platform building, multiple Python versions,
+{bzl:obj}`RBE`, cross-platform building, multiple Python versions,
 building Python from source, embeding Python (as opposed to building separate
 interpreters), using prebuilt binaries, or using binaries built from source. To
 that end, many of the attributes they accept, and fields they provide, are

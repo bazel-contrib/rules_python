@@ -419,8 +419,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
     extra_aliases = {}
     whl_libraries = {}
 
-    is_reproducible = True
-
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
             hub_name = pip_attr.hub_name
@@ -458,14 +456,21 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
             get_index_urls = None
             if pip_attr.experimental_index_url:
-                is_reproducible = False
+                skip_sources = [
+                    normalize_name(s)
+                    for s in pip_attr.simpleapi_skip
+                ]
                 get_index_urls = lambda ctx, distributions: simpleapi_download(
                     ctx,
                     attr = struct(
                         index_url = pip_attr.experimental_index_url,
                         extra_index_urls = pip_attr.experimental_extra_index_urls or [],
                         index_url_overrides = pip_attr.experimental_index_url_overrides or {},
-                        sources = distributions,
+                        sources = [
+                            d
+                            for d in distributions
+                            if normalize_name(d) not in skip_sources
+                        ],
                         envsubst = pip_attr.envsubst,
                         # Auth related info
                         netrc = pip_attr.netrc,
@@ -535,7 +540,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             k: dict(sorted(args.items()))
             for k, args in sorted(whl_libraries.items())
         },
-        is_reproducible = is_reproducible,
     )
 
 def _pip_impl(module_ctx):
@@ -632,7 +636,7 @@ def _pip_impl(module_ctx):
         # In order to be able to dogfood the `experimental_index_url` feature before it gets
         # stabilized, we have created the `_pip_non_reproducible` function, that will result
         # in extra entries in the lock file.
-        return module_ctx.extension_metadata(reproducible = mods.is_reproducible)
+        return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
 
@@ -681,6 +685,11 @@ This is equivalent to `--index-url` `pip` option.
 :::{versionchanged} 0.37.0
 If {attr}`download_only` is set, then `sdist` archives will be discarded and `pip.parse` will
 operate in wheel-only mode.
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Index metadata will be used to deduct `sha256` values for packages even if the
+`sha256` values are not present in the requirements.txt lock file.
 :::
 """,
         ),
@@ -749,6 +758,18 @@ The Python version the dependencies are targetting, in Major.Minor format
 If an interpreter isn't explicitly provided (using `python_interpreter` or
 `python_interpreter_target`), then the version specified here must have
 a corresponding `python.toolchain()` configured.
+""",
+        ),
+        "simpleapi_skip": attr.string_list(
+            doc = """\
+The list of packages to skip fetching metadata for from SimpleAPI index. You should
+normally not need this attribute, but in case you do, please report this as a bug
+to `rules_python` and use this attribute until the bug is fixed.
+
+EXPERIMENTAL: this may be removed without notice.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         ),
         "whl_modifications": attr.label_keyed_string_dict(

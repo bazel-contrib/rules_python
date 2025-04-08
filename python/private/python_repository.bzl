@@ -137,28 +137,30 @@ def _python_repository_impl(rctx):
             logger = logger,
         )
 
-        fail_or_warn = logger.warn if rctx.attr.ignore_root_user_error else logger.fail
-        exec_result = repo_utils.execute_unchecked(
-            rctx,
-            op = "python_repository.TestReadOnly",
-            arguments = [repo_utils.which_checked(rctx, "touch"), "lib/.test"],
-            logger = logger,
-        )
-
-        # The issue with running as root is the installation is no longer
-        # read-only, so the problems due to pyc can resurface.
-        if exec_result.return_code == 0:
-            stdout = repo_utils.execute_checked_stdout(
+        # If the user is not ignoring the warnings, then proceed to run a check,
+        # otherwise these steps can be skipped, as they both result in some warning.
+        if not rctx.attr.ignore_root_user_error:
+            exec_result = repo_utils.execute_unchecked(
                 rctx,
-                op = "python_repository.GetUserId",
-                arguments = [repo_utils.which_checked(rctx, "id"), "-u"],
+                op = "python_repository.TestReadOnly",
+                arguments = [repo_utils.which_checked(rctx, "touch"), "lib/.test"],
                 logger = logger,
             )
-            uid = int(stdout.strip())
-            if uid == 0:
-                fail_or_warn("The current user is root, which can cause spurious cache misses or build failures with the hermetic Python interpreter. See https://github.com/bazel-contrib/rules_python/pull/713.")
-            else:
-                fail_or_warn("The current user has CAP_DAC_OVERRIDE set, which can cause spurious cache misses or build failures with the hermetic Python interpreter. See https://github.com/bazel-contrib/rules_python/pull/713.")
+
+            # The issue with running as root is the installation is no longer
+            # read-only, so the problems due to pyc can resurface.
+            if exec_result.return_code == 0:
+                stdout = repo_utils.execute_checked_stdout(
+                    rctx,
+                    op = "python_repository.GetUserId",
+                    arguments = [repo_utils.which_checked(rctx, "id"), "-u"],
+                    logger = logger,
+                )
+                uid = int(stdout.strip())
+                if uid == 0:
+                    logger.warn("The current user is root, which can cause spurious cache misses or build failures with the hermetic Python interpreter. See https://github.com/bazel-contrib/rules_python/pull/713.")
+                else:
+                    logger.warn("The current user has CAP_DAC_OVERRIDE set, which can cause spurious cache misses or build failures with the hermetic Python interpreter. See https://github.com/bazel-contrib/rules_python/pull/713.")
 
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
@@ -191,8 +193,9 @@ def _python_repository_impl(rctx):
             # Exclude them from the glob because otherwise between the first time and second time a python toolchain is used,"
             # the definition of this filegroup will change, and depending rules will get invalidated."
             # See https://github.com/bazel-contrib/rules_python/issues/1008 for unconditionally adding these to toolchains so we can stop ignoring them."
-            "**/__pycache__/*.pyc",
-            "**/__pycache__/*.pyo",
+            # pyc* is ignored because pyc creation creates temporary .pyc.NNNN files
+            "**/__pycache__/*.pyc*",
+            "**/__pycache__/*.pyo*",
         ]
 
     if "windows" in platform:

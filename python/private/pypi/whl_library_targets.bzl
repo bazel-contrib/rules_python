@@ -266,6 +266,7 @@ def whl_library_targets(
             ),
             tags = tags,
             visibility = impl_vis,
+            experimental_venvs_site_packages = Label("@rules_python//python/config_settings:venvs_site_packages"),
         )
 
 def _config_settings(dependencies_by_platform, native = native, **kwargs):

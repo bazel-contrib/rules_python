@@ -270,6 +270,12 @@ def _whl_library_impl(rctx):
             sha256 = rctx.attr.sha256,
             auth = get_auth(rctx, urls),
         )
+        if not rctx.attr.sha256:
+            # this is only seen when there is a direct URL reference without sha256
+            logger.warn("Please update the requirement line to include the hash:\n{} \\\n    --hash=sha256:{}".format(
+                rctx.attr.requirement,
+                result.sha256,
+            ))
 
         if not result.success:
             fail("could not download the '{}' from {}:\n{}".format(filename, urls, result))

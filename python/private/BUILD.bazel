@@ -72,7 +72,6 @@ bzl_library(
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//rules:common_settings",
     ],
 )
@@ -131,7 +130,6 @@ bzl_library(
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:paths",
     ],
 )
@@ -302,7 +300,6 @@ bzl_library(
         ":attributes_bzl",
         ":py_executable_bzl",
         ":rule_builders_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:dicts",
     ],
 )
@@ -537,7 +534,6 @@ bzl_library(
         ":common_bzl",
         ":py_executable_bzl",
         ":rule_builders_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:dicts",
     ],
 )
@@ -675,11 +671,6 @@ bzl_library(
         ":bazel_tools_bzl",
         "@rules_cc//cc/common",
     ],
-)
-
-bzl_library(
-    name = "semantics_bzl",
-    srcs = ["semantics.bzl"],
 )
 
 # Needed to define bzl_library targets for docgen. (We don't define the

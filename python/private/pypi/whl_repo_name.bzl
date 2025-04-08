@@ -32,11 +32,19 @@ def whl_repo_name(filename, sha256):
 
     if not filename.endswith(".whl"):
         # Then the filename is basically foo-3.2.1.<ext>
-        parts.append(normalize_name(filename.rpartition("-")[0]))
-        parts.append("sdist")
+        name, _, tail = filename.rpartition("-")
+        parts.append(normalize_name(name))
+        if sha256:
+            parts.append("sdist")
+            version = ""
+        else:
+            for ext in [".tar", ".zip"]:
+                tail, _, _ = tail.partition(ext)
+            version = tail.replace(".", "_").replace("!", "_")
     else:
         parsed = parse_whl_name(filename)
         name = normalize_name(parsed.distribution)
+        version = parsed.version.replace(".", "_").replace("!", "_")
         python_tag, _, _ = parsed.python_tag.partition(".")
         abi_tag, _, _ = parsed.abi_tag.partition(".")
         platform_tag, _, _ = parsed.platform_tag.partition(".")
@@ -46,7 +54,10 @@ def whl_repo_name(filename, sha256):
         parts.append(abi_tag)
         parts.append(platform_tag)
 
-    parts.append(sha256[:8])
+    if sha256:
+        parts.append(sha256[:8])
+    elif version:
+        parts.insert(1, version)
 
     return "_".join(parts)
 

@@ -110,7 +110,10 @@ def _test_fail(env):
     )
 
     env.expect.that_collection(fails).contains_exactly([
-        """Failed to download metadata for ["foo"] for from urls: ["main", "extra"]""",
+        """\
+Failed to download metadata for ["foo"] for from urls: ["main", "extra"].
+If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=["foo"]' to your 'pip.parse' call.\
+""",
     ])
     env.expect.that_collection(calls).contains_exactly([
         "extra/foo/",

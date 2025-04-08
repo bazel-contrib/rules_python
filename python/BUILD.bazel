@@ -79,6 +79,9 @@ bzl_library(
 bzl_library(
     name = "features_bzl",
     srcs = ["features.bzl"],
+    deps = [
+        "@rules_python_internal//:rules_python_config_bzl",
+    ],
 )
 
 bzl_library(

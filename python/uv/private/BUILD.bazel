@@ -43,10 +43,8 @@ bzl_library(
         ":toolchain_types_bzl",
         "//python:py_binary_bzl",
         "//python/private:bzlmod_enabled_bzl",
-        "//python/private:full_version_bzl",
         "//python/private:toolchain_types_bzl",
         "@bazel_skylib//lib:shell",
-        "@pythons_hub//:versions_bzl",
     ],
 )
 

@@ -87,6 +87,7 @@ sphinx_stardocs(
     name = "bzl_api_docs",
     srcs = [
         "//python:defs_bzl",
+        "//python:features_bzl",
         "//python:packaging_bzl",
         "//python:pip_bzl",
         "//python:py_binary_bzl",

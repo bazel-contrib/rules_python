@@ -1,11 +1,5 @@
 %shebang%
 
-# This script must retain compatibility with a wide variety of Python versions
-# since it is run for every py_binary target. Currently we guarantee support
-# going back to Python 2.7, and try to support even Python 2.6 on a best-effort
-# basis. We might abandon 2.6 support once users have the ability to control the
-# above shebang string via the Python toolchain (#8685).
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -95,19 +89,17 @@ def print_verbose(*args, mapping=None, values=None):
             for key, value in sorted((mapping or {}).items()):
                 print(
                     "bootstrap:",
-                    *args,
-                    f"{key}={value!r}",
+                    *(list(args) + ["{}={}".format(key, repr(value))]),
                     file=sys.stderr,
-                    flush=True,
+                    flush=True
                 )
         elif values is not None:
             for i, v in enumerate(values):
                 print(
                     "bootstrap:",
-                    *args,
-                    f"[{i}] {v!r}",
+                    *(list(args) + ["[{}] {}".format(i, repr(v))]),
                     file=sys.stderr,
-                    flush=True,
+                    flush=True
                 )
         else:
             print("bootstrap:", *args, file=sys.stderr, flush=True)

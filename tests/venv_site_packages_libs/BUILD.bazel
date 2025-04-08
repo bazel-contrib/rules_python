@@ -1,0 +1,17 @@
+load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
+
+py_reconfig_test(
+    name = "venvs_site_packages_libs_test",
+    srcs = ["bin.py"],
+    bootstrap_impl = "script",
+    main = "bin.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    venvs_site_packages = "yes",
+    deps = [
+        "//tests/venv_site_packages_libs/nspkg_alpha",
+        "//tests/venv_site_packages_libs/nspkg_beta",
+        "@other//nspkg_delta",
+        "@other//nspkg_gamma",
+    ],
+)

@@ -284,6 +284,58 @@ def _test_default_non_rules_python_ignore_root_user_error_non_root_module(env):
 
 _tests.append(_test_default_non_rules_python_ignore_root_user_error_non_root_module)
 
+def _test_toolchain_ordering(env):
+    py = parse_modules(
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "my_module",
+                toolchain = [
+                    _toolchain("3.10"),
+                    _toolchain("3.10.15"),
+                    _toolchain("3.10.16"),
+                    _toolchain("3.10.11"),
+                    _toolchain("3.11.1"),
+                    _toolchain("3.11.10"),
+                    _toolchain("3.11.11", is_default = True),
+                ],
+            ),
+            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
+        ),
+    )
+    got_versions = [
+        t.python_version
+        for t in py.toolchains
+    ]
+
+    env.expect.that_str(py.default_python_version).equals("3.11.11")
+    env.expect.that_dict(py.config.minor_mapping).contains_exactly({
+        "3.10": "3.10.16",
+        "3.11": "3.11.11",
+        "3.12": "3.12.9",
+        "3.13": "3.13.2",
+        "3.8": "3.8.20",
+        "3.9": "3.9.21",
+    })
+    env.expect.that_collection(got_versions).contains_exactly([
+        # First the full-version toolchains that are in minor_mapping
+        # so that they get matched first if only the `python_version` is in MINOR_MAPPING
+        #
+        # The default version is always set in the `python_version` flag, so know, that
+        # the default match will be somewhere in the first bunch.
+        "3.10",
+        "3.10.16",
+        "3.11",
+        "3.11.11",
+        # Next, the rest, where we will match things based on the `python_version` being
+        # the same
+        "3.10.15",
+        "3.10.11",
+        "3.11.1",
+        "3.11.10",
+    ]).in_order()
+
+_tests.append(_test_toolchain_ordering)
+
 def _test_default_from_defaults(env):
     py = parse_modules(
         module_ctx = _mock_mctx(

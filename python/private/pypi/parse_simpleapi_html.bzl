@@ -26,6 +26,7 @@ def parse_simpleapi_html(*, url, content):
     Returns:
         A list of structs with:
         * filename: The filename of the artifact.
+        * version: The version of the artifact.
         * url: The URL to download the artifact.
         * sha256: The sha256 of the artifact.
         * metadata_sha256: The whl METADATA sha256 if we can download it. If this is
@@ -51,8 +52,11 @@ def parse_simpleapi_html(*, url, content):
 
     # Each line follows the following pattern
     # <a href="https://...#sha256=..." attribute1="foo" ... attributeN="bar">filename</a><br />
+    sha256_by_version = {}
     for line in lines[1:]:
         dist_url, _, tail = line.partition("#sha256=")
+        dist_url = _absolute_url(url, dist_url)
+
         sha256, _, tail = tail.partition("\"")
 
         # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
@@ -60,6 +64,8 @@ def parse_simpleapi_html(*, url, content):
 
         head, _, _ = tail.rpartition("</a>")
         maybe_metadata, _, filename = head.rpartition(">")
+        version = _version(filename)
+        sha256_by_version.setdefault(version, []).append(sha256)
 
         metadata_sha256 = ""
         metadata_url = ""
@@ -75,7 +81,8 @@ def parse_simpleapi_html(*, url, content):
         if filename.endswith(".whl"):
             whls[sha256] = struct(
                 filename = filename,
-                url = _absolute_url(url, dist_url),
+                version = version,
+                url = dist_url,
                 sha256 = sha256,
                 metadata_sha256 = metadata_sha256,
                 metadata_url = _absolute_url(url, metadata_url) if metadata_url else "",
@@ -84,7 +91,8 @@ def parse_simpleapi_html(*, url, content):
         else:
             sdists[sha256] = struct(
                 filename = filename,
-                url = _absolute_url(url, dist_url),
+                version = version,
+                url = dist_url,
                 sha256 = sha256,
                 metadata_sha256 = "",
                 metadata_url = "",
@@ -94,7 +102,30 @@ def parse_simpleapi_html(*, url, content):
     return struct(
         sdists = sdists,
         whls = whls,
+        sha256_by_version = sha256_by_version,
     )
+
+_SDIST_EXTS = [
+    ".tar",  # handles any compression
+    ".zip",
+]
+
+def _version(filename):
+    # See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#binary-distribution-format
+
+    _, _, tail = filename.partition("-")
+    version, _, _ = tail.partition("-")
+    if version != tail:
+        # The format is {name}-{version}-{whl_specifiers}.whl
+        return version
+
+    # NOTE @aignas 2025-03-29: most of the files are wheels, so this is not the common path
+
+    # {name}-{version}.{ext}
+    for ext in _SDIST_EXTS:
+        version, _, _ = version.partition(ext)  # build or name
+
+    return version
 
 def _get_root_directory(url):
     scheme_end = url.find("://")

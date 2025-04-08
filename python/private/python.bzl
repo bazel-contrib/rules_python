@@ -243,10 +243,25 @@ def parse_modules(*, module_ctx, _fail = fail):
     if len(toolchains) > _MAX_NUM_TOOLCHAINS:
         fail("more than {} python versions are not supported".format(_MAX_NUM_TOOLCHAINS))
 
+    # sort the toolchains so that the toolchain versions that are in the
+    # `minor_mapping` are coming first. This ensures that `python_version =
+    # "3.X"` transitions work as expected.
+    minor_version_toolchains = []
+    other_toolchains = []
+    minor_mapping = list(config.minor_mapping.values())
+    for t in toolchains:
+        # FIXME @aignas 2025-04-04: How can we unit test that this ordering is
+        # consistent with what would actually work?
+        if config.minor_mapping.get(t.python_version, t.python_version) in minor_mapping:
+            minor_version_toolchains.append(t)
+        else:
+            other_toolchains.append(t)
+    toolchains = minor_version_toolchains + other_toolchains
+
     return struct(
         config = config,
         debug_info = debug_info,
-        default_python_version = toolchains[-1].python_version,
+        default_python_version = default_toolchain.python_version,
         toolchains = [
             struct(
                 python_version = t.python_version,
@@ -788,8 +803,8 @@ to spurious cache misses or build failures).
 However, if the user is running Bazel as root, this read-onlyness is not
 respected. Bazel will print a warning message when it detects that the runtime
 installation is writable despite being made read only (i.e. it's running with
-root access). If this attribute is set to `False`, Bazel will make it a hard
-error to run with root access instead.
+root access) while this attribute is set `False`, however this messaging can be ignored by setting
+this to `False`.
 """,
             mandatory = False,
         ),
