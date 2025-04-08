@@ -31,13 +31,15 @@ generate_repl_main(
     out = "repl.py",
 )
 
+# The user can replace this with their own stub. E.g. they can use this to
+# import ipython instead of the default shell.
 label_flag(
     name = "repl_stub",
     build_setting_default = "repl_stub.py",
 )
 
 # The user can modify this flag to make an interpreter shell library available
-# for the stub. E.g. if they switch the stub for an ipython-based on, then they
+# for the stub. E.g. if they switch the stub for an ipython-based one, then they
 # can point this at their version of ipython.
 label_flag(
     name = "repl_stub_dep",
