@@ -1,3 +1,5 @@
+load("//python:py_binary.bzl", "py_binary")
+
 def _generate_repl_main_impl(ctx):
     stub_repo = ctx.attr.src.label.repo_name or ctx.workspace_name
     stub_path = "/".join([stub_repo, ctx.file.src.short_path])
@@ -10,7 +12,7 @@ def _generate_repl_main_impl(ctx):
         },
     )
 
-generate_repl_main = rule(
+_generate_repl_main = rule(
     implementation = _generate_repl_main_impl,
     attrs = {
         "out": attr.output(
@@ -31,3 +33,24 @@ generate_repl_main = rule(
         ),
     },
 )
+
+def py_repl_binary(name, stub, deps=[], data=[], **kwargs):
+    _generate_repl_main(
+        name = "%s_py" % name,
+        src = stub,
+        out = "%s.py" % name,
+    )
+
+    py_binary(
+        name = name,
+        srcs = [
+            ":%s.py" % name,
+        ],
+        data = data + [
+            stub,
+        ],
+        deps = deps + [
+            "//python/runfiles",
+        ],
+        **kwargs,
+    )

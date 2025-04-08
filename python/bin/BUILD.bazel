@@ -1,6 +1,5 @@
-load("//python:py_binary.bzl", "py_binary")
 load("//python/private:interpreter.bzl", _interpreter_binary = "interpreter_binary")
-load("//python/private:repl.bzl", "generate_repl_main")
+load("//python/private:repl.bzl", "py_repl_binary")
 
 filegroup(
     name = "distribution",
@@ -25,10 +24,14 @@ label_flag(
     build_setting_default = "//python:none",
 )
 
-generate_repl_main(
-    name = "repl_py",
-    src = "repl_stub",
-    out = "repl.py",
+py_repl_binary(
+    name = "repl",
+    visibility = ["//visibility:public"],
+    stub = ":repl_stub",
+    deps = [
+        ":repl_dep",
+        ":repl_stub_dep",
+    ],
 )
 
 # The user can replace this with their own stub. E.g. they can use this to
@@ -44,20 +47,6 @@ label_flag(
 label_flag(
     name = "repl_stub_dep",
     build_setting_default = "//python/private:empty",
-)
-
-py_binary(
-    name = "repl",
-    srcs = [":repl.py"],
-    visibility = ["//visibility:public"],
-    data = [
-        ":repl_stub",
-    ],
-    deps = [
-        ":repl_dep",
-        ":repl_stub_dep",
-        "//python/runfiles",
-    ],
 )
 
 # The user can modify this flag to make arbitrary PyInfo targets available for
