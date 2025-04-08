@@ -365,15 +365,6 @@ def main():
     print_verbose("initial environ:", mapping=os.environ)
     print_verbose("initial sys.path:", values=sys.path)
 
-    if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_REPL")):
-        global MAIN_PATH
-        global MAIN_MODULE
-        MAIN_PATH = ""
-        MAIN_MODULE = "code"
-
-        # Prevent subprocesses from also entering the REPL.
-        del os.environ["RULES_PYTHON_BOOTSTRAP_REPL"]
-
     main_rel_path = None
     # todo: things happen to work because find_runfiles_root
     # ends up using stage2_bootstrap, and ends up computing the proper
