@@ -206,6 +206,7 @@ def parse_requirements(
 
         # Return normalized names
         ret_requirements = ret.setdefault(normalize_name(whl_name), [])
+        sdists_by_sha = {}
 
         for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
             whls, sdist = _add_dists(
@@ -215,6 +216,21 @@ def parse_requirements(
             )
 
             target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
+
+            if sdist:
+                sha = sdist.sha256
+                sdist_info = sdists_by_sha.setdefault(sha, struct(
+                    distribution = r.distribution,
+                    srcs = r.srcs,
+                    extra_pip_args = r.extra_pip_args,
+                    sdist = sdist,
+                    platforms = [],
+                ))
+                sdist_info.platforms.extend(target_platforms)
+
+                if len(whls) == 0:
+                    continue
+
             ret_requirements.append(
                 struct(
                     distribution = r.distribution,
@@ -222,7 +238,20 @@ def parse_requirements(
                     target_platforms = sorted(target_platforms),
                     extra_pip_args = r.extra_pip_args,
                     whls = whls,
-                    sdist = sdist,
+                    sdist = None,
+                    is_exposed = is_exposed,
+                ),
+            )
+
+        for sdist_info in sdists_by_sha.values():
+            ret_requirements.append(
+                struct(
+                    distribution = sdist_info.distribution,
+                    srcs = sdist_info.srcs,
+                    target_platforms = sorted(sdist_info.platforms),
+                    extra_pip_args = sdist_info.extra_pip_args,
+                    whls = [],
+                    sdist = sdist_info.sdist,
                     is_exposed = is_exposed,
                 ),
             )
