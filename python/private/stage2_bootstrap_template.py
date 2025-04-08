@@ -369,16 +369,10 @@ def main():
         global MAIN_PATH
         global MAIN_MODULE
         MAIN_PATH = ""
-        # TODO(philsc): Can we point at python.bin.repl instead? That would mean
-        # adding it as a dependency to all binaries.
         MAIN_MODULE = "code"
 
         # Prevent subprocesses from also entering the REPL.
         del os.environ["RULES_PYTHON_BOOTSTRAP_REPL"]
-
-        # Point libedit/readline at the correct terminfo databases.
-        # https://github.com/astral-sh/python-build-standalone/blob/f0abfc9cb1f6a985fc5561cf5435f7f6e8a64e5b/docs/quirks.rst#backspace-key-doesnt-work-in-python-repl
-        os.environ["TERMINFO_DIRS"] = "/etc/terminfo:/lib/terminfo:/usr/share/terminfo"
 
     main_rel_path = None
     # todo: things happen to work because find_runfiles_root
