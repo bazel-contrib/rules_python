@@ -17,8 +17,8 @@
 load("//python:py_binary.bzl", "py_binary")
 
 def _generate_repl_main_impl(ctx):
-    stub_repo = ctx.attr.src.label.repo_name or ctx.workspace_name
-    stub_path = "/".join([stub_repo, ctx.file.src.short_path])
+    stub_repo = ctx.attr.stub.label.repo_name or ctx.workspace_name
+    stub_path = "/".join([stub_repo, ctx.file.stub.short_path])
 
     ctx.actions.expand_template(
         template = ctx.file._template,
@@ -34,7 +34,7 @@ _generate_repl_main = rule(
         "out": attr.output(
             mandatory = True,
         ),
-        "src": attr.label(
+        "stub": attr.label(
             mandatory = True,
             allow_single_file = True,
         ),
@@ -53,7 +53,7 @@ _generate_repl_main = rule(
 def py_repl_binary(name, stub, deps = [], data = [], **kwargs):
     _generate_repl_main(
         name = "%s_py" % name,
-        src = stub,
+        stub = stub,
         out = "%s.py" % name,
     )
 
