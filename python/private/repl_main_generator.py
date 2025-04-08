@@ -3,8 +3,9 @@ import textwrap
 from pathlib import Path
 
 LINE_TO_REPLACE = """\
-    pass # %REPLACE_WHOLE_LINE_WITH_STUB%
+    pass  # %REPLACE_WHOLE_LINE_WITH_STUB%
 """
+
 
 def main(argv):
     template = Path(sys.argv[1])
@@ -18,7 +19,9 @@ def main(argv):
 
     output_text = template_text.replace(LINE_TO_REPLACE, indented_stub_text)
     if template_text == output_text:
-        raise ValueError("Failed to find the following in the template: {LINE_TO_REPLACE}")
+        raise ValueError(
+            f"Failed to find the following in the template: {LINE_TO_REPLACE}"
+        )
 
     output.write_text(output_text)
 

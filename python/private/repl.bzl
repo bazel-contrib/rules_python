@@ -26,14 +26,14 @@ generate_repl_main = rule(
             mandatory = True,
             allow_single_file = True,
         ),
-        "_template": attr.label(
-            default = "//python/private:repl_template.py",
-            allow_single_file = True,
-        ),
         "_generator": attr.label(
             default = "//python/private:repl_main_generator",
             executable = True,
             cfg = "exec",
+        ),
+        "_template": attr.label(
+            default = "//python/private:repl_template.py",
+            allow_single_file = True,
         ),
     },
 )
