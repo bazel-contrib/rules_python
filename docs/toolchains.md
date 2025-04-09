@@ -199,10 +199,10 @@ Remember to call `use_repo()` to make repos visible to your module:
 
 
 :::{deprecated} 1.1.0
-The toolchain specific `py_binary` and `py_test` symbols are aliases to the regular rules. 
+The toolchain specific `py_binary` and `py_test` symbols are aliases to the regular rules.
 i.e. Deprecated `load("@python_versions//3.11:defs.bzl", "py_binary")` & `load("@python_versions//3.11:defs.bzl", "py_test")`
 
-Usages of them should be changed to load the regular rules directly; 
+Usages of them should be changed to load the regular rules directly;
 i.e.  Use `load("@rules_python//python:py_binary.bzl", "py_binary")` & `load("@rules_python//python:py_test.bzl", "py_test")` and then specify the `python_version` when using the rules corresponding to the python version you defined in your toolchain. {ref}`Library modules with version constraints`
 :::
 
@@ -327,7 +327,97 @@ After registration, your Python targets will use the toolchain's interpreter dur
 is still used to 'bootstrap' Python targets (see https://github.com/bazel-contrib/rules_python/issues/691).
 You may also find some quirks while using this toolchain. Please refer to [python-build-standalone documentation's _Quirks_ section](https://gregoryszorc.com/docs/python-build-standalone/main/quirks.html).
 
-## Autodetecting toolchain
+## Local toolchain
+
+It's possible to use a locally installed Python runtime instead of the regular
+prebuilt, remotely downloaded ones. A local toolchain contains the Python
+runtime metadata (Python version, headers, ABI flags, etc) that the regular
+remotely downloaded runtimes contain, which makes it possible to build e.g. C
+extensions (unlike the autodetecting and runtime environment toolchains).
+
+For simple cases, some rules are provided that will introspect
+a Python installation and create an appropriate Bazel definition from
+it. To do this, three pieces need to be wired together:
+
+1. Specify a path or command to a Python interpreter (multiple can be defined).
+2. Create toolchains for the runtimes in (1)
+3. Register the toolchains created by (2)
+
+The below is an example that will use `python3` from PATH to find the
+interpreter, then introspect its installation to generate a full toolchain.
+
+```starlark
+# File: MODULE.bazel
+
+local_runtime_repo = use_repo_rule(
+    "@rules_python//python/local_toolchains:repos.bzl",
+    "local_runtime_repo",
+    dev_dependency = True,
+)
+
+local_runtime_toolchains_repo = use_repo_rule(
+    "@rules_python//python/local_toolchains:repos.bzl"
+    "local_runtime_toolchains_repo"
+    dev_dependency = True,
+)
+
+# Step 1: Define the Python runtime
+local_runtime_repo(
+    name = "local_python3",
+    interpreter_path = "python3",
+    on_failure = "fail",
+)
+
+# Step 2: Create toolchains for the runtimes
+local_runtime_toolchains_repo(
+    name = "local_toolchains",
+    runtimes = ["local_python3"],
+)
+
+# Step 3: Register the toolchains
+register_toolchains("@local_toolchains//:all", dev_dependency = True)
+```
+
+Note that `register_toolchains` will insert the local toolchain earlier in the
+toolchain ordering, so it will take precedence over other registered toolchains.
+
+:::{important}
+Be sure to set `dev_dependency = True`. Using a local toolchain only makes sense
+for the root module.
+
+If an intermediate module does it, then the `register_toolchains()` call will
+take precedence over the default rules_python toolchains and cause problems for
+downstream modules.
+:::
+
+Multiple runtimes and/or toolchains can be defined, which allows for multiple
+Python versions and/or platforms to be configured in a single `MODULE.bazel`.
+
+## Runtime environment toolchain
+
+The runtime environment toolchain is a minimal toolchain that doesn't provide
+information about Python at build time. In particular, this means it is not able
+to build C extensions -- doing so requires knowing, at build time, what Python
+headers to use.
+
+In effect, all it does is generate a small wrapper script that simply calls e.g.
+`/usr/bin/env python3` to run a program. This makes it easy to change what
+Python is used to run a program, but also makes it easy to use a Python version
+that isn't compatible with build-time assumptions.
+
+```
+register_toolchains("@rules_python//python/runtime_env_toolchains:all")
+```
+
+Note that this toolchain has no constraints, i.e. it will match any platform,
+Python version, etc.
+
+:::{seealso}
+[Local toolchain], which creates a more full featured toolchain from a
+locally installed Python.
+:::
+
+### Autodetecting toolchain
 
 The autodetecting toolchain is a deprecated toolchain that is built into Bazel.
 It's name is a bit misleading: it doesn't autodetect anything. All it does is
@@ -344,7 +434,6 @@ there is a toolchain misconfiguration somewhere.
 To aid migration off the Bazel-builtin toolchain, rules_python provides
 {bzl:obj}`@rules_python//python/runtime_env_toolchains:all`. This is an equivalent
 toolchain, but is implemented using rules_python's objects.
-
 
 ## Custom toolchains
 

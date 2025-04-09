@@ -117,6 +117,10 @@ Unreleased changes template.
   allow specifying links to create within the venv site packages (only
   applicable with {obj}`--bootstrap_impl=script`)
   ([#2156](https://github.com/bazelbuild/rules_python/issues/2156)).
+* (toolchains) Local Python installs can be used to create a toolchain
+  equivalent to the standard toolchains. See [Local toolchains] docs for how to
+  configure them.
+
 
 {#v0-0-0-removed}
 ### Removed
