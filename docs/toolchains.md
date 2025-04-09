@@ -351,7 +351,8 @@ interpreter, then introspect its installation to generate a full toolchain.
 
 local_runtime_repo = use_repo_rule(
     "@rules_python//python/local_toolchains:repos.bzl",
-    "local_runtime_repo"
+    "local_runtime_repo",
+    dev_dependency = True,
 )
 
 local_runtime_toolchains_repo = use_repo_rule(
