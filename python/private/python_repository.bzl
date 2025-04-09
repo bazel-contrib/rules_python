@@ -193,8 +193,9 @@ def _python_repository_impl(rctx):
             # Exclude them from the glob because otherwise between the first time and second time a python toolchain is used,"
             # the definition of this filegroup will change, and depending rules will get invalidated."
             # See https://github.com/bazel-contrib/rules_python/issues/1008 for unconditionally adding these to toolchains so we can stop ignoring them."
-            "**/__pycache__/*.pyc",
-            "**/__pycache__/*.pyo",
+            # pyc* is ignored because pyc creation creates temporary .pyc.NNNN files
+            "**/__pycache__/*.pyc*",
+            "**/__pycache__/*.pyo*",
         ]
 
     if "windows" in platform:
