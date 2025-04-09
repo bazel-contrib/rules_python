@@ -346,7 +346,7 @@ it. To do this, three pieces need to be wired together:
 The below is an example that will use `python3` from PATH to find the
 interpreter, then introspect its installation to generate a full toolchain.
 
-```
+```starlark
 # File: MODULE.bazel
 
 local_runtime_repo = use_repo_rule(
