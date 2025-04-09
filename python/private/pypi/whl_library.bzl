@@ -25,6 +25,7 @@ load(":parse_requirements.bzl", "host_platform")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_deps.bzl", "deps")
+load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
@@ -430,7 +431,7 @@ def _whl_library_impl(rctx):
         platforms = target_platforms or [
             "{}_{}".format(metadata["abi"], host_platform(rctx)),
         ],
-        extras = metadata["extras"],
+        extras = requirement(rctx.attr.requirement).extras,
         host_python_version = metadata["python_version"],
     )
 
