@@ -22,39 +22,6 @@ from pathlib import Path
 from python.private.pypi.whl_installer import wheel_installer
 
 
-class TestRequirementExtrasParsing(unittest.TestCase):
-    def test_parses_requirement_for_extra(self) -> None:
-        cases = [
-            ("name[foo]", ("name", frozenset(["foo"]))),
-            ("name[ Foo123 ]", ("name", frozenset(["Foo123"]))),
-            (" name1[ foo ] ", ("name1", frozenset(["foo"]))),
-            ("Name[foo]", ("name", frozenset(["foo"]))),
-            ("name_foo[bar]", ("name-foo", frozenset(["bar"]))),
-            (
-                "name [fred,bar] @ http://foo.com ; python_version=='2.7'",
-                ("name", frozenset(["fred", "bar"])),
-            ),
-            (
-                "name[quux, strange];python_version<'2.7' and platform_version=='2'",
-                ("name", frozenset(["quux", "strange"])),
-            ),
-            (
-                "name; (os_name=='a' or os_name=='b') and os_name=='c'",
-                (None, None),
-            ),
-            (
-                "name@http://foo.com",
-                (None, None),
-            ),
-        ]
-
-        for case, expected in cases:
-            with self.subTest():
-                self.assertTupleEqual(
-                    wheel_installer._parse_requirement_for_extra(case), expected
-                )
-
-
 class TestWhlFilegroup(unittest.TestCase):
     def setUp(self) -> None:
         self.wheel_name = "example_minimal_package-0.0.1-py3-none-any.whl"
@@ -68,10 +35,8 @@ class TestWhlFilegroup(unittest.TestCase):
     def test_wheel_exists(self) -> None:
         wheel_installer._extract_wheel(
             Path(self.wheel_path),
-            installation_dir=Path(self.wheel_dir),
-            extras={},
             enable_implicit_namespace_pkgs=False,
-            platforms=[],
+            installation_dir=Path(self.wheel_dir),
         )
 
         want_files = [
@@ -92,11 +57,8 @@ class TestWhlFilegroup(unittest.TestCase):
             metadata_file_content = json.load(metadata_file)
 
         want = dict(
-            version="0.0.1",
-            name="example-minimal-package",
-            deps=[],
-            deps_by_platform={},
             entry_points=[],
+            python_version="3.11.11",
         )
         self.assertEqual(want, metadata_file_content)
 

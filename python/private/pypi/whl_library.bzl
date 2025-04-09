@@ -21,8 +21,11 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(":parse_requirements.bzl", "host_platform")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
+load(":pep508_deps.bzl", "deps")
+load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
@@ -229,6 +232,61 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
+def _read_and_parse_required_metadata(rctx, logger):
+    contents = []
+    for entry in rctx.path("site-packages").readdir():
+        if not entry.basename.endswith(".dist-info"):
+            continue
+
+        if not entry.is_dir:
+            continue
+
+        metadata_file = entry.get_child("METADATA")
+
+        if not metadata_file.exists:
+            logger.fail("The METADATA file for the wheel could not be found")
+            return None
+
+        contents.extend(rctx.read(metadata_file).split("\n"))
+        break
+
+    single_value_fields = {
+        "License: ": "license",
+        "Name: ": "name",
+        "Version: ": "version",
+    }
+    requires_dist = "Requires-Dist: "
+    parsed = {}
+    for line in contents:
+        if not line or line.startswith("Dynamic"):
+            # Stop parsing on first empty line
+            break
+
+        found_prefix = None
+        for prefix in single_value_fields:
+            if line.startswith(prefix):
+                found_prefix = prefix
+                break
+
+        if found_prefix:
+            key = single_value_fields.pop(found_prefix)
+            _, _, value = line.partition(found_prefix)
+            parsed[key] = value.strip()
+            continue
+
+        if not line.startswith(requires_dist):
+            continue
+
+        _, _, value = line.partition(requires_dist)
+        parsed.setdefault("requires_dist", []).append(value.strip(" "))
+
+    return struct(
+        name = parsed["name"],
+        version = parsed["version"],
+        license = parsed.get("license"),
+        requires_dist = parsed.get("requires_dist", []),
+    )
+
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
     python_interpreter = pypi_repo_utils.resolve_python_interpreter(
@@ -361,7 +419,7 @@ def _whl_library_impl(rctx):
         arguments = args + [
             "--whl-file",
             whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
+        ],
         srcs = rctx.attr._python_srcs,
         environment = environment,
         quiet = rctx.attr.quiet,
@@ -396,17 +454,56 @@ def _whl_library_impl(rctx):
         )
         entry_points[entry_point_without_py] = entry_point_script_name
 
+    # TODO @aignas 2025-04-04: move this to whl_library_targets.bzl to have
+    # this in the analysis phase.
+    #
+    # This means that whl_library_targets will have to accept the following args:
+    # * name - the name of the package in the METADATA.
+    # * requires_dist - the list of METADATA Requires-Dist.
+    # * platforms - the list of target platforms. The target_platforms
+    #   should come from the hub repo via a 'load' statement so that they don't
+    #   need to be passed as an argument to `whl_library`.
+    # * extras - the list of required extras. This comes from the
+    #   `rctx.attr.requirement` for now. In the future the required extras could
+    #   stay in the hub repo, where we calculate the extra aliases that we need
+    #   to create automatically and this way expose the targets for the specific
+    #   extras. The first step will be to generate a target per extra for the
+    #   `py_library` and `filegroup`. Maybe we need to have a special provider
+    #   or an output group so that we can return the `whl` file from the
+    #   `py_library` target? filegroup can use output groups to expose files.
+    # * host_python_version/versons - the list of python versions to support
+    #   should come from the hub, similar to how the target platforms are specified.
+    #
+    # Extra things that we should move at the same time:
+    # * group_name, group_deps - this info can stay in the hub repository so that
+    #   it is piped at the analysis time and changing the requirement groups does
+    #   cause to re-fetch the deps.
+    whl_metadata = _read_and_parse_required_metadata(rctx, logger)
+    python_version = metadata["python_version"]
+
+    # TODO @aignas 2025-04-09: this will later be removed when loaded through the hub
+    major_minor, _, _ = python_version.rpartition(".")
+    package_deps = deps(
+        name = whl_metadata.name,
+        requires_dist = whl_metadata.requires_dist,
+        platforms = target_platforms or [
+            "cp{}_{}".format(major_minor.replace(".", ""), host_platform(rctx)),
+        ],
+        extras = requirement(rctx.attr.requirement).extras,
+        host_python_version = python_version,
+    )
+
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
         dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-        dependencies = metadata["deps"],
-        dependencies_by_platform = metadata["deps_by_platform"],
+        dependencies = package_deps.deps,
+        dependencies_by_platform = package_deps.deps_select,
         group_name = rctx.attr.group_name,
         group_deps = rctx.attr.group_deps,
         data_exclude = rctx.attr.pip_data_exclude,
         tags = [
-            "pypi_name=" + metadata["name"],
-            "pypi_version=" + metadata["version"],
+            "pypi_name=" + whl_metadata.name,
+            "pypi_version=" + whl_metadata.version,
         ],
         entry_points = entry_points,
         annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),

@@ -15,7 +15,9 @@
 """This module is for implementing PEP508 environment definition.
 """
 
-# See https://stackoverflow.com/questions/45125516/possible-values-for-uname-m
+load(":pep508_platform.bzl", "platform_from_str")
+
+# See https://stackoverflow.com/a/45125525
 _platform_machine_aliases = {
     # These pairs mean the same hardware, but different values may be used
     # on different host platforms.
@@ -24,13 +26,41 @@ _platform_machine_aliases = {
     "i386": "x86_32",
     "i686": "x86_32",
 }
+
+# Platform system returns results from the `uname` call.
 _platform_system_values = {
     "linux": "Linux",
     "osx": "Darwin",
     "windows": "Windows",
 }
+
+# The copy of SO [answer](https://stackoverflow.com/a/13874620) containing
+# all of the platforms:
+# ┍━━━━━━━━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━━━━━━━┑
+# │ System              │ Value               │
+# ┝━━━━━━━━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━━━━━━━━┥
+# │ Linux               │ linux or linux2 (*) │
+# │ Windows             │ win32               │
+# │ Windows/Cygwin      │ cygwin              │
+# │ Windows/MSYS2       │ msys                │
+# │ Mac OS X            │ darwin              │
+# │ OS/2                │ os2                 │
+# │ OS/2 EMX            │ os2emx              │
+# │ RiscOS              │ riscos              │
+# │ AtheOS              │ atheos              │
+# │ FreeBSD 7           │ freebsd7            │
+# │ FreeBSD 8           │ freebsd8            │
+# │ FreeBSD N           │ freebsdN            │
+# │ OpenBSD 6           │ openbsd6            │
+# │ AIX                 │ aix (**)            │
+# ┕━━━━━━━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━━━━━┙
+#
+# (*) Prior to Python 3.3, the value for any Linux version is always linux2; after, it is linux.
+# (**) Prior Python 3.8 could also be aix5 or aix7; use sys.platform.startswith()
+#
+# We are using only the subset that we actually support.
 _sys_platform_values = {
-    "linux": "posix",
+    "linux": "linux",
     "osx": "darwin",
     "windows": "win32",
 }
@@ -61,6 +91,7 @@ def env(target_platform, *, extra = None):
         "platform_release": "",
         "platform_version": "",
     }
+
     if type(target_platform) == type(""):
         target_platform = platform_from_str(target_platform, python_version = "")
 
@@ -87,31 +118,3 @@ def env(target_platform, *, extra = None):
             "platform_machine": _platform_machine_aliases,
         },
     }
-
-def _platform(*, abi = None, os = None, arch = None):
-    return struct(
-        abi = abi,
-        os = os,
-        arch = arch,
-    )
-
-def platform_from_str(p, python_version):
-    """Return a platform from a string.
-
-    Args:
-        p: {type}`str` the actual string.
-        python_version: {type}`str` the python version to add to platform if needed.
-
-    Returns:
-        A struct that is returned by the `_platform` function.
-    """
-    if p.startswith("cp"):
-        abi, _, p = p.partition("_")
-    elif python_version:
-        major, _, tail = python_version.partition(".")
-        abi = "cp{}{}".format(major, tail)
-    else:
-        abi = None
-
-    os, _, arch = p.partition("_")
-    return _platform(abi = abi, os = os or None, arch = arch or None)
