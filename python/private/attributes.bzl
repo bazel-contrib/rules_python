@@ -254,6 +254,17 @@ These are typically `py_library` rules.
 
 Targets that only provide data files used at runtime belong in the `data`
 attribute.
+
+:::{note}
+The order of this list can matter because it affects the order that information
+from dependencies is merged in, which can be relevant depending on the ordering
+mode of depsets that are merged.
+
+* {obj}`PyInfo.site_packages_symlinks` uses topological ordering.
+
+See {obj}`PyInfo` for more information about the ordering of its depsets and
+how its fields are merged.
+:::
 """,
         ),
         "precompile": lambda: attrb.String(

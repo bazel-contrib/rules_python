@@ -42,7 +42,8 @@ def _PyInfo_init(
         direct_original_sources = depset(),
         transitive_original_sources = depset(),
         direct_pyi_files = depset(),
-        transitive_pyi_files = depset()):
+        transitive_pyi_files = depset(),
+        site_packages_symlinks = depset()):
     _check_arg_type("transitive_sources", "depset", transitive_sources)
 
     # Verify it's postorder compatible, but retain is original ordering.
@@ -70,6 +71,7 @@ def _PyInfo_init(
         "has_py2_only_sources": has_py2_only_sources,
         "has_py3_only_sources": has_py2_only_sources,
         "imports": imports,
+        "site_packages_symlinks": site_packages_symlinks,
         "transitive_implicit_pyc_files": transitive_implicit_pyc_files,
         "transitive_implicit_pyc_source_files": transitive_implicit_pyc_source_files,
         "transitive_original_sources": transitive_original_sources,
@@ -140,6 +142,34 @@ A depset of import path strings to be added to the `PYTHONPATH` of executable
 Python targets. These are accumulated from the transitive `deps`.
 The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
+""",
+        "site_packages_symlinks": """
+:type: depset[tuple[str | None, str]]
+
+A depset with `topological` ordering.
+
+Tuples of `(runfiles_path, site_packages_path)`. Where
+* `runfiles_path` is a runfiles-root relative path. It is the path that
+  has the code to make importable. If `None` or empty string, then it means
+  to not create a site packages directory with the `site_packages_path`
+  name.
+* `site_packages_path` is a path relative to the site-packages directory of
+  the venv for whatever creates the venv (typically py_binary). It makes
+  the code in `runfiles_path` available for import. Note that this
+  is created as a "raw" symlink (via `declare_symlink`).
+
+:::{include} /_includes/experimental_api.md
+:::
+
+:::{tip}
+The topological ordering means dependencies earlier and closer to the consumer
+have precedence. This allows e.g. a binary to add dependencies that override
+values from further way dependencies, such as forcing symlinks to point to
+specific paths or preventing symlinks from being created.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "transitive_implicit_pyc_files": """
 :type: depset[File]
@@ -266,6 +296,7 @@ def PyInfoBuilder():
         transitive_pyc_files = builders.DepsetBuilder(),
         transitive_pyi_files = builders.DepsetBuilder(),
         transitive_sources = builders.DepsetBuilder(),
+        site_packages_symlinks = builders.DepsetBuilder(order = "topological"),
     )
     return self
 
@@ -351,6 +382,7 @@ def _PyInfoBuilder_merge_all(self, transitive, *, direct = []):
             self.transitive_original_sources.add(info.transitive_original_sources)
             self.transitive_pyc_files.add(info.transitive_pyc_files)
             self.transitive_pyi_files.add(info.transitive_pyi_files)
+            self.site_packages_symlinks.add(info.site_packages_symlinks)
 
     return self
 
@@ -400,6 +432,7 @@ def _PyInfoBuilder_build(self):
             transitive_original_sources = self.transitive_original_sources.build(),
             transitive_pyc_files = self.transitive_pyc_files.build(),
             transitive_pyi_files = self.transitive_pyi_files.build(),
+            site_packages_symlinks = self.site_packages_symlinks.build(),
         )
     else:
         kwargs = {}

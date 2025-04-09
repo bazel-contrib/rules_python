@@ -803,8 +803,8 @@ to spurious cache misses or build failures).
 However, if the user is running Bazel as root, this read-onlyness is not
 respected. Bazel will print a warning message when it detects that the runtime
 installation is writable despite being made read only (i.e. it's running with
-root access). If this attribute is set to `False`, Bazel will make it a hard
-error to run with root access instead.
+root access) while this attribute is set `False`, however this messaging can be ignored by setting
+this to `False`.
 """,
             mandatory = False,
         ),

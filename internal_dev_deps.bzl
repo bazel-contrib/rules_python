@@ -15,6 +15,7 @@
 """Dependencies that are needed for development and testing of rules_python itself."""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", _http_archive = "http_archive", _http_file = "http_file")
+load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//python/private:internal_config_repo.bzl", "internal_config_repo")  # buildifier: disable=bzl-visibility
 
@@ -41,6 +42,11 @@ def rules_python_internal_deps():
     python/private/py_repositories.bzl.
     """
     internal_config_repo(name = "rules_python_internal")
+
+    local_repository(
+        name = "other",
+        path = "tests/modules/other",
+    )
 
     http_archive(
         name = "bazel_skylib",

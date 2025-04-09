@@ -30,6 +30,16 @@ PackageSpecificationInfo = getattr(py_internal, "PackageSpecificationInfo", None
 # Extensions without the dot
 _PYTHON_SOURCE_EXTENSIONS = ["py"]
 
+# Extensions that mean a file is relevant to Python
+PYTHON_FILE_EXTENSIONS = [
+    "dll",  # Python C modules, Windows specific
+    "dylib",  # Python C modules, Mac specific
+    "py",
+    "pyc",
+    "pyi",
+    "so",  # Python C modules, usually Linux
+]
+
 def create_binary_semantics_struct(
         *,
         create_executable,
@@ -367,7 +377,8 @@ def create_py_info(
         required_pyc_files,
         implicit_pyc_files,
         implicit_pyc_source_files,
-        imports):
+        imports,
+        site_packages_symlinks = []):
     """Create PyInfo provider.
 
     Args:
@@ -385,6 +396,9 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
+        site_packages_symlinks: {type}`list[tuple[str, str]]` tuples of
+            `(runfiles_path, site_packages_path)` for symlinks to create
+            in the consuming binary's venv site packages.
 
     Returns:
         A tuple of the PyInfo instance and a depset of the
@@ -392,6 +406,7 @@ def create_py_info(
         necessary for deprecated extra actions support).
     """
     py_info = PyInfoBuilder()
+    py_info.site_packages_symlinks.add(site_packages_symlinks)
     py_info.direct_original_sources.add(original_sources)
     py_info.direct_pyc_files.add(required_pyc_files)
     py_info.direct_pyi_files.add(ctx.files.pyi_srcs)

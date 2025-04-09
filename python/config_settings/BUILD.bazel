@@ -9,6 +9,7 @@ load(
     "LibcFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
+    "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
 )
 load(
@@ -191,6 +192,13 @@ string_flag(
 string_flag(
     name = "pip_whl_osx_version",
     build_setting_default = "",
+    # NOTE: Only public because it is used in pip hub repos.
+    visibility = ["//visibility:public"],
+)
+
+string_flag(
+    name = "venvs_site_packages",
+    build_setting_default = VenvsSitePackages.NO,
     # NOTE: Only public because it is used in pip hub repos.
     visibility = ["//visibility:public"],
 )

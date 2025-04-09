@@ -92,7 +92,7 @@ Only supported for {obj}`--bootstrap_impl=script`. Ignored otherwise.
 :::
 
 :::{seealso}
-The {obj}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` environment variable
+The {any}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` environment variable
 :::
 
 :::{versionadded} 1.3.0
@@ -612,14 +612,88 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         },
         computed_substitutions = computed_subs,
     )
+    site_packages_symlinks = _create_site_packages_symlinks(ctx, site_packages)
 
     return struct(
         interpreter = interpreter,
         recreate_venv_at_runtime = not venvs_use_declare_symlink_enabled,
         # Runfiles root relative path or absolute path
         interpreter_actual_path = interpreter_actual_path,
-        files_without_interpreter = [pyvenv_cfg, pth, site_init],
+        files_without_interpreter = [pyvenv_cfg, pth, site_init] + site_packages_symlinks,
     )
+
+def _create_site_packages_symlinks(ctx, site_packages):
+    """Creates symlinks within site-packages.
+
+    Args:
+        ctx: current rule ctx
+        site_packages: runfiles-root-relative path to the site-packages directory
+
+    Returns:
+        {type}`list[File]` list of the File symlink objects created.
+    """
+
+    # maps site-package symlink to the runfiles path it should point to
+    entries = depset(
+        # NOTE: Topological ordering is used so that dependencies closer to the
+        # binary have precedence in creating their symlinks. This allows the
+        # binary a modicum of control over the result.
+        order = "topological",
+        transitive = [
+            dep[PyInfo].site_packages_symlinks
+            for dep in ctx.attr.deps
+            if PyInfo in dep
+        ],
+    ).to_list()
+    link_map = _build_link_map(entries)
+
+    sp_files = []
+    for sp_dir_path, link_to in link_map.items():
+        sp_link = ctx.actions.declare_symlink(paths.join(site_packages, sp_dir_path))
+        sp_link_rf_path = runfiles_root_path(ctx, sp_link.short_path)
+        rel_path = relative_path(
+            # dirname is necessary because a relative symlink is relative to
+            # the directory the symlink resides within.
+            from_ = paths.dirname(sp_link_rf_path),
+            to = link_to,
+        )
+        ctx.actions.symlink(output = sp_link, target_path = rel_path)
+        sp_files.append(sp_link)
+    return sp_files
+
+def _build_link_map(entries):
+    link_map = {}
+    for link_to_runfiles_path, site_packages_path in entries:
+        if site_packages_path in link_map:
+            # We ignore duplicates by design. The dependency closer to the
+            # binary gets precedence due to the topological ordering.
+            continue
+        else:
+            link_map[site_packages_path] = link_to_runfiles_path
+
+    # An empty link_to value means to not create the site package symlink.
+    # Because of the topological ordering, this allows binaries to remove
+    # entries by having an earlier dependency produce empty link_to values.
+    for sp_dir_path, link_to in link_map.items():
+        if not link_to:
+            link_map.pop(sp_dir_path)
+
+    # Remove entries that would be a child path of a created symlink.
+    # Earlier entries have precedence to match how exact matches are handled.
+    keep_link_map = {}
+    for _ in range(len(link_map)):
+        if not link_map:
+            break
+        dirname, value = link_map.popitem()
+        keep_link_map[dirname] = value
+
+        prefix = dirname + "/"  # Add slash to prevent /X matching /XY
+        for maybe_suffix in link_map.keys():
+            maybe_suffix += "/"  # Add slash to prevent /X matching /XY
+            if maybe_suffix.startswith(prefix) or prefix.startswith(maybe_suffix):
+                link_map.pop(maybe_suffix)
+
+    return keep_link_map
 
 def _map_each_identity(v):
     return v

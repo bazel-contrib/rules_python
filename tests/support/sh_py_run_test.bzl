@@ -40,6 +40,8 @@ def _perform_transition_impl(input_settings, attr, base_impl):
         settings["//python/bin:python_src"] = attr.python_src
     if attr.venvs_use_declare_symlink:
         settings["//python/config_settings:venvs_use_declare_symlink"] = attr.venvs_use_declare_symlink
+    if attr.venvs_site_packages:
+        settings["//python/config_settings:venvs_site_packages"] = attr.venvs_site_packages
     return settings
 
 _RECONFIG_INPUTS = [
@@ -47,6 +49,7 @@ _RECONFIG_INPUTS = [
     "//python/bin:python_src",
     "//command_line_option:extra_toolchains",
     "//python/config_settings:venvs_use_declare_symlink",
+    "//python/config_settings:venvs_site_packages",
 ]
 _RECONFIG_OUTPUTS = _RECONFIG_INPUTS + [
     "//command_line_option:build_python_zip",
@@ -67,6 +70,7 @@ toolchain.
 """,
     ),
     "python_src": attrb.Label(),
+    "venvs_site_packages": attrb.String(),
     "venvs_use_declare_symlink": attrb.String(),
 }
 

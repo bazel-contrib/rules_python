@@ -22,8 +22,8 @@ import (
 
 	"github.com/emirpasic/gods/lists/singlylinkedlist"
 
-	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazel-contrib/rules_python/gazelle/manifest"
+	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 // Directives
@@ -125,21 +125,28 @@ const (
 
 // defaultIgnoreFiles is the list of default values used in the
 // python_ignore_files option.
-var defaultIgnoreFiles = map[string]struct{}{
-}
+var defaultIgnoreFiles = map[string]struct{}{}
 
 // Configs is an extension of map[string]*Config. It provides finding methods
 // on top of the mapping.
 type Configs map[string]*Config
 
 // ParentForPackage returns the parent Config for the given Bazel package.
-func (c *Configs) ParentForPackage(pkg string) *Config {
-	dir := path.Dir(pkg)
-	if dir == "." {
-		dir = ""
+func (c Configs) ParentForPackage(pkg string) *Config {
+	for {
+		dir := path.Dir(pkg)
+		if dir == "." {
+			dir = ""
+		}
+		parent := (map[string]*Config)(c)[dir]
+		if parent != nil {
+			return parent
+		}
+		if dir == "" {
+			return nil
+		}
+		pkg = dir
 	}
-	parent := (map[string]*Config)(*c)[dir]
-	return parent
 }
 
 // Config represents a config extension for a specific Bazel package.

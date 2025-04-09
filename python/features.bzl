@@ -19,8 +19,49 @@ load("@rules_python_internal//:rules_python_config.bzl", "config")
 # See https://git-scm.com/docs/git-archive/2.29.0#Documentation/git-archive.txt-export-subst
 _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 
+def _features_typedef():
+    """Information about features rules_python has implemented.
+
+    ::::{field} precompile
+    :type: bool
+
+    True if the precompile attributes are available.
+
+    :::{versionadded} 0.33.0
+    :::
+    ::::
+
+    ::::{field} py_info_site_packages_symlinks
+
+    True if the `PyInfo.site_packages_symlinks` field is available.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
+
+    ::::{field} uses_builtin_rules
+    :type: bool
+
+    True if the rules are using the Bazel-builtin implementation.
+
+    :::{versionadded} 1.1.0
+    :::
+    ::::
+
+    ::::{field} version
+    :type: str
+
+    The rules_python version. This is a semver format, e.g. `X.Y.Z` with
+    optional trailing `-rcN`. For unreleased versions, it is an empty string.
+    :::{versionadded} 0.38.0
+    ::::
+    """
+
 features = struct(
-    version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
+    TYPEDEF = _features_typedef,
+    # keep sorted
     precompile = True,
+    py_info_site_packages_symlinks = True,
     uses_builtin_rules = not config.enable_pystar,
+    version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
 )
