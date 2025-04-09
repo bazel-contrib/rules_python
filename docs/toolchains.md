@@ -381,7 +381,7 @@ Note that `register_toolchains` will insert the local toolchain earlier in the
 toolchain ordering, so it will take precedence over other registered toolchains.
 
 Multiple runtimes and/or toolchains can be defined, which allows for multiple
-Python versions and/or platforms to be configured in a single MODULE.bazel.
+Python versions and/or platforms to be configured in a single `MODULE.bazel`.
 
 ## Runtime environment toolchain
 
