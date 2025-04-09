@@ -45,6 +45,7 @@ def define_runtime_env_toolchain(name):
         stub_shebang = "#!/usr/bin/env python3",
         visibility = ["//visibility:private"],
         tags = ["manual"],
+        supports_build_time_venv = False,
     )
 
     # This is a dummy runtime whose interpreter_path triggers the native rule
@@ -56,6 +57,7 @@ def define_runtime_env_toolchain(name):
         python_version = "PY3",
         visibility = ["//visibility:private"],
         tags = ["manual"],
+        supports_build_time_venv = False,
     )
 
     py_runtime_pair(

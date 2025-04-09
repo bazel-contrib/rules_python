@@ -30,5 +30,9 @@ py_reconfig_test(
         CC_TOOLCHAIN,
     ],
     main = "toolchain_runs_test.py",
+    # Our RBE has Python 3.6, which is too old for the language features
+    # we use now. Using the runtime-env toolchain on RBE is pretty
+    # questionable anyways.
+    tags = ["no-remote-exec"],
     deps = ["//python/runfiles"],
 )

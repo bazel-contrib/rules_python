@@ -72,7 +72,7 @@ Unreleased changes template.
 * (toolchains) Previously [#2636](https://github.com/bazel-contrib/rules_python/pull/2636)
   changed the semantics of `ignore_root_user_error` from "ignore" to "warning". This is now
   flipped back to ignoring the issue, and will only emit a warning when the attribute is set
-  `False`.  
+  `False`.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
@@ -81,6 +81,10 @@ Unreleased changes template.
   [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
+* (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
+  allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
+  environments.
+
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
@@ -102,6 +106,11 @@ Unreleased changes template.
 * (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
 * (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
   [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
+* Fixes when using {obj}`--bootstrap_impl=script`:
+  * `compile_pip_requirements` is now works with it
+  * The `sys._base_executable` value will reflect the underlying interpreter,
+    not venv interpreter.
+  * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
 
 {#v0-0-0-added}
 ### Added

@@ -124,6 +124,11 @@ def _search_path(name):
     return None
 
 
+# NOTE: We do not add _RUNFILES_ROOT to sys.path for two reasons:
+# 1. Under workspace, it makes every external repository importable. If a Bazel
+#    repository matches a Python import name, they conflict.
+# 2. Under bzlmod, the repo names in the runfiles directory aren't importable
+#    Python names, so there's no point in adding the runfiles root to sys.path.
 def _setup_sys_path():
     seen = set(sys.path)
     python_path_entries = []
@@ -194,6 +199,25 @@ def _setup_sys_path():
 
     return coverage_setup
 
+
+# The pyvenv.cfg created for py_binary leaves the `home` key unset. A
+# side-effect of this is `sys._base_executable` points to the venv executable,
+# not the actual executable. This mostly doesn't matter, but does affect
+# using the venv module to create venvs (they point to the venv executable, not
+# the actual executable).
+def _fixup_sys_base_executable():
+    # Must have been set correctly?
+    if sys.executable != sys._base_executable:
+        return
+    # Not in a venv, so don't touch anything.
+    if sys.prefix == sys.base_prefix:
+        return
+    exe = os.path.realpath(sys.executable)
+    _print_verbose("setting sys._base_executable:", exe)
+    sys._base_executable = exe
+
+
+_fixup_sys_base_executable()
 
 COVERAGE_SETUP = _setup_sys_path()
 _print_verbose("DONE")

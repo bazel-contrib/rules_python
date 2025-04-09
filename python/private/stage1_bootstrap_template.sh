@@ -9,7 +9,8 @@ fi
 # runfiles-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
-# runfiles-relative path to python interpreter to use
+# runfiles-relative path to python interpreter to use.
+# This is the `bin/python3` path in the binary's venv.
 PYTHON_BINARY='%python_binary%'
 # The path that PYTHON_BINARY should symlink to.
 # runfiles-relative path, absolute path, or single word.
@@ -18,8 +19,17 @@ PYTHON_BINARY_ACTUAL="%python_binary_actual%"
 
 # 0 or 1
 IS_ZIPFILE="%is_zipfile%"
-# 0 or 1
+# 0 or 1.
+# If 1, then a venv will be created at runtime that replicates what would have
+# been the build-time structure.
 RECREATE_VENV_AT_RUNTIME="%recreate_venv_at_runtime%"
+# 0 or 1
+# If 1, then the path to python will be resolved by running
+# PYTHON_BINARY_ACTUAL to determine the actual underlying interpreter.
+RESOLVE_PYTHON_BINARY_AT_RUNTIME="%resolve_python_binary_at_runtime%"
+# venv-relative path to the site-packages
+# e.g. lib/python3.12t/site-packages
+VENV_REL_SITE_PACKAGES="%venv_rel_site_packages%"
 
 # array of strings
 declare -a INTERPRETER_ARGS_FROM_TARGET=(
@@ -152,33 +162,71 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
     fi
   fi
 
-  if [[ "$PYTHON_BINARY_ACTUAL" == /* ]]; then
-    # An absolute path, i.e. platform runtime, e.g. /usr/bin/python3
-    symlink_to=$PYTHON_BINARY_ACTUAL
-  elif [[ "$PYTHON_BINARY_ACTUAL" == */* ]]; then
-    # A runfiles-relative path
-    symlink_to="$RUNFILES_DIR/$PYTHON_BINARY_ACTUAL"
-  else
-    # A plain word, e.g. "python3". Symlink to where PATH leads
-    symlink_to=$(which $PYTHON_BINARY_ACTUAL)
-    # Guard against trying to symlink to an empty value
-    if [[ $? -ne 0 ]]; then
-      echo >&2 "ERROR: Python to use not found on PATH: $PYTHON_BINARY_ACTUAL"
-      exit 1
-    fi
-  fi
-  mkdir -p "$venv/bin"
   # Match the basename; some tools, e.g. pyvenv key off the executable name
   python_exe="$venv/bin/$(basename $PYTHON_BINARY_ACTUAL)"
+
   if [[ ! -e "$python_exe" ]]; then
-    ln -s "$symlink_to" "$python_exe"
+    if [[ "$PYTHON_BINARY_ACTUAL" == /* ]]; then
+      # An absolute path, i.e. platform runtime, e.g. /usr/bin/python3
+      python_exe_actual=$PYTHON_BINARY_ACTUAL
+    elif [[ "$PYTHON_BINARY_ACTUAL" == */* ]]; then
+      # A runfiles-relative path
+      python_exe_actual="$RUNFILES_DIR/$PYTHON_BINARY_ACTUAL"
+    else
+      # A plain word, e.g. "python3". Symlink to where PATH leads
+      python_exe_actual=$(which $PYTHON_BINARY_ACTUAL)
+      # Guard against trying to symlink to an empty value
+      if [[ $? -ne 0 ]]; then
+        echo >&2 "ERROR: Python to use not found on PATH: $PYTHON_BINARY_ACTUAL"
+        exit 1
+      fi
+    fi
+
+    runfiles_venv="$RUNFILES_DIR/$(dirname $(dirname $PYTHON_BINARY))"
+    # When RESOLVE_PYTHON_BINARY_AT_RUNTIME is true, it means the toolchain
+    # has thrown two complications at us:
+    # 1. The build-time assumption of the Python version may not match the
+    #    runtime Python version. The site-packages directory path includes the
+    #    Python version, so when the versions don't match, the runtime won't
+    #    find it.
+    # 2. The interpreter might be a wrapper script, which interferes with Python's
+    #    ability to detect when it's within a venv. Starting in Python 3.11,
+    #    the PYTHONEXECUTABLE environment variable can fix this, but due to (1),
+    #    we don't know if that is supported without running Python.
+    # To fix (1), we symlink the desired site-packages path to the build-time
+    # directory. Hopefully the version mismatch is OK :D.
+    # To fix (2), we determine the actual underlying interpreter and symlink
+    # to that.
+    if [[ "$RESOLVE_PYTHON_BINARY_AT_RUNTIME" == "1" ]]; then
+      {
+        read -r resolved_py_exe
+        read -r resolved_site_packages
+      } < <("$python_exe_actual" -I <<EOF
+import sys, site, os
+print(sys.executable)
+print(site.getsitepackages(["$venv"])[-1])
+EOF
+)
+      python_exe_actual="$resolved_py_exe"
+      runfiles_venv_site_packages=$runfiles_venv/$VENV_REL_SITE_PACKAGES
+      venv_site_packages="$resolved_site_packages"
+    else
+      # For simplicity, just symlink to the whole lib directory.
+      runfiles_venv_site_packages=$runfiles_venv/lib
+      venv_site_packages=$venv/lib
+    fi
+
+    mkdir -p "$venv/bin"
+    ln -s "$python_exe_actual" "$python_exe"
+
+    if [[ ! -e "$venv_site_packages" ]]; then
+      mkdir -p $(dirname $venv_site_packages)
+      ln -s "$runfiles_venv_site_packages" "$venv_site_packages"
+    fi
   fi
-  runfiles_venv="$RUNFILES_DIR/$(dirname $(dirname $PYTHON_BINARY))"
+
   if [[ ! -e "$venv/pyvenv.cfg" ]]; then
     ln -s "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
-  fi
-  if [[ ! -e "$venv/lib" ]]; then
-    ln -s "$runfiles_venv/lib" "$venv/lib"
   fi
 else
   use_exec=1
