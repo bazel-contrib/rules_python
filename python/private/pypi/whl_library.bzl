@@ -109,6 +109,10 @@ def _get_toolchain_unix_cflags(rctx, python_interpreter, logger = None):
         op = "GetPythonVersionForUnixCflags",
         python = python_interpreter,
         arguments = [
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
             "-c",
             "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}', end='')",
         ],

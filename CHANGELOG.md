@@ -91,6 +91,7 @@ Unreleased changes template.
   Fixes [#2685](https://github.com/bazel-contrib/rules_python/issues/2685).
 * (toolchains) Run the check on the Python interpreter in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
 * (toolchains) Ensure temporary `.pyc` and `.pyo` files are also excluded from the interpreters repository files.
+* (pypi) Run interpreter version call in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
 
 {#v0-0-0-added}
 ### Added
