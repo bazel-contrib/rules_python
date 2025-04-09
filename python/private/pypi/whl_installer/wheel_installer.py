@@ -120,14 +120,8 @@ def _extract_wheel(
     if not enable_implicit_namespace_pkgs:
         _setup_namespace_pkg_compatibility(installation_dir)
 
-    requires_dist = whl.metadata.get_all("Requires-Dist", [])
-    abi = f"cp{sys.version_info.major}{sys.version_info.minor}"
     metadata = {
-        "name": whl.name,
-        "version": whl.version,
         "python_version": sys.version.partition(" ")[0],
-        "requires_dist": requires_dist,
-        "abi": abi,
         "entry_points": [
             {
                 "name": name,
@@ -137,7 +131,6 @@ def _extract_wheel(
             for name, (module, attribute) in sorted(whl.entry_points().items())
         ],
     }
-    print(metadata)
 
     with open(os.path.join(installation_dir, "metadata.json"), "w") as f:
         json.dump(metadata, f)
