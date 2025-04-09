@@ -358,6 +358,7 @@ local_runtime_repo = use_repo_rule(
 local_runtime_toolchains_repo = use_repo_rule(
     "@rules_python//python/local_toolchains:repos.bzl"
     "local_runtime_toolchains_repo"
+    dev_dependency = True,
 )
 
 # Step 1: Define the Python runtime
@@ -374,11 +375,20 @@ local_runtime_toolchains_repo(
 )
 
 # Step 3: Register the toolchains
-register_toolchains("@local_toolchains//:all")
+register_toolchains("@local_toolchains//:all", dev_dependency = True)
 ```
 
 Note that `register_toolchains` will insert the local toolchain earlier in the
 toolchain ordering, so it will take precedence over other registered toolchains.
+
+:::{important}
+Be sure to set `dev_dependency = True`. Using a local toolchain only makes sense
+for the root module.
+
+If an intermediate module does it, then the `register_toolchains()` call will
+take precedence over the default rules_python toolchains and cause problems for
+downstream modules.
+:::
 
 Multiple runtimes and/or toolchains can be defined, which allows for multiple
 Python versions and/or platforms to be configured in a single `MODULE.bazel`.
