@@ -76,6 +76,7 @@ Unreleased changes template.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
+* (gazelle) Lazily load and parse manifest files when running Gazelle. This ensures no manifest files are loaded when Gazelle is run over a set of non-python directories.
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
