@@ -786,7 +786,7 @@ def _create_stage1_bootstrap(
         )
         template = runtime.bootstrap_template
         subs["%shebang%"] = runtime.stub_shebang
-    else:
+    elif main_py:
         if (ctx.configuration.coverage_enabled and
             runtime and
             runtime.coverage_tool):
@@ -807,6 +807,8 @@ def _create_stage1_bootstrap(
         subs["%import_all%"] = ("True" if ctx.fragments.bazel_py.python_import_all_repositories else "False")
         subs["%imports%"] = ":".join(imports.to_list())
         subs["%main%"] = "{}/{}".format(ctx.workspace_name, main_py.short_path)
+    else:
+        fail("'main' or 'srcs' must be specified")
 
     ctx.actions.expand_template(
         template = template,
@@ -1888,7 +1890,6 @@ def create_executable_rule_builder(implementation, **kwargs):
         ),
         **kwargs
     )
-    builder.attrs.get("srcs").set_mandatory(True)
     return builder
 
 def cc_configure_features(

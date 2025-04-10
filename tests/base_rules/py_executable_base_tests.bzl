@@ -24,7 +24,7 @@ load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
+load("//tests/support:support.bzl", "BOOTSTRAP_IMPL", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
 
 _tests = []
 
@@ -364,6 +364,50 @@ def _test_py_runtime_info_provided_impl(env, target):
         env.expect.that_target(target).has_provider(BuiltinPyRuntimeInfo)
 
 _tests.append(_test_py_runtime_info_provided)
+
+def _test_no_srcs_script_bootstrap(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        main_module = "dummy",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_no_srcs_script_bootstrap_impl,
+        target = name + "_subject",
+        config_settings = {
+            BOOTSTRAP_IMPL: "script",
+            "//command_line_option:platforms": [LINUX_X86_64],
+        },
+    )
+
+def _test_no_srcs_script_bootstrap_impl(env, target):
+    env.expect.that_target(target).default_outputs().contains(
+        "{package}/{test_name}_subject",
+    )
+
+_tests.append(_test_no_srcs_script_bootstrap)
+
+def _test_no_srcs(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        main_module = "dummy",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_no_srcs_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:platforms": [LINUX_X86_64],
+        },
+        expect_failure = True,
+    )
+
+def _test_no_srcs_impl(_, __):
+    pass
+
+_tests.append(_test_no_srcs)
 
 # Can't test this -- mandatory validation happens before analysis test
 # can intercept it
