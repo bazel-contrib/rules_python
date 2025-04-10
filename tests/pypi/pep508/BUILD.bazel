@@ -1,5 +1,10 @@
 load(":evaluate_tests.bzl", "evaluate_test_suite")
+load(":requirement_tests.bzl", "requirement_test_suite")
 
 evaluate_test_suite(
     name = "evaluate_tests",
+)
+
+requirement_test_suite(
+    name = "requirement_tests",
 )
