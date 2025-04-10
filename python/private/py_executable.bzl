@@ -808,7 +808,7 @@ def _create_stage1_bootstrap(
         subs["%imports%"] = ":".join(imports.to_list())
         subs["%main%"] = "{}/{}".format(ctx.workspace_name, main_py.short_path)
     else:
-        fail("'main' or 'srcs' must be specified")
+        fail("mandatory 'srcs' attribute has not been specified")
 
     ctx.actions.expand_template(
         template = template,

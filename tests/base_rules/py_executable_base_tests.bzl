@@ -342,28 +342,28 @@ def _test_name_cannot_end_in_py_impl(env, target):
         matching.str_matches("name must not end in*.py"),
     )
 
-def _test_py_runtime_info_provided(name, config):
+def _test_no_srcs(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
-        srcs = [name + "_subject.py"],
+        main_module = "dummy",
     )
     analysis_test(
         name = name,
-        impl = _test_py_runtime_info_provided_impl,
+        impl = _test_no_srcs_impl,
         target = name + "_subject",
+        config_settings = {
+            "//command_line_option:platforms": [LINUX_X86_64],
+        },
+        expect_failure = True,
     )
 
-def _test_py_runtime_info_provided_impl(env, target):
-    # Make sure that the rules_python loaded symbol is provided.
-    env.expect.that_target(target).has_provider(RulesPythonPyRuntimeInfo)
+def _test_no_srcs_impl(env, target):
+    env.expect.that_target(target).failures().contains_predicate(
+        matching.str_matches("mandatory*srcs"),
+    )
 
-    if BuiltinPyRuntimeInfo != None:
-        # For compatibility during the transition, the builtin PyRuntimeInfo should
-        # also be provided.
-        env.expect.that_target(target).has_provider(BuiltinPyRuntimeInfo)
-
-_tests.append(_test_py_runtime_info_provided)
+_tests.append(_test_no_srcs)
 
 def _test_no_srcs_script_bootstrap(name, config):
     rt_util.helper_target(
@@ -388,49 +388,28 @@ def _test_no_srcs_script_bootstrap_impl(env, target):
 
 _tests.append(_test_no_srcs_script_bootstrap)
 
-def _test_no_srcs(name, config):
+def _test_py_runtime_info_provided(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
-        main_module = "dummy",
+        srcs = [name + "_subject.py"],
     )
     analysis_test(
         name = name,
-        impl = _test_no_srcs_impl,
+        impl = _test_py_runtime_info_provided_impl,
         target = name + "_subject",
-        config_settings = {
-            "//command_line_option:platforms": [LINUX_X86_64],
-        },
-        expect_failure = True,
     )
 
-def _test_no_srcs_impl(_, __):
-    pass
+def _test_py_runtime_info_provided_impl(env, target):
+    # Make sure that the rules_python loaded symbol is provided.
+    env.expect.that_target(target).has_provider(RulesPythonPyRuntimeInfo)
 
-_tests.append(_test_no_srcs)
+    if BuiltinPyRuntimeInfo != None:
+        # For compatibility during the transition, the builtin PyRuntimeInfo should
+        # also be provided.
+        env.expect.that_target(target).has_provider(BuiltinPyRuntimeInfo)
 
-# Can't test this -- mandatory validation happens before analysis test
-# can intercept it
-# TODO(#1069): Once re-implemented in Starlark, modify rule logic to make this
-# testable.
-# def _test_srcs_is_mandatory(name, config):
-#     rt_util.helper_target(
-#         config.rule,
-#         name = name + "_subject",
-#     )
-#     analysis_test(
-#         name = name,
-#         impl = _test_srcs_is_mandatory,
-#         target = name + "_subject",
-#         expect_failure = True,
-#     )
-#
-# _tests.append(_test_srcs_is_mandatory)
-#
-# def _test_srcs_is_mandatory_impl(env, target):
-#     env.expect.that_target(target).failures().contains_predicate(
-#         matching.str_matches("mandatory*srcs"),
-#     )
+_tests.append(_test_py_runtime_info_provided)
 
 # =====
 # You were gonna add a test at the end, weren't you?
