@@ -30,6 +30,7 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
+load(":pep508_req.bzl", "requirement")
 load(":whl_target_platforms.bzl", "select_whls")
 
 def _extract_version(entry):
@@ -111,8 +112,9 @@ def parse_requirements(
         # The requirement lines might have duplicate names because lines for extras
         # are returned as just the base package name. e.g., `foo[bar]` results
         # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
+        # Lines with different markers are not condidered duplicates.
         requirements_dict = {
-            (normalize_name(entry[0]), _extract_version(entry[1])): entry
+            (normalize_name(entry[0]), _extract_version(entry[1]), requirement(entry[1]).marker): entry
             for entry in sorted(
                 parse_result.requirements,
                 # Get the longest match and fallback to original WORKSPACE sorting,

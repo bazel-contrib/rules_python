@@ -81,6 +81,8 @@ Unreleased changes template.
 
 {#v0-0-0-fixed}
 ### Fixed
+* (pypi) Platform specific markers are now correctly handled when using `requirments_by_platform`
+  in pip.parse Fixed in [#2766](https://github.com/bazel-contrib/rules_python/pull/2766).
 * (runfiles) ({obj}`--bootstrap_impl=script`) Follow symlinks when searching for runfiles.
 * (toolchains) Do not try to run `chmod` when downloading non-windows hermetic toolchain
   repositories on Windows. Fixes
