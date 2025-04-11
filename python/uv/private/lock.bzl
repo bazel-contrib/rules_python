@@ -330,7 +330,7 @@ def _expand_template_impl(ctx):
 
     # Fix the path construction to avoid absolute paths
     # If package is empty (root), don't add a leading slash
-    dst = ctx.attr.output if pkg == "" else "{}/{}".format(pkg, ctx.attr.output)
+    dst = "{}/{}".format(pkg, ctx.attr.output) if pkg else ctx.attr.output
 
     ctx.actions.expand_template(
         template = ctx.files._template[0],
