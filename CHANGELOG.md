@@ -76,6 +76,8 @@ Unreleased changes template.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
+* (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
+  `main_module` is specified.
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 

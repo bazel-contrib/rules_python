@@ -35,6 +35,7 @@ CROSSTOOL_TOP = Label("//tests/support/cc_toolchains:cc_toolchain_suite")
 # str() around Label() is necessary because rules_testing's config_settings
 # doesn't accept yet Label objects.
 ADD_SRCS_TO_RUNFILES = str(Label("//python/config_settings:add_srcs_to_runfiles"))
+BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl"))
 EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain"))
 PRECOMPILE = str(Label("//python/config_settings:precompile"))
 PRECOMPILE_SOURCE_RETENTION = str(Label("//python/config_settings:precompile_source_retention"))
