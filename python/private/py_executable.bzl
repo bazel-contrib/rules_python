@@ -786,7 +786,9 @@ def _create_stage1_bootstrap(
         )
         template = runtime.bootstrap_template
         subs["%shebang%"] = runtime.stub_shebang
-    elif main_py:
+    elif not ctx.files.srcs:
+        fail("mandatory 'srcs' files have not been provided")
+    else:
         if (ctx.configuration.coverage_enabled and
             runtime and
             runtime.coverage_tool):
@@ -807,8 +809,6 @@ def _create_stage1_bootstrap(
         subs["%import_all%"] = ("True" if ctx.fragments.bazel_py.python_import_all_repositories else "False")
         subs["%imports%"] = ":".join(imports.to_list())
         subs["%main%"] = "{}/{}".format(ctx.workspace_name, main_py.short_path)
-    else:
-        fail("mandatory 'srcs' attribute has not been specified")
 
     ctx.actions.expand_template(
         template = template,
