@@ -350,6 +350,7 @@ def _create_executable(
             main_py = main_py,
             imports = imports,
             runtime_details = runtime_details,
+            venv = venv,
         )
         extra_runfiles = ctx.runfiles([stage2_bootstrap] + venv.files_without_interpreter)
         zip_main = _create_zip_main(
@@ -557,6 +558,8 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
     elif runtime.interpreter:
+        # Some wrappers around the interpreter (e.g. pyenv) use the program
+        # name to decide what to do, so preserve the name.
         py_exe_basename = paths.basename(runtime.interpreter.short_path)
 
         # Even though ctx.actions.symlink() is used, using
@@ -594,7 +597,8 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     if "t" in runtime.abi_flags:
         version += "t"
 
-    site_packages = "{}/lib/python{}/site-packages".format(venv, version)
+    venv_site_packages = "lib/python{}/site-packages".format(version)
+    site_packages = "{}/{}".format(venv, venv_site_packages)
     pth = ctx.actions.declare_file("{}/bazel.pth".format(site_packages))
     ctx.actions.write(pth, "import _bazel_site_init\n")
 
@@ -620,6 +624,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         # Runfiles root relative path or absolute path
         interpreter_actual_path = interpreter_actual_path,
         files_without_interpreter = [pyvenv_cfg, pth, site_init] + site_packages_symlinks,
+        venv_site_packages = venv_site_packages,
     )
 
 def _create_site_packages_symlinks(ctx, site_packages):
@@ -716,7 +721,8 @@ def _create_stage2_bootstrap(
         output_sibling,
         main_py,
         imports,
-        runtime_details):
+        runtime_details,
+        venv = None):
     output = ctx.actions.declare_file(
         # Prepend with underscore to prevent pytest from trying to
         # process the bootstrap for files starting with `test_`
@@ -742,6 +748,7 @@ def _create_stage2_bootstrap(
             "%main_module%": ctx.attr.main_module,
             "%target%": str(ctx.label),
             "%workspace_name%": ctx.workspace_name,
+            "%site_packages%": venv.venv_site_packages if venv else "",
         },
         is_executable = True,
     )

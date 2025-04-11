@@ -35,8 +35,38 @@ AddSrcsToRunfilesFlag = FlagEnum(
     is_enabled = _AddSrcsToRunfilesFlag_is_enabled,
 )
 
+def _string_flag_impl(ctx):
+    if ctx.attr.override:
+        value = ctx.attr.override
+    else:
+        value = ctx.build_setting_value
+
+    if value not in ctx.attr.values:
+        fail((
+            "Invalid value for {name}: got {value}, must " +
+            "be one of {allowed}"
+        ).format(
+            name = ctx.label,
+            value = value,
+            allowed = ctx.attr.values,
+        ))
+
+    return [
+        BuildSettingInfo(value = value),
+        config_common.FeatureFlagInfo(value = value),
+    ]
+
+string_flag = rule(
+    implementation = _string_flag_impl,
+    build_setting = config.string(flag = True),
+    attrs = {
+        "override": attr.string(),
+        "values": attr.string_list(),
+    },
+)
+
 def _bootstrap_impl_flag_get_value(ctx):
-    return ctx.attr._bootstrap_impl_flag[BuildSettingInfo].value
+    return ctx.attr._bootstrap_impl_flag[config_common.FeatureFlagInfo].value
 
 # buildifier: disable=name-conventions
 BootstrapImplFlag = enum(
