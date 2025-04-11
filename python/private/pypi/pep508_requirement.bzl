@@ -30,6 +30,16 @@ def requirement(spec):
     """
     spec = spec.strip()
     requires, _, maybe_hashes = spec.partition(";")
+
+    version_start = requires.find("==")
+    version = None
+    if version_start != -1:
+        # Extract everything after '==' until the next space or end of the string
+        version, _, _ = requires[version_start + 2:].partition(" ")
+
+        # Remove any trailing characters from the version string
+        version = version.strip(" ")
+
     marker, _, _ = maybe_hashes.partition("--hash")
     requires, _, extras_unparsed = requires.partition("[")
     extras_unparsed, _, _ = extras_unparsed.partition("]")
@@ -42,4 +52,5 @@ def requirement(spec):
         name = normalize_name(name).replace("_", "-"),
         marker = marker.strip(" "),
         extras = extras,
+        version = version,
     )
