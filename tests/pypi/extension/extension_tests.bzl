@@ -856,6 +856,84 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
 
 _tests.append(_test_simple_get_index)
 
+def _test_optimum_sys_platform_extra(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        requirements_lock = "universal.txt",
+                    ),
+                ],
+            ),
+            read = lambda x: {
+                "universal.txt": """\
+optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
+optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
+""",
+            }[x],
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi": []})
+    pypi.hub_group_map().contains_exactly({"pypi": {}})
+    pypi.hub_whl_map().contains_exactly({
+        "pypi": {
+            "optimum": {
+                "pypi_315_optimum_linux_aarch64_linux_arm_linux_ppc_linux_s390x_linux_x86_64": [
+                    whl_config_setting(
+                        version = "3.15",
+                        target_platforms = [
+                            "cp315_linux_aarch64",
+                            "cp315_linux_arm",
+                            "cp315_linux_ppc",
+                            "cp315_linux_s390x",
+                            "cp315_linux_x86_64",
+                        ],
+                        config_setting = None,
+                        filename = None,
+                    ),
+                ],
+                "pypi_315_optimum_osx_aarch64_osx_x86_64": [
+                    whl_config_setting(
+                        version = "3.15",
+                        target_platforms = [
+                            "cp315_osx_aarch64",
+                            "cp315_osx_x86_64",
+                        ],
+                        config_setting = None,
+                        filename = None,
+                    ),
+                ],
+            },
+        },
+    })
+
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_optimum_linux_aarch64_linux_arm_linux_ppc_linux_s390x_linux_x86_64": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "repo": "pypi_315",
+            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
+        },
+        "pypi_315_optimum_osx_aarch64_osx_x86_64": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "repo": "pypi_315",
+            "requirement": "optimum[onnxruntime]==1.17.1",
+        },
+    })
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_optimum_sys_platform_extra)
+
 def extension_test_suite(name):
     """Create the test suite.
 

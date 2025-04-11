@@ -30,21 +30,8 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
+load(":pep508_requirement.bzl", "requirement")
 load(":whl_target_platforms.bzl", "select_whls")
-
-def _extract_version(entry):
-    """Extract the version part from the requirement string.
-
-
-    Args:
-        entry: {type}`str` The requirement string.
-    """
-    version_start = entry.find("==")
-    if version_start != -1:
-        # Extract everything after '==' until the next space or end of the string
-        version, _, _ = entry[version_start + 2:].partition(" ")
-        return version
-    return None
 
 def parse_requirements(
         ctx,
@@ -111,19 +98,20 @@ def parse_requirements(
         # The requirement lines might have duplicate names because lines for extras
         # are returned as just the base package name. e.g., `foo[bar]` results
         # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
-        requirements_dict = {
-            (normalize_name(entry[0]), _extract_version(entry[1])): entry
-            for entry in sorted(
-                parse_result.requirements,
-                # Get the longest match and fallback to original WORKSPACE sorting,
-                # which should get us the entry with most extras.
-                #
-                # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
-                # entry with all aggregated extras, but it is unclear if we
-                # should do this now.
-                key = lambda x: (len(x[1].partition("==")[0]), x),
-            )
-        }.values()
+        # Lines with different markers are not condidered duplicates.
+        requirements_dict = {}
+        for entry in sorted(
+            parse_result.requirements,
+            # Get the longest match and fallback to original WORKSPACE sorting,
+            # which should get us the entry with most extras.
+            #
+            # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
+            # entry with all aggregated extras, but it is unclear if we
+            # should do this now.
+            key = lambda x: (len(x[1].partition("==")[0]), x),
+        ):
+            req = requirement(entry[1])
+            requirements_dict[(req.name, req.version, req.marker)] = entry
 
         tokenized_options = []
         for opt in parse_result.options:
@@ -132,7 +120,7 @@ def parse_requirements(
 
         pip_args = tokenized_options + extra_pip_args
         for plat in plats:
-            requirements[plat] = requirements_dict
+            requirements[plat] = requirements_dict.values()
             options[plat] = pip_args
 
     requirements_by_platform = {}

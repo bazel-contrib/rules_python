@@ -18,38 +18,28 @@ load("//python/private/pypi:pep508_requirement.bzl", "requirement")  # buildifie
 
 _tests = []
 
-def _test_all(env):
-    cases = [
-        ("name[foo]", ("name", ["foo"])),
-        ("name[ Foo123 ]", ("name", ["Foo123"])),
-        (" name1[ foo ] ", ("name1", ["foo"])),
-        ("Name[foo]", ("name", ["foo"])),
-        ("name_foo[bar]", ("name-foo", ["bar"])),
-        (
-            "name [fred,bar] @ http://foo.com ; python_version=='2.7'",
-            ("name", ["fred", "bar"]),
-        ),
-        (
-            "name[quux, strange];python_version<'2.7' and platform_version=='2'",
-            ("name", ["quux", "strange"]),
-        ),
-        (
-            "name; (os_name=='a' or os_name=='b') and os_name=='c'",
-            ("name", None),
-        ),
-        (
-            "name@http://foo.com",
-            ("name", None),
-        ),
-    ]
+def _test_requirement_line_parsing(env):
+    want = {
+        " name1[ foo ] ": ("name1", ["foo"], None, ""),
+        "Name[foo]": ("name", ["foo"], None, ""),
+        "name [fred,bar] @ http://foo.com ; python_version=='2.7'": ("name", ["fred", "bar"], None, "python_version=='2.7'"),
+        "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [""], None, "(os_name=='a' or os_name=='b') and os_name=='c'"),
+        "name@http://foo.com": ("name", [""], None, ""),
+        "name[ Foo123 ]": ("name", ["Foo123"], None, ""),
+        "name[extra]@http://foo.com": ("name", ["extra"], None, ""),
+        "name[foo]": ("name", ["foo"], None, ""),
+        "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], None, "python_version<'2.7' and platform_version=='2'"),
+        "name_foo[bar]": ("name-foo", ["bar"], None, ""),
+        "name_foo[bar]==0.25": ("name-foo", ["bar"], "0.25", ""),
+    }
 
-    for case, expected in cases:
-        got = requirement(case)
-        env.expect.that_str(got.name).equals(expected[0])
-        if expected[1] != None:
-            env.expect.that_collection(got.extras).contains_exactly(expected[1])
+    got = {
+        i: (parsed.name, parsed.extras, parsed.version, parsed.marker)
+        for i, parsed in {case: requirement(case) for case in want}.items()
+    }
+    env.expect.that_dict(got).contains_exactly(want)
 
-_tests.append(_test_all)
+_tests.append(_test_requirement_line_parsing)
 
 def requirement_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
