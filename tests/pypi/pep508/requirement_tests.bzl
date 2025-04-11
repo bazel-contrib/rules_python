@@ -20,20 +20,21 @@ _tests = []
 
 def _test_requirement_line_parsing(env):
     want = {
-        " name1[ foo ] ": ("name1", ["foo"]),
-        "Name[foo]": ("name", ["foo"]),
-        "name [fred,bar] @ http://foo.com ; python_version=='2.7'": ("name", ["fred", "bar"]),
-        "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [""]),
-        "name@http://foo.com": ("name", [""]),
-        "name[ Foo123 ]": ("name", ["Foo123"]),
-        "name[extra]@http://foo.com": ("name", ["extra"]),
-        "name[foo]": ("name", ["foo"]),
-        "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"]),
-        "name_foo[bar]": ("name-foo", ["bar"]),
+        " name1[ foo ] ": ("name1", ["foo"], None, ""),
+        "Name[foo]": ("name", ["foo"], None, ""),
+        "name [fred,bar] @ http://foo.com ; python_version=='2.7'": ("name", ["fred", "bar"], None, "python_version=='2.7'"),
+        "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [""], None, "(os_name=='a' or os_name=='b') and os_name=='c'"),
+        "name@http://foo.com": ("name", [""], None, ""),
+        "name[ Foo123 ]": ("name", ["Foo123"], None, ""),
+        "name[extra]@http://foo.com": ("name", ["extra"], None, ""),
+        "name[foo]": ("name", ["foo"], None, ""),
+        "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], None, "python_version<'2.7' and platform_version=='2'"),
+        "name_foo[bar]": ("name-foo", ["bar"], None, ""),
+        "name_foo[bar]==0.25": ("name-foo", ["bar"], "0.25", ""),
     }
 
     got = {
-        i: (parsed.name, parsed.extras)
+        i: (parsed.name, parsed.extras, parsed.version, parsed.marker)
         for i, parsed in {case: requirement(case) for case in want}.items()
     }
     env.expect.that_dict(got).contains_exactly(want)
