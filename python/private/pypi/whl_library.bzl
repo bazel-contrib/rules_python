@@ -27,6 +27,7 @@ load(":patch_whl.bzl", "patch_whl")
 load(":pep508_deps.bzl", "deps")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
+load(":whl_metadata.bzl", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
@@ -232,61 +233,6 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
-def _read_and_parse_required_metadata(rctx, logger):
-    contents = []
-    for entry in rctx.path("site-packages").readdir():
-        if not entry.basename.endswith(".dist-info"):
-            continue
-
-        if not entry.is_dir:
-            continue
-
-        metadata_file = entry.get_child("METADATA")
-
-        if not metadata_file.exists:
-            logger.fail("The METADATA file for the wheel could not be found")
-            return None
-
-        contents.extend(rctx.read(metadata_file).split("\n"))
-        break
-
-    single_value_fields = {
-        "License: ": "license",
-        "Name: ": "name",
-        "Version: ": "version",
-    }
-    requires_dist = "Requires-Dist: "
-    parsed = {}
-    for line in contents:
-        if not line or line.startswith("Dynamic"):
-            # Stop parsing on first empty line
-            break
-
-        found_prefix = None
-        for prefix in single_value_fields:
-            if line.startswith(prefix):
-                found_prefix = prefix
-                break
-
-        if found_prefix:
-            key = single_value_fields.pop(found_prefix)
-            _, _, value = line.partition(found_prefix)
-            parsed[key] = value.strip()
-            continue
-
-        if not line.startswith(requires_dist):
-            continue
-
-        _, _, value = line.partition(requires_dist)
-        parsed.setdefault("requires_dist", []).append(value.strip(" "))
-
-    return struct(
-        name = parsed["name"],
-        version = parsed["version"],
-        license = parsed.get("license"),
-        requires_dist = parsed.get("requires_dist", []),
-    )
-
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
     python_interpreter = pypi_repo_utils.resolve_python_interpreter(
@@ -478,14 +424,18 @@ def _whl_library_impl(rctx):
     # * group_name, group_deps - this info can stay in the hub repository so that
     #   it is piped at the analysis time and changing the requirement groups does
     #   cause to re-fetch the deps.
-    whl_metadata = _read_and_parse_required_metadata(rctx, logger)
     python_version = metadata["python_version"]
+    metadata = whl_metadata(
+        install_dir = rctx.path("site-packages"),
+        read_fn = rctx.read,
+        logger = logger,
+    )
 
     # TODO @aignas 2025-04-09: this will later be removed when loaded through the hub
     major_minor, _, _ = python_version.rpartition(".")
     package_deps = deps(
-        name = whl_metadata.name,
-        requires_dist = whl_metadata.requires_dist,
+        name = metadata.name,
+        requires_dist = metadata.requires_dist,
         platforms = target_platforms or [
             "cp{}_{}".format(major_minor.replace(".", ""), host_platform(rctx)),
         ],
@@ -502,8 +452,8 @@ def _whl_library_impl(rctx):
         group_deps = rctx.attr.group_deps,
         data_exclude = rctx.attr.pip_data_exclude,
         tags = [
-            "pypi_name=" + whl_metadata.name,
-            "pypi_version=" + whl_metadata.version,
+            "pypi_name=" + metadata.name,
+            "pypi_version=" + metadata.version,
         ],
         entry_points = entry_points,
         annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),

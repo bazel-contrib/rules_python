@@ -382,12 +382,18 @@ bzl_library(
         ":patch_whl_bzl",
         ":pep508_deps_bzl",
         ":pypi_repo_utils_bzl",
+        ":whl_metadata_bzl",
         ":whl_target_platforms_bzl",
         "//python/private:auth_bzl",
         "//python/private:envsubst_bzl",
         "//python/private:is_standalone_interpreter_bzl",
         "//python/private:repo_utils_bzl",
     ],
+)
+
+bzl_library(
+    name = "whl_metadata_bzl",
+    srcs = ["whl_metadata.bzl"],
 )
 
 bzl_library(
