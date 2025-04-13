@@ -47,6 +47,29 @@ def _test_contains_dist_info_but_no_metadata(env):
 
 _tests.append(_test_contains_dist_info_but_no_metadata)
 
+def _test_contains_metadata(env):
+    fake_path = struct(
+        basename = "site-packages",
+        readdir = lambda watch = None: [
+            struct(
+                basename = "something.dist-info",
+                is_dir = True,
+                get_child = lambda basename: struct(
+                    basename = basename,
+                    exists = True,
+                ),
+            ),
+        ],
+    )
+    fail_messages = []
+    got = find_whl_metadata(install_dir = fake_path, logger = struct(
+        fail = fail_messages.append,
+    ))
+    env.expect.that_collection(fail_messages).contains_exactly([])
+    env.expect.that_str(got.basename).equals("METADATA")
+
+_tests.append(_test_contains_metadata)
+
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,
