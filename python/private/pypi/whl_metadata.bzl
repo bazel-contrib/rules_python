@@ -98,5 +98,5 @@ def find_whl_metadata(*, install_dir, logger):
 
         break
 
-    logger.fail("The METADATA file for the wheel could not be found")
+    logger.fail("The METADATA file for the wheel could not be found in '{}'".format(install_dir.basename))
     return None
