@@ -568,41 +568,43 @@ def main() -> None:
             else:
                 return f"Requires-Dist: {req.name}{req.specifier}; {extra}".strip(" ;")
 
-        processed_metadata_lines = []
-
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):
-                processed_metadata_lines.append(meta_line)
+                continue
 
-            elif not meta_line[len("Requires-Dist: ") :].startswith("@"):
+            if not meta_line[len("Requires-Dist: ") :].startswith("@"):
                 # This is a normal requirement.
                 package, _, extra = meta_line[len("Requires-Dist: ") :].rpartition(";")
                 if not package:
                     # This is when the package requirement does not have markers.
-                    processed_metadata_lines.append(meta_line)
-                else:
-                    extra = extra.strip()
-                    processed_metadata_lines.append(get_new_requirement_line(package, extra))
+                    continue
+                extra = extra.strip()
+                metadata = metadata.replace(
+                    meta_line, get_new_requirement_line(package, extra)
+                )
+                continue
 
             # This is a requirement that refers to a file.
+            file, _, extra = meta_line[len("Requires-Dist: @") :].partition(";")
+            extra = extra.strip()
+
+            reqs = []
+            for reqs_line in Path(file).read_text(encoding="utf-8").splitlines():
+                reqs_text = reqs_line.strip()
+                if not reqs_text or reqs_text.startswith(("#", "-")):
+                    continue
+
+                # Strip any comments
+                reqs_text, _, _ = reqs_text.partition("#")
+
+                reqs.append(get_new_requirement_line(reqs_text, extra))
+
+            if reqs:
+                metadata = metadata.replace(meta_line, "\n".join(reqs))
+            # File is empty
+            # So replace the meta_line entirely, including removing newline chars
             else:
-                file, _, extra = meta_line[len("Requires-Dist: @") :].partition(";")
-                extra = extra.strip()
-
-                reqs = []
-                for reqs_line in Path(file).read_text(encoding="utf-8").splitlines():
-                    reqs_text = reqs_line.strip()
-                    if not reqs_text or reqs_text.startswith(("#", "-")):
-                        continue
-
-                    # Strip any comments
-                    reqs_text, _, _ = reqs_text.partition("#")
-
-                    reqs.append(get_new_requirement_line(reqs_text, extra))
-
-                processed_metadata_lines.extend(reqs)
-
-        metadata = "\n".join(processed_metadata_lines)
+                metadata = re.sub(re.escape(meta_line) + r"(?:\r?\n)?", "", metadata, count=1)
 
         maker.add_metadata(
             metadata=metadata,
