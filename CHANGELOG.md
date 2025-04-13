@@ -77,7 +77,7 @@ Unreleased changes template.
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
-  `main_module` is specified.
+  `main_module` is specified (for `--bootstrap_impl=script`)
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
