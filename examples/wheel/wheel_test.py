@@ -506,17 +506,15 @@ Tag: cp38-abi3-{os_string}_{arch}
                     metadata_file = f
             self.assertIsNotNone(metadata_file)
 
-            with zipfile.ZipFile(wheel_file, "r") as zf:
-                metadata = zf.read(metadata_file).decode("utf-8")
-        
+            metadata = zf.read(metadata_file).decode("utf-8")
             metadata_lines = metadata.splitlines()
 
             requires = []
             for i, line in enumerate(metadata_lines):
                 if line.startswith("Name:"):
-                    self.assertTrue(lines[i + 1].startswith("Version:"))
-                if line.startswith(b"Requires-Dist:"):
-                    requires.append(line.decode("utf-8").strip())
+                    self.assertTrue(metadata_lines[i + 1].startswith("Version:"))
+                if line.startswith("Requires-Dist:"):
+                    requires.append(line.strip())
 
             print(requires)
             self.assertEqual([], requires)
