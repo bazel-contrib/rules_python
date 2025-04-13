@@ -86,17 +86,22 @@ def find_whl_metadata(*, install_dir, logger):
     Returns:
         {type}`path` The path to the METADATA file.
     """
+    dist_info = None
     for maybe_dist_info in install_dir.readdir():
         # first find the ".dist-info" folder
         if not (maybe_dist_info.is_dir and maybe_dist_info.basename.endswith(".dist-info")):
             continue
 
-        metadata_file = maybe_dist_info.get_child("METADATA")
+        dist_info = maybe_dist_info
+        metadata_file = dist_info.get_child("METADATA")
 
         if metadata_file.exists:
             return metadata_file
 
         break
 
-    logger.fail("The METADATA file for the wheel could not be found in '{}'".format(install_dir.basename))
+    if dist_info:
+        logger.fail("The METADATA file for the wheel could not be found in '{}/{}'".format(install_dir.basename, dist_info.basename))
+    else:
+        logger.fail("The '*.dist-info' directory could not be found in '{}'".format(install_dir.basename))
     return None
