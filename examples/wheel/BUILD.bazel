@@ -339,7 +339,6 @@ py_wheel(
     deps = [":example_pkg"],
 )
 
-
 # Package just a specific py_libraries, without their dependencies
 py_wheel(
     name = "minimal_data_files",
