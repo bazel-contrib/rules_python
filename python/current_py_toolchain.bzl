@@ -27,11 +27,13 @@ def _current_py_toolchain_impl(ctx):
         direct.append(toolchain.py3_runtime.interpreter)
         transitive.append(toolchain.py3_runtime.files)
         vars["PYTHON3"] = toolchain.py3_runtime.interpreter.path
+        vars["PYTHON3_ROOTPATH"] = toolchain.py3_runtime.interpreter.short_path
 
     if toolchain.py2_runtime and toolchain.py2_runtime.interpreter:
         direct.append(toolchain.py2_runtime.interpreter)
         transitive.append(toolchain.py2_runtime.files)
         vars["PYTHON2"] = toolchain.py2_runtime.interpreter.path
+        vars["PYTHON2_ROOTPATH"] = toolchain.py2_runtime.interpreter.short_path
 
     files = depset(direct, transitive = transitive)
     return [
