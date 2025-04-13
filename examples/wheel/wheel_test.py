@@ -495,6 +495,32 @@ Tag: cp38-abi3-{os_string}_{arch}
                 requires,
             )
 
+    def test_empty_requires_file(self):
+        filename = self._get_path("empty_requires_files-0.0.1-py3-none-any.whl")
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            metadata_file = None
+            for f in zf.namelist():
+                if os.path.basename(f) == "METADATA":
+                    metadata_file = f
+            self.assertIsNotNone(metadata_file)
+
+            with zipfile.ZipFile(wheel_file, "r") as zf:
+                metadata = zf.read(metadata_file).decode("utf-8")
+        
+            metadata_lines = metadata.splitlines()
+
+            requires = []
+            for i, line in enumerate(metadata_lines):
+                if line.startswith("Name:"):
+                    self.assertTrue(lines[i + 1].startswith("Version:"))
+                if line.startswith(b"Requires-Dist:"):
+                    requires.append(line.decode("utf-8").strip())
+
+            print(requires)
+            self.assertEqual([], requires)
+
     def test_minimal_data_files(self):
         filename = self._get_path("minimal_data_files-0.0.1-py3-none-any.whl")
 

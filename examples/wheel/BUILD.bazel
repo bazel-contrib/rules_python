@@ -295,6 +295,12 @@ starlark  # Example comment
 )
 
 write_file(
+    name = "empty_requires_file",
+    out = "empty_requires.txt",
+    content = "",
+)
+
+write_file(
     name = "extra_requires_file",
     out = "extra_requires.txt",
     content = """\
@@ -323,6 +329,16 @@ py_wheel(
     version = "0.0.1",
     deps = [":example_pkg"],
 )
+
+py_wheel(
+    name = "empty_requires_files",
+    distribution = "empty_requires_files",
+    python_tag = "py3",
+    requires_file = ":empty_requires.txt",
+    version = "0.0.1",
+    deps = [":example_pkg"],
+)
+
 
 # Package just a specific py_libraries, without their dependencies
 py_wheel(
