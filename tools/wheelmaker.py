@@ -574,12 +574,12 @@ def main() -> None:
             if not meta_line.startswith("Requires-Dist: "):
                 processed_metadata_lines.append(meta_line)
 
-            else if not meta_line[len("Requires-Dist: ") :].startswith("@"):
+            elif not meta_line[len("Requires-Dist: ") :].startswith("@"):
                 # This is a normal requirement.
                 package, _, extra = meta_line[len("Requires-Dist: ") :].rpartition(";")
                 if not package:
                     # This is when the package requirement does not have markers.
-                    processed_metadata_lines(meta_line)
+                    processed_metadata_lines.append(meta_line)
                 else:
                     extra = extra.strip()
                     processed_metadata_lines.append(get_new_requirement_line(package, extra))
@@ -604,7 +604,7 @@ def main() -> None:
                     processed_metadata_lines.append("\n".join(reqs))
 
         metadata = "\n".join(processed_metadata_lines)
-        
+
         maker.add_metadata(
             metadata=metadata,
             name=name,
