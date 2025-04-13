@@ -297,7 +297,7 @@ starlark  # Example comment
 write_file(
     name = "empty_requires_file",
     out = "empty_requires.txt",
-    content = "",
+    content = [""],
 )
 
 write_file(
