@@ -382,6 +382,7 @@ py_test(
         ":custom_package_root_multi_prefix",
         ":custom_package_root_multi_prefix_reverse_order",
         ":customized",
+        ":empty_requires_files",
         ":extra_requires",
         ":filename_escaping",
         ":minimal_data_files",
