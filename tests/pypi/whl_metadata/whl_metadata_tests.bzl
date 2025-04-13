@@ -1,9 +1,11 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("@rules_testing//lib:truth.bzl", "subjects")
 load(
     "//python/private/pypi:whl_metadata.bzl",
     "find_whl_metadata",
+    "parse_whl_metadata",
 )  # buildifier: disable=bzl-visibility
 
 _tests = []
@@ -69,6 +71,74 @@ def _test_contains_metadata(env):
     env.expect.that_str(got.basename).equals("METADATA")
 
 _tests.append(_test_contains_metadata)
+
+def _parse_whl_metadata(env, **kwargs):
+    result = parse_whl_metadata(**kwargs)
+
+    return env.expect.that_struct(
+        struct(
+            name = result.name,
+            version = result.version,
+            requires_dist = result.requires_dist,
+            provides_extra = result.provides_extra,
+        ),
+        attrs = dict(
+            name = subjects.str,
+            version = subjects.str,
+            requires_dist = subjects.collection,
+            provides_extra = subjects.collection,
+        ),
+    )
+
+def _test_parse_metadata_invalid(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = "",
+    )
+    got.name().equals("")
+    got.version().equals("")
+    got.requires_dist().contains_exactly([])
+    got.provides_extra().contains_exactly([])
+
+_tests.append(_test_parse_metadata_invalid)
+
+def _test_parse_metadata_basic(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = """\
+Name: foo
+Version: 0.0.1
+""",
+    )
+    got.name().equals("foo")
+    got.version().equals("0.0.1")
+    got.requires_dist().contains_exactly([])
+    got.provides_extra().contains_exactly([])
+
+_tests.append(_test_parse_metadata_basic)
+
+def _test_parse_metadata_all(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = """\
+Name: foo
+Version: 0.0.1
+Requires-Dist: bar; extra == "all"
+Provides-Extra: all
+
+Requires-Dist: this will be ignored
+""",
+    )
+    got.name().equals("foo")
+    got.version().equals("0.0.1")
+    got.requires_dist().contains_exactly([
+        "bar; extra == \"all\"",
+    ])
+    got.provides_extra().contains_exactly([
+        "all",
+    ])
+
+_tests.append(_test_parse_metadata_all)
 
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(

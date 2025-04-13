@@ -22,7 +22,14 @@ def whl_metadata(*, install_dir, read_fn, logger):
           provides.
     """
     metadata_file = find_whl_metadata(install_dir = install_dir, logger = logger)
-    return parse_whl_metadata(read_fn(metadata_file))
+    contents = read_fn(metadata_file)
+    result = parse_whl_metadata(contents)
+
+    if not (result.name and result.version):
+        logger.fail("Failed to parsed the wheel METADATA file:\n{}".format(contents))
+        return None
+
+    return result
 
 def parse_whl_metadata(contents):
     """Parse .whl METADATA file
@@ -38,42 +45,36 @@ def parse_whl_metadata(contents):
         * `provides_extra`: {type}`list[str]` the list of extras that this package
           provides.
     """
-    single_value_fields = {
-        _NAME: "name",
-        _VERSION: "version",
+    parsed = {
+        "name": "",
+        "provides_extra": [],
+        "requires_dist": [],
+        "version": "",
     }
-    parsed = {}
     for line in contents.strip().split("\n"):
         if not line.strip():
             # Stop parsing on first empty line, which marks the end of the
             # headers containing the metadata.
             break
 
-        found_prefix = None
-        for prefix in single_value_fields:
-            if line.startswith(prefix):
-                found_prefix = prefix
-                break
-
-        if found_prefix:
-            key = single_value_fields.pop(found_prefix)
-            _, _, value = line.partition(found_prefix)
-            parsed[key] = value.strip()
-            continue
-
-        if line.startswith(_REQUIRES_DIST):
+        if line.startswith(_NAME):
+            _, _, value = line.partition(_NAME)
+            parsed["name"] = value.strip()
+        elif line.startswith(_VERSION):
+            _, _, value = line.partition(_VERSION)
+            parsed["version"] = value.strip()
+        elif line.startswith(_REQUIRES_DIST):
             _, _, value = line.partition(_REQUIRES_DIST)
-            parsed.setdefault("requires_dist", []).append(value.strip(" "))
+            parsed["requires_dist"].append(value.strip(" "))
         elif line.startswith(_PROVIDES_EXTRA):
             _, _, value = line.partition(_PROVIDES_EXTRA)
-            parsed.setdefault("provides_extra", []).append(value.strip(" "))
+            parsed["provides_extra"].append(value.strip(" "))
 
     return struct(
         name = parsed["name"],
+        provides_extra = parsed["provides_extra"],
+        requires_dist = parsed["requires_dist"],
         version = parsed["version"],
-        license = parsed.get("license"),
-        requires_dist = parsed.get("requires_dist", []),
-        provides_extra = parsed.get("provides_extra", []),
     )
 
 def find_whl_metadata(*, install_dir, logger):
