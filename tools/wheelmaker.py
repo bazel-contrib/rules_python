@@ -600,8 +600,7 @@ def main() -> None:
 
                     reqs.append(get_new_requirement_line(reqs_text, extra))
 
-                if reqs:
-                    processed_metadata_lines.append("\n".join(reqs))
+                processed_metadata_lines.extend(reqs)
 
         metadata = "\n".join(processed_metadata_lines)
 
