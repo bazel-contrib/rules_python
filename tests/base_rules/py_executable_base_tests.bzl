@@ -353,6 +353,7 @@ def _test_main_module_bootstrap_system_python(name, config):
         impl = _test_main_module_bootstrap_system_python_impl,
         target = name + "_subject",
         config_settings = {
+            BOOTSTRAP_IMPL: "system_python",
             "//command_line_option:platforms": [LINUX_X86_64],
         },
         expect_failure = True,
