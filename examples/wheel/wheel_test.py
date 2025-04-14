@@ -483,7 +483,6 @@ Tag: cp38-abi3-{os_string}_{arch}
                     if line.startswith(b"Requires-Dist:"):
                         requires.append(line.decode("utf-8").strip())
 
-            print(requires)
             self.assertEqual(
                 [
                     "Requires-Dist: tomli>=2.0.0",
@@ -516,7 +515,6 @@ Tag: cp38-abi3-{os_string}_{arch}
                 if line.startswith("Requires-Dist:"):
                     requires.append(line.strip())
 
-            print(requires)
             self.assertEqual([], requires)
 
     def test_minimal_data_files(self):
