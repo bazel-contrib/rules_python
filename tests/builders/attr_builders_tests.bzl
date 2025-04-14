@@ -28,7 +28,7 @@ def _expect_cfg_defaults(expect, cfg):
     expect.where(expr = "cfg.which_cfg").that_str(cfg.which_cfg()).equals("target")
 
 _some_aspect = aspect(implementation = lambda target, ctx: None)
-_SomeInfo = provider()
+_SomeInfo = provider("MyInfo", fields = [])
 
 _tests = []
 
