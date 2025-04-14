@@ -101,6 +101,11 @@ def py_wheel(
 
     Currently only pure-python wheels are supported.
 
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    From now on, an empty `requires_file` is treated as if it were omitted, resulting in a valid
+    `METADATA` file.
+    :::
+
     Examples:
 
     ```python
@@ -171,11 +176,6 @@ def py_wheel(
             These are subject to make var expansion, as with the `args` attribute.
             Note that you can also pass additional args to the bazel run command as in the example above.
         **kwargs: other named parameters passed to the underlying [py_wheel rule](#py_wheel_rule)
-
-    :::{versionchanged} VERSION_NEXT_FEATURE
-    From now on, an empty `requires_file` is treated as if it were omitted, resulting in a valid
-    `METADATA` file.
-    :::
     """
     tags = kwargs.pop("tags", [])
     manual_tags = depset(tags + ["manual"]).to_list()
