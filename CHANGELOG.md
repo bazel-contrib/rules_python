@@ -122,6 +122,8 @@ Unreleased changes template.
 * (toolchains) Local Python installs can be used to create a toolchain
   equivalent to the standard toolchains. See [Local toolchains] docs for how to
   configure them.
+* (toolchains) Expose `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)` which are runfiles
+  locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
 
 
 {#v0-0-0-removed}
