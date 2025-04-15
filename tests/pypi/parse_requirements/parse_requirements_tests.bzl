@@ -81,6 +81,12 @@ foo==0.0.3 --hash=sha256:deadbaaf
 foo[extra]==0.0.2 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
 """,
+        "requirements_sdist_different_hashes": """\
+foo==0.0.1 --hash=sha256:deadbeef --hash=sha256:cafebabe
+""",
+        "requirements_sdist_different_hashes_linux": """\
+foo==0.0.1 --hash=sha256:deadbaaf --hash=sha256:cafebabe
+""",
     }
 
     return struct(
@@ -622,6 +628,119 @@ def _test_optional_hash(env):
     })
 
 _tests.append(_test_optional_hash)
+
+def _test_sdist_different_hashes(env):
+    """Test that sdists with same hash but wheels with different hashes across platforms are handled correctly."""
+
+    def _mock_get_index_urls(_, distributions):
+        return {
+            "foo": struct(
+                whls = {
+                    "deadbeef": struct(
+                        filename = "foo-0.0.1-py3-none-win_amd64.whl",
+                        url = "https://pypi.org/foo-0.0.1-win.whl",
+                        sha256 = "deadbeef",
+                        yanked = False,
+                    ),
+                    "deadbaaf": struct(
+                        filename = "foo-0.0.1-py3-none-manylinux_2_17_x86_64.whl",
+                        url = "https://pypi.org/foo-0.0.1-linux.whl",
+                        sha256 = "deadbaaf",
+                        yanked = False,
+                    ),
+                },
+                sdists = {
+                    "cafebabe": struct(
+                        filename = "foo-0.0.1.tar.gz",
+                        url = "https://pypi.org/foo-0.0.1.tar.gz",
+                        sha256 = "cafebabe",
+                        yanked = False,
+                    ),
+                },
+            ),
+        }
+
+    got = parse_requirements(
+        ctx = _mock_ctx(),
+        requirements_by_platform = {
+            "requirements_sdist_different_hashes": ["cp315_windows_x86_64"],
+            "requirements_sdist_different_hashes_linux": ["cp315_linux_x86_64"],
+        },
+        get_index_urls = _mock_get_index_urls,
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "foo": [
+            struct(
+                distribution = "foo",
+                extra_pip_args = [],
+                is_exposed = True,
+                sdist = None,
+                srcs = struct(
+                    marker = "",
+                    requirement = "foo==0.0.1",
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadbaaf --hash=sha256:cafebabe",
+                    shas = ["cafebabe", "deadbaaf"],
+                    url = "",
+                    version = "0.0.1",
+                ),
+                target_platforms = ["cp315_linux_x86_64"],
+                whls = [
+                    struct(
+                        filename = "foo-0.0.1-py3-none-manylinux_2_17_x86_64.whl",
+                        url = "https://pypi.org/foo-0.0.1-linux.whl",
+                        sha256 = "deadbaaf",
+                        yanked = False,
+                    ),
+                ],
+            ),
+            struct(
+                distribution = "foo",
+                extra_pip_args = [],
+                is_exposed = True,
+                sdist = None,
+                srcs = struct(
+                    marker = "",
+                    requirement = "foo==0.0.1",
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadbeef --hash=sha256:cafebabe",
+                    shas = ["cafebabe", "deadbeef"],
+                    url = "",
+                    version = "0.0.1",
+                ),
+                target_platforms = ["cp315_windows_x86_64"],
+                whls = [
+                    struct(
+                        filename = "foo-0.0.1-py3-none-win_amd64.whl",
+                        url = "https://pypi.org/foo-0.0.1-win.whl",
+                        sha256 = "deadbeef",
+                        yanked = False,
+                    ),
+                ],
+            ),
+            struct(
+                distribution = "foo",
+                extra_pip_args = [],
+                is_exposed = True,
+                sdist = struct(
+                    filename = "foo-0.0.1.tar.gz",
+                    url = "https://pypi.org/foo-0.0.1.tar.gz",
+                    sha256 = "cafebabe",
+                    yanked = False,
+                ),
+                srcs = struct(
+                    marker = "",
+                    requirement = "foo==0.0.1",
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadbaaf --hash=sha256:cafebabe",
+                    shas = ["cafebabe", "deadbaaf"],
+                    url = "",
+                    version = "0.0.1",
+                ),
+                target_platforms = ["cp315_linux_x86_64", "cp315_windows_x86_64"],
+                whls = [],
+            ),
+        ],
+    })
+
+_tests.append(_test_sdist_different_hashes)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.
