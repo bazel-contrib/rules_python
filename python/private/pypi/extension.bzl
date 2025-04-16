@@ -181,7 +181,6 @@ def _create_whl_repos(
         # Construct args separately so that the lock file can be smaller and does not include unused
         # attrs.
         whl_library_args = dict(
-            repo = pip_name,
             dep_template = "@{}//{{name}}:{{target}}".format(hub_name),
         )
         maybe_args = dict(

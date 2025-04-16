@@ -517,8 +517,10 @@ and the target that we need respectively.
         doc = "Name of the group, if any.",
     ),
     "repo": attr.string(
-        mandatory = True,
-        doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",
+        doc = """\
+Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.
+Only used in WORKSPACE when the {attr}`dep_template` is not set.
+""",
     ),
     "repo_prefix": attr.string(
         doc = """
