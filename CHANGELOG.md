@@ -76,12 +76,18 @@ Unreleased changes template.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
-* (gazelle) Lazily load and parse manifest files when running Gazelle. This ensures no manifest files are loaded when Gazelle is run over a set of non-python directories.
+* (gazelle) Lazily load and parse manifest files when running Gazelle. This ensures no
+  manifest files are loaded when Gazelle is run over a set of non-python directories
+  [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
+* (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
+  `main_module` is specified (for `--bootstrap_impl=script`)
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
 {#v0-0-0-fixed}
 ### Fixed
+* (pypi) Platform specific extras are now correctly handled when using
+  universal lock files with environment markers. Fixes [#2690](https://github.com/bazel-contrib/rules_python/pull/2690).
 * (runfiles) ({obj}`--bootstrap_impl=script`) Follow symlinks when searching for runfiles.
 * (toolchains) Do not try to run `chmod` when downloading non-windows hermetic toolchain
   repositories on Windows. Fixes
@@ -92,6 +98,8 @@ Unreleased changes template.
   Fixes [#2685](https://github.com/bazel-contrib/rules_python/issues/2685).
 * (toolchains) Run the check on the Python interpreter in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
 * (toolchains) Ensure temporary `.pyc` and `.pyo` files are also excluded from the interpreters repository files.
+* (pypi) Run interpreter version call in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
+* (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
 
 {#v0-0-0-added}
 ### Added
@@ -117,6 +125,12 @@ Unreleased changes template.
   allow specifying links to create within the venv site packages (only
   applicable with {obj}`--bootstrap_impl=script`)
   ([#2156](https://github.com/bazelbuild/rules_python/issues/2156)).
+* (toolchains) Local Python installs can be used to create a toolchain
+  equivalent to the standard toolchains. See [Local toolchains] docs for how to
+  configure them.
+* (toolchains) Expose `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)` which are runfiles
+  locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
+
 
 {#v0-0-0-removed}
 ### Removed

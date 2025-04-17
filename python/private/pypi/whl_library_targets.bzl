@@ -90,8 +90,6 @@ def whl_library_targets(
         native: {type}`native` The native struct for overriding in tests.
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
-    _ = name  # buildifier: @unused
-
     dependencies = sorted([normalize_name(d) for d in dependencies])
     dependencies_by_platform = {
         platform: sorted([normalize_name(d) for d in deps])

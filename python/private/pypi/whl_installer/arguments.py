@@ -17,8 +17,6 @@ import json
 import pathlib
 from typing import Any, Dict, Set
 
-from python.private.pypi.whl_installer.platform import Platform
-
 
 def parser(**kwargs: Any) -> argparse.ArgumentParser:
     """Create a parser for the wheel_installer tool."""
@@ -40,12 +38,6 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
         "--extra_pip_args",
         action="store",
         help="Extra arguments to pass down to pip.",
-    )
-    parser.add_argument(
-        "--platform",
-        action="extend",
-        type=Platform.from_string,
-        help="Platforms to target dependencies. Can be used multiple times.",
     )
     parser.add_argument(
         "--pip_data_exclude",

@@ -28,6 +28,7 @@ def _expect_cfg_defaults(expect, cfg):
     expect.where(expr = "cfg.which_cfg").that_str(cfg.which_cfg()).equals("target")
 
 _some_aspect = aspect(implementation = lambda target, ctx: None)
+_SomeInfo = provider("MyInfo", fields = [])
 
 _tests = []
 
@@ -186,7 +187,7 @@ def _test_label(name):
     subject.set_executable(True)
     subject.add_allow_files(".txt")
     subject.cfg.set_target()
-    subject.providers().append("provider")
+    subject.providers().append(_SomeInfo)
     subject.aspects().append(_some_aspect)
     subject.cfg.outputs().append(Label("//some:output"))
     subject.cfg.inputs().append(Label("//some:input"))
@@ -199,7 +200,7 @@ def _test_label(name):
     expect.that_bool(subject.executable()).equals(True)
     expect.that_collection(subject.allow_files()).contains_exactly([".txt"])
     expect.that_bool(subject.allow_single_file()).equals(None)
-    expect.that_collection(subject.providers()).contains_exactly(["provider"])
+    expect.that_collection(subject.providers()).contains_exactly([_SomeInfo])
     expect.that_collection(subject.aspects()).contains_exactly([_some_aspect])
     expect.that_collection(subject.cfg.outputs()).contains_exactly([Label("//some:output")])
     expect.that_collection(subject.cfg.inputs()).contains_exactly([Label("//some:input")])
@@ -229,7 +230,7 @@ def _test_label_keyed_string_dict(name):
     subject.set_mandatory(True)
     subject.set_allow_files(True)
     subject.cfg.set_target()
-    subject.providers().append("provider")
+    subject.providers().append(_SomeInfo)
     subject.aspects().append(_some_aspect)
     subject.cfg.outputs().append("//some:output")
     subject.cfg.inputs().append("//some:input")
@@ -240,7 +241,7 @@ def _test_label_keyed_string_dict(name):
     expect.that_str(subject.doc()).equals("doc")
     expect.that_bool(subject.mandatory()).equals(True)
     expect.that_bool(subject.allow_files()).equals(True)
-    expect.that_collection(subject.providers()).contains_exactly(["provider"])
+    expect.that_collection(subject.providers()).contains_exactly([_SomeInfo])
     expect.that_collection(subject.aspects()).contains_exactly([_some_aspect])
     expect.that_collection(subject.cfg.outputs()).contains_exactly(["//some:output"])
     expect.that_collection(subject.cfg.inputs()).contains_exactly(["//some:input"])
@@ -274,14 +275,14 @@ def _test_label_list(name):
     subject.set_doc("doc")
     subject.set_mandatory(True)
     subject.set_allow_files([".txt"])
-    subject.providers().append("provider")
+    subject.providers().append(_SomeInfo)
     subject.aspects().append(_some_aspect)
 
     expect.that_collection(subject.default()).contains_exactly(["//some:label"])
     expect.that_str(subject.doc()).equals("doc")
     expect.that_bool(subject.mandatory()).equals(True)
     expect.that_collection(subject.allow_files()).contains_exactly([".txt"])
-    expect.that_collection(subject.providers()).contains_exactly(["provider"])
+    expect.that_collection(subject.providers()).contains_exactly([_SomeInfo])
     expect.that_collection(subject.aspects()).contains_exactly([_some_aspect])
 
     _expect_builds(expect, subject, "attr.label_list")
@@ -395,14 +396,14 @@ def _test_string_keyed_label_dict(name):
     subject.set_doc("doc")
     subject.set_mandatory(True)
     subject.set_allow_files([".txt"])
-    subject.providers().append("provider")
+    subject.providers().append(_SomeInfo)
     subject.aspects().append(_some_aspect)
 
     expect.that_dict(subject.default()).contains_exactly({"key": "//some:label"})
     expect.that_str(subject.doc()).equals("doc")
     expect.that_bool(subject.mandatory()).equals(True)
     expect.that_collection(subject.allow_files()).contains_exactly([".txt"])
-    expect.that_collection(subject.providers()).contains_exactly(["provider"])
+    expect.that_collection(subject.providers()).contains_exactly([_SomeInfo])
     expect.that_collection(subject.aspects()).contains_exactly([_some_aspect])
 
     _expect_builds(expect, subject, "attr.string_keyed_label_dict")

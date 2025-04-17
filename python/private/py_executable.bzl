@@ -786,6 +786,8 @@ def _create_stage1_bootstrap(
         )
         template = runtime.bootstrap_template
         subs["%shebang%"] = runtime.stub_shebang
+    elif not ctx.files.srcs:
+        fail("mandatory 'srcs' files have not been provided")
     else:
         if (ctx.configuration.coverage_enabled and
             runtime and
@@ -1888,7 +1890,6 @@ def create_executable_rule_builder(implementation, **kwargs):
         ),
         **kwargs
     )
-    builder.attrs.get("srcs").set_mandatory(True)
     return builder
 
 def cc_configure_features(
