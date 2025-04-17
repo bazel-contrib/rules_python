@@ -76,6 +76,9 @@ Unreleased changes template.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
+* (gazelle) Lazily load and parse manifest files when running Gazelle. This ensures no
+  manifest files are loaded when Gazelle is run over a set of non-python directories
+  [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
 
