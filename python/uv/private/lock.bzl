@@ -145,6 +145,11 @@ def _lock_impl(ctx):
         ],
         progress_message = "Creating a requirements.txt with uv: %{label}",
         env = ctx.attr.env,
+        execution_requirements = {
+            # This is to support Google RBE service, PRs to support other RBE
+            # providers that do not break the existing ones are welcome.
+            "dockerNetwork": "standard",
+        },
     )
 
     return [
