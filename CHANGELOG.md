@@ -107,7 +107,7 @@ Unreleased changes template.
 * (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
   [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
 * Fixes when using {obj}`--bootstrap_impl=script`:
-  * `compile_pip_requirements` is now works with it
+  * `compile_pip_requirements` now works with it
   * The `sys._base_executable` value will reflect the underlying interpreter,
     not venv interpreter.
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
