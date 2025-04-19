@@ -21,7 +21,7 @@ A brief description of the categories of changes:
   `(docs)`.
 
 <!--
-Unreleased changes template.
+BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0}
 ## Unreleased
