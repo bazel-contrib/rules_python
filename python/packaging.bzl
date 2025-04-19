@@ -101,7 +101,7 @@ def py_wheel(
 
     Currently only pure-python wheels are supported.
 
-    :::{versionchanged} VERSION_NEXT_FEATURE
+    :::{versionchanged} 1.4.0
     From now on, an empty `requires_file` is treated as if it were omitted, resulting in a valid
     `METADATA` file.
     :::

@@ -686,7 +686,7 @@ If {attr}`download_only` is set, then `sdist` archives will be discarded and `pi
 operate in wheel-only mode.
 :::
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.4.0
 Index metadata will be used to deduct `sha256` values for packages even if the
 `sha256` values are not present in the requirements.txt lock file.
 :::
@@ -767,7 +767,7 @@ to `rules_python` and use this attribute until the bug is fixed.
 
 EXPERIMENTAL: this may be removed without notice.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """,
         ),

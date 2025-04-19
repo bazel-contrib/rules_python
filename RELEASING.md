@@ -15,6 +15,10 @@ These are the steps for a regularly scheduled release from HEAD.
 1. [Determine the next semantic version number](#determining-semantic-version).
 1. Update CHANGELOG.md: replace the `v0-0-0` and `0.0.0` with `X.Y.0`.
 1. Replace `VERSION_NEXT_*` strings with `X.Y.0`.
+   ```
+   grep -l --exclude=CONTRIBUTING.md --exclude=RELEASING.md --exclude-dir=.* VERSION_NEXT_ -r \
+     | xargs sed -i -e 's/VERSION_NEXT_FEATURE/X.Y.0/' -e 's/VERSION_NEXT_PATCH/X.Y.0/'
+   ```
 1. Send these changes for review and get them merged.
 1. Create a branch for the new release, named `release/X.Y`
    ```
