@@ -97,6 +97,20 @@ It will be promoted to stable next week, pending feedback.
 It's traditional to include notable changes from the changelog, but not
 required.
 
+### Re-releasing a version
+
+Re-releasing a version (i.e. changing the commit a tag points to)  is
+*sometimes* possible, but it depends on how far into the release process it got.
+
+The two points of no return are:
+ * If the PyPI package has been published: PyPI disallows using the same
+   filename/version twice. Once published, it cannot be replaced.
+ * If the BCR package has been published: Once it's been committed to the BCR
+   registry, it cannot be replaced.
+
+If release steps fail _prior_ to those steps, then its OK to change the tag. You
+may need to manually delete the GitHub release.
+
 ## Secrets
 
 ### PyPI user rules-python
