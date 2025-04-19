@@ -185,11 +185,9 @@ def main(
             # and we should copy the updated requirements back to the source tree.
             if not absolute_output_file.samefile(requirements_file_tree):
                 atexit.register(
-                    lambda: shutil.copy(
-                        absolute_output_file, requirements_file_tree
-                    )
+                    lambda: shutil.copy(absolute_output_file, requirements_file_tree)
                 )
-        cli(argv, standalone_mode = False)
+        cli(argv, standalone_mode=False)
         requirements_file_relative_path = Path(requirements_file_relative)
         content = requirements_file_relative_path.read_text()
         content = content.replace(absolute_path_prefix, "")

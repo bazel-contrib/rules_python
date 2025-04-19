@@ -22,9 +22,8 @@ import foo
 # we can still override "third_party.foo.bar"
 import third_party.foo.bar
 
-from third_party import baz
-
 import third_party
+from third_party import baz
 
 _ = sys
 _ = bar
