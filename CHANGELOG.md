@@ -43,7 +43,7 @@ Unreleased changes template.
 {#v0-0-0-removed}
 ### Removed
 * Nothing removed.
--->
+END_UNRELEASED_TEMPLATE -->
 
 
 {#v0-0-0}
