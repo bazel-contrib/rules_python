@@ -6,7 +6,7 @@
 # The names @pip and @python_39 are values that are repository
 # names. Those names are defined in the MODULES.bazel file.
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("@pip//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
+load("@pip//:requirements.bzl", "requirement")
 load("@python_3_9//:defs.bzl", py_test_with_transition = "py_test")
 load("@python_versions//3.10:defs.bzl", compile_pip_requirements_3_10 = "compile_pip_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
@@ -72,17 +72,17 @@ py_test_with_transition(
 # See: https://github.com/bazelbuild/bazel-skylib/blob/main/docs/build_test_doc.md
 build_test(
     name = "all_wheels_build_test",
-    targets = all_whl_requirements,
+    targets = ["@pip//:all_whls"],
 )
 
 build_test(
     name = "all_data_requirements_build_test",
-    targets = all_data_requirements,
+    targets = ["@pip//:all_data"],
 )
 
 build_test(
     name = "all_requirements_build_test",
-    targets = all_requirements,
+    targets = ["@pip//:all_pkgs"],
 )
 
 # Check the annotations API

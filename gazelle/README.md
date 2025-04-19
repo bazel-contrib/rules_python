@@ -88,7 +88,6 @@ Create an empty file with this name. It might be next to your `requirements.txt`
 To keep the metadata updated, put this in your `BUILD.bazel` file next to `gazelle_python.yaml`:
 
 ```starlark
-load("@pip//:requirements.bzl", "all_whl_requirements")
 load("@rules_python_gazelle_plugin//manifest:defs.bzl", "gazelle_python_manifest")
 load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
 
@@ -96,7 +95,7 @@ load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
 # required for the gazelle_python_manifest rule to update our manifest file.
 modules_mapping(
     name = "modules_map",
-    wheels = all_whl_requirements,
+    wheels = ["@pip//all_whls"],
 )
 
 # Gazelle python extension needs a manifest file mapping from

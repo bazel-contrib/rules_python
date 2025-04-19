@@ -71,7 +71,7 @@ modules_mapping = rule(
         ),
         "wheels": attr.label_list(
             allow_files = True,
-            doc = "The list of wheels, usually the 'all_whl_requirements' from @<pip_repository>//:requirements.bzl",
+            doc = """The list of wheels, usually the '["@<pip_repository>//:all_whls"]'""",
             mandatory = True,
         ),
         "_generator": attr.label(

@@ -3,7 +3,6 @@
 # The `load` statement imports the symbol for the rule, in the defined
 # ruleset. When the symbol is loaded you can use the rule.
 load("@bazel_gazelle//:def.bzl", "gazelle")
-load("@pip//:requirements.bzl", "all_whl_requirements")
 load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
@@ -28,7 +27,7 @@ modules_mapping(
         "^_|(\\._)+",  # This is the default.
         "(\\.tests)+",  # Add a custom one to get rid of the psutil tests.
     ],
-    wheels = all_whl_requirements,
+    wheels = ["@pip//:all_whls"],
 )
 
 # Gazelle python extension needs a manifest file mapping from

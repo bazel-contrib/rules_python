@@ -64,10 +64,27 @@ def use_isolated(ctx, attr):
     return use_isolated
 
 _BUILD_FILE_CONTENTS = """\
+load("@rules_python//python:py_library.bzl", "py_library")
+
 package(default_visibility = ["//visibility:public"])
 
 # Ensure the `requirements.bzl` source can be accessed by stardoc, since users load() from it
 exports_files(["requirements.bzl"])
+
+filegroup(
+    name = "all_whls",
+    srcs = {all_whls},
+)
+
+filegroup(
+    name = "all_data",
+    srcs = {all_data},
+)
+
+py_library(
+    name = "all_pkgs",
+    deps = {all_pkgs},
+)
 """
 
 def _pip_repository_impl(rctx):
@@ -177,7 +194,20 @@ def _pip_repository_impl(rctx):
     for path, contents in aliases.items():
         rctx.file(path, contents)
 
-    rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
+    rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS.format(
+        all_pkgs = render.indent(render.list([
+            "//" + pkg
+            for pkg in bzl_packages
+        ])).lstrip(),
+        all_data = render.indent(render.list([
+            "//{}:data".format(pkg)
+            for pkg in bzl_packages
+        ])).lstrip(),
+        all_whls = render.indent(render.list([
+            "//{}:whl".format(pkg)
+            for pkg in bzl_packages
+        ])).lstrip(),
+    ))
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
         "    # %%GROUP_LIBRARY%%": """\
     group_repo = "{name}__groups"

@@ -6,7 +6,6 @@
 # The following code loads the base python requirements and gazelle
 # requirements.
 load("@bazel_gazelle//:def.bzl", "gazelle")
-load("@pip//:requirements.bzl", "all_whl_requirements")
 load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
@@ -35,7 +34,7 @@ modules_mapping(
         "^tzdata",  # Get rid of tzdata on Windows.
         "^lazy_object_proxy\\.cext$",  # Get rid of this on Linux because it isn't included on Windows.
     ],
-    wheels = all_whl_requirements,
+    wheels = ["@pip//:all_whls"],
 )
 
 modules_mapping(
@@ -49,7 +48,7 @@ modules_mapping(
     ],
     include_stub_packages = True,
     modules_mapping_name = "modules_mapping_with_types.json",
-    wheels = all_whl_requirements,
+    wheels = ["@pip//:all_whls"],
 )
 
 # Gazelle python extension needs a manifest file mapping from

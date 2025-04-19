@@ -19,14 +19,32 @@ load(":render_pkg_aliases.bzl", "render_multiplatform_pkg_aliases")
 load(":whl_config_setting.bzl", "whl_config_setting")
 
 _BUILD_FILE_CONTENTS = """\
+load("@rules_python//python:py_library.bzl", "py_library")
+
 package(default_visibility = ["//visibility:public"])
 
 # Ensure the `requirements.bzl` source can be accessed by stardoc, since users load() from it
 exports_files(["requirements.bzl"])
+
+filegroup(
+    name = "all_whls",
+    srcs = {all_whls},
+)
+
+filegroup(
+    name = "all_data",
+    srcs = {all_data},
+)
+
+py_library(
+    name = "all_pkgs",
+    deps = {all_pkgs},
+)
 """
 
 def _impl(rctx):
-    bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+    all_bzl_packages = sorted(rctx.attr.whl_map.keys())
+    bzl_packages = rctx.attr.packages or all_bzl_packages
     aliases = render_multiplatform_pkg_aliases(
         aliases = {
             key: _whl_config_settings_from_json(values)
@@ -44,7 +62,20 @@ def _impl(rctx):
     # `requirement`, et al. macros.
     macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
 
-    rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
+    rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS.format(
+        all_pkgs = render.indent(render.list([
+            "//" + pkg
+            for pkg in all_bzl_packages
+        ])).lstrip(),
+        all_data = render.indent(render.list([
+            "//{}:data".format(pkg)
+            for pkg in all_bzl_packages
+        ])).lstrip(),
+        all_whls = render.indent(render.list([
+            "//{}:whl".format(pkg)
+            for pkg in all_bzl_packages
+        ])).lstrip(),
+    ))
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
