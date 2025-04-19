@@ -29,6 +29,84 @@ load(
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
+load(":parse_whl_name.bzl", "parse_whl_name")
+load(":pep508_deps.bzl", "deps")
+load(":whl_target_platforms.bzl", "whl_target_platforms")
+
+def whl_library_targets_from_requires(
+        *,
+        name,
+        metadata_name = "",
+        metadata_version = "",
+        requires_dist = [],
+        extras = [],
+        target_platforms = [],
+        python_version = None,
+        **kwargs):
+    """The macro to create whl targets from the METADATA.
+
+    Args:
+        name: {type}`str` The wheel filename
+        metadata_name: {type}`str` The package name as written in wheel `METADATA`.
+        metadata_version: {type}`str` The package version as written in wheel `METADATA`.
+        requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
+            the whl `METADATA`.
+        extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
+        target_platforms: {type}`list[str]` The list of target platforms to create
+            dependency closures for.
+        python_version: {type}`str` The python version to assume when parsing
+            the `METADATA`. This is only used when the `target_platforms` do not
+            include the version information.
+        **kwargs: Extra args passed to the {obj}`whl_library_targets`
+    """
+    package_deps = _parse_requires_dist(
+        name = name,
+        python_version = python_version,
+        requires_dist = requires_dist,
+        extras = extras,
+        target_platforms = target_platforms,
+    )
+    whl_library_targets(
+        name = name,
+        dependencies = package_deps.deps,
+        dependencies_by_platform = package_deps.deps_select,
+        tags = [
+            "pypi_name={}".format(metadata_name),
+            "pypi_version={}".format(metadata_version),
+        ],
+        **kwargs
+    )
+
+def _parse_requires_dist(
+        *,
+        name,
+        python_version,
+        requires_dist,
+        extras,
+        target_platforms):
+    # TODO @aignas 2025-04-15: split this function into 2 where we are passing `package_deps` from the first function to the second.
+    #
+    # this will make unit testing of the functions easier
+    parsed_whl = parse_whl_name(name)
+
+    # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
+    # only include deps for that target platform
+    if parsed_whl.platform_tag != "any":
+        target_platforms = [
+            p.target_platform
+            for p in whl_target_platforms(
+                platform_tag = parsed_whl.platform_tag,
+                abi_tag = parsed_whl.abi_tag.strip("tm"),
+            )
+        ]
+
+    return deps(
+        name = normalize_name(parsed_whl.distribution),
+        requires_dist = requires_dist,
+        platforms = target_platforms,
+        extras = extras,
+        default_python_version = python_version,
+    )
 
 def whl_library_targets(
         *,
@@ -95,7 +173,6 @@ def whl_library_targets(
         platform: sorted([normalize_name(d) for d in deps])
         for platform, deps in dependencies_by_platform.items()
     }
-    tags = sorted(tags)
     data = [] + data
 
     for filegroup_name, glob in filegroups.items():

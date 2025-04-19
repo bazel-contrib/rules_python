@@ -22,6 +22,7 @@ def test_simple_deps(env):
     got = deps(
         "foo",
         requires_dist = ["bar-Bar"],
+        platforms = ["cp38_linux_x86_64"],
     )
     env.expect.that_collection(got.deps).contains_exactly(["bar_bar"])
     env.expect.that_dict(got.deps_select).contains_exactly({})
@@ -43,7 +44,7 @@ def test_can_add_os_specific_deps(env):
             "osx_aarch64",
             "windows_x86_64",
         ],
-        host_python_version = "3.3.1",
+        default_python_version = "3.3.1",
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar"])
@@ -92,7 +93,7 @@ def test_deps_are_added_to_more_specialized_platforms(env):
             "osx_x86_64",
             "osx_aarch64",
         ],
-        host_python_version = "3.8.4",
+        default_python_version = "3.8.4",
     )
 
     env.expect.that_collection(got.deps).contains_exactly([])
@@ -114,7 +115,7 @@ def test_deps_from_more_specialized_platforms_are_propagated(env):
             "osx_x86_64",
             "osx_aarch64",
         ],
-        host_python_version = "3.8.4",
+        default_python_version = "3.8.4",
     )
 
     env.expect.that_collection(got.deps).contains_exactly([])
@@ -141,7 +142,7 @@ def test_non_platform_markers_are_added_to_common_deps(env):
             "osx_aarch64",
             "windows_x86_64",
         ],
-        host_python_version = "3.8.4",
+        default_python_version = "3.8.4",
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar", "baz"])
@@ -161,6 +162,7 @@ def test_self_is_ignored(env):
             "ssl_lib; extra == 'ssl'",
         ],
         extras = ["ssl"],
+        platforms = ["cp38_linux_x86_64"],
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar", "req_dep", "ssl_lib"])
@@ -179,6 +181,7 @@ def test_self_dependencies_can_come_in_any_order(env):
             "zdep; extra == 'all'",
         ],
         extras = ["all"],
+        platforms = ["cp38_linux_x86_64"],
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar", "baz", "zdep"])
@@ -219,7 +222,7 @@ def _test_no_version_select_when_single_version(env):
         "posix_dep_with_version; os_name=='posix' and python_version >= '3.8'",
         "arch_dep; platform_machine=='x86_64' and python_version >= '3.8'",
     ]
-    host_python_version = "3.7.5"
+    default_python_version = "3.7.5"
 
     got = deps(
         "foo",
@@ -228,7 +231,7 @@ def _test_no_version_select_when_single_version(env):
             "cp38_linux_x86_64",
             "cp38_windows_x86_64",
         ],
-        host_python_version = host_python_version,
+        default_python_version = default_python_version,
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar", "baz"])
@@ -249,7 +252,7 @@ def _test_can_get_version_select(env):
         "posix_dep_with_version; os_name=='posix' and python_version >= '3.8'",
         "arch_dep; platform_machine=='x86_64' and python_version < '3.8'",
     ]
-    host_python_version = "3.7.4"
+    default_python_version = "3.7.4"
 
     got = deps(
         "foo",
@@ -259,7 +262,7 @@ def _test_can_get_version_select(env):
             for minor in [7, 8, 9]
             for os in ["linux", "windows"]
         ],
-        host_python_version = host_python_version,
+        default_python_version = default_python_version,
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar"])
@@ -294,7 +297,7 @@ def _test_deps_spanning_all_target_py_versions_are_added_to_common(env):
         "baz (<2,>=1.11) ; python_version < '3.8'",
         "baz (<2,>=1.14) ; python_version >= '3.8'",
     ]
-    host_python_version = "3.8.4"
+    default_python_version = "3.8.4"
 
     got = deps(
         "foo",
@@ -303,7 +306,7 @@ def _test_deps_spanning_all_target_py_versions_are_added_to_common(env):
             "cp3{}_linux_x86_64".format(minor)
             for minor in [7, 8, 9]
         ],
-        host_python_version = host_python_version,
+        default_python_version = default_python_version,
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar", "baz"])
@@ -312,7 +315,7 @@ def _test_deps_spanning_all_target_py_versions_are_added_to_common(env):
 _tests.append(_test_deps_spanning_all_target_py_versions_are_added_to_common)
 
 def _test_deps_are_not_duplicated(env):
-    host_python_version = "3.7.4"
+    default_python_version = "3.7.4"
 
     # See an example in
     # https://files.pythonhosted.org/packages/76/9e/db1c2d56c04b97981c06663384f45f28950a73d9acf840c4006d60d0a1ff/opencv_python-4.9.0.80-cp37-abi3-win32.whl.metadata
@@ -336,7 +339,7 @@ def _test_deps_are_not_duplicated(env):
             for os in ["linux", "osx", "windows"]
             for arch in ["x86_64", "aarch64"]
         ],
-        host_python_version = host_python_version,
+        default_python_version = default_python_version,
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar"])
@@ -345,7 +348,7 @@ def _test_deps_are_not_duplicated(env):
 _tests.append(_test_deps_are_not_duplicated)
 
 def _test_deps_are_not_duplicated_when_encountering_platform_dep_first(env):
-    host_python_version = "3.7.1"
+    default_python_version = "3.7.1"
 
     # Note, that we are sorting the incoming `requires_dist` and we need to ensure that we are not getting any
     # issues even if the platform-specific line comes first.
@@ -363,7 +366,7 @@ def _test_deps_are_not_duplicated_when_encountering_platform_dep_first(env):
             "cp310_linux_aarch64",
             "cp310_linux_x86_64",
         ],
-        host_python_version = host_python_version,
+        default_python_version = default_python_version,
     )
 
     # TODO @aignas 2025-02-24: this test case in the python version is passing but

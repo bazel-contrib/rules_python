@@ -21,23 +21,23 @@ _RENDER = {
     "copy_files": render.dict,
     "data": render.list,
     "data_exclude": render.list,
-    "dependencies": render.list,
-    "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
     "entry_points": render.dict,
+    "extras": render.list,
     "group_deps": render.list,
+    "requires_dist": render.list,
     "srcs_exclude": render.list,
-    "tags": render.list,
+    "target_platforms": lambda x: render.list(x) if x else "target_platforms",
 }
 
 # NOTE @aignas 2024-10-25: We have to keep this so that files in
 # this repository can be publicly visible without the need for
 # export_files
 _TEMPLATE = """\
-load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+{loads}
 
 package(default_visibility = ["//visibility:public"])
 
-whl_library_targets(
+whl_library_targets_from_requires(
 {kwargs}
 )
 """
@@ -57,6 +57,18 @@ def generate_whl_library_build_bazel(
         A complete BUILD file as a string
     """
 
+    loads = [
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")""",
+    ]
+    if not kwargs.setdefault("target_platforms", None):
+        dep_template = kwargs["dep_template"]
+        loads.append(
+            "load(\"{}\", \"{}\")".format(
+                dep_template.format(name = "", target = "config.bzl"),
+                "target_platforms",
+            ),
+        )
+
     additional_content = []
     if annotation:
         kwargs["data"] = annotation.data
@@ -70,6 +82,7 @@ def generate_whl_library_build_bazel(
     contents = "\n".join(
         [
             _TEMPLATE.format(
+                loads = "\n".join(loads),
                 kwargs = render.indent("\n".join([
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())

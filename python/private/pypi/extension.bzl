@@ -32,7 +32,6 @@ load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_library.bzl", "whl_library")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 def _major_minor_version(version):
     version = semver(version)
@@ -68,7 +67,6 @@ def _create_whl_repos(
         *,
         pip_attr,
         whl_overrides,
-        evaluate_markers = evaluate_markers,
         available_interpreters = INTERPRETER_LABELS,
         get_index_urls = None):
     """create all of the whl repositories
@@ -77,7 +75,6 @@ def _create_whl_repos(
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
-        evaluate_markers: the function to use to evaluate markers.
         get_index_urls: A function used to get the index URLs
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
@@ -162,14 +159,12 @@ def _create_whl_repos(
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
             extra_pip_args = pip_attr.extra_pip_args,
+            # TODO @aignas 2025-04-15: pass the full version into here
             python_version = major_minor,
             logger = logger,
         ),
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
-        # NOTE @aignas 2025-02-24: we will use the "cp3xx_os_arch" platform labels
-        # for converting to the PEP508 environment and will evaluate them in starlark
-        # without involving the interpreter at all.
         evaluate_markers = evaluate_markers,
         logger = logger,
     )
@@ -191,7 +186,6 @@ def _create_whl_repos(
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
             envsubst = pip_attr.envsubst,
-            experimental_target_platforms = pip_attr.experimental_target_platforms,
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
@@ -244,6 +238,12 @@ def _create_whl_repos(
         },
         extra_aliases = extra_aliases,
         whl_libraries = whl_libraries,
+        target_platforms = {
+            plat: None
+            for reqs in requirements_by_platform.values()
+            for req in reqs
+            for plat in req.target_platforms
+        },
     )
 
 def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version):
@@ -274,20 +274,11 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
-        args["experimental_target_platforms"] = requirement.target_platforms
 
         # Pure python wheels or sdists may need to have a platform here
         target_platforms = None
         if distribution.filename.endswith(".whl") and not distribution.filename.endswith("-any.whl"):
-            parsed_whl = parse_whl_name(distribution.filename)
-            whl_platforms = whl_target_platforms(
-                platform_tag = parsed_whl.platform_tag,
-            )
-            args["experimental_target_platforms"] = [
-                p
-                for p in requirement.target_platforms
-                if [None for wp in whl_platforms if p.endswith(wp.target_platform)]
-            ]
+            pass
         elif multiple_requirements_for_whl:
             target_platforms = requirement.target_platforms
 
@@ -416,6 +407,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     hub_group_map = {}
     exposed_packages = {}
     extra_aliases = {}
+    target_platforms = {}
     whl_libraries = {}
 
     for mod in module_ctx.modules:
@@ -498,6 +490,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
             exposed_packages.setdefault(hub_name, {}).update(out.exposed_packages)
+            target_platforms.setdefault(hub_name, {}).update(out.target_platforms)
             whl_libraries.update(out.whl_libraries)
 
             # TODO @aignas 2024-04-05: how do we support different requirement
@@ -534,6 +527,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 for whl_name, aliases in extra_whl_aliases.items()
             }
             for hub_name, extra_whl_aliases in extra_aliases.items()
+        },
+        target_platforms = {
+            hub_name: sorted(p)
+            for hub_name, p in target_platforms.items()
         },
         whl_libraries = {
             k: dict(sorted(args.items()))
@@ -626,15 +623,13 @@ def _pip_impl(module_ctx):
             },
             packages = mods.exposed_packages.get(hub_name, []),
             groups = mods.hub_group_map.get(hub_name),
+            target_platforms = mods.target_platforms.get(hub_name, []),
         )
 
     if bazel_features.external_deps.extension_metadata_has_reproducible:
-        # If we are not using the `experimental_index_url feature, the extension is fully
-        # deterministic and we don't need to create a lock entry for it.
-        #
-        # In order to be able to dogfood the `experimental_index_url` feature before it gets
-        # stabilized, we have created the `_pip_non_reproducible` function, that will result
-        # in extra entries in the lock file.
+        # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
+        # results after calling the PyPI index should be reproducible on each
+        # machine.
         return module_ctx.extension_metadata(reproducible = True)
     else:
         return None

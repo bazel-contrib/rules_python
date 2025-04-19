@@ -15,6 +15,7 @@
 """This module is for implementing PEP508 compliant METADATA deps parsing.
 """
 
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -35,7 +36,7 @@ _ALL_ARCH_VALUES = [
     "x86_64",
 ]
 
-def deps(name, *, requires_dist, platforms = [], extras = [], host_python_version = None):
+def deps(name, *, requires_dist, platforms = [], extras = [], default_python_version = None):
     """Parse the RequiresDist from wheel METADATA
 
     Args:
@@ -44,7 +45,7 @@ def deps(name, *, requires_dist, platforms = [], extras = [], host_python_versio
             METADATA file.
         extras: {type}`list[str]` the requested extras to generate targets for.
         platforms: {type}`list[str]` the list of target platform strings.
-        host_python_version: {type}`str` the host python version.
+        default_python_version: {type}`str` the host python version.
 
     Returns:
         A struct with attributes:
@@ -52,6 +53,37 @@ def deps(name, *, requires_dist, platforms = [], extras = [], host_python_versio
         * deps_select: {type}`dict[str, list[str]]` dependencies to include on particular
               subset of target platforms.
     """
+    if not platforms:
+        fail("'platforms' arg is mandatory")
+
+    # TODO @aignas 2025-04-16: this `default_abi` variable is only
+    # here so that we can have selects without "is_python_version" conditions.
+    # This would happen in the `multi_pip_parse` logic in WORKSPACE.
+    #
+    # In followup PRs I would like to remove this logic and mainly rely on the
+    # fact that there will be only a single ABI when internal rules pass the
+    # values in the WORKSPACE case and in that case we can get the default
+    # version from the target platform strings. What is more when we drop
+    # WORKSPACE, we can simplify the logic in `_add_req` substantially and get
+    # rid of `default_abi` all together.
+    default_python_version = default_python_version or DEFAULT_PYTHON_VERSION
+    platforms = [
+        platform_from_str(p, python_version = default_python_version)
+        for p in platforms
+    ]
+
+    abis = sorted({p.abi: True for p in platforms if p.abi})
+    if default_python_version and len(abis) > 1:
+        _, _, minor_version = default_python_version.partition(".")
+        minor_version, _, _ = minor_version.partition(".")
+        default_abi = "cp3" + minor_version
+    elif len(abis) > 1:
+        fail(
+            "all python versions need to be specified explicitly with the default_python_version, got: {}, {}".format(platforms, default_python_version),
+        )
+    else:
+        default_abi = None
+
     reqs = sorted(
         [requirement(r) for r in requires_dist],
         key = lambda x: "{}:{}:".format(x.name, sorted(x.extras), x.marker),
@@ -61,29 +93,11 @@ def deps(name, *, requires_dist, platforms = [], extras = [], host_python_versio
     name = normalize_name(name)
     want_extras = _resolve_extras(name, reqs, extras)
 
-    # drop self edges
-    reqs = [r for r in reqs if r.name != name]
-
-    platforms = [
-        platform_from_str(p, python_version = host_python_version)
-        for p in platforms
-    ] or [
-        platform_from_str("", python_version = host_python_version),
-    ]
-
-    abis = sorted({p.abi: True for p in platforms if p.abi})
-    if host_python_version and len(abis) > 1:
-        _, _, minor_version = host_python_version.partition(".")
-        minor_version, _, _ = minor_version.partition(".")
-        default_abi = "cp3" + minor_version
-    elif len(abis) > 1:
-        fail(
-            "all python versions need to be specified explicitly, got: {}".format(platforms),
-        )
-    else:
-        default_abi = None
-
     for req in reqs:
+        if req.name == name:
+            # drop self edges
+            continue
+
         _add_req(
             deps,
             deps_select,
@@ -280,11 +294,6 @@ def _add_req(deps, deps_select, req, *, extras, platforms, default_abi = None):
         _add(deps, deps_select, req.name, None)
         return
 
-    # NOTE @aignas 2023-12-08: in order to have reasonable select statements
-    # we do have to have some parsing of the markers, so it begs the question
-    # if packaging should be reimplemented in Starlark to have the best solution
-    # for now we will implement it in Python and see what the best parsing result
-    # can be before making this decision.
     match_os = len([
         tag
         for tag in [
