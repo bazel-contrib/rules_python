@@ -34,6 +34,12 @@ For more documentation, see the API docs under {obj}`@rules_python//python:pip.b
 
 Once you generate this fully specified list of requirements, you can install the requirements with the instructions in [Installing third party packages](#installing-third-party-packages).
 
+:::{warning}
+If you're specifying dependencies in `pyproject.toml`, make sure to include the `[build-system]` configuration, with pinned dependencies. `compile_pip_requirements` will use the build system specified to read your project's metadata, and you might see non-hermetic behavior if you don't pin the build system.
+
+Not specifying `[build-system]` at all will result in using a default `[build-system]` configuration, which uses unpinned versions ([ref](https://peps.python.org/pep-0518/#build-system-table)).
+:::
+
 {#installing-third-party-packages}
 ## Installing third party packages
 
