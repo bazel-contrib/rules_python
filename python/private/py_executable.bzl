@@ -741,6 +741,14 @@ def _create_stage2_bootstrap(
         main_py_path = "{}/{}".format(ctx.workspace_name, main_py.short_path)
     else:
         main_py_path = ""
+
+    # The stage2 bootstrap uses the venv site-packages location to fix up issues
+    # that occur when the toolchain doesn't support the build-time venv.
+    if venv and not runtime.supports_build_time_venv:
+        venv_rel_site_packages = venv.venv_site_packages
+    else:
+        venv_rel_site_packages = ""
+
     ctx.actions.expand_template(
         template = template,
         output = output,
