@@ -24,6 +24,8 @@ from typing import List, Optional, Tuple
 
 import click
 import piptools.writer as piptools_writer
+from pip._internal.exceptions import DistributionNotFound
+from pip._vendor.resolvelib.resolvers import ResolutionImpossible
 from piptools.scripts.compile import cli
 
 from python.runfiles import runfiles
@@ -203,6 +205,7 @@ def main(
         requirements_file_relative_path.write_text(content)
     else:
         print("Checking " + requirements_file)
+        sys.stdout.flush()
         _run_pip_compile()
         golden = open(_locate(bazel_runfiles, requirements_file)).readlines()
         out = open(requirements_out).readlines()
@@ -225,6 +228,14 @@ def run_pip_compile(
 ) -> None:
     try:
         cli(args, standalone_mode=False)
+    except DistributionNotFound as e:
+        if isinstance(e.__cause__, ResolutionImpossible):
+            # pip logs an informative error to stderr already
+            # just render the error and exit
+            print(e)
+            sys.exit(1)
+        else:
+            raise
     except SystemExit as e:
         if e.code == 0:
             return  # shouldn't happen, but just in case
