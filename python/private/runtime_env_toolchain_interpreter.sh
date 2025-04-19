@@ -53,5 +53,29 @@ documentation for py_runtime_pair \
 (https://github.com/bazel-contrib/rules_python/blob/master/docs/python.md#py_runtime_pair)."
 fi
 
-exec "$PYTHON_BIN" "$@"
+# Because this is a wrapper script that invokes Python, it prevents Python from
+# detecting virtualenvs like normal (i.e. using the venv symlink to find the
+# real interpreter). To work around this, we have to manually detect the venv,
+# then trick the interpreter into understanding we're in a virtual env.
+self_dir=$(dirname "$0")
+if [ -e "$self_dir/pyvenv.cfg" ] || [ -e "$self_dir/../pyvenv.cfg" ]; then
+  case "$0" in
+    /*)
+      venv_bin="$0"
+      ;;
+    *)
+      venv_bin="$PWD/$0"
+      ;;
+  esac
 
+  # PYTHONEXECUTABLE is also used because `exec -a` doesn't fully trick the
+  # pyenv wrappers.
+  # NOTE: The PYTHONEXECUTABLE envvar only works for non-Mac starting in Python 3.11
+  export PYTHONEXECUTABLE="$venv_bin"
+  # Python looks at argv[0] to determine sys.executable, so use exec -a
+  # to make it think it's the venv's binary, not the actual one invoked.
+  # NOTE: exec -a isn't strictly posix-compatible, but very widespread
+  exec -a "$venv_bin" "$PYTHON_BIN" "$@"
+else
+  exec "$PYTHON_BIN" "$@"
+fi

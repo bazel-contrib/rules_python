@@ -22,6 +22,7 @@ data = {
     "micro": sys.version_info.micro,
     "include": sysconfig.get_path("include"),
     "implementation_name": sys.implementation.name,
+    "base_executable": sys._base_executable,
 }
 
 config_vars = [

@@ -32,6 +32,10 @@ MAIN_PATH = "%main%"
 # Module name to execute. Empty if MAIN is used.
 MAIN_MODULE = "%main_module%"
 
+# venv-relative path to the expected location of the binary's site-packages
+# directory.
+VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
+
 # ===== Template substitutions end =====
 
 
@@ -364,6 +368,21 @@ def main():
     print_verbose("initial cwd:", os.getcwd())
     print_verbose("initial environ:", mapping=os.environ)
     print_verbose("initial sys.path:", values=sys.path)
+
+    site_packages = os.path.join(sys.prefix, VENV_SITE_PACKAGES)
+    if site_packages not in sys.path and os.path.exists(site_packages):
+        # NOTE: if this happens, it likely means we're running with a different
+        # Python version than was built with. Things may or may not work.
+        # Such a situation is likely due to the runtime_env toolchain, or some
+        # toolchain configuration. In any case, this better matches how the
+        # previous bootstrap=system_python bootstrap worked (using PYTHONPATH,
+        # which isn't version-specific).
+        print_verbose(
+            f"sys.path missing expected site-packages: adding {site_packages}"
+        )
+        import site
+
+        site.addsitedir(site_packages)
 
     main_rel_path = None
     # todo: things happen to work because find_runfiles_root

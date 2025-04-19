@@ -21,7 +21,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from rules_python.python.runfiles import runfiles
+from python.runfiles import runfiles
 
 
 class PipRepositoryAnnotationsTest(unittest.TestCase):
@@ -34,11 +34,7 @@ class PipRepositoryAnnotationsTest(unittest.TestCase):
 
     def test_build_content_and_data(self):
         r = runfiles.Create()
-        rpath = r.Rlocation(
-            "pip_repository_annotations_example/external/{}/generated_file.txt".format(
-                self.wheel_pkg_dir()
-            )
-        )
+        rpath = r.Rlocation("{}/generated_file.txt".format(self.wheel_pkg_dir()))
         generated_file = Path(rpath)
         self.assertTrue(generated_file.exists())
 
@@ -47,11 +43,7 @@ class PipRepositoryAnnotationsTest(unittest.TestCase):
 
     def test_copy_files(self):
         r = runfiles.Create()
-        rpath = r.Rlocation(
-            "pip_repository_annotations_example/external/{}/copied_content/file.txt".format(
-                self.wheel_pkg_dir()
-            )
-        )
+        rpath = r.Rlocation("{}/copied_content/file.txt".format(self.wheel_pkg_dir()))
         copied_file = Path(rpath)
         self.assertTrue(copied_file.exists())
 
@@ -61,7 +53,7 @@ class PipRepositoryAnnotationsTest(unittest.TestCase):
     def test_copy_executables(self):
         r = runfiles.Create()
         rpath = r.Rlocation(
-            "pip_repository_annotations_example/external/{}/copied_content/executable{}".format(
+            "{}/copied_content/executable{}".format(
                 self.wheel_pkg_dir(),
                 ".exe" if platform.system() == "windows" else ".py",
             )
@@ -82,7 +74,7 @@ class PipRepositoryAnnotationsTest(unittest.TestCase):
         current_wheel_version = "0.38.4"
 
         r = runfiles.Create()
-        dist_info_dir = "pip_repository_annotations_example/external/{}/site-packages/wheel-{}.dist-info".format(
+        dist_info_dir = "{}/site-packages/wheel-{}.dist-info".format(
             self.wheel_pkg_dir(),
             current_wheel_version,
         )
@@ -113,11 +105,8 @@ class PipRepositoryAnnotationsTest(unittest.TestCase):
         # This test verifies that annotations work correctly for pip packages with extras
         # specified, in this case requests[security].
         r = runfiles.Create()
-        rpath = r.Rlocation(
-            "pip_repository_annotations_example/external/{}/generated_file.txt".format(
-                self.requests_pkg_dir()
-            )
-        )
+        path = "{}/generated_file.txt".format(self.requests_pkg_dir())
+        rpath = r.Rlocation(path)
         generated_file = Path(rpath)
         self.assertTrue(generated_file.exists())
 

@@ -84,6 +84,20 @@ def _local_runtime_repo_impl(rctx):
     info = json.decode(exec_result.stdout)
     logger.info(lambda: _format_get_info_result(info))
 
+    # We use base_executable because we want the path within a Python
+    # installation directory ("PYTHONHOME"). The problems with sys.executable
+    # are:
+    # * If we're in an activated venv, then we don't want the venv's
+    #   `bin/python3` path to be used -- it isn't an actual Python installation.
+    # * If sys.executable is a wrapper (e.g. pyenv), then (1) it may not be
+    #   located within an actual Python installation directory, and (2) it
+    #   can interfer with Python recognizing when it's within a venv.
+    #
+    # In some cases, it may be a symlink (usually e.g. `python3->python3.12`),
+    # but we don't realpath() it to respect what it has decided is the
+    # appropriate path.
+    interpreter_path = info["base_executable"]
+
     # NOTE: Keep in sync with recursive glob in define_local_runtime_toolchain_impl
     repo_utils.watch_tree(rctx, rctx.path(info["include"]))
 

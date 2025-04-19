@@ -17,4 +17,6 @@ load("@rules_python//python:py_test.bzl", "py_test")
 py_test(
     name = "test",
     srcs = ["test.py"],
+    # Make this test better respect pyenv
+    env_inherit = ["PYENV_VERSION"],
 )
