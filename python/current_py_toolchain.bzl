@@ -52,7 +52,7 @@ current_py_toolchain = rule(
     happened, to a rule which expects a concrete implementation of a toolchain, rather than a
     toolchain_type which could be resolved to that toolchain.
 
-    :::{versionchanged} VERSION_NEXT_FEATURE
+    :::{versionchanged} 1.4.0
     From now on, we also expose `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)` which are runfiles
     locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
     :::

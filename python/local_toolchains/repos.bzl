@@ -1,6 +1,6 @@
 """Rules/macros for repository phase for local toolchains.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """
 

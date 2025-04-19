@@ -695,7 +695,7 @@ matches the {attr}`python_version` attribute of a toolchain, this
 toolchain is the default version. If this attribute is set, the
 {attr}`is_default` attribute of the toolchain is ignored.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """,
         ),
@@ -707,7 +707,7 @@ If the string matches the {attr}`python_version` attribute of a
 toolchain, this toolchain is the default version. If this attribute is
 set, the {attr}`is_default` attribute of the toolchain is ignored.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """,
         ),
@@ -720,7 +720,7 @@ of the file match the {attr}`python_version` attribute of a toolchain,
 this toolchain is the default version. If this attribute is set, the
 {attr}`is_default` attribute of the toolchain is ignored.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """,
         ),
@@ -813,7 +813,7 @@ this to `False`.
             doc = """\
 Whether the toolchain is the default version.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.4.0
 This setting is ignored if the default version is set using the `defaults`
 tag class.
 :::

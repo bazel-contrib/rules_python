@@ -168,7 +168,7 @@ values from further way dependencies, such as forcing symlinks to point to
 specific paths or preventing symlinks from being created.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """,
         "transitive_implicit_pyc_files": """
