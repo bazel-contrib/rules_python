@@ -79,7 +79,8 @@ def define_hermetic_runtime_toolchain_impl(
                 # During pyc and pyo creation, temp files named *.pyc.NNN and *.pyo.NNN are created.
                 "**/__pycache__/*.pyc.*",
                 "**/__pycache__/*.pyo.*",
-                # File names with spaces should also be ignored.
+                # Ignore files with spaces because, while Bazel supports them,
+                # the runfiles manifest format doesn't yet
                 "**/* *",
             ] + glob_excludes.version_dependent_exclusions() + extra_files_glob_exclude,
         ),
