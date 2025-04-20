@@ -112,7 +112,6 @@ END_UNRELEASED_TEMPLATE
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
 
-
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
 {#1-4-0-fixed}
