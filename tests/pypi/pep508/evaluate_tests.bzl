@@ -148,6 +148,8 @@ def _logical_expression_tests(env):
         # expr
         "os_name == 'fo'": False,
         "(os_name == 'fo')": False,
+        "((os_name == 'fo'))": False,
+        "((os_name == 'foo'))": True,
         "not (os_name == 'fo')": True,
 
         # and

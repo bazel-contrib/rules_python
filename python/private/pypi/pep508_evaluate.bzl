@@ -138,7 +138,7 @@ def evaluate(marker, *, env, strict = True, **kwargs):
     """
     tokens = tokenize(marker)
 
-    ast = _new_expr(**kwargs)
+    ast = _new_expr(marker = marker, **kwargs)
     for _ in range(len(tokens) * 2):
         if not tokens:
             break
@@ -219,17 +219,20 @@ def _not_fn(x):
         return not x
 
 def _new_expr(
+        *,
+        marker,
         and_fn = _and_fn,
         or_fn = _or_fn,
         not_fn = _not_fn):
     # buildifier: disable=uninitialized
     self = struct(
+        marker = marker,
         tree = [],
         parse = lambda **kwargs: _parse(self, **kwargs),
         value = lambda: _value(self),
         # This is a way for us to have a handle to the currently constructed
         # expression tree branch.
-        current = lambda: self._current[0] if self._current else None,
+        current = lambda: self._current[-1] if self._current else None,
         _current = [],
         _and = and_fn,
         _or = or_fn,
@@ -313,6 +316,7 @@ def marker_expr(left, op, right, *, env, strict = True):
             #
             # The following normalizes the values
             left = env.get(_ENV_ALIASES, {}).get(var_name, {}).get(left, left)
+
     else:
         var_name = left
         left = env[left]
@@ -392,12 +396,15 @@ def _append(self, value):
         current.tree.append(value)
     elif hasattr(current.tree[-1], "append"):
         current.tree[-1].append(value)
-    else:
+    elif hasattr(current.tree, "_append"):
         current.tree._append(value)
+    else:
+        fail("Cannot evaluate '{}' in '{}', current: {}".format(value, self.marker, current))
 
 def _open_parenthesis(self):
     """Add an extra node into the tree to perform evaluate inside parenthesis."""
     self._current.append(_new_expr(
+        marker = self.marker,
         and_fn = self._and,
         or_fn = self._or,
         not_fn = self._not,

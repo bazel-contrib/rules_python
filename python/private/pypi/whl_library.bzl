@@ -21,9 +21,13 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(":parse_requirements.bzl", "host_platform")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
+load(":pep508_deps.bzl", "deps")
+load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
+load(":whl_metadata.bzl", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
@@ -109,6 +113,10 @@ def _get_toolchain_unix_cflags(rctx, python_interpreter, logger = None):
         op = "GetPythonVersionForUnixCflags",
         python = python_interpreter,
         arguments = [
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
             "-c",
             "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}', end='')",
         ],
@@ -357,7 +365,7 @@ def _whl_library_impl(rctx):
         arguments = args + [
             "--whl-file",
             whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
+        ],
         srcs = rctx.attr._python_srcs,
         environment = environment,
         quiet = rctx.attr.quiet,
@@ -392,17 +400,60 @@ def _whl_library_impl(rctx):
         )
         entry_points[entry_point_without_py] = entry_point_script_name
 
+    # TODO @aignas 2025-04-04: move this to whl_library_targets.bzl to have
+    # this in the analysis phase.
+    #
+    # This means that whl_library_targets will have to accept the following args:
+    # * name - the name of the package in the METADATA.
+    # * requires_dist - the list of METADATA Requires-Dist.
+    # * platforms - the list of target platforms. The target_platforms
+    #   should come from the hub repo via a 'load' statement so that they don't
+    #   need to be passed as an argument to `whl_library`.
+    # * extras - the list of required extras. This comes from the
+    #   `rctx.attr.requirement` for now. In the future the required extras could
+    #   stay in the hub repo, where we calculate the extra aliases that we need
+    #   to create automatically and this way expose the targets for the specific
+    #   extras. The first step will be to generate a target per extra for the
+    #   `py_library` and `filegroup`. Maybe we need to have a special provider
+    #   or an output group so that we can return the `whl` file from the
+    #   `py_library` target? filegroup can use output groups to expose files.
+    # * host_python_version/versons - the list of python versions to support
+    #   should come from the hub, similar to how the target platforms are specified.
+    #
+    # Extra things that we should move at the same time:
+    # * group_name, group_deps - this info can stay in the hub repository so that
+    #   it is piped at the analysis time and changing the requirement groups does
+    #   cause to re-fetch the deps.
+    python_version = metadata["python_version"]
+    metadata = whl_metadata(
+        install_dir = rctx.path("site-packages"),
+        read_fn = rctx.read,
+        logger = logger,
+    )
+
+    # TODO @aignas 2025-04-09: this will later be removed when loaded through the hub
+    major_minor, _, _ = python_version.rpartition(".")
+    package_deps = deps(
+        name = metadata.name,
+        requires_dist = metadata.requires_dist,
+        platforms = target_platforms or [
+            "cp{}_{}".format(major_minor.replace(".", ""), host_platform(rctx)),
+        ],
+        extras = requirement(rctx.attr.requirement).extras,
+        host_python_version = python_version,
+    )
+
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
         dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-        dependencies = metadata["deps"],
-        dependencies_by_platform = metadata["deps_by_platform"],
+        dependencies = package_deps.deps,
+        dependencies_by_platform = package_deps.deps_select,
         group_name = rctx.attr.group_name,
         group_deps = rctx.attr.group_deps,
         data_exclude = rctx.attr.pip_data_exclude,
         tags = [
-            "pypi_name=" + metadata["name"],
-            "pypi_version=" + metadata["version"],
+            "pypi_name=" + metadata.name,
+            "pypi_version=" + metadata.version,
         ],
         entry_points = entry_points,
         annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
@@ -466,8 +517,10 @@ and the target that we need respectively.
         doc = "Name of the group, if any.",
     ),
     "repo": attr.string(
-        mandatory = True,
-        doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",
+        doc = """\
+Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.
+Only used in WORKSPACE when the {attr}`dep_template` is not set.
+""",
     ),
     "repo_prefix": attr.string(
         doc = """
