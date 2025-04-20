@@ -1854,6 +1854,8 @@ def create_base_executable_rule():
     """
     return create_executable_rule_builder().build()
 
+_MaybeBuiltinPyInfo = [BuiltinPyInfo] if BuiltinPyInfo != None else []
+
 # NOTE: Exported publicly
 def create_executable_rule_builder(implementation, **kwargs):
     """Create a rule builder for an executable Python program.
@@ -1877,7 +1879,7 @@ def create_executable_rule_builder(implementation, **kwargs):
         attrs = EXECUTABLE_ATTRS,
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),  # Mutable copy
         fragments = ["py", "bazel_py"],
-        provides = [PyExecutableInfo],
+        provides = [PyExecutableInfo, PyInfo] + _MaybeBuiltinPyInfo,
         toolchains = [
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
