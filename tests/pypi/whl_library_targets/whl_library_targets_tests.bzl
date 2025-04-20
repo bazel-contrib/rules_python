@@ -197,7 +197,7 @@ def _test_whl_and_library_deps_from_requires(env):
             "bar-baz",
         ],
         target_platforms = ["cp38_linux_x86_64"],
-        python_version = "3.8.1",
+        default_python_version = "3.8.1",
         data_exclude = [],
         # Overrides for testing
         filegroups = {},
