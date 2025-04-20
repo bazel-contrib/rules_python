@@ -21,7 +21,7 @@ A brief description of the categories of changes:
   `(docs)`.
 
 <!--
-Unreleased changes template.
+BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0}
 ## Unreleased
@@ -43,15 +43,17 @@ Unreleased changes template.
 {#v0-0-0-removed}
 ### Removed
 * Nothing removed.
+
+END_UNRELEASED_TEMPLATE
 -->
 
 
-{#v0-0-0}
-## Unreleased
+{#1-4-0}
+## [1.4.0] - 2025-04-19
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[1.4.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.0
 
-{#v0-0-0-changed}
+{#1-4-0-changed}
 ### Changed
 * (toolchain) The `exec` configuration toolchain now has the forwarded
   `exec_interpreter` now also forwards the `ToolchainInfo` provider. This is
@@ -88,7 +90,7 @@ Unreleased changes template.
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
-{#v0-0-0-fixed}
+{#1-4-0-fixed}
 ### Fixed
 * (pypi) Platform specific extras are now correctly handled when using
   universal lock files with environment markers. Fixes [#2690](https://github.com/bazel-contrib/rules_python/pull/2690).
@@ -112,7 +114,7 @@ Unreleased changes template.
     not venv interpreter.
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
 
-{#v0-0-0-added}
+{#1-4-0-added}
 ### Added
 * (pypi) From now on `sha256` values in the `requirements.txt` is no longer
   mandatory when enabling {attr}`pip.parse.experimental_index_url` feature.
@@ -143,13 +145,13 @@ Unreleased changes template.
   locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
 
 
-{#v0-0-0-removed}
+{#1-4-0-removed}
 ### Removed
 * Nothing removed.
 
 
 {#v1-3-0}
-## Unreleased
+## [1.3.0] - 2025-03-27
 
 [1.3.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.3.0
 

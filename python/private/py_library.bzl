@@ -94,7 +94,7 @@ to a consumer have precedence. See {obj}`PyInfo.site_packages_symlinks` for
 more information.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.4.0
 :::
 """,
         ),
