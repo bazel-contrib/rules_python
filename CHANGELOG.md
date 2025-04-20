@@ -47,6 +47,28 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* (rules) PyInfo provider is now advertised by py_test, py_binary, and py_library;
+  this allows aspects using required_providers to function correctly.
+  ([#2506](https://github.com/bazel-contrib/rules_python/issues/2506)).
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
 
 {#1-4-0}
 ## [1.4.0] - 2025-04-19
