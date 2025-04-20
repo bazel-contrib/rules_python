@@ -99,19 +99,10 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], hos
 
 def _platform_str(self):
     if self.abi == None:
-        if not self.os and not self.arch:
-            return "//conditions:default"
-        elif not self.arch:
-            fail("remove")
-        else:
-            return "{}_{}".format(self.os, self.arch)
+        return "{}_{}".format(self.os, self.arch)
 
-    minor_version = self.abi[3:]
-    if self.arch == None and self.os == None:
-        fail("remove")
-
-    return "cp3{}_{}_{}".format(
-        minor_version,
+    return "{}_{}_{}".format(
+        self.abi,
         self.os or "anyos",
         self.arch or "anyarch",
     )

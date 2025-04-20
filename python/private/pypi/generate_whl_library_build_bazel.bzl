@@ -45,11 +45,13 @@ whl_library_targets_from_requires(
 def generate_whl_library_build_bazel(
         *,
         annotation = None,
+        python_version = None,
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
     Args:
         annotation: The annotation for the build file.
+        python_version: The python version to use to parse the METADATA.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -78,6 +80,8 @@ def generate_whl_library_build_bazel(
         kwargs["srcs_exclude"] = annotation.srcs_exclude_glob
         if annotation.additive_build_content:
             additional_content.append(annotation.additive_build_content)
+    if python_version:
+        kwargs["python_version"] = repr(python_version)
 
     contents = "\n".join(
         [
