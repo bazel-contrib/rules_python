@@ -15,6 +15,7 @@
 """This module is for implementing PEP508 compliant METADATA deps parsing.
 """
 
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -51,6 +52,7 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], hos
     # drop self edges
     excludes = [name] + [normalize_name(x) for x in excludes]
 
+    host_python_version = host_python_version or DEFAULT_PYTHON_VERSION
     platforms = [
         platform_from_str(p, python_version = host_python_version)
         for p in platforms
