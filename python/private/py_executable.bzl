@@ -759,7 +759,7 @@ def _create_stage2_bootstrap(
             "%main%": main_py_path,
             "%main_module%": ctx.attr.main_module,
             "%target%": str(ctx.label),
-            "%venv_rel_site_packages%": venv.venv_site_packages if venv else "",
+            "%venv_rel_site_packages%": venv_rel_site_packages,
             "%workspace_name%": ctx.workspace_name,
         },
         is_executable = True,
