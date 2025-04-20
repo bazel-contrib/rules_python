@@ -19,9 +19,9 @@ local_path_override(
     path = "../../..",
 )
 
-local_runtime_repo = use_repo_rule("@rules_python//python/private:local_runtime_repo.bzl", "local_runtime_repo")
+local_runtime_repo = use_repo_rule("@rules_python//python/local_toolchains:repos.bzl", "local_runtime_repo")
 
-local_runtime_toolchains_repo = use_repo_rule("@rules_python//python/private:local_runtime_toolchains_repo.bzl", "local_runtime_toolchains_repo")
+local_runtime_toolchains_repo = use_repo_rule("@rules_python//python/local_toolchains:repos.bzl", "local_runtime_toolchains_repo")
 
 local_runtime_repo(
     name = "local_python3",

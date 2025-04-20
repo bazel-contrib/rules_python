@@ -33,6 +33,9 @@ publish_deps(
         "requirements_universal.txt": "",  # universal
         "requirements_windows.txt": "windows",
     },
-    upgrade = True,
+    args = [
+        "--emit-index-url",
+        "--upgrade",  # always upgrade
+    ],
     visibility = ["//private:__pkg__"],
 )

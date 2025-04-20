@@ -85,6 +85,7 @@ bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.0.1", dev_dependency = True)
+bazel_dep(name = "other", version = "0", dev_dependency = True)
 
 # Extra gazelle plugin deps so that WORKSPACE.bzlmod can continue including it for e2e tests.
 # We use `WORKSPACE.bzlmod` because it is impossible to have dev-only local overrides.
@@ -104,6 +105,11 @@ use_repo(internal_dev_deps, "buildkite_config", "wheel_for_testing")
 local_path_override(
     module_name = "rules_python_gazelle_plugin",
     path = "gazelle",
+)
+
+local_path_override(
+    module_name = "other",
+    path = "tests/modules/other",
 )
 
 dev_python = use_extension(

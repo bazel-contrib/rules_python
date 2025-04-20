@@ -25,11 +25,23 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
+def _test_simple_no_sha(env):
+    got = whl_repo_name("foo-1.2.3-py3-none-any.whl", "")
+    env.expect.that_str(got).equals("foo_1_2_3_py3_none_any")
+
+_tests.append(_test_simple_no_sha)
+
 def _test_sdist(env):
     got = whl_repo_name("foo-1.2.3.tar.gz", "deadbeef000deadbeef")
     env.expect.that_str(got).equals("foo_sdist_deadbeef")
 
 _tests.append(_test_sdist)
+
+def _test_sdist_no_sha(env):
+    got = whl_repo_name("foo-1.2.3.tar.gz", "")
+    env.expect.that_str(got).equals("foo_1_2_3")
+
+_tests.append(_test_sdist_no_sha)
 
 def _test_platform_whl(env):
     got = whl_repo_name(

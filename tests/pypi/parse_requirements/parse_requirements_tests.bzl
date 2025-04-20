@@ -62,6 +62,10 @@ foo[extra]==0.0.1 --hash=sha256:deadbeef
 foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadbeef
 """,
+        "requirements_optional_hash": """
+foo==0.0.4 @ https://example.org/foo-0.0.4.whl
+foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef
+""",
         "requirements_osx": """\
 foo==0.0.3 --hash=sha256:deadbaaf
 """,
@@ -454,7 +458,7 @@ def _test_select_requirement_none_platform(env):
 _tests.append(_test_select_requirement_none_platform)
 
 def _test_env_marker_resolution(env):
-    def _mock_eval_markers(_, input):
+    def _mock_eval_markers(input):
         ret = {
             "foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef": ["cp311_windows_x86_64"],
         }
@@ -562,6 +566,62 @@ def _test_different_package_version(env):
     })
 
 _tests.append(_test_different_package_version)
+
+def _test_optional_hash(env):
+    got = parse_requirements(
+        ctx = _mock_ctx(),
+        requirements_by_platform = {
+            "requirements_optional_hash": ["linux_x86_64"],
+        },
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "foo": [
+            struct(
+                distribution = "foo",
+                extra_pip_args = [],
+                sdist = None,
+                is_exposed = True,
+                srcs = struct(
+                    marker = "",
+                    requirement = "foo==0.0.4 @ https://example.org/foo-0.0.4.whl",
+                    requirement_line = "foo==0.0.4 @ https://example.org/foo-0.0.4.whl",
+                    shas = [],
+                    version = "0.0.4",
+                    url = "https://example.org/foo-0.0.4.whl",
+                ),
+                target_platforms = ["linux_x86_64"],
+                whls = [struct(
+                    url = "https://example.org/foo-0.0.4.whl",
+                    filename = "foo-0.0.4.whl",
+                    sha256 = "",
+                    yanked = False,
+                )],
+            ),
+            struct(
+                distribution = "foo",
+                extra_pip_args = [],
+                sdist = None,
+                is_exposed = True,
+                srcs = struct(
+                    marker = "",
+                    requirement = "foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef",
+                    requirement_line = "foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef",
+                    shas = ["deadbeef"],
+                    version = "0.0.5",
+                    url = "https://example.org/foo-0.0.5.whl",
+                ),
+                target_platforms = ["linux_x86_64"],
+                whls = [struct(
+                    url = "https://example.org/foo-0.0.5.whl",
+                    filename = "foo-0.0.5.whl",
+                    sha256 = "deadbeef",
+                    yanked = False,
+                )],
+            ),
+        ],
+    })
+
+_tests.append(_test_optional_hash)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.

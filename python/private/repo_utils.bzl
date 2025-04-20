@@ -56,6 +56,7 @@ def _logger(mrctx, name = None):
 
     verbosity = {
         "DEBUG": 2,
+        "FAIL": -1,
         "INFO": 1,
         "TRACE": 3,
     }.get(verbosity_level, 0)

@@ -17,8 +17,6 @@ load(":util.bzl", "define_bazel_6_provider")
 
 DEFAULT_STUB_SHEBANG = "#!/usr/bin/env python3"
 
-DEFAULT_BOOTSTRAP_TEMPLATE = Label("//python/private:bootstrap_template")
-
 _PYTHON_VERSION_VALUES = ["PY2", "PY3"]
 
 def _optional_int(value):

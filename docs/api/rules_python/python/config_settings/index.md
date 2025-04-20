@@ -46,7 +46,7 @@ of builtin, known versions.
 
 If you need to match a version that isn't present, then you have two options:
 1. Manually define a `config_setting` and have it match {obj}`--python_version`
-   or {ob}`python_version_major_minor`. This works best when you don't control the
+   or {obj}`python_version_major_minor`. This works best when you don't control the
    root module, or don't want to rely on the MODULE.bazel configuration. Such
    a config settings would look like:
    ```
@@ -212,6 +212,23 @@ Values:
 :::
 ::::
 
+
+::::
+
+:::{flag} venvs_site_packages
+
+Determines if libraries use a site-packages layout for their files.
+
+Note this flag only affects PyPI dependencies of `--bootstrap_impl=script` binaries
+
+:::{include} /_includes/experimental_api.md
+:::
+
+
+Values:
+* `no` (default): Make libraries importable by adding to `sys.path`
+* `yes`: Make libraries importable by creating paths in a binary's site-packages directory.
+::::
 
 ::::{bzl:flag} bootstrap_impl
 Determine how programs implement their startup process.

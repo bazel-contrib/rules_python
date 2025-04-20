@@ -13,6 +13,15 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+
+exports_files(
+    srcs = [
+        "lock_copier.py",
+    ],
+    # only because this is used from a macro to template
+    visibility = ["//visibility:public"],
+)
 
 filegroup(
     name = "distribution",
@@ -31,9 +40,11 @@ bzl_library(
     srcs = ["lock.bzl"],
     visibility = ["//python/uv:__subpackages__"],
     deps = [
+        ":toolchain_types_bzl",
         "//python:py_binary_bzl",
         "//python/private:bzlmod_enabled_bzl",
-        "@bazel_skylib//rules:write_file",
+        "//python/private:toolchain_types_bzl",
+        "@bazel_skylib//lib:shell",
     ],
 )
 
@@ -80,4 +91,14 @@ bzl_library(
     deps = [
         "//python/private:text_util_bzl",
     ],
+)
+
+filegroup(
+    name = "lock_template",
+    srcs = select({
+        "@platforms//os:windows": ["lock.bat"],
+        "//conditions:default": ["lock.sh"],
+    }),
+    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
+    visibility = ["//visibility:public"],
 )

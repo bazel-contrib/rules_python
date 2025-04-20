@@ -30,21 +30,8 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
+load(":pep508_requirement.bzl", "requirement")
 load(":whl_target_platforms.bzl", "select_whls")
-
-def _extract_version(entry):
-    """Extract the version part from the requirement string.
-
-
-    Args:
-        entry: {type}`str` The requirement string.
-    """
-    version_start = entry.find("==")
-    if version_start != -1:
-        # Extract everything after '==' until the next space or end of the string
-        version, _, _ = entry[version_start + 2:].partition(" ")
-        return version
-    return None
 
 def parse_requirements(
         ctx,
@@ -67,10 +54,10 @@ def parse_requirements(
             of the distribution URLs from a PyPI index. Accepts ctx and
             distribution names to query.
         evaluate_markers: A function to use to evaluate the requirements.
-            Accepts the ctx and a dict where keys are requirement lines to
-            evaluate against the platforms stored as values in the input dict.
-            Returns the same dict, but with values being platforms that are
-            compatible with the requirements line.
+            Accepts a dict where keys are requirement lines to evaluate against
+            the platforms stored as values in the input dict. Returns the same
+            dict, but with values being platforms that are compatible with the
+            requirements line.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
 
     Returns:
@@ -93,7 +80,7 @@ def parse_requirements(
 
         The second element is extra_pip_args should be passed to `whl_library`.
     """
-    evaluate_markers = evaluate_markers or (lambda *_: {})
+    evaluate_markers = evaluate_markers or (lambda _: {})
     options = {}
     requirements = {}
     for file, plats in requirements_by_platform.items():
@@ -111,19 +98,20 @@ def parse_requirements(
         # The requirement lines might have duplicate names because lines for extras
         # are returned as just the base package name. e.g., `foo[bar]` results
         # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
-        requirements_dict = {
-            (normalize_name(entry[0]), _extract_version(entry[1])): entry
-            for entry in sorted(
-                parse_result.requirements,
-                # Get the longest match and fallback to original WORKSPACE sorting,
-                # which should get us the entry with most extras.
-                #
-                # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
-                # entry with all aggregated extras, but it is unclear if we
-                # should do this now.
-                key = lambda x: (len(x[1].partition("==")[0]), x),
-            )
-        }.values()
+        # Lines with different markers are not condidered duplicates.
+        requirements_dict = {}
+        for entry in sorted(
+            parse_result.requirements,
+            # Get the longest match and fallback to original WORKSPACE sorting,
+            # which should get us the entry with most extras.
+            #
+            # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
+            # entry with all aggregated extras, but it is unclear if we
+            # should do this now.
+            key = lambda x: (len(x[1].partition("==")[0]), x),
+        ):
+            req = requirement(entry[1])
+            requirements_dict[(req.name, req.version, req.marker)] = entry
 
         tokenized_options = []
         for opt in parse_result.options:
@@ -132,7 +120,7 @@ def parse_requirements(
 
         pip_args = tokenized_options + extra_pip_args
         for plat in plats:
-            requirements[plat] = requirements_dict
+            requirements[plat] = requirements_dict.values()
             options[plat] = pip_args
 
     requirements_by_platform = {}
@@ -168,7 +156,7 @@ def parse_requirements(
     # to do, we could use Python to parse the requirement lines and infer the
     # URL of the files to download things from. This should be important for
     # VCS package references.
-    env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
+    env_marker_target_platforms = evaluate_markers(reqs_with_env_markers)
     if logger:
         logger.debug(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
             reqs_with_env_markers,
@@ -184,7 +172,7 @@ def parse_requirements(
                 req.distribution: None
                 for reqs in requirements_by_platform.values()
                 for req in reqs.values()
-                if req.srcs.shas
+                if not req.srcs.url
             }),
         )
 
@@ -297,6 +285,12 @@ def _add_dists(*, requirement, index_urls, logger = None):
     if requirement.srcs.url:
         url = requirement.srcs.url
         _, _, filename = url.rpartition("/")
+        if "." not in filename:
+            # detected filename has no extension, it might be an sdist ref
+            # TODO @aignas 2025-04-03: should be handled if the following is fixed:
+            # https://github.com/bazel-contrib/rules_python/issues/2363
+            return [], None
+
         direct_url_dist = struct(
             url = url,
             filename = filename,
@@ -315,10 +309,15 @@ def _add_dists(*, requirement, index_urls, logger = None):
     whls = []
     sdist = None
 
-    # TODO @aignas 2024-05-22: it is in theory possible to add all
-    # requirements by version instead of by sha256. This may be useful
-    # for some projects.
-    for sha256 in requirement.srcs.shas:
+    # First try to find distributions by SHA256 if provided
+    shas_to_use = requirement.srcs.shas
+    if not shas_to_use:
+        version = requirement.srcs.version
+        shas_to_use = index_urls.sha256s_by_version.get(version, [])
+        if logger:
+            logger.warn(lambda: "requirement file has been generated without hashes, will use all hashes for the given version {} that could find on the index:\n    {}".format(version, shas_to_use))
+
+    for sha256 in shas_to_use:
         # For now if the artifact is marked as yanked we just ignore it.
         #
         # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api

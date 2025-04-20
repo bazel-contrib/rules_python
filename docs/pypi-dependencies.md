@@ -386,11 +386,13 @@ This does not mean that `rules_python` is fetching the wheels eagerly, but it
 rather means that it is calling the PyPI server to get the Simple API response
 to get the list of all available source and wheel distributions. Once it has
 got all of the available distributions, it will select the right ones depending
-on the `sha256` values in your `requirements_lock.txt` file. The compatible
-distribution URLs will be then written to the `MODULE.bazel.lock` file. Currently
-users wishing to use the lock file with `rules_python` with this feature have
-to set an environment variable `RULES_PYTHON_OS_ARCH_LOCK_FILE=0` which will
-become default in the next release.
+on the `sha256` values in your `requirements_lock.txt` file. If `sha256` hashes
+are not present in the requirements file, we will fallback to matching by version
+specified in the lock file. The compatible distribution URLs will be then
+written to the `MODULE.bazel.lock` file. Currently users wishing to use the
+lock file with `rules_python` with this feature have to set an environment
+variable `RULES_PYTHON_OS_ARCH_LOCK_FILE=0` which will become default in the
+next release.
 
 Fetching the distribution information from the PyPI allows `rules_python` to
 know which `whl` should be used on which target platform and it will determine

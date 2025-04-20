@@ -31,11 +31,35 @@ minor/patch versions.
 See [Bazel's release support matrix](https://bazel.build/release#support-matrix)
 for what versions are the rolling, active, and prior releases.
 
+## Supported Python versions
+
+As a general rule we test all released non-EOL Python versions. Different
+interpreter versions may work but are not guaranteed. We are interested in
+staying compatible with upcoming unreleased versions, so if you see that things
+stop working, please create tickets or, more preferably, pull requests.
+
 ## Supported Platforms
 
 We only support the platforms that our continuous integration jobs run, which
-is Linux, Mac, and Windows. Code to support other platforms is allowed, but
-can only be on a best-effort basis.
+is Linux, Mac, and Windows.
+
+In order to better describe different support levels, the below acts as a rough
+guideline for different platform tiers:
+* Tier 0 - The platforms that our CI runs: `linux_x86_64`, `osx_x86_64`, `RBE linux_x86_64`.
+* Tier 1 - The platforms that are similar enough to what the CI runs: `linux_aarch64`, `osx_arm64`.
+  What is more, `windows_x86_64` is in this list as we run tests in CI but
+  developing for Windows is more challenging and features may come later to
+  this platform.
+* Tier 2 - The rest of the platforms that may have varying level of support, e.g.
+  `linux_s390x`, `linux_ppc64le`, `windows_arm64`.
+
+:::{note}
+Code to support Tier 2 platforms is allowed, but regressions will be fixed on a
+best-effort basis, so feel free to contribute by creating PRs.
+
+If you would like to provide/sponsor CI setup for a platform that is not Tier 0,
+please create a ticket or contact the maintainers on Slack.
+:::
 
 ## Compatibility Policy
 

@@ -43,6 +43,49 @@ def _to_dict(self):
         "pre_release": self.pre_release,
     }
 
+def _upper(self):
+    major = self.major
+    minor = self.minor
+    patch = self.patch
+    build = ""
+    pre_release = ""
+    version = self.str()
+
+    if patch != None:
+        minor = minor + 1
+        patch = 0
+    elif minor != None:
+        major = major + 1
+        minor = 0
+    elif minor == None:
+        major = major + 1
+
+    return _new(
+        major = major,
+        minor = minor,
+        patch = patch,
+        build = build,
+        pre_release = pre_release,
+        version = "~" + version,
+    )
+
+def _new(*, major, minor, patch, pre_release, build, version = None):
+    # buildifier: disable=uninitialized
+    self = struct(
+        major = int(major),
+        minor = None if minor == None else int(minor),
+        # NOTE: this is called `micro` in the Python interpreter versioning scheme
+        patch = None if patch == None else int(patch),
+        pre_release = pre_release,
+        build = build,
+        # buildifier: disable=uninitialized
+        key = lambda: _key(self),
+        str = lambda: version,
+        to_dict = lambda: _to_dict(self),
+        upper = lambda: _upper(self),
+    )
+    return self
+
 def semver(version):
     """Parse the semver version and return the values as a struct.
 
@@ -59,17 +102,11 @@ def semver(version):
     patch, _, build = tail.partition("+")
     patch, _, pre_release = patch.partition("-")
 
-    # buildifier: disable=uninitialized
-    self = struct(
+    return _new(
         major = int(major),
         minor = int(minor) if minor.isdigit() else None,
-        # NOTE: this is called `micro` in the Python interpreter versioning scheme
         patch = int(patch) if patch.isdigit() else None,
-        pre_release = pre_release,
         build = build,
-        # buildifier: disable=uninitialized
-        key = lambda: _key(self),
-        str = lambda: version,
-        to_dict = lambda: _to_dict(self),
+        pre_release = pre_release,
+        version = version,
     )
-    return self

@@ -24,15 +24,26 @@ When running it in an action, use `DefaultInfo.files_to_run` to ensure all its
 files are appropriately available. An exec interpreter may not be available,
 e.g. if all the exec tools are prebuilt binaries.
 
-NOTE: this interpreter is really only for use when a build tool cannot use
+:::{note}
+this interpreter is really only for use when a build tool cannot use
 the Python toolchain itself. When possible, prefeer to define a `py_binary`
 instead and use it via a `cfg=exec` attribute; this makes it much easier
 to setup the runtime environment for the binary. See also:
 `py_interpreter_program` rule.
+:::
 
-NOTE: What interpreter is used depends on the toolchain constraints. Ensure
-the proper target constraints are being applied when obtaining this from
-the toolchain.
+:::{note}
+What interpreter is used depends on the toolchain constraints. Ensure the
+proper target constraints are being applied when obtaining this from the
+toolchain.
+:::
+
+:::{warning}
+This does not work correctly in case of RBE, please use exec_runtime instead.
+
+Once https://github.com/bazelbuild/bazel/issues/23620 is resolved this warning
+may be removed.
+:::
 """,
         "precompiler": """
 :type: Target | None

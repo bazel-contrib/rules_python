@@ -15,7 +15,6 @@ python_register_multi_toolchains(
     name = "python",
     default_version = default_python_version,
     python_versions = [
-        "3.8",
         "3.9",
         "3.10",
         "3.11",
@@ -31,13 +30,11 @@ multi_pip_parse(
     python_interpreter_target = {
         "3.10": "@python_3_10_host//:python",
         "3.11": "@python_3_11_host//:python",
-        "3.8": "@python_3_8_host//:python",
         "3.9": "@python_3_9_host//:python",
     },
     requirements_lock = {
         "3.10": "//requirements:requirements_lock_3_10.txt",
         "3.11": "//requirements:requirements_lock_3_11.txt",
-        "3.8": "//requirements:requirements_lock_3_8.txt",
         "3.9": "//requirements:requirements_lock_3_9.txt",
     },
 )

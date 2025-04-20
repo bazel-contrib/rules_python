@@ -72,7 +72,6 @@ bzl_library(
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//rules:common_settings",
     ],
 )
@@ -131,7 +130,6 @@ bzl_library(
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:paths",
     ],
 )
@@ -204,6 +202,24 @@ bzl_library(
     srcs = ["is_standalone_interpreter.bzl"],
     deps = [
         ":repo_utils_bzl",
+    ],
+)
+
+bzl_library(
+    name = "local_runtime_repo_bzl",
+    srcs = ["local_runtime_repo.bzl"],
+    deps = [
+        ":enum_bzl",
+        ":repo_utils.bzl",
+    ],
+)
+
+bzl_library(
+    name = "local_runtime_toolchains_repo_bzl",
+    srcs = ["local_runtime_toolchains_repo.bzl"],
+    deps = [
+        ":repo_utils.bzl",
+        ":text_util_bzl",
     ],
 )
 
@@ -302,7 +318,6 @@ bzl_library(
         ":attributes_bzl",
         ":py_executable_bzl",
         ":rule_builders_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:dicts",
     ],
 )
@@ -361,6 +376,7 @@ bzl_library(
     name = "py_exec_tools_toolchain_bzl",
     srcs = ["py_exec_tools_toolchain.bzl"],
     deps = [
+        ":common_bzl",
         ":py_exec_tools_info_bzl",
         ":sentinel_bzl",
         ":toolchain_types_bzl",
@@ -536,7 +552,6 @@ bzl_library(
         ":common_bzl",
         ":py_executable_bzl",
         ":rule_builders_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:dicts",
     ],
 )
@@ -674,11 +689,6 @@ bzl_library(
         ":bazel_tools_bzl",
         "@rules_cc//cc/common",
     ],
-)
-
-bzl_library(
-    name = "semantics_bzl",
-    srcs = ["semantics.bzl"],
 )
 
 # Needed to define bzl_library targets for docgen. (We don't define the

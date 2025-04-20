@@ -75,7 +75,10 @@ bzl_library(
     name = "evaluate_markers_bzl",
     srcs = ["evaluate_markers.bzl"],
     deps = [
-        ":pypi_repo_utils_bzl",
+        ":pep508_env_bzl",
+        ":pep508_evaluate_bzl",
+        ":pep508_platform_bzl",
+        ":pep508_requirement_bzl",
     ],
 )
 
@@ -93,6 +96,7 @@ bzl_library(
         ":whl_config_setting_bzl",
         ":whl_library_bzl",
         ":whl_repo_name_bzl",
+        ":whl_target_platforms_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:semver_bzl",
@@ -205,6 +209,57 @@ bzl_library(
     deps = [
         ":parse_whl_name_bzl",
         "//python/private:repo_utils_bzl",
+    ],
+)
+
+bzl_library(
+    name = "pep508_bzl",
+    srcs = ["pep508.bzl"],
+    deps = [
+        ":pep508_env_bzl",
+        ":pep508_evaluate_bzl",
+    ],
+)
+
+bzl_library(
+    name = "pep508_deps_bzl",
+    srcs = ["pep508_deps.bzl"],
+    deps = [
+        ":pep508_env_bzl",
+        ":pep508_evaluate_bzl",
+        ":pep508_platform_bzl",
+        ":pep508_requirement_bzl",
+        "//python/private:normalize_name_bzl",
+    ],
+)
+
+bzl_library(
+    name = "pep508_env_bzl",
+    srcs = ["pep508_env.bzl"],
+    deps = [
+        ":pep508_platform_bzl",
+    ],
+)
+
+bzl_library(
+    name = "pep508_evaluate_bzl",
+    srcs = ["pep508_evaluate.bzl"],
+    deps = [
+        "//python/private:enum_bzl",
+        "//python/private:semver_bzl",
+    ],
+)
+
+bzl_library(
+    name = "pep508_platform_bzl",
+    srcs = ["pep508_platform.bzl"],
+)
+
+bzl_library(
+    name = "pep508_requirement_bzl",
+    srcs = ["pep508_requirement.bzl"],
+    deps = [
+        "//python/private:normalize_name_bzl",
     ],
 )
 
@@ -325,13 +380,20 @@ bzl_library(
         ":generate_whl_library_build_bazel_bzl",
         ":parse_whl_name_bzl",
         ":patch_whl_bzl",
+        ":pep508_deps_bzl",
         ":pypi_repo_utils_bzl",
+        ":whl_metadata_bzl",
         ":whl_target_platforms_bzl",
         "//python/private:auth_bzl",
         "//python/private:envsubst_bzl",
         "//python/private:is_standalone_interpreter_bzl",
         "//python/private:repo_utils_bzl",
     ],
+)
+
+bzl_library(
+    name = "whl_metadata_bzl",
+    srcs = ["whl_metadata.bzl"],
 )
 
 bzl_library(

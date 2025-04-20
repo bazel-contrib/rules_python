@@ -101,6 +101,7 @@ doing. This is mostly useful for development to debug errors.
 Determines the verbosity of logging output for repo rules. Valid values:
 
 * `DEBUG`
+* `FAIL`
 * `INFO`
 * `TRACE`
 :::

@@ -28,6 +28,14 @@ attr.string_list bzl:type 1 rules/lib/toplevel/attr#string_list -
 attr.string_list_dict bzl:type 1 rules/lib/toplevel/attr#string_list_dict -
 bool bzl:type 1 rules/lib/bool -
 callable bzl:type 1 rules/lib/core/function -
+config bzl:obj 1 rules/lib/toplevel/config -
+config.bool bzl:function 1 rules/lib/toplevel/config#bool -
+config.exec bzl:function 1 rules/lib/toplevel/config#exec -
+config.int bzl:function 1 rules/lib/toplevel/config#int -
+config.none bzl:function 1 rules/lib/toplevel/config#none -
+config.string bzl:function 1 rules/lib/toplevel/config#string -
+config.string_list bzl:function 1 rules/lib/toplevel/config#string_list -
+config.target bzl:function 1 rules/lib/toplevel/config#target -
 config_common.FeatureFlagInfo bzl:type 1 rules/lib/toplevel/config_common#FeatureFlagInfo -
 config_common.toolchain_type bzl:function 1 rules/lib/toplevel/config_common#toolchain_type -
 ctx.actions bzl:obj 1 rules/lib/builtins/ctx#actions -

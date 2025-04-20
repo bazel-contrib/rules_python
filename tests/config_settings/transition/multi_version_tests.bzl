@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for py_test."""
 
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo", rt_util = "util")
@@ -29,7 +30,7 @@ load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 # If the toolchain is not resolved then you will have a weird message telling
 # you that your transition target does not have a PyRuntime provider, which is
 # caused by there not being a toolchain detected for the target.
-_PYTHON_VERSION = "3.11"
+_PYTHON_VERSION = DEFAULT_PYTHON_VERSION
 
 _tests = []
 

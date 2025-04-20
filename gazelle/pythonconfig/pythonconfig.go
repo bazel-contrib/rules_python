@@ -16,14 +16,16 @@ package pythonconfig
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"path"
 	"regexp"
 	"strings"
 
 	"github.com/emirpasic/gods/lists/singlylinkedlist"
 
-	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazel-contrib/rules_python/gazelle/manifest"
+	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 // Directives
@@ -125,31 +127,39 @@ const (
 
 // defaultIgnoreFiles is the list of default values used in the
 // python_ignore_files option.
-var defaultIgnoreFiles = map[string]struct{}{
-}
+var defaultIgnoreFiles = map[string]struct{}{}
 
 // Configs is an extension of map[string]*Config. It provides finding methods
 // on top of the mapping.
 type Configs map[string]*Config
 
 // ParentForPackage returns the parent Config for the given Bazel package.
-func (c *Configs) ParentForPackage(pkg string) *Config {
-	dir := path.Dir(pkg)
-	if dir == "." {
-		dir = ""
+func (c Configs) ParentForPackage(pkg string) *Config {
+	for {
+		dir := path.Dir(pkg)
+		if dir == "." {
+			dir = ""
+		}
+		parent := (map[string]*Config)(c)[dir]
+		if parent != nil {
+			return parent
+		}
+		if dir == "" {
+			return nil
+		}
+		pkg = dir
 	}
-	parent := (map[string]*Config)(*c)[dir]
-	return parent
 }
 
 // Config represents a config extension for a specific Bazel package.
 type Config struct {
 	parent *Config
 
-	extensionEnabled  bool
-	repoRoot          string
-	pythonProjectRoot string
-	gazelleManifest   *manifest.Manifest
+	extensionEnabled    bool
+	repoRoot            string
+	pythonProjectRoot   string
+	gazelleManifestPath string
+	gazelleManifest     *manifest.Manifest
 
 	excludedPatterns                          *singlylinkedlist.List
 	ignoreFiles                               map[string]struct{}
@@ -274,11 +284,26 @@ func (c *Config) SetGazelleManifest(gazelleManifest *manifest.Manifest) {
 	c.gazelleManifest = gazelleManifest
 }
 
+// SetGazelleManifestPath sets the path to the gazelle_python.yaml file
+// for the current configuration.
+func (c *Config) SetGazelleManifestPath(gazelleManifestPath string) {
+	c.gazelleManifestPath = gazelleManifestPath
+}
+
 // FindThirdPartyDependency scans the gazelle manifests for the current config
 // and the parent configs up to the root finding if it can resolve the module
 // name.
 func (c *Config) FindThirdPartyDependency(modName string) (string, string, bool) {
 	for currentCfg := c; currentCfg != nil; currentCfg = currentCfg.parent {
+		// Attempt to load the manifest if needed.
+		if currentCfg.gazelleManifestPath != "" && currentCfg.gazelleManifest == nil {
+			currentCfgManifest, err := loadGazelleManifest(currentCfg.gazelleManifestPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			currentCfg.SetGazelleManifest(currentCfgManifest)
+		}
+
 		if currentCfg.gazelleManifest != nil {
 			gazelleManifest := currentCfg.gazelleManifest
 			if distributionName, ok := gazelleManifest.ModulesMapping[modName]; ok {
@@ -518,4 +543,18 @@ func (c *Config) FormatThirdPartyDependency(repositoryName string, distributionN
 	}
 
 	return label.New(repositoryName, normConventionalDistributionName, normConventionalDistributionName)
+}
+
+func loadGazelleManifest(gazelleManifestPath string) (*manifest.Manifest, error) {
+	if _, err := os.Stat(gazelleManifestPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to load Gazelle manifest at %q: %w", gazelleManifestPath, err)
+	}
+	manifestFile := new(manifest.File)
+	if err := manifestFile.Decode(gazelleManifestPath); err != nil {
+		return nil, fmt.Errorf("failed to load Gazelle manifest at %q: %w", gazelleManifestPath, err)
+	}
+	return manifestFile.Manifest, nil
 }

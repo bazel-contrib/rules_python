@@ -78,12 +78,10 @@ buildifier:
   coverage_targets:
     - //tests:my_lib_3_10_test
     - //tests:my_lib_3_11_test
-    - //tests:my_lib_3_8_test
     - //tests:my_lib_3_9_test
     - //tests:my_lib_default_test
     - //tests:version_3_10_test
     - //tests:version_3_11_test
-    - //tests:version_3_8_test
     - //tests:version_3_9_test
     - //tests:version_default_test
 tasks:

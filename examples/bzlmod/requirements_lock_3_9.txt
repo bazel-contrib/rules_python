@@ -46,7 +46,7 @@ imagesize==1.4.1 \
     --hash=sha256:0d8d18d08f840c19d0ee7ca1fd82490fdc3729b7ac93f49870406ddde8ef8d8b \
     --hash=sha256:69150444affb9cb0d5cc5a92b3676f0b2fb7cd9ae39e947a5e11a36b4497cd4a
     # via sphinx
-importlib-metadata==8.4.0 ; python_version < '3.10' \
+importlib-metadata==8.4.0 ; python_full_version < '3.10' \
     --hash=sha256:66f342cc6ac9818fc6ff340576acd24d65ba0b3efabb2b4ac08b598965a4a2f1 \
     --hash=sha256:9a547d3bc3608b025f93d403fdd1aae741c24fbb8314df4b155675742ce303c5
     # via sphinx
@@ -316,7 +316,7 @@ tabulate==0.9.0 \
     --hash=sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c \
     --hash=sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f
     # via -r examples/bzlmod/requirements.in
-tomli==2.0.1 ; python_version < '3.11' \
+tomli==2.0.1 ; python_full_version < '3.11' \
     --hash=sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc \
     --hash=sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
     # via pylint
@@ -324,7 +324,7 @@ tomlkit==0.11.6 \
     --hash=sha256:07de26b0d8cfc18f871aec595fda24d95b08fef89d147caa861939f37230bf4b \
     --hash=sha256:71b952e5721688937fb02cf9d354dbcf0785066149d2855e44531ebdd2b65d73
     # via pylint
-typing-extensions==4.12.2 ; python_version < '3.10' \
+typing-extensions==4.12.2 ; python_full_version < '3.10' \
     --hash=sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d \
     --hash=sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8
     # via
@@ -480,7 +480,7 @@ yamllint==1.28.0 \
     --hash=sha256:89bb5b5ac33b1ade059743cf227de73daa34d5e5a474b06a5e17fc16583b0cf2 \
     --hash=sha256:9e3d8ddd16d0583214c5fdffe806c9344086721f107435f68bad990e5a88826b
     # via -r examples/bzlmod/requirements.in
-zipp==3.20.0 ; python_version < '3.10' \
+zipp==3.20.0 ; python_full_version < '3.10' \
     --hash=sha256:0145e43d89664cfe1a2e533adc75adafed82fe2da404b4bbb6b026c0157bdb31 \
     --hash=sha256:58da6168be89f0be59beb194da1250516fdaa062ccebd30127ac65d30045e10d
     # via importlib-metadata

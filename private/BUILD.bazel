@@ -15,6 +15,7 @@ multirun(
     ] + [
         "//docs:requirements.update",
     ],
+    tags = ["manual"],
 )
 
 # NOTE: The requirements for the pip dependencies may sometimes break the build
@@ -24,4 +25,5 @@ multirun(
 alias(
     name = "whl_library_requirements.update",
     actual = "//tools/private/update_deps:update_pip_deps",
+    tags = ["manual"],
 )
