@@ -47,6 +47,34 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-changed}
+### Changed
+
+* (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
+  allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
+  environments.
+
+{#v0-0-0-fixed}
+### Fixed
+
+* Fixes when using {obj}`--bootstrap_impl=script`:
+  * `compile_pip_requirements` now works with it
+  * The `sys._base_executable` value will reflect the underlying interpreter,
+    not venv interpreter.
+  * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
 
 {#1-4-0}
 ## [1.4.0] - 2025-04-19
@@ -83,9 +111,6 @@ END_UNRELEASED_TEMPLATE
   [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
-* (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
-  allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
-  environments.
 
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
@@ -108,11 +133,6 @@ END_UNRELEASED_TEMPLATE
 * (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
 * (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
   [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
-* Fixes when using {obj}`--bootstrap_impl=script`:
-  * `compile_pip_requirements` now works with it
-  * The `sys._base_executable` value will reflect the underlying interpreter,
-    not venv interpreter.
-  * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
 
 {#1-4-0-added}
 ### Added
