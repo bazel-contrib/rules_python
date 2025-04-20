@@ -42,6 +42,7 @@ def whl_library_targets_from_requires(
         extras = [],
         target_platforms = [],
         python_version = None,
+        group_deps = [],
         **kwargs):
     """The macro to create whl targets from the METADATA.
 
@@ -49,6 +50,10 @@ def whl_library_targets_from_requires(
         name: {type}`str` The wheel filename
         metadata_name: {type}`str` The package name as written in wheel `METADATA`.
         metadata_version: {type}`str` The package version as written in wheel `METADATA`.
+        group_deps: {type}`list[str]` names of fellow members of the group (if
+            any). These will be excluded from generated deps lists so as to avoid
+            direct cycles. These dependencies will be provided at runtime by the
+            group rules which wrap this library and its fellows together.
         requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
             the whl `METADATA`.
         extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
@@ -63,6 +68,7 @@ def whl_library_targets_from_requires(
         name = name,
         python_version = python_version,
         requires_dist = requires_dist,
+        exclude = group_deps,
         extras = extras,
         target_platforms = target_platforms,
     )
@@ -82,6 +88,7 @@ def _parse_requires_dist(
         name,
         python_version,
         requires_dist,
+        exclude,
         extras,
         target_platforms):
     # TODO @aignas 2025-04-15: split this function into 2 where we are passing `package_deps` from the first function to the second.
@@ -104,6 +111,7 @@ def _parse_requires_dist(
         name = normalize_name(parsed_whl.distribution),
         requires_dist = requires_dist,
         platforms = target_platforms,
+        exclude = exclude,
         extras = extras,
         default_python_version = python_version,
     )
@@ -121,7 +129,6 @@ def whl_library_targets(
         },
         dependencies = [],
         dependencies_by_platform = {},
-        group_deps = [],
         group_name = "",
         data = [],
         copy_files = {},
@@ -150,10 +157,6 @@ def whl_library_targets(
             contains this library. If set, this library will behave as a shim
             to group implementation rules which will provide simultaneously
             installed dependencies which would otherwise form a cycle.
-        group_deps: {type}`list[str]` names of fellow members of the group (if
-            any). These will be excluded from generated deps lists so as to avoid
-            direct cycles. These dependencies will be provided at runtime by the
-            group rules which wrap this library and its fellows together.
         copy_executables: {type}`dict[str, str]` The mapping between src and
             dest locations for the targets.
         copy_files: {type}`dict[str, str]` The mapping between src and
@@ -201,7 +204,11 @@ def whl_library_targets(
         data.append(dest)
 
     _config_settings(
-        dependencies_by_platform.keys(),
+        sorted({
+            p: None
+            for platforms in dependencies_by_platform.values()
+            for p in platforms
+        }),
         native = native,
         visibility = ["//visibility:private"],
     )
@@ -219,25 +226,6 @@ def whl_library_targets(
             deps = [":" + PY_LIBRARY_PUBLIC_LABEL],
             visibility = ["//visibility:public"],
         )
-
-    # Ensure this list is normalized
-    # Note: mapping used as set
-    group_deps = {
-        normalize_name(d): True
-        for d in group_deps
-    }
-
-    dependencies = [
-        d
-        for d in dependencies
-        if d not in group_deps
-    ]
-    dependencies_by_platform = {
-        p: deps
-        for p, deps in dependencies_by_platform.items()
-        for deps in [[d for d in deps if d not in group_deps]]
-        if deps
-    }
 
     # If this library is a member of a group, its public label aliases need to
     # point to the group implementation rule not the implementation rules. We
@@ -405,22 +393,12 @@ def _plat_label(plat):
 def _deps(deps, deps_by_platform, tmpl, select = select):
     deps = [tmpl.format(d) for d in sorted(deps)]
 
-    if not deps_by_platform:
-        return deps
+    for dep, platforms in deps_by_platform.items():
+        deps += select({
+            "//conditions:default": [],
+        } | {
+            _plat_label(p): [tmpl.format(dep)]
+            for p in platforms
+        })
 
-    deps_by_platform = {
-        _plat_label(p): [
-            tmpl.format(d)
-            for d in sorted(deps)
-        ]
-        for p, deps in sorted(deps_by_platform.items())
-    }
-
-    # Add the default, which means that we will be just using the dependencies in
-    # `deps` for platforms that are not handled in a special way by the packages
-    deps_by_platform.setdefault("//conditions:default", [])
-
-    if not deps:
-        return select(deps_by_platform)
-    else:
-        return deps + select(deps_by_platform)
+    return deps

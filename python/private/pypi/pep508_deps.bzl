@@ -15,37 +15,23 @@
 """This module is for implementing PEP508 compliant METADATA deps parsing.
 """
 
-load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_platform.bzl", "platform", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
 
-_ALL_OS_VALUES = [
-    "windows",
-    "osx",
-    "linux",
-]
-_ALL_ARCH_VALUES = [
-    "aarch64",
-    "ppc64",
-    "ppc64le",
-    "s390x",
-    "x86_32",
-    "x86_64",
-]
-
-def deps(name, *, requires_dist, platforms = [], extras = [], default_python_version = None):
+def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], host_python_version = None):
     """Parse the RequiresDist from wheel METADATA
 
     Args:
         name: {type}`str` the name of the wheel.
         requires_dist: {type}`list[str]` the list of RequiresDist lines from the
             METADATA file.
+        excludes: {type}`list[str]` what packages should we exclude.
         extras: {type}`list[str]` the requested extras to generate targets for.
         platforms: {type}`list[str]` the list of target platform strings.
-        default_python_version: {type}`str` the host python version.
+        host_python_version: {type}`str` the host python version.
 
     Returns:
         A struct with attributes:
@@ -53,37 +39,6 @@ def deps(name, *, requires_dist, platforms = [], extras = [], default_python_ver
         * deps_select: {type}`dict[str, list[str]]` dependencies to include on particular
               subset of target platforms.
     """
-    if not platforms:
-        fail("'platforms' arg is mandatory")
-
-    # TODO @aignas 2025-04-16: this `default_abi` variable is only
-    # here so that we can have selects without "is_python_version" conditions.
-    # This would happen in the `multi_pip_parse` logic in WORKSPACE.
-    #
-    # In followup PRs I would like to remove this logic and mainly rely on the
-    # fact that there will be only a single ABI when internal rules pass the
-    # values in the WORKSPACE case and in that case we can get the default
-    # version from the target platform strings. What is more when we drop
-    # WORKSPACE, we can simplify the logic in `_add_req` substantially and get
-    # rid of `default_abi` all together.
-    default_python_version = default_python_version or DEFAULT_PYTHON_VERSION
-    platforms = [
-        platform_from_str(p, python_version = default_python_version)
-        for p in platforms
-    ]
-
-    abis = sorted({p.abi: True for p in platforms if p.abi})
-    if default_python_version and len(abis) > 1:
-        _, _, minor_version = default_python_version.partition(".")
-        minor_version, _, _ = minor_version.partition(".")
-        default_abi = "cp3" + minor_version
-    elif len(abis) > 1:
-        fail(
-            "all python versions need to be specified explicitly with the default_python_version, got: {}, {}".format(platforms, default_python_version),
-        )
-    else:
-        default_abi = None
-
     reqs = sorted(
         [requirement(r) for r in requires_dist],
         key = lambda x: "{}:{}:".format(x.name, sorted(x.extras), x.marker),
@@ -93,15 +48,40 @@ def deps(name, *, requires_dist, platforms = [], extras = [], default_python_ver
     name = normalize_name(name)
     want_extras = _resolve_extras(name, reqs, extras)
 
+    # drop self edges
+    excludes = [name] + [normalize_name(x) for x in excludes]
+
+    platforms = [
+        platform_from_str(p, python_version = host_python_version)
+        for p in platforms
+    ]
+
+    abis = sorted({p.abi: True for p in platforms if p.abi})
+    if host_python_version and len(abis) > 1:
+        _, _, minor_version = host_python_version.partition(".")
+        minor_version, _, _ = minor_version.partition(".")
+        default_abi = "cp3" + minor_version
+    elif len(abis) > 1:
+        fail(
+            "all python versions need to be specified explicitly, got: {}".format(platforms),
+        )
+    else:
+        default_abi = None
+
+    reqs_by_name = {}
+
     for req in reqs:
-        if req.name == name:
-            # drop self edges
+        if req.name_ in excludes:
             continue
 
-        _add_req(
+        reqs_by_name.setdefault(req.name, []).append(req)
+
+    for name, reqs in reqs_by_name.items():
+        _add_reqs(
             deps,
             deps_select,
-            req,
+            normalize_name(name),
+            reqs,
             extras = want_extras,
             platforms = platforms,
             default_abi = default_abi,
@@ -120,45 +100,19 @@ def _platform_str(self):
         if not self.os and not self.arch:
             return "//conditions:default"
         elif not self.arch:
-            return "@platforms//os:{}".format(self.os)
+            fail("remove")
         else:
             return "{}_{}".format(self.os, self.arch)
 
     minor_version = self.abi[3:]
     if self.arch == None and self.os == None:
-        return str(Label("//python/config_settings:is_python_3.{}".format(minor_version)))
+        fail("remove")
 
     return "cp3{}_{}_{}".format(
         minor_version,
         self.os or "anyos",
         self.arch or "anyarch",
     )
-
-def _platform_specializations(self, cpu_values = _ALL_ARCH_VALUES, os_values = _ALL_OS_VALUES):
-    """Return the platform itself and all its unambiguous specializations.
-
-    For more info about specializations see
-    https://bazel.build/docs/configurable-attributes
-    """
-    specializations = []
-    specializations.append(self)
-    if self.arch == None:
-        specializations.extend([
-            platform(os = self.os, arch = arch, abi = self.abi)
-            for arch in cpu_values
-        ])
-    if self.os == None:
-        specializations.extend([
-            platform(os = os, arch = self.arch, abi = self.abi)
-            for os in os_values
-        ])
-    if self.os == None and self.arch == None:
-        specializations.extend([
-            platform(os = os, arch = arch, abi = self.abi)
-            for os in os_values
-            for arch in cpu_values
-        ])
-    return specializations
 
 def _add(deps, deps_select, dep, platform):
     dep = normalize_name(dep)
@@ -186,53 +140,7 @@ def _add(deps, deps_select, dep, platform):
         return
 
     # Add the platform-specific branch
-    deps_select.setdefault(platform, {})
-
-    # Add the dep to specializations of the given platform if they
-    # exist in the select statement.
-    for p in _platform_specializations(platform):
-        if p not in deps_select:
-            continue
-
-        deps_select[p][dep] = True
-
-    if len(deps_select[platform]) == 1:
-        # We are adding a new item to the select and we need to ensure that
-        # existing dependencies from less specialized platforms are propagated
-        # to the newly added dependency set.
-        for p, _deps in deps_select.items():
-            # Check if the existing platform overlaps with the given platform
-            if p == platform or platform not in _platform_specializations(p):
-                continue
-
-            deps_select[platform].update(_deps)
-
-def _maybe_add_common_dep(deps, deps_select, platforms, dep):
-    abis = sorted({p.abi: True for p in platforms if p.abi})
-    if len(abis) < 2:
-        return
-
-    platforms = [platform()] + [
-        platform(abi = abi)
-        for abi in abis
-    ]
-
-    # If the dep is targeting all target python versions, lets add it to
-    # the common dependency list to simplify the select statements.
-    for p in platforms:
-        if p not in deps_select:
-            return
-
-        if dep not in deps_select[p]:
-            return
-
-    # All of the python version-specific branches have the dep, so lets add
-    # it to the common deps.
-    deps[dep] = True
-    for p in platforms:
-        deps_select[p].pop(dep)
-        if not deps_select[p]:
-            deps_select.pop(p)
+    deps_select.setdefault(platform, {})[dep] = True
 
 def _resolve_extras(self_name, reqs, extras):
     """Resolve extras which are due to depending on self[some_other_extra].
@@ -289,72 +197,37 @@ def _resolve_extras(self_name, reqs, extras):
     # Poor mans set
     return sorted({x: None for x in extras})
 
-def _add_req(deps, deps_select, req, *, extras, platforms, default_abi = None):
-    if not req.marker:
-        _add(deps, deps_select, req.name, None)
-        return
+def _add_reqs(deps, deps_select, dep, reqs, *, extras, platforms, default_abi = None):
+    for req in reqs:
+        if not req.marker:
+            _add(deps, deps_select, dep, None)
+            return
 
-    match_os = len([
-        tag
-        for tag in [
-            "os_name",
-            "sys_platform",
-            "platform_system",
-        ]
-        if tag in req.marker
-    ]) > 0
-    match_arch = "platform_machine" in req.marker
-    match_version = "version" in req.marker
-
-    if not (match_os or match_arch or match_version):
-        if [
-            True
-            for extra in extras
-            for p in platforms
-            if evaluate(
-                req.marker,
-                env = env(
-                    target_platform = p,
-                    extra = extra,
-                ),
-            )
-        ]:
-            _add(deps, deps_select, req.name, None)
-        return
-
+    platforms_to_add = {}
     for plat in platforms:
-        if not [
-            True
-            for extra in extras
-            if evaluate(
-                req.marker,
-                env = env(
-                    target_platform = plat,
-                    extra = extra,
-                ),
-            )
-        ]:
+        if plat in platforms_to_add:
+            # marker evaluation is more expensive than this check
             continue
 
-        if match_arch and default_abi:
-            _add(deps, deps_select, req.name, plat)
-            if plat.abi == default_abi:
-                _add(deps, deps_select, req.name, platform(os = plat.os, arch = plat.arch))
-        elif match_arch:
-            _add(deps, deps_select, req.name, platform(os = plat.os, arch = plat.arch))
-        elif match_os and default_abi:
-            _add(deps, deps_select, req.name, platform(os = plat.os, abi = plat.abi))
-            if plat.abi == default_abi:
-                _add(deps, deps_select, req.name, platform(os = plat.os))
-        elif match_os:
-            _add(deps, deps_select, req.name, platform(os = plat.os))
-        elif match_version and default_abi:
-            _add(deps, deps_select, req.name, platform(abi = plat.abi))
-            if plat.abi == default_abi:
-                _add(deps, deps_select, req.name, platform())
-        elif match_version:
-            _add(deps, deps_select, req.name, None)
-        else:
-            fail("BUG: {} support is not implemented".format(req.marker))
+        added = False
+        for extra in extras:
+            if added:
+                break
 
-    _maybe_add_common_dep(deps, deps_select, platforms, req.name)
+            for req in reqs:
+                if evaluate(req.marker, env = env(target_platform = plat, extra = extra)):
+                    platforms_to_add[plat] = True
+                    added = True
+                    break
+
+    if len(platforms_to_add) == len(platforms):
+        # the dep is in all target platforms, let's just add it to the regular
+        # list
+        _add(deps, deps_select, dep, None)
+        return
+
+    for plat in platforms_to_add:
+        if default_abi:
+            _add(deps, deps_select, dep, plat)
+        if plat.abi == default_abi or not default_abi:
+            _add(deps, deps_select, dep, platform(os = plat.os, arch = plat.arch))
