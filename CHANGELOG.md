@@ -81,6 +81,13 @@ Unreleased changes template.
   [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
+* (pypi) From now on the `Requires-Dist` from the wheel metadata is analysed in
+  the loading phase instead of repository rule phase giving better caching
+  performance when the target platforms are changed (e.g. target python
+  versions). This is preparatory work for stabilizing the cross-platform wheel
+  support. From now on the usage of `experimental_target_platforms` should be
+  avoided and the `requirements_by_platform` values should be instead used to
+  specify the target platforms for the given dependencies.
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 

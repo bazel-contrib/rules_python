@@ -123,6 +123,9 @@ Warning:
     "experimental_target_platforms": attr.string_list(
         default = [],
         doc = """\
+*NOTE*: This will be removed in the next major version, so please consider migrating
+to `bzlmod` and rely on {attr}`pip.parse.requirements_by_platform` for this feature.
+
 A list of platforms that we will generate the conditional dependency graph for
 cross platform wheels by parsing the wheel metadata. This will generate the
 correct dependencies for packages like `sphinx` or `pylint`, which include
