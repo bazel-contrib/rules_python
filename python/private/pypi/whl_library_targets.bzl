@@ -41,7 +41,7 @@ def whl_library_targets_from_requires(
         requires_dist = [],
         extras = [],
         target_platforms = [],
-        python_version = None,
+        default_python_version = None,
         group_deps = [],
         **kwargs):
     """The macro to create whl targets from the METADATA.
@@ -59,14 +59,14 @@ def whl_library_targets_from_requires(
         extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
         target_platforms: {type}`list[str]` The list of target platforms to create
             dependency closures for.
-        python_version: {type}`str` The python version to assume when parsing
+        default_python_version: {type}`str` The python version to assume when parsing
             the `METADATA`. This is only used when the `target_platforms` do not
             include the version information.
         **kwargs: Extra args passed to the {obj}`whl_library_targets`
     """
     package_deps = _parse_requires_dist(
         name = name,
-        python_version = python_version,
+        default_python_version = default_python_version,
         requires_dist = requires_dist,
         excludes = group_deps,
         extras = extras,
@@ -86,7 +86,7 @@ def whl_library_targets_from_requires(
 def _parse_requires_dist(
         *,
         name,
-        python_version,
+        default_python_version,
         requires_dist,
         excludes,
         extras,
@@ -110,7 +110,7 @@ def _parse_requires_dist(
         platforms = target_platforms,
         excludes = excludes,
         extras = extras,
-        host_python_version = python_version,
+        default_python_version = default_python_version,
     )
 
 def whl_library_targets(

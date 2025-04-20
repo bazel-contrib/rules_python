@@ -22,7 +22,7 @@ load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_platform.bzl", "platform", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
 
-def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], host_python_version = None):
+def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], default_python_version = None):
     """Parse the RequiresDist from wheel METADATA
 
     Args:
@@ -32,7 +32,7 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], hos
         excludes: {type}`list[str]` what packages should we exclude.
         extras: {type}`list[str]` the requested extras to generate targets for.
         platforms: {type}`list[str]` the list of target platform strings.
-        host_python_version: {type}`str` the host python version.
+        default_python_version: {type}`str` the host python version.
 
     Returns:
         A struct with attributes:
@@ -52,15 +52,15 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], hos
     # drop self edges
     excludes = [name] + [normalize_name(x) for x in excludes]
 
-    host_python_version = host_python_version or DEFAULT_PYTHON_VERSION
+    default_python_version = default_python_version or DEFAULT_PYTHON_VERSION
     platforms = [
-        platform_from_str(p, python_version = host_python_version)
+        platform_from_str(p, python_version = default_python_version)
         for p in platforms
     ]
 
     abis = sorted({p.abi: True for p in platforms if p.abi})
-    if host_python_version and len(abis) > 1:
-        _, _, minor_version = host_python_version.partition(".")
+    if default_python_version and len(abis) > 1:
+        _, _, minor_version = default_python_version.partition(".")
         minor_version, _, _ = minor_version.partition(".")
         default_abi = "cp3" + minor_version
     elif len(abis) > 1:

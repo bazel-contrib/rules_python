@@ -387,7 +387,7 @@ def _whl_library_impl(rctx):
     if BZLMOD_ENABLED:
         # The following attributes are unset on bzlmod and we pass data through
         # the hub via load statements.
-        python_version = None
+        default_python_version = None
         target_platforms = []
     else:
         # NOTE @aignas 2025-04-16: if BZLMOD_ENABLED, we should use
@@ -397,9 +397,9 @@ def _whl_library_impl(rctx):
         # `pip_parse` invocation, so we will have the host target platform
         # only. Even if somebody would change the code to support
         # `experimental_target_platforms`, they would be for a single python
-        # version. Hence, using the `python_version` that we get from the
+        # version. Hence, using the `default_python_version` that we get from the
         # interpreter is correct. Hence, we unset the argument if we are on bzlmod.
-        python_version = metadata["python_version"]
+        default_python_version = metadata["python_version"]
         target_platforms = rctx.attr.experimental_target_platforms or [host_platform(rctx)]
 
     metadata = whl_metadata(
@@ -416,7 +416,7 @@ def _whl_library_impl(rctx):
         dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
         entry_points = entry_points,
         target_platforms = target_platforms,
-        python_version = python_version,
+        default_python_version = default_python_version,
         # TODO @aignas 2025-04-14: load through the hub:
         annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
         data_exclude = rctx.attr.pip_data_exclude,
