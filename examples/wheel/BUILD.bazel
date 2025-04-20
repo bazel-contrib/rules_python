@@ -295,6 +295,12 @@ starlark  # Example comment
 )
 
 write_file(
+    name = "empty_requires_file",
+    out = "empty_requires.txt",
+    content = [""],
+)
+
+write_file(
     name = "extra_requires_file",
     out = "extra_requires.txt",
     content = """\
@@ -320,6 +326,15 @@ py_wheel(
     # can be convenient for users of `compile_pip_requirements` who have
     # granular `requirements.in` files per package.
     requires_file = ":requires.txt",
+    version = "0.0.1",
+    deps = [":example_pkg"],
+)
+
+py_wheel(
+    name = "empty_requires_files",
+    distribution = "empty_requires_files",
+    python_tag = "py3",
+    requires_file = ":empty_requires.txt",
     version = "0.0.1",
     deps = [":example_pkg"],
 )
@@ -367,6 +382,7 @@ py_test(
         ":custom_package_root_multi_prefix",
         ":custom_package_root_multi_prefix_reverse_order",
         ":customized",
+        ":empty_requires_files",
         ":extra_requires",
         ":filename_escaping",
         ":minimal_data_files",

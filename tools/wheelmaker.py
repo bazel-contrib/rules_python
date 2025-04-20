@@ -599,7 +599,12 @@ def main() -> None:
 
                 reqs.append(get_new_requirement_line(reqs_text, extra))
 
-            metadata = metadata.replace(meta_line, "\n".join(reqs))
+            if reqs:
+                metadata = metadata.replace(meta_line, "\n".join(reqs))
+            # File is empty
+            # So replace the meta_line entirely, including removing newline chars
+            else:
+                metadata = re.sub(re.escape(meta_line) + r"(?:\r?\n)?", "", metadata, count=1)
 
         maker.add_metadata(
             metadata=metadata,

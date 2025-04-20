@@ -14,7 +14,14 @@ These are the steps for a regularly scheduled release from HEAD.
 
 1. [Determine the next semantic version number](#determining-semantic-version).
 1. Update CHANGELOG.md: replace the `v0-0-0` and `0.0.0` with `X.Y.0`.
+   ```
+   awk -v version=X.Y.0 'BEGIN { hv=version; gsub(/\./, "-", hv) } /END_UNRELEASED_TEMPLATE/ { found_marker = 1 } found_marker { gsub(/v0-0-0/, hv, $0); gsub(/Unreleased/, "[" version "] - " strftime("%Y-%m-%d"), $0); gsub(/0.0.0/, version, $0); } { print } ' CHANGELOG.md > /tmp/changelog && cp /tmp/changelog CHANGELOG.md
+   ```
 1. Replace `VERSION_NEXT_*` strings with `X.Y.0`.
+   ```
+   grep -l --exclude=CONTRIBUTING.md --exclude=RELEASING.md --exclude-dir=.* VERSION_NEXT_ -r \
+     | xargs sed -i -e 's/VERSION_NEXT_FEATURE/X.Y.0/' -e 's/VERSION_NEXT_PATCH/X.Y.0/'
+   ```
 1. Send these changes for review and get them merged.
 1. Create a branch for the new release, named `release/X.Y`
    ```
@@ -89,6 +96,20 @@ It will be promoted to stable next week, pending feedback.
 
 It's traditional to include notable changes from the changelog, but not
 required.
+
+### Re-releasing a version
+
+Re-releasing a version (i.e. changing the commit a tag points to)  is
+*sometimes* possible, but it depends on how far into the release process it got.
+
+The two points of no return are:
+ * If the PyPI package has been published: PyPI disallows using the same
+   filename/version twice. Once published, it cannot be replaced.
+ * If the BCR package has been published: Once it's been committed to the BCR
+   registry, it cannot be replaced.
+
+If release steps fail _prior_ to those steps, then its OK to change the tag. You
+may need to manually delete the GitHub release.
 
 ## Secrets
 

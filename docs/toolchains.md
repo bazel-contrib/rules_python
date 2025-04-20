@@ -215,7 +215,11 @@ attribute. You can obtain the path to the Python interpreter using the
 `$(PYTHON2)` and `$(PYTHON3)` ["Make"
 Variables](https://bazel.build/reference/be/make-variables). See the
 {gh-path}`test_current_py_toolchain <tests/load_from_macro/BUILD.bazel>` target
-for an example.
+for an example. We also make available `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)`
+which are Make Variable equivalents of `$(PYTHON2)` and `$(PYTHON3)` but for runfiles
+locations. These will be helpful if you need to set env vars of binary/test rules
+while using [`--nolegacy_external_runfiles`](https://bazel.build/reference/command-line-reference#flag--legacy_external_runfiles).
+The original make variables still work in exec contexts such as genrules.
 
 ### Overriding toolchain defaults and adding more versions
 

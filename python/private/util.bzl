@@ -42,7 +42,7 @@ def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
         into_kwargs = {}
 
     # Include tags because people generally expect tags to propagate.
-    for attr in ("testonly", "tags", "compatible_with", "restricted_to"):
+    for attr in ("testonly", "tags", "compatible_with", "restricted_to", "target_compatible_with"):
         if attr in from_kwargs and attr not in into_kwargs:
             into_kwargs[attr] = from_kwargs[attr]
     return into_kwargs

@@ -21,7 +21,7 @@ A brief description of the categories of changes:
   `(docs)`.
 
 <!--
-Unreleased changes template.
+BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0}
 ## Unreleased
@@ -43,15 +43,17 @@ Unreleased changes template.
 {#v0-0-0-removed}
 ### Removed
 * Nothing removed.
+
+END_UNRELEASED_TEMPLATE
 -->
 
 
-{#v0-0-0}
-## Unreleased
+{#1-4-0}
+## [1.4.0] - 2025-04-19
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[1.4.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.0
 
-{#v0-0-0-changed}
+{#1-4-0-changed}
 ### Changed
 * (toolchain) The `exec` configuration toolchain now has the forwarded
   `exec_interpreter` now also forwards the `ToolchainInfo` provider. This is
@@ -72,16 +74,19 @@ Unreleased changes template.
 * (toolchains) Previously [#2636](https://github.com/bazel-contrib/rules_python/pull/2636)
   changed the semantics of `ignore_root_user_error` from "ignore" to "warning". This is now
   flipped back to ignoring the issue, and will only emit a warning when the attribute is set
-  `False`.  
+  `False`.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
+* (gazelle) Lazily load and parse manifest files when running Gazelle. This ensures no
+  manifest files are loaded when Gazelle is run over a set of non-python directories
+  [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
-{#v0-0-0-fixed}
+{#1-4-0-fixed}
 ### Fixed
 * (pypi) Platform specific extras are now correctly handled when using
   universal lock files with environment markers. Fixes [#2690](https://github.com/bazel-contrib/rules_python/pull/2690).
@@ -96,8 +101,11 @@ Unreleased changes template.
 * (toolchains) Run the check on the Python interpreter in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
 * (toolchains) Ensure temporary `.pyc` and `.pyo` files are also excluded from the interpreters repository files.
 * (pypi) Run interpreter version call in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
+* (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
+* (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
+  [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
 
-{#v0-0-0-added}
+{#1-4-0-added}
 ### Added
 * (pypi) From now on `sha256` values in the `requirements.txt` is no longer
   mandatory when enabling {attr}`pip.parse.experimental_index_url` feature.
@@ -124,15 +132,17 @@ Unreleased changes template.
 * (toolchains) Local Python installs can be used to create a toolchain
   equivalent to the standard toolchains. See [Local toolchains] docs for how to
   configure them.
+* (toolchains) Expose `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)` which are runfiles
+  locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
 
 
-{#v0-0-0-removed}
+{#1-4-0-removed}
 ### Removed
 * Nothing removed.
 
 
 {#v1-3-0}
-## Unreleased
+## [1.3.0] - 2025-03-27
 
 [1.3.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.3.0
 

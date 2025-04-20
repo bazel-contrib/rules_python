@@ -35,7 +35,7 @@ def _features_typedef():
 
     True if the `PyInfo.site_packages_symlinks` field is available.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.4.0
     :::
     ::::
 
