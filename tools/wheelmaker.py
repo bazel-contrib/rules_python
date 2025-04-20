@@ -107,11 +107,9 @@ class _WhlFile(zipfile.ZipFile):
         distribution_prefix: str,
         strip_path_prefixes=None,
         compression=zipfile.ZIP_DEFLATED,
-        force_zip64=False,
         **kwargs,
     ):
         self._distribution_prefix = distribution_prefix
-        self._force_zip64 = force_zip64
 
         self._strip_path_prefixes = strip_path_prefixes or []
         # Entries for the RECORD file as (filename, hash, size) tuples.
@@ -156,7 +154,7 @@ class _WhlFile(zipfile.ZipFile):
         hash = hashlib.sha256()
         size = 0
         with open(real_filename, "rb") as fsrc:
-            with self.open(zinfo, "w", force_zip64=self._force_zip64) as fdst:
+            with self.open(zinfo, "w", force_zip64=True) as fdst:
                 while True:
                     block = fsrc.read(2**20)
                     if not block:
@@ -243,7 +241,6 @@ class WheelMaker(object):
         compress,
         outfile=None,
         strip_path_prefixes=None,
-        force_zip64=False,
     ):
         self._name = name
         self._version = normalize_pep440(version)
@@ -253,7 +250,6 @@ class WheelMaker(object):
         self._platform = platform
         self._outfile = outfile
         self._strip_path_prefixes = strip_path_prefixes
-        self._force_zip64 = force_zip64
         self._compress = compress
         self._wheelname_fragment_distribution_name = escape_filename_distribution_name(
             self._name
@@ -272,7 +268,6 @@ class WheelMaker(object):
             distribution_prefix=self._distribution_prefix,
             strip_path_prefixes=self._strip_path_prefixes,
             compression=zipfile.ZIP_DEFLATED if self._compress else zipfile.ZIP_STORED,
-            force_zip64=self._force_zip64,
         )
         return self
 
@@ -483,11 +478,6 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Pass in the stamp info file for stamping",
     )
-    output_group.add_argument(
-        "--force_zip64",
-        action="store_true",
-        help="Forces usage of zip64",
-    )
 
     return parser.parse_args(sys.argv[1:])
 
@@ -546,7 +536,6 @@ def main() -> None:
         outfile=arguments.out,
         strip_path_prefixes=strip_prefixes,
         compress=not arguments.no_compress,
-        force_zip64=arguments.force_zip64,
     ) as maker:
         for package_filename, real_filename in all_files:
             maker.add_file(package_filename, real_filename)
