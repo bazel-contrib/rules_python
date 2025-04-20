@@ -21,11 +21,11 @@ _tests = []
 
 def _test_all(env):
     want = """\
-load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
 
 package(default_visibility = ["//visibility:public"])
 
-whl_library_targets(
+whl_library_targets_from_requires(
     copy_executables = {
         "exec_src": "exec_dest",
     },
@@ -38,19 +38,6 @@ whl_library_targets(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
-    dependencies = [
-        "foo",
-        "bar-baz",
-        "qux",
-    ],
-    dependencies_by_platform = {
-        "linux_x86_64": [
-            "box",
-            "box-amd64",
-        ],
-        "windows_x86_64": ["fox"],
-        "@platforms//os:linux": ["box"],
-    },
     entry_points = {
         "foo": "bar.py",
     },
@@ -61,11 +48,13 @@ whl_library_targets(
     ],
     group_name = "qux",
     name = "foo.whl",
-    srcs_exclude = ["srcs_exclude_all"],
-    tags = [
-        "tag2",
-        "tag1",
+    requires_dist = [
+        "foo",
+        "bar-baz",
+        "qux",
     ],
+    srcs_exclude = ["srcs_exclude_all"],
+    target_platforms = ["foo"],
 )
 
 # SOMETHING SPECIAL AT THE END
@@ -73,13 +62,72 @@ whl_library_targets(
     actual = generate_whl_library_build_bazel(
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
-        dependencies = ["foo", "bar-baz", "qux"],
-        dependencies_by_platform = {
-            "linux_x86_64": ["box", "box-amd64"],
-            "windows_x86_64": ["fox"],
-            "@platforms//os:linux": ["box"],  # buildifier: disable=unsorted-dict-items to check that we sort inside the test
+        requires_dist = ["foo", "bar-baz", "qux"],
+        entry_points = {
+            "foo": "bar.py",
         },
-        tags = ["tag2", "tag1"],
+        data_exclude = ["exclude_via_attr"],
+        annotation = struct(
+            copy_files = {"file_src": "file_dest"},
+            copy_executables = {"exec_src": "exec_dest"},
+            data = ["extra_target"],
+            data_exclude_glob = ["data_exclude_all"],
+            srcs_exclude_glob = ["srcs_exclude_all"],
+            additive_build_content = """# SOMETHING SPECIAL AT THE END""",
+        ),
+        group_name = "qux",
+        target_platforms = ["foo"],
+        group_deps = ["foo", "fox", "qux"],
+    )
+    env.expect.that_str(actual.replace("@@", "@")).equals(want)
+
+_tests.append(_test_all)
+
+def _test_all_with_loads(env):
+    want = """\
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
+load("@pypi//:config.bzl", "target_platforms")
+
+package(default_visibility = ["//visibility:public"])
+
+whl_library_targets_from_requires(
+    copy_executables = {
+        "exec_src": "exec_dest",
+    },
+    copy_files = {
+        "file_src": "file_dest",
+    },
+    data = ["extra_target"],
+    data_exclude = [
+        "exclude_via_attr",
+        "data_exclude_all",
+    ],
+    dep_template = "@pypi//{name}:{target}",
+    entry_points = {
+        "foo": "bar.py",
+    },
+    group_deps = [
+        "foo",
+        "fox",
+        "qux",
+    ],
+    group_name = "qux",
+    name = "foo.whl",
+    requires_dist = [
+        "foo",
+        "bar-baz",
+        "qux",
+    ],
+    srcs_exclude = ["srcs_exclude_all"],
+    target_platforms = target_platforms,
+)
+
+# SOMETHING SPECIAL AT THE END
+"""
+    actual = generate_whl_library_build_bazel(
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo.whl",
+        requires_dist = ["foo", "bar-baz", "qux"],
         entry_points = {
             "foo": "bar.py",
         },
@@ -97,7 +145,7 @@ whl_library_targets(
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
-_tests.append(_test_all)
+_tests.append(_test_all_with_loads)
 
 def generate_whl_library_build_bazel_test_suite(name):
     """Create the test suite.

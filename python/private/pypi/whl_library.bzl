@@ -15,16 +15,18 @@
 ""
 
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
-load(":parse_whl_name.bzl", "parse_whl_name")
+load(":parse_requirements.bzl", "host_platform")
 load(":patch_whl.bzl", "patch_whl")
+load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
+load(":whl_metadata.bzl", "whl_metadata")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
@@ -109,6 +111,10 @@ def _get_toolchain_unix_cflags(rctx, python_interpreter, logger = None):
         op = "GetPythonVersionForUnixCflags",
         python = python_interpreter,
         arguments = [
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
             "-c",
             "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}', end='')",
         ],
@@ -336,20 +342,6 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
-    target_platforms = rctx.attr.experimental_target_platforms
-    if target_platforms:
-        parsed_whl = parse_whl_name(whl_path.basename)
-        if parsed_whl.platform_tag != "any":
-            # NOTE @aignas 2023-12-04: if the wheel is a platform specific
-            # wheel, we only include deps for that target platform
-            target_platforms = [
-                p.target_platform
-                for p in whl_target_platforms(
-                    platform_tag = parsed_whl.platform_tag,
-                    abi_tag = parsed_whl.abi_tag.strip("tm"),
-                )
-            ]
-
     pypi_repo_utils.execute_checked(
         rctx,
         op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
@@ -357,7 +349,7 @@ def _whl_library_impl(rctx):
         arguments = args + [
             "--whl-file",
             whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
+        ],
         srcs = rctx.attr._python_srcs,
         environment = environment,
         quiet = rctx.attr.quiet,
@@ -392,20 +384,45 @@ def _whl_library_impl(rctx):
         )
         entry_points[entry_point_without_py] = entry_point_script_name
 
+    if BZLMOD_ENABLED:
+        # The following attributes are unset on bzlmod and we pass data through
+        # the hub via load statements.
+        default_python_version = None
+        target_platforms = []
+    else:
+        # NOTE @aignas 2025-04-16: if BZLMOD_ENABLED, we should use
+        # DEFAULT_PYTHON_VERSION since platforms always come with the actual
+        # python version otherwise we should use the version of the interpreter
+        # here. In WORKSPACE `multi_pip_parse` is using an interpreter for each
+        # `pip_parse` invocation, so we will have the host target platform
+        # only. Even if somebody would change the code to support
+        # `experimental_target_platforms`, they would be for a single python
+        # version. Hence, using the `default_python_version` that we get from the
+        # interpreter is correct. Hence, we unset the argument if we are on bzlmod.
+        default_python_version = metadata["python_version"]
+        target_platforms = rctx.attr.experimental_target_platforms or [host_platform(rctx)]
+
+    metadata = whl_metadata(
+        install_dir = rctx.path("site-packages"),
+        read_fn = rctx.read,
+        logger = logger,
+    )
+
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
         dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-        dependencies = metadata["deps"],
-        dependencies_by_platform = metadata["deps_by_platform"],
-        group_name = rctx.attr.group_name,
-        group_deps = rctx.attr.group_deps,
-        data_exclude = rctx.attr.pip_data_exclude,
-        tags = [
-            "pypi_name=" + metadata["name"],
-            "pypi_version=" + metadata["version"],
-        ],
         entry_points = entry_points,
+        target_platforms = target_platforms,
+        default_python_version = default_python_version,
+        # TODO @aignas 2025-04-14: load through the hub:
         annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+        data_exclude = rctx.attr.pip_data_exclude,
+        extras = requirement(rctx.attr.requirement).extras,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
     )
     rctx.file("BUILD.bazel", build_file_contents)
 
@@ -466,7 +483,6 @@ and the target that we need respectively.
         doc = "Name of the group, if any.",
     ),
     "repo": attr.string(
-        mandatory = True,
         doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",
     ),
     "repo_prefix": attr.string(

@@ -206,6 +206,24 @@ bzl_library(
 )
 
 bzl_library(
+    name = "local_runtime_repo_bzl",
+    srcs = ["local_runtime_repo.bzl"],
+    deps = [
+        ":enum_bzl",
+        ":repo_utils.bzl",
+    ],
+)
+
+bzl_library(
+    name = "local_runtime_toolchains_repo_bzl",
+    srcs = ["local_runtime_toolchains_repo.bzl"],
+    deps = [
+        ":repo_utils.bzl",
+        ":text_util_bzl",
+    ],
+)
+
+bzl_library(
     name = "normalize_name_bzl",
     srcs = ["normalize_name.bzl"],
 )

@@ -17,7 +17,7 @@
 
 load("//python/private:normalize_name.bzl", "normalize_name")
 
-_STRIP = ["(", " ", ">", "=", "<", "~", "!"]
+_STRIP = ["(", " ", ">", "=", "<", "~", "!", "@"]
 
 def requirement(spec):
     """Parse a PEP508 requirement line
@@ -28,15 +28,31 @@ def requirement(spec):
     Returns:
         A struct with the information.
     """
+    spec = spec.strip()
     requires, _, maybe_hashes = spec.partition(";")
+
+    version_start = requires.find("==")
+    version = None
+    if version_start != -1:
+        # Extract everything after '==' until the next space or end of the string
+        version, _, _ = requires[version_start + 2:].partition(" ")
+
+        # Remove any trailing characters from the version string
+        version = version.strip(" ")
+
     marker, _, _ = maybe_hashes.partition("--hash")
     requires, _, extras_unparsed = requires.partition("[")
+    extras_unparsed, _, _ = extras_unparsed.partition("]")
     for char in _STRIP:
         requires, _, _ = requires.partition(char)
-    extras = extras_unparsed.strip("]").split(",")
+    extras = extras_unparsed.replace(" ", "").split(",")
+    name = requires.strip(" ")
+    name = normalize_name(name)
 
     return struct(
-        name = normalize_name(requires.strip(" ")),
+        name = name.replace("_", "-"),
+        name_ = name,
         marker = marker.strip(" "),
         extras = extras,
+        version = version,
     )

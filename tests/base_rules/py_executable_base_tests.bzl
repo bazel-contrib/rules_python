@@ -24,7 +24,7 @@ load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
+load("//tests/support:support.bzl", "BOOTSTRAP_IMPL", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
 
 _tests = []
 
@@ -342,6 +342,53 @@ def _test_name_cannot_end_in_py_impl(env, target):
         matching.str_matches("name must not end in*.py"),
     )
 
+def _test_main_module_bootstrap_system_python(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        main_module = "dummy",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_main_module_bootstrap_system_python_impl,
+        target = name + "_subject",
+        config_settings = {
+            BOOTSTRAP_IMPL: "system_python",
+            "//command_line_option:platforms": [LINUX_X86_64],
+        },
+        expect_failure = True,
+    )
+
+def _test_main_module_bootstrap_system_python_impl(env, target):
+    env.expect.that_target(target).failures().contains_predicate(
+        matching.str_matches("mandatory*srcs"),
+    )
+
+_tests.append(_test_main_module_bootstrap_system_python)
+
+def _test_main_module_bootstrap_script(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        main_module = "dummy",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_main_module_bootstrap_script_impl,
+        target = name + "_subject",
+        config_settings = {
+            BOOTSTRAP_IMPL: "script",
+            "//command_line_option:platforms": [LINUX_X86_64],
+        },
+    )
+
+def _test_main_module_bootstrap_script_impl(env, target):
+    env.expect.that_target(target).default_outputs().contains(
+        "{package}/{test_name}_subject",
+    )
+
+_tests.append(_test_main_module_bootstrap_script)
+
 def _test_py_runtime_info_provided(name, config):
     rt_util.helper_target(
         config.rule,
@@ -364,29 +411,6 @@ def _test_py_runtime_info_provided_impl(env, target):
         env.expect.that_target(target).has_provider(BuiltinPyRuntimeInfo)
 
 _tests.append(_test_py_runtime_info_provided)
-
-# Can't test this -- mandatory validation happens before analysis test
-# can intercept it
-# TODO(#1069): Once re-implemented in Starlark, modify rule logic to make this
-# testable.
-# def _test_srcs_is_mandatory(name, config):
-#     rt_util.helper_target(
-#         config.rule,
-#         name = name + "_subject",
-#     )
-#     analysis_test(
-#         name = name,
-#         impl = _test_srcs_is_mandatory,
-#         target = name + "_subject",
-#         expect_failure = True,
-#     )
-#
-# _tests.append(_test_srcs_is_mandatory)
-#
-# def _test_srcs_is_mandatory_impl(env, target):
-#     env.expect.that_target(target).failures().contains_predicate(
-#         matching.str_matches("mandatory*srcs"),
-#     )
 
 # =====
 # You were gonna add a test at the end, weren't you?

@@ -327,10 +327,15 @@ def _maybe_file(path):
 def _expand_template_impl(ctx):
     pkg = ctx.label.package
     update_src = ctx.actions.declare_file(ctx.attr.update_target + ".py")
+
+    # Fix the path construction to avoid absolute paths
+    # If package is empty (root), don't add a leading slash
+    dst = "{}/{}".format(pkg, ctx.attr.output) if pkg else ctx.attr.output
+
     ctx.actions.expand_template(
         template = ctx.files._template[0],
         substitutions = {
-            "{{dst}}": "{}/{}".format(pkg, ctx.attr.output),
+            "{{dst}}": dst,
             "{{src}}": "{}".format(ctx.files.src[0].short_path),
             "{{update_target}}": "//{}:{}".format(pkg, ctx.attr.update_target),
         },
