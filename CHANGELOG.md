@@ -76,6 +76,9 @@ Unreleased changes template.
 * (pypi) The PyPI extension will no longer write the lock file entries as the
   extension has been marked reproducible.
   Fixes [#2434](https://github.com/bazel-contrib/rules_python/issues/2434).
+* (gazelle) Lazily load and parse manifest files when running Gazelle. This ensures no
+  manifest files are loaded when Gazelle is run over a set of non-python directories
+  [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
 
@@ -97,6 +100,8 @@ Unreleased changes template.
 * (toolchains) Ensure temporary `.pyc` and `.pyo` files are also excluded from the interpreters repository files.
 * (pypi) Run interpreter version call in isolated mode, to ensure it's not affected by userland environment variables, such as `PYTHONPATH`.
 * (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
+* (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
+  [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
 
 {#v0-0-0-added}
 ### Added
