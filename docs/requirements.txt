@@ -10,9 +10,9 @@ alabaster==1.0.0 \
     --hash=sha256:c00dca57bca26fa62a6d7d0a9fcce65f3e026e9bfe33e9c538fd3fbb2144fd9e \
     --hash=sha256:fc6786402dc3fcb2de3cabd5fe455a2db534b371124f1f21de8731783dec828b
     # via sphinx
-astroid==3.3.6 \
-    --hash=sha256:6aaea045f938c735ead292204afdb977a36e989522b7833ef6fea94de743f442 \
-    --hash=sha256:db676dc4f3ae6bfe31cda227dc60e03438378d7a896aec57422c95634e8d722f
+astroid==3.3.9 \
+    --hash=sha256:622cc8e3048684aa42c820d9d218978021c3c3d174fb03a9f0d615921744f550 \
+    --hash=sha256:d05bfd0acba96a7bd43e222828b7d9bc1e138aaeb0649707908d3702a9831248
     # via sphinx-autodoc2
 babel==2.17.0 \
     --hash=sha256:0c54cffb19f690cdcc52a3b50bcbf71e07a808d1c80d549f2459b9d2cf0afb9d \
