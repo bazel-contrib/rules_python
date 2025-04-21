@@ -1,0 +1,33 @@
+module(
+    name = "platform_specific_deps",
+    version = "0.0.0",
+    compatibility_level = 1,
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_python", version = "0.0.0")
+
+# TODO: Replace with builtin uv support if it supports platform specific requirements output
+bazel_dep(name = "rules_uv", version = "0.65.0")
+
+local_path_override(
+    module_name = "rules_python",
+    path = "../..",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    python_version = "3.11",
+)
+python.toolchain(
+    python_version = "3.9",
+)
+use_repo(python, "python_3_9")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pip",
+    python_version = "3.11",
+    requirements_lock = "requirements.txt",
+)
+use_repo(pip, "pip")
