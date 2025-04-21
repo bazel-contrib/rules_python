@@ -304,13 +304,15 @@ def _input_file_to_arg(input_file):
     return "%s;%s" % (py_package_lib.path_inside_wheel(input_file), input_file.path)
 
 def _py_wheel_impl(ctx):
+    is_stamping = is_stamping_enabled(ctx.attr)
+
     abi = _replace_make_variables(ctx.attr.abi, ctx)
     python_tag = _replace_make_variables(ctx.attr.python_tag, ctx)
     version = _replace_make_variables(ctx.attr.version, ctx)
 
     filename_segments = [
         _escape_filename_distribution_name(ctx.attr.distribution),
-        normalize_pep440(version),
+        _escape_filename_segment(normalize_pep440(version)) if is_stamping else normalize_pep440(version),
         _escape_filename_segment(python_tag),
         _escape_filename_segment(abi),
         _escape_filename_segment(ctx.attr.platform),
@@ -352,7 +354,7 @@ def _py_wheel_impl(ctx):
     args.add_all(ctx.attr.strip_path_prefixes, format_each = "--strip_path_prefix=%s")
 
     # Pass workspace status files if stamping is enabled
-    if is_stamping_enabled(ctx.attr):
+    if is_stamping:
         args.add("--volatile_status_file", ctx.version_file)
         args.add("--stable_status_file", ctx.info_file)
         other_inputs.extend([ctx.version_file, ctx.info_file])

@@ -61,6 +61,7 @@ END_UNRELEASED_TEMPLATE
 * (rules) PyInfo provider is now advertised by py_test, py_binary, and py_library;
   this allows aspects using required_providers to function correctly.
   ([#2506](https://github.com/bazel-contrib/rules_python/issues/2506)).
+* (py_wheel) Ensure the filename segment is escaped in when using stamping wheel names.
 
 {#v0-0-0-added}
 ### Added
