@@ -44,7 +44,7 @@ def whl_repo_name(filename, sha256):
     else:
         parsed = parse_whl_name(filename)
         name = normalize_name(parsed.distribution)
-        version = parsed.version.replace(".", "_").replace("!", "_")
+        version = parsed.version.replace(".", "_").replace("!", "_").replace("+", "_").replace("%", "_")
         python_tag, _, _ = parsed.python_tag.partition(".")
         abi_tag, _, _ = parsed.abi_tag.partition(".")
         platform_tag, _, _ = parsed.platform_tag.partition(".")
