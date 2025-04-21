@@ -43,7 +43,9 @@ load(
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
+load(":py_info.bzl", "PyInfo")
 load(":py_internal.bzl", "py_internal")
+load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
 load(
     ":toolchain_types.bzl",
@@ -299,6 +301,8 @@ def _repo_relative_short_path(short_path):
     else:
         return short_path
 
+_MaybeBuiltinPyInfo = [BuiltinPyInfo] if BuiltinPyInfo != None else []
+
 # NOTE: Exported publicaly
 def create_py_library_rule_builder():
     """Create a rule builder for a py_library.
@@ -319,6 +323,7 @@ def create_py_library_rule_builder():
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),
         attrs = LIBRARY_ATTRS,
         fragments = ["py"],
+        provides = [PyCcLinkParamsInfo, PyInfo] + _MaybeBuiltinPyInfo,
         toolchains = [
             ruleb.ToolchainType(TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),

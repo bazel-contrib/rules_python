@@ -54,7 +54,6 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
@@ -62,6 +61,9 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-fixed}
 ### Fixed
 
+* (rules) PyInfo provider is now advertised by py_test, py_binary, and py_library;
+  this allows aspects using required_providers to function correctly.
+  ([#2506](https://github.com/bazel-contrib/rules_python/issues/2506)).
 * Fixes when using {obj}`--bootstrap_impl=script`:
   * `compile_pip_requirements` now works with it
   * The `sys._base_executable` value will reflect the underlying interpreter,
@@ -111,6 +113,13 @@ END_UNRELEASED_TEMPLATE
   [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
+* (pypi) From now on the `Requires-Dist` from the wheel metadata is analysed in
+  the loading phase instead of repository rule phase giving better caching
+  performance when the target platforms are changed (e.g. target python
+  versions). This is preparatory work for stabilizing the cross-platform wheel
+  support. From now on the usage of `experimental_target_platforms` should be
+  avoided and the `requirements_by_platform` values should be instead used to
+  specify the target platforms for the given dependencies.
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 

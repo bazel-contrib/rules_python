@@ -16,7 +16,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:glob_excludes.bzl", "glob_excludes")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library_targets.bzl", "whl_library_targets", "whl_library_targets_from_requires")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -182,6 +182,71 @@ def _test_entrypoints(env):
     ])  # buildifier: @unsorted-dict-items
 
 _tests.append(_test_entrypoints)
+
+def _test_whl_and_library_deps_from_requires(env):
+    filegroup_calls = []
+    py_library_calls = []
+
+    whl_library_targets_from_requires(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        metadata_version = "0",
+        dep_template = "@pypi_{name}//:{target}",
+        requires_dist = [
+            "foo",  # this self-edge will be ignored
+            "bar-baz",
+        ],
+        target_platforms = ["cp38_linux_x86_64"],
+        default_python_version = "3.8.1",
+        data_exclude = [],
+        # Overrides for testing
+        filegroups = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            config_setting = lambda **_: None,
+            glob = _glob,
+            select = _select,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+        ),
+    )
+
+    env.expect.that_collection(filegroup_calls).contains_exactly([
+        {
+            "name": "whl",
+            "srcs": ["foo-0-py3-none-any.whl"],
+            "data": ["@pypi_bar_baz//:whl"],
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+    env.expect.that_collection(py_library_calls).contains_exactly([
+        {
+            "name": "pkg",
+            "srcs": _glob(
+                ["site-packages/**/*.py"],
+                exclude = [],
+                allow_empty = True,
+            ),
+            "pyi_srcs": _glob(["site-packages/**/*.pyi"], allow_empty = True),
+            "data": [] + _glob(
+                ["site-packages/**/*"],
+                exclude = [
+                    "**/*.py",
+                    "**/*.pyc",
+                    "**/*.pyc.*",
+                    "**/*.dist-info/RECORD",
+                ] + glob_excludes.version_dependent_exclusions(),
+            ),
+            "imports": ["site-packages"],
+            "deps": ["@pypi_bar_baz//:pkg"],
+            "tags": ["pypi_name=Foo", "pypi_version=0"],
+            "visibility": ["//visibility:public"],
+            "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+_tests.append(_test_whl_and_library_deps_from_requires)
 
 def _test_whl_and_library_deps(env):
     filegroup_calls = []

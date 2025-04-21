@@ -47,9 +47,11 @@ def requirement(spec):
         requires, _, _ = requires.partition(char)
     extras = extras_unparsed.replace(" ", "").split(",")
     name = requires.strip(" ")
+    name = normalize_name(name)
 
     return struct(
-        name = normalize_name(name).replace("_", "-"),
+        name = name.replace("_", "-"),
+        name_ = name,
         marker = marker.strip(" "),
         extras = extras,
         version = version,
