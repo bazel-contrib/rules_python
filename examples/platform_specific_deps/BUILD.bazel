@@ -1,0 +1,27 @@
+load("@pip//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_uv//uv:pip.bzl", "pip_compile")
+
+pip_compile(
+    name = "generate_requirements",
+    extra_args = [
+        "--universal",
+        "--no-generate-hashes",  # Just to reduce noise
+    ],
+    py3_runtime = "@python_3_9//:py3_runtime",
+    requirements_in = "requirements.in",
+    requirements_txt = "requirements.txt",
+)
+
+py_test(
+    name = "test",
+    srcs = [
+        "pytest_main.py",
+        "test_load.py",
+    ],
+    main = "pytest_main.py",
+    deps = [
+        requirement("pytest"),
+        requirement("pytest-xdist"),
+    ],
+)
