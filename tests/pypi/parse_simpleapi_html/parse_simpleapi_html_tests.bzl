@@ -317,6 +317,7 @@ def _test_whls(env):
                 metadata_url = "",
                 sha256 = "deadbeef",
                 version = "2.6.0+cpu",
+                # A URL with % could occur if directly written in requirements.
                 url = "https://example.org/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl",
                 yanked = False,
             ),
