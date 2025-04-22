@@ -313,7 +313,6 @@ wheel; python_version == "3.11" or python_version == "3.12"  # Example comment
 """.splitlines(),
 )
 
-
 write_file(
     name = "requires_dist_depends_on_extras_file",
     out = "requires_dist_depends_on_extras.txt",
@@ -419,8 +418,8 @@ py_test(
         ":minimal_with_py_package",
         ":python_abi3_binary_wheel",
         ":python_requires_in_a_package",
-        ":requires_dist_depends_on_extras_using_file",
         ":requires_dist_depends_on_extras",
+        ":requires_dist_depends_on_extras_using_file",
         ":requires_files",
         ":use_rule_with_dir_in_outs",
     ],
