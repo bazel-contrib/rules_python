@@ -303,6 +303,25 @@ def _test_whls(env):
                 yanked = False,
             ),
         ),
+        (
+            struct(
+                attrs = [
+                    'href="/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl#sha256=deadbeef"',
+                ],
+                filename = "torch-2.6.0+cpu-cp39-cp39-manylinux_2_28_aarch64.whl",
+                url = "https://example.org/",
+            ),
+            struct(
+                filename = "torch-2.6.0+cpu-cp39-cp39-manylinux_2_28_aarch64.whl",
+                metadata_sha256 = "",
+                metadata_url = "",
+                sha256 = "deadbeef",
+                version = "2.6.0+cpu",
+                # A URL with % could occur if directly written in requirements.
+                url = "https://example.org/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl",
+                yanked = False,
+            ),
+        ),
     ]
 
     for (input, want) in tests:

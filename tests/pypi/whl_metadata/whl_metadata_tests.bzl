@@ -140,6 +140,37 @@ Requires-Dist: this will be ignored
 
 _tests.append(_test_parse_metadata_all)
 
+def _test_parse_metadata_multiline_license(env):
+    got = _parse_whl_metadata(
+        env,
+        # NOTE: The trailing whitespace here is meaningful as an empty line
+        # denotes the end of the header.
+        contents = """\
+Name: foo
+Version: 0.0.1
+License: some License
+        
+        some line
+        
+        another line
+        
+Requires-Dist: bar; extra == "all"
+Provides-Extra: all
+
+Requires-Dist: this will be ignored
+""",
+    )
+    got.name().equals("foo")
+    got.version().equals("0.0.1")
+    got.requires_dist().contains_exactly([
+        "bar; extra == \"all\"",
+    ])
+    got.provides_extra().contains_exactly([
+        "all",
+    ])
+
+_tests.append(_test_parse_metadata_multiline_license)
+
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,

@@ -52,7 +52,7 @@ def parse_whl_metadata(contents):
         "version": "",
     }
     for line in contents.strip().split("\n"):
-        if not line.strip():
+        if not line:
             # Stop parsing on first empty line, which marks the end of the
             # headers containing the metadata.
             break
