@@ -57,6 +57,9 @@ END_UNRELEASED_TEMPLATE
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
+* (rules) {obj}`pip_compile` now generates a `.test` target. The `_test` target is deprectated
+  and will be removed in the next major release.
+  ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
 
 {#v0-0-0-fixed}
 ### Fixed
