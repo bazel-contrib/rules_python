@@ -126,14 +126,13 @@ Version: 0.0.1
 Requires-Dist: bar; extra == "all"
 Provides-Extra: all
 
-Requires-Dist: baz
+Requires-Dist: this will be ignored
 """,
     )
     got.name().equals("foo")
     got.version().equals("0.0.1")
     got.requires_dist().contains_exactly([
         "bar; extra == \"all\"",
-        "baz",
     ])
     got.provides_extra().contains_exactly([
         "all",
@@ -158,14 +157,13 @@ License: some License
 Requires-Dist: bar; extra == "all"
 Provides-Extra: all
 
-Requires-Dist: baz
+Requires-Dist: this will be ignored
 """,
     )
     got.name().equals("foo")
     got.version().equals("0.0.1")
     got.requires_dist().contains_exactly([
         "bar; extra == \"all\"",
-        "baz",
     ])
     got.provides_extra().contains_exactly([
         "all",
