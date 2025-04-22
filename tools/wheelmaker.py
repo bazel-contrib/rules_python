@@ -562,13 +562,14 @@ def main() -> None:
 
         def get_new_requirement_line(reqs_text, extra):
             req = Requirement(reqs_text.strip())
+            req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
             if req.marker:
                 if extra:
-                    return f"Requires-Dist: {req.name}{req.specifier}; ({req.marker}) and {extra}"
+                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; ({req.marker}) and {extra}"
                 else:
-                    return f"Requires-Dist: {req.name}{req.specifier}; {req.marker}"
+                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
             else:
-                return f"Requires-Dist: {req.name}{req.specifier}; {extra}".strip(" ;")
+                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(" ;")
 
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):
