@@ -69,6 +69,8 @@ END_UNRELEASED_TEMPLATE
   * The `sys._base_executable` value will reflect the underlying interpreter,
     not venv interpreter.
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
+* (rules) Better handle flakey platform.win32_ver() calls by calling them
+  multiple times.
 
 {#v0-0-0-added}
 ### Added
