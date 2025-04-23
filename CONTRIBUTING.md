@@ -173,6 +173,47 @@ The `legacy_foo` arg was removed
 :::
 ```
 
+## Style and idioms
+
+For the most part, we just accept whatever the code formatters do, so there
+isn't much style to enforce.
+
+Some miscellanous style, idioms, and conventions we have are:
+
+### Markdown/Sphinx Style
+
+* Use colons (e.g. `:::`) for prose sections of text.
+* Use backticks for code blocks.
+* Max line length: 100
+
+### BUILD/bzl Style
+
+* When a macro generates public targets, use a dot (`.`) to separate the
+  user-provided name from the generted name. e.g. `foo(name="x")` generates
+  `x.test`. The `.` is our convention to communicate that it's a generated
+  target, and thus one should look for `name="x"` when searching for the
+  definition.
+* The different build phases and interface/implementation pieces of rules should
+  be in different files. Stated another way: loading code for thing shouldn't
+  incur loading code that isn't relevant.
+  * Providers should be in their own files. This allows implementing a custom
+    rule that implements the provider without loading an existing
+    implementation.
+  * The repository phase shouldn't `load()` code that is only relevant to the
+    loading-phase or subsequent phases. Vice-versa, loading-phase code should
+    not load any repository-phase code.
+  * Generally, one rule per file. The goal is that defining an e.g. library
+    shouldn't incur loading all the code for binaries, tests, packaging, etc.
+* The public access point for anything should be a separate file that re-exports
+  the specific symbols that are public. This ensures our public API is well
+  defined and prevents accidentally exposing a package-private symbol as a
+  public symbol.
+* Repository rules should have name ending in `_repo`. This helps distinguish
+  them from regular rules.
+* Each bzlmod extension, the "X" of `use_repo("//foo:foo.bzl", "X")` should be
+  in its own file. The path given in the `use_repo()` expression is the identity
+  Bazel uses and cannot be changed.
+
 ## Generated files
 
 Some checked-in files are generated and need to be updated when a new PR is
