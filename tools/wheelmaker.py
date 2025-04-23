@@ -217,9 +217,11 @@ class _WhlFile(zipfile.ZipFile):
                     filename = filename.lstrip("/")
                 writer.writerow(
                     (
-                        c
-                        if isinstance(c, str)
-                        else c.decode("utf-8", "surrogateescape")
+                        (
+                            c
+                            if isinstance(c, str)
+                            else c.decode("utf-8", "surrogateescape")
+                        )
                         for c in (filename, digest, size)
                     )
                 )
@@ -604,7 +606,9 @@ def main() -> None:
             # File is empty
             # So replace the meta_line entirely, including removing newline chars
             else:
-                metadata = re.sub(re.escape(meta_line) + r"(?:\r?\n)?", "", metadata, count=1)
+                metadata = re.sub(
+                    re.escape(meta_line) + r"(?:\r?\n)?", "", metadata, count=1
+                )
 
         maker.add_metadata(
             metadata=metadata,
