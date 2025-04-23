@@ -23,11 +23,14 @@ import unittest
 
 _logger = logging.getLogger(__name__)
 
+
 class ExecuteError(Exception):
     def __init__(self, result):
         self.result = result
+
     def __str__(self):
         return self.result.describe()
+
 
 class ExecuteResult:
     def __init__(
@@ -83,7 +86,7 @@ class TestCase(unittest.TestCase):
             "TMP": str(self.tmp_dir),
             # For some reason, this is necessary for Bazel 6.4 to work.
             # If not present, it can't find some bash helpers in @bazel_tools
-            "RUNFILES_DIR": os.environ["TEST_SRCDIR"]
+            "RUNFILES_DIR": os.environ["TEST_SRCDIR"],
         }
 
     def run_bazel(self, *args: str, check: bool = True) -> ExecuteResult:

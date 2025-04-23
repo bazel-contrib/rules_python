@@ -5,8 +5,40 @@
 
 Using PyPI packages (aka "pip install") involves two main steps.
 
-1. [Installing third party packages](#installing-third-party-packages)
-2. [Using third party packages as dependencies](#using-third-party-packages)
+1. [Generating requirements file](#generating-requirements-file)
+2. [Installing third party packages](#installing-third-party-packages)
+3. [Using third party packages as dependencies](#using-third-party-packages)
+
+{#generating-requirements-file}
+## Generating requirements file
+
+Generally, when working on a Python project, you'll have some dependencies that themselves have other dependencies. You might also specify dependency bounds instead of specific versions. So you'll need to generate a full list of all transitive dependencies and pinned versions for every dependency.
+
+Typically, you'd have your dependencies specified in `pyproject.toml` or `requirements.in` and generate the full pinned list of dependencies in `requirements_lock.txt`, which you can manage with the `compile_pip_requirements` Bazel rule:
+
+```starlark
+load("@rules_python//python:pip.bzl", "compile_pip_requirements")
+
+compile_pip_requirements(
+    name = "requirements",
+    src = "requirements.in",
+    requirements_txt = "requirements_lock.txt",
+)
+```
+
+This rule generates two targets:
+- `bazel run [name].update` will regenerate the `requirements_txt` file
+- `bazel test [name]_test` will test that the `requirements_txt` file is up to date
+
+For more documentation, see the API docs under {obj}`@rules_python//python:pip.bzl`.
+
+Once you generate this fully specified list of requirements, you can install the requirements with the instructions in [Installing third party packages](#installing-third-party-packages).
+
+:::{warning}
+If you're specifying dependencies in `pyproject.toml`, make sure to include the `[build-system]` configuration, with pinned dependencies. `compile_pip_requirements` will use the build system specified to read your project's metadata, and you might see non-hermetic behavior if you don't pin the build system.
+
+Not specifying `[build-system]` at all will result in using a default `[build-system]` configuration, which uses unpinned versions ([ref](https://peps.python.org/pep-0518/#build-system-table)).
+:::
 
 {#installing-third-party-packages}
 ## Installing third party packages
@@ -27,8 +59,7 @@ pip.parse(
 )
 use_repo(pip, "my_deps")
 ```
-For more documentation, including how the rules can update/create a requirements
-file, see the bzlmod examples under the {gh-path}`examples` folder or the documentation
+For more documentation, see the bzlmod examples under the {gh-path}`examples` folder or the documentation
 for the {obj}`@rules_python//python/extensions:pip.bzl` extension.
 
 ```{note}

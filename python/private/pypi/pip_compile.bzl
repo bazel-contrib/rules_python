@@ -110,7 +110,7 @@ def pip_compile(
 
     args = ["--src=%s" % loc.format(src) for src in srcs] + [
         loc.format(requirements_txt),
-        "//%s:%s.update" % (native.package_name(), name),
+        "//%s:%s" % (native.package_name(), name),
         "--resolver=backtracking",
         "--allow-unsafe",
     ]
