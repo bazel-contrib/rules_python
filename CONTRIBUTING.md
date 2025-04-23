@@ -182,9 +182,9 @@ Some miscellanous style, idioms, and conventions we have are:
 
 ### Markdown/Sphinx Style
 
-* Use colons (e.g. `:::`) for prose sections of text.
+* Use colons for prose sections of text, e.g. `:::{note}`, not backticks.
 * Use backticks for code blocks.
-* Max line length: 100
+* Max line length: 100.
 
 ### BUILD/bzl Style
 
