@@ -74,6 +74,9 @@ END_UNRELEASED_TEMPLATE
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
 * (rules) Better handle flakey platform.win32_ver() calls by calling them
   multiple times.
+* (pypi) Correctly handle `METADATA` entries when `python_full_version` is used in
+  the environment marker.
+  Fixes [#2319](https://github.com/bazel-contrib/rules_python/issues/2319).
 
 {#v0-0-0-added}
 ### Added

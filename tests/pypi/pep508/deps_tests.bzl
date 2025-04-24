@@ -48,6 +48,15 @@ def test_can_add_os_specific_deps(env):
             ],
             python_version = "",
         ),
+        struct(
+            platforms = [
+                "cp33.1_linux_x86_64",
+                "cp33.1_osx_x86_64",
+                "cp33.1_osx_aarch64",
+                "cp33.1_windows_x86_64",
+            ],
+            python_version = "",
+        ),
     ]:
         got = deps(
             "foo",
@@ -154,7 +163,7 @@ _tests.append(test_self_dependencies_can_come_in_any_order)
 def _test_can_get_deps_based_on_specific_python_version(env):
     requires_dist = [
         "bar",
-        "baz; python_version < '3.8'",
+        "baz; python_full_version < '3.7.3'",
         "posix_dep; os_name=='posix' and python_version >= '3.8'",
     ]
 
@@ -162,6 +171,11 @@ def _test_can_get_deps_based_on_specific_python_version(env):
         "foo",
         requires_dist = requires_dist,
         platforms = ["cp38_linux_x86_64"],
+    )
+    py373 = deps(
+        "foo",
+        requires_dist = requires_dist,
+        platforms = ["cp37.3_linux_x86_64"],
     )
     py37 = deps(
         "foo",
@@ -174,6 +188,8 @@ def _test_can_get_deps_based_on_specific_python_version(env):
     env.expect.that_dict(py37.deps_select).contains_exactly({})
     env.expect.that_collection(py38.deps).contains_exactly(["bar", "posix_dep"])
     env.expect.that_dict(py38.deps_select).contains_exactly({})
+    env.expect.that_collection(py373.deps).contains_exactly(["bar"])
+    env.expect.that_dict(py373.deps_select).contains_exactly({})
 
 _tests.append(_test_can_get_deps_based_on_specific_python_version)
 
@@ -210,27 +226,29 @@ def _test_can_get_version_select(env):
         "posix_dep_with_version; os_name=='posix' and python_version >= '3.8'",
         "arch_dep; platform_machine=='x86_64' and python_version < '3.8'",
     ]
-    default_python_version = "3.7.4"
 
     got = deps(
         "foo",
         requires_dist = requires_dist,
         platforms = [
             "cp3{}_{}_x86_64".format(minor, os)
-            for minor in [7, 8, 9]
+            for minor in ["7.4", "8.8", "9.8"]
             for os in ["linux", "windows"]
         ],
-        default_python_version = default_python_version,
+        default_python_version = "3.7",
+        minor_mapping = {
+            "3.7": "3.7.4",
+        },
     )
 
     env.expect.that_collection(got.deps).contains_exactly(["bar"])
     env.expect.that_dict(got.deps_select).contains_exactly({
-        "cp37_linux_x86_64": ["arch_dep", "baz", "posix_dep"],
-        "cp37_windows_x86_64": ["arch_dep", "baz"],
-        "cp38_linux_x86_64": ["baz_new", "posix_dep", "posix_dep_with_version"],
-        "cp38_windows_x86_64": ["baz_new"],
-        "cp39_linux_x86_64": ["baz_new", "posix_dep", "posix_dep_with_version"],
-        "cp39_windows_x86_64": ["baz_new"],
+        "cp37.4_linux_x86_64": ["arch_dep", "baz", "posix_dep"],
+        "cp37.4_windows_x86_64": ["arch_dep", "baz"],
+        "cp38.8_linux_x86_64": ["baz_new", "posix_dep", "posix_dep_with_version"],
+        "cp38.8_windows_x86_64": ["baz_new"],
+        "cp39.8_linux_x86_64": ["baz_new", "posix_dep", "posix_dep_with_version"],
+        "cp39.8_windows_x86_64": ["baz_new"],
         "linux_x86_64": ["arch_dep", "baz", "posix_dep"],
         "windows_x86_64": ["arch_dep", "baz"],
     })
@@ -294,8 +312,6 @@ def _test_deps_are_not_duplicated(env):
 _tests.append(_test_deps_are_not_duplicated)
 
 def _test_deps_are_not_duplicated_when_encountering_platform_dep_first(env):
-    default_python_version = "3.7.1"
-
     # Note, that we are sorting the incoming `requires_dist` and we need to ensure that we are not getting any
     # issues even if the platform-specific line comes first.
     requires_dist = [
@@ -307,19 +323,20 @@ def _test_deps_are_not_duplicated_when_encountering_platform_dep_first(env):
         "foo",
         requires_dist = requires_dist,
         platforms = [
-            "cp37_linux_aarch64",
-            "cp37_linux_x86_64",
+            "cp37.1_linux_aarch64",
+            "cp37.1_linux_x86_64",
             "cp310_linux_aarch64",
             "cp310_linux_x86_64",
         ],
-        default_python_version = default_python_version,
+        default_python_version = "3.7.1",
+        minor_mapping = {},
     )
 
     env.expect.that_collection(got.deps).contains_exactly([])
     env.expect.that_dict(got.deps_select).contains_exactly({
         "cp310_linux_aarch64": ["bar"],
         "cp310_linux_x86_64": ["bar"],
-        "cp37_linux_aarch64": ["bar"],
+        "cp37.1_linux_aarch64": ["bar"],
         "linux_aarch64": ["bar"],
     })
 

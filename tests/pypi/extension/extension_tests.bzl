@@ -157,6 +157,7 @@ def _test_simple(env):
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.15": "3.15.19"},
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
@@ -204,6 +205,7 @@ def _test_simple_multiple_requirements(env):
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.15": "3.15.19"},
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
@@ -270,6 +272,7 @@ torch==2.4.1 ; platform_machine != 'x86_64' \
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.15": "3.15.19"},
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": ["torch"]})
@@ -392,6 +395,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         available_interpreters = {
             "python_3_12_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.12": "3.12.19"},
         simpleapi_download = mocksimpleapi_download,
     )
 
@@ -515,6 +519,7 @@ simple==0.0.3 \
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.15": "3.15.19"},
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
@@ -544,7 +549,8 @@ simple==0.0.3 \
         "pypi_315_extra": {
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
-            "experimental_target_platforms": ["cp315_linux_x86_64"],
+            # TODO @aignas 2025-04-20: ensure that this is in the hub repo
+            # "experimental_target_platforms": ["cp315_linux_x86_64"],
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "extra==0.0.1 --hash=sha256:deadb00f",
@@ -552,7 +558,6 @@ simple==0.0.3 \
         "pypi_315_simple_linux_x86_64": {
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
-            "experimental_target_platforms": ["cp315_linux_x86_64"],
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
@@ -560,7 +565,6 @@ simple==0.0.3 \
         "pypi_315_simple_osx_aarch64": {
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
-            "experimental_target_platforms": ["cp315_osx_aarch64"],
             "extra_pip_args": ["--platform=macosx_10_9_arm64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.3 --hash=sha256:deadbaaf",
@@ -648,6 +652,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.15": "3.15.19"},
         simpleapi_download = mocksimpleapi_download,
     )
 
@@ -850,6 +855,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",
         },
+        minor_mapping = {"3.15": "3.15.19"},
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": []})
