@@ -151,6 +151,10 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Correctly handle `METADATA` entries when `python_full_version` is used in
   the environment marker.
   Fixes [#2319](https://github.com/bazel-contrib/rules_python/issues/2319).
+* (pypi) Correctly handle `python_version` parameter and transition the requirement
+  locking to the right interpreter version when using
+  {obj}`compile_pip_requirements` rule.
+  See [#2819](https://github.com/bazel-contrib/rules_python/pull/2819).
 
 {#1-4-0-added}
 ### Added
