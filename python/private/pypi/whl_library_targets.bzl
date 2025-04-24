@@ -384,7 +384,7 @@ def _config_settings(dependencies_by_platform, native = native, **kwargs):
 
         if abi:
             _kwargs["flag_values"] = {
-                str(Label("//python/config_settings:python_version")): "3.{}".format(abi[len("cp3"):]),
+                Label("//python/config_settings:python_version"): "3.{}".format(abi[len("cp3"):]),
             }
 
         native.config_setting(
