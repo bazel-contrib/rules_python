@@ -77,7 +77,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
+  support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
+  (the default), the subprocess's stdout/stderr will be logged.
 
 {#v0-0-0-removed}
 ### Removed
