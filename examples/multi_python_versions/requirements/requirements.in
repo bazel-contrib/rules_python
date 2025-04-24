@@ -1,1 +1,1 @@
-websockets
+websockets ; python_full_version > "3.9.1"

@@ -280,6 +280,7 @@ bzl_library(
         ":evaluate_markers_bzl",
         ":parse_requirements_bzl",
         ":pip_repository_attrs_bzl",
+        ":pypi_repo_utils_bzl",
         ":render_pkg_aliases_bzl",
         ":whl_config_setting_bzl",
         "//python/private:normalize_name_bzl",

@@ -19,11 +19,12 @@ load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_platform.bzl", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
 
-def evaluate_markers(requirements):
+def evaluate_markers(requirements, python_version = None):
     """Return the list of supported platforms per requirements line.
 
     Args:
-        requirements: dict[str, list[str]] of the requirement file lines to evaluate.
+        requirements: {type}`dict[str, list[str]]` of the requirement file lines to evaluate.
+        python_version: {type}`str | None` the version that can be used when evaluating the markers.
 
     Returns:
         dict of string lists with target platforms
@@ -32,7 +33,7 @@ def evaluate_markers(requirements):
     for req_string, platforms in requirements.items():
         req = requirement(req_string)
         for platform in platforms:
-            if evaluate(req.marker, env = env(platform_from_str(platform, None))):
+            if evaluate(req.marker, env = env(platform_from_str(platform, python_version))):
                 ret.setdefault(req_string, []).append(platform)
 
     return ret

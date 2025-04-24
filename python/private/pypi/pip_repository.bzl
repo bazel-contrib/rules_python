@@ -16,11 +16,12 @@
 
 load("@bazel_skylib//lib:sets.bzl", "sets")
 load("//python/private:normalize_name.bzl", "normalize_name")
-load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR")
+load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:text_util.bzl", "render")
 load(":evaluate_markers.bzl", "evaluate_markers")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
 load(":pip_repository_attrs.bzl", "ATTRS")
+load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 
@@ -70,7 +71,27 @@ package(default_visibility = ["//visibility:public"])
 exports_files(["requirements.bzl"])
 """
 
+def _evaluate_markers(rctx, requirements, logger = None):
+    python_interpreter = _get_python_interpreter_attr(rctx)
+    stdout = pypi_repo_utils.execute_checked_stdout(
+        rctx,
+        op = "GetPythonVersionForMarkerEval",
+        python = python_interpreter,
+        arguments = [
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
+            "-c",
+            "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}', end='')",
+        ],
+        srcs = [],
+        logger = logger,
+    )
+    return evaluate_markers(requirements, python_version = stdout)
+
 def _pip_repository_impl(rctx):
+    logger = repo_utils.logger(rctx)
     requirements_by_platform = parse_requirements(
         rctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -82,7 +103,7 @@ def _pip_repository_impl(rctx):
             extra_pip_args = rctx.attr.extra_pip_args,
         ),
         extra_pip_args = rctx.attr.extra_pip_args,
-        evaluate_markers = evaluate_markers,
+        evaluate_markers = lambda requirements: _evaluate_markers(rctx, requirements, logger),
     )
     selected_requirements = {}
     options = None
