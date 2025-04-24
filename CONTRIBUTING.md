@@ -204,10 +204,14 @@ Some miscellanous style, idioms, and conventions we have are:
     not load any repository-phase code.
   * Generally, one rule per file. The goal is that defining an e.g. library
     shouldn't incur loading all the code for binaries, tests, packaging, etc.
-* The public access point for anything should be a separate file that re-exports
-  the specific symbols that are public. This ensures our public API is well
-  defined and prevents accidentally exposing a package-private symbol as a
-  public symbol.
+* Separate files should be used to expose public APIs. This ensures our public
+  API is well defined and prevents accidentally exposing a package-private
+  symbol as a public symbol.
+
+  :::{note}
+  The public API file's docstring becomes part of the user-facing docs. That
+  file's docstring must be used for module-level API documentation.
+  :::
 * Repository rules should have name ending in `_repo`. This helps distinguish
   them from regular rules.
 * Each bzlmod extension, the "X" of `use_repo("//foo:foo.bzl", "X")` should be
