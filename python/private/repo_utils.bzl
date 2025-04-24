@@ -98,6 +98,8 @@ def _execute_internal(
         arguments,
         environment = {},
         logger = None,
+        log_stdout = True,
+        log_stderr = True,
         **kwargs):
     """Execute a subprocess with debugging instrumentation.
 
@@ -116,6 +118,10 @@ def _execute_internal(
         logger: optional `Logger` to use for logging execution details. Must be
             specified when using module_ctx. If not specified, a default will
             be created.
+        log_stdout: If True (the default), write stdout to the logged message. Setting
+            to False can be useful for large stdout messages or for secrets.
+        log_stderr: If True (the default), write stderr to the logged message. Setting
+            to False can be useful for large stderr messages or for secrets.
         **kwargs: additional kwargs to pass onto rctx.execute
 
     Returns:
@@ -160,7 +166,7 @@ def _execute_internal(
             cwd = _cwd_to_str(mrctx, kwargs),
             timeout = _timeout_to_str(kwargs),
             env_str = _env_to_str(environment),
-            output = _outputs_to_str(result),
+            output = _outputs_to_str(result, log_stdout = log_stdout, log_stderr = log_stderr),
         ))
     elif _is_repo_debug_enabled(mrctx):
         logger.debug((
@@ -171,7 +177,7 @@ def _execute_internal(
             op = op,
             status = "success" if result.return_code == 0 else "failure",
             return_code = result.return_code,
-            output = _outputs_to_str(result),
+            output = _outputs_to_str(result, log_stdout = log_stdout, log_stderr = log_stderr),
         ))
 
     result_kwargs = {k: getattr(result, k) for k in dir(result)}
@@ -183,6 +189,8 @@ def _execute_internal(
             mrctx = mrctx,
             kwargs = kwargs,
             environment = environment,
+            log_stdout = log_stdout,
+            log_stderr = log_stderr,
         ),
         **result_kwargs
     )
@@ -220,7 +228,16 @@ def _execute_checked_stdout(*args, **kwargs):
     """Calls execute_checked, but only returns the stdout value."""
     return _execute_checked(*args, **kwargs).stdout
 
-def _execute_describe_failure(*, op, arguments, result, mrctx, kwargs, environment):
+def _execute_describe_failure(
+        *,
+        op,
+        arguments,
+        result,
+        mrctx,
+        kwargs,
+        environment,
+        log_stdout = True,
+        log_stderr = True):
     return (
         "repo.execute: {op}: failure:\n" +
         "  command: {cmd}\n" +
@@ -236,7 +253,7 @@ def _execute_describe_failure(*, op, arguments, result, mrctx, kwargs, environme
         cwd = _cwd_to_str(mrctx, kwargs),
         timeout = _timeout_to_str(kwargs),
         env_str = _env_to_str(environment),
-        output = _outputs_to_str(result),
+        output = _outputs_to_str(result, log_stdout = log_stdout, log_stderr = log_stderr),
     )
 
 def _which_checked(mrctx, binary_name):
@@ -331,11 +348,11 @@ def _env_to_str(environment):
 def _timeout_to_str(kwargs):
     return kwargs.get("timeout", "<default timeout>")
 
-def _outputs_to_str(result):
+def _outputs_to_str(result, log_stdout = True, log_stderr = True):
     lines = []
     items = [
-        ("stdout", result.stdout),
-        ("stderr", result.stderr),
+        ("stdout", result.stdout if log_stdout else "<log_stdout = False; skipping>"),
+        ("stderr", result.stderr if log_stderr else "<log_stderr = False; skipping>"),
     ]
     for name, content in items:
         if content:
