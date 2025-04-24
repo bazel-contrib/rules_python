@@ -289,6 +289,22 @@ def _test_freethreaded_wheels(env):
 
 _tests.append(_test_freethreaded_wheels)
 
+def _test_micro_version_freethreaded(env):
+    # Check we prefer platform specific wheels
+    got = _select_whls(whls = WHL_LIST, want_platforms = ["cp313.3_linux_x86_64"])
+    _match(
+        env,
+        got,
+        "pkg-0.0.1-cp313-cp313t-musllinux_1_1_x86_64.whl",
+        "pkg-0.0.1-cp313-cp313-musllinux_1_1_x86_64.whl",
+        "pkg-0.0.1-cp313-abi3-musllinux_1_1_x86_64.whl",
+        "pkg-0.0.1-cp313-none-musllinux_1_1_x86_64.whl",
+        "pkg-0.0.1-cp39-abi3-any.whl",
+        "pkg-0.0.1-py3-none-any.whl",
+    )
+
+_tests.append(_test_micro_version_freethreaded)
+
 def select_whl_test_suite(name):
     """Create the test suite.
 

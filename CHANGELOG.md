@@ -77,7 +77,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
+  support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
+  (the default), the subprocess's stdout/stderr will be logged.
 
 {#v0-0-0-removed}
 ### Removed
@@ -146,6 +148,9 @@ END_UNRELEASED_TEMPLATE
 * (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
 * (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
   [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
+* (pypi) Correctly handle `METADATA` entries when `python_full_version` is used in
+  the environment marker.
+  Fixes [#2319](https://github.com/bazel-contrib/rules_python/issues/2319).
 
 {#1-4-0-added}
 ### Added

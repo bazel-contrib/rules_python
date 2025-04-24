@@ -16,7 +16,9 @@
 
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
+load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
+load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:semver.bzl", "semver")
@@ -68,6 +70,7 @@ def _create_whl_repos(
         pip_attr,
         whl_overrides,
         available_interpreters = INTERPRETER_LABELS,
+        minor_mapping = MINOR_MAPPING,
         get_index_urls = None):
     """create all of the whl repositories
 
@@ -80,6 +83,8 @@ def _create_whl_repos(
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
             used during the `repository_rule` and must be always compatible with the host.
+        minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
+            python version used to parse package METADATA files.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -159,8 +164,10 @@ def _create_whl_repos(
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
             extra_pip_args = pip_attr.extra_pip_args,
-            # TODO @aignas 2025-04-15: pass the full version into here
-            python_version = major_minor,
+            python_version = full_version(
+                version = pip_attr.python_version,
+                minor_mapping = minor_mapping,
+            ),
             logger = logger,
         ),
         extra_pip_args = pip_attr.extra_pip_args,
@@ -303,9 +310,6 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
     args["requirement"] = requirement.srcs.requirement_line
     if requirement.extra_pip_args:
         args["extra_pip_args"] = requirement.extra_pip_args
-
-    if download_only:
-        args.setdefault("experimental_target_platforms", requirement.target_platforms)
 
     target_platforms = requirement.target_platforms if multiple_requirements_for_whl else []
     repo_name = pypi_repo_name(

@@ -103,6 +103,7 @@ bzl_library(
         "//python/private:version_label_bzl",
         "@bazel_features//:features",
         "@pythons_hub//:interpreters_bzl",
+        "@pythons_hub//:versions_bzl",
     ],
 )
 
@@ -220,7 +221,9 @@ bzl_library(
         ":pep508_evaluate_bzl",
         ":pep508_platform_bzl",
         ":pep508_requirement_bzl",
+        "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
+        "@pythons_hub//:versions_bzl",
     ],
 )
 

@@ -369,26 +369,22 @@ def _config_settings(dependencies_by_platform, native = native, **kwargs):
         if p.startswith("@") or p.endswith("default"):
             continue
 
+        # TODO @aignas 2025-04-20: add tests here
         abi, _, tail = p.partition("_")
         if not abi.startswith("cp"):
             tail = p
             abi = ""
-
         os, _, arch = tail.partition("_")
-        os = "" if os == "anyos" else os
-        arch = "" if arch == "anyarch" else arch
 
         _kwargs = dict(kwargs)
-        if arch:
-            _kwargs.setdefault("constraint_values", []).append("@platforms//cpu:{}".format(arch))
-        if os:
-            _kwargs.setdefault("constraint_values", []).append("@platforms//os:{}".format(os))
+        _kwargs["constraint_values"] = [
+            "@platforms//cpu:{}".format(arch),
+            "@platforms//os:{}".format(os),
+        ]
 
         if abi:
             _kwargs["flag_values"] = {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.{minor_version}".format(
-                    minor_version = abi[len("cp3"):],
-                ),
+                Label("//python/config_settings:python_version"): "3.{}".format(abi[len("cp3"):]),
             }
 
         native.config_setting(

@@ -91,13 +91,12 @@ def _platforms_from_args(extra_pip_args):
     return list(platforms.keys())
 
 def _platform(platform_string, python_version = None):
-    if not python_version or platform_string.startswith("cp3"):
+    if not python_version or platform_string.startswith("cp"):
         return platform_string
 
-    _, _, tail = python_version.partition(".")
-    minor, _, _ = tail.partition(".")
+    major, _, tail = python_version.partition(".")
 
-    return "cp3{}_{}".format(minor, platform_string)
+    return "cp{}{}_{}".format(major, tail, platform_string)
 
 def requirements_files_by_platform(
         *,
