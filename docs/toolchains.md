@@ -339,9 +339,10 @@ runtime metadata (Python version, headers, ABI flags, etc) that the regular
 remotely downloaded runtimes contain, which makes it possible to build e.g. C
 extensions (unlike the autodetecting and runtime environment toolchains).
 
-For simple cases, some rules are provided that will introspect
-a Python installation and create an appropriate Bazel definition from
-it. To do this, three pieces need to be wired together:
+For simple cases, the {obj}`local_runtime_repo` and
+{obj}`local_runtime_toolchains_repo` rules are provided that will introspect a
+Python installation and create an appropriate Bazel definition from it. To do
+this, three pieces need to be wired together:
 
 1. Specify a path or command to a Python interpreter (multiple can be defined).
 2. Create toolchains for the runtimes in (1)
