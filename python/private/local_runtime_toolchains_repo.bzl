@@ -78,6 +78,8 @@ Note that order matters: it determines the toolchain priority within the
 package.
 """,
         ),
+        "runtime_target_settings": attr.string_list_dict(
+        ),
         "_rule_name": attr.string(default = "local_toolchains_repo"),
     },
     environ = [REPO_DEBUG_ENV_VAR],
