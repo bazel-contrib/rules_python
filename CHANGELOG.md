@@ -60,7 +60,7 @@ END_UNRELEASED_TEMPLATE
 * (rules) {obj}`pip_compile` now generates a `.test` target. The `_test` target is deprecated
   and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
-* Fall back to directory based runfiles using relative paths if runfiles
+* (runfiles) Fall back to directory based runfiles using relative paths if runfiles
   cannot be found using environment variables.
 
 {#v0-0-0-fixed}
