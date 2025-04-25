@@ -59,6 +59,8 @@ with open(r.Rlocation("my_workspace/path/to/my/data.txt"), "r") as f:
     # ...
 ```
 
+Here `my_workspace` is the name you specified via `module(name = "...")` in your `MODULE.bazel` file (with `--enable_bzlmod`, default as of Bazel 7) or `workspace(name = "...")` in `WORKSPACE` (with `--noenable_bzlmod`).
+
 The code above creates a manifest- or directory-based implementation based on the environment variables in `os.environ`. See `Runfiles.Create()` for more info.
 
 If you want to explicitly create a manifest- or directory-based
@@ -70,9 +72,7 @@ r1 = Runfiles.CreateManifestBased("path/to/foo.runfiles_manifest")
 r2 = Runfiles.CreateDirectoryBased("path/to/foo.runfiles/")
 ```
 
-If you want to start subprocesses, and the subprocess can't automatically
-find the correct runfiles directory, you can explicitly set the right
-environment variables for them:
+If you want to start subprocesses that access runfiles, you have to set the right environment variables for them:
 
 ```python
 import subprocess
