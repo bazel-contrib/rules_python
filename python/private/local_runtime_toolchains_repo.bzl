@@ -26,6 +26,7 @@ define_local_toolchain_suites(
     name = "toolchains",
     version_aware_repo_names = {version_aware_names},
     version_unaware_repo_names = {version_unaware_names},
+    repo_target_settings = {target_settings},
 )
 """
 
@@ -39,6 +40,10 @@ def _local_runtime_toolchains_repo(rctx):
 
     rctx.file("BUILD.bazel", _TOOLCHAIN_TEMPLATE.format(
         version_aware_names = render.list(rctx.attr.runtimes),
+        target_settings = render.dict(
+            rctx.attr.target_settings,
+            value_repr = render.list,
+        ),
         version_unaware_names = render.list(rctx.attr.default_runtimes or rctx.attr.runtimes),
     ))
 
@@ -78,7 +83,29 @@ Note that order matters: it determines the toolchain priority within the
 package.
 """,
         ),
-        "runtime_target_settings": attr.string_list_dict(
+        "target_settings": attr.string_list_dict(
+            doc = """
+Constraints that must be satisfied for a toolchain to be used.
+
+This is a dict where:
+ * **key**: A repo name; one of the names from the `runtimes` or
+   `default_runtimes` args.
+ * **value**: list of labels. The labels are typically {obj}`config_setting()`
+   targets.
+   :::{note}
+   Specify `@//foo:bar`, not simply `//foo:bar` or `:bar`. The additional `@` is
+   needed because the strings are evaluated in a different context than where
+   they originate.
+   :::
+
+The list of settings are added to the {obj}`toolchain.target_settings` value
+for each respective repo.
+
+This allows a local toolchain to only be used if certain flags or
+config setting conditions are met. Such conditions can include user-defined
+flags, platform constraints, etc.
+
+""",
         ),
         "_rule_name": attr.string(default = "local_toolchains_repo"),
     },

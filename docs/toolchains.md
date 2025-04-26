@@ -377,14 +377,13 @@ local_runtime_repo(
 local_runtime_toolchains_repo(
     name = "local_toolchains",
     runtimes = ["local_python3"],
+    # TIP: The `target_settings` arg can be used to activate them based on
+    # command line flags; see docs below.
 )
 
 # Step 3: Register the toolchains
 register_toolchains("@local_toolchains//:all", dev_dependency = True)
 ```
-
-Note that `register_toolchains` will insert the local toolchain earlier in the
-toolchain ordering, so it will take precedence over other registered toolchains.
 
 :::{important}
 Be sure to set `dev_dependency = True`. Using a local toolchain only makes sense
@@ -397,6 +396,49 @@ downstream modules.
 
 Multiple runtimes and/or toolchains can be defined, which allows for multiple
 Python versions and/or platforms to be configured in a single `MODULE.bazel`.
+Note that `register_toolchains` will insert the local toolchain earlier in the
+toolchain ordering, so it will take precedence over other registered toolchains.
+
+This behavior can be mitigated by specifying the
+{obj}`local_runtime_toolchains_repo.target_settings` arg. This allows attaching
+arbitrary {obj}`config_setting()` conditions for activating the toolchain.
+
+```
+# File: MODULE.bazel
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+local_runtime_toolchains_repo(
+    name = "local_toolchains",
+    runtimes = ["local_python3"],
+    target_settings = {
+        "local_python3": ["@//:is_py_local_set"]
+    }
+)
+
+# Step 2: Create toolchains for the runtimes
+local_runtime_toolchains_repo(
+    name = "local_toolchains",
+    runtimes = ["local_python3"],
+    # TIP: The `target_settings` arg can be used to activate them based on
+    # command line flags; see docs below.
+)
+
+# File: BUILD.bazel
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
+config_setting(
+    name = "is_py_local_set",
+    flag_values = {":py": "local"},
+)
+
+string_flag(
+    name = "py",
+    build_setting_default = "",
+)
+
+```
+
+
 
 ## Runtime environment toolchain
 

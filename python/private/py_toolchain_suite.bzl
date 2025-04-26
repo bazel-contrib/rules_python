@@ -142,7 +142,11 @@ def _internal_toolchain_suite(prefix, runtime_repo_name, target_compatible_with,
     # call in python/repositories.bzl. Bzlmod doesn't need anything; it will
     # register `:all`.
 
-def define_local_toolchain_suites(name, version_aware_repo_names, version_unaware_repo_names):
+def define_local_toolchain_suites(
+        name,
+        version_aware_repo_names,
+        repo_target_settings,
+        version_unaware_repo_names):
     """Define toolchains for `local_runtime_repo` backed toolchains.
 
     This generates `toolchain` targets that can be registered using `:all`. The
@@ -160,11 +164,13 @@ def define_local_toolchain_suites(name, version_aware_repo_names, version_unawar
     i = 0
     for i, repo in enumerate(version_aware_repo_names, start = i):
         prefix = render.left_pad_zero(i, 4)
+        target_settings = ["@{}//:is_matching_python_version".format(repo)]
+        target_settings.extend(repo_target_settings.get(repo, []))
         _internal_toolchain_suite(
             prefix = prefix,
             runtime_repo_name = repo,
+            target_settings = target_settings,
             target_compatible_with = ["@{}//:os".format(repo)],
-            target_settings = ["@{}//:is_matching_python_version".format(repo)],
         )
 
     # The version unaware entries must go last because they will match any Python
@@ -174,6 +180,6 @@ def define_local_toolchain_suites(name, version_aware_repo_names, version_unawar
         _internal_toolchain_suite(
             prefix = prefix,
             runtime_repo_name = repo,
-            target_settings = [],
+            target_settings = repo_target_settings.get(repo, []),
             target_compatible_with = ["@{}//:os".format(repo)],
         )
