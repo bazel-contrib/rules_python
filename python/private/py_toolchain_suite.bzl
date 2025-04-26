@@ -15,6 +15,7 @@
 """Create the toolchain defs in a BUILD.bazel file."""
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load(":text_util.bzl", "render")
 load(
     ":toolchain_types.bzl",
@@ -95,9 +96,15 @@ def py_toolchain_suite(
         runtime_repo_name = user_repository_name,
         target_settings = target_settings,
         target_compatible_with = target_compatible_with,
+        exec_compatible_with = [],
     )
 
-def _internal_toolchain_suite(prefix, runtime_repo_name, target_compatible_with, target_settings):
+def _internal_toolchain_suite(
+        prefix,
+        runtime_repo_name,
+        target_compatible_with,
+        target_settings,
+        exec_compatible_with):
     native.toolchain(
         name = "{prefix}_toolchain".format(prefix = prefix),
         toolchain = "@{runtime_repo_name}//:python_runtimes".format(
@@ -106,6 +113,7 @@ def _internal_toolchain_suite(prefix, runtime_repo_name, target_compatible_with,
         toolchain_type = TARGET_TOOLCHAIN_TYPE,
         target_settings = target_settings,
         target_compatible_with = target_compatible_with,
+        exec_compatible_with = exec_compatible_with,
     )
 
     native.toolchain(
@@ -116,6 +124,7 @@ def _internal_toolchain_suite(prefix, runtime_repo_name, target_compatible_with,
         toolchain_type = PY_CC_TOOLCHAIN_TYPE,
         target_settings = target_settings,
         target_compatible_with = target_compatible_with,
+        exec_compatible_with = exec_compatible_with,
     )
 
     native.toolchain(
@@ -146,6 +155,8 @@ def define_local_toolchain_suites(
         name,
         version_aware_repo_names,
         version_unaware_repo_names,
+        repo_exec_compatible_with,
+        repo_target_compatible_with,
         repo_target_settings):
     """Define toolchains for `local_runtime_repo` backed toolchains.
 
@@ -170,27 +181,49 @@ def define_local_toolchain_suites(
             to string labels that are added to the `exec_compatible_with` for
             the respective repo's toolchain.
     """
+
     i = 0
     for i, repo in enumerate(version_aware_repo_names, start = i):
-        target_settings = ["@{}//:is_matching_python_version".format(repo)]
-        target_settings.extend(repo_target_settings.get(repo, []))
-        target_compatible_with = ["@{}//:os".format(repo)]
-        target_compatible_with.extend(repo_target_compatible_with.get(repo, []))
         _internal_toolchain_suite(
             prefix = render.left_pad_zero(i, 4),
             runtime_repo_name = repo,
-            target_settings = target_settings,
-            target_compatible_with = target_compatible_with,
+            target_compatible_with = _get_local_toolchain_target_compatible_with(
+                repo,
+                repo_target_compatible_with,
+            ),
+            target_settings = _get_local_toolchain_target_settings(repo, repo_target_settings),
             exec_compatible_with = repo_exec_compatible_with.get(repo, []),
         )
 
     # The version unaware entries must go last because they will match any Python
     # version.
     for i, repo in enumerate(version_unaware_repo_names, start = i + 1):
-        target_compatible_with = ["@{}//:os".format(repo)]
-        target_compatible_with.extend(repo_target_compatible_with.get(repo, []))
         _internal_toolchain_suite(
-            prefix = render.left_pad_zero(i, 4),
+            prefix = render.left_pad_zero(i, 4) + "_default",
             runtime_repo_name = repo,
+            target_compatible_with = _get_local_toolchain_target_compatible_with(
+                repo,
+                repo_target_compatible_with,
+            ),
+            # We don't call _get_local_toolchain_target_settings because that
+            # will add the version matching condition by default.
             target_settings = repo_target_settings.get(repo, []),
+            exec_compatible_with = repo_exec_compatible_with.get(repo, []),
         )
+
+def _get_local_toolchain_target_settings(repo, repo_target_settings):
+    if repo in repo_target_settings:
+        target_settings = repo_target_settings[repo]
+    else:
+        target_settings = ["@{}//:is_matching_python_version".format(repo)]
+    return target_settings
+
+def _get_local_toolchain_target_compatible_with(repo, repo_target_compatible_with):
+    if repo in repo_target_compatible_with:
+        target_compatible_with = repo_target_compatible_with[repo]
+        if "HOST_CONSTRAINTS" in target_compatible_with:
+            target_compatible_with.remove("HOST_CONSTRAINTS")
+            target_compatible_with.extend(HOST_CONSTRAINTS)
+    else:
+        target_compatible_with = ["@{}//:os".format(repo)]
+    return target_compatible_with
