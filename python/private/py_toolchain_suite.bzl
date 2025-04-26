@@ -145,8 +145,8 @@ def _internal_toolchain_suite(prefix, runtime_repo_name, target_compatible_with,
 def define_local_toolchain_suites(
         name,
         version_aware_repo_names,
-        repo_target_settings,
-        version_unaware_repo_names):
+        version_unaware_repo_names,
+        repo_target_settings):
     """Define toolchains for `local_runtime_repo` backed toolchains.
 
     This generates `toolchain` targets that can be registered using `:all`. The
@@ -160,26 +160,37 @@ def define_local_toolchain_suites(
             version-aware toolchains defined.
         version_unaware_repo_names: `list[str]` of the repo names that will have
             version-unaware toolchains defined.
+        repo_target_settings: {type}`dict[str, list[str]]` mapping of repo names
+            to string labels that are added to the `target_settings` for the
+            respective repo's toolchain.
+        repo_target_compatible_with: {type}`dict[str, list[str]]` mapping of repo names
+            to string labels that are added to the `target_compatible_with` for
+            the respective repo's toolchain.
+        repo_exec_compatible_with: {type}`dict[str, list[str]]` mapping of repo names
+            to string labels that are added to the `exec_compatible_with` for
+            the respective repo's toolchain.
     """
     i = 0
     for i, repo in enumerate(version_aware_repo_names, start = i):
-        prefix = render.left_pad_zero(i, 4)
         target_settings = ["@{}//:is_matching_python_version".format(repo)]
         target_settings.extend(repo_target_settings.get(repo, []))
+        target_compatible_with = ["@{}//:os".format(repo)]
+        target_compatible_with.extend(repo_target_compatible_with.get(repo, []))
         _internal_toolchain_suite(
-            prefix = prefix,
+            prefix = render.left_pad_zero(i, 4),
             runtime_repo_name = repo,
             target_settings = target_settings,
-            target_compatible_with = ["@{}//:os".format(repo)],
+            target_compatible_with = target_compatible_with,
+            exec_compatible_with = repo_exec_compatible_with.get(repo, []),
         )
 
     # The version unaware entries must go last because they will match any Python
     # version.
     for i, repo in enumerate(version_unaware_repo_names, start = i + 1):
-        prefix = render.left_pad_zero(i, 4)
+        target_compatible_with = ["@{}//:os".format(repo)]
+        target_compatible_with.extend(repo_target_compatible_with.get(repo, []))
         _internal_toolchain_suite(
-            prefix = prefix,
+            prefix = render.left_pad_zero(i, 4),
             runtime_repo_name = repo,
             target_settings = repo_target_settings.get(repo, []),
-            target_compatible_with = ["@{}//:os".format(repo)],
         )
