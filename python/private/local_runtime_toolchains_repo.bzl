@@ -167,9 +167,10 @@ needed because the strings are evaluated in a different context than where
 they originate.
 :::
 
-The list of settings are **becomes the** {obj}`toolchain.target_settings` value
-for each respective repo; i.e. they replace the auto-detected values the
-local runtime itself computes.
+The list of settings will be applied atop of any of the local runtime's
+settings that are used for {obj}`toolchain.target_settings`. i.e. they are
+evaluated first and guard the checking of the local runtime's auto-detected
+conditions.
 
 This allows a local toolchain to only be used if certain flags or
 config setting conditions are met. Such conditions can include user-defined

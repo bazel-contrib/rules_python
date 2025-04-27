@@ -15,8 +15,6 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_python//python:py_test.bzl", "py_test")
 
-package(default_visibility = ["//visibility:public"])
-
 py_test(
     name = "test",
     srcs = ["test.py"],
@@ -24,29 +22,15 @@ py_test(
     env_inherit = ["PYENV_VERSION"],
 )
 
-alias(
-    name = "is_local_py_enabled",
-    actual = select({
-        ":_is_py_local_set": "@local_python3//:is_matching_python_version",
-        "//conditions:default": ":_does_not_match",
-    }),
-)
-
 config_setting(
-    name = "_is_py_local_set",
+    name = "is_py_local",
     flag_values = {
         ":py": "local",
     },
 )
 
-config_setting(
-    name = "_does_not_match",
-    flag_values = {
-        ":py": "<DOES NOT MATCH>",
-    },
-)
-
-# set to "local" to use the local toolchain
+# Set `--//:py=local` to use the local toolchain
+# (This is set in this example's .bazelrc)
 string_flag(
     name = "py",
     build_setting_default = "",

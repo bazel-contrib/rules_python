@@ -418,8 +418,8 @@ The two settings to change are
 {obj}`local_runtime_toolchains_repo.target_compatible_with` and
 {obj}`local_runtime_toolchains_repo.target_settings`, which control how Bazel
 decides if a toolchain should match. By default, they point to targets *within*
-the local runtime repository. We have to override them to *not* reference the
-local runtime repository at all.
+the local runtime repository (trigger repo initialization). We have to override
+them to *not* reference the local runtime repository at all.
 
 In the example below, we reconfigure the local toolchains so they are only
 activated if the custom flag `--//:py=local` is set and the target platform
@@ -438,35 +438,27 @@ local_runtime_toolchains_repo(
         "local_python3": ["HOST_CONSTRAINTS"],
     },
     target_settings = {
-        "local_python3": ["@//:is_local_py_enabled"]
+        "local_python3": ["@//:is_py_local"]
     }
 )
 
 # File: BUILD.bazel
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
-alias(
-    name = "is_local_py_enabled",
-    actual = select({
-        ":_is_py_local_set": "@local_python3//:is_matching_python_version",
-        "//conditions:default": ":_does_not_match",
-    }),
-)
-
 config_setting(
-    name = "_is_py_local_set",
+    name = "is_py_local",
     flag_values = {":py": "local"},
 )
 
-config_setting(
-    name = "_does_not_match",
-    flag_values = {":py": "<DOES NOT MATCH>"},
+string_flag(
+    name = "py",
+    build_setting_default = "",
 )
-
 ```
 
 :::{tip}
-With some minor changes, different values for the `--//:py` flag can be used
+Easily switching between *multiple* local toolchains can be accomplished by
+adding additional `:is_py_X` targets and setting `--//:py` to match.
 to easily switch between different local toolchains.
 :::
 
@@ -498,7 +490,7 @@ locally installed Python.
 ### Autodetecting toolchain
 
 The autodetecting toolchain is a deprecated toolchain that is built into Bazel.
-It's name is a bit misleading: it doesn't autodetect anything. All it does is
+**It's name is a bit misleading: it doesn't autodetect anything**. All it does is
 use `python3` from the environment a binary runs within. This provides extremely
 limited functionality to the rules (at build time, nothing is knowable about
 the Python runtime).

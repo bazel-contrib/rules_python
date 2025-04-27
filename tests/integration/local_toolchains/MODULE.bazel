@@ -42,7 +42,7 @@ local_runtime_toolchains_repo(
     },
     target_settings = {
         "local_python3": [
-            "@//:is_local_py_enabled",
+            "@//:is_py_local",
         ],
     },
 )

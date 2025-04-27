@@ -184,6 +184,14 @@ def define_local_toolchain_suites(
 
     i = 0
     for i, repo in enumerate(version_aware_repo_names, start = i):
+        target_settings = ["@{}//:is_matching_python_version".format(repo)]
+
+        if repo_target_settings.get(repo):
+            selects.config_setting_group(
+                name = "_{}_user_guard".format(repo),
+                match_all = repo_target_settings.get(repo, []) + target_settings,
+            )
+            target_settings = ["_{}_user_guard".format(repo)]
         _internal_toolchain_suite(
             prefix = render.left_pad_zero(i, 4),
             runtime_repo_name = repo,
@@ -191,7 +199,7 @@ def define_local_toolchain_suites(
                 repo,
                 repo_target_compatible_with,
             ),
-            target_settings = _get_local_toolchain_target_settings(repo, repo_target_settings),
+            target_settings = target_settings,
             exec_compatible_with = repo_exec_compatible_with.get(repo, []),
         )
 
@@ -210,13 +218,6 @@ def define_local_toolchain_suites(
             target_settings = repo_target_settings.get(repo, []),
             exec_compatible_with = repo_exec_compatible_with.get(repo, []),
         )
-
-def _get_local_toolchain_target_settings(repo, repo_target_settings):
-    if repo in repo_target_settings:
-        target_settings = repo_target_settings[repo]
-    else:
-        target_settings = ["@{}//:is_matching_python_version".format(repo)]
-    return target_settings
 
 def _get_local_toolchain_target_compatible_with(repo, repo_target_compatible_with):
     if repo in repo_target_compatible_with:
