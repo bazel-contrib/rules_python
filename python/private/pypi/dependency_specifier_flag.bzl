@@ -27,9 +27,15 @@ def _impl(ctx):
     env["sys_platform"] = ctx.attr.sys_platform
     env["platform_machine"] = ctx.attr.platform_machine
 
-    # todo: add PyRuntimeInfo.platform_python_implementation
-    # The values are slightly different to implementation_name
-    env["platform_python_implementation"] = runtime.implementation_name
+    # todo: maybe add PyRuntimeInfo.platform_python_implementation?
+    # The values are slightly different to implementation_name.
+    # However, digging through old PEPs, it looks like
+    # platform.python_implementation is legacy, and sys.implementation.name
+    # "replaced" it. Can probably just special case this.
+    platform_python_impl = runtime.implementation_name
+    if platform_python_impl == "cpython":
+        platform_python_impl = "CPython"
+    env["platform_python_implementation"] = platform_python_impl
     env["platform_release"] = ctx.attr._platform_release_config_flag[BuildSettingInfo].value
     env["platform_system"] = ctx.attr.platform_system
     env["platform_version"] = ctx.attr._platform_version_config_flag[BuildSettingInfo].value
