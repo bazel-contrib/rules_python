@@ -112,12 +112,21 @@ def _local_runtime_repo_impl(rctx):
         info["INSTSONAME"],
     ]
 
+    if repo_utils.get_platforms_os_name(rctx) == 'windows':
+        shared_lib_names.append("python{major}{minor}.lib".format(**info))
+        shared_lib_names.append("python3.lib")
+
+        interpreter_path = interpreter_path.replace('\\', '/')
+
     # In some cases, the value may be empty. Not clear why.
     shared_lib_names = [v for v in shared_lib_names if v]
 
     # In some cases, the same value is returned for multiple keys. Not clear why.
     shared_lib_names = {v: None for v in shared_lib_names}.keys()
     shared_lib_dir = info["LIBDIR"]
+
+    if shared_lib_dir == None:
+        shared_lib_dir = info["LIBDEST"] + "/../libs"
 
     # The specific files are symlinked instead of the whole directory
     # because it can point to a directory that has more than just

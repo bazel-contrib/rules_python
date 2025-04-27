@@ -36,6 +36,8 @@ config_vars = [
     # https://stackoverflow.com/questions/47423246/get-pythons-lib-path
     # For now, it seems LIBDIR has what is needed, so just use that.
     "LIBDIR",
+    # A backup alternative for deriving LIBDIR in cases that LIBDIR is not available
+    "LIBDEST",
     # The versioned libpythonX.Y.so.N file. Usually?
     # It might be a static archive (.a) file instead.
     "INSTSONAME",

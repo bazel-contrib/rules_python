@@ -16,6 +16,7 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_python//python:py_runtime.bzl", "py_runtime")
 load("@rules_python//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("@rules_python//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
@@ -58,6 +59,20 @@ def define_local_runtime_toolchain_impl(
     major_minor = "{}.{}".format(major, minor)
     major_minor_micro = "{}.{}".format(major_minor, micro)
 
+    version_dict = {'major': major, 'minor': minor}
+
+    cc_import(
+        name = "interface",
+        interface_library = "lib/python{major}{minor}.lib".format(**version_dict),
+        system_provided = True,
+    )
+
+    cc_import(
+        name = "abi3_interface",
+        interface_library = "lib/python3.lib",
+        system_provided = True,
+    )
+
     cc_library(
         name = "_python_headers",
         # NOTE: Keep in sync with watch_tree() called in local_runtime_repo
@@ -67,6 +82,10 @@ def define_local_runtime_toolchain_impl(
             allow_empty = True,
         ),
         includes = ["include"],
+        deps = select({
+            "@bazel_tools//src/conditions:windows": [":interface", ":abi3_interface"],
+            "//conditions:default": None,
+        }),
     )
 
     cc_library(
