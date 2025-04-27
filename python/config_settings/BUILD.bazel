@@ -220,3 +220,21 @@ string_flag(
 define_pypi_internal_flags(
     name = "define_pypi_internal_flags",
 )
+
+# todo: have single --pypi_env_config flag instead? Under the hood, it
+# could be driven more more discrete flags, which could be considered an
+# implementation detail of our particular impl.
+# A label is used to allow users to use select() to affect the value.
+# A target providing BuildSettingInfo is used to allow users to define
+# a flag as the target, which lets them CLI-override or transition it easily.
+label_flag(
+    name = "pip_platform_release_config",
+    build_setting_default = ":_pip_platform_release_default_config",
+)
+
+# docs: points to a label that provides BuildSettingInfo for the value.
+# A label and BuildSettingInfo are used for the same reason as platform_release
+label_flag(
+    name = "pip_platform_version_config",
+    build_setting_default = ":_pip_platform_version_default_config",
+)
