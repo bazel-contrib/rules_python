@@ -21,11 +21,26 @@ def _impl(ctx):
     # likely to be true.
     env["implementation_name"] = runtime.implementation_name or "cpython"
 
+    # todo: map from os constraint
     env["os_name"] = struct()
+
+    # todo: map from os constraint
+    env["sys_platform"] = struct()
+
+    # todo: map from cpu flag (x86_64, etc)
     env["platform_machine"] = struct()
-    env["platform_python_implementation"] = struct()
+
+    # todo: add PyRuntimeInfo.platform_python_implementation
+    # The values are slightly different to implementation_name
+    env["platform_python_implementation"] = runtime.implementation_name
+
+    # todo: add flag to carry this
     env["platform_release"] = struct()
+
+    # todo: map from os constraint
     env["platform_system"] = struct()
+
+    # todo: add flag to carry this
     env["platform_version"] = struct()
 
     if evalute(ctx.attr.expression, env):
@@ -58,8 +73,6 @@ pypa_dependency_specification = rule(
         "expression": attt.string(),
         "_os_name": attr.label(),
         "_sys_platform_flag": attr.label(),
-        "_platform_machine_flag": attr.label(),
-        "_platform_python_implementation_flag": attr.label(),
         "_platform_release_flag": attr.label(),
         "_platform_system_flag": attr.label(),
         "_platform_version_flag": attr.label(),
