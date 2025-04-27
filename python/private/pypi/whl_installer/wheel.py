@@ -27,7 +27,7 @@ from pip._vendor.packaging.utils import canonicalize_name
 
 from python.private.pypi.whl_installer.platform import (
     Platform,
-    host_interpreter_minor_version,
+    host_interpreter_version,
 )
 
 
@@ -62,12 +62,13 @@ class Deps:
         """
         self.name: str = Deps._normalize(name)
         self._platforms: Set[Platform] = platforms or set()
-        self._target_versions = {p.minor_version for p in platforms or {}}
-        self._default_minor_version = None
-        if platforms and len(self._target_versions) > 2:
+        self._target_versions = {(p.minor_version, p.micro_version) for p in platforms or {}}
+        if platforms and len(self._target_versions) > 1:
             # TODO @aignas 2024-06-23: enable this to be set via a CLI arg
             # for being more explicit.
-            self._default_minor_version = host_interpreter_minor_version()
+            self._default_minor_version, _ = host_interpreter_version()
+        else:
+            self._default_minor_version = None
 
         if None in self._target_versions and len(self._target_versions) > 2:
             raise ValueError(
@@ -88,8 +89,13 @@ class Deps:
         # Then add all of the requirements in order
         self._deps: Set[str] = set()
         self._select: Dict[Platform, Set[str]] = defaultdict(set)
+
+        reqs_by_name = {}
         for req in reqs:
-            self._add_req(req, want_extras)
+            reqs_by_name.setdefault(req.name, []).append(req)
+
+        for reqs in reqs_by_name.values():
+            self._add_req(reqs, want_extras)
 
     def _add(self, dep: str, platform: Optional[Platform]):
         dep = Deps._normalize(dep)
@@ -122,50 +128,6 @@ class Deps:
 
         # Add the platform-specific dep
         self._select[platform].add(dep)
-
-        # Add the dep to specializations of the given platform if they
-        # exist in the select statement.
-        for p in platform.all_specializations():
-            if p not in self._select:
-                continue
-
-            self._select[p].add(dep)
-
-        if len(self._select[platform]) == 1:
-            # We are adding a new item to the select and we need to ensure that
-            # existing dependencies from less specialized platforms are propagated
-            # to the newly added dependency set.
-            for p, deps in self._select.items():
-                # Check if the existing platform overlaps with the given platform
-                if p == platform or platform not in p.all_specializations():
-                    continue
-
-                self._select[platform].update(self._select[p])
-
-    def _maybe_add_common_dep(self, dep):
-        if len(self._target_versions) < 2:
-            return
-
-        platforms = [Platform()] + [
-            Platform(minor_version=v) for v in self._target_versions
-        ]
-
-        # If the dep is targeting all target python versions, lets add it to
-        # the common dependency list to simplify the select statements.
-        for p in platforms:
-            if p not in self._select:
-                return
-
-            if dep not in self._select[p]:
-                return
-
-        # All of the python version-specific branches have the dep, so lets add
-        # it to the common deps.
-        self._deps.add(dep)
-        for p in platforms:
-            self._select[p].remove(dep)
-            if not self._select[p]:
-                self._select.pop(p)
 
     @staticmethod
     def _normalize(name: str) -> str:
@@ -227,66 +189,40 @@ class Deps:
 
         return extras
 
-    def _add_req(self, req: Requirement, extras: Set[str]) -> None:
-        if req.marker is None:
+    def _add_req(self, reqs: List[Requirement], extras: Set[str]) -> None:
+        platforms_to_add = set()
+        for req in reqs:
+            if req.marker is None:
+                self._add(req.name, None)
+                return
+
+            for plat in self._platforms:
+                if plat in platforms_to_add:
+                    # marker evaluation is more expensive than this check
+                    continue
+
+                added = False
+                for extra in extras:
+                    if added:
+                        break
+
+                    if req.marker.evaluate(plat.env_markers(extra)):
+                        platforms_to_add.add(plat)
+                        added = True
+                        break
+
+        if len(platforms_to_add) == len(self._platforms):
+            # the dep is in all target platforms, let's just add it to the regular
+            # list
             self._add(req.name, None)
             return
 
-        marker_str = str(req.marker)
-
-        if not self._platforms:
-            if any(req.marker.evaluate({"extra": extra}) for extra in extras):
-                self._add(req.name, None)
-            return
-
-        # NOTE @aignas 2023-12-08: in order to have reasonable select statements
-        # we do have to have some parsing of the markers, so it begs the question
-        # if packaging should be reimplemented in Starlark to have the best solution
-        # for now we will implement it in Python and see what the best parsing result
-        # can be before making this decision.
-        match_os = any(
-            tag in marker_str
-            for tag in [
-                "os_name",
-                "sys_platform",
-                "platform_system",
-            ]
-        )
-        match_arch = "platform_machine" in marker_str
-        match_version = "version" in marker_str
-
-        if not (match_os or match_arch or match_version):
-            if any(req.marker.evaluate({"extra": extra}) for extra in extras):
-                self._add(req.name, None)
-            return
-
-        for plat in self._platforms:
-            if not any(
-                req.marker.evaluate(plat.env_markers(extra)) for extra in extras
-            ):
-                continue
-
-            if match_arch and self._default_minor_version:
+        for plat in platforms_to_add:
+            if self._default_minor_version is not None:
                 self._add(req.name, plat)
-                if plat.minor_version == self._default_minor_version:
-                    self._add(req.name, Platform(plat.os, plat.arch))
-            elif match_arch:
-                self._add(req.name, Platform(plat.os, plat.arch))
-            elif match_os and self._default_minor_version:
-                self._add(req.name, Platform(plat.os, minor_version=plat.minor_version))
-                if plat.minor_version == self._default_minor_version:
-                    self._add(req.name, Platform(plat.os))
-            elif match_os:
-                self._add(req.name, Platform(plat.os))
-            elif match_version and self._default_minor_version:
-                self._add(req.name, Platform(minor_version=plat.minor_version))
-                if plat.minor_version == self._default_minor_version:
-                    self._add(req.name, Platform())
-            elif match_version:
-                self._add(req.name, None)
 
-        # Merge to common if possible after processing all platforms
-        self._maybe_add_common_dep(req.name)
+            if self._default_minor_version is None or plat.minor_version == self._default_minor_version:
+                self._add(req.name, Platform(os = plat.os, arch = plat.arch))
 
     def build(self) -> FrozenDeps:
         return FrozenDeps(
