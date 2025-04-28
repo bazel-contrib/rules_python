@@ -17,7 +17,6 @@ py_library(
 py_reconfig_test(
     name = "repl_without_dep_test",
     srcs = ["repl_test.py"],
-    main = "repl_test.py",
     data = [
         "//python/bin:repl",
     ],
@@ -25,13 +24,13 @@ py_reconfig_test(
         # The helper/test_module should _not_ be importable for this test.
         "EXPECT_TEST_MODULE_IMPORTABLE": "0",
     },
+    main = "repl_test.py",
     python_version = "3.12",
 )
 
 py_reconfig_test(
     name = "repl_with_dep_test",
     srcs = ["repl_test.py"],
-    main = "repl_test.py",
     data = [
         "//python/bin:repl",
     ],
@@ -39,6 +38,7 @@ py_reconfig_test(
         # The helper/test_module _should_ be importable for this test.
         "EXPECT_TEST_MODULE_IMPORTABLE": "1",
     },
+    main = "repl_test.py",
     python_version = "3.12",
     repl_dep = ":helper/test_module",
 )
