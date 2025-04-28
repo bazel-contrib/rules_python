@@ -21,6 +21,8 @@ _RENDER = {
     "copy_files": render.dict,
     "data": render.list,
     "data_exclude": render.list,
+    "dependencies": render.list,
+    "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
     "entry_points": render.dict,
     "extras": render.list,
     "group_deps": render.list,
@@ -37,7 +39,7 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
-whl_library_targets_from_requires(
+whl_library_targets(
 {kwargs}
 )
 """
@@ -60,16 +62,8 @@ def generate_whl_library_build_bazel(
     """
 
     loads = [
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")""",
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")""",
     ]
-    if not kwargs.setdefault("target_platforms", None):
-        dep_template = kwargs["dep_template"]
-        loads.append(
-            "load(\"{}\", \"{}\")".format(
-                dep_template.format(name = "", target = "config.bzl"),
-                "target_platforms",
-            ),
-        )
 
     additional_content = []
     if annotation:
