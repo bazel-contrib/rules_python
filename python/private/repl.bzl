@@ -1,6 +1,6 @@
 """Implementation of the rules to expose a REPL."""
 
-load("//python:py_binary.bzl", _py_binary="py_binary")
+load("//python:py_binary.bzl", _py_binary = "py_binary")
 
 def _generate_repl_main_impl(ctx):
     stub_repo = ctx.attr.stub.label.repo_name or ctx.workspace_name
