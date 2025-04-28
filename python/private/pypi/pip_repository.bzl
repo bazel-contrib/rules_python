@@ -16,12 +16,11 @@
 
 load("@bazel_skylib//lib:sets.bzl", "sets")
 load("//python/private:normalize_name.bzl", "normalize_name")
-load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
+load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR")
 load("//python/private:text_util.bzl", "render")
-load(":evaluate_markers.bzl", "evaluate_markers_py")
+load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
 load(":pip_repository_attrs.bzl", "ATTRS")
-load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 
@@ -72,7 +71,6 @@ exports_files(["requirements.bzl"])
 """
 
 def _pip_repository_impl(rctx):
-    logger = repo_utils.logger(rctx)
     requirements_by_platform = parse_requirements(
         rctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -235,6 +233,13 @@ file](https://github.com/bazel-contrib/rules_python/blob/main/examples/pip_repos
         ),
         _template = attr.label(
             default = ":requirements.bzl.tmpl.workspace",
+        ),
+        _evaluate_markers_srcs = attr.label_list(
+            default = EVALUATE_MARKERS_SRCS,
+            doc = """\
+The list of labels to use as SRCS for the marker evaluation code. This ensures that the
+code will be re-evaluated when any of files in the default changes.
+""",
         ),
         **ATTRS
     ),
