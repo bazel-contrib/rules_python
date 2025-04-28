@@ -40,7 +40,7 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
-whl_library_targets(
+{fn}(
 {kwargs}
 )
 """
@@ -79,7 +79,7 @@ def generate_whl_library_build_bazel(
 
     for arg in unsupported_args:
         if kwargs.get(arg):
-            fail("Unsupported arg: {}".format(arg))
+            fail("BUG, unsupported arg: '{}'".format(arg))
 
     loads = [
         """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
@@ -101,6 +101,7 @@ def generate_whl_library_build_bazel(
         [
             _TEMPLATE.format(
                 loads = "\n".join(loads),
+                fn = fn,
                 kwargs = render.indent("\n".join([
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())
