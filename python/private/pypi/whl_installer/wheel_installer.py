@@ -23,7 +23,7 @@ import subprocess
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from pip._vendor.packaging.utils import canonicalize_name
 
@@ -103,7 +103,9 @@ def _setup_namespace_pkg_compatibility(wheel_dir: str) -> None:
 
 def _extract_wheel(
     wheel_file: str,
+    extras: Dict[str, Set[str]],
     enable_implicit_namespace_pkgs: bool,
+    platforms: List[wheel.Platform],
     installation_dir: Path = Path("."),
 ) -> None:
     """Extracts wheel into given directory and creates py_library and filegroup targets.
@@ -111,6 +113,7 @@ def _extract_wheel(
     Args:
         wheel_file: the filepath of the .whl
         installation_dir: the destination directory for installation of the wheel.
+        extras: a list of extras to add as dependencies for the installed wheel
         enable_implicit_namespace_pkgs: if true, disables conversion of implicit namespace packages and will unzip as-is
     """
 
@@ -120,19 +123,26 @@ def _extract_wheel(
     if not enable_implicit_namespace_pkgs:
         _setup_namespace_pkg_compatibility(installation_dir)
 
-    metadata = {
-        "python_version": sys.version.partition(" ")[0],
-        "entry_points": [
-            {
-                "name": name,
-                "module": module,
-                "attribute": attribute,
-            }
-            for name, (module, attribute) in sorted(whl.entry_points().items())
-        ],
-    }
+    extras_requested = extras[whl.name] if whl.name in extras else set()
+
+    dependencies = whl.dependencies(extras_requested, platforms)
 
     with open(os.path.join(installation_dir, "metadata.json"), "w") as f:
+        metadata = {
+            "name": whl.name,
+            "version": whl.version,
+            "deps": dependencies.deps,
+            "python_version": f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}",
+            "deps_by_platform": dependencies.deps_select,
+            "entry_points": [
+                {
+                    "name": name,
+                    "module": module,
+                    "attribute": attribute,
+                }
+                for name, (module, attribute) in sorted(whl.entry_points().items())
+            ],
+        }
         json.dump(metadata, f)
 
 
@@ -146,9 +156,13 @@ def main() -> None:
     if args.whl_file:
         whl = Path(args.whl_file)
 
+        name, extras_for_pkg = _parse_requirement_for_extra(args.requirement)
+        extras = {name: extras_for_pkg} if extras_for_pkg and name else dict()
         _extract_wheel(
             wheel_file=whl,
+            extras=extras,
             enable_implicit_namespace_pkgs=args.enable_implicit_namespace_pkgs,
+            platforms=arguments.get_platforms(args),
         )
         return
 
