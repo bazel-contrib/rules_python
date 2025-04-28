@@ -14,11 +14,11 @@
 
 """A simple function that evaluates markers using a python interpreter."""
 
+load(":deps.bzl", "record_files")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_platform.bzl", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
-load(":deps.bzl", "record_files")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 
 # Used as a default value in a rule to ensure we fetch the dependencies.
