@@ -71,6 +71,7 @@ def _create_whl_repos(
         whl_overrides,
         available_interpreters = INTERPRETER_LABELS,
         minor_mapping = MINOR_MAPPING,
+        evaluate_markers = evaluate_markers_py,
         get_index_urls = None):
     """create all of the whl repositories
 
@@ -85,6 +86,7 @@ def _create_whl_repos(
             used during the `repository_rule` and must be always compatible with the host.
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
+        evaluate_markers: the function used to evaluate the markers.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -186,7 +188,7 @@ def _create_whl_repos(
         # instances to perform this manipulation. This function should be executed
         # only once by the underlying code to minimize the overhead needed to
         # spin up a Python interpreter.
-        evaluate_markers = lambda module_ctx, requirements: evaluate_markers_py(
+        evaluate_markers = lambda module_ctx, requirements: evaluate_markers(
             module_ctx,
             requirements = requirements,
             python_interpreter = pip_attr.python_interpreter,

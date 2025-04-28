@@ -26,7 +26,6 @@ def _mock_mctx(*modules, environ = {}, read = None):
     return struct(
         os = struct(
             environ = environ,
-            path = str,
             name = "unittest",
             arch = "exotic",
         ),
@@ -275,6 +274,14 @@ torch==2.4.1 ; platform_machine != 'x86_64' \
             "python_3_15_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.15": "3.15.19"},
+        evaluate_markers = lambda _, requirements, **__: {
+            key: [
+                platform
+                for platform in platforms
+                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
+            ]
+            for key, platforms in requirements.items()
+        },
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": ["torch"]})
@@ -399,6 +406,15 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         minor_mapping = {"3.12": "3.12.19"},
         simpleapi_download = mocksimpleapi_download,
+        evaluate_markers = lambda _, requirements, **__: {
+            # todo once 2692 is merged, this is going to be easier to test.
+            key: [
+                platform
+                for platform in platforms
+                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
+            ]
+            for key, platforms in requirements.items()
+        },
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": ["torch"]})
@@ -858,6 +874,14 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
             "python_3_15_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.15": "3.15.19"},
+        evaluate_markers = lambda _, requirements, **__: {
+            key: [
+                platform
+                for platform in platforms
+                if ("darwin" in key and "osx" in platform) or ("linux" in key and "linux" in platform)
+            ]
+            for key, platforms in requirements.items()
+        },
     )
 
     pypi.exposed_packages().contains_exactly({"pypi": []})
