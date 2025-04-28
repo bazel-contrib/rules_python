@@ -26,6 +26,7 @@ def _mock_mctx(*modules, environ = {}, read = None):
     return struct(
         os = struct(
             environ = environ,
+            path = str,
             name = "unittest",
             arch = "exotic",
         ),
@@ -136,6 +137,7 @@ def _parse(
         parallel_download = False,
         experimental_index_url_overrides = {},
         simpleapi_skip = simpleapi_skip,
+        _evaluate_markers_srcs = [],
         **kwargs
     )
 

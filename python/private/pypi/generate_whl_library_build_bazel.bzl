@@ -28,6 +28,7 @@ _RENDER = {
     "group_deps": render.list,
     "requires_dist": render.list,
     "srcs_exclude": render.list,
+    "tags": render.list,
     "target_platforms": lambda x: render.list(x) if x else "target_platforms",
 }
 
@@ -61,8 +62,27 @@ def generate_whl_library_build_bazel(
         A complete BUILD file as a string
     """
 
+    fn = "whl_library_targets"
+    if kwargs.get("tags"):
+        # legacy path
+        unsupported_args = [
+            "requires",
+            "metadata_name",
+            "metadata_version",
+        ]
+    else:
+        fn = "{}_from_requires".format(fn)
+        unsupported_args = [
+            "dependencies",
+            "dependencies_by_platform",
+        ]
+
+    for arg in unsupported_args:
+        if kwargs.get(arg):
+            fail("Unsupported arg: {}".format(arg))
+
     loads = [
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")""",
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
     ]
 
     additional_content = []
