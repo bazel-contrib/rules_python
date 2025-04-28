@@ -85,6 +85,8 @@ def pypa_dep_spec(**kwargs):
             "//conditions:default": "",
         }),
         # todo: copied from pep508_env.bzl
+        # todo: pep508_env and evaluate have an "aliases" thing that needs
+        # to be incorporated
         # todo: there are many more cpus. Unfortunately, it doesn't look like
         # the value is directly accessible to starlark. It might be possible to
         # get it via CcToolchain.cpu though.
