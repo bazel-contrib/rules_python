@@ -292,9 +292,6 @@ class Platform:
             "platform_release": "",  # unset
             "platform_version": "",  # unset
             "python_version": f"3.{minor}",
-            # FIXME @aignas 2024-01-14: is putting zero last a good idea? Maybe we should
-            # use `20` or something else to avoid having weird issues where the full version is used for
-            # matching and the author decides to only support 3.y.5 upwards.
             "implementation_version": f"3.{minor}.{micro}",
             "python_full_version": f"3.{minor}.{micro}",
             # we assume that the following are the same as the interpreter used to setup the deps:
