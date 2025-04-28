@@ -62,7 +62,9 @@ class Deps:
         """
         self.name: str = Deps._normalize(name)
         self._platforms: Set[Platform] = platforms or set()
-        self._target_versions = {(p.minor_version, p.micro_version) for p in platforms or {}}
+        self._target_versions = {
+            (p.minor_version, p.micro_version) for p in platforms or {}
+        }
         if platforms and len(self._target_versions) > 1:
             # TODO @aignas 2024-06-23: enable this to be set via a CLI arg
             # for being more explicit.
@@ -94,8 +96,8 @@ class Deps:
         for req in reqs:
             reqs_by_name.setdefault(req.name, []).append(req)
 
-        for reqs in reqs_by_name.values():
-            self._add_req(reqs, want_extras)
+        for req_name, reqs in reqs_by_name.items():
+            self._add_req(req_name, reqs, want_extras)
 
     def _add(self, dep: str, platform: Optional[Platform]):
         dep = Deps._normalize(dep)
@@ -134,7 +136,7 @@ class Deps:
         return re.sub(r"[-_.]+", "_", name).lower()
 
     def _resolve_extras(
-        self, reqs: List[Requirement], extras: Optional[Set[str]]
+        self, reqs: List[Requirement], want_extras: Optional[Set[str]]
     ) -> Set[str]:
         """Resolve extras which are due to depending on self[some_other_extra].
 
@@ -156,7 +158,7 @@ class Deps:
         # extras The empty string in the set is just a way to make the handling
         # of no extras and a single extra easier and having a set of {"", "foo"}
         # is equivalent to having {"foo"}.
-        extras = extras or {""}
+        extras: Set[str] = want_extras or {""}
 
         self_reqs = []
         for req in reqs:
@@ -189,12 +191,18 @@ class Deps:
 
         return extras
 
-    def _add_req(self, reqs: List[Requirement], extras: Set[str]) -> None:
+    def _add_req(self, req_name, reqs: List[Requirement], extras: Set[str]) -> None:
         platforms_to_add = set()
         for req in reqs:
             if req.marker is None:
                 self._add(req.name, None)
                 return
+
+            # TODO @aignas 2025-04-28: add a test
+            if not self._platforms:
+                if any(req.marker.evaluate({"extra": extra}) for extra in extras):
+                    self._add(req.name, None)
+                    return
 
             for plat in self._platforms:
                 if plat in platforms_to_add:
@@ -211,18 +219,25 @@ class Deps:
                         added = True
                         break
 
+        # TODO @aignas 2025-04-28: add a test
+        if not self._platforms:
+            return
+
         if len(platforms_to_add) == len(self._platforms):
             # the dep is in all target platforms, let's just add it to the regular
             # list
-            self._add(req.name, None)
+            self._add(req_name, None)
             return
 
         for plat in platforms_to_add:
             if self._default_minor_version is not None:
-                self._add(req.name, plat)
+                self._add(req_name, plat)
 
-            if self._default_minor_version is None or plat.minor_version == self._default_minor_version:
-                self._add(req.name, Platform(os = plat.os, arch = plat.arch))
+            if (
+                self._default_minor_version is None
+                or plat.minor_version == self._default_minor_version
+            ):
+                self._add(req_name, Platform(os=plat.os, arch=plat.arch))
 
     def build(self) -> FrozenDeps:
         return FrozenDeps(
