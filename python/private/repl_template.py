@@ -11,6 +11,9 @@ def start_repl():
     # Simulate Python's behavior when a valid startup script is defined by the
     # PYTHONSTARTUP variable. If this file path fails to load, print the error
     # and revert to the default behavior.
+    #
+    # See upstream for more information:
+    # https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSTARTUP
     if startup_file := os.getenv("PYTHONSTARTUP"):
         try:
             source_code = Path(startup_file).read_text()
