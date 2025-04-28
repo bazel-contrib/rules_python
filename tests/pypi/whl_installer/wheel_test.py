@@ -11,7 +11,7 @@ _HOST_INTERPRETER_FN = (
 
 class DepsTest(unittest.TestCase):
     def test_simple(self):
-        deps = wheel.Deps("foo", requires_dist=["bar"])
+        deps = wheel.Deps("foo", requires_dist=["bar", 'baz; extra=="foo"'])
 
         got = deps.build()
 

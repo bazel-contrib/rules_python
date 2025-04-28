@@ -198,7 +198,6 @@ class Deps:
                 self._add(req.name, None)
                 return
 
-            # TODO @aignas 2025-04-28: add a test
             if not self._platforms:
                 if any(req.marker.evaluate({"extra": extra}) for extra in extras):
                     self._add(req.name, None)
@@ -219,7 +218,6 @@ class Deps:
                         added = True
                         break
 
-        # TODO @aignas 2025-04-28: add a test
         if not self._platforms:
             return
 
