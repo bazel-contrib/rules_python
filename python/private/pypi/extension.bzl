@@ -305,7 +305,12 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
-        args["experimental_target_platforms"] = requirement.target_platforms
+        args["experimental_target_platforms"] = [
+            # Get rid of the version fot the target platforms because we are
+            # passing the interpreter any way. Ideally we should search of ways
+            # how to pass the target platforms through the hub repo.
+            p.partition("_")[2] for p in requirement.target_platforms
+        ]
 
         # Pure python wheels or sdists may need to have a platform here
         target_platforms = None
