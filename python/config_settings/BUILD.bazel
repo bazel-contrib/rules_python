@@ -11,6 +11,7 @@ load(
     "PrecompileSourceRetentionFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
+    rp_string_flag = "string_flag",
 )
 load(
     "//python/private/pypi:flags.bzl",
@@ -87,12 +88,25 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
-string_flag(
+rp_string_flag(
     name = "bootstrap_impl",
     build_setting_default = BootstrapImplFlag.SYSTEM_PYTHON,
+    override = select({
+        # Windows doesn't yet support bootstrap=script, so force disable it
+        ":_is_windows": BootstrapImplFlag.SYSTEM_PYTHON,
+        "//conditions:default": "",
+    }),
     values = sorted(BootstrapImplFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
     visibility = ["//visibility:public"],
+)
+
+# For some reason, @platforms//os:windows can't be directly used
+# in the select() for the flag. But it can be used when put behind
+# a config_setting().
+config_setting(
+    name = "_is_windows",
+    constraint_values = ["@platforms//os:windows"],
 )
 
 # This is used for pip and hermetic toolchain resolution.

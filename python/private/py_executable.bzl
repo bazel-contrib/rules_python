@@ -350,6 +350,7 @@ def _create_executable(
             main_py = main_py,
             imports = imports,
             runtime_details = runtime_details,
+            venv = venv,
         )
         extra_runfiles = ctx.runfiles([stage2_bootstrap] + venv.files_without_interpreter)
         zip_main = _create_zip_main(
@@ -538,11 +539,14 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     ctx.actions.write(pyvenv_cfg, "")
 
     runtime = runtime_details.effective_runtime
+
     venvs_use_declare_symlink_enabled = (
         VenvsUseDeclareSymlinkFlag.get_value(ctx) == VenvsUseDeclareSymlinkFlag.YES
     )
+    recreate_venv_at_runtime = False
 
-    if not venvs_use_declare_symlink_enabled:
+    if not venvs_use_declare_symlink_enabled or not runtime.supports_build_time_venv:
+        recreate_venv_at_runtime = True
         if runtime.interpreter:
             interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
         else:
@@ -557,6 +561,8 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
     elif runtime.interpreter:
+        # Some wrappers around the interpreter (e.g. pyenv) use the program
+        # name to decide what to do, so preserve the name.
         py_exe_basename = paths.basename(runtime.interpreter.short_path)
 
         # Even though ctx.actions.symlink() is used, using
@@ -594,7 +600,8 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     if "t" in runtime.abi_flags:
         version += "t"
 
-    site_packages = "{}/lib/python{}/site-packages".format(venv, version)
+    venv_site_packages = "lib/python{}/site-packages".format(version)
+    site_packages = "{}/{}".format(venv, venv_site_packages)
     pth = ctx.actions.declare_file("{}/bazel.pth".format(site_packages))
     ctx.actions.write(pth, "import _bazel_site_init\n")
 
@@ -616,10 +623,12 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
 
     return struct(
         interpreter = interpreter,
-        recreate_venv_at_runtime = not venvs_use_declare_symlink_enabled,
+        recreate_venv_at_runtime = recreate_venv_at_runtime,
         # Runfiles root relative path or absolute path
         interpreter_actual_path = interpreter_actual_path,
         files_without_interpreter = [pyvenv_cfg, pth, site_init] + site_packages_symlinks,
+        # string; venv-relative path to the site-packages directory.
+        venv_site_packages = venv_site_packages,
     )
 
 def _create_site_packages_symlinks(ctx, site_packages):
@@ -716,7 +725,8 @@ def _create_stage2_bootstrap(
         output_sibling,
         main_py,
         imports,
-        runtime_details):
+        runtime_details,
+        venv = None):
     output = ctx.actions.declare_file(
         # Prepend with underscore to prevent pytest from trying to
         # process the bootstrap for files starting with `test_`
@@ -731,6 +741,14 @@ def _create_stage2_bootstrap(
         main_py_path = "{}/{}".format(ctx.workspace_name, main_py.short_path)
     else:
         main_py_path = ""
+
+    # The stage2 bootstrap uses the venv site-packages location to fix up issues
+    # that occur when the toolchain doesn't support the build-time venv.
+    if venv and not runtime.supports_build_time_venv:
+        venv_rel_site_packages = venv.venv_site_packages
+    else:
+        venv_rel_site_packages = ""
+
     ctx.actions.expand_template(
         template = template,
         output = output,
@@ -741,6 +759,7 @@ def _create_stage2_bootstrap(
             "%main%": main_py_path,
             "%main_module%": ctx.attr.main_module,
             "%target%": str(ctx.label),
+            "%venv_rel_site_packages%": venv_rel_site_packages,
             "%workspace_name%": ctx.workspace_name,
         },
         is_executable = True,
@@ -766,6 +785,12 @@ def _create_stage1_bootstrap(
 
     python_binary_actual = venv.interpreter_actual_path if venv else ""
 
+    # Runtime may be None on Windows due to the --python_path flag.
+    if runtime and runtime.supports_build_time_venv:
+        resolve_python_binary_at_runtime = "0"
+    else:
+        resolve_python_binary_at_runtime = "1"
+
     subs = {
         "%interpreter_args%": "\n".join([
             '"{}"'.format(v)
@@ -775,7 +800,9 @@ def _create_stage1_bootstrap(
         "%python_binary%": python_binary_path,
         "%python_binary_actual%": python_binary_actual,
         "%recreate_venv_at_runtime%": str(int(venv.recreate_venv_at_runtime)) if venv else "0",
+        "%resolve_python_binary_at_runtime%": resolve_python_binary_at_runtime,
         "%target%": str(ctx.label),
+        "%venv_rel_site_packages%": venv.venv_site_packages if venv else "",
         "%workspace_name%": ctx.workspace_name,
     }
 

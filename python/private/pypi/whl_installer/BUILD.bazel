@@ -6,6 +6,7 @@ py_library(
     srcs = [
         "arguments.py",
         "namespace_pkgs.py",
+        "platform.py",
         "wheel.py",
         "wheel_installer.py",
     ],

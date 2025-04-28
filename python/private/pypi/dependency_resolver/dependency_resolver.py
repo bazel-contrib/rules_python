@@ -15,14 +15,17 @@
 "Set defaults for the pip-compile command to run it under Bazel"
 
 import atexit
+import functools
 import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import click
 import piptools.writer as piptools_writer
+from pip._internal.exceptions import DistributionNotFound
+from pip._vendor.resolvelib.resolvers import ResolutionImpossible
 from piptools.scripts.compile import cli
 
 from python.runfiles import runfiles
@@ -82,7 +85,7 @@ def _locate(bazel_runfiles, file):
 @click.command(context_settings={"ignore_unknown_options": True})
 @click.option("--src", "srcs", multiple=True, required=True)
 @click.argument("requirements_txt")
-@click.argument("update_target_label")
+@click.argument("target_label_prefix")
 @click.option("--requirements-linux")
 @click.option("--requirements-darwin")
 @click.option("--requirements-windows")
@@ -90,7 +93,7 @@ def _locate(bazel_runfiles, file):
 def main(
     srcs: Tuple[str, ...],
     requirements_txt: str,
-    update_target_label: str,
+    target_label_prefix: str,
     requirements_linux: Optional[str],
     requirements_darwin: Optional[str],
     requirements_windows: Optional[str],
@@ -152,9 +155,10 @@ def main(
         # or shutil.copyfile, as they will fail with OSError: [Errno 18] Invalid cross-device link.
         shutil.copy(resolved_requirements_file, requirements_out)
 
-    update_command = os.getenv("CUSTOM_COMPILE_COMMAND") or "bazel run %s" % (
-        update_target_label,
+    update_command = (
+        os.getenv("CUSTOM_COMPILE_COMMAND") or f"bazel run {target_label_prefix}.update"
     )
+    test_command = f"bazel test {target_label_prefix}_test"
 
     os.environ["CUSTOM_COMPILE_COMMAND"] = update_command
     os.environ["PIP_CONFIG_FILE"] = os.getenv("PIP_CONFIG_FILE") or os.devnull
@@ -167,6 +171,12 @@ def main(
         for src_relative, resolved_src in zip(srcs_relative, resolved_srcs)
     )
     argv.extend(extra_args)
+
+    _run_pip_compile = functools.partial(
+        run_pip_compile,
+        argv,
+        srcs_relative=srcs_relative,
+    )
 
     if UPDATE:
         print("Updating " + requirements_file_relative)
@@ -185,53 +195,68 @@ def main(
             # and we should copy the updated requirements back to the source tree.
             if not absolute_output_file.samefile(requirements_file_tree):
                 atexit.register(
-                    lambda: shutil.copy(
-                        absolute_output_file, requirements_file_tree
-                    )
+                    lambda: shutil.copy(absolute_output_file, requirements_file_tree)
                 )
-        cli(argv, standalone_mode = False)
+        _run_pip_compile(verbose_command=f"{update_command} -- --verbose")
         requirements_file_relative_path = Path(requirements_file_relative)
         content = requirements_file_relative_path.read_text()
         content = content.replace(absolute_path_prefix, "")
         requirements_file_relative_path.write_text(content)
     else:
-        # cli will exit(0) on success
-        try:
-            print("Checking " + requirements_file)
-            cli(argv)
-            print("cli() should exit", file=sys.stderr)
-            sys.exit(1)
-        except SystemExit as e:
-            if e.code == 2:
-                print(
-                    "pip-compile exited with code 2. This means that pip-compile found "
-                    "incompatible requirements or could not find a version that matches "
-                    f"the install requirement in one of {srcs_relative}.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            elif e.code == 0:
-                golden = open(_locate(bazel_runfiles, requirements_file)).readlines()
-                out = open(requirements_out).readlines()
-                out = [line.replace(absolute_path_prefix, "") for line in out]
-                if golden != out:
-                    import difflib
+        print("Checking " + requirements_file)
+        sys.stdout.flush()
+        _run_pip_compile(verbose_command=f"{test_command} --test_arg=--verbose")
+        golden = open(_locate(bazel_runfiles, requirements_file)).readlines()
+        out = open(requirements_out).readlines()
+        out = [line.replace(absolute_path_prefix, "") for line in out]
+        if golden != out:
+            import difflib
 
-                    print("".join(difflib.unified_diff(golden, out)), file=sys.stderr)
-                    print(
-                        "Lock file out of date. Run '"
-                        + update_command
-                        + "' to update.",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                sys.exit(0)
-            else:
-                print(
-                    f"pip-compile unexpectedly exited with code {e.code}.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+            print("".join(difflib.unified_diff(golden, out)), file=sys.stderr)
+            print(
+                f"Lock file out of date. Run '{update_command}' to update.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+
+def run_pip_compile(
+    args: List[str],
+    *,
+    srcs_relative: List[str],
+    verbose_command: str,
+) -> None:
+    try:
+        cli(args, standalone_mode=False)
+    except DistributionNotFound as e:
+        if isinstance(e.__cause__, ResolutionImpossible):
+            # pip logs an informative error to stderr already
+            # just render the error and exit
+            print(e)
+            sys.exit(1)
+        else:
+            raise
+    except SystemExit as e:
+        if e.code == 0:
+            return  # shouldn't happen, but just in case
+        elif e.code == 2:
+            print(
+                "pip-compile exited with code 2. This means that pip-compile found "
+                "incompatible requirements or could not find a version that matches "
+                f"the install requirement in one of {srcs_relative}.\n"
+                "Try re-running with verbose:\n"
+                f"    {verbose_command}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            print(
+                f"pip-compile unexpectedly exited with code {e.code}.\n"
+                "Try re-running with verbose:\n"
+                f"    {verbose_command}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 if __name__ == "__main__":

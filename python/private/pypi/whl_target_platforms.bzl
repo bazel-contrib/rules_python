@@ -75,8 +75,11 @@ def select_whls(*, whls, want_platforms = [], logger = None):
             fail("expected all platforms to start with ABI, but got: {}".format(p))
 
         abi, _, os_cpu = p.partition("_")
+        abi, _, _ = abi.partition(".")
         _want_platforms[os_cpu] = None
-        _want_platforms[p] = None
+
+        # TODO @aignas 2025-04-20: add a test
+        _want_platforms["{}_{}".format(abi, os_cpu)] = None
 
         version_limit_candidate = int(abi[3:])
         if not version_limit:

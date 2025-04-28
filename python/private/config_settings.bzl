@@ -209,3 +209,33 @@ _current_config = rule(
         "_template": attr.string(default = _DEBUG_ENV_MESSAGE_TEMPLATE),
     },
 )
+
+def is_python_version_at_least(name, **kwargs):
+    flag_name = "_{}_flag".format(name)
+    native.config_setting(
+        name = name,
+        flag_values = {
+            flag_name: "yes",
+        },
+    )
+    _python_version_at_least(
+        name = flag_name,
+        visibility = ["//visibility:private"],
+        **kwargs
+    )
+
+def _python_version_at_least_impl(ctx):
+    at_least = tuple(ctx.attr.at_least.split("."))
+    current = tuple(
+        ctx.attr._major_minor[config_common.FeatureFlagInfo].value.split("."),
+    )
+    value = "yes" if current >= at_least else "no"
+    return [config_common.FeatureFlagInfo(value = value)]
+
+_python_version_at_least = rule(
+    implementation = _python_version_at_least_impl,
+    attrs = {
+        "at_least": attr.string(mandatory = True),
+        "_major_minor": attr.label(default = _PYTHON_VERSION_MAJOR_MINOR_FLAG),
+    },
+)

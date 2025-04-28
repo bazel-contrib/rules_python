@@ -42,6 +42,8 @@ specialized is as follows:
 * `:is_cp3<minor_version>_abi3_<platform_suffix>`
 * `:is_cp3<minor_version>_cp3<minor_version>_<platform_suffix>` and `:is_cp3<minor_version>_cp3<minor_version>t_<platform_suffix>`
 
+Optionally instead of `<minor_version>` there sometimes may be `<minor_version>.<micro_version>` used in order to fully specify the versions
+
 The specialization of free-threaded vs non-free-threaded wheels is the same as
 they are just variants of each other. The same goes for the specialization of
 `musllinux` vs `manylinux`.

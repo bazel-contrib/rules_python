@@ -86,6 +86,7 @@ bzl_library(
     name = "runtime_env_toolchain_bzl",
     srcs = ["runtime_env_toolchain.bzl"],
     deps = [
+        ":config_settings_bzl",
         ":py_exec_tools_toolchain_bzl",
         ":toolchain_types_bzl",
         "//python:py_runtime_bzl",
