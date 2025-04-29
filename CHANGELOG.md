@@ -72,10 +72,14 @@ END_UNRELEASED_TEMPLATE
   * The `sys._base_executable` value will reflect the underlying interpreter,
     not venv interpreter.
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
+* (rules) Better handle flakey platform.win32_ver() calls by calling them
+  multiple times.
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
+  support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
+  (the default), the subprocess's stdout/stderr will be logged.
 
 {#v0-0-0-removed}
 ### Removed
@@ -99,8 +103,6 @@ END_UNRELEASED_TEMPLATE
     * 3.12.9
     * 3.13.2
 * (pypi) Use `xcrun xcodebuild --showsdks` to find XCode root.
-* (pypi) The `bzlmod` extension will now generate smaller lock files for  when
-  using `experimental_index_url`.
 * (toolchains) Remove all but `3.8.20` versions of the Python `3.8` interpreter who has
   reached EOL. If users still need other versions of the `3.8` interpreter, please supply
   the URLs manually {bzl:obj}`python.toolchain` or {bzl:obj}`python_register_toolchains` calls.
@@ -116,13 +118,6 @@ END_UNRELEASED_TEMPLATE
   [PR #2746](https://github.com/bazel-contrib/rules_python/pull/2746).
 * (rules) {attr}`py_binary.srcs` and {attr}`py_test.srcs` is no longer mandatory when
   `main_module` is specified (for `--bootstrap_impl=script`)
-* (pypi) From now on the `Requires-Dist` from the wheel metadata is analysed in
-  the loading phase instead of repository rule phase giving better caching
-  performance when the target platforms are changed (e.g. target python
-  versions). This is preparatory work for stabilizing the cross-platform wheel
-  support. From now on the usage of `experimental_target_platforms` should be
-  avoided and the `requirements_by_platform` values should be instead used to
-  specify the target platforms for the given dependencies.
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
@@ -144,6 +139,13 @@ END_UNRELEASED_TEMPLATE
 * (packaging) An empty `requires_file` is treated as if it were omitted, resulting in a valid `METADATA` file.
 * (rules) py_wheel and sphinxdocs rules now propagate `target_compatible_with` to all targets they create.
   [PR #2788](https://github.com/bazel-contrib/rules_python/pull/2788).
+* (pypi) Correctly handle `METADATA` entries when `python_full_version` is used in
+  the environment marker.
+  Fixes [#2319](https://github.com/bazel-contrib/rules_python/issues/2319).
+* (pypi) Correctly handle `python_version` parameter and transition the requirement
+  locking to the right interpreter version when using
+  {obj}`compile_pip_requirements` rule.
+  See [#2819](https://github.com/bazel-contrib/rules_python/pull/2819).
 
 {#1-4-0-added}
 ### Added

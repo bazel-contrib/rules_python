@@ -16,13 +16,15 @@
 
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
+load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
+load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:semver.bzl", "semver")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers")
+load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -68,6 +70,8 @@ def _create_whl_repos(
         pip_attr,
         whl_overrides,
         available_interpreters = INTERPRETER_LABELS,
+        minor_mapping = MINOR_MAPPING,
+        evaluate_markers = evaluate_markers_py,
         get_index_urls = None):
     """create all of the whl repositories
 
@@ -80,6 +84,9 @@ def _create_whl_repos(
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
             used during the `repository_rule` and must be always compatible with the host.
+        minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
+            python version used to parse package METADATA files.
+        evaluate_markers: the function used to evaluate the markers.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -159,13 +166,36 @@ def _create_whl_repos(
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
             extra_pip_args = pip_attr.extra_pip_args,
-            # TODO @aignas 2025-04-15: pass the full version into here
-            python_version = major_minor,
+            python_version = full_version(
+                version = pip_attr.python_version,
+                minor_mapping = minor_mapping,
+            ),
             logger = logger,
         ),
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
-        evaluate_markers = evaluate_markers,
+        # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
+        # in the PATH or if specified as a label. We will configure the env
+        # markers when evaluating the requirement lines based on the output
+        # from the `requirements_files_by_platform` which should have something
+        # similar to:
+        # {
+        #    "//:requirements.txt": ["cp311_linux_x86_64", ...]
+        # }
+        #
+        # We know the target python versions that we need to evaluate the
+        # markers for and thus we don't need to use multiple python interpreter
+        # instances to perform this manipulation. This function should be executed
+        # only once by the underlying code to minimize the overhead needed to
+        # spin up a Python interpreter.
+        evaluate_markers = lambda module_ctx, requirements: evaluate_markers(
+            module_ctx,
+            requirements = requirements,
+            python_interpreter = pip_attr.python_interpreter,
+            python_interpreter_target = python_interpreter_target,
+            srcs = pip_attr._evaluate_markers_srcs,
+            logger = logger,
+        ),
         logger = logger,
     )
 
@@ -186,6 +216,7 @@ def _create_whl_repos(
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
             envsubst = pip_attr.envsubst,
+            experimental_target_platforms = pip_attr.experimental_target_platforms,
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
@@ -274,6 +305,13 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
+        args["experimental_target_platforms"] = [
+            # Get rid of the version fot the target platforms because we are
+            # passing the interpreter any way. Ideally we should search of ways
+            # how to pass the target platforms through the hub repo.
+            p.partition("_")[2]
+            for p in requirement.target_platforms
+        ]
 
         # Pure python wheels or sdists may need to have a platform here
         target_platforms = None
@@ -303,9 +341,6 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
     args["requirement"] = requirement.srcs.requirement_line
     if requirement.extra_pip_args:
         args["extra_pip_args"] = requirement.extra_pip_args
-
-    if download_only:
-        args.setdefault("experimental_target_platforms", requirement.target_platforms)
 
     target_platforms = requirement.target_platforms if multiple_requirements_for_whl else []
     repo_name = pypi_repo_name(
@@ -771,6 +806,13 @@ EXPERIMENTAL: this may be removed without notice.
             doc = """\
 A dict of labels to wheel names that is typically generated by the whl_modifications.
 The labels are JSON config files describing the modifications.
+""",
+        ),
+        "_evaluate_markers_srcs": attr.label_list(
+            default = EVALUATE_MARKERS_SRCS,
+            doc = """\
+The list of labels to use as SRCS for the marker evaluation code. This ensures that the
+code will be re-evaluated when any of files in the default changes.
 """,
         ),
     }, **ATTRS)

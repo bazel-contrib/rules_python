@@ -371,6 +371,9 @@ def get_filename_config_settings(
 
         abi = parsed.abi_tag
 
+        # TODO @aignas 2025-04-20: test
+        abi, _, _ = abi.partition(".")
+
         if parsed.platform_tag == "any":
             prefixes = ["{}{}_any".format(py, abi)]
         else:

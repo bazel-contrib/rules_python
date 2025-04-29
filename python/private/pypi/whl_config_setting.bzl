@@ -35,9 +35,19 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
         a struct with the validated and parsed values.
     """
     if target_platforms:
-        for p in target_platforms:
+        target_platforms_input = target_platforms
+        target_platforms = []
+        for p in target_platforms_input:
             if not p.startswith("cp"):
                 fail("target_platform should start with 'cp' denoting the python version, got: " + p)
+
+            abi, _, tail = p.partition("_")
+
+            # drop the micro version here, currently there is no usecase to use
+            # multiple python interpreters with the same minor version but
+            # different micro version.
+            abi, _, _ = abi.partition(".")
+            target_platforms.append("{}_{}".format(abi, tail))
 
     return struct(
         config_setting = config_setting,

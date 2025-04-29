@@ -15,14 +15,23 @@
 """This module is for implementing PEP508 compliant METADATA deps parsing.
 """
 
-load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING")
+load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_platform.bzl", "platform", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
 
-def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], default_python_version = None):
+def deps(
+        name,
+        *,
+        requires_dist,
+        platforms = [],
+        extras = [],
+        excludes = [],
+        default_python_version = None,
+        minor_mapping = MINOR_MAPPING):
     """Parse the RequiresDist from wheel METADATA
 
     Args:
@@ -33,6 +42,9 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], def
         extras: {type}`list[str]` the requested extras to generate targets for.
         platforms: {type}`list[str]` the list of target platform strings.
         default_python_version: {type}`str` the host python version.
+        minor_mapping: {type}`type[str, str]` the minor mapping to use when
+            resolving to the full python version as DEFAULT_PYTHON_VERSION can by
+            of format `3.x`.
 
     Returns:
         A struct with attributes:
@@ -53,6 +65,12 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], def
     excludes = [name] + [normalize_name(x) for x in excludes]
 
     default_python_version = default_python_version or DEFAULT_PYTHON_VERSION
+    if default_python_version:
+        # if it is not bzlmod, then DEFAULT_PYTHON_VERSION may be unset
+        default_python_version = full_version(
+            version = default_python_version,
+            minor_mapping = minor_mapping,
+        )
     platforms = [
         platform_from_str(p, python_version = default_python_version)
         for p in platforms
@@ -60,9 +78,8 @@ def deps(name, *, requires_dist, platforms = [], extras = [], excludes = [], def
 
     abis = sorted({p.abi: True for p in platforms if p.abi})
     if default_python_version and len(abis) > 1:
-        _, _, minor_version = default_python_version.partition(".")
-        minor_version, _, _ = minor_version.partition(".")
-        default_abi = "cp3" + minor_version
+        _, _, tail = default_python_version.partition(".")
+        default_abi = "cp3" + tail
     elif len(abis) > 1:
         fail(
             "all python versions need to be specified explicitly, got: {}".format(platforms),

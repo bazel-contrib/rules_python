@@ -160,6 +160,7 @@ def pip_compile(
     py_binary(
         name = name + ".update",
         env = env,
+        python_version = kwargs.get("python_version", None),
         **attrs
     )
 

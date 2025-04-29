@@ -68,9 +68,8 @@ def _test_platforms(env):
             "@//python/config_settings:is_python_3.9": ["py39_dep"],
             "@platforms//cpu:aarch64": ["arm_dep"],
             "@platforms//os:windows": ["win_dep"],
+            "cp310.11_linux_ppc64le": ["full_version_dep"],
             "cp310_linux_ppc64le": ["py310_linux_ppc64le_dep"],
-            "cp39_anyos_aarch64": ["py39_arm_dep"],
-            "cp39_linux_anyarch": ["py39_linux_dep"],
             "linux_x86_64": ["linux_intel_dep"],
         },
         filegroups = {},
@@ -82,39 +81,34 @@ def _test_platforms(env):
 
     env.expect.that_collection(calls).contains_exactly([
         {
-            "name": "is_python_3.10_linux_ppc64le",
-            "flag_values": {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.10",
-            },
+            "name": "is_python_3.10.11_linux_ppc64le",
+            "visibility": ["//visibility:private"],
             "constraint_values": [
                 "@platforms//cpu:ppc64le",
                 "@platforms//os:linux",
             ],
-            "visibility": ["//visibility:private"],
+            "flag_values": {
+                Label("//python/config_settings:python_version"): "3.10.11",
+            },
         },
         {
-            "name": "is_python_3.9_anyos_aarch64",
-            "flag_values": {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.9",
-            },
-            "constraint_values": ["@platforms//cpu:aarch64"],
+            "name": "is_python_3.10_linux_ppc64le",
             "visibility": ["//visibility:private"],
-        },
-        {
-            "name": "is_python_3.9_linux_anyarch",
+            "constraint_values": [
+                "@platforms//cpu:ppc64le",
+                "@platforms//os:linux",
+            ],
             "flag_values": {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.9",
+                Label("//python/config_settings:python_version"): "3.10",
             },
-            "constraint_values": ["@platforms//os:linux"],
-            "visibility": ["//visibility:private"],
         },
         {
             "name": "is_linux_x86_64",
+            "visibility": ["//visibility:private"],
             "constraint_values": [
                 "@platforms//cpu:x86_64",
                 "@platforms//os:linux",
             ],
-            "visibility": ["//visibility:private"],
         },
     ])  # buildifier: @unsorted-dict-items
 

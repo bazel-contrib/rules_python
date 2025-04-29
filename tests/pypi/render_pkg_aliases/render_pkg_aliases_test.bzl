@@ -68,7 +68,8 @@ def _test_bzlmod_aliases(env):
         aliases = {
             "bar-baz": {
                 whl_config_setting(
-                    version = "3.2",
+                    # Add one with micro version to mimic construction in the extension
+                    version = "3.2.2",
                     config_setting = "//:my_config_setting",
                 ): "pypi_32_bar_baz",
                 whl_config_setting(
@@ -83,10 +84,10 @@ def _test_bzlmod_aliases(env):
                     filename = "foo-0.0.0-py3-none-any.whl",
                 ): "filename_repo",
                 whl_config_setting(
-                    version = "3.2",
+                    version = "3.2.2",
                     filename = "foo-0.0.0-py3-none-any.whl",
                     target_platforms = [
-                        "cp32_linux_x86_64",
+                        "cp32.2_linux_x86_64",
                     ],
                 ): "filename_repo_linux_x86_64",
             },
@@ -117,7 +118,7 @@ pkg_aliases(
         whl_config_setting(
             filename = "foo-0.0.0-py3-none-any.whl",
             target_platforms = ("cp32_linux_x86_64",),
-            version = "3.2",
+            version = "3.2.2",
         ): "filename_repo_linux_x86_64",
     },
     extra_aliases = ["foo"],
