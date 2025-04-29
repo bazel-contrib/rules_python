@@ -2,8 +2,8 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":pep508_evaluate.bzl", "evaluate")
 
-def depspec_flag(**kwargs):
-    pypa_dependency_specification(
+def env_marker_setting(**kwargs):
+    _env_marker_setting(
         # todo: copied from pep508_env.bzl
         os_name = select({
             # The "java" value is documented, but with Jython defunct,
@@ -88,12 +88,14 @@ def _impl(ctx):
     env["platform_version"] = ctx.attr._platform_version_config_flag[BuildSettingInfo].value
 
     if evaluate(ctx.attr.expression, env = env):
+        # todo: better return value than "yes" and "no"
+        # matched/unmatched, satisfied/unsatisfied ?
         value = "yes"
     else:
         value = "no"
     return [config_common.FeatureFlagInfo(value = value)]
 
-pypa_dependency_specification = rule(
+_env_marker_setting = rule(
     implementation = _impl,
     attrs = {
         "expression": attr.string(),
@@ -116,6 +118,7 @@ pypa_dependency_specification = rule(
         # todo: what to do with this?
         "_extra_flag": attr.label(),
     },
+    provides = [config_common.FeatureFlagInfo],
     toolchains = [
         TARGET_TOOLCHAIN_TYPE,
     ],

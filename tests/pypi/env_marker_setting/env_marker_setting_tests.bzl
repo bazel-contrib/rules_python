@@ -1,7 +1,7 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
-load("//python/private/pypi:dependency_specifier_flag.bzl", "depspec_flag")
+load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "PYTHON_VERSION")
@@ -40,7 +40,7 @@ def _test_expr(name):
     for case_name, case in cases.items():
         test_name = name + "_" + case_name
         tests.append(test_name)
-        depspec_flag(
+        env_marker_setting(
             name = test_name + "_subject",
             expression = case["expression"],
         )
@@ -63,7 +63,7 @@ def _test_expr(name):
 
 _tests.append(_test_expr)
 
-def depspec_flag_test_suite(name):
+def env_marker_setting_test_suite(name):
     test_suite(
         name = name,
         tests = _tests,
