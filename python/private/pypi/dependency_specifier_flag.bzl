@@ -1,5 +1,49 @@
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":pep508_evaluate.bzl", "evaluate")
+
+def depspec_flag(**kwargs):
+    pypa_dependency_specification(
+        # todo: copied from pep508_env.bzl
+        os_name = select({
+            # The "java" value is documented, but with Jython defunct,
+            # shouldn't occur in practice.
+            # The osname value is technically a property of the runtime, not the
+            # targetted OS at runtime, but the distinction shouldn't matter in
+            # practice.
+            "@platforms//os:windows": "nt",
+            "//conditions:default": "posix",
+        }),
+        # todo: copied from pep508_env.bzl
+        sys_platform = select({
+            "@platforms//os:windows": "win32",
+            "@platforms//os:linux": "linux",
+            "@platforms//os:osx": "darwin",
+            # todo: what does spec say unknown value is?
+            "//conditions:default": "",
+        }),
+        # todo: copied from pep508_env.bzl
+        # todo: pep508_env and evaluate have an "aliases" thing that needs
+        # to be incorporated
+        # todo: there are many more cpus. Unfortunately, it doesn't look like
+        # the value is directly accessible to starlark. It might be possible to
+        # get it via CcToolchain.cpu though.
+        platform_machine = select({
+            "@platforms//cpu:x86_64": "x86_64",
+            "@platforms//cpu:aarch64": "aarch64",
+            # todo: what does spec say unknown value is?
+            "//conditions:default": "",
+        }),
+        # todo: copied from pep508_env.bzl
+        platform_system = select({
+            "@platforms//os:windows": "Windows",
+            "@platforms//os:linux": "Linux",
+            "@platforms//os:osx": "Darwin",
+            # todo: what does spec say unknown value is?
+            "//conditions:default": "",
+        }),
+        **kwargs
+    )
 
 # todo: maybe put all the env into a single target and have a
 # PyPiEnvMarkersInfo provider? Have --pypi_env=//some:target?
@@ -15,8 +59,8 @@ def _impl(ctx):
         env["python_full_version"] = full_version
         env["implementation_version"] = full_version
     else:
-        env["python_version"] = get_flag(ctx.attr._python_version)
-        full_version = get_flag(ctx.attr._python_full_version)
+        env["python_version"] = _get_flag(ctx.attr._python_version)
+        full_version = _get_flag(ctx.attr._python_full_version)
         env["python_full_version"] = full_version
         env["implementation_version"] = full_version
 
@@ -40,76 +84,16 @@ def _impl(ctx):
     env["platform_system"] = ctx.attr.platform_system
     env["platform_version"] = ctx.attr._platform_version_config_flag[BuildSettingInfo].value
 
-    if evalute(ctx.attr.expression, env):
+    if evaluate(ctx.attr.expression, env):
         value = "yes"
     else:
         value = "no"
     return [config_common.FeatureFlagInfo(value = value)]
 
-# Adapted from spec code at:
-# https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
-def format_full_info(info):
-    kind = info.releaselevel
-    if kind == "final":
-        kind = ""
-        serial = ""
-    else:
-        kind = kind[0] if kind else ""
-        serial = str(info.serial) if info.serial else ""
-
-    return "{v.major}.{v.minor}.{v.micro}{kind}{serial}".format(
-        v = version_info,
-        kind = kind,
-        serial = serial,
-    )
-    return version
-
-def pypa_dep_spec(**kwargs):
-    pypa_dependency_specification(
-        # todo: copied from pep508_env.bzl
-        os_name = select({
-            # The "java" value is documented, but with Jython defunct,
-            # shouldn't occur in practice.
-            # The osname value is technically a property of the runtime, not the
-            # targetted OS at runtime, but the distinction shouldn't matter in
-            # practice.
-            "@//platforms/os:windows": "nt",
-            "//conditions:default": "posix",
-        }),
-        # todo: copied from pep508_env.bzl
-        sys_platform = select({
-            "@//platforms/os:windows": "win32",
-            "@//platforms/os:linux": "linux",
-            "@//platforms/os:osx": "darwin",
-            # todo: what does spec say unknown value is?
-            "//conditions:default": "",
-        }),
-        # todo: copied from pep508_env.bzl
-        # todo: pep508_env and evaluate have an "aliases" thing that needs
-        # to be incorporated
-        # todo: there are many more cpus. Unfortunately, it doesn't look like
-        # the value is directly accessible to starlark. It might be possible to
-        # get it via CcToolchain.cpu though.
-        platform_machine = select({
-            "@platforms//cpu:x86_64": "x86_64",
-            "@platforms//cpu:aarch64": "aarch64",
-            # todo: what does spec say unknown value is?
-            "//conditions:default": "",
-        }),
-        # todo: copied from pep508_env.bzl
-        platform_system = select({
-            "@//platforms/os:windows": "Windows",
-            "@//platforms/os:linux": "Linux",
-            "@//platforms/os:osx": "Darwin",
-            # todo: what does spec say unknown value is?
-            "//conditions:default": "",
-        }),
-    )
-
 pypa_dependency_specification = rule(
     implementation = _impl,
     attrs = {
-        "expression": attt.string(),
+        "expression": attr.string(),
         "os_name": attr.string(),
         "sys_platform": attr.string(),
         "platform_machine": attr.string(),
@@ -121,7 +105,7 @@ pypa_dependency_specification = rule(
             default = "//python/config_settings:pip_platform_version_config",
         ),
         "_python_version_flag": attr.label(
-            default = "//python/config_settings:_python_version_major_minor",
+            default = "//python/config_settings:python_version_major_minor",
         ),
         "_python_full_version_flag": attr.label(
             default = "//python/config_settings:python_version",
@@ -132,6 +116,23 @@ pypa_dependency_specification = rule(
         TARGET_TOOLCHAIN_TYPE,
     ],
 )
+
+# Adapted from spec code at:
+# https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
+def format_full_version(info):
+    kind = info.releaselevel
+    if kind == "final":
+        kind = ""
+        serial = ""
+    else:
+        kind = kind[0] if kind else ""
+        serial = str(info.serial) if info.serial else ""
+
+    return "{v.major}.{v.minor}.{v.micro}{kind}{serial}".format(
+        v = info,
+        kind = kind,
+        serial = serial,
+    )
 
 def _get_flag(t):
     if config_common.FeatureFlagInfo in t:

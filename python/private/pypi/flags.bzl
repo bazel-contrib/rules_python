@@ -84,16 +84,18 @@ def define_pypi_internal_flags(name):
     _platform_release_config(
         name = "_pip_platform_release_default_config",
         value = select({
-            "//conditions:osx": "USE_OSX_VERSION_FLAG",
+            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
             "//conditions:default": "",
         }),
+        visibility = ["//visibility:public"],
     )
     _platform_version_config(
         name = "_pip_platform_version_default_config",
         value = select({
-            "//conditions:osx": "USE_OSX_VERSION_FLAG",
+            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
             "//conditions:default": "",
         }),
+        visibility = ["//visibility:public"],
     )
 
 def _allow_wheels_flag_impl(ctx):
