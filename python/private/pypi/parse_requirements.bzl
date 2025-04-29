@@ -80,7 +80,7 @@ def parse_requirements(
 
         The second element is extra_pip_args should be passed to `whl_library`.
     """
-    evaluate_markers = evaluate_markers or (lambda _: {})
+    evaluate_markers = evaluate_markers or (lambda _ctx, _requirements: {})
     options = {}
     requirements = {}
     for file, plats in requirements_by_platform.items():
@@ -156,7 +156,7 @@ def parse_requirements(
     # to do, we could use Python to parse the requirement lines and infer the
     # URL of the files to download things from. This should be important for
     # VCS package references.
-    env_marker_target_platforms = evaluate_markers(reqs_with_env_markers)
+    env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
     if logger:
         logger.debug(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
             reqs_with_env_markers,

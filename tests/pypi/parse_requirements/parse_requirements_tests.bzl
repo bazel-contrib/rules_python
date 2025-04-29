@@ -458,7 +458,7 @@ def _test_select_requirement_none_platform(env):
 _tests.append(_test_select_requirement_none_platform)
 
 def _test_env_marker_resolution(env):
-    def _mock_eval_markers(input):
+    def _mock_eval_markers(_, input):
         ret = {
             "foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef": ["cp311_windows_x86_64"],
         }

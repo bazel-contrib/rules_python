@@ -113,6 +113,7 @@ pypa_dependency_specification = rule(
         "_python_full_version_flag": attr.label(
             default = "//python/config_settings:python_version",
         ),
+        # todo: what to do with this?
         "_extra_flag": attr.label(),
     },
     toolchains = [

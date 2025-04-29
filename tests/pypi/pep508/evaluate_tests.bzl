@@ -68,18 +68,28 @@ def _evaluate_non_version_env_tests(env):
 
         # When
         for input, want in {
-            "{} == 'osx'".format(var_name): True,
-            "{} != 'osx'".format(var_name): False,
-            "'osx' == {}".format(var_name): True,
             "'osx' != {}".format(var_name): False,
-            "'x' in {}".format(var_name): True,
+            "'osx' < {}".format(var_name): False,
+            "'osx' <= {}".format(var_name): True,
+            "'osx' == {}".format(var_name): True,
+            "'osx' >= {}".format(var_name): True,
             "'w' not in {}".format(var_name): True,
-        }.items():  # buildifier: @unsorted-dict-items
+            "'x' in {}".format(var_name): True,
+            "{} != 'osx'".format(var_name): False,
+            "{} < 'osx'".format(var_name): False,
+            "{} <= 'osx'".format(var_name): True,
+            "{} == 'osx'".format(var_name): True,
+            "{} > 'osx'".format(var_name): False,
+            "{} >= 'osx'".format(var_name): True,
+        }.items():
             got = evaluate(
                 input,
                 env = marker_env,
             )
-            env.expect.that_bool(got).equals(want)
+            env.expect.where(
+                expr = input,
+                env = marker_env,
+            ).that_bool(got).equals(want)
 
             # Check that the non-strict eval gives us back the input when no
             # env is supplied.
