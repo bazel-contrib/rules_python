@@ -4,6 +4,17 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":pep508_evaluate.bzl", "evaluate")
 
+# todo: copied from pep508_env.bzl
+_os_name_select_map = {
+    # The "java" value is documented, but with Jython defunct,
+    # shouldn't occur in practice.
+    # The osname value is technically a property of the runtime, not the
+    # targetted OS at runtime, but the distinction shouldn't matter in
+    # practice.
+    "@platforms//os:windows": "nt",
+    "//conditions:default": "posix",
+}
+
 # TODO @aignas 2025-04-29: this is copied from ./pep508_env.bzl
 _platform_machine_aliases = {
     # These pairs mean the same hardware, but different values may be used
@@ -14,88 +25,84 @@ _platform_machine_aliases = {
     "i686": "x86_32",
 }
 
+# Taken from
+# https://docs.python.org/3/library/sys.html#sys.platform
+_sys_platform_select_map = {
+    "@platforms//os:android": "android",
+    "@platforms//os:emscripten": "emscripten",
+    # NOTE, the below values here are from the time when the Python
+    # interpreter is built and it is hard to know for sure, maybe this
+    # should be something from the toolchain?
+    "@platforms//os:freebsd": "freebsd8",
+    "@platforms//os:ios": "ios",
+    "@platforms//os:linux": "linux",
+    "@platforms//os:openbsd": "openbsd6",
+    "@platforms//os:osx": "darwin",
+    "@platforms//os:wasi": "wasi",
+    "@platforms//os:windows": "win32",
+    "//conditions:default": "",
+}
+
+# todo: copied from pep508_env.bzl
+# TODO: there are many cpus and unfortunately, it doesn't look like
+# the value is directly accessible to starlark. It might be possible to
+# get it via CcToolchain.cpu though.
+_platform_machine_select_map = {
+    "@platforms//cpu:aarch32": "aarch32",
+    "@platforms//cpu:aarch64": "aarch64",
+    "@platforms//cpu:arm": "arm",
+    "@platforms//cpu:arm64": "arm64",
+    "@platforms//cpu:arm64_32": "arm64_32",
+    "@platforms//cpu:arm64e": "arm64e",
+    "@platforms//cpu:armv6-m": "armv6-m",
+    "@platforms//cpu:armv7": "armv7",
+    "@platforms//cpu:armv7-m": "armv7-m",
+    "@platforms//cpu:armv7e-m": "armv7e-m",
+    "@platforms//cpu:armv7e-mf": "armv7e-mf",
+    "@platforms//cpu:armv7k": "armv7k",
+    "@platforms//cpu:armv8-m": "armv8-m",
+    "@platforms//cpu:cortex-r52": "cortex-r52",
+    "@platforms//cpu:cortex-r82": "cortex-r82",
+    "@platforms//cpu:i386": "i386",
+    "@platforms//cpu:mips64": "mips64",
+    "@platforms//cpu:ppc": "ppc",
+    "@platforms//cpu:ppc32": "ppc32",
+    "@platforms//cpu:ppc64le": "ppc64le",
+    "@platforms//cpu:riscv32": "riscv32",
+    "@platforms//cpu:riscv64": "riscv64",
+    "@platforms//cpu:s390x": "s390x",
+    "@platforms//cpu:wasm32": "wasm32",
+    "@platforms//cpu:wasm64": "wasm64",
+    "@platforms//cpu:x86_32": "x86_32",
+    "@platforms//cpu:x86_64": "x86_64",
+    # The value is empty string if it cannot be determined:
+    # https://docs.python.org/3/library/platform.html#platform.machine
+    "//conditions:default": "",
+}
+
+# todo: copied from pep508_env.bzl
+_platform_system_select_map = {
+    # See https://peps.python.org/pep-0738/#platform
+    "@platforms//os:android": "Android",
+    "@platforms//os:freebsd": "FreeBSD",
+    # See https://peps.python.org/pep-0730/#platform
+    "@platforms//os:ios": "iOS",  # can also be iPadOS?
+    "@platforms//os:linux": "Linux",
+    "@platforms//os:netbsd": "NetBSD",
+    "@platforms//os:openbsd": "OpenBSD",
+    "@platforms//os:osx": "Darwin",
+    "@platforms//os:windows": "Windows",
+    # The value is empty string if it cannot be determined:
+    # https://docs.python.org/3/library/platform.html#platform.machine
+    "//conditions:default": "",
+}
+
 def env_marker_setting(**kwargs):
     _env_marker_setting(
-        # todo: copied from pep508_env.bzl
-        os_name = select({
-            # The "java" value is documented, but with Jython defunct,
-            # shouldn't occur in practice.
-            # The osname value is technically a property of the runtime, not the
-            # targetted OS at runtime, but the distinction shouldn't matter in
-            # practice.
-            "@platforms//os:windows": "nt",
-            "//conditions:default": "posix",
-        }),
-        # todo: copied from pep508_env.bzl
-        sys_platform = select({
-            # Taken from
-            # https://docs.python.org/3/library/sys.html#sys.platform
-            "@platforms//os:android": "android",
-            "@platforms//os:emscripten": "emscripten",
-            # NOTE, the below values here are from the time when the Python
-            # interpreter is built and it is hard to know for sure, maybe this
-            # should be something from the toolchain?
-            "@platforms//os:freebsd": "freebsd8",
-            "@platforms//os:ios": "ios",
-            "@platforms//os:linux": "linux",
-            "@platforms//os:openbsd": "openbsd6",
-            "@platforms//os:osx": "darwin",
-            "@platforms//os:wasi": "wasi",
-            "@platforms//os:windows": "win32",
-            "//conditions:default": "",
-        }),
-        # todo: copied from pep508_env.bzl
-        # TODO: there are many cpus and unfortunately, it doesn't look like
-        # the value is directly accessible to starlark. It might be possible to
-        # get it via CcToolchain.cpu though.
-        platform_machine = select({
-            "@platforms//cpu:aarch32": "aarch32",
-            "@platforms//cpu:aarch64": "aarch64",
-            "@platforms//cpu:arm": "arm",
-            "@platforms//cpu:arm64": "arm64",
-            "@platforms//cpu:arm64_32": "arm64_32",
-            "@platforms//cpu:arm64e": "arm64e",
-            "@platforms//cpu:armv6-m": "armv6-m",
-            "@platforms//cpu:armv7": "armv7",
-            "@platforms//cpu:armv7-m": "armv7-m",
-            "@platforms//cpu:armv7e-m": "armv7e-m",
-            "@platforms//cpu:armv7e-mf": "armv7e-mf",
-            "@platforms//cpu:armv7k": "armv7k",
-            "@platforms//cpu:armv8-m": "armv8-m",
-            "@platforms//cpu:cortex-r52": "cortex-r52",
-            "@platforms//cpu:cortex-r82": "cortex-r82",
-            "@platforms//cpu:i386": "i386",
-            "@platforms//cpu:mips64": "mips64",
-            "@platforms//cpu:ppc": "ppc",
-            "@platforms//cpu:ppc32": "ppc32",
-            "@platforms//cpu:ppc64le": "ppc64le",
-            "@platforms//cpu:riscv32": "riscv32",
-            "@platforms//cpu:riscv64": "riscv64",
-            "@platforms//cpu:s390x": "s390x",
-            "@platforms//cpu:wasm32": "wasm32",
-            "@platforms//cpu:wasm64": "wasm64",
-            "@platforms//cpu:x86_32": "x86_32",
-            "@platforms//cpu:x86_64": "x86_64",
-            # The value is empty string if it cannot be determined:
-            # https://docs.python.org/3/library/platform.html#platform.machine
-            "//conditions:default": "",
-        }),
-        # todo: copied from pep508_env.bzl
-        platform_system = select({
-            # See https://peps.python.org/pep-0738/#platform
-            "@platforms//os:android": "Android",
-            "@platforms//os:freebsd": "FreeBSD",
-            # See https://peps.python.org/pep-0730/#platform
-            "@platforms//os:ios": "iOS",  # can also be iPadOS?
-            "@platforms//os:linux": "Linux",
-            "@platforms//os:netbsd": "NetBSD",
-            "@platforms//os:openbsd": "OpenBSD",
-            "@platforms//os:osx": "Darwin",
-            "@platforms//os:windows": "Windows",
-            # The value is empty string if it cannot be determined:
-            # https://docs.python.org/3/library/platform.html#platform.machine
-            "//conditions:default": "",
-        }),
+        os_name = select(_os_name_select_map),
+        sys_platform = select(_sys_platform_select_map),
+        platform_machine = select(_platform_machine_select_map),
+        platform_system = select(_platform_system_select_map),
         **kwargs
     )
 
