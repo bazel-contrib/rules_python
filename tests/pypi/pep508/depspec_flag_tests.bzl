@@ -11,7 +11,7 @@ def _test_whatever(name):
     def impl(env, target):
         # todo: create FeatureFlagInfo subject
         actual = target[config_common.FeatureFlagInfo].value
-        env.expect.that_string(actual).equals("yes")
+        env.expect.that_str(actual).equals("yes")
 
     depspec_flag(
         name = name + "_subject",

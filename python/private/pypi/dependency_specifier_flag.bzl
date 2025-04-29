@@ -54,7 +54,10 @@ def _impl(ctx):
     runtime = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
     if runtime.interpreter_version_info:
         version_info = runtime.interpreter_version_info
-        env["python_version"] = "{v.major}.{v.minor}".format(v = version_info)
+        env["python_version"] = "{major}.{minor}".format(
+            major = version_info.major,
+            minor = version_info.minor,
+        )
         full_version = format_full_version(version_info)
         env["python_full_version"] = full_version
         env["implementation_version"] = full_version
@@ -84,7 +87,7 @@ def _impl(ctx):
     env["platform_system"] = ctx.attr.platform_system
     env["platform_version"] = ctx.attr._platform_version_config_flag[BuildSettingInfo].value
 
-    if evaluate(ctx.attr.expression, env):
+    if evaluate(ctx.attr.expression, env = env):
         value = "yes"
     else:
         value = "no"
@@ -128,8 +131,11 @@ def format_full_version(info):
         kind = kind[0] if kind else ""
         serial = str(info.serial) if info.serial else ""
 
-    return "{v.major}.{v.minor}.{v.micro}{kind}{serial}".format(
+    return "{major}.{minor}.{micro}{kind}{serial}".format(
         v = info,
+        major = info.major,
+        minor = info.minor,
+        micro = info.micro,
         kind = kind,
         serial = serial,
     )

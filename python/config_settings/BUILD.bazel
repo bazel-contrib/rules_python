@@ -230,6 +230,7 @@ define_pypi_internal_flags(
 label_flag(
     name = "pip_platform_release_config",
     build_setting_default = ":_pip_platform_release_default_config",
+    visibility = ["//visibility:public"],
 )
 
 # docs: points to a label that provides BuildSettingInfo for the value.
@@ -237,4 +238,5 @@ label_flag(
 label_flag(
     name = "pip_platform_version_config",
     build_setting_default = ":_pip_platform_version_default_config",
+    visibility = ["//visibility:public"],
 )
