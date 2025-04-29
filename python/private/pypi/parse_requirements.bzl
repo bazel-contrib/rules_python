@@ -285,10 +285,15 @@ def _add_dists(*, requirement, index_urls, logger = None):
     if requirement.srcs.url:
         url = requirement.srcs.url
         _, _, filename = url.rpartition("/")
+        filename, _, _ = filename.partition("#sha256=")
         if "." not in filename:
             # detected filename has no extension, it might be an sdist ref
             # TODO @aignas 2025-04-03: should be handled if the following is fixed:
             # https://github.com/bazel-contrib/rules_python/issues/2363
+            return [], None
+
+        if "@" in filename:
+            # this is most likely foo.git@git_sha, skip special handling of these
             return [], None
 
         direct_url_dist = struct(

@@ -30,12 +30,16 @@ foo[extra] @ https://some-url/package.whl
 bar @ https://example.org/bar-1.0.whl --hash=sha256:deadbeef
 baz @ https://test.com/baz-2.0.whl; python_version < "3.8" --hash=sha256:deadb00f
 qux @ https://example.org/qux-1.0.tar.gz --hash=sha256:deadbe0f
+torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc
 """,
         "requirements_extra_args": """\
 --index-url=example.org
 
 foo[extra]==0.0.1 \
     --hash=sha256:deadbeef
+""",
+        "requirements_git": """
+foo @ git+https://github.com/org/foo.git@deadbeef
 """,
         "requirements_linux": """\
 foo==0.0.3 --hash=sha256:deadbaaf
@@ -230,6 +234,31 @@ def _test_direct_urls(env):
                 ),
                 target_platforms = ["linux_x86_64"],
                 whls = [],
+            ),
+        ],
+        "torch": [
+            struct(
+                distribution = "torch",
+                extra_pip_args = [],
+                is_exposed = True,
+                sdist = None,
+                srcs = struct(
+                    marker = "",
+                    requirement = "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
+                    requirement_line = "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
+                    shas = [],
+                    url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
+                    version = "",
+                ),
+                target_platforms = ["linux_x86_64"],
+                whls = [
+                    struct(
+                        filename = "torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl",
+                        sha256 = "",
+                        url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
+                        yanked = False,
+                    ),
+                ],
             ),
         ],
     })
@@ -622,6 +651,36 @@ def _test_optional_hash(env):
     })
 
 _tests.append(_test_optional_hash)
+
+def _test_git_sources(env):
+    got = parse_requirements(
+        ctx = _mock_ctx(),
+        requirements_by_platform = {
+            "requirements_git": ["linux_x86_64"],
+        },
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "foo": [
+            struct(
+                distribution = "foo",
+                extra_pip_args = [],
+                is_exposed = True,
+                sdist = None,
+                srcs = struct(
+                    marker = "",
+                    requirement = "foo @ git+https://github.com/org/foo.git@deadbeef",
+                    requirement_line = "foo @ git+https://github.com/org/foo.git@deadbeef",
+                    shas = [],
+                    url = "git+https://github.com/org/foo.git@deadbeef",
+                    version = "",
+                ),
+                target_platforms = ["linux_x86_64"],
+                whls = [],
+            ),
+        ],
+    })
+
+_tests.append(_test_git_sources)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.
