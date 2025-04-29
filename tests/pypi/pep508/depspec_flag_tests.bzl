@@ -10,17 +10,26 @@ _tests = []
 
 def _test_expr(name):
     def impl(env, target):
-        attrs = target[TestingAspectInfo].attrs
-
         # todo: create FeatureFlagInfo subject
-        actual = target[config_common.FeatureFlagInfo].value
         env.expect.where(
-            expression = attrs.expression,
-        ).that_str(actual).equals("yes")
+            expression = target[TestingAspectInfo].attrs.expression,
+        ).that_str(
+            target[config_common.FeatureFlagInfo].value,
+        ).equals(
+            env.ctx.attr.expected,
+        )
 
     cases = {
         "python_version_gte": {
             "expression": "python_version >= '3.12.0'",
+            "expected": "yes",
+            "config_settings": {
+                PYTHON_VERSION: "3.12.0",
+            },
+        },
+        "python_full_version_lt_negative": {
+            "expression": "python_full_version < '3.8'",
+            "expected": "no",
             "config_settings": {
                 PYTHON_VERSION: "3.12.0",
             },
@@ -40,6 +49,12 @@ def _test_expr(name):
             impl = impl,
             target = test_name + "_subject",
             config_settings = case["config_settings"],
+            attr_values = {
+                "expected": case["expected"],
+            },
+            attrs = {
+                "expected": attr.string(),
+            },
         )
     native.test_suite(
         name = name,

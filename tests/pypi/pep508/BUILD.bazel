@@ -15,6 +15,7 @@ requirement_test_suite(
     name = "requirement_tests",
 )
 
+# todo: move to subdir; it generates many test targets
 depspec_flag_test_suite(
     name = "depspec_flag_tests",
 )
