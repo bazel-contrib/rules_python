@@ -2,11 +2,14 @@
 [*]
 end_of_line = lf
 insert_final_newline = true
-max_line_length = 100
 
 # Set default charset
 [*]
 charset = utf-8
+
+# Line width
+[*]
+max_line_length = 100
 
 # 4 space indentation
 [*.{py,bzl}]
