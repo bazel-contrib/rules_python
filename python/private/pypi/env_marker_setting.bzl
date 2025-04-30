@@ -102,7 +102,7 @@ _platform_system_select_map = {
     "//conditions:default": "",
 }
 
-def env_marker_setting(**kwargs):
+def env_marker_setting(*, name, expression, **kwargs):
     """Creates an env_marker setting.
 
     Args:
