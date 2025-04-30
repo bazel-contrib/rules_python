@@ -22,14 +22,14 @@ def _test_expr(name):
     cases = {
         "python_version_gte": {
             "expression": "python_version >= '3.12.0'",
-            "expected": "yes",
+            "expected": "TRUE",
             "config_settings": {
                 PYTHON_VERSION: "3.12.0",
             },
         },
         "python_full_version_lt_negative": {
             "expression": "python_full_version < '3.8'",
-            "expected": "no",
+            "expected": "FALSE",
             "config_settings": {
                 PYTHON_VERSION: "3.12.0",
             },

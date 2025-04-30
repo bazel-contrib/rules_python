@@ -2,121 +2,48 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
+load(
+    ":pep508_env.bzl",
+    "env_aliases",
+    "os_name_select_map",
+    "platform_machine_aliases",
+    "platform_machine_select_map",
+    "platform_system_select_map",
+    "sys_platform_select_map",
+)
 load(":pep508_evaluate.bzl", "evaluate")
 
-# todo: copied from pep508_env.bzl
-_os_name_select_map = {
-    # The "java" value is documented, but with Jython defunct,
-    # shouldn't occur in practice.
-    # The os.name value is technically a property of the runtime, not the
-    # targetted runtime OS, but the distinction shouldn't matter if
-    # things are properly configured.
-    "@platforms//os:windows": "nt",
-    "//conditions:default": "posix",
-}
-
-# TODO @aignas 2025-04-29: this is copied from ./pep508_env.bzl
-_platform_machine_aliases = {
-    # These pairs mean the same hardware, but different values may be used
-    # on different host platforms.
-    "amd64": "x86_64",
-    "arm64": "aarch64",
-    "i386": "x86_32",
-    "i686": "x86_32",
-}
-
-# Taken from
-# https://docs.python.org/3/library/sys.html#sys.platform
-_sys_platform_select_map = {
-    # These values are decided by the sys.platform docs.
-    "@platforms//os:android": "android",
-    "@platforms//os:emscripten": "emscripten",
-    "@platforms//os:ios": "ios",
-    "@platforms//os:linux": "linux",
-    "@platforms//os:osx": "darwin",
-    "@platforms//os:windows": "win32",
-    "@platforms//os:wasi": "wasi",
-    # NOTE: The below values are approximations. The sys.platform() docs
-    # don't have documented values for these OSes. Per docs, the
-    # sys.platform() value reflects the OS at the time Python was *built*
-    # instead of the runtime (target) OS value.
-    "@platforms//os:freebsd": "freebsd",
-    "@platforms//os:openbsd": "openbsd",
-    # For lack of a better option, use empty string. No standard doc/spec
-    # about sys_platform value.
-    "//conditions:default": "",
-}
-
-# todo: copied from pep508_env.bzl
-# TODO: there are many cpus and unfortunately, it doesn't look like
-# the value is directly accessible to starlark. It might be possible to
-# get it via CcToolchain.cpu though.
-_platform_machine_select_map = {
-    "@platforms//cpu:aarch32": "aarch32",
-    "@platforms//cpu:aarch64": "aarch64",
-    "@platforms//cpu:arm": "arm",
-    "@platforms//cpu:arm64": "arm64",
-    "@platforms//cpu:arm64_32": "arm64_32",
-    "@platforms//cpu:arm64e": "arm64e",
-    "@platforms//cpu:armv6-m": "armv6-m",
-    "@platforms//cpu:armv7": "armv7",
-    "@platforms//cpu:armv7-m": "armv7-m",
-    "@platforms//cpu:armv7e-m": "armv7e-m",
-    "@platforms//cpu:armv7e-mf": "armv7e-mf",
-    "@platforms//cpu:armv7k": "armv7k",
-    "@platforms//cpu:armv8-m": "armv8-m",
-    "@platforms//cpu:cortex-r52": "cortex-r52",
-    "@platforms//cpu:cortex-r82": "cortex-r82",
-    "@platforms//cpu:i386": "i386",
-    "@platforms//cpu:mips64": "mips64",
-    "@platforms//cpu:ppc": "ppc",
-    "@platforms//cpu:ppc32": "ppc32",
-    "@platforms//cpu:ppc64le": "ppc64le",
-    "@platforms//cpu:riscv32": "riscv32",
-    "@platforms//cpu:riscv64": "riscv64",
-    "@platforms//cpu:s390x": "s390x",
-    "@platforms//cpu:wasm32": "wasm32",
-    "@platforms//cpu:wasm64": "wasm64",
-    "@platforms//cpu:x86_32": "x86_32",
-    "@platforms//cpu:x86_64": "x86_64",
-    # The value is empty string if it cannot be determined:
-    # https://docs.python.org/3/library/platform.html#platform.machine
-    "//conditions:default": "",
-}
-
-# todo: copied from pep508_env.bzl
-_platform_system_select_map = {
-    # See https://peps.python.org/pep-0738/#platform
-    "@platforms//os:android": "Android",
-    "@platforms//os:freebsd": "FreeBSD",
-    # See https://peps.python.org/pep-0730/#platform
-    # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
-    "@platforms//os:ios": "iOS",
-    "@platforms//os:linux": "Linux",
-    "@platforms//os:netbsd": "NetBSD",
-    "@platforms//os:openbsd": "OpenBSD",
-    "@platforms//os:osx": "Darwin",
-    "@platforms//os:windows": "Windows",
-    # The value is empty string if it cannot be determined:
-    # https://docs.python.org/3/library/platform.html#platform.machine
-    "//conditions:default": "",
-}
+# Use capitals to hint its not an actual boolean type.
+_ENV_MARKER_TRUE = "TRUE"
+_ENV_MARKER_FALSE = "FALSE"
 
 def env_marker_setting(*, name, expression, **kwargs):
     """Creates an env_marker setting.
 
+    Generated targets:
+
+    * `is_{name}_true`: config_setting that matches when the expression is true.
+    * `{name}`: env marker target that evalutes the expression.
+
     Args:
         name: {type}`str` target name
         expression: {type}`str` the environment marker string to evaluate
-        **kwargs: {type}`dict` additionally common kwargs.
+        **kwargs: {type}`dict` additional common kwargs.
     """
+    native.config_setting(
+        name = "is_{}_true".format(name),
+        flag_values = {
+            ":{}".format(name): _ENV_MARKER_TRUE,
+        },
+        **kwargs
+    )
     _env_marker_setting(
         name = name,
         expression = expression,
-        os_name = select(_os_name_select_map),
-        sys_platform = select(_sys_platform_select_map),
-        platform_machine = select(_platform_machine_select_map),
-        platform_system = select(_platform_system_select_map),
+        os_name = select(os_name_select_map),
+        sys_platform = select(sys_platform_select_map),
+        platform_machine = select(platform_machine_select_map),
+        platform_system = select(platform_system_select_map),
         **kwargs
     )
 
@@ -149,12 +76,13 @@ def _env_marker_setting_impl(ctx):
     env["sys_platform"] = ctx.attr.sys_platform
     env["platform_machine"] = ctx.attr.platform_machine
 
-    # The `platform_python_implementation` marker value is supposed to come from
-    # `platform.python_implementation()`, however, PEP 421 introduced
-    # `sys.implementation.name` to replace it. There's now essentially just two
-    # possible values it might have: CPython or PyPy. Rather than add a field to
-    # the toolchain, we just special case the value from
-    # `sys.implementation.name`
+    # The `platform_python_implementation` marker value is supposed to come
+    # from `platform.python_implementation()`, however, PEP 421 introduced
+    # `sys.implementation.name` and the `implementation_name` env marker to
+    # replace it. Per the platform.python_implementation docs, there's now
+    # essentially just two possible "registered" values: CPython or PyPy.
+    # Rather than add a field to the toolchain, we just special case the value
+    # from `sys.implementation.name` to handle the two documented values.
     platform_python_impl = runtime.implementation_name
     if platform_python_impl == "cpython":
         platform_python_impl = "CPython"
@@ -170,21 +98,12 @@ def _env_marker_setting_impl(ctx):
     env["platform_system"] = ctx.attr.platform_system
     env["platform_version"] = _get_flag(ctx.attr._platform_version_config_flag)
 
-    # TODO @aignas 2025-04-29: figure out how to correctly share the aliases
-    # between the two. Maybe the select statements above should be part of the
-    # `pep508_env.bzl` file?
-    env = env | {
-        "_aliases": {
-            "platform_machine": _platform_machine_aliases,
-        },
-    }
+    env.update(env_aliases())
 
     if evaluate(ctx.attr.expression, env = env):
-        # todo: better return value than "yes" and "no"
-        # matched/unmatched, satisfied/unsatisfied ?
-        value = "yes"
+        value = _ENV_MARKER_TRUE
     else:
-        value = "no"
+        value = _ENV_MARKER_FALSE
     return [config_common.FeatureFlagInfo(value = value)]
 
 _env_marker_setting = rule(
