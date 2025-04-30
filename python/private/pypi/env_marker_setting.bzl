@@ -28,18 +28,22 @@ _platform_machine_aliases = {
 # Taken from
 # https://docs.python.org/3/library/sys.html#sys.platform
 _sys_platform_select_map = {
+    # These values are decided by the sys.platform docs.
     "@platforms//os:android": "android",
     "@platforms//os:emscripten": "emscripten",
-    # NOTE, the below values here are from the time when the Python
-    # interpreter is built and it is hard to know for sure, maybe this
-    # should be something from the toolchain?
-    "@platforms//os:freebsd": "freebsd8",
     "@platforms//os:ios": "ios",
     "@platforms//os:linux": "linux",
-    "@platforms//os:openbsd": "openbsd6",
     "@platforms//os:osx": "darwin",
-    "@platforms//os:wasi": "wasi",
     "@platforms//os:windows": "win32",
+    "@platforms//os:wasi": "wasi",
+    # NOTE: The below values are approximations. The sys.platform() docs
+    # don't have documented values for these OSes. Per docs, the
+    # sys.platform() value reflects the OS at the time Python was *built*
+    # instead of the runtime (target) OS value.
+    "@platforms//os:freebsd": "freebsd",
+    "@platforms//os:openbsd": "openbsd",
+    # For lack of a better option, use empty string. No standard doc/spec
+    # about sys_platform value.
     "//conditions:default": "",
 }
 
@@ -86,7 +90,8 @@ _platform_system_select_map = {
     "@platforms//os:android": "Android",
     "@platforms//os:freebsd": "FreeBSD",
     # See https://peps.python.org/pep-0730/#platform
-    "@platforms//os:ios": "iOS",  # can also be iPadOS?
+    # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
+    "@platforms//os:ios": "iOS",
     "@platforms//os:linux": "Linux",
     "@platforms//os:netbsd": "NetBSD",
     "@platforms//os:openbsd": "OpenBSD",
@@ -108,7 +113,7 @@ def env_marker_setting(**kwargs):
 
 # todo: maybe put all the env into a single target and have a
 # PyPiEnvMarkersInfo provider? Have --pypi_env=//some:target?
-def _impl(ctx):
+def _env_marker_setting_impl(ctx):
     # todo: should unify with pep508_env.bzl
     env = {}
 
@@ -119,11 +124,11 @@ def _impl(ctx):
             major = version_info.major,
             minor = version_info.minor,
         )
-        full_version = format_full_version(version_info)
+        full_version = _format_full_version(version_info)
         env["python_full_version"] = full_version
         env["implementation_version"] = full_version
     else:
-        env["python_version"] = _get_flag(ctx.attr._python_version)
+        env["python_version"] = _get_flag(ctx.attr._python_version_major_minor_flag)
         full_version = _get_flag(ctx.attr._python_full_version)
         env["python_full_version"] = full_version
         env["implementation_version"] = full_version
@@ -135,23 +140,26 @@ def _impl(ctx):
     env["sys_platform"] = ctx.attr.sys_platform
     env["platform_machine"] = ctx.attr.platform_machine
 
-    # todo: maybe add PyRuntimeInfo.platform_python_implementation?
-    # The values are slightly different to implementation_name.
-    # However, digging through old PEPs, it looks like
-    # platform.python_implementation is legacy, and sys.implementation.name
-    # "replaced" it. Can probably just special case this.
+    # The `platform_python_implementation` marker value is supposed to come from
+    # `platform.python_implementation()`, however, PEP 421 introduced
+    # `sys.implementation.name` to replace it. There's now essentially just two
+    # possible values it might have: CPython or PyPy. Rather than add a field to
+    # the toolchain, we just special case the value from
+    # `sys.implementation.name`
     platform_python_impl = runtime.implementation_name
     if platform_python_impl == "cpython":
         platform_python_impl = "CPython"
+    elif platform_python_impl == "pypy":
+        platform_python_impl = "PyPy"
     env["platform_python_implementation"] = platform_python_impl
 
     # NOTE: Platform release for Android will be Android version:
     # https://peps.python.org/pep-0738/#platform
     # Similar for iOS:
     # https://peps.python.org/pep-0730/#platform
-    env["platform_release"] = ctx.attr._platform_release_config_flag[BuildSettingInfo].value
+    env["platform_release"] = _get_flag(ctx.attr._platform_release_config_flag)
     env["platform_system"] = ctx.attr.platform_system
-    env["platform_version"] = ctx.attr._platform_version_config_flag[BuildSettingInfo].value
+    env["platform_version"] = _get_flag(ctx.attr._platform_version_config_flag)
 
     # TODO @aignas 2025-04-29: figure out how to correctly share the aliases
     # between the two. Maybe the select statements above should be part of the
@@ -171,34 +179,34 @@ def _impl(ctx):
     return [config_common.FeatureFlagInfo(value = value)]
 
 _env_marker_setting = rule(
-    implementation = _impl,
+    doc = """
+Config setting to evaluate a PyPA environment marker expression.
+""",
+    implementation = _env_marker_setting_impl,
     attrs = {
-        "expression": attr.string(),
+        "expression": attr.string(
+            mandatory = True,
+            doc = "Environment marker expression to evaluate.",
+        ),
         "os_name": attr.string(),
         "platform_machine": attr.string(),
         "platform_system": attr.string(),
         "sys_platform": attr.string(),
-        # todo: what to do with this?
-        # NOTE(aignas) - with the `evaluate` function we can evaluate a
-        # particular value. For example we can have an expression and just
-        # evaluate extras. I.e. if the extras don't match, then the whole thing
-        # is false, if it matches, then it is a string with a remaining
-        # expression. This means that the `pypa_dependency_specification`
-        # should not receive any `extra_flags` because these are not properties
-        # of the target configuration, but rather of a particular package,
-        # hence we could drop it.
-        "_extra_flag": attr.label(),
         "_platform_release_config_flag": attr.label(
             default = "//python/config_settings:pip_platform_release_config",
+            providers = [[config_common.FeatureFlagInfo], [BuildSettingInfo]],
         ),
         "_platform_version_config_flag": attr.label(
             default = "//python/config_settings:pip_platform_version_config",
+            providers = [[config_common.FeatureFlagInfo], [BuildSettingInfo]],
         ),
         "_python_full_version_flag": attr.label(
             default = "//python/config_settings:python_version",
+            providers = [config_common.FeatureFlagInfo],
         ),
-        "_python_version_flag": attr.label(
+        "_python_version_major_minor_flag": attr.label(
             default = "//python/config_settings:python_version_major_minor",
+            providers = [config_common.FeatureFlagInfo],
         ),
     },
     provides = [config_common.FeatureFlagInfo],
@@ -207,7 +215,7 @@ _env_marker_setting = rule(
     ],
 )
 
-def format_full_version(info):
+def _format_full_version(info):
     """Format the full python interpreter version.
 
     Adapted from spec code at:
