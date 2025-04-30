@@ -434,13 +434,15 @@ def _RunForCoverage(python_program, main_filename, args, env,
 
   # We need for coveragepy to use relative paths.  This can only be configured
   unique_id = uuid.uuid4()
-  rcfile_name = os.path.join(os.environ['COVERAGE_DIR'], ".coveragerc_{}".format(unique_id))
-  with open(rcfile_name, "w") as rcfile:
-    rcfile.write(f'''[run]
-relative_files = True
-source =
-\t{source}
-''')
+  rcfile_name = os.environ.get('COVERAGE_RCFILE', None)
+  if not rcfile_name or not os.path.exists(rcfile_name):
+    rcfile_name = os.path.join(os.environ['COVERAGE_DIR'], ".coveragerc_{}".format(unique_id))
+    with open(rcfile_name, "w") as rcfile:
+      rcfile.write(f'''[run]
+  relative_files = True
+  source =
+  \t{source}
+  ''')
   PrintVerboseCoverage('Coverage entrypoint:', coverage_entrypoint)
   # First run the target Python file via coveragepy to create a .coverage
   # database file, from which we can later export lcov.
