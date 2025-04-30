@@ -164,7 +164,7 @@ class RunfilesTest(unittest.TestCase):
 
         self.assertRaisesRegex(IOError, "non-existing path", _Run)
 
-    def testFailsToCreateAnyRunfilesBecauseEnvvarsAreNotDefined(self) -> None:
+    def testSucceedsWithoutEnvVars(self) -> None:
         with _MockFile(contents=["a b"]) as mf:
             runfiles.Create(
                 {
@@ -179,8 +179,8 @@ class RunfilesTest(unittest.TestCase):
                 "TEST_SRCDIR": "always ignored",
             }
         )
-        self.assertIsNone(runfiles.Create({"TEST_SRCDIR": "always ignored"}))
-        self.assertIsNone(runfiles.Create({"FOO": "bar"}))
+        self.assertIsNotNone(runfiles.Create({"TEST_SRCDIR": "always ignored"}))
+        self.assertIsNotNone(runfiles.Create({"FOO": "bar"}))
 
     def testManifestBasedRlocation(self) -> None:
         with _MockFile(
