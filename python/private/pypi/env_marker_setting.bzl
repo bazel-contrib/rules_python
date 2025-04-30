@@ -8,9 +8,9 @@ load(":pep508_evaluate.bzl", "evaluate")
 _os_name_select_map = {
     # The "java" value is documented, but with Jython defunct,
     # shouldn't occur in practice.
-    # The osname value is technically a property of the runtime, not the
-    # targetted OS at runtime, but the distinction shouldn't matter in
-    # practice.
+    # The os.name value is technically a property of the runtime, not the
+    # targetted runtime OS, but the distinction shouldn't matter if
+    # things are properly configured.
     "@platforms//os:windows": "nt",
     "//conditions:default": "posix",
 }
@@ -103,7 +103,16 @@ _platform_system_select_map = {
 }
 
 def env_marker_setting(**kwargs):
+    """Creates an env_marker setting.
+
+    Args:
+        name: {type}`str` target name
+        expression: {type}`str` the environment marker string to evaluate
+        **kwargs: {type}`dict` additionally common kwargs.
+    """
     _env_marker_setting(
+        name = name,
+        expression = expression,
         os_name = select(_os_name_select_map),
         sys_platform = select(_sys_platform_select_map),
         platform_machine = select(_platform_machine_select_map),
@@ -180,7 +189,11 @@ def _env_marker_setting_impl(ctx):
 
 _env_marker_setting = rule(
     doc = """
-Config setting to evaluate a PyPA environment marker expression.
+Evaluates an environment marker expression using target configuration info.
+
+See
+https://packaging.python.org/en/latest/specifications/dependency-specifiers
+for the specification of behavior.
 """,
     implementation = _env_marker_setting_impl,
     attrs = {
