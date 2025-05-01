@@ -94,7 +94,10 @@ def _env_marker_setting_impl(ctx):
     # https://peps.python.org/pep-0738/#platform
     # Similar for iOS:
     # https://peps.python.org/pep-0730/#platform
-    env["platform_release"] = ctx.attr.platform_release
+    platform_release = ctx.attr.platform_release
+    if platform_release == "USE_OSX_VERSION_FLAG":
+        platform_release = _get_flag(ctx.attr._pip_whl_osx_version_flag)
+    env["platform_release"] = platform_release
     env["platform_system"] = ctx.attr.platform_system
 
     # For lack of a better option, just use an empty string for now.
@@ -127,6 +130,10 @@ for the specification of behavior.
         "platform_release": attr.string(),
         "platform_system": attr.string(),
         "sys_platform": attr.string(),
+        "_pip_whl_osx_version_flag": attr.label(
+            default = "//python/config_settings:pip_whl_osx_version",
+            providers = [[BuildSettingInfo], [config_common.FeatureFlagInfo]],
+        ),
         "_python_full_version_flag": attr.label(
             default = "//python/config_settings:python_version",
             providers = [config_common.FeatureFlagInfo],
