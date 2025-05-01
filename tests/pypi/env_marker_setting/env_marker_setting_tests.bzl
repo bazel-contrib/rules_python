@@ -1,7 +1,9 @@
+"""env_marker_setting tests."""
+
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
-load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")
+load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "PYTHON_VERSION")
 
 _tests = []

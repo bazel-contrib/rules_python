@@ -130,6 +130,7 @@ _platform_release_config = rule(
 )
 
 def _platform_version_config_impl(ctx):
+    _ = ctx  # @unused
     return [BuildSettingInfo(value = "")]
 
 # Despite its name, this "version" value is not a simple version value.
