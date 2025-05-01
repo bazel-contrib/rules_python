@@ -2,15 +2,12 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")
-load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "PYTHON_VERSION")
 
 _tests = []
 
 def _test_expr(name):
     def impl(env, target):
-        # todo: create FeatureFlagInfo subject
         env.expect.where(
             expression = target[TestingAspectInfo].attrs.expression,
         ).that_str(
@@ -20,19 +17,19 @@ def _test_expr(name):
         )
 
     cases = {
-        "python_version_gte": {
-            "expression": "python_version >= '3.12.0'",
-            "expected": "TRUE",
-            "config_settings": {
-                PYTHON_VERSION: "3.12.0",
-            },
-        },
         "python_full_version_lt_negative": {
-            "expression": "python_full_version < '3.8'",
-            "expected": "FALSE",
             "config_settings": {
                 PYTHON_VERSION: "3.12.0",
             },
+            "expected": "FALSE",
+            "expression": "python_full_version < '3.8'",
+        },
+        "python_version_gte": {
+            "config_settings": {
+                PYTHON_VERSION: "3.12.0",
+            },
+            "expected": "TRUE",
+            "expression": "python_version >= '3.12.0'",
         },
     }
 

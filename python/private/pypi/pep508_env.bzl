@@ -124,17 +124,17 @@ sys_platform_select_map = {
     # These values are decided by the sys.platform docs.
     "@platforms//os:android": "android",
     "@platforms//os:emscripten": "emscripten",
-    "@platforms//os:ios": "ios",
-    "@platforms//os:linux": "linux",
-    "@platforms//os:osx": "darwin",
-    "@platforms//os:windows": "win32",
-    "@platforms//os:wasi": "wasi",
     # NOTE: The below values are approximations. The sys.platform() docs
     # don't have documented values for these OSes. Per docs, the
     # sys.platform() value reflects the OS at the time Python was *built*
     # instead of the runtime (target) OS value.
     "@platforms//os:freebsd": "freebsd",
+    "@platforms//os:ios": "ios",
+    "@platforms//os:linux": "linux",
     "@platforms//os:openbsd": "openbsd",
+    "@platforms//os:osx": "darwin",
+    "@platforms//os:wasi": "wasi",
+    "@platforms//os:windows": "win32",
     # For lack of a better option, use empty string. No standard doc/spec
     # about sys_platform value.
     "//conditions:default": "",

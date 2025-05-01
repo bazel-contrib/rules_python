@@ -91,10 +91,6 @@ def define_pypi_internal_flags(name):
     )
     _platform_version_config(
         name = "_pip_platform_version_default_config",
-        value = select({
-            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
-            "//conditions:default": "",
-        }),
         visibility = ["//visibility:public"],
     )
 
@@ -134,14 +130,10 @@ _platform_release_config = rule(
 )
 
 def _platform_version_config_impl(ctx):
-    value = ctx.attr.value
-    return [BuildSettingInfo(value = ctx.attr.value)]
+    return [BuildSettingInfo(value = "")]
 
 # Despite its name, this "version" value is not a simple version value.
 # It's a more detailed, arbitrary, description the OS gives about itself.
 _platform_version_config = rule(
     implementation = _platform_version_config_impl,
-    attrs = {
-        "value": attr.string(),
-    },
 )

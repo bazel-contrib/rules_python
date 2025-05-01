@@ -6,7 +6,6 @@ load(
     ":pep508_env.bzl",
     "env_aliases",
     "os_name_select_map",
-    "platform_machine_aliases",
     "platform_machine_select_map",
     "platform_system_select_map",
     "sys_platform_select_map",
@@ -47,10 +46,7 @@ def env_marker_setting(*, name, expression, **kwargs):
         **kwargs
     )
 
-# todo: maybe put all the env into a single target and have a
-# PyPiEnvMarkersInfo provider? Have --pypi_env=//some:target?
 def _env_marker_setting_impl(ctx):
-    # todo: should unify with pep508_env.bzl
     env = {}
 
     runtime = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
@@ -65,7 +61,7 @@ def _env_marker_setting_impl(ctx):
         env["implementation_version"] = full_version
     else:
         env["python_version"] = _get_flag(ctx.attr._python_version_major_minor_flag)
-        full_version = _get_flag(ctx.attr._python_full_version)
+        full_version = _get_flag(ctx.attr._python_full_version_flag)
         env["python_full_version"] = full_version
         env["implementation_version"] = full_version
 
