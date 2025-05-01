@@ -1,0 +1,6 @@
+--index-url https://pypi.org/simple
+
+gptqmodel @ https://github.com/ModelCloud/GPTQModel/releases/download/v2.0.0/gptqmodel-2.0.0+cu126torch2.6-cp310-cp310-linux_x86_64.whl ; python_full_version == '3.10.*' and sys_platform == 'linux'
+gptqmodel @ https://github.com/ModelCloud/GPTQModel/releases/download/v2.0.0/gptqmodel-2.0.0+cu126torch2.6-cp311-cp311-linux_x86_64.whl ; python_full_version == '3.11.*' and sys_platform == 'linux'
+gptqmodel @ https://github.com/ModelCloud/GPTQModel/releases/download/v2.0.0/gptqmodel-2.0.0+cu126torch2.6-cp312-cp312-linux_x86_64.whl ; python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'linux'
+gptqmodel @ https://github.com/ModelCloud/GPTQModel/releases/download/v2.0.0/gptqmodel-2.0.0+cu126torch2.6-cp39-cp39-linux_x86_64.whl ; python_full_version < '3.10' and sys_platform == 'linux'
