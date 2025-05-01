@@ -43,6 +43,10 @@ def env_marker_setting(*, name, expression, **kwargs):
         sys_platform = select(sys_platform_select_map),
         platform_machine = select(platform_machine_select_map),
         platform_system = select(platform_system_select_map),
+        platform_release = select({
+            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
+            "//conditions:default": "",
+        }),
         **kwargs
     )
 
@@ -90,9 +94,11 @@ def _env_marker_setting_impl(ctx):
     # https://peps.python.org/pep-0738/#platform
     # Similar for iOS:
     # https://peps.python.org/pep-0730/#platform
-    env["platform_release"] = _get_flag(ctx.attr._platform_release_config_flag)
+    env["platform_release"] = ctx.attr.platform_release
     env["platform_system"] = ctx.attr.platform_system
-    env["platform_version"] = _get_flag(ctx.attr._platform_version_config_flag)
+
+    # For lack of a better option, just use an empty string for now.
+    env["platform_version"] = ""
 
     env.update(env_aliases())
 
@@ -118,16 +124,9 @@ for the specification of behavior.
         ),
         "os_name": attr.string(),
         "platform_machine": attr.string(),
+        "platform_release": attr.string(),
         "platform_system": attr.string(),
         "sys_platform": attr.string(),
-        "_platform_release_config_flag": attr.label(
-            default = "//python/config_settings:pip_platform_release_config",
-            providers = [[config_common.FeatureFlagInfo], [BuildSettingInfo]],
-        ),
-        "_platform_version_config_flag": attr.label(
-            default = "//python/config_settings:pip_platform_version_config",
-            providers = [[config_common.FeatureFlagInfo], [BuildSettingInfo]],
-        ),
         "_python_full_version_flag": attr.label(
             default = "//python/config_settings:python_version",
             providers = [config_common.FeatureFlagInfo],

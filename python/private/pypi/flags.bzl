@@ -81,18 +81,6 @@ def define_pypi_internal_flags(name):
         name = "_internal_pip_whl",
         visibility = ["//visibility:public"],
     )
-    _platform_release_config(
-        name = "_pip_platform_release_default_config",
-        value = select({
-            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
-            "//conditions:default": "",
-        }),
-        visibility = ["//visibility:public"],
-    )
-    _platform_version_config(
-        name = "_pip_platform_version_default_config",
-        visibility = ["//visibility:public"],
-    )
 
 def _allow_wheels_flag_impl(ctx):
     input = ctx.attr._setting[BuildSettingInfo].value
@@ -108,33 +96,4 @@ _allow_wheels_flag = rule(
 This rule allows us to greatly reduce the number of config setting targets at no cost even
 if we are duplicating some of the functionality of the `native.config_setting`.
 """,
-)
-
-def _platform_release_config_impl(ctx):
-    value = ctx.attr.value
-    if value == "USE_OSX_VERSION_FLAG":
-        value = ctx.attr._osx_version[BuildSettingInfo].value
-
-    return [BuildSettingInfo(value = ctx.attr.value)]
-
-# This value is loosely some version-value looking thing, but the format
-# varies depending on the OS.
-_platform_release_config = rule(
-    implementation = _platform_release_config_impl,
-    attrs = {
-        "value": attr.string(),
-        "_osx_version": attr.label(
-            default = "//python/config_settings:pip_whl_osx_version",
-        ),
-    },
-)
-
-def _platform_version_config_impl(ctx):
-    _ = ctx  # @unused
-    return [BuildSettingInfo(value = "")]
-
-# Despite its name, this "version" value is not a simple version value.
-# It's a more detailed, arbitrary, description the OS gives about itself.
-_platform_version_config = rule(
-    implementation = _platform_version_config_impl,
 )

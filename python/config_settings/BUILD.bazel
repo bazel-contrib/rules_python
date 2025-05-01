@@ -220,15 +220,3 @@ string_flag(
 define_pypi_internal_flags(
     name = "define_pypi_internal_flags",
 )
-
-label_flag(
-    name = "pip_platform_release_config",
-    build_setting_default = ":_pip_platform_release_default_config",
-    visibility = ["//visibility:public"],
-)
-
-label_flag(
-    name = "pip_platform_version_config",
-    build_setting_default = ":_pip_platform_version_default_config",
-    visibility = ["//visibility:public"],
-)
