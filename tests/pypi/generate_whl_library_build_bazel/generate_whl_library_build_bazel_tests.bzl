@@ -86,7 +86,6 @@ _tests.append(_test_all)
 def _test_all_with_loads(env):
     want = """\
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
-load("@pypi//:config.bzl", "target_platforms")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -119,7 +118,6 @@ whl_library_targets_from_requires(
         "qux",
     ],
     srcs_exclude = ["srcs_exclude_all"],
-    target_platforms = target_platforms,
 )
 
 # SOMETHING SPECIAL AT THE END

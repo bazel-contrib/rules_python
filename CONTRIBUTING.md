@@ -173,6 +173,55 @@ The `legacy_foo` arg was removed
 :::
 ```
 
+## Style and idioms
+
+For the most part, we just accept whatever the code formatters do, so there
+isn't much style to enforce.
+
+Some miscellanous style, idioms, and conventions we have are:
+
+### Markdown/Sphinx Style
+
+* Use colons for prose sections of text, e.g. `:::{note}`, not backticks.
+* Use backticks for code blocks.
+* Max line length: 100.
+
+### BUILD/bzl Style
+
+* When a macro generates public targets, use a dot (`.`) to separate the
+  user-provided name from the generted name. e.g. `foo(name="x")` generates
+  `x.test`. The `.` is our convention to communicate that it's a generated
+  target, and thus one should look for `name="x"` when searching for the
+  definition.
+* The different build phases shouldn't load code that defines objects that
+  aren't valid for their phase. e.g.
+  * The bzlmod phase shouldn't load code defining regular rules or providers.
+  * The repository phase shouldn't load code defining module extensions, regular
+    rules, or providers.
+  * The loading phase shouldn't load code defining module extensions or
+    repository rules.
+  * Loading utility libraries or generic code is OK, but should strive to load
+    code that is usable for its phase. e.g. loading-phase code shouldn't
+    load utility code that is predominately only usable to the bzlmod phase.
+* Providers should be in their own files. This allows implementing a custom rule
+  that implements the provider without loading a specific implementation.
+* One rule per file is preferred, but not required. The goal is that defining an
+  e.g. library shouldn't incur loading all the code for binaries, tests,
+  packaging, etc; things that may be niche or uncommonly used.
+* Separate files should be used to expose public APIs. This ensures our public
+  API is well defined and prevents accidentally exposing a package-private
+  symbol as a public symbol.
+
+  :::{note}
+  The public API file's docstring becomes part of the user-facing docs. That
+  file's docstring must be used for module-level API documentation.
+  :::
+* Repository rules should have name ending in `_repo`. This helps distinguish
+  them from regular rules.
+* Each bzlmod extension, the "X" of `use_repo("//foo:foo.bzl", "X")` should be
+  in its own file. The path given in the `use_repo()` expression is the identity
+  Bazel uses and cannot be changed.
+
 ## Generated files
 
 Some checked-in files are generated and need to be updated when a new PR is
