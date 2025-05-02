@@ -346,7 +346,7 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "9e8c0baa408b829dec691a5e8d3bc040be0bbfcc95c0eee19e1e5ffadea4a059"
+            filename, "372ef9e11fb79f1952172993718a326b5adda192d94884b54377c34b44394982"
         )
 
     def test_python_requires_wheel(self):
