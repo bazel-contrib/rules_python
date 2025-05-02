@@ -565,6 +565,56 @@ Tag: cp38-abi3-{os_string}_{arch}
                 requires,
             )
 
+    def test_requires_dist_depends_on_extras(self):
+        filename = self._get_path("requires_dist_depends_on_extras-0.0.1-py3-none-any.whl")
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            metadata_file = None
+            for f in zf.namelist():
+                if os.path.basename(f) == "METADATA":
+                    metadata_file = f
+            self.assertIsNotNone(metadata_file)
+
+            requires = []
+            with zf.open(metadata_file) as fp:
+                for line in fp:
+                    if line.startswith(b"Requires-Dist:"):
+                        requires.append(line.decode("utf-8").strip())
+
+            print(requires)
+            self.assertEqual(
+                [
+                    "Requires-Dist: extra_requires[example]==0.0.1",
+                ],
+                requires,
+            )
+
+    def test_requires_dist_depends_on_extras_file(self):
+        filename = self._get_path("requires_dist_depends_on_extras_using_file-0.0.1-py3-none-any.whl")
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            metadata_file = None
+            for f in zf.namelist():
+                if os.path.basename(f) == "METADATA":
+                    metadata_file = f
+            self.assertIsNotNone(metadata_file)
+
+            requires = []
+            with zf.open(metadata_file) as fp:
+                for line in fp:
+                    if line.startswith(b"Requires-Dist:"):
+                        requires.append(line.decode("utf-8").strip())
+
+            print(requires)
+            self.assertEqual(
+                [
+                    "Requires-Dist: extra_requires[example]==0.0.1",
+                ],
+                requires,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

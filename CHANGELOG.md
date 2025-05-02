@@ -74,6 +74,8 @@ END_UNRELEASED_TEMPLATE
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
 * (rules) Better handle flakey platform.win32_ver() calls by calling them
   multiple times.
+* (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
+  to specify the requirements.
 
 {#v0-0-0-added}
 ### Added
