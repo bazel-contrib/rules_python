@@ -21,8 +21,8 @@ from typing import Dict, Optional, Set, Tuple
 import installer
 from pip._vendor.packaging.utils import canonicalize_name
 
-from python.private.pypi.whl_installer.deps import Deps, FrozenDeps
 from python.private.pypi.whl_installer.platform import Platform
+from python.private.pypi.whl_installer.wheel_deps import Deps, FrozenDeps
 
 
 class Wheel:

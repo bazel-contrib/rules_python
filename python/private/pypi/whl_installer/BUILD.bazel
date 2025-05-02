@@ -8,6 +8,7 @@ py_library(
         "namespace_pkgs.py",
         "platform.py",
         "wheel.py",
+        "wheel_deps.py",
         "wheel_installer.py",
     ],
     visibility = [
