@@ -41,7 +41,7 @@ def _internal_dev_deps_impl(mctx):
 
     whl_metadata_repo(
         name = "whl_metadata_parsing_tests",
-        limit = 500,
+        limit = 50,
     )
 
 internal_dev_deps = module_extension(

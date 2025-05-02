@@ -171,5 +171,5 @@ load("//python/private/pypi:whl_metadata_repo.bzl", "whl_metadata_repo")  # buil
 
 whl_metadata_repo(
     name = "whl_metadata_parsing_tests",
-    limit = 500,
+    limit = 50,
 )
