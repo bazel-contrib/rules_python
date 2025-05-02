@@ -27,9 +27,8 @@ platform_machine_aliases = {
     "i686": "x86_32",
 }
 
-# TODO: there are many cpus and unfortunately, it doesn't look like
-# the value is directly accessible to starlark. It might be possible to
-# get it via CcToolchain.cpu though.
+# NOTE: There are many cpus, and unfortunately, the value isn't directly
+# accessible to Starlark. Using CcToolchain.cpu might work, though.
 platform_machine_select_map = {
     "@platforms//cpu:aarch32": "aarch32",
     "@platforms//cpu:aarch64": "aarch64",
