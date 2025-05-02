@@ -236,20 +236,19 @@ if __name__ == "__main__":
     current_version = (
         f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}"
     )
-    fname = Path(sys.argv[1])
+    packages = Path(sys.argv[1]).read_text().split("\n")
+    output = {
+        "version": current_version,
+        "deps": {},
+    }
+    for pkg in packages:
+        metadata_contents = Path(f"{pkg}.METADATA").read_text()
+        metadata = Metadata.from_email(metadata_contents, validate=False)
+        deps = Deps(
+            name=metadata.name,
+            requires_dist=[str(r) for r in metadata.requires_dist or []],
+        ).build()
+        output["deps"][metadata.name] = deps.deps
 
-    metadata_contents = fname.read_text()
-    metadata = Metadata.from_email(metadata_contents, validate=False)
-    deps = Deps(
-        name=metadata.name,
-        requires_dist=[str(r) for r in metadata.requires_dist or []],
-    ).build()
-
-    print(
-        json.dumps(
-            {
-                "deps": deps.deps,
-                "version": current_version,
-            }
-        )
-    )
+    with Path(sys.argv[1] + ".out").open(mode="w") as f:
+        json.dump(output, f, indent="  ", sort_keys=True)

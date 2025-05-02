@@ -1,10 +1,5 @@
-load("@whl_metadata_parsing_tests//:defs.bzl", "whl_metadata_parsing_test_suite")
 load(":whl_metadata_tests.bzl", "whl_metadata_test_suite")
 
 whl_metadata_test_suite(
     name = "whl_metadata_tests",
-)
-
-whl_metadata_parsing_test_suite(
-    name = "whl_metadata_parsing_test_suite",
 )
