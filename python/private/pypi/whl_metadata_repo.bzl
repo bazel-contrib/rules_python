@@ -153,6 +153,6 @@ whl_metadata_repo = repository_rule(
             "torch",
             "redis",
         ]),
-        "interpreters": attr.label_list(default = list(INTERPRETER_LABELS.values())[4:5]),
+        "interpreters": attr.label_list(default = list(INTERPRETER_LABELS.values())[:5]),
     },
 )
