@@ -15,6 +15,7 @@
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+load("//python/private/pypi:whl_metadata_repo.bzl", "whl_metadata_repo")
 
 def _internal_dev_deps_impl(mctx):
     _ = mctx  # @unused
@@ -36,6 +37,10 @@ def _internal_dev_deps_impl(mctx):
     rbe_preconfig(
         name = "buildkite_config",
         toolchain = "ubuntu1804-bazel-java11",
+    )
+
+    whl_metadata_repo(
+        name = "whl_metadata_parsing_tests",
     )
 
 internal_dev_deps = module_extension(
