@@ -5,7 +5,7 @@ from python.private.pypi.whl_installer import wheel
 from python.private.pypi.whl_installer.platform import OS, Arch, Platform
 
 _HOST_INTERPRETER_FN = (
-    "python.private.pypi.whl_installer.wheel.host_interpreter_version"
+    "python.private.pypi.whl_installer.wheel_deps.host_interpreter_version"
 )
 
 
