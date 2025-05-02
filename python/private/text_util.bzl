@@ -76,13 +76,14 @@ def _render_select(selects, *, no_match_error = None, key_repr = repr, value_rep
 
     return "{}({})".format(name, args)
 
-def _render_list(items, *, hanging_indent = ""):
+def _render_list(items, *, hanging_indent = "", repr = repr):
     """Convert a list to formatted text.
 
     Args:
         items: list of items.
         hanging_indent: str, indent to apply to second and following lines of
             the formatted text.
+        repr: the repr function to use.
 
     Returns:
         The list pretty formatted as a string.
