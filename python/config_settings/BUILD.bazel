@@ -220,3 +220,10 @@ string_flag(
 define_pypi_internal_flags(
     name = "define_pypi_internal_flags",
 )
+
+label_flag(
+    name = "pip_env_marker_config",
+    build_setting_default = ":_pip_env_marker_default_config",
+    # NOTE: Only public because it is used in pip hub repos.
+    visibility = ["//visibility:public"],
+)
