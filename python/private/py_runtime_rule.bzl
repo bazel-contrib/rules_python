@@ -130,6 +130,7 @@ def _py_runtime_impl(ctx):
         zip_main_template = ctx.file.zip_main_template,
         abi_flags = abi_flags,
         site_init_template = ctx.file.site_init_template,
+        supports_build_time_venv = ctx.attr.supports_build_time_venv,
     ))
 
     if not IS_BAZEL_7_OR_HIGHER:
@@ -352,6 +353,17 @@ motivation.
 
 Does not apply to Windows.
 """,
+            ),
+            "supports_build_time_venv": attr.bool(
+                doc = """
+Whether this runtime supports virtualenvs created at build time.
+
+See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+                default = True,
             ),
             "zip_main_template": attr.label(
                 default = "//python/private:zip_main_template",

@@ -54,6 +54,18 @@ def _test_platform_whl(env):
 
 _tests.append(_test_platform_whl)
 
+def _test_name_with_plus(env):
+    got = whl_repo_name("gptqmodel-2.0.0+cu126torch2.6-cp312-cp312-linux_x86_64.whl", "")
+    env.expect.that_str(got).equals("gptqmodel_2_0_0_cu126torch2_6_cp312_cp312_linux_x86_64")
+
+_tests.append(_test_name_with_plus)
+
+def _test_name_with_percent(env):
+    got = whl_repo_name("gptqmodel-2.0.0%2Bcu126torch2.6-cp312-cp312-linux_x86_64.whl", "")
+    env.expect.that_str(got).equals("gptqmodel_2_0_0_2Bcu126torch2_6_cp312_cp312_linux_x86_64")
+
+_tests.append(_test_name_with_percent)
+
 def whl_repo_name_test_suite(name):
     """Create the test suite.
 

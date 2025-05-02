@@ -29,6 +29,89 @@ load(
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
+load(":parse_whl_name.bzl", "parse_whl_name")
+load(":pep508_deps.bzl", "deps")
+load(":whl_target_platforms.bzl", "whl_target_platforms")
+
+def whl_library_targets_from_requires(
+        *,
+        name,
+        metadata_name = "",
+        metadata_version = "",
+        requires_dist = [],
+        extras = [],
+        target_platforms = [],
+        default_python_version = None,
+        group_deps = [],
+        **kwargs):
+    """The macro to create whl targets from the METADATA.
+
+    Args:
+        name: {type}`str` The wheel filename
+        metadata_name: {type}`str` The package name as written in wheel `METADATA`.
+        metadata_version: {type}`str` The package version as written in wheel `METADATA`.
+        group_deps: {type}`list[str]` names of fellow members of the group (if
+            any). These will be excluded from generated deps lists so as to avoid
+            direct cycles. These dependencies will be provided at runtime by the
+            group rules which wrap this library and its fellows together.
+        requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
+            the whl `METADATA`.
+        extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
+        target_platforms: {type}`list[str]` The list of target platforms to create
+            dependency closures for.
+        default_python_version: {type}`str` The python version to assume when parsing
+            the `METADATA`. This is only used when the `target_platforms` do not
+            include the version information.
+        **kwargs: Extra args passed to the {obj}`whl_library_targets`
+    """
+    package_deps = _parse_requires_dist(
+        name = name,
+        default_python_version = default_python_version,
+        requires_dist = requires_dist,
+        excludes = group_deps,
+        extras = extras,
+        target_platforms = target_platforms,
+    )
+    whl_library_targets(
+        name = name,
+        dependencies = package_deps.deps,
+        dependencies_by_platform = package_deps.deps_select,
+        tags = [
+            "pypi_name={}".format(metadata_name),
+            "pypi_version={}".format(metadata_version),
+        ],
+        **kwargs
+    )
+
+def _parse_requires_dist(
+        *,
+        name,
+        default_python_version,
+        requires_dist,
+        excludes,
+        extras,
+        target_platforms):
+    parsed_whl = parse_whl_name(name)
+
+    # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
+    # only include deps for that target platform
+    if parsed_whl.platform_tag != "any":
+        target_platforms = [
+            p.target_platform
+            for p in whl_target_platforms(
+                platform_tag = parsed_whl.platform_tag,
+                abi_tag = parsed_whl.abi_tag.strip("tm"),
+            )
+        ]
+
+    return deps(
+        name = normalize_name(parsed_whl.distribution),
+        requires_dist = requires_dist,
+        platforms = target_platforms,
+        excludes = excludes,
+        extras = extras,
+        default_python_version = default_python_version,
+    )
 
 def whl_library_targets(
         *,
@@ -286,26 +369,22 @@ def _config_settings(dependencies_by_platform, native = native, **kwargs):
         if p.startswith("@") or p.endswith("default"):
             continue
 
+        # TODO @aignas 2025-04-20: add tests here
         abi, _, tail = p.partition("_")
         if not abi.startswith("cp"):
             tail = p
             abi = ""
-
         os, _, arch = tail.partition("_")
-        os = "" if os == "anyos" else os
-        arch = "" if arch == "anyarch" else arch
 
         _kwargs = dict(kwargs)
-        if arch:
-            _kwargs.setdefault("constraint_values", []).append("@platforms//cpu:{}".format(arch))
-        if os:
-            _kwargs.setdefault("constraint_values", []).append("@platforms//os:{}".format(os))
+        _kwargs["constraint_values"] = [
+            "@platforms//cpu:{}".format(arch),
+            "@platforms//os:{}".format(os),
+        ]
 
         if abi:
             _kwargs["flag_values"] = {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.{minor_version}".format(
-                    minor_version = abi[len("cp3"):],
-                ),
+                Label("//python/config_settings:python_version"): "3.{}".format(abi[len("cp3"):]),
             }
 
         native.config_setting(

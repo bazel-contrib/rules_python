@@ -344,6 +344,14 @@ def _env_expr(left, op, right):
         return left in right
     elif op == "not in":
         return left not in right
+    elif op == "<":
+        return left < right
+    elif op == "<=":
+        return left <= right
+    elif op == ">":
+        return left > right
+    elif op == ">=":
+        return left >= right
     else:
         return fail("TODO: op unsupported: '{}'".format(op))
 

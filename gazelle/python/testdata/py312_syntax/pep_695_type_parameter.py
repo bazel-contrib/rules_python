@@ -17,6 +17,5 @@ def search_one_more_level[T](
 
 import _other_module
 
-
 if __name__ == "__main__":
     pass

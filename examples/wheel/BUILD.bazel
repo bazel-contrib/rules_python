@@ -313,6 +313,17 @@ wheel; python_version == "3.11" or python_version == "3.12"  # Example comment
 """.splitlines(),
 )
 
+write_file(
+    name = "requires_dist_depends_on_extras_file",
+    out = "requires_dist_depends_on_extras.txt",
+    content = """\
+# Requirements file
+--index-url https://pypi.com
+
+extra_requires[example]==0.0.1
+""".splitlines(),
+)
+
 # py_wheel can use text files to specify their requirements. This
 # can be convenient for users of `compile_pip_requirements` who have
 # granular `requirements.in` files per package. This target shows
@@ -374,6 +385,22 @@ py_wheel(
     deps = [":example_pkg"],
 )
 
+py_wheel(
+    name = "requires_dist_depends_on_extras",
+    distribution = "requires_dist_depends_on_extras",
+    requires = [
+        "extra_requires[example]==0.0.1",
+    ],
+    version = "0.0.1",
+)
+
+py_wheel(
+    name = "requires_dist_depends_on_extras_using_file",
+    distribution = "requires_dist_depends_on_extras_using_file",
+    requires_file = ":requires_dist_depends_on_extras.txt",
+    version = "0.0.1",
+)
+
 py_test(
     name = "wheel_test",
     srcs = ["wheel_test.py"],
@@ -391,6 +418,8 @@ py_test(
         ":minimal_with_py_package",
         ":python_abi3_binary_wheel",
         ":python_requires_in_a_package",
+        ":requires_dist_depends_on_extras",
+        ":requires_dist_depends_on_extras_using_file",
         ":requires_files",
         ":use_rule_with_dir_in_outs",
     ],

@@ -24,20 +24,23 @@ _RENDER = {
     "dependencies": render.list,
     "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
     "entry_points": render.dict,
+    "extras": render.list,
     "group_deps": render.list,
+    "requires_dist": render.list,
     "srcs_exclude": render.list,
     "tags": render.list,
+    "target_platforms": lambda x: render.list(x) if x else "target_platforms",
 }
 
 # NOTE @aignas 2024-10-25: We have to keep this so that files in
 # this repository can be publicly visible without the need for
 # export_files
 _TEMPLATE = """\
-load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+{loads}
 
 package(default_visibility = ["//visibility:public"])
 
-whl_library_targets(
+{fn}(
 {kwargs}
 )
 """
@@ -45,17 +48,42 @@ whl_library_targets(
 def generate_whl_library_build_bazel(
         *,
         annotation = None,
+        default_python_version = None,
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
     Args:
         annotation: The annotation for the build file.
+        default_python_version: The python version to use to parse the METADATA.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
     Returns:
         A complete BUILD file as a string
     """
+
+    fn = "whl_library_targets"
+    if kwargs.get("tags"):
+        # legacy path
+        unsupported_args = [
+            "requires",
+            "metadata_name",
+            "metadata_version",
+        ]
+    else:
+        fn = "{}_from_requires".format(fn)
+        unsupported_args = [
+            "dependencies",
+            "dependencies_by_platform",
+        ]
+
+    for arg in unsupported_args:
+        if kwargs.get(arg):
+            fail("BUG, unsupported arg: '{}'".format(arg))
+
+    loads = [
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
+    ]
 
     additional_content = []
     if annotation:
@@ -66,10 +94,14 @@ def generate_whl_library_build_bazel(
         kwargs["srcs_exclude"] = annotation.srcs_exclude_glob
         if annotation.additive_build_content:
             additional_content.append(annotation.additive_build_content)
+    if default_python_version:
+        kwargs["default_python_version"] = default_python_version
 
     contents = "\n".join(
         [
             _TEMPLATE.format(
+                loads = "\n".join(loads),
+                fn = fn,
                 kwargs = render.indent("\n".join([
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())
