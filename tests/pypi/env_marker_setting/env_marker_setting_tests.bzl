@@ -8,6 +8,7 @@ load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")  # bu
 load("//tests/support:support.bzl", "PIP_ENV_MARKER_CONFIG", "PYTHON_VERSION")
 
 def _custom_env_markers_impl(ctx):
+    _ = ctx  # @unused
     return [EnvMarkerInfo(env = {
         "os_name": "testos",
     })]
