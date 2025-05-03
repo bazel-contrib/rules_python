@@ -64,23 +64,23 @@ platform_machine_select_map = {
 
 # Platform system returns results from the `uname` call.
 _platform_system_values = {
+    # See https://peps.python.org/pep-0738/#platform
+    "android": "Android",
+    "freebsd": "FreeBSD",
+    # See https://peps.python.org/pep-0730/#platform
+    # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
+    "ios": "iOS",
     "linux": "Linux",
+    "netbsd": "NetBSD",
+    "openbsd": "OpenBSD",
     "osx": "Darwin",
     "windows": "Windows",
 }
 
 platform_system_select_map = {
-    # See https://peps.python.org/pep-0738/#platform
-    "@platforms//os:android": "Android",
-    "@platforms//os:freebsd": "FreeBSD",
-    # See https://peps.python.org/pep-0730/#platform
-    # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
-    "@platforms//os:ios": "iOS",
-    "@platforms//os:linux": "Linux",
-    "@platforms//os:netbsd": "NetBSD",
-    "@platforms//os:openbsd": "OpenBSD",
-    "@platforms//os:osx": "Darwin",
-    "@platforms//os:windows": "Windows",
+    "@platforms//os:{}".format(bazel_os): py_system
+    for bazel_os, py_system in _platform_system_values.items()
+} | {
     # The value is empty string if it cannot be determined:
     # https://docs.python.org/3/library/platform.html#platform.machine
     "//conditions:default": "",
@@ -112,33 +112,36 @@ platform_system_select_map = {
 #
 # We are using only the subset that we actually support.
 _sys_platform_values = {
-    "linux": "linux",
-    "osx": "darwin",
-    "windows": "win32",
-}
-
-# Taken from
-# https://docs.python.org/3/library/sys.html#sys.platform
-sys_platform_select_map = {
     # These values are decided by the sys.platform docs.
-    "@platforms//os:android": "android",
-    "@platforms//os:emscripten": "emscripten",
+    "android": "android",
+    "emscripten": "emscripten",
     # NOTE: The below values are approximations. The sys.platform() docs
     # don't have documented values for these OSes. Per docs, the
     # sys.platform() value reflects the OS at the time Python was *built*
     # instead of the runtime (target) OS value.
-    "@platforms//os:freebsd": "freebsd",
-    "@platforms//os:ios": "ios",
-    "@platforms//os:linux": "linux",
-    "@platforms//os:openbsd": "openbsd",
-    "@platforms//os:osx": "darwin",
-    "@platforms//os:wasi": "wasi",
-    "@platforms//os:windows": "win32",
+    "freebsd": "freebsd",
+    "ios": "ios",
+    "linux": "linux",
+    "openbsd": "openbsd",
+    "osx": "darwin",
+    "wasi": "wasi",
+    "windows": "win32",
+}
+
+sys_platform_select_map = {
+    "@platforms//os:{}".format(bazel_os): py_platform
+    for bazel_os, py_platform in _sys_platform_values.items()
+} | {
     # For lack of a better option, use empty string. No standard doc/spec
     # about sys_platform value.
     "//conditions:default": "",
 }
 
+# The "java" value is documented, but with Jython defunct,
+# shouldn't occur in practice.
+# The os.name value is technically a property of the runtime, not the
+# targetted runtime OS, but the distinction shouldn't matter if
+# things are properly configured.
 _os_name_values = {
     "linux": "posix",
     "osx": "posix",
@@ -146,12 +149,9 @@ _os_name_values = {
 }
 
 os_name_select_map = {
-    # The "java" value is documented, but with Jython defunct,
-    # shouldn't occur in practice.
-    # The os.name value is technically a property of the runtime, not the
-    # targetted runtime OS, but the distinction shouldn't matter if
-    # things are properly configured.
-    "@platforms//os:windows": "nt",
+    "@platforms//os:{}".format(bazel_os): py_os
+    for bazel_os, py_os in _os_name_values.items()
+} | {
     "//conditions:default": "posix",
 }
 
