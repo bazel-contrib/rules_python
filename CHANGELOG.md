@@ -84,6 +84,8 @@ END_UNRELEASED_TEMPLATE
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
   (the default), the subprocess's stdout/stderr will be logged.
+* (toolchains) Local toolchains can be activated with custom flags. See
+  [Conditionally using local toolchains] docs for how to configure.
 
 {#v0-0-0-removed}
 ### Removed
