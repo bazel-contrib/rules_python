@@ -23,6 +23,7 @@ load("//python/private:enum.bzl", "enum")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
 load(
     ":pep508_env.bzl",
+    "create_env",
     "os_name_select_map",
     "platform_machine_select_map",
     "platform_system_select_map",
@@ -124,7 +125,7 @@ def _default_env_marker_config(**kwargs):
     )
 
 def _env_marker_config_impl(ctx):
-    env = {}
+    env = create_env()
     env["os_name"] = ctx.attr.os_name
     env["sys_platform"] = ctx.attr.sys_platform
     env["platform_machine"] = ctx.attr.platform_machine
@@ -139,8 +140,8 @@ def _env_marker_config_impl(ctx):
     env["platform_release"] = platform_release
     env["platform_system"] = ctx.attr.platform_system
 
-    # For lack of a better option, just use an empty string for now.
-    env["platform_version"] = ""
+    # NOTE: We intentionally do not call set_missing_env_defaults() here because
+    # `env_marker_setting()` computes missing values using the toolchain.
     return [EnvMarkerInfo(env = env)]
 
 _env_marker_config = rule(

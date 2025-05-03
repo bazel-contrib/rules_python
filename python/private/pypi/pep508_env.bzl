@@ -158,6 +158,9 @@ os_name_select_map = {
 def env(target_platform, *, extra = None):
     """Return an env target platform
 
+    NOTE: This is for use during the loading phase. For the analysis phase,
+    `env_marker_setting()` constructs the env dict.
+
     Args:
         target_platform: {type}`str` the target platform identifier, e.g.
             `cp33_linux_aarch64`
@@ -166,16 +169,9 @@ def env(target_platform, *, extra = None):
     Returns:
         A dict that can be used as `env` in the marker evaluation.
     """
-
-    # TODO @aignas 2025-02-13: consider moving this into config settings.
-
-    env = {"extra": extra} if extra != None else {}
-    env = env | {
-        "implementation_name": "cpython",
-        "platform_python_implementation": "CPython",
-        "platform_release": "",
-        "platform_version": "",
-    }
+    env = create_env()
+    if extra != None:
+        env["extra"] = extra
 
     if type(target_platform) == type(""):
         target_platform = platform_from_str(target_platform, python_version = "")
@@ -196,13 +192,42 @@ def env(target_platform, *, extra = None):
             "platform_system": _platform_system_values.get(os, ""),
             "sys_platform": _sys_platform_values.get(os, ""),
         }
+    set_missing_env_defaults(env)
 
-    # This is split by topic
-    return env | env_aliases()
+    return env
 
-def env_aliases():
+def create_env():
     return {
+        # This is split by topic
         "_aliases": {
             "platform_machine": platform_machine_aliases,
         },
     }
+
+def set_missing_env_defaults(env):
+    """Sets defaults based on existing values.
+
+    Args:
+        env: dict; NOTE: modified in-place
+    """
+    if "implementation_name" not in env:
+        # Use cpython as the default because it's likely the correct value.
+        env["implementation_name"] = "cpython"
+    if "platform_python_implementation" not in env:
+        # The `platform_python_implementation` marker value is supposed to come
+        # from `platform.python_implementation()`, however, PEP 421 introduced
+        # `sys.implementation.name` and the `implementation_name` env marker to
+        # replace it. Per the platform.python_implementation docs, there's now
+        # essentially just two possible "registered" values: CPython or PyPy.
+        # Rather than add a field to the toolchain, we just special case the value
+        # from `sys.implementation.name` to handle the two documented values.
+        platform_python_impl = env["implementation_name"]
+        if platform_python_impl == "cpython":
+            platform_python_impl = "CPython"
+        elif platform_python_impl == "pypy":
+            platform_python_impl = "PyPy"
+        env["platform_python_implementation"] = platform_python_impl
+    if "platform_release" not in env:
+        env["platform_release"] = ""
+    if "platform_version" not in env:
+        env["platform_version"] = "0"

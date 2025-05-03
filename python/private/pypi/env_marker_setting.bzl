@@ -3,7 +3,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
-load(":pep508_env.bzl", "env_aliases")
+load(":pep508_env.bzl", "create_env", "set_missing_env_defaults")
 load(":pep508_evaluate.bzl", "evaluate")
 
 # Use capitals to hint its not an actual boolean type.
@@ -37,7 +37,7 @@ def env_marker_setting(*, name, expression, **kwargs):
     )
 
 def _env_marker_setting_impl(ctx):
-    env = {}
+    env = create_env()
     env.update(
         ctx.attr._env_marker_config_flag[EnvMarkerInfo].env,
     )
@@ -60,28 +60,10 @@ def _env_marker_setting_impl(ctx):
             env["python_full_version"] = full_version
             env["implementation_version"] = full_version
 
-    if "implementation_name" not in env:
-        # We assume cpython if the toolchain doesn't specify because it's most
-        # likely to be true.
-        env["implementation_name"] = runtime.implementation_name or "cpython"
+    if "implementation_name" not in env and runtime.implementation_name:
+        env["implementation_name"] = runtime.implementation_name
 
-    if "platform_python_implementation" not in env:
-        # The `platform_python_implementation` marker value is supposed to come
-        # from `platform.python_implementation()`, however, PEP 421 introduced
-        # `sys.implementation.name` and the `implementation_name` env marker to
-        # replace it. Per the platform.python_implementation docs, there's now
-        # essentially just two possible "registered" values: CPython or PyPy.
-        # Rather than add a field to the toolchain, we just special case the value
-        # from `sys.implementation.name` to handle the two documented values.
-        platform_python_impl = runtime.implementation_name
-        if platform_python_impl == "cpython":
-            platform_python_impl = "CPython"
-        elif platform_python_impl == "pypy":
-            platform_python_impl = "PyPy"
-        env["platform_python_implementation"] = platform_python_impl
-
-    env.update(env_aliases())
-
+    set_missing_env_defaults(env)
     if evaluate(ctx.attr.expression, env = env):
         value = _ENV_MARKER_TRUE
     else:
