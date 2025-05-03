@@ -338,7 +338,6 @@ leg of the dependency manually. For instance by making
 perhaps `apache-airflow-providers-common-sql`.
 
 
-(bazel-downloader)=
 ### Multi-platform support
 
 Multi-platform support of cross-building the wheels can be done in two ways - either

@@ -3,10 +3,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
-load(
-    ":pep508_env.bzl",
-    "env_aliases",
-)
+load(":pep508_env.bzl", "env_aliases")
 load(":pep508_evaluate.bzl", "evaluate")
 
 # Use capitals to hint its not an actual boolean type.
