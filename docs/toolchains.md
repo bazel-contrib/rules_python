@@ -377,14 +377,13 @@ local_runtime_repo(
 local_runtime_toolchains_repo(
     name = "local_toolchains",
     runtimes = ["local_python3"],
+    # TIP: The `target_settings` arg can be used to activate them based on
+    # command line flags; see docs below.
 )
 
 # Step 3: Register the toolchains
 register_toolchains("@local_toolchains//:all", dev_dependency = True)
 ```
-
-Note that `register_toolchains` will insert the local toolchain earlier in the
-toolchain ordering, so it will take precedence over other registered toolchains.
 
 :::{important}
 Be sure to set `dev_dependency = True`. Using a local toolchain only makes sense
@@ -397,6 +396,72 @@ downstream modules.
 
 Multiple runtimes and/or toolchains can be defined, which allows for multiple
 Python versions and/or platforms to be configured in a single `MODULE.bazel`.
+Note that `register_toolchains` will insert the local toolchain earlier in the
+toolchain ordering, so it will take precedence over other registered toolchains.
+To better control when the toolchain is used, see [Conditionally using local
+toolchains]
+
+### Conditionally using local toolchains
+
+By default, a local toolchain has few constraints and is early in the toolchain
+ordering, which means it will usually be used no matter what. This can be
+problematic for CI (where it shouldn't be used), expensive for CI (CI must
+initialize/download the repository to determine its Python version), and
+annoying for iterative development (enabling/disabling it requires modifying
+MODULE.bazel).
+
+These behaviors can be mitigated, but it requires additional configuration
+to avoid triggering the local toolchain repository to initialize (i.e. run
+local commands and perform downloads).
+
+The two settings to change are
+{obj}`local_runtime_toolchains_repo.target_compatible_with` and
+{obj}`local_runtime_toolchains_repo.target_settings`, which control how Bazel
+decides if a toolchain should match. By default, they point to targets *within*
+the local runtime repository (trigger repo initialization). We have to override
+them to *not* reference the local runtime repository at all.
+
+In the example below, we reconfigure the local toolchains so they are only
+activated if the custom flag `--//:py=local` is set and the target platform
+matches the Bazel host platform. The net effect is CI won't use the local
+toolchain (nor initialize its repository), and developers can easily
+enable/disable the local toolchain with a command line flag.
+
+```
+# File: MODULE.bazel
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+local_runtime_toolchains_repo(
+    name = "local_toolchains",
+    runtimes = ["local_python3"],
+    target_compatible_with = {
+        "local_python3": ["HOST_CONSTRAINTS"],
+    },
+    target_settings = {
+        "local_python3": ["@//:is_py_local"]
+    }
+)
+
+# File: BUILD.bazel
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
+config_setting(
+    name = "is_py_local",
+    flag_values = {":py": "local"},
+)
+
+string_flag(
+    name = "py",
+    build_setting_default = "",
+)
+```
+
+:::{tip}
+Easily switching between *multiple* local toolchains can be accomplished by
+adding additional `:is_py_X` targets and setting `--//:py` to match.
+to easily switch between different local toolchains.
+:::
+
 
 ## Runtime environment toolchain
 
@@ -425,7 +490,7 @@ locally installed Python.
 ### Autodetecting toolchain
 
 The autodetecting toolchain is a deprecated toolchain that is built into Bazel.
-It's name is a bit misleading: it doesn't autodetect anything. All it does is
+**It's name is a bit misleading: it doesn't autodetect anything**. All it does is
 use `python3` from the environment a binary runs within. This provides extremely
 limited functionality to the rules (at build time, nothing is knowable about
 the Python runtime).

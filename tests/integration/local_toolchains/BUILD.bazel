@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 py_test(
@@ -19,4 +20,18 @@ py_test(
     srcs = ["test.py"],
     # Make this test better respect pyenv
     env_inherit = ["PYENV_VERSION"],
+)
+
+config_setting(
+    name = "is_py_local",
+    flag_values = {
+        ":py": "local",
+    },
+)
+
+# Set `--//:py=local` to use the local toolchain
+# (This is set in this example's .bazelrc)
+string_flag(
+    name = "py",
+    build_setting_default = "",
 )

@@ -54,12 +54,14 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
 * (rules) {obj}`pip_compile` now generates a `.test` target. The `_test` target is deprecated
   and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
+* (py_wheel) py_wheel always creates zip64-capable wheel zips
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -74,12 +76,16 @@ END_UNRELEASED_TEMPLATE
   * The {obj}`//python/runtime_env_toolchains:all` toolchain now works with it.
 * (rules) Better handle flakey platform.win32_ver() calls by calling them
   multiple times.
+* (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
+  to specify the requirements.
 
 {#v0-0-0-added}
 ### Added
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
   (the default), the subprocess's stdout/stderr will be logged.
+* (toolchains) Local toolchains can be activated with custom flags. See
+  [Conditionally using local toolchains] docs for how to configure.
 * (pypi) `RULES_PYTHON_ENABLE_PIPSTAR` environment variable: when `1`, the Starlark
   implementation of wheel METADATA parsing is used (which has improved multi-platform
   build support).

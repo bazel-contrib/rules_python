@@ -26,6 +26,9 @@ define_local_toolchain_suites(
     name = "toolchains",
     version_aware_repo_names = {version_aware_names},
     version_unaware_repo_names = {version_unaware_names},
+    repo_exec_compatible_with = {repo_exec_compatible_with},
+    repo_target_compatible_with = {repo_target_compatible_with},
+    repo_target_settings = {repo_target_settings},
 )
 """
 
@@ -39,6 +42,9 @@ def _local_runtime_toolchains_repo(rctx):
 
     rctx.file("BUILD.bazel", _TOOLCHAIN_TEMPLATE.format(
         version_aware_names = render.list(rctx.attr.runtimes),
+        repo_target_settings = render.string_list_dict(rctx.attr.target_settings),
+        repo_target_compatible_with = render.string_list_dict(rctx.attr.target_compatible_with),
+        repo_exec_compatible_with = render.string_list_dict(rctx.attr.exec_compatible_with),
         version_unaware_names = render.list(rctx.attr.default_runtimes or rctx.attr.runtimes),
     ))
 
@@ -62,8 +68,36 @@ These will be defined as *version-unaware* toolchains. This means they will
 match any Python version. As such, they are registered after the version-aware
 toolchains defined by the `runtimes` attribute.
 
+If not set, then the `runtimes` values will be used.
+
 Note that order matters: it determines the toolchain priority within the
 package.
+""",
+        ),
+        "exec_compatible_with": attr.string_list_dict(
+            doc = """
+Constraints that must be satisfied by an exec platform for a toolchain to be used.
+
+This is a `dict[str, list[str]]`, where the keys are repo names from the
+`runtimes` or `default_runtimes` args, and the values are constraint
+target labels (e.g. OS, CPU, etc).
+
+:::{note}
+Specify `@//foo:bar`, not simply `//foo:bar` or `:bar`. The additional `@` is
+needed because the strings are evaluated in a different context than where
+they originate.
+:::
+
+The list of settings become the {obj}`toolchain.exec_compatible_with` value for
+each respective repo.
+
+This allows a local toolchain to only be used if certain exec platform
+conditions are met, typically values from `@platforms`.
+
+See the [Local toolchains] docs for examples and further information.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         ),
         "runtimes": attr.string_list(
@@ -76,6 +110,81 @@ are registered before `default_runtimes`.
 
 Note that order matters: it determines the toolchain priority within the
 package.
+""",
+        ),
+        "target_compatible_with": attr.string_list_dict(
+            doc = """
+Constraints that must be satisfied for a toolchain to be used.
+
+
+This is a `dict[str, list[str]]`, where the keys are repo names from the
+`runtimes` or `default_runtimes` args, and the values are constraint
+target labels (e.g. OS, CPU, etc), or the special string `"HOST_CONSTRAINTS"`
+(which will be replaced with the current Bazel hosts's constraints).
+
+If a repo's entry is missing or empty, it defaults to the supported OS the
+underlying runtime repository detects as compatible.
+
+:::{note}
+Specify `@//foo:bar`, not simply `//foo:bar` or `:bar`. The additional `@` is
+needed because the strings are evaluated in a different context than where
+they originate.
+:::
+
+The list of settings **becomes the** the {obj}`toolchain.target_compatible_with`
+value for each respective repo; i.e. they _replace_ the auto-detected values
+the local runtime itself computes.
+
+This allows a local toolchain to only be used if certain target platform
+conditions are met, typically values from `@platforms`.
+
+See the [Local toolchains] docs for examples and further information.
+
+:::{seealso}
+The `target_settings` attribute, which handles `config_setting` values,
+instead of constraints.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "target_settings": attr.string_list_dict(
+            doc = """
+Config settings that must be satisfied for a toolchain to be used.
+
+This is a `dict[str, list[str]]`, where the keys are repo names from the
+`runtimes` or `default_runtimes` args, and the values are {obj}`config_setting()`
+target labels.
+
+If a repo's entry is missing or empty, it will default to
+`@<repo>//:is_match_python_version` (for repos in `runtimes`) or an empty list
+(for repos in `default_runtimes`).
+
+:::{note}
+Specify `@//foo:bar`, not simply `//foo:bar` or `:bar`. The additional `@` is
+needed because the strings are evaluated in a different context than where
+they originate.
+:::
+
+The list of settings will be applied atop of any of the local runtime's
+settings that are used for {obj}`toolchain.target_settings`. i.e. they are
+evaluated first and guard the checking of the local runtime's auto-detected
+conditions.
+
+This allows a local toolchain to only be used if certain flags or
+config setting conditions are met. Such conditions can include user-defined
+flags, platform constraints, etc.
+
+See the [Local toolchains] docs for examples and further information.
+
+:::{seealso}
+The `target_compatible_with` attribute, which handles *constraint* values,
+instead of `config_settings`.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         ),
         "_rule_name": attr.string(default = "local_toolchains_repo"),
