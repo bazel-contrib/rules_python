@@ -60,6 +60,15 @@ The default became `1` if unspecified
 :::
 ::::
 
+::::{envvar} RULES_PYTHON_ENABLE_PIPSTAR
+
+When `1`, the rules_python Starlark implementation of the pypi/pip integration is used
+instead of the legacy Python scripts.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{envvar} RULES_PYTHON_EXTRACT_ROOT
 
 Directory to use as the root for creating files necessary for bootstrapping so
