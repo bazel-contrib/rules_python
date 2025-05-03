@@ -80,8 +80,9 @@ END_UNRELEASED_TEMPLATE
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
   (the default), the subprocess's stdout/stderr will be logged.
-* (pypi) A new environment variable `RULES_PYTHON_ENABLE_PIPSTAR` to toggle the
-  Starlark implementation of the whl METADATA parsing. Set it to `1` to enable.
+* (pypi) `RULES_PYTHON_ENABLE_PIPSTAR` environment variable: when `1`, the Starlark
+  implementation of wheel METADATA parsing is used (which has improved multi-platform
+  build support).
 
 {#v0-0-0-removed}
 ### Removed
