@@ -436,7 +436,7 @@ Tag: cp38-abi3-{os_string}_{arch}
                 ],
             )
         self.assertFileSha256Equal(
-            filename, "d8e874b807e5574bd11a9312c58ce7fe7055afb80412d0d0e7ed21fc9223cd53"
+            filename, "85e44c43cc19ccae9fe2e1d629230203aa11791bed1f7f68a069fb58d1c93cd2"
         )
 
     def test_rule_expands_workspace_status_keys_in_wheel_metadata(self):
