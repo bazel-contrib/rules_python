@@ -154,7 +154,7 @@ class _WhlFile(zipfile.ZipFile):
         hash = hashlib.sha256()
         size = 0
         with open(real_filename, "rb") as fsrc:
-            with self.open(zinfo, "w") as fdst:
+            with self.open(zinfo, "w", force_zip64=True) as fdst:
                 while True:
                     block = fsrc.read(2**20)
                     if not block:

@@ -76,6 +76,8 @@ END_UNRELEASED_TEMPLATE
   multiple times.
 * (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
   to specify the requirements.
+* (packaging) {obj}`py_wheel` now uses zip64 to support larger files.
+  Fixes [#2852](https://github.com/bazel-contrib/rules_python/issues/2852).
 
 {#v0-0-0-added}
 ### Added
