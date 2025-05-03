@@ -21,11 +21,14 @@ _RENDER = {
     "copy_files": render.dict,
     "data": render.list,
     "data_exclude": render.list,
+    "dependencies": render.list,
+    "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
     "entry_points": render.dict,
     "extras": render.list,
     "group_deps": render.list,
     "requires_dist": render.list,
     "srcs_exclude": render.list,
+    "tags": render.list,
     "target_platforms": lambda x: render.list(x) if x else "target_platforms",
 }
 
@@ -37,7 +40,7 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
-whl_library_targets_from_requires(
+{fn}(
 {kwargs}
 )
 """
@@ -59,17 +62,28 @@ def generate_whl_library_build_bazel(
         A complete BUILD file as a string
     """
 
+    fn = "whl_library_targets"
+    if kwargs.get("tags"):
+        # legacy path
+        unsupported_args = [
+            "requires",
+            "metadata_name",
+            "metadata_version",
+        ]
+    else:
+        fn = "{}_from_requires".format(fn)
+        unsupported_args = [
+            "dependencies",
+            "dependencies_by_platform",
+        ]
+
+    for arg in unsupported_args:
+        if kwargs.get(arg):
+            fail("BUG, unsupported arg: '{}'".format(arg))
+
     loads = [
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")""",
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
     ]
-    if not kwargs.setdefault("target_platforms", None):
-        dep_template = kwargs["dep_template"]
-        loads.append(
-            "load(\"{}\", \"{}\")".format(
-                dep_template.format(name = "", target = "config.bzl"),
-                "target_platforms",
-            ),
-        )
 
     additional_content = []
     if annotation:
@@ -87,6 +101,7 @@ def generate_whl_library_build_bazel(
         [
             _TEMPLATE.format(
                 loads = "\n".join(loads),
+                fn = fn,
                 kwargs = render.indent("\n".join([
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())
