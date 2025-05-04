@@ -80,7 +80,7 @@ def parse_requirements(
 
         The second element is extra_pip_args should be passed to `whl_library`.
     """
-    evaluate_markers = evaluate_markers or (lambda _: {})
+    evaluate_markers = evaluate_markers or (lambda _ctx, _requirements: {})
     options = {}
     requirements = {}
     for file, plats in requirements_by_platform.items():
@@ -156,7 +156,7 @@ def parse_requirements(
     # to do, we could use Python to parse the requirement lines and infer the
     # URL of the files to download things from. This should be important for
     # VCS package references.
-    env_marker_target_platforms = evaluate_markers(reqs_with_env_markers)
+    env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
     if logger:
         logger.debug(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
             reqs_with_env_markers,
@@ -285,10 +285,15 @@ def _add_dists(*, requirement, index_urls, logger = None):
     if requirement.srcs.url:
         url = requirement.srcs.url
         _, _, filename = url.rpartition("/")
+        filename, _, _ = filename.partition("#sha256=")
         if "." not in filename:
             # detected filename has no extension, it might be an sdist ref
             # TODO @aignas 2025-04-03: should be handled if the following is fixed:
             # https://github.com/bazel-contrib/rules_python/issues/2363
+            return [], None
+
+        if "@" in filename:
+            # this is most likely foo.git@git_sha, skip special handling of these
             return [], None
 
         direct_url_dist = struct(

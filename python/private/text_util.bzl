@@ -108,6 +108,10 @@ def _render_list(items, *, hanging_indent = ""):
 def _render_str(value):
     return repr(value)
 
+def _render_string_list_dict(value):
+    """Render an attr.string_list_dict value (`dict[str, list[str]`)"""
+    return _render_dict(value, value_repr = _render_list)
+
 def _render_tuple(items, *, value_repr = repr):
     if not items:
         return "tuple()"
@@ -166,4 +170,5 @@ render = struct(
     str = _render_str,
     toolchain_prefix = _toolchain_prefix,
     tuple = _render_tuple,
+    string_list_dict = _render_string_list_dict,
 )

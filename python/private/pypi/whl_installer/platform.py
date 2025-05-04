@@ -18,7 +18,7 @@ import platform
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 
 class OS(Enum):
@@ -77,8 +77,8 @@ def _as_int(value: Optional[Union[OS, Arch]]) -> int:
     return int(value.value)
 
 
-def host_interpreter_minor_version() -> int:
-    return sys.version_info.minor
+def host_interpreter_version() -> Tuple[int, int]:
+    return (sys.version_info.minor, sys.version_info.micro)
 
 
 @dataclass(frozen=True)
@@ -86,16 +86,23 @@ class Platform:
     os: Optional[OS] = None
     arch: Optional[Arch] = None
     minor_version: Optional[int] = None
+    micro_version: Optional[int] = None
 
     @classmethod
     def all(
         cls,
         want_os: Optional[OS] = None,
         minor_version: Optional[int] = None,
+        micro_version: Optional[int] = None,
     ) -> List["Platform"]:
         return sorted(
             [
-                cls(os=os, arch=arch, minor_version=minor_version)
+                cls(
+                    os=os,
+                    arch=arch,
+                    minor_version=minor_version,
+                    micro_version=micro_version,
+                )
                 for os in OS
                 for arch in Arch
                 if not want_os or want_os == os
@@ -112,31 +119,15 @@ class Platform:
             A list of parsed values which makes the signature the same as
             `Platform.all` and `Platform.from_string`.
         """
+        minor, micro = host_interpreter_version()
         return [
             Platform(
                 os=OS.interpreter(),
                 arch=Arch.interpreter(),
-                minor_version=host_interpreter_minor_version(),
+                minor_version=minor,
+                micro_version=micro,
             )
         ]
-
-    def all_specializations(self) -> Iterator["Platform"]:
-        """Return the platform itself and all its unambiguous specializations.
-
-        For more info about specializations see
-        https://bazel.build/docs/configurable-attributes
-        """
-        yield self
-        if self.arch is None:
-            for arch in Arch:
-                yield Platform(os=self.os, arch=arch, minor_version=self.minor_version)
-        if self.os is None:
-            for os in OS:
-                yield Platform(os=os, arch=self.arch, minor_version=self.minor_version)
-        if self.arch is None and self.os is None:
-            for os in OS:
-                for arch in Arch:
-                    yield Platform(os=os, arch=arch, minor_version=self.minor_version)
 
     def __lt__(self, other: Any) -> bool:
         """Add a comparison method, so that `sorted` returns the most specialized platforms first."""
@@ -153,24 +144,15 @@ class Platform:
 
     def __str__(self) -> str:
         if self.minor_version is None:
-            if self.os is None and self.arch is None:
-                return "//conditions:default"
+            return f"{self.os}_{self.arch}"
 
-            if self.arch is None:
-                return f"@platforms//os:{self.os}"
-            else:
-                return f"{self.os}_{self.arch}"
+        minor_version = self.minor_version
+        micro_version = self.micro_version
 
-        if self.arch is None and self.os is None:
-            return f"@//python/config_settings:is_python_3.{self.minor_version}"
-
-        if self.arch is None:
-            return f"cp3{self.minor_version}_{self.os}_anyarch"
-
-        if self.os is None:
-            return f"cp3{self.minor_version}_anyos_{self.arch}"
-
-        return f"cp3{self.minor_version}_{self.os}_{self.arch}"
+        if micro_version is None:
+            return f"cp3{minor_version}_{self.os}_{self.arch}"
+        else:
+            return f"cp3{minor_version}.{micro_version}_{self.os}_{self.arch}"
 
     @classmethod
     def from_string(cls, platform: Union[str, List[str]]) -> List["Platform"]:
@@ -190,7 +172,17 @@ class Platform:
             os, _, arch = tail.partition("_")
             arch = arch or "*"
 
-            minor_version = int(abi[len("cp3") :]) if abi else None
+            if abi:
+                tail = abi[len("cp3") :]
+                minor_version, _, micro_version = tail.partition(".")
+                minor_version = int(minor_version)
+                if micro_version == "":
+                    micro_version = None
+                else:
+                    micro_version = int(micro_version)
+            else:
+                minor_version = None
+                micro_version = None
 
             if arch != "*":
                 ret.add(
@@ -198,6 +190,7 @@ class Platform:
                         os=OS[os] if os != "*" else None,
                         arch=Arch[arch],
                         minor_version=minor_version,
+                        micro_version=micro_version,
                     )
                 )
 
@@ -206,6 +199,7 @@ class Platform:
                     cls.all(
                         want_os=OS[os] if os != "*" else None,
                         minor_version=minor_version,
+                        micro_version=micro_version,
                     )
                 )
 
@@ -282,7 +276,12 @@ class Platform:
 
     def env_markers(self, extra: str) -> Dict[str, str]:
         # If it is None, use the host version
-        minor_version = self.minor_version or host_interpreter_minor_version()
+        if self.minor_version is None:
+            minor, micro = host_interpreter_version()
+        else:
+            minor, micro = self.minor_version, self.micro_version
+
+        micro = micro or 0
 
         return {
             "extra": extra,
@@ -292,12 +291,9 @@ class Platform:
             "platform_system": self.platform_system,
             "platform_release": "",  # unset
             "platform_version": "",  # unset
-            "python_version": f"3.{minor_version}",
-            # FIXME @aignas 2024-01-14: is putting zero last a good idea? Maybe we should
-            # use `20` or something else to avoid having weird issues where the full version is used for
-            # matching and the author decides to only support 3.y.5 upwards.
-            "implementation_version": f"3.{minor_version}.0",
-            "python_full_version": f"3.{minor_version}.0",
+            "python_version": f"3.{minor}",
+            "implementation_version": f"3.{minor}.{micro}",
+            "python_full_version": f"3.{minor}.{micro}",
             # we assume that the following are the same as the interpreter used to setup the deps:
             # "implementation_name": "cpython"
             # "platform_python_implementation: "CPython",
