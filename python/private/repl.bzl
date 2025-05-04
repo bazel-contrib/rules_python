@@ -17,7 +17,7 @@ def _generate_repl_main_impl(ctx):
         },
     )
 
-    return [DefaultInfo(files=depset([out]))]
+    return [DefaultInfo(files = depset([out]))]
 
 _generate_repl_main = rule(
     implementation = _generate_repl_main_impl,
