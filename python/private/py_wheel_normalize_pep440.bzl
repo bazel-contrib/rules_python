@@ -683,7 +683,7 @@ def parse_version(version):
     for p, fn in fns:
         fn(parser)
         parts[p] = parser.context()["norm"]
-        parser.context()["norm"] = "" # Clear out the buffer so that it is easy to separate the fields
+        parser.context()["norm"] = ""  # Clear out the buffer so that it is easy to separate the fields
 
     is_prefix = version.endswith(".*")
     parts["is_prefix"] = is_prefix

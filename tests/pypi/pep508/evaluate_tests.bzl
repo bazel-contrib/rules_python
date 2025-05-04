@@ -19,10 +19,11 @@ load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # bui
 
 _tests = []
 
-def _check_evaluate(env, expr, expected, values, strict=True):
+def _check_evaluate(env, expr, expected, values, strict = True):
     env.expect.where(
-        expression=expr, values=values
-    ).that_bool(evaluate(expr, env=values, strict=strict)).equals(expected)
+        expression = expr,
+        values = values,
+    ).that_bool(evaluate(expr, env = values, strict = strict)).equals(expected)
 
 def _tokenize_tests(env):
     for input, want in {
@@ -91,7 +92,7 @@ def _evaluate_non_version_env_tests(env):
 
             # Check that the non-strict eval gives us back the input when no
             # env is supplied.
-            _check_evaluate(env, input, input.replace("'", '"'), {}, strict=False)
+            _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_evaluate_non_version_env_tests)
 
@@ -129,7 +130,7 @@ def _evaluate_version_env_tests(env):
 
             # Check that the non-strict eval gives us back the input when no
             # env is supplied.
-            _check_evaluate(env, input, input.replace("'", '"'), {}, strict=False)
+            _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_evaluate_version_env_tests)
 
@@ -147,7 +148,7 @@ def _evaluate_platform_version_is_special(env):
 
     # Check that the non-strict eval gives us back the input when no
     # env is supplied.
-    _check_evaluate(env, input, input.replace("'", '"'), {}, strict=False)
+    _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_evaluate_platform_version_is_special)
 
@@ -207,7 +208,7 @@ def _logical_expression_tests(env):
 
         # Check that the non-strict eval gives us back the input when no env
         # is supplied.
-        _check_evaluate(env, input, input.replace("'", '"'), {}, strict=False)
+        _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_logical_expression_tests)
 
@@ -236,7 +237,7 @@ def _evaluate_partial_only_extra(env):
             strict = False,
         )
         env.expect.that_bool(got).equals(want)
-        _check_evaluate(env, input, want, env = {"extra": extra}, strict=False)
+        _check_evaluate(env, input, want, env = {"extra": extra}, strict = False)
 
 _tests.append(_evaluate_partial_only_extra)
 
@@ -266,9 +267,10 @@ def _evaluate_with_aliases(env):
 _tests.append(_evaluate_with_aliases)
 
 def _expr_case(expr, want, env):
-    return struct(expr=expr, want=want, env=env)
+    return struct(expr = expr.strip(), want = want, env = env)
 
 _MISC_EXPRESSIONS = [
+    _expr_case('python_version == "3.*"', True, {"python_version": "3.10.1"}),
 ]
 
 def _misc_expressions(env):

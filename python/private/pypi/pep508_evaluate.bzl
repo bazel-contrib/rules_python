@@ -18,7 +18,6 @@
 load("//python/private:enum.bzl", "enum")
 load("//python/private:py_wheel_normalize_pep440.bzl", "parse_version")
 
-
 # The expression parsing and resolution for the PEP508 is below
 #
 
