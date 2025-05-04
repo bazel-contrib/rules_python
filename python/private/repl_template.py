@@ -1,5 +1,6 @@
 import os
 import runpy
+import sys
 from pathlib import Path
 
 from python.runfiles import runfiles
@@ -8,6 +9,11 @@ STUB_PATH = "%stub_path%"
 
 
 def start_repl():
+    if sys.stdin.isatty():
+        # Print the banner similar to how python does it on startup when running interactively.
+        cprt = 'Type "help", "copyright", "credits" or "license" for more information.'
+        sys.stderr.write("Python %s on %s\n%s\n" % (sys.version, sys.platform, cprt))
+
     # Simulate Python's behavior when a valid startup script is defined by the
     # PYTHONSTARTUP variable. If this file path fails to load, print the error
     # and revert to the default behavior.

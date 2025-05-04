@@ -14,5 +14,16 @@ The logic for PYTHONSTARTUP is handled in python/private/repl_template.py.
 """
 
 import code
+import sys
 
-code.interact()
+if sys.stdin.isatty():
+    # Use the default options.
+    exitmsg = None
+else:
+    # On a non-interactive console, we want to suppress the >>> and the exit message.
+    exitmsg = ""
+    sys.ps1 = ""
+    sys.ps2 = ""
+
+# We set the banner to an empty string because the repl_template.py file already prints the banner.
+code.interact(banner="", exitmsg=exitmsg)
