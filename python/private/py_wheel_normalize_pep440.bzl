@@ -556,24 +556,35 @@ def _version_eq(left, right):
     if left.is_prefix:
         right_release = right.release[:len(left.release)]
     else:
-        right_release = _pad_zeros(right.release, len(left.release))
+        ##right_release = _pad_zeros(right.release, len(left.release))
+        right_release = right.release
 
     if right.is_prefix:
         left_release = left.release[:len(right.release)]
     else:
-        left_release = _pad_zeros(left.release, len(right.release))
+        ##left_release = _pad_zeros(left.release, len(right.release))
+        left_release = left.release
 
+    ##print("left is prefix?", left.is_prefix)
+    ##print("left.release:", left.release, len(left.release))
+    ##print("left_release:", left_release)
+
+    ##print("right is prefix?", right.is_prefix)
+    ##print("right.release:", right.release, len(right.release))
+    ##print("right_release:", right_release)
     if left_release != right_release:
         return False
 
+    print("is prefix?", left.is_prefix, right.is_prefix)
     if left.is_prefix or right.is_prefix:
         return True
 
     return (
         left.pre == right.pre and
         left.post == right.post and
-        left.dev == right.dev and
-        left.local == right.local
+        left.dev == right.dev
+        # local is ignored for == checks
+        ##and left.local == right.local
     )
 
 # TODO @aignas 2025-05-04: add tests for the comparison
