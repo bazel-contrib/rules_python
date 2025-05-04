@@ -237,7 +237,7 @@ def _evaluate_partial_only_extra(env):
             strict = False,
         )
         env.expect.that_bool(got).equals(want)
-        _check_evaluate(env, input, want, env = {"extra": extra}, strict = False)
+        _check_evaluate(env, input, want, {"extra": extra}, strict = False)
 
 _tests.append(_evaluate_partial_only_extra)
 
@@ -275,7 +275,7 @@ _MISC_EXPRESSIONS = [
 
 def _misc_expressions(env):
     for case in _MISC_EXPRESSIONS:
-        _check_evaluation(env, case.expr, case.want, case.env)
+        _check_evaluate(env, case.expr, case.want, case.env)
 
 _tests.append(_misc_expressions)
 
