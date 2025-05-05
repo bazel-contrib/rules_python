@@ -20,6 +20,8 @@ settings for rules to later use.
 
 load(":repo_utils.bzl", "repo_utils")
 
+_ENABLE_PIPSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PIPSTAR"
+_ENABLE_PIPSTAR_DEFAULT = "0"
 _ENABLE_PYSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PYSTAR"
 _ENABLE_PYSTAR_DEFAULT = "1"
 _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME = "RULES_PYTHON_DEPRECATION_WARNINGS"
@@ -28,6 +30,7 @@ _ENABLE_DEPRECATION_WARNINGS_DEFAULT = "0"
 _CONFIG_TEMPLATE = """\
 config = struct(
   enable_pystar = {enable_pystar},
+  enable_pipstar = {enable_pipstar},
   enable_deprecation_warnings = {enable_deprecation_warnings},
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
@@ -84,6 +87,7 @@ def _internal_config_repo_impl(rctx):
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         enable_pystar = enable_pystar,
+        enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT),
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
