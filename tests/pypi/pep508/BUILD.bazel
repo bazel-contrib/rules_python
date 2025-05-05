@@ -1,9 +1,14 @@
+load(":deps_integration_tests.bzl", "deps_integration_test_suite")
 load(":deps_tests.bzl", "deps_test_suite")
 load(":evaluate_tests.bzl", "evaluate_test_suite")
 load(":requirement_tests.bzl", "requirement_test_suite")
 
 deps_test_suite(
     name = "deps_tests",
+)
+
+deps_integration_test_suite(
+    name = "deps_integration_tests",
 )
 
 evaluate_test_suite(
