@@ -225,10 +225,12 @@ def is_python_version_at_least(name, **kwargs):
     )
 
 def _python_version_at_least_impl(ctx):
-    at_least = tuple(ctx.attr.at_least.split("."))
-    current = tuple(
-        ctx.attr._major_minor[config_common.FeatureFlagInfo].value.split("."),
-    )
+    at_least = tuple([int(x) for x in ctx.attr.at_least.split(".")])
+    current = tuple([
+        int(x)
+        for x in ctx.attr._major_minor[config_common.FeatureFlagInfo].value.split(".")
+    ])
+    print(current, at_least)
     value = "yes" if current >= at_least else "no"
     return [config_common.FeatureFlagInfo(value = value)]
 
