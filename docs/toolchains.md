@@ -757,3 +757,13 @@ a fixed version.
 The `python` target does not provide access to any modules from `py_*`
 targets on its own. Please file a feature request if this is desired.
 :::
+
+### Differences from `//python/bin:repl`
+
+The `//python/bin:python` target provides access to the underlying interpreter
+without any hermeticity guarantees.
+
+The [`//python/bin:repl` target](repl) provides an environment indentical to
+what `py_binary` provides. That means it handles things like the
+[`PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSAFEPATH)
+environment variable automatically. The `//python/bin:python` target will not.
