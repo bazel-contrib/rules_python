@@ -560,22 +560,13 @@ def _version_lt(left, right):
     if left.epoch < right.epoch:
         return True
 
-    if left.is_prefix:
-        right_release = right.release[:len(left.release)]
-    else:
-        right_release = _pad_zeros(right.release, len(left.release))
-
-    if right.is_prefix:
-        left_release = left.release[:len(right.release)]
-    else:
-        left_release = _pad_zeros(left.release, len(right.release))
+    release_len = max(len(left.release), len(right.release))
+    left_release = _pad_zeros(left.release, release_len)
+    right_release = _pad_zeros(right.release, release_len)
 
     if left_release > right_release:
         return False
     elif left_release < right_release:
-        return True
-
-    if left.is_prefix or right.is_prefix:
         return True
 
     return (
@@ -592,13 +583,37 @@ def _version_gt(left, right):
     elif left.epoch < right.epoch:
         return False
 
-    return left.release > right.release
+    release_len = max(len(left.release), len(right.release))
+    left_release = _pad_zeros(left.release, release_len)
+    right_release = _pad_zeros(right.release, release_len)
+
+    # It cannot be pre and post release at the same time, so the following should be fine
+    if not left.post and right.post:
+        return False
+
+    if left_release > right_release:
+        return True
+    elif left_release < right_release:
+        return False
+
+    if right.post:
+        if left.post > right.post:
+            return True
+        elif left.post < right.post:
+            return False
+
+    return False
 
 def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
     pre = pre or ""
-    post = post or ""
+    if post:
+        if not post.startswith(".post"):
+            fail("post release identifier must start with '.post', got: {}".format(post))
+        post = int(post[len(".post"):])
+    else:
+        post = None
     dev = dev or ""
     local = local or ""
 

@@ -275,6 +275,15 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version != "3.11.*"', True, {"python_version": "3.10.1"}),
     _expr_case('python_version != "3.10"', False, {"python_version": "3.10.0"}),
     _expr_case('python_version == "3.10"', True, {"python_version": "3.10.0"}),
+    # Taken from spec: https://peps.python.org/pep-0440/#exclusive-ordered-comparison
+    _expr_case('python_version > "1.7"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7"', False, {"python_version": "1.7.0.post0"}),
+    _expr_case('python_version > "1.7"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7.post2"', False, {"python_version": "1.7.0"}),
+    _expr_case('python_version > "1.7.post2"', True, {"python_version": "1.7.post3"}),
+    _expr_case('python_version > "1.7.post2"', False, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7+local"', True, {"python_version": "1.7.1"}),
+    # TODO @aignas 2025-05-05: add tests for pre-releases
 ]
 
 def _misc_expressions(env):
