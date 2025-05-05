@@ -233,6 +233,10 @@ Values:
 ::::{bzl:flag} bootstrap_impl
 Determine how programs implement their startup process.
 
+The default for this depends on the platform:
+* Windows: `system_python` (**always** used)
+* Other: `script`
+
 Values:
 * `system_python`: Use a bootstrap that requires a system Python available
   in order to start programs. This requires
@@ -255,6 +259,11 @@ instead.
 :::
 
 :::{versionadded} 0.33.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+* The default for non-Windows changed from `system_python` to `script`.
+* On Windows, the value is forced to `system_python`.
 :::
 
 ::::

@@ -55,6 +55,7 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows.
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
