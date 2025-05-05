@@ -230,7 +230,6 @@ def _python_version_at_least_impl(ctx):
         int(x)
         for x in ctx.attr._major_minor[config_common.FeatureFlagInfo].value.split(".")
     ])
-    print(current, at_least)
     value = "yes" if current >= at_least else "no"
     return [config_common.FeatureFlagInfo(value = value)]
 
