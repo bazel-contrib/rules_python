@@ -519,11 +519,11 @@ def normalize_pep440(version):
     return parser.context()["norm"]
 
 def _pad_zeros(release, n):
-    if len(release) >= n:
+    padding = n - len(release)
+    if padding <= 0:
         return release
 
-    release = list(release)
-    release += [0] * len(release)
+    release = list(release) + [0] * padding
     return tuple(release)
 
 # TODO @aignas 2025-05-04: add tests for the comparison
@@ -538,11 +538,9 @@ def _version_eq(left, right):
     if left.epoch != right.epoch:
         return False
 
-    ##right_release = _pad_zeros(right.release, len(left.release))
-    right_release = right.release
-
-    ##left_release = _pad_zeros(left.release, len(right.release))
-    left_release = left.release
+    release_len = max(len(left.release), len(right.release))
+    left_release = _pad_zeros(left.release, release_len)
+    right_release = _pad_zeros(right.release, release_len)
 
     if left_release != right_release:
         return False

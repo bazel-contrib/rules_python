@@ -273,6 +273,8 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version == "3.*"', True, {"python_version": "3.10.1"}),
     _expr_case('python_version != "3.10.*"', False, {"python_version": "3.10.1"}),
     _expr_case('python_version != "3.11.*"', True, {"python_version": "3.10.1"}),
+    _expr_case('python_version != "3.10"', False, {"python_version": "3.10.0"}),
+    _expr_case('python_version == "3.10"', True, {"python_version": "3.10.0"}),
 ]
 
 def _misc_expressions(env):
