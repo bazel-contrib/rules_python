@@ -29,11 +29,13 @@ platform_machine_aliases = {
 
 # NOTE: There are many cpus, and unfortunately, the value isn't directly
 # accessible to Starlark. Using CcToolchain.cpu might work, though.
+# Some targets are aliases and are omitted below as their value is implied
+# by the target they resolve to.
 platform_machine_select_map = {
     "@platforms//cpu:aarch32": "aarch32",
     "@platforms//cpu:aarch64": "aarch64",
-    "@platforms//cpu:arm": "arm",
-    "@platforms//cpu:arm64": "arm64",
+    # @platforms//cpu:arm is an alias for @platforms//cpu:aarch32
+    # @platforms//cpu:arm64 is an alias for @platforms//cpu:aarch64
     "@platforms//cpu:arm64_32": "arm64_32",
     "@platforms//cpu:arm64e": "arm64e",
     "@platforms//cpu:armv6-m": "armv6-m",
