@@ -61,6 +61,7 @@ def _test_mac_requires_darwin_for_execution(name, config):
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
             "//command_line_option:platforms": [MAC_X86_64],
+            "//command_line_option:extra_execution_platforms": [MAC_X86_64],
         },
         attr_values = _SKIP_WINDOWS,
     )
@@ -94,6 +95,7 @@ def _test_non_mac_doesnt_require_darwin_for_execution(name, config):
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
             "//command_line_option:platforms": [LINUX_X86_64],
+            "//command_line_option:extra_execution_platforms": [LINUX_X86_64],
         },
         attr_values = _SKIP_WINDOWS,
     )

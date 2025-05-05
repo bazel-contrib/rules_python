@@ -53,6 +53,7 @@ def _test_basic_windows(name, config):
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [WINDOWS_X86_64],
+            "//command_line_option:extra_execution_platforms": [WINDOWS_X86_64],
         },
         attr_values = {"target_compatible_with": target_compatible_with},
     )
@@ -98,6 +99,7 @@ def _test_basic_zip(name, config):
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [LINUX_X86_64],
+            "//command_line_option:extra_execution_platforms": [LINUX_X86_64],
         },
         attr_values = {"target_compatible_with": target_compatible_with},
     )
