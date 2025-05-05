@@ -350,6 +350,13 @@ def _version_expr(left, op, right):
         # > simple string equality operations
         return _env_expr(left, "==", right)
 
+    if left.endswith(".*") and right.endswith(".*"):
+        fail("PEP440: only one of the sides can have '.*' suffix: {} {} {}".format(
+            left,
+            op,
+            right,
+        ))
+
     _left = parse_version(left)
     _right = parse_version(right)
     if _left == None or _right == None:
@@ -358,7 +365,18 @@ def _version_expr(left, op, right):
         # or `platform_release`, which vary depending on platform.
         return _env_expr(left, op, right)
 
-    if op == "<":
+    if op == "!=":
+        return _left.ne(_right)
+    elif op == "==":
+        # Matching of major, minor, patch only
+        return _left.eq(_right)
+    elif left.endswith(".*") or right.endswith(".*"):
+        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
+            left,
+            op,
+            right,
+        ))
+    elif op == "<":
         return _left.lt(_right)
     elif op == ">":
         return _left.gt(_right)
@@ -366,13 +384,13 @@ def _version_expr(left, op, right):
         return _left.le(_right)
     elif op == ">=":
         return _left.ge(_right)
-    elif op == "!=":
-        return _left.ne(_right)
-    elif op == "==":
-        # Matching of major, minor, patch only
-        return _left.eq(_right)
     elif op == "~=":
-        return _left.ge(_right) and _left.lt(_right.upper())
+        # https://peps.python.org/pep-0440/#compatible-release
+        # Note, the ~= operator can be also expressed as:
+        # >= V.N, == V.*
+        head, _, _ = right.partition(".")
+        _right_star = parse_version("{}.*".format(head))
+        return _left.ge(_right) and _left.eq(_right_star)
     else:
         return False  # Let's just ignore the invalid ops
 

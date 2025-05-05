@@ -518,28 +518,6 @@ def normalize_pep440(version):
         )
     return parser.context()["norm"]
 
-def _upper(*, epoch = 0, release, pre = "", post = "", dev = "", local = ""):
-    epoch = epoch
-    _release = list(release[:-1])
-    pre = pre
-    post = post
-    dev = dev
-    local = local
-
-    if pre or dev or local:
-        return _new_version(
-            epoch = epoch,
-            release = release,
-        )
-
-    _release[-1] = _release[-1] + 1
-    release = ".".join([str(d) for d in _release])
-
-    return _new_version(
-        epoch = epoch,
-        release = release,
-    )
-
 def _pad_zeros(release, n):
     if len(release) >= n:
         return release
@@ -550,34 +528,24 @@ def _pad_zeros(release, n):
 
 # TODO @aignas 2025-05-04: add tests for the comparison
 def _version_eq(left, right):
+    if left.is_prefix and right.is_prefix:
+        fail("Invalid comparison: both versions cannot be prefix matching")
+    if left.is_prefix:
+        return right.norm.startswith("{}.".format(left.norm))
+    if right.is_prefix:
+        return left.norm.startswith("{}.".format(right.norm))
+
     if left.epoch != right.epoch:
         return False
 
-    if left.is_prefix:
-        right_release = right.release[:len(left.release)]
-    else:
-        ##right_release = _pad_zeros(right.release, len(left.release))
-        right_release = right.release
+    ##right_release = _pad_zeros(right.release, len(left.release))
+    right_release = right.release
 
-    if right.is_prefix:
-        left_release = left.release[:len(right.release)]
-    else:
-        ##left_release = _pad_zeros(left.release, len(right.release))
-        left_release = left.release
+    ##left_release = _pad_zeros(left.release, len(right.release))
+    left_release = left.release
 
-    ##print("left is prefix?", left.is_prefix)
-    ##print("left.release:", left.release, len(left.release))
-    ##print("left_release:", left_release)
-
-    ##print("right is prefix?", right.is_prefix)
-    ##print("right.release:", right.release, len(right.release))
-    ##print("right_release:", right_release)
     if left_release != right_release:
         return False
-
-    print("is prefix?", left.is_prefix, right.is_prefix)
-    if left.is_prefix or right.is_prefix:
-        return True
 
     return (
         left.pre == right.pre and
@@ -628,7 +596,7 @@ def _version_gt(left, right):
 
     return left.release > right.release
 
-def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False):
+def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
     pre = pre or ""
@@ -644,14 +612,7 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         dev = dev,
         local = local,
         is_prefix = is_prefix,
-        upper = lambda: _upper(
-            epoch = epoch,
-            release = _release,
-            pre = pre,
-            post = post,
-            dev = dev,
-            local = local,
-        ),
+        norm = norm,
         # TODO @aignas 2025-05-04: add tests for the comparison
         eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
         ne = lambda x: not _version_eq(self, x),  # buildifier: disable=uninitialized
@@ -679,7 +640,9 @@ def parse_version(version):
     """
 
     parser = _new(version.strip(" .*"))  # PEP 440: Leading and Trailing Whitespace and .*
+    parser_2 = _new(version.strip(" .*"))  # PEP 440: Leading and Trailing Whitespace and .*
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
+    accept(parser_2, _is("v"), "")  # PEP 440: Preceding v character
 
     parts = {}
     fns = [
@@ -693,6 +656,7 @@ def parse_version(version):
 
     for p, fn in fns:
         fn(parser)
+        fn(parser_2)
         parts[p] = parser.context()["norm"]
         parser.context()["norm"] = ""  # Clear out the buffer so that it is easy to separate the fields
 
@@ -708,4 +672,5 @@ def parse_version(version):
         # If we fail to parse the version return None
         return None
 
+    parts["norm"] = parser_2.context()["norm"]
     return _new_version(**parts)
