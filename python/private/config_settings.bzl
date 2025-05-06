@@ -230,7 +230,7 @@ def _python_version_at_least_impl(ctx):
     # CI is, somehow, getting an empty string for the current flag value.
     # How isn't clear.
     if not flag_value:
-        return "no"
+        return [config_common.FeatureFlagInfo(value = "no")]
 
     current = tuple([
         int(x)
