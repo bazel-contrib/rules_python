@@ -292,6 +292,11 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.1-rc2"}),
     _expr_case('python_version < "1.7.1-rc3"', True, {"python_version": "1.7.1-rc2"}),
     _expr_case('python_version < "1.7.1-rc1"', False, {"python_version": "1.7.1-rc2"}),
+    # Extra tests
+    _expr_case('python_version <= "1.7.1"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version <= "1.7.2"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version >= "1.7.1"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version >= "1.7.0"', True, {"python_version": "1.7.1"}),
 ]
 
 def _misc_expressions(env):

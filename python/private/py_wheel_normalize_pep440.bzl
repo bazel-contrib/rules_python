@@ -609,12 +609,16 @@ def _version_gt(left, right):
 def _version_ge(left, right):
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
-    return left.key(local = False) >= right.key(local = False)
+    _left = left.key(local = False)
+    _right = right.key(local = False)
+    return _left >= _right
 
 def _version_le(left, right):
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
-    return left.key(local = False) <= right.key(local = False)
+    _left = left.key(local = False)
+    _right = right.key(local = False)
+    return _left <= _right
 
 def _first_non_none(*args):
     for arg in args:
