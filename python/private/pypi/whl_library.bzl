@@ -277,7 +277,7 @@ def _whl_library_impl(rctx):
             fail("could not download the '{}' from {}:\n{}".format(filename, urls, result))
 
         if filename.endswith(".whl"):
-            whl_path = rctx.path(rctx.attr.filename)
+            whl_path = rctx.path(filename)
         else:
             # It is an sdist and we need to tell PyPI to use a file in this directory
             # and, allow getting build dependencies from PYTHONPATH, which we
