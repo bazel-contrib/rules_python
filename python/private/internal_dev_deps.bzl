@@ -38,7 +38,7 @@ def _internal_dev_deps_impl(mctx):
         name = "buildkite_config",
         toolchain = "ubuntu1804-bazel-java11",
     )
-    runtime_env_repo(name = "rules_python_runtime_env")
+    runtime_env_repo(name = "rules_python_runtime_env_tc_info")
 
 internal_dev_deps = module_extension(
     implementation = _internal_dev_deps_impl,
