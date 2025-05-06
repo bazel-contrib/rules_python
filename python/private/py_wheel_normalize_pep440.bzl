@@ -568,6 +568,15 @@ def _version_lt(left, right):
     elif left_release < right_release:
         return True
 
+    if left.post == None and right.post == None:
+        pass
+    elif left.post == None:
+        return True
+    elif right.post == None:
+        return False
+    elif left.post > right.post:
+        return False
+
     # the release is equal, check for pre version
     if right.pre != None:
         if left.pre == None:
@@ -612,19 +621,23 @@ def _version_gt(left, right):
     elif left_release < right_release:
         return False
 
-    # the release is equal, check for post version
-    if right.post:
-        if not left.post:
-            # PEP440: The exclusive ordered comparison >V MUST NOT allow a post-release of the
-            # given version unless V itself is a post release.
-            return False
-        elif left.post > right.post:
-            return True
-        elif left.post < right.post:
-            return False
-
-    if right.pre:
+    if left.post == None and right.post == None:
+        pass
+    elif left.post == None:
+        return False
+    elif right.post == None:
         return True
+    elif left.post < right.post:
+        return False
+
+    if left.dev == None and right.dev == None:
+        pass
+    elif left.dev == None:
+        return True
+    elif left.dev == None:
+        return False
+    elif left.dev < right.dev:
+        return False
 
     return False
 
@@ -678,10 +691,11 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         key = lambda: (
             epoch,
             release,
-            pre or ("release",),
-            post if post != None else -1,
-            dev if dev != None else -1,
-            local,
+            (
+                -1 if post == None else post,
+                dev == None,
+                -1 if dev == None else dev,
+            ),
         ),
     )
 
