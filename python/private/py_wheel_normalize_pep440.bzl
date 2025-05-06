@@ -569,8 +569,8 @@ def _version_lt(left, right):
         return True
 
     # the release is equal, check for pre version
-    if right.pre:
-        if left.pre != None:
+    if right.pre != None:
+        if left.pre == None:
             # PEP440: The exclusive ordered comparison <V MUST NOT allow a pre-release of
             # the specified version unless the specified version is itself a pre-release.
             return False
@@ -579,7 +579,20 @@ def _version_lt(left, right):
             return False
         elif left.pre < right.pre:
             return True
-    elif left.pre:
+    elif left.pre != None:
+        return True
+
+    if right.dev != None:
+        if left.dev == None:
+            # PEP440: The exclusive ordered comparison <V MUST NOT allow a pre-release of
+            # the specified version unless the specified version is itself a pre-release.
+            return False
+
+        if left.dev > right.dev:
+            return False
+        elif left.dev < right.dev:
+            return True
+    elif left.dev != None:
         return True
 
     return False

@@ -302,26 +302,27 @@ _tests.append(_misc_expressions)
 
 def _test_ordering(env):
     want = [
-        # The items are sorted from lowest to highest version
-        "0.0.1",
-        "0.1.0-rc",
-        "0.1.0",
-        "0.9.11",
-        "0.9.12.dev",
-        "0.9.12",
-        "1.0.0-alpha",
-        "1.0.0-alpha1",
-        "1.0.0-beta",
-        "1.0.0-beta.dev",
-        "1.0.0-beta2",
-        "1.0.0-beta11",
-        "1.0.0-rc1",
-        "1.0.0-rc2.dev",
-        "1.0.0-rc2",
-        "1.0.0",
-        # Also handle missing minor and patch version strings
-        "2.0",
-        "3",
+        # Taken from https://peps.python.org/pep-0440/#summary-of-permitted-suffixes-and-relative-ordering
+        "1.dev0",
+        "1.0.dev456",
+        "1.0a1",
+        "1.0a2.dev456",
+        "1.0a12.dev456",
+        "1.0a12",
+        "1.0b1.dev456",
+        "1.0b2",
+        "1.0b2.post345.dev456",
+        "1.0b2.post345",
+        "1.0rc1.dev456",
+        "1.0rc1",
+        "1.0",
+        "1.0+abc.5",
+        "1.0+abc.7",
+        "1.0+5",
+        "1.0.post456.dev34",
+        "1.0.post456",
+        "1.0.15",
+        "1.1.dev1",
     ]
 
     for lower, higher in zip(want[:-1], want[1:]):
