@@ -738,11 +738,7 @@ def parse_version(version, strict = False):
 
     parser = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
 
-    # TODO @aignas 2025-05-06: Remove this usage of a second parser just to get the normalized
-    # version.
-    parser_2 = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
-    accept(parser_2, _is("v"), "")  # PEP 440: Preceding v character
 
     parts = {}
     fns = [
@@ -756,7 +752,6 @@ def parse_version(version, strict = False):
 
     for p, fn in fns:
         fn(parser)
-        fn(parser_2)
         parts[p] = parser.context()["norm"]
         parser.context()["norm"] = ""  # Clear out the buffer so that it is easy to separate the fields
 
@@ -769,7 +764,7 @@ def parse_version(version, strict = False):
         # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
 
-    if parser_2.input[parser.context()["start"]:]:
+    if parser.input[parser.context()["start"]:]:
         if strict:
             fail(
                 "Failed to parse PEP 440 version identifier '%s'." % parser.input,
@@ -779,5 +774,5 @@ def parse_version(version, strict = False):
         # If we fail to parse the version return None
         return None
 
-    parts["norm"] = parser_2.context()["norm"]
+    parts["norm"] = "".join([parts[p] for p, _ in fns])
     return _new_version(**parts)
