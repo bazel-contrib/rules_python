@@ -38,6 +38,8 @@ def _perform_transition_impl(input_settings, attr, base_impl):
         settings["//command_line_option:extra_toolchains"] = attr.extra_toolchains
     if attr.python_src:
         settings["//python/bin:python_src"] = attr.python_src
+    if attr.repl_dep:
+        settings["//python/bin:repl_dep"] = attr.repl_dep
     if attr.venvs_use_declare_symlink:
         settings["//python/config_settings:venvs_use_declare_symlink"] = attr.venvs_use_declare_symlink
     if attr.venvs_site_packages:
@@ -47,6 +49,7 @@ def _perform_transition_impl(input_settings, attr, base_impl):
 _RECONFIG_INPUTS = [
     "//python/config_settings:bootstrap_impl",
     "//python/bin:python_src",
+    "//python/bin:repl_dep",
     "//command_line_option:extra_toolchains",
     "//python/config_settings:venvs_use_declare_symlink",
     "//python/config_settings:venvs_site_packages",
@@ -70,6 +73,7 @@ toolchain.
 """,
     ),
     "python_src": attrb.Label(),
+    "repl_dep": attrb.Label(),
     "venvs_site_packages": attrb.String(),
     "venvs_use_declare_symlink": attrb.String(),
 }

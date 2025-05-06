@@ -817,6 +817,10 @@ current_interpreter_executable(
     visibility = ["//visibility:public"],
 )
 
+py_library(
+    name = "empty",
+)
+
 sentinel(
     name = "sentinel",
 )

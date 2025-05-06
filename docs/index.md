@@ -101,6 +101,7 @@ pip
 coverage
 precompiling
 gazelle
+REPL <repl>
 Extending <extending>
 Contributing <contributing>
 support
