@@ -15,7 +15,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize", "version")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -283,7 +283,15 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version > "1.7.post2"', True, {"python_version": "1.7.post3"}),
     _expr_case('python_version > "1.7.post2"', False, {"python_version": "1.7.0"}),
     _expr_case('python_version > "1.7.1+local"', False, {"python_version": "1.7.1"}),
-    # TODO @aignas 2025-05-05: add tests for pre-releases
+    _expr_case('python_version > "1.7.1+local"', True, {"python_version": "1.7.2"}),
+    _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.2"}),
+    _expr_case('python_version < "1.7.3"', True, {"python_version": "1.7.2"}),
+    _expr_case('python_version < "1.7.1"', True, {"python_version": "1.7"}),
+    _expr_case('python_version < "1.7.1-rc2"', True, {"python_version": "1.7"}),
+    _expr_case('python_version < "1.7-rc2"', False, {"python_version": "1.7"}),
+    _expr_case('python_version < "1.7-rc2"', True, {"python_version": "1.7-rc1"}),
+    _expr_case('python_version < "1.7-rc2"', False, {"python_version": "1.7-rc3"}),
+    _expr_case('python_version < "1.7-rc12"', True, {"python_version": "1.7-rc3"}),
 ]
 
 def _misc_expressions(env):
@@ -291,6 +299,60 @@ def _misc_expressions(env):
         _check_evaluate(env, case.expr, case.want, case.env)
 
 _tests.append(_misc_expressions)
+
+def _test_ordering(env):
+    want = [
+        # The items are sorted from lowest to highest version
+        "0.0.1",
+        "0.1.0-rc",
+        "0.1.0",
+        "0.9.11",
+        "0.9.12.dev",
+        "0.9.12",
+        "1.0.0-alpha",
+        "1.0.0-alpha1",
+        "1.0.0-beta",
+        "1.0.0-beta.dev",
+        "1.0.0-beta2",
+        "1.0.0-beta11",
+        "1.0.0-rc1",
+        "1.0.0-rc2.dev",
+        "1.0.0-rc2",
+        "1.0.0",
+        # Also handle missing minor and patch version strings
+        "2.0",
+        "3",
+    ]
+
+    for lower, higher in zip(want[:-1], want[1:]):
+        lower = version(lower, strict = True)
+        higher = version(higher, strict = True)
+
+        if not lower.key() < higher.key():
+            env.fail("Expected '{}'.key() to be smaller than '{}'.key(), but got otherwise".format(
+                lower.str(),
+                higher.str(),
+            ))
+
+        if not lower.lt(higher):
+            env.fail("Expected '{}' to be smaller than '{}', but got otherwise".format(
+                lower.str(),
+                higher.str(),
+            ))
+
+        if not (higher.key() > lower.key()):
+            env.fail("Expected '{}'.key() to be greater than '{}'.key(), but got otherwise".format(
+                higher.str(),
+                lower.str(),
+            ))
+
+        if not (higher.gt(lower)):
+            env.fail("Expected '{}' to be greater than '{}', but got otherwise".format(
+                higher.str(),
+                lower.str(),
+            ))
+
+_tests.append(_test_ordering)
 
 def evaluate_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(

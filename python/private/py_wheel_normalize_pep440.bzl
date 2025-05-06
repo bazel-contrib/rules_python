@@ -553,11 +553,10 @@ def _version_eq(left, right):
         ##and left.local == right.local
     )
 
-# TODO @aignas 2025-05-04: add tests for the comparison
 def _version_lt(left, right):
     if left.epoch > right.epoch:
         return False
-    if left.epoch < right.epoch:
+    elif left.epoch < right.epoch:
         return True
 
     release_len = max(len(left.release), len(right.release))
@@ -569,14 +568,22 @@ def _version_lt(left, right):
     elif left_release < right_release:
         return True
 
-    return (
-        left.pre < right.pre and
-        left.post < right.post and
-        left.dev < right.dev and
-        left.local < right.local
-    )
+    # the release is equal, check for pre version
+    if right.pre:
+        if left.pre != None:
+            # PEP440: The exclusive ordered comparison <V MUST NOT allow a pre-release of
+            # the specified version unless the specified version is itself a pre-release.
+            return False
 
-# TODO @aignas 2025-05-04: add tests for the comparison
+        if left.pre > right.pre:
+            return False
+        elif left.pre < right.pre:
+            return True
+    elif left.pre:
+        return True
+
+    return False
+
 def _version_gt(left, right):
     if left.epoch > right.epoch:
         return True
@@ -603,19 +610,39 @@ def _version_gt(left, right):
         elif left.post < right.post:
             return False
 
+    if right.pre:
+        return True
+
     return False
 
 def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
-    pre = pre or ""
+
+    if pre:
+        if pre.startswith("rc"):
+            prefix = "rc"
+        else:
+            prefix = pre[0]
+
+        pre = (prefix, int(pre[len(prefix):]))
+    else:
+        pre = None
+
     if post:
         if not post.startswith(".post"):
             fail("post release identifier must start with '.post', got: {}".format(post))
         post = int(post[len(".post"):])
     else:
         post = None
-    dev = dev or ""
+
+    if dev:
+        if not dev.startswith(".dev"):
+            fail("dev release identifier must start with '.dev', got: {}".format(dev))
+        dev = int(dev[len(".dev"):])
+    else:
+        dev = None
+
     local = local or ""
 
     self = struct(
@@ -634,11 +661,20 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
         le = lambda x: not _version_gt(self, x),  # buildifier: disable=uninitialized
         ge = lambda x: not _version_lt(self, x),  # buildifier: disable=uninitialized
+        str = lambda: norm,
+        key = lambda: (
+            epoch,
+            release,
+            pre or ("release",),
+            post if post != None else -1,
+            dev if dev != None else -1,
+            local,
+        ),
     )
 
     return self
 
-def parse_version(version):
+def parse_version(version, strict = False):
     """Parse a PEP4408 compliant version
 
     TODO: finish
@@ -648,13 +684,14 @@ def parse_version(version):
 
     Args:
       version: version string to be normalized according to PEP 440.
+      strict: fail if the version is invalid.
 
     Returns:
       string containing the normalized version.
     """
 
-    parser = _new(version.strip(" .*"))  # PEP 440: Leading and Trailing Whitespace and .*
-    parser_2 = _new(version.strip(" .*"))  # PEP 440: Leading and Trailing Whitespace and .*
+    parser = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
+    parser_2 = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
     accept(parser_2, _is("v"), "")  # PEP 440: Preceding v character
 
@@ -677,12 +714,19 @@ def parse_version(version):
     is_prefix = version.endswith(".*")
     parts["is_prefix"] = is_prefix
     if is_prefix and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
-        # local version part has been obtained, but only public segments can have prefix
-        # matches. Just return None.
+        if strict:
+            fail("local version part has been obtained, but only public segments can have prefix matches")
+
         # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
 
-    if parser.input[parser.context()["start"]:]:
+    if parser_2.input[parser.context()["start"]:]:
+        if strict:
+            fail(
+                "Failed to parse PEP 440 version identifier '%s'." % parser.input,
+                "Parse error at '%s'" % parser.input[parser.context()["start"]:],
+            )
+
         # If we fail to parse the version return None
         return None
 
