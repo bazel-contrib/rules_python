@@ -526,7 +526,6 @@ def _pad_zeros(release, n):
     release = list(release) + [0] * padding
     return tuple(release)
 
-# TODO @aignas 2025-05-04: add tests for the comparison
 def _version_eq(left, right):
     if left.is_prefix and right.is_prefix:
         fail("Invalid comparison: both versions cannot be prefix matching")
@@ -568,7 +567,14 @@ def _version_lt(left, right):
     elif left_release < right_release:
         return True
 
-    return left.key() < right.key()
+    # From PEP440, this is not a simple ordering check and we need to check the version
+    # semantically:
+    # * The exclusive ordered comparison <V MUST NOT allow a pre-release of the specified version
+    #   unless the specified version is itself a pre-release.
+    if left.pre and right.pre:
+        return left.pre < right.pre
+    else:
+        return False
 
 def _version_gt(left, right):
     if left.epoch > right.epoch:
@@ -585,7 +591,30 @@ def _version_gt(left, right):
     elif left_release < right_release:
         return False
 
-    return left.key() > right.key()
+    # From PEP440, this is not a simple ordering check and we need to check the version
+    # semantically:
+    # * The exclusive ordered comparison >V MUST NOT allow a post-release of the given version
+    #   unless V itself is a post release.
+    #
+    # * The exclusive ordered comparison >V MUST NOT match a local version of the specified
+    #   version.
+
+    if left.post and right.post:
+        return left.post > right.post
+    else:
+        # ignore the left.post if right is not a post if right is a post, then this evaluates to
+        # False anyway.
+        return False
+
+def _version_ge(left, right):
+    # PEP440: simple order check
+    # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
+    return left.key(local = False) >= right.key(local = False)
+
+def _version_le(left, right):
+    # PEP440: simple order check
+    # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
+    return left.key(local = False) <= right.key(local = False)
 
 def _first_non_none(*args):
     for arg in args:
@@ -594,11 +623,14 @@ def _first_non_none(*args):
 
     return None
 
-def _key(self, release_key = ("z",)):
+def _key(self, *, local, release_key = ("z",)):
     """This function returns a tuple that can be used in 'sorted' calls.
 
     This implements the PEP440 version sorting.
     """
+    local = self.local if local else []
+    local = local or []
+
     return (
         self.epoch,
         self.release,
@@ -609,7 +641,7 @@ def _key(self, release_key = ("z",)):
         # then stable
         _first_non_none(self.pre, self.post, self.dev, release_key),
         # PEP440 local versions go before post versions
-        tuple([(type(item) == "int", item) for item in self.local or []]),
+        tuple([(type(item) == "int", item) for item in local]),
         # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
         _first_non_none(
             self.post,
@@ -672,15 +704,14 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         local = local,
         is_prefix = is_prefix,
         norm = norm,
-        # TODO @aignas 2025-05-04: add tests for the comparison
         eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
         ne = lambda x: not _version_eq(self, x),  # buildifier: disable=uninitialized
         lt = lambda x: _version_lt(self, x),  # buildifier: disable=uninitialized
         gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
-        le = lambda x: not _version_gt(self, x),  # buildifier: disable=uninitialized
-        ge = lambda x: not _version_lt(self, x),  # buildifier: disable=uninitialized
+        le = lambda x: _version_le(self, x),  # buildifier: disable=uninitialized
+        ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
         str = lambda: norm,
-        key = lambda: _key(self),  # buildifier: disable=uninitialized
+        key = lambda *, local = True: _key(self, local = local),  # buildifier: disable=uninitialized
     )
 
     return self
@@ -688,7 +719,7 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
 def parse_version(version, strict = False):
     """Parse a PEP4408 compliant version
 
-    TODO: finish
+    TODO @aignas 2025-05-06: where should this go?
 
     See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
     and https://peps.python.org/pep-0440/
@@ -702,6 +733,9 @@ def parse_version(version, strict = False):
     """
 
     parser = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
+
+    # TODO @aignas 2025-05-06: Remove this usage of a second parser just to get the normalized
+    # version.
     parser_2 = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
     accept(parser_2, _is("v"), "")  # PEP 440: Preceding v character

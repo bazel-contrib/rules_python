@@ -275,6 +275,7 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version != "3.11.*"', True, {"python_version": "3.10.1"}),
     _expr_case('python_version != "3.10"', False, {"python_version": "3.10.0"}),
     _expr_case('python_version == "3.10"', True, {"python_version": "3.10.0"}),
+    # Cases for the '>' operator
     # Taken from spec: https://peps.python.org/pep-0440/#exclusive-ordered-comparison
     _expr_case('python_version > "1.7"', True, {"python_version": "1.7.1"}),
     _expr_case('python_version > "1.7"', False, {"python_version": "1.7.0.post0"}),
@@ -284,14 +285,13 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version > "1.7.post2"', False, {"python_version": "1.7.0"}),
     _expr_case('python_version > "1.7.1+local"', False, {"python_version": "1.7.1"}),
     _expr_case('python_version > "1.7.1+local"', True, {"python_version": "1.7.2"}),
+    # Extra cases for the '<' operator
     _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.2"}),
     _expr_case('python_version < "1.7.3"', True, {"python_version": "1.7.2"}),
     _expr_case('python_version < "1.7.1"', True, {"python_version": "1.7"}),
-    _expr_case('python_version < "1.7.1-rc2"', True, {"python_version": "1.7"}),
-    _expr_case('python_version < "1.7-rc2"', False, {"python_version": "1.7"}),
-    _expr_case('python_version < "1.7-rc2"', True, {"python_version": "1.7-rc1"}),
-    _expr_case('python_version < "1.7-rc2"', False, {"python_version": "1.7-rc3"}),
-    _expr_case('python_version < "1.7-rc12"', True, {"python_version": "1.7-rc3"}),
+    _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.1-rc2"}),
+    _expr_case('python_version < "1.7.1-rc3"', True, {"python_version": "1.7.1-rc2"}),
+    _expr_case('python_version < "1.7.1-rc1"', False, {"python_version": "1.7.1-rc2"}),
 ]
 
 def _misc_expressions(env):
