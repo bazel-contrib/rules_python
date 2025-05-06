@@ -159,6 +159,18 @@ Values:
 :::
 ::::
 
+::::{bzl:flag} pip_env_marker_config
+The target that provides the values for pip env marker evaluation.
+
+Default: `//python/config_settings:_pip_env_marker_default_config`
+
+This flag points to a target providing {obj}`EnvMarkerInfo`, which determines
+the values used when environment markers are resolved at build time.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} pip_whl
 Set what distributions are used in the `pip` integration.
 

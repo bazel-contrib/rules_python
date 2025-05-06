@@ -338,7 +338,6 @@ leg of the dependency manually. For instance by making
 perhaps `apache-airflow-providers-common-sql`.
 
 
-(bazel-downloader)=
 ### Multi-platform support
 
 Multi-platform support of cross-building the wheels can be done in two ways - either
@@ -390,6 +389,31 @@ compatible indexes.
 ```{note}
 This is only supported on `bzlmd`.
 ```
+
+<!--
+
+TODO: uncomment this when analysis-phase dependency selection is available
+
+#### Customizing requirements resolution
+
+In Python packaging, packages can express dependencies with conditions
+using "environment markers", which represent the Python version, OS, etc.
+
+While the PyPI integration provides reasonable defaults to support most
+platforms and environment markers, the values it uses can be customized in case
+more esoteric configurations are needed.
+
+To customize the values used, you need to do two things:
+1. Define a target that returns {obj}`EnvMarkerInfo`
+2. Set the {obj}`//python/config_settings:pip_env_marker_config` flag to
+   the target defined in (1).
+
+The keys and values should be compatible with the [PyPA dependency specifiers
+specification](https://packaging.python.org/en/latest/specifications/dependency-specifiers/).
+This is not strictly enforced, however, so you can return a subset of keys or
+additional keys, which become available during dependency evalution.
+
+-->
 
 (bazel-downloader)=
 ### Bazel downloader and multi-platform wheel hub repository.
@@ -487,3 +511,9 @@ Bazel will call this file like `cred_helper.sh get` and use the returned JSON to
 into whatever HTTP(S) request it performs against `example.com`.
 
 [rfc7617]: https://datatracker.ietf.org/doc/html/rfc7617
+
+<!--
+
+
+
+-->
