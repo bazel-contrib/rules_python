@@ -19,19 +19,19 @@ def _test_expr(name):
         )
 
     cases = {
+        "python_full_version_gte": {
+            "config_settings": {
+                PYTHON_VERSION: "3.12.0",
+            },
+            "expected": "TRUE",
+            "expression": "python_full_version >= '3.12.0'",
+        },
         "python_full_version_lt_negative": {
             "config_settings": {
                 PYTHON_VERSION: "3.12.0",
             },
             "expected": "FALSE",
             "expression": "python_full_version < '3.8'",
-        },
-        "python_version_gte": {
-            "config_settings": {
-                PYTHON_VERSION: "3.12.0",
-            },
-            "expected": "TRUE",
-            "expression": "python_version >= '3.12.0'",
         },
     }
 
