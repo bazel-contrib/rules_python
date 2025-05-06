@@ -587,6 +587,13 @@ def _version_gt(left, right):
 
     return left.key() > right.key()
 
+def _first_non_none(*args):
+    for arg in args:
+        if arg != None:
+            return arg
+
+    return None
+
 def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
@@ -617,6 +624,8 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
 
     if local:
         local = local.lstrip("+")
+
+        # If the part is numerical, handle it as a number
         local = tuple([int(part) if part.isdigit() else part for part in local.split(".")])
     else:
         local = None
@@ -641,13 +650,28 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         key = lambda: (
             epoch,
             _release,
-            (
-                -1 if post == None else post,
-                pre == None,
+            # PEP440 Within a pre-release, post-release or development release segment with
+            # a shared prefix, ordering MUST be by the value of the numeric component.
+            # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
+            # We choose to first match the pre-release, then post release, then dev and
+            # then stable
+            _first_non_none(
                 pre,
-                dev == None,
-                dev,
+                # We choose `~` since almost all of the ASCII characters will be before
+                # it. Use `ord` and `chr` functions to find a good value.
+                ("~", post) if post != None else None,
+                ("", dev) if dev != None else None,
+                # 'z' is just a character that goes after "rc",
+                ("z", 0),
             ),
+            # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
+            _first_non_none(
+                ("~", post) if post != None else None,
+                ("", dev) if dev != None else None,
+                ("z", 0),
+            ),
+            # PEP440 - post release ordering: .devN, <no suffix>
+            ("", dev) if dev != None else ("~",),
         ),
     )
 
