@@ -587,17 +587,18 @@ def _version_gt(left, right):
     left_release = _pad_zeros(left.release, release_len)
     right_release = _pad_zeros(right.release, release_len)
 
-    # It cannot be pre and post release at the same time, so the following should be fine
-    if not left.post and right.post:
-        return False
-
     if left_release > right_release:
         return True
     elif left_release < right_release:
         return False
 
+    # the release is equal, check for post version
     if right.post:
-        if left.post > right.post:
+        if not left.post:
+            # PEP440: The exclusive ordered comparison >V MUST NOT allow a post-release of the
+            # given version unless V itself is a post release.
+            return False
+        elif left.post > right.post:
             return True
         elif left.post < right.post:
             return False
