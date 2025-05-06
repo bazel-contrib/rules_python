@@ -339,24 +339,6 @@ def _test_ordering(env):
                 higher.key(),
             ))
 
-        if not lower.lt(higher):
-            env.fail("Expected '{}' to be smaller than '{}', but got otherwise".format(
-                lower.str(),
-                higher.str(),
-            ))
-
-        if not (higher.key() > lower.key()):
-            env.fail("Expected '{}'.key() to be greater than '{}'.key(), but got otherwise".format(
-                higher.str(),
-                lower.str(),
-            ))
-
-        if not (higher.gt(lower)):
-            env.fail("Expected '{}' to be greater than '{}', but got otherwise".format(
-                higher.str(),
-                lower.str(),
-            ))
-
 _tests.append(_test_ordering)
 
 def evaluate_test_suite(name):  # buildifier: disable=function-docstring

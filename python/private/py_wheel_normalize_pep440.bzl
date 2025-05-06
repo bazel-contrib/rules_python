@@ -594,6 +594,32 @@ def _first_non_none(*args):
 
     return None
 
+def _key(self, release_key = ("z",)):
+    """This function returns a tuple that can be used in 'sorted' calls.
+
+    This implements the PEP440 version sorting.
+    """
+    return (
+        self.epoch,
+        self.release,
+        # PEP440 Within a pre-release, post-release or development release segment with
+        # a shared prefix, ordering MUST be by the value of the numeric component.
+        # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
+        # We choose to first match the pre-release, then post release, then dev and
+        # then stable
+        _first_non_none(self.pre, self.post, self.dev, release_key),
+        # PEP440 local versions go before post versions
+        tuple([(type(item) == "int", item) for item in self.local or []]),
+        # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
+        _first_non_none(
+            self.post,
+            self.dev,
+            release_key,
+        ),
+        # PEP440 - post release ordering: .devN, <no suffix>
+        self.dev or release_key,
+    )
+
 def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
@@ -612,6 +638,10 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         if not post.startswith(".post"):
             fail("post release identifier must start with '.post', got: {}".format(post))
         post = int(post[len(".post"):])
+
+        # We choose `~` since almost all of the ASCII characters will be before
+        # it. Use `ord` and `chr` functions to find a good value.
+        post = ("~", post)
     else:
         post = None
 
@@ -619,6 +649,9 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         if not dev.startswith(".dev"):
             fail("dev release identifier must start with '.dev', got: {}".format(dev))
         dev = int(dev[len(".dev"):])
+
+        # Empty string goes first when comparing
+        dev = ("", dev)
     else:
         dev = None
 
@@ -647,34 +680,7 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         le = lambda x: not _version_gt(self, x),  # buildifier: disable=uninitialized
         ge = lambda x: not _version_lt(self, x),  # buildifier: disable=uninitialized
         str = lambda: norm,
-        key = lambda: (
-            epoch,
-            _release,
-            # PEP440 Within a pre-release, post-release or development release segment with
-            # a shared prefix, ordering MUST be by the value of the numeric component.
-            # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
-            # We choose to first match the pre-release, then post release, then dev and
-            # then stable
-            _first_non_none(
-                pre,
-                # We choose `~` since almost all of the ASCII characters will be before
-                # it. Use `ord` and `chr` functions to find a good value.
-                ("~", post) if post != None else None,
-                ("", dev) if dev != None else None,
-                # 'z' is just a character that goes after "rc",
-                ("z", 0),
-            ),
-            # PEP440 local versions go before post versions
-            tuple([(type(item) == "int", item) for item in local or []]),
-            # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
-            _first_non_none(
-                ("~", post) if post != None else None,
-                ("", dev) if dev != None else None,
-                ("z", 0),
-            ),
-            # PEP440 - post release ordering: .devN, <no suffix>
-            ("", dev) if dev != None else ("~",),
-        ),
+        key = lambda: _key(self),  # buildifier: disable=uninitialized
     )
 
     return self
