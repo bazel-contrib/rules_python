@@ -621,6 +621,20 @@ def _version_gt(left, right):
     elif left_release < right_release:
         return False
 
+    if left.pre == None and right.pre == None:
+        # both are not pre-releases
+        pass
+    elif left.pre == None:
+        # only right pre-release
+        return True
+    elif right.pre == None:
+        # only right pre-release
+        return False
+    elif left.pre < right.pre:
+        return False
+    else:
+        return True
+
     if left.post == None and right.post == None:
         pass
     elif left.post == None:
@@ -669,7 +683,11 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
     else:
         dev = None
 
-    local = local or ""
+    if local:
+        local = local.lstrip("+")
+        local = tuple([int(part) if part.isdigit() else part for part in local.split(".")])
+    else:
+        local = None
 
     self = struct(
         epoch = epoch,
@@ -690,11 +708,13 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         str = lambda: norm,
         key = lambda: (
             epoch,
-            release,
+            _release,
             (
                 -1 if post == None else post,
+                pre == None,
+                pre,
                 dev == None,
-                -1 if dev == None else dev,
+                dev,
             ),
         ),
     )
