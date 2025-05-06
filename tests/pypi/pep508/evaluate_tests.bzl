@@ -303,7 +303,7 @@ _tests.append(_misc_expressions)
 def _test_ordering(env):
     want = [
         # Taken from https://peps.python.org/pep-0440/#summary-of-permitted-suffixes-and-relative-ordering
-        # "1.dev0",
+        "1.dev0",
         # "1.0.dev456",
         "1.0a1",
         "1.0a2.dev456",

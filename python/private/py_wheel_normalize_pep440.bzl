@@ -568,43 +568,7 @@ def _version_lt(left, right):
     elif left_release < right_release:
         return True
 
-    if left.post == None and right.post == None:
-        pass
-    elif left.post == None:
-        return True
-    elif right.post == None:
-        return False
-    elif left.post > right.post:
-        return False
-
-    # the release is equal, check for pre version
-    if right.pre != None:
-        if left.pre == None:
-            # PEP440: The exclusive ordered comparison <V MUST NOT allow a pre-release of
-            # the specified version unless the specified version is itself a pre-release.
-            return False
-
-        if left.pre > right.pre:
-            return False
-        elif left.pre < right.pre:
-            return True
-    elif left.pre != None:
-        return True
-
-    if right.dev != None:
-        if left.dev == None:
-            # PEP440: The exclusive ordered comparison <V MUST NOT allow a pre-release of
-            # the specified version unless the specified version is itself a pre-release.
-            return False
-
-        if left.dev > right.dev:
-            return False
-        elif left.dev < right.dev:
-            return True
-    elif left.dev != None:
-        return True
-
-    return False
+    return left.key() < right.key()
 
 def _version_gt(left, right):
     if left.epoch > right.epoch:
@@ -621,39 +585,7 @@ def _version_gt(left, right):
     elif left_release < right_release:
         return False
 
-    if left.pre == None and right.pre == None:
-        # both are not pre-releases
-        pass
-    elif left.pre == None:
-        # only right pre-release
-        return True
-    elif right.pre == None:
-        # only right pre-release
-        return False
-    elif left.pre < right.pre:
-        return False
-    else:
-        return True
-
-    if left.post == None and right.post == None:
-        pass
-    elif left.post == None:
-        return False
-    elif right.post == None:
-        return True
-    elif left.post < right.post:
-        return False
-
-    if left.dev == None and right.dev == None:
-        pass
-    elif left.dev == None:
-        return True
-    elif left.dev == None:
-        return False
-    elif left.dev < right.dev:
-        return False
-
-    return False
+    return left.key() > right.key()
 
 def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
     epoch = epoch or 0
