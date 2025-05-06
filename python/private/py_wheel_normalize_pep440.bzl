@@ -664,6 +664,8 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
                 # 'z' is just a character that goes after "rc",
                 ("z", 0),
             ),
+            # PEP440 local versions go before post versions
+            tuple([(type(item) == "int", item) for item in local or []]),
             # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
             _first_non_none(
                 ("~", post) if post != None else None,
