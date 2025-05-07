@@ -14,7 +14,7 @@ class LocalToolchainTest(unittest.TestCase):
         # repo-phase and when the test is run are roughly the same. It's
         # easy to violate this condition if there are shell-local changes
         # that wouldn't be reflected when sub-shells are run later.
-        shell_path = shutil.which("python")
+        shell_path = shutil.which("python3")
 
         # We call the interpreter and print its executable because of
         # things like pyenv: they install a shim that re-execs python.
