@@ -165,17 +165,27 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 		}
 	} else if node.Type() == sitterNodeTypeImportFromStatement {
 		from := node.Child(1).Content(p.code)
-		if strings.HasPrefix(from, ".") {
-			return true
-		}
+
+		// Derive current package as dotted path from relFilepath
+		pkgPath := strings.TrimSuffix(p.relFilepath, ".py")
+		pkgParts := strings.Split(pkgPath, string(filepath.Separator))
+		currentPkg := strings.Join(pkgParts[:len(pkgParts)-1], ".")
+
 		for j := 3; j < int(node.ChildCount()); j++ {
 			m, ok := parseImportStatement(node.Child(j), p.code)
 			if !ok {
 				continue
 			}
 			m.Filepath = p.relFilepath
-			m.From = from
-			m.Name = fmt.Sprintf("%s.%s", from, m.Name)
+
+			if from == "." {
+				// from . import X  -> current_package.X
+				m.From = currentPkg
+				m.Name = fmt.Sprintf("%s.%s", currentPkg, m.Name)
+			} else {
+				m.From = from
+				m.Name = fmt.Sprintf("%s.%s", from, m.Name)
+			}
 			p.output.Modules = append(p.output.Modules, m)
 		}
 	} else {

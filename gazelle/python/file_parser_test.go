@@ -132,6 +132,12 @@ func TestParseImportStatements(t *testing.T) {
 					LineNumber: 2,
 					From:       "foo",
 				},
+				{
+					Name:       ".abc",
+					LineNumber: 3,
+					Filepath:   "",
+					From:       "",
+				},
 			},
 		},
 	}

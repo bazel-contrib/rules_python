@@ -148,12 +148,56 @@ func (py *Resolver) Resolve(
 		modules := modulesRaw.(*treeset.Set)
 		it := modules.Iterator()
 		explainDependency := os.Getenv("EXPLAIN_DEPENDENCY")
+		// Resolve relative paths for package generation
+		isPackageGeneration := !cfg.PerFileGeneration() && !cfg.CoarseGrainedGeneration()
 		hasFatalError := false
 	MODULES_LOOP:
 		for it.Next() {
 			mod := it.Value().(module)
-			moduleParts := strings.Split(mod.Name, ".")
-			possibleModules := []string{mod.Name}
+			moduleName := mod.Name
+			// Handle relative imports like `.` or `..foo.bar`
+			if strings.HasPrefix(moduleName, ".") {
+				// If not package generation mode, skip relative imports
+				if !isPackageGeneration {
+					continue MODULES_LOOP
+				}
+				numDots := 0
+				for i := 0; i < len(moduleName); i++ {
+					if moduleName[i] == '.' {
+						numDots++
+					} else {
+						break
+					}
+				}
+
+				// Extract suffix after leading dots
+				relativeSuffix := moduleName[numDots:]
+				var relativeSuffixParts []string
+				if relativeSuffix != "" {
+					relativeSuffixParts = strings.Split(relativeSuffix, ".")
+				}
+
+				// Split current package label into parts
+				pkgParts := strings.Split(from.Pkg, "/")
+
+				if numDots > len(pkgParts) {
+					// Trying to go above the root
+					log.Printf("ERROR: Invalid relative import %q in %q: exceeds package root.", moduleName, mod.Filepath)
+					continue MODULES_LOOP
+				}
+
+				// Go up `numDots - 1` levels
+				baseParts := pkgParts
+				if numDots > 1 {
+					baseParts = pkgParts[:len(pkgParts)-(numDots-1)]
+				}
+
+				absParts := append(baseParts, relativeSuffixParts...)
+				moduleName = strings.Join(absParts, ".")
+			}
+
+			moduleParts := strings.Split(moduleName, ".")
+			possibleModules := []string{moduleName}
 			for len(moduleParts) > 1 {
 				// Iterate back through the possible imports until
 				// a match is found.
@@ -207,7 +251,7 @@ func (py *Resolver) Resolve(
 							log.Printf("Explaining dependency (%s): "+
 								"in the target %q, the file %q imports %q at line %d, "+
 								"which resolves from the third-party module %q from the wheel %q.\n",
-								explainDependency, from.String(), mod.Filepath, moduleName, mod.LineNumber, mod.Name, dep)
+								explainDependency, from.String(), mod.Filepath, moduleName, mod.Name, dep)
 						}
 						continue MODULES_LOOP
 					} else {
