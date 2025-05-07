@@ -171,7 +171,7 @@ func (py *Resolver) Resolve(
 				}
 
 				// Extract suffix after leading dots
-				relativeSuffix := moduleName[numDots:]
+				relativeSuffix := moduleName[relativeDepth:]
 				var relativeSuffixParts []string
 				if relativeSuffix != "" {
 					relativeSuffixParts = strings.Split(relativeSuffix, ".")
