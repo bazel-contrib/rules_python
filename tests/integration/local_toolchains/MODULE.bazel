@@ -28,7 +28,7 @@ local_runtime_toolchains_repo = use_repo_rule("@rules_python//python/local_toolc
 
 local_runtime_repo(
     name = "local_python3",
-    interpreter_path = "python3",
+    interpreter_path = "python",
     on_failure = "fail",
 )
 
