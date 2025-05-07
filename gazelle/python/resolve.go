@@ -148,12 +148,56 @@ func (py *Resolver) Resolve(
 		modules := modulesRaw.(*treeset.Set)
 		it := modules.Iterator()
 		explainDependency := os.Getenv("EXPLAIN_DEPENDENCY")
+		// Resolve relative paths for package generation
+		isPackageGeneration := !cfg.PerFileGeneration() && !cfg.CoarseGrainedGeneration()
 		hasFatalError := false
 	MODULES_LOOP:
 		for it.Next() {
 			mod := it.Value().(module)
-			moduleParts := strings.Split(mod.Name, ".")
-			possibleModules := []string{mod.Name}
+			moduleName := mod.Name
+			// Transform relative imports `.` or `..foo.bar` into the package path from root.
+			if strings.HasPrefix(moduleName, ".") {
+				// If not package generation mode, skip relative imports
+				if !isPackageGeneration {
+					continue MODULES_LOOP
+				}
+				relativeDepth := 0
+				for i := 0; i < len(moduleName); i++ {
+					if moduleName[i] == '.' {
+						relativeDepth++
+					} else {
+						break
+					}
+				}
+
+				// Extract suffix after leading dots
+				relativeSuffix := moduleName[relativeDepth:]
+				var relativeSuffixParts []string
+				if relativeSuffix != "" {
+					relativeSuffixParts = strings.Split(relativeSuffix, ".")
+				}
+
+				// Split current package label into parts
+				pkgParts := strings.Split(from.Pkg, "/")
+
+				if relativeDepth- 1 > len(pkgParts) {
+					// Trying to go above the root
+					log.Printf("ERROR: Invalid relative import %q in %q: exceeds package root.", moduleName, mod.Filepath)
+					continue MODULES_LOOP
+				}
+
+				// Go up `relativeDepth - 1` levels
+				baseParts := pkgParts
+				if relativeDepth > 1 {
+					baseParts = pkgParts[:len(pkgParts)-(relativeDepth-1)]
+				}
+
+				absParts := append(baseParts, relativeSuffixParts...)
+				moduleName = strings.Join(absParts, ".")
+			}
+
+			moduleParts := strings.Split(moduleName, ".")
+			possibleModules := []string{moduleName}
 			for len(moduleParts) > 1 {
 				// Iterate back through the possible imports until
 				// a match is found.
