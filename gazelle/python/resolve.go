@@ -180,12 +180,6 @@ func (py *Resolver) Resolve(
 				// Split current package label into parts
 				pkgParts := strings.Split(from.Pkg, "/")
 
-				if numDots > len(pkgParts) {
-					// Trying to go above the root
-					log.Printf("ERROR: Invalid relative import %q in %q: exceeds package root.", moduleName, mod.Filepath)
-					continue MODULES_LOOP
-				}
-
 				// Go up `numDots - 1` levels
 				baseParts := pkgParts
 				if numDots > 1 {
