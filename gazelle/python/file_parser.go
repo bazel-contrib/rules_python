@@ -175,7 +175,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 			if !ok {
 				continue
 			}
-			m.Filepath = p.relFilepath{
+			m.Filepath = p.relFilepath
 			m.From = from
 			m.Name = fmt.Sprintf("%s.%s", from, m.Name)
 			p.output.Modules = append(p.output.Modules, m)
