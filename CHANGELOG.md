@@ -91,6 +91,17 @@ END_UNRELEASED_TEMPLATE
 ### Removed
 * Nothing removed.
 
+{#1-4-1}
+## [1.4.1] - 2025-05-08
+
+[1.4.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.1
+
+{#1-4-1-fixed}
+### Fixed
+* (pypi) Fix a typo not allowing users to benefit from using the downloader when the hashes in the
+  requirements file are not present. Fixes
+  [#2863](https://github.com/bazel-contrib/rules_python/issues/2863).
+
 {#1-4-0}
 ## [1.4.0] - 2025-04-19
 
