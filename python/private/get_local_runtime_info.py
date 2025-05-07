@@ -48,6 +48,9 @@ config_vars = [
     # The platform-specific filename suffix for library files.
     # Includes the dot, e.g. `.so`
     "SHLIB_SUFFIX",
+    # A flag for whether this is a free threaded implementation.
+    # Set to t when free threading is enabled, '' or None otherwise.
+    "abi_thread",
 ]
 data.update(zip(config_vars, sysconfig.get_config_vars(*config_vars)))
 print(json.dumps(data))

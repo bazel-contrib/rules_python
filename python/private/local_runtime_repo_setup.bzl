@@ -59,7 +59,7 @@ def define_local_runtime_toolchain_impl(
     major_minor = "{}.{}".format(major, minor)
     major_minor_micro = "{}.{}".format(major_minor, micro)
 
-    version_dict = {'major': major, 'minor': minor}
+    version_dict = {"major": major, "minor": minor}
 
     cc_import(
         name = "interface",

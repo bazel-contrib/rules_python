@@ -14,6 +14,7 @@
 
 """Create a repository for a locally installed Python runtime."""
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load(":enum.bzl", "enum")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 
@@ -112,11 +113,16 @@ def _local_runtime_repo_impl(rctx):
         info["INSTSONAME"],
     ]
 
-    if repo_utils.get_platforms_os_name(rctx) == 'windows':
-        shared_lib_names.append("python{major}{minor}.lib".format(**info))
-        shared_lib_names.append("python3.lib")
+    if repo_utils.get_platforms_os_name(rctx) == "windows":
+        # Fall back to assuming no threading when no information is available
+        if info.get("abi_thread") == None:
+            info["abi_thread"] = ""
 
-        interpreter_path = interpreter_path.replace('\\', '/')
+        # Windows requires these library definitions to be linked in with the headers
+        shared_lib_names.append("python{major}{minor}{abi_thread}.lib".format(**info))
+        shared_lib_names.append("python{major}{abi_thread}.lib".format(**info))
+
+        interpreter_path = interpreter_path.replace("\\", "/")
 
     # In some cases, the value may be empty. Not clear why.
     shared_lib_names = [v for v in shared_lib_names if v]
@@ -126,7 +132,7 @@ def _local_runtime_repo_impl(rctx):
     shared_lib_dir = info["LIBDIR"]
 
     if shared_lib_dir == None:
-        shared_lib_dir = info["LIBDEST"] + "/../libs"
+        shared_lib_dir = paths.dirname(info["LIBDEST"]) + "/libs"
 
     # The specific files are symlinked instead of the whole directory
     # because it can point to a directory that has more than just

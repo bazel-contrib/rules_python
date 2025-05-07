@@ -78,6 +78,7 @@ END_UNRELEASED_TEMPLATE
   multiple times.
 * (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
   to specify the requirements.
+* (toolchains) Local toolchains now supports Windows.
 
 {#v0-0-0-added}
 ### Added
