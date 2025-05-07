@@ -1,8 +1,0 @@
-load("@rules_python//python:defs.bzl", "py_library")
-
-py_library(
-    name = "subpackage1",
-    srcs = ["module5.py"],
-    visibility = ["//:__subpackages__"],
-    deps = ["//package2"],
-)

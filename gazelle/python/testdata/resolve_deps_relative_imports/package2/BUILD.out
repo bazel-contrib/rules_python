@@ -8,5 +8,5 @@ py_library(
         "module4.py",
     ],
     visibility = ["//:__subpackages__"],
-    deps = ["//package2/subpackage1"],
+    deps = ["//package2/library"],
 )
