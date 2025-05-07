@@ -165,19 +165,19 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 		}
 	} else if node.Type() == sitterNodeTypeImportFromStatement {
 		from := node.Child(1).Content(p.code)
+		// If the import is from the current package, we don't need to add it to the modules.
+		// If the import is from a different relative package i.e. from .package1 import foo, we need to add it to the modules.
+		if from == "." {
+			return true
+		}
 		for j := 3; j < int(node.ChildCount()); j++ {
 			m, ok := parseImportStatement(node.Child(j), p.code)
 			if !ok {
 				continue
 			}
-			m.Filepath = p.relFilepath
-
-			if from == "." {
-				return true
-			} else {
-				m.From = from
-				m.Name = fmt.Sprintf("%s.%s", from, m.Name)
-			}
+			m.Filepath = p.relFilepath{
+			m.From = from
+			m.Name = fmt.Sprintf("%s.%s", from, m.Name)
 			p.output.Modules = append(p.output.Modules, m)
 		}
 	} else {
