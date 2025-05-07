@@ -83,7 +83,7 @@ def define_local_runtime_toolchain_impl(
         ),
         includes = ["include"],
         deps = select({
-            "@bazel_tools//src/conditions:windows": [":interface", ":abi3_interface"],
+            "@platforms//os:windows": [":interface", ":abi3_interface"],
             "//conditions:default": None,
         }),
     )
