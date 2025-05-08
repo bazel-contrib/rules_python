@@ -42,6 +42,7 @@ def _py_console_script_gen_impl(ctx):
     args = ctx.actions.args()
     args.add("--console-script", ctx.attr.console_script)
     args.add("--console-script-guess", ctx.attr.console_script_guess)
+    args.add("--shebang", ctx.attr.shebang)
     args.add(entry_points_txt)
     args.add(ctx.outputs.out)
 
@@ -80,6 +81,10 @@ py_console_script_gen = rule(
         "out": attr.output(
             doc = "Output file location.",
             mandatory = True,
+        ),
+        "shebang": attr.string(
+            doc = "The shebang to use for the entry point python file.",
+            default = "",
         ),
         "_tool": attr.label(
             default = ":py_console_script_gen_py",
