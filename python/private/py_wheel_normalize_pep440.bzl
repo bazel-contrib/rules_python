@@ -620,6 +620,14 @@ def _version_le(left, right):
     _right = right.key(local = False)
     return _left < _right or _version_eq(left, right)
 
+def _version_compatible(left, right):
+    # https://peps.python.org/pep-0440/#compatible-release
+    # Note, the ~= operator can be also expressed as:
+    # >= V.N, == V.*
+    head, _, _ = right.norm.partition(".")
+    right_star = parse_version("{}.*".format(head))
+    return left.ge(right) and left.eq(right_star)
+
 def _first_non_none(*args):
     for arg in args:
         if arg != None:
@@ -714,6 +722,7 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
         le = lambda x: _version_le(self, x),  # buildifier: disable=uninitialized
         ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
+        compatible = lambda x: _version_compatible(self, x),  # buildifier: disable=uninitialized
         str = lambda: norm,
         key = lambda *, local = True: _key(self, local = local),  # buildifier: disable=uninitialized
     )

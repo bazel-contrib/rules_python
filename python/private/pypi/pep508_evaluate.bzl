@@ -388,12 +388,7 @@ def _version_expr(left, op, right):
     elif op == ">=":
         return _left.ge(_right)
     elif op == "~=":
-        # https://peps.python.org/pep-0440/#compatible-release
-        # Note, the ~= operator can be also expressed as:
-        # >= V.N, == V.*
-        head, _, _ = right.partition(".")
-        _right_star = parse_version("{}.*".format(head))
-        return _left.ge(_right) and _left.eq(_right_star)
+        return _left.compatible(_right)
     else:
         return False  # Let's just ignore the invalid ops
 
