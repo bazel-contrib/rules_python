@@ -6,8 +6,10 @@ py_library(
         "__init__.py",
         "module3.py",
         "module4.py",
-        "subpackage1/module5.py",
     ],
     visibility = ["//:__subpackages__"],
-    deps = [":resolved_package"],
+    deps = [
+        ":resolved_package",
+        "//package2/subpackage1",
+    ],
 )

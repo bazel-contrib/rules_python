@@ -1,16 +1,6 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary")
 
 # gazelle:resolve py resolved_package //package2:resolved_package
-# gazelle:python_generation_mode project
-
-py_library(
-    name = "relative_imports",
-    srcs = [
-        "package1/module1.py",
-        "package1/module2.py",
-    ],
-    visibility = ["//:__subpackages__"],
-)
 
 py_binary(
     name = "relative_imports_bin",
@@ -18,7 +8,7 @@ py_binary(
     main = "__main__.py",
     visibility = ["//:__subpackages__"],
     deps = [
-        ":relative_imports",
+        "//package1",
         "//package2",
     ],
 )
