@@ -89,7 +89,7 @@ def run(
     out: pathlib.Path,
     console_script: str,
     console_script_guess: str,
-    shebang: str = "#!/usr/bin/env python3",
+    shebang: str,
 ):
     """Run the generator
 
@@ -162,7 +162,6 @@ def main():
     )
     parser.add_argument(
         "--shebang",
-        default="#!/usr/bin/env python3",
         help="The shebang to use for the entry point python file.",
     )
     parser.add_argument(
