@@ -47,6 +47,7 @@ class RunTest(unittest.TestCase):
                     out=outfile,
                     console_script=None,
                     console_script_guess="",
+                    shebang="",
                 )
 
         self.assertEqual(
@@ -76,6 +77,7 @@ class RunTest(unittest.TestCase):
                     out=outfile,
                     console_script=None,
                     console_script_guess="bar-baz",
+                    shebang="",
                 )
 
         self.assertEqual(
@@ -106,6 +108,7 @@ class RunTest(unittest.TestCase):
                     out=outfile,
                     console_script="baz",
                     console_script_guess="",
+                    shebang="",
                 )
 
         self.assertEqual(
@@ -134,12 +137,14 @@ class RunTest(unittest.TestCase):
                 out=out,
                 console_script=None,
                 console_script_guess="foo",
+                shebang="",
             )
 
             got = out.read_text()
 
         want = textwrap.dedent(
             """\
+
         import sys
 
         # See @rules_python//python/private:py_console_script_gen.py for explanation
@@ -185,6 +190,7 @@ class RunTest(unittest.TestCase):
                 out=out,
                 console_script="bar",
                 console_script_guess="",
+                shebang="",
             )
 
             got = out.read_text()
