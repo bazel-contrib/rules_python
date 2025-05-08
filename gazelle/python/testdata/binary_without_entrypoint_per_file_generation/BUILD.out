@@ -19,7 +19,10 @@ py_library(
     name = "lib2",
     srcs = ["lib2.py"],
     visibility = ["//:__subpackages__"],
-    deps = [":lib"],
+    deps = [
+        ":lib",
+        ":lib_and_main",
+    ],
 )
 
 py_binary(
