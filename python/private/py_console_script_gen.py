@@ -45,7 +45,6 @@ _ENTRY_POINTS_TXT = "entry_points.txt"
 
 _TEMPLATE = """\
 {shebang}
-
 import sys
 
 # See @rules_python//python/private:py_console_script_gen.py for explanation
