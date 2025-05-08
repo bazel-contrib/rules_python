@@ -55,9 +55,7 @@ func (*Resolver) Name() string { return languageName }
 // If nil is returned, the rule will not be indexed. If any non-nil slice is
 // returned, including an empty slice, the rule will be indexed.
 func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	// To avoid multiple labels indexing the same import,
-	// check if there is a corresponding py_library rule with the same srcs.
-	if r.Kind() == "py_binary" && !indexPyBinaryImport(r, f) {
+	if !indexPyBinaryImport(r, f) {
 		return nil
 	}
 	cfgs := c.Exts[languageName].(pythonconfig.Configs)
@@ -323,7 +321,14 @@ func convertDependencySetToExpr(set *treeset.Set) bzl.Expr {
 	return &bzl.ListExpr{List: deps}
 }
 
+// indexPyBinaryImport returns whether the corresponding py_binary rule need to be indexed.
+// To avoid multiple labels indexing the same import,
+// check if there is a corresponding py_library rule with the same srcs.
 func indexPyBinaryImport(r *rule.Rule, f *rule.File) bool {
+	// If the rule is not a py_binary, it should be indexed.
+	if r.Kind() != "py_binary" {
+		return true
+	}
 	pyBinarySrcs := r.AttrStrings("srcs")
 	if len(pyBinarySrcs) == 0 {
 		return false
