@@ -20,7 +20,6 @@ import (
 	"github.com/emirpasic/gods/sets/treeset"
 	godsutils "github.com/emirpasic/gods/utils"
 	"path/filepath"
-	"fmt"
 	"strings"
 )
 
@@ -80,9 +79,6 @@ func (t *targetBuilder) addModuleDependency(dep module) *targetBuilder {
 		// importing another module from the same package, converting to absolute imports to make
 		// dependency resolution easier
 		dep.Name = importSpecFromSrc(t.pythonProjectRoot, t.bzlPackage, fileName).Imp
-		if strings.Contains(dep.Name, "subpackage1") {
-			fmt.Printf("Added module dependency %q", dep.Name)
-		}
 	}
 	t.deps.Add(dep)
 	return t
