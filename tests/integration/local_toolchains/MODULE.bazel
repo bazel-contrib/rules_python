@@ -14,6 +14,9 @@
 module(name = "module_under_test")
 
 bazel_dep(name = "rules_python", version = "0.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "platforms", version = "0.0.11")
+
 local_path_override(
     module_name = "rules_python",
     path = "../../..",
@@ -32,6 +35,16 @@ local_runtime_repo(
 local_runtime_toolchains_repo(
     name = "local_toolchains",
     runtimes = ["local_python3"],
+    target_compatible_with = {
+        "local_python3": [
+            "HOST_CONSTRAINTS",
+        ],
+    },
+    target_settings = {
+        "local_python3": [
+            "@//:is_py_local",
+        ],
+    },
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")

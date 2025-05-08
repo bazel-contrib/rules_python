@@ -397,14 +397,14 @@ COVERAGE_ATTRS = {
     "_collect_cc_coverage": lambda: attrb.Label(
         default = "@bazel_tools//tools/test:collect_cc_coverage",
         executable = True,
-        cfg = "exec",
+        cfg = config.exec(exec_group = "test"),
     ),
     # Magic attribute to make coverage work. There's no
     # docs about this; see TestActionBuilder.java
     "_lcov_merger": lambda: attrb.Label(
         default = configuration_field(fragment = "coverage", name = "output_generator"),
         executable = True,
-        cfg = "exec",
+        cfg = config.exec(exec_group = "test"),
     ),
 }
 

@@ -54,12 +54,22 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+
+* If using the (deprecated) autodetecting/runtime_env toolchain, then the Python
+  version specified at build-time *must* match the Python version used at
+  runtime (the {obj}`--@rules_python//python/config_settings:python_version`
+  flag and the {attr}`python_version` attribute control the build-time version
+  for a target). If they don't match, dependencies won't be importable. (Such a
+  misconfiguration was unlikely to work to begin with; this is called out as an
+  FYI).
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows.
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
 * (rules) {obj}`pip_compile` now generates a `.test` target. The `_test` target is deprecated
   and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
+* (py_wheel) py_wheel always creates zip64-capable wheel zips
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -82,6 +92,11 @@ END_UNRELEASED_TEMPLATE
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
   (the default), the subprocess's stdout/stderr will be logged.
+* (toolchains) Local toolchains can be activated with custom flags. See
+  [Conditionally using local toolchains] docs for how to configure.
+* (pypi) `RULES_PYTHON_ENABLE_PIPSTAR` environment variable: when `1`, the Starlark
+  implementation of wheel METADATA parsing is used (which has improved multi-platform
+  build support).
 
 {#v0-0-0-removed}
 ### Removed

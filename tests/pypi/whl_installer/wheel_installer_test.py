@@ -72,6 +72,7 @@ class TestWhlFilegroup(unittest.TestCase):
             extras={},
             enable_implicit_namespace_pkgs=False,
             platforms=[],
+            enable_pipstar = False,
         )
 
         want_files = [
