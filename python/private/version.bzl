@@ -782,9 +782,11 @@ def version(version_str, strict = False):
     ]
 
     for p, fn in fns:
+        start = len(parser.context()["norm"])
         fn(parser)
-        parts[p] = parser.context()["norm"]
-        parser.context()["norm"] = ""  # Clear out the buffer so that it is easy to separate the fields
+        parts[p] = parser.context()["norm"][start:]
+
+    parts["norm"] = parser.context()["norm"]
 
     is_prefix = version_str.endswith(".*")
     parts["is_prefix"] = is_prefix
@@ -805,5 +807,4 @@ def version(version_str, strict = False):
         # If we fail to parse the version return None
         return None
 
-    parts["norm"] = "".join([parts[p] for p, _ in fns])
     return _new_version(**parts)
