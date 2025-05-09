@@ -55,6 +55,9 @@ func (*Resolver) Name() string { return languageName }
 // If nil is returned, the rule will not be indexed. If any non-nil slice is
 // returned, including an empty slice, the rule will be indexed.
 func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+	if !indexPyBinaryImport(r, f) {
+		return nil
+	}
 	cfgs := c.Exts[languageName].(pythonconfig.Configs)
 	cfg := cfgs[f.Pkg]
 	srcs := r.AttrStrings("srcs")
@@ -316,4 +319,30 @@ func convertDependencySetToExpr(set *treeset.Set) bzl.Expr {
 		deps[it.Index()] = &bzl.StringExpr{Value: dep}
 	}
 	return &bzl.ListExpr{List: deps}
+}
+
+// indexPyBinaryImport returns whether the corresponding py_binary rule need to be indexed.
+// To avoid multiple labels indexing the same import,
+// check if there is a corresponding py_library rule with the same srcs.
+func indexPyBinaryImport(r *rule.Rule, f *rule.File) bool {
+	// If the rule is not a py_binary, it should be indexed.
+	if r.Kind() != "py_binary" {
+		return true
+	}
+	pyBinarySrcs := r.AttrStrings("srcs")
+	if len(pyBinarySrcs) == 0 {
+		return false
+	}
+	for _, otherRule := range f.Rules {
+		if otherRule.Kind() != "py_library" {
+			continue
+		}
+		pyLibrarySrcs := otherRule.AttrStrings("srcs")
+		for _, src := range pyLibrarySrcs {
+			if src == pyBinarySrcs[0] {
+				return false
+			}
+		}
+	}
+	return true
 }
