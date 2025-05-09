@@ -44,8 +44,7 @@ import textwrap
 _ENTRY_POINTS_TXT = "entry_points.txt"
 
 _TEMPLATE = """\
-{shebang}
-import sys
+{shebang}import sys
 
 # See @rules_python//python/private:py_console_script_gen.py for explanation
 if getattr(sys.flags, "safe_path", False):
@@ -140,7 +139,7 @@ def run(
     with open(out, "w") as f:
         f.write(
             _TEMPLATE.format(
-                shebang=shebang,
+                shebang=shebang + "\n" if shebang else "",
                 module=module,
                 attr=attr,
                 entry_point=entry_point,

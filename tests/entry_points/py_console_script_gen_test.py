@@ -144,7 +144,6 @@ class RunTest(unittest.TestCase):
 
         want = textwrap.dedent(
             """\
-
         import sys
 
         # See @rules_python//python/private:py_console_script_gen.py for explanation
