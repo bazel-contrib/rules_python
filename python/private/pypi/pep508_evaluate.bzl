@@ -368,17 +368,13 @@ def _version_expr(left, op, right):
         # or `platform_release`, which vary depending on platform.
         return _env_expr(left, op, right)
 
-    if op == "!=":
+    if op == "===":
+        return _left.eqq(_right)
+    elif op == "!=":
         return _left.ne(_right)
     elif op == "==":
         # Matching of major, minor, patch only
         return _left.eq(_right)
-    elif left.endswith(".*") or right.endswith(".*"):
-        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
-            left,
-            op,
-            right,
-        ))
     elif op == "<":
         return _left.lt(_right)
     elif op == ">":

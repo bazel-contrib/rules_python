@@ -526,6 +526,14 @@ def _pad_zeros(release, n):
     release = list(release) + [0] * padding
     return tuple(release)
 
+def _version_eqq(left, right):
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "<", right))
+
+    # https://peps.python.org/pep-0440/#arbitrary-equality
+    # > simple string equality operations
+    return left.norm == right.norm
+
 def _version_eq(left, right):
     if left.is_prefix and right.is_prefix:
         fail("Invalid comparison: both versions cannot be prefix matching")
@@ -552,7 +560,21 @@ def _version_eq(left, right):
         ##and left.local == right.local
     )
 
+def _version_ne(left, right):
+    return not _version_eq(left, right)
+
+def _prefix_err(left, op, right):
+    if left.is_prefix or right.is_prefix:
+        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
+            left,
+            op,
+            right,
+        ))
+
 def _version_lt(left, right):
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "<", right))
+
     if left.epoch > right.epoch:
         return False
     elif left.epoch < right.epoch:
@@ -577,6 +599,9 @@ def _version_lt(left, right):
         return False
 
 def _version_gt(left, right):
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, ">", right))
+
     if left.epoch > right.epoch:
         return True
     elif left.epoch < right.epoch:
@@ -607,6 +632,9 @@ def _version_gt(left, right):
         return False
 
 def _version_ge(left, right):
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, ">=", right))
+
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
     _left = left.key(local = False)
@@ -614,6 +642,9 @@ def _version_ge(left, right):
     return _left > _right or _version_eq(left, right)
 
 def _version_le(left, right):
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "<=", right))
+
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
     _left = left.key(local = False)
@@ -621,6 +652,9 @@ def _version_le(left, right):
     return _left < _right or _version_eq(left, right)
 
 def _version_compatible(left, right):
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "~=", right))
+
     # https://peps.python.org/pep-0440/#compatible-release
     # Note, the ~= operator can be also expressed as:
     # >= V.N, == V.*
@@ -717,11 +751,12 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
         is_prefix = is_prefix,
         norm = norm,
         eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
-        ne = lambda x: not _version_eq(self, x),  # buildifier: disable=uninitialized
-        lt = lambda x: _version_lt(self, x),  # buildifier: disable=uninitialized
+        eqq = lambda x: _version_eqq(self, x),  # buildifier: disable=uninitialized
+        ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
         gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
         le = lambda x: _version_le(self, x),  # buildifier: disable=uninitialized
-        ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
+        lt = lambda x: _version_lt(self, x),  # buildifier: disable=uninitialized
+        ne = lambda x: _version_ne(self, x),  # buildifier: disable=uninitialized
         compatible = lambda x: _version_compatible(self, x),  # buildifier: disable=uninitialized
         str = lambda: norm,
         key = lambda *, local = True: _key(self, local = local),  # buildifier: disable=uninitialized
