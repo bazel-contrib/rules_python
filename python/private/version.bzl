@@ -544,6 +544,7 @@ def _parse(version_str, strict = True):
         parts[key] = parser.context()["norm"][start:]
     parts["norm"] = parser.context()["norm"]
 
+    # TODO @aignas 2025-05-09: move the `is_prefix` handling to `accept_release`
     if is_prefix and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
         if strict:
             fail("local version part has been obtained, but only public segments can have prefix matches")
@@ -582,6 +583,58 @@ def version(version_str, strict = False):
 
     return _new_version(**parts)
 
+def _parse_epoch(value):
+    if not value:
+        return 0
+
+    return int(value)
+
+def _parse_release(value):
+    return tuple([int(d) for d in value.split(".")])
+
+def _parse_local(value):
+    if not value:
+        return None
+
+    local = value.lstrip("+")
+
+    # If the part is numerical, handle it as a number
+    return tuple([int(part) if part.isdigit() else part for part in local.split(".")])
+
+def _parse_dev(value):
+    if not value:
+        return None
+
+    if not value.startswith(".dev"):
+        fail("dev release identifier must start with '.dev', got: {}".format(value))
+    dev = int(value[len(".dev"):])
+
+    # Empty string goes first when comparing
+    return ("", dev)
+
+def _parse_pre(value):
+    if not value:
+        return None
+
+    if value.startswith("rc"):
+        prefix = "rc"
+    else:
+        prefix = value[0]
+
+    return (prefix, int(value[len(prefix):]))
+
+def _parse_post(value):
+    if not value:
+        return None
+
+    if not value.startswith(".post"):
+        fail("post release identifier must start with '.post', got: {}".format(value))
+    post = int(value[len(".post"):])
+
+    # We choose `~` since almost all of the ASCII characters will be before
+    # it. Use `ord` and `chr` functions to find a good value.
+    return ("~", post)
+
 def _new_version(
         *,
         norm,
@@ -592,55 +645,13 @@ def _new_version(
         dev = "",
         local = "",
         is_prefix = False):
-    epoch = epoch or 0
-    _release = tuple([int(d) for d in release.split(".")])
-
-    if pre:
-        if pre.startswith("rc"):
-            prefix = "rc"
-        else:
-            prefix = pre[0]
-
-        pre = (prefix, int(pre[len(prefix):]))
-    else:
-        pre = None
-
-    if post:
-        if not post.startswith(".post"):
-            fail("post release identifier must start with '.post', got: {}".format(post))
-        post = int(post[len(".post"):])
-
-        # We choose `~` since almost all of the ASCII characters will be before
-        # it. Use `ord` and `chr` functions to find a good value.
-        post = ("~", post)
-    else:
-        post = None
-
-    if dev:
-        if not dev.startswith(".dev"):
-            fail("dev release identifier must start with '.dev', got: {}".format(dev))
-        dev = int(dev[len(".dev"):])
-
-        # Empty string goes first when comparing
-        dev = ("", dev)
-    else:
-        dev = None
-
-    if local:
-        local = local.lstrip("+")
-
-        # If the part is numerical, handle it as a number
-        local = tuple([int(part) if part.isdigit() else part for part in local.split(".")])
-    else:
-        local = None
-
     self = struct(
-        epoch = epoch,
-        release = _release,
-        pre = pre,
-        post = post,
-        dev = dev,
-        local = local,
+        epoch = _parse_epoch(epoch),
+        release = _parse_release(release),
+        pre = _parse_pre(pre),
+        post = _parse_post(post),
+        dev = _parse_dev(dev),
+        local = _parse_local(local),
         is_prefix = is_prefix,
         norm = norm,
         eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
@@ -652,7 +663,7 @@ def _new_version(
         ne = lambda x: _version_ne(self, x),  # buildifier: disable=uninitialized
         compatible = lambda x: _version_compatible(self, x),  # buildifier: disable=uninitialized
         str = lambda: norm,
-        key = lambda *, local = True: _key(self, local = local),  # buildifier: disable=uninitialized
+        key = lambda *, local = True: _version_key(self, local = local),  # buildifier: disable=uninitialized
     )
 
     return self
@@ -665,15 +676,25 @@ def _pad_zeros(release, n):
     release = list(release) + [0] * padding
     return tuple(release)
 
-def _version_eqq(left, right):
+def _prefix_err(left, op, right):
     if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, "<", right))
+        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
+            left.norm,
+            op,
+            right.norm,
+        ))
+
+def _version_eqq(left, right):
+    """=== operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "===", right))
 
     # https://peps.python.org/pep-0440/#arbitrary-equality
     # > simple string equality operations
     return left.norm == right.norm
 
 def _version_eq(left, right):
+    """== operator"""
     if left.is_prefix and right.is_prefix:
         fail("Invalid comparison: both versions cannot be prefix matching")
     if left.is_prefix:
@@ -699,18 +720,24 @@ def _version_eq(left, right):
         ##and left.local == right.local
     )
 
+def _version_compatible(left, right):
+    """~= operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "~=", right))
+
+    # https://peps.python.org/pep-0440/#compatible-release
+    # Note, the ~= operator can be also expressed as:
+    # >= V.N, == V.*
+    head, _, _ = right.norm.partition(".")
+    right_star = version("{}.*".format(head))
+    return _version_ge(left, right) and _version_eq(left, right_star)
+
 def _version_ne(left, right):
+    """!= operator"""
     return not _version_eq(left, right)
 
-def _prefix_err(left, op, right):
-    if left.is_prefix or right.is_prefix:
-        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
-            left.str(),
-            op,
-            right.str(),
-        ))
-
 def _version_lt(left, right):
+    """< operator"""
     if left.is_prefix or right.is_prefix:
         fail(_prefix_err(left, "<", right))
 
@@ -738,6 +765,7 @@ def _version_lt(left, right):
         return False
 
 def _version_gt(left, right):
+    """> operator"""
     if left.is_prefix or right.is_prefix:
         fail(_prefix_err(left, ">", right))
 
@@ -770,38 +798,29 @@ def _version_gt(left, right):
         # False anyway.
         return False
 
-def _version_ge(left, right):
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, ">=", right))
-
-    # PEP440: simple order check
-    # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
-    _left = left.key(local = False)
-    _right = right.key(local = False)
-    return _left > _right or _version_eq(left, right)
-
 def _version_le(left, right):
+    """<= operator"""
     if left.is_prefix or right.is_prefix:
         fail(_prefix_err(left, "<=", right))
 
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
-    _left = left.key(local = False)
-    _right = right.key(local = False)
+    _left = _version_key(left, local = False)
+    _right = _version_key(right, local = False)
     return _left < _right or _version_eq(left, right)
 
-def _version_compatible(left, right):
+def _version_ge(left, right):
+    """>= operator"""
     if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, "~=", right))
+        fail(_prefix_err(left, ">=", right))
 
-    # https://peps.python.org/pep-0440/#compatible-release
-    # Note, the ~= operator can be also expressed as:
-    # >= V.N, == V.*
-    head, _, _ = right.norm.partition(".")
-    right_star = version("{}.*".format(head))
-    return left.ge(right) and left.eq(right_star)
+    # PEP440: simple order check
+    # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
+    _left = _version_key(left, local = False)
+    _right = _version_key(right, local = False)
+    return _left > _right or _version_eq(left, right)
 
-def _key(self, *, local, release_key = ("z",)):
+def _version_key(self, *, local, release_key = ("z",)):
     """This function returns a tuple that can be used in 'sorted' calls.
 
     This implements the PEP440 version sorting.
