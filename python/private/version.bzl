@@ -653,20 +653,30 @@ def _new_version(
         dev = _parse_dev(dev),
         local = _parse_local(local),
         is_prefix = is_prefix,
-        norm = norm,
-        eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
-        eqq = lambda x: _version_eqq(self, x),  # buildifier: disable=uninitialized
-        ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
-        gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
-        le = lambda x: _version_le(self, x),  # buildifier: disable=uninitialized
-        lt = lambda x: _version_lt(self, x),  # buildifier: disable=uninitialized
-        ne = lambda x: _version_ne(self, x),  # buildifier: disable=uninitialized
-        compatible = lambda x: _version_compatible(self, x),  # buildifier: disable=uninitialized
-        str = lambda: norm,
-        key = lambda *, local = True: _version_key(self, local = local),  # buildifier: disable=uninitialized
+        string = norm,
     )
 
-    return self
+    public = struct(
+        eq = mkmethod(self, _version_eq),
+        eqq = mkmethod(self, _version_eqq),
+        ge = mkmethod(self, _version_ge),
+        gt = mkmethod(self, _version_gt),
+        le = mkmethod(self, _version_le),
+        lt = mkmethod(self, _version_lt),
+        ne = mkmethod(self, _version_ne),
+        compatible = mkmethod(self, _version_compatible),
+        key = mkmethod(self, _version_key),
+        epoch = self.epoch,
+        release = self.release,
+        pre = self.pre,
+        post = self.post,
+        dev = self.dev,
+        local = self.local,
+        is_prefix = self.is_prefix,
+        string = norm,
+    )
+
+    return public
 
 def _pad_zeros(release, n):
     padding = n - len(release)
@@ -679,9 +689,9 @@ def _pad_zeros(release, n):
 def _prefix_err(left, op, right):
     if left.is_prefix or right.is_prefix:
         fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
-            left.norm,
+            left.string,
             op,
-            right.norm,
+            right.string,
         ))
 
 def _version_eqq(left, right):
@@ -691,16 +701,16 @@ def _version_eqq(left, right):
 
     # https://peps.python.org/pep-0440/#arbitrary-equality
     # > simple string equality operations
-    return left.norm == right.norm
+    return left.string == right.string
 
 def _version_eq(left, right):
     """== operator"""
     if left.is_prefix and right.is_prefix:
         fail("Invalid comparison: both versions cannot be prefix matching")
     if left.is_prefix:
-        return right.norm.startswith("{}.".format(left.norm))
+        return right.string.startswith("{}.".format(left.string))
     if right.is_prefix:
-        return left.norm.startswith("{}.".format(right.norm))
+        return left.string.startswith("{}.".format(right.string))
 
     if left.epoch != right.epoch:
         return False
@@ -728,9 +738,15 @@ def _version_compatible(left, right):
     # https://peps.python.org/pep-0440/#compatible-release
     # Note, the ~= operator can be also expressed as:
     # >= V.N, == V.*
-    head, _, _ = right.norm.partition(".")
-    right_star = version("{}.*".format(head))
-    return _version_ge(left, right) and _version_eq(left, right_star)
+
+    right_star = ".".join([str(d) for d in right.release[:-1]])
+    if right_star:
+        right_star = "{}.".format(right_star)
+
+    # TODO @aignas 2025-05-09: more tests:
+    #   epoch
+    #   negative tests
+    return _version_ge(left, right) and left.string.startswith(right_star)
 
 def _version_ne(left, right):
     """!= operator"""
@@ -820,11 +836,12 @@ def _version_ge(left, right):
     _right = _version_key(right, local = False)
     return _left > _right or _version_eq(left, right)
 
-def _version_key(self, *, local, release_key = ("z",)):
+def _version_key(self, *, local = True):
     """This function returns a tuple that can be used in 'sorted' calls.
 
     This implements the PEP440 version sorting.
     """
+    release_key = ("z",)
     local = self.local if local else []
     local = local or []
 
