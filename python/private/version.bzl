@@ -581,7 +581,16 @@ def version(version_str, strict = False):
     if not parts:
         return None
 
-    return _new_version(**parts)
+    return _new_version(
+        epoch = _parse_epoch(parts["epoch"]),
+        release = _parse_release(parts["release"]),
+        pre = _parse_pre(parts["pre"]),
+        post = _parse_post(parts["post"]),
+        dev = _parse_dev(parts["dev"]),
+        local = _parse_local(parts["local"]),
+        string = parts["norm"],
+        is_prefix = parts["is_prefix"],
+    )
 
 def _parse_epoch(value):
     if not value:
@@ -635,48 +644,24 @@ def _parse_post(value):
     # it. Use `ord` and `chr` functions to find a good value.
     return ("~", post)
 
-def _new_version(
-        *,
-        norm,
-        epoch = 0,
-        release,
-        pre = "",
-        post = "",
-        dev = "",
-        local = "",
-        is_prefix = False):
-    self = struct(
-        epoch = _parse_epoch(epoch),
-        release = _parse_release(release),
-        pre = _parse_pre(pre),
-        post = _parse_post(post),
-        dev = _parse_dev(dev),
-        local = _parse_local(local),
-        is_prefix = is_prefix,
-        string = norm,
-    )
+def _new_version(**kwargs):
+    self = struct(**kwargs)
 
-    public = struct(
+    return struct(
+        # methods, keep sorted
+        compatible = mkmethod(self, _version_compatible),
         eq = mkmethod(self, _version_eq),
         eqq = mkmethod(self, _version_eqq),
         ge = mkmethod(self, _version_ge),
         gt = mkmethod(self, _version_gt),
+        key = mkmethod(self, _version_key),
         le = mkmethod(self, _version_le),
         lt = mkmethod(self, _version_lt),
         ne = mkmethod(self, _version_ne),
-        compatible = mkmethod(self, _version_compatible),
-        key = mkmethod(self, _version_key),
-        epoch = self.epoch,
-        release = self.release,
-        pre = self.pre,
-        post = self.post,
-        dev = self.dev,
-        local = self.local,
-        is_prefix = self.is_prefix,
-        string = norm,
-    )
 
-    return public
+        # attrs are the same as self
+        **kwargs
+    )
 
 def _pad_zeros(release, n):
     padding = n - len(release)
