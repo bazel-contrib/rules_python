@@ -97,7 +97,7 @@ def run(
         out: The output file.
         console_script: The console_script entry in the entry_points.txt file.
         console_script_guess: The string used for guessing the console_script if it is not provided.
-        shebang: The shebang to use for the entry point python file. Defaults to "#!/usr/bin/env python3".
+        shebang: The shebang to use for the entry point python file. Defaults to empty string (no shebang).
     """
     config = EntryPointsParser()
     config.read(entry_points)
