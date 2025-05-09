@@ -503,20 +503,66 @@ def normalize_pep440(version):
     Returns:
       string containing the normalized version.
     """
-    parser = _new(version.strip())  # PEP 440: Leading and Trailing Whitespace
+    return _parse(version, strict = True)["norm"]
+
+def _parse(version_str, strict = True):
+    """Escape the version component of a filename.
+
+    See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
+    and https://peps.python.org/pep-0440/
+
+    Args:
+      version_str: version string to be normalized according to PEP 440.
+      strict: fail if the version is invalid, defaults to True.
+
+    Returns:
+      string containing the normalized version.
+    """
+    if strict:
+        version_str = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
+        is_prefix = False
+    else:
+        version_str = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
+        is_prefix = version_str.endswith(".*")
+        version_str = version_str.strip(" .*")  # PEP 440: Leading and Trailing Whitespace and ".*"
+
+    parser = _new(version_str)
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
-    accept_epoch(parser)
-    accept_release(parser)
-    accept_prerelease(parser)
-    accept_postrelease(parser)
-    accept_devrelease(parser)
-    accept_local(parser)
+    fns = [
+        ("epoch", accept_epoch),
+        ("release", accept_release),
+        ("pre", accept_prerelease),
+        ("post", accept_postrelease),
+        ("dev", accept_devrelease),
+        ("local", accept_local),
+    ]
+
+    parts = {
+        "is_prefix": is_prefix,
+    }
+    for key, fn in fns:
+        start = len(parser.context()["norm"])
+        fn(parser)
+        parts[key] = parser.context()["norm"][start:]
+    parts["norm"] = parser.context()["norm"]
+
+    if is_prefix and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
+        if strict:
+            fail("local version part has been obtained, but only public segments can have prefix matches")
+
+        # https://peps.python.org/pep-0440/#public-version-identifiers
+        return None
+
     if parser.input[parser.context()["start"]:]:
-        fail(
-            "Failed to parse PEP 440 version identifier '%s'." % parser.input,
-            "Parse error at '%s'" % parser.input[parser.context()["start"]:],
-        )
-    return parser.context()["norm"]
+        if strict:
+            fail(
+                "Failed to parse PEP 440 version identifier '%s'." % parser.input,
+                "Parse error at '%s'" % parser.input[parser.context()["start"]:],
+            )
+
+        return None
+
+    return parts
 
 def version(version_str, strict = False):
     """Parse a PEP4408 compliant version
@@ -532,44 +578,8 @@ def version(version_str, strict = False):
       string containing the normalized version.
     """
 
-    parser = _new(version_str.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
-
-    accept(parser, _is("v"), "")  # PEP 440: Preceding v character
-
-    parts = {}
-    fns = [
-        ("epoch", accept_epoch),
-        ("release", accept_release),
-        ("pre", accept_prerelease),
-        ("post", accept_postrelease),
-        ("dev", accept_devrelease),
-        ("local", accept_local),
-    ]
-
-    for p, fn in fns:
-        start = len(parser.context()["norm"])
-        fn(parser)
-        parts[p] = parser.context()["norm"][start:]
-
-    parts["norm"] = parser.context()["norm"]
-
-    is_prefix = version_str.endswith(".*")
-    parts["is_prefix"] = is_prefix
-    if is_prefix and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
-        if strict:
-            fail("local version part has been obtained, but only public segments can have prefix matches")
-
-        # https://peps.python.org/pep-0440/#public-version-identifiers
-        return None
-
-    if parser.input[parser.context()["start"]:]:
-        if strict:
-            fail(
-                "Failed to parse PEP 440 version identifier '%s'." % parser.input,
-                "Parse error at '%s'" % parser.input[parser.context()["start"]:],
-            )
-
-        # If we fail to parse the version return None
+    parts = _parse(version_str, strict = strict)
+    if not parts:
         return None
 
     return _new_version(**parts)
@@ -688,9 +698,9 @@ def _version_ne(left, right):
 def _prefix_err(left, op, right):
     if left.is_prefix or right.is_prefix:
         fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
-            left,
+            left.str(),
             op,
-            right,
+            right.str(),
         ))
 
 def _version_lt(left, right):
