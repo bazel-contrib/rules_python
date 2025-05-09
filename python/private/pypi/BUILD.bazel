@@ -232,7 +232,7 @@ bzl_library(
     srcs = ["pep508_env.bzl"],
     deps = [
         ":pep508_platform_bzl",
-        "//python/private:py_wheel_normalize_pep440_bzl",
+        "//python/private:version_bzl",
     ],
 )
 

@@ -16,10 +16,7 @@
 """
 
 load("//python/private:enum.bzl", "enum")
-load("//python/private:py_wheel_normalize_pep440.bzl", "parse_version")
-
-# TODO @aignas 2025-05-06: this is exposed for tests only
-version = parse_version
+load("//python/private:version.bzl", "version")
 
 # The expression parsing and resolution for the PEP508 is below
 #
@@ -348,20 +345,8 @@ def _env_expr(left, op, right):
 
 def _version_expr(left, op, right):
     """Evaluate a version comparison expression"""
-    if op == "===":
-        # https://peps.python.org/pep-0440/#arbitrary-equality
-        # > simple string equality operations
-        return _env_expr(left, "==", right)
-
-    if left.endswith(".*") and right.endswith(".*"):
-        fail("PEP440: only one of the sides can have '.*' suffix: {} {} {}".format(
-            left,
-            op,
-            right,
-        ))
-
-    _left = parse_version(left)
-    _right = parse_version(right)
+    _left = version(left)
+    _right = version(right)
     if _left == None or _right == None:
         # Per spec, if either can't be normalized to a version, then
         # fallback to simple string comparison. Usually this is `platform_version`

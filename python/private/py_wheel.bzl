@@ -16,8 +16,8 @@
 
 load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
-load(":py_wheel_normalize_pep440.bzl", "normalize_pep440")
 load(":stamp.bzl", "is_stamping_enabled")
+load(":version.bzl", "normalize_pep440")
 
 PyWheelInfo = provider(
     doc = "Information about a wheel produced by `py_wheel`",

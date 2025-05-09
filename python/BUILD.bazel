@@ -93,9 +93,9 @@ bzl_library(
         "//python/private:bzlmod_enabled_bzl",
         "//python/private:py_package.bzl",
         "//python/private:py_wheel_bzl",
-        "//python/private:py_wheel_normalize_pep440.bzl",
         "//python/private:stamp_bzl",
         "//python/private:util_bzl",
+        "//python/private:version.bzl",
         "@bazel_skylib//rules:native_binary",
     ],
 )

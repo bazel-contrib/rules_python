@@ -659,7 +659,7 @@ def _version_compatible(left, right):
     # Note, the ~= operator can be also expressed as:
     # >= V.N, == V.*
     head, _, _ = right.norm.partition(".")
-    right_star = parse_version("{}.*".format(head))
+    right_star = version("{}.*".format(head))
     return left.ge(right) and left.eq(right_star)
 
 def _first_non_none(*args):
@@ -764,23 +764,21 @@ def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "
 
     return self
 
-def parse_version(version, strict = False):
+def version(version_str, strict = False):
     """Parse a PEP4408 compliant version
-
-    TODO @aignas 2025-05-06: where should this go?
 
     See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
     and https://peps.python.org/pep-0440/
 
     Args:
-      version: version string to be normalized according to PEP 440.
+      version_str: version string to be normalized according to PEP 440.
       strict: fail if the version is invalid.
 
     Returns:
       string containing the normalized version.
     """
 
-    parser = _new(version.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
+    parser = _new(version_str.strip(" " if strict else " .*"))  # PEP 440: Leading and Trailing Whitespace and .*
 
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
 
@@ -799,7 +797,7 @@ def parse_version(version, strict = False):
         parts[p] = parser.context()["norm"]
         parser.context()["norm"] = ""  # Clear out the buffer so that it is easy to separate the fields
 
-    is_prefix = version.endswith(".*")
+    is_prefix = version_str.endswith(".*")
     parts["is_prefix"] = is_prefix
     if is_prefix and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
         if strict:
