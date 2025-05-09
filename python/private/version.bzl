@@ -662,13 +662,6 @@ def _version_compatible(left, right):
     right_star = version("{}.*".format(head))
     return left.ge(right) and left.eq(right_star)
 
-def _first_non_none(*args):
-    for arg in args:
-        if arg != None:
-            return arg
-
-    return None
-
 def _key(self, *, local, release_key = ("z",)):
     """This function returns a tuple that can be used in 'sorted' calls.
 
@@ -685,15 +678,11 @@ def _key(self, *, local, release_key = ("z",)):
         # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
         # We choose to first match the pre-release, then post release, then dev and
         # then stable
-        _first_non_none(self.pre, self.post, self.dev, release_key),
+        self.pre or self.post or self.dev or release_key,
         # PEP440 local versions go before post versions
         tuple([(type(item) == "int", item) for item in local]),
         # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
-        _first_non_none(
-            self.post,
-            self.dev,
-            release_key,
-        ),
+        self.post or self.dev or release_key,
         # PEP440 - post release ordering: .devN, <no suffix>
         self.dev or release_key,
     )
