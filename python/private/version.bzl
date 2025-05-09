@@ -518,11 +518,10 @@ def _parse(version_str, strict = True):
     Returns:
       string containing the normalized version.
     """
-    if strict:
-        version_str = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
-        is_prefix = False
-    else:
-        version_str = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
+    version_str = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
+    is_prefix = False
+
+    if not strict:
         is_prefix = version_str.endswith(".*")
         version_str = version_str.strip(" .*")  # PEP 440: Leading and Trailing Whitespace and ".*"
 
