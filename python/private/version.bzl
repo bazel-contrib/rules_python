@@ -574,6 +574,72 @@ def version(version_str, strict = False):
 
     return _new_version(**parts)
 
+def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
+    epoch = epoch or 0
+    _release = tuple([int(d) for d in release.split(".")])
+
+    if pre:
+        if pre.startswith("rc"):
+            prefix = "rc"
+        else:
+            prefix = pre[0]
+
+        pre = (prefix, int(pre[len(prefix):]))
+    else:
+        pre = None
+
+    if post:
+        if not post.startswith(".post"):
+            fail("post release identifier must start with '.post', got: {}".format(post))
+        post = int(post[len(".post"):])
+
+        # We choose `~` since almost all of the ASCII characters will be before
+        # it. Use `ord` and `chr` functions to find a good value.
+        post = ("~", post)
+    else:
+        post = None
+
+    if dev:
+        if not dev.startswith(".dev"):
+            fail("dev release identifier must start with '.dev', got: {}".format(dev))
+        dev = int(dev[len(".dev"):])
+
+        # Empty string goes first when comparing
+        dev = ("", dev)
+    else:
+        dev = None
+
+    if local:
+        local = local.lstrip("+")
+
+        # If the part is numerical, handle it as a number
+        local = tuple([int(part) if part.isdigit() else part for part in local.split(".")])
+    else:
+        local = None
+
+    self = struct(
+        epoch = epoch,
+        release = _release,
+        pre = pre,
+        post = post,
+        dev = dev,
+        local = local,
+        is_prefix = is_prefix,
+        norm = norm,
+        eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
+        eqq = lambda x: _version_eqq(self, x),  # buildifier: disable=uninitialized
+        ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
+        gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
+        le = lambda x: _version_le(self, x),  # buildifier: disable=uninitialized
+        lt = lambda x: _version_lt(self, x),  # buildifier: disable=uninitialized
+        ne = lambda x: _version_ne(self, x),  # buildifier: disable=uninitialized
+        compatible = lambda x: _version_compatible(self, x),  # buildifier: disable=uninitialized
+        str = lambda: norm,
+        key = lambda *, local = True: _key(self, local = local),  # buildifier: disable=uninitialized
+    )
+
+    return self
+
 def _pad_zeros(release, n):
     padding = n - len(release)
     if padding <= 0:
@@ -742,69 +808,3 @@ def _key(self, *, local, release_key = ("z",)):
         # PEP440 - post release ordering: .devN, <no suffix>
         self.dev or release_key,
     )
-
-def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
-    epoch = epoch or 0
-    _release = tuple([int(d) for d in release.split(".")])
-
-    if pre:
-        if pre.startswith("rc"):
-            prefix = "rc"
-        else:
-            prefix = pre[0]
-
-        pre = (prefix, int(pre[len(prefix):]))
-    else:
-        pre = None
-
-    if post:
-        if not post.startswith(".post"):
-            fail("post release identifier must start with '.post', got: {}".format(post))
-        post = int(post[len(".post"):])
-
-        # We choose `~` since almost all of the ASCII characters will be before
-        # it. Use `ord` and `chr` functions to find a good value.
-        post = ("~", post)
-    else:
-        post = None
-
-    if dev:
-        if not dev.startswith(".dev"):
-            fail("dev release identifier must start with '.dev', got: {}".format(dev))
-        dev = int(dev[len(".dev"):])
-
-        # Empty string goes first when comparing
-        dev = ("", dev)
-    else:
-        dev = None
-
-    if local:
-        local = local.lstrip("+")
-
-        # If the part is numerical, handle it as a number
-        local = tuple([int(part) if part.isdigit() else part for part in local.split(".")])
-    else:
-        local = None
-
-    self = struct(
-        epoch = epoch,
-        release = _release,
-        pre = pre,
-        post = post,
-        dev = dev,
-        local = local,
-        is_prefix = is_prefix,
-        norm = norm,
-        eq = lambda x: _version_eq(self, x),  # buildifier: disable=uninitialized
-        eqq = lambda x: _version_eqq(self, x),  # buildifier: disable=uninitialized
-        ge = lambda x: _version_ge(self, x),  # buildifier: disable=uninitialized
-        gt = lambda x: _version_gt(self, x),  # buildifier: disable=uninitialized
-        le = lambda x: _version_le(self, x),  # buildifier: disable=uninitialized
-        lt = lambda x: _version_lt(self, x),  # buildifier: disable=uninitialized
-        ne = lambda x: _version_ne(self, x),  # buildifier: disable=uninitialized
-        compatible = lambda x: _version_compatible(self, x),  # buildifier: disable=uninitialized
-        str = lambda: norm,
-        key = lambda *, local = True: _key(self, local = local),  # buildifier: disable=uninitialized
-    )
-
-    return self
