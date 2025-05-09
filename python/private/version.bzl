@@ -535,7 +535,6 @@ def _parse(version_str, strict = True):
         ("dev", accept_devrelease),
         ("local", accept_local),
     ]
-
     parts = {
         "is_prefix": is_prefix,
     }
@@ -583,7 +582,16 @@ def version(version_str, strict = False):
 
     return _new_version(**parts)
 
-def _new_version(*, epoch = 0, release, pre = "", post = "", dev = "", local = "", is_prefix = False, norm):
+def _new_version(
+        *,
+        epoch = 0,
+        release,
+        pre = "",
+        post = "",
+        dev = "",
+        local = "",
+        is_prefix = False,
+        norm):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
 
