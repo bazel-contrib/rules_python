@@ -584,14 +584,14 @@ def version(version_str, strict = False):
 
 def _new_version(
         *,
+        norm,
         epoch = 0,
         release,
         pre = "",
         post = "",
         dev = "",
         local = "",
-        is_prefix = False,
-        norm):
+        is_prefix = False):
     epoch = epoch or 0
     _release = tuple([int(d) for d in release.split(".")])
 
