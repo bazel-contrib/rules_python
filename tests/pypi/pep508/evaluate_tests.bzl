@@ -338,6 +338,7 @@ def _test_ordering(env):
         "1.0.post456",
         "1.0.15",
         "1.1.dev1",
+        "1!0.1",
     ]
 
     for lower, higher in zip(want[:-1], want[1:]):

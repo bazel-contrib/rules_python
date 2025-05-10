@@ -596,7 +596,10 @@ def _parse_epoch(value):
     if not value:
         return 0
 
-    return int(value)
+    if not value.endswith("!"):
+        fail("epoch string segment needs to end with '!', got: {}".format(value))
+
+    return int(value[:-1])
 
 def _parse_release(value):
     return tuple([int(d) for d in value.split(".")])
