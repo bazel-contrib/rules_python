@@ -672,7 +672,7 @@ def _prefix_err(left, op, right):
             right.string,
         ))
 
-def _version_eqq(left, right):
+def _version_eeq(left, right):
     """=== operator"""
     if left.is_prefix or right.is_prefix:
         fail(_prefix_err(left, "===", right))
@@ -846,7 +846,7 @@ version = struct(
     key = _version_key,
     is_compatible = _version_compatible,
     is_eq = _version_eq,
-    is_eeq = _version_eqq,
+    is_eeq = _version_eeq,
     is_ge = _version_ge,
     is_gt = _version_gt,
     is_le = _version_le,
