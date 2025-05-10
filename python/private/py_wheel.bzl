@@ -16,8 +16,8 @@
 
 load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
-load(":py_wheel_normalize_pep440.bzl", "normalize_pep440")
 load(":stamp.bzl", "is_stamping_enabled")
+load(":version.bzl", "version")
 
 PyWheelInfo = provider(
     doc = "Information about a wheel produced by `py_wheel`",
@@ -306,11 +306,11 @@ def _input_file_to_arg(input_file):
 def _py_wheel_impl(ctx):
     abi = _replace_make_variables(ctx.attr.abi, ctx)
     python_tag = _replace_make_variables(ctx.attr.python_tag, ctx)
-    version = _replace_make_variables(ctx.attr.version, ctx)
+    version_str = _replace_make_variables(ctx.attr.version, ctx)
 
     filename_segments = [
         _escape_filename_distribution_name(ctx.attr.distribution),
-        normalize_pep440(version),
+        version.normalize(version_str),
         _escape_filename_segment(python_tag),
         _escape_filename_segment(abi),
         _escape_filename_segment(ctx.attr.platform),
@@ -343,7 +343,7 @@ def _py_wheel_impl(ctx):
 
     args = ctx.actions.args()
     args.add("--name", ctx.attr.distribution)
-    args.add("--version", version)
+    args.add("--version", version_str)
     args.add("--python_tag", python_tag)
     args.add("--abi", abi)
     args.add("--platform", ctx.attr.platform)
