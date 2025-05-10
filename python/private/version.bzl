@@ -556,7 +556,7 @@ def _parse(version_str, strict = True):
 def parse(version_str, strict = False):
     """Parse a PEP4408 compliant version.
 
-    This is similar to `normalize_pep440`, but it parsers individual components to to
+    This is similar to `normalize_pep440`, but it parses individual components to
     comparable types.
 
     Args:
