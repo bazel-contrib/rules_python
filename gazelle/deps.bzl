@@ -183,10 +183,11 @@ def go_deps():
         version = "v0.0.0-20190812154241-14fe0d1b01d4",
     )
     go_repository(
-        name = "com_github_dougthor42_go_tree_sitter",
-        importpath = "github.com/dougthor42/go-tree-sitter",
-        sum = "h1:b9s96BulIARx0konX36sJ5oZhWvAvjQBBntxp1eUukQ=",
-        version = "v0.0.0-20241210060307-2737e1d0de6b",
+        name = "com_github_smacker_go_tree_sitter",
+        commit = "71e8858be7ad43fb866e2daabe83e95e6eff91bd",
+        importpath = "github.com/smacker/go-tree-sitter",
+        remote = "https://github.com/dougthor42/go-tree-sitter",
+        vcs = "git",
     )
     go_repository(
         name = "com_github_stretchr_objx",
