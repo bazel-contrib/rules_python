@@ -345,8 +345,8 @@ def _env_expr(left, op, right):
 
 def _version_expr(left, op, right):
     """Evaluate a version comparison expression"""
-    _left = version(left)
-    _right = version(right)
+    _left = version.parse(left)
+    _right = version.parse(right)
     if _left == None or _right == None:
         # Per spec, if either can't be normalized to a version, then
         # fallback to simple string comparison. Usually this is `platform_version`
@@ -354,22 +354,21 @@ def _version_expr(left, op, right):
         return _env_expr(left, op, right)
 
     if op == "===":
-        return _left.eqq(_right)
+        return version.is_eeq(_left, _right)
     elif op == "!=":
-        return _left.ne(_right)
+        return version.is_ne(_left, _right)
     elif op == "==":
-        # Matching of major, minor, patch only
-        return _left.eq(_right)
+        return version.is_eq(_left, _right)
     elif op == "<":
-        return _left.lt(_right)
+        return version.is_lt(_left, _right)
     elif op == ">":
-        return _left.gt(_right)
+        return version.is_gt(_left, _right)
     elif op == "<=":
-        return _left.le(_right)
+        return version.is_le(_left, _right)
     elif op == ">=":
-        return _left.ge(_right)
+        return version.is_ge(_left, _right)
     elif op == "~=":
-        return _left.compatible(_right)
+        return version.is_compatible(_left, _right)
     else:
         return False  # Let's just ignore the invalid ops
 

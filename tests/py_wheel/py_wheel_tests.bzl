@@ -17,7 +17,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:packaging.bzl", "py_wheel")
-load("//python/private:version.bzl", "normalize_pep440")  # buildifier: disable=bzl-visibility
+load("//python/private:version.bzl", "version")  # buildifier: disable=bzl-visibility
 
 _basic_tests = []
 _tests = []
@@ -257,7 +257,7 @@ def _test_pep440_normalization(env):
                         prefix = prefixes[i % len(prefixes)]
                         postfix = postfixes[(i // len(prefixes)) % len(postfixes)]
                         env.expect.that_str(
-                            normalize_pep440(
+                            version.normalize(
                                 prefix + iepoch + irelease + iprepost +
                                 idev + ilocal + postfix,
                             ),

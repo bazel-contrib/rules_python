@@ -17,7 +17,7 @@
 load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
 load(":stamp.bzl", "is_stamping_enabled")
-load(":version.bzl", "normalize_pep440")
+load(":version.bzl", "version")
 
 PyWheelInfo = provider(
     doc = "Information about a wheel produced by `py_wheel`",
@@ -310,7 +310,7 @@ def _py_wheel_impl(ctx):
 
     filename_segments = [
         _escape_filename_distribution_name(ctx.attr.distribution),
-        normalize_pep440(version),
+        version.normalize(version),
         _escape_filename_segment(python_tag),
         _escape_filename_segment(abi),
         _escape_filename_segment(ctx.attr.platform),

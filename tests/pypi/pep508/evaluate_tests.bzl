@@ -341,15 +341,18 @@ def _test_ordering(env):
     ]
 
     for lower, higher in zip(want[:-1], want[1:]):
-        lower = version(lower, strict = True)
-        higher = version(higher, strict = True)
+        lower = version.parse(lower, strict = True)
+        higher = version.parse(higher, strict = True)
 
-        if not lower.key() < higher.key():
+        lower_key = version.key(lower)
+        higher_key = version.key(higher)
+
+        if not lower_key < higher_key:
             env.fail("Expected '{}'.key() to be smaller than '{}'.key(), but got otherwise: {} > {}".format(
-                lower.str(),
-                higher.str(),
-                lower.key(),
-                higher.key(),
+                lower.string,
+                higher.string,
+                lower_key,
+                higher_key,
             ))
 
 _tests.append(_test_ordering)

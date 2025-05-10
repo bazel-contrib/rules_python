@@ -563,7 +563,7 @@ def _parse(version_str, strict = True):
 
     return parts
 
-def version(version_str, strict = False):
+def parse(version_str, strict = False):
     """Parse a PEP4408 compliant version
 
     See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
@@ -581,7 +581,7 @@ def version(version_str, strict = False):
     if not parts:
         return None
 
-    return _new_version(
+    return struct(
         epoch = _parse_epoch(parts["epoch"]),
         release = _parse_release(parts["release"]),
         pre = _parse_pre(parts["pre"]),
@@ -643,25 +643,6 @@ def _parse_post(value):
     # We choose `~` since almost all of the ASCII characters will be before
     # it. Use `ord` and `chr` functions to find a good value.
     return ("~", post)
-
-def _new_version(**kwargs):
-    self = struct(**kwargs)
-
-    return struct(
-        # methods, keep sorted
-        compatible = mkmethod(self, _version_compatible),
-        eq = mkmethod(self, _version_eq),
-        eqq = mkmethod(self, _version_eqq),
-        ge = mkmethod(self, _version_ge),
-        gt = mkmethod(self, _version_gt),
-        key = mkmethod(self, _version_key),
-        le = mkmethod(self, _version_le),
-        lt = mkmethod(self, _version_lt),
-        ne = mkmethod(self, _version_ne),
-
-        # attrs are the same as self
-        **kwargs
-    )
 
 def _pad_zeros(release, n):
     padding = n - len(release)
@@ -846,3 +827,18 @@ def _version_key(self, *, local = True):
         # PEP440 - post release ordering: .devN, <no suffix>
         self.dev or release_key,
     )
+
+version = struct(
+    normalize = normalize_pep440,
+    parse = parse,
+    # methods, keep sorted
+    key = _version_key,
+    is_compatible = _version_compatible,
+    is_eq = _version_eq,
+    is_eeq = _version_eqq,
+    is_ge = _version_ge,
+    is_gt = _version_gt,
+    is_le = _version_le,
+    is_lt = _version_lt,
+    is_ne = _version_ne,
+)
