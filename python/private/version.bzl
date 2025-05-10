@@ -540,13 +540,6 @@ def _parse(version_str, strict = True):
     accept_local(parser)
 
     parser_ctx = parser.context()
-    if is_prefix and (parser_ctx["local"] or parser_ctx["post"] or parser_ctx["dev"] or parser_ctx["pre"]):
-        if strict:
-            fail("local version part has been obtained, but only public segments can have prefix matches")
-
-        # https://peps.python.org/pep-0440/#public-version-identifiers
-        return None
-
     if parser.input[parser_ctx["start"]:]:
         if strict:
             fail(
@@ -587,6 +580,13 @@ def parse(version_str, strict = False):
 
     parts = _parse(version_str, strict = strict)
     if not parts:
+        return None
+
+    if parts["is_prefix"] and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
+        if strict:
+            fail("local version part has been obtained, but only public segments can have prefix matches")
+
+        # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
 
     return struct(

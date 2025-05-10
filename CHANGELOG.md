@@ -78,6 +78,8 @@ END_UNRELEASED_TEMPLATE
   multiple times.
 * (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
   to specify the requirements.
+* (pypi) Starlark implementation of the marker evaluation now supports the full PEP440
+  spec for version comparison.
 
 {#v0-0-0-added}
 ### Added
