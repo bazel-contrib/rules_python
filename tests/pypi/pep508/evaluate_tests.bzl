@@ -305,6 +305,11 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version ~= "2.2.post3"', False, {"python_version": "2.2"}),
     _expr_case('python_version ~= "2.2.post3"', True, {"python_version": "2.3"}),
     _expr_case('python_version ~= "2.2.post3"', False, {"python_version": "3.0"}),
+    _expr_case('python_version ~= "1!2.2"', False, {"python_version": "2.7"}),
+    _expr_case('python_version ~= "0!2.2"', True, {"python_version": "2.7"}),
+    _expr_case('python_version ~= "1!2.2"', True, {"python_version": "1!2.7"}),
+    _expr_case('python_version ~= "1.2.3"', True, {"python_version": "1.2.4"}),
+    _expr_case('python_version ~= "1.2.3"', False, {"python_version": "1.3.2"}),
 ]
 
 def _misc_expressions(env):

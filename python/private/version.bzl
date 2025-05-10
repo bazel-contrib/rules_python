@@ -608,10 +608,11 @@ def _parse_local(value):
     if not value:
         return None
 
-    local = value.lstrip("+")
+    if not value.startswith("+"):
+        fail("local release identifier must start with '+', got: {}".format(value))
 
     # If the part is numerical, handle it as a number
-    return tuple([int(part) if part.isdigit() else part for part in local.split(".")])
+    return tuple([int(part) if part.isdigit() else part for part in value[1:].split(".")])
 
 def _parse_dev(value):
     if not value:
@@ -709,11 +710,12 @@ def _version_compatible(left, right):
     # >= V.N, == V.*
 
     right_star = ".".join([str(d) for d in right.release[:-1]])
-    if right_star:
+    if right.epoch:
+        right_star = "{}!{}.".format(right.epoch, right_star)
+    else:
         right_star = "{}.".format(right_star)
 
     # TODO @aignas 2025-05-09: more tests:
-    #   epoch
     #   negative tests
     return _version_ge(left, right) and left.string.startswith(right_star)
 
