@@ -98,7 +98,12 @@ internal_dev_deps = use_extension(
     "internal_dev_deps",
     dev_dependency = True,
 )
-use_repo(internal_dev_deps, "buildkite_config", "wheel_for_testing")
+use_repo(
+    internal_dev_deps,
+    "buildkite_config",
+    "rules_python_runtime_env_tc_info",
+    "wheel_for_testing",
+)
 
 # Add gazelle plugin so that we can run the gazelle example as an e2e integration
 # test and include the distribution files.

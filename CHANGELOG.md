@@ -55,6 +55,14 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 
+* If using the (deprecated) autodetecting/runtime_env toolchain, then the Python
+  version specified at build-time *must* match the Python version used at
+  runtime (the {obj}`--@rules_python//python/config_settings:python_version`
+  flag and the {attr}`python_version` attribute control the build-time version
+  for a target). If they don't match, dependencies won't be importable. (Such a
+  misconfiguration was unlikely to work to begin with; this is called out as an
+  FYI).
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows.
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
@@ -88,10 +96,24 @@ END_UNRELEASED_TEMPLATE
   (the default), the subprocess's stdout/stderr will be logged.
 * (toolchains) Local toolchains can be activated with custom flags. See
   [Conditionally using local toolchains] docs for how to configure.
+* (pypi) `RULES_PYTHON_ENABLE_PIPSTAR` environment variable: when `1`, the Starlark
+  implementation of wheel METADATA parsing is used (which has improved multi-platform
+  build support).
 
 {#v0-0-0-removed}
 ### Removed
 * Nothing removed.
+
+{#1-4-1}
+## [1.4.1] - 2025-05-08
+
+[1.4.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.1
+
+{#1-4-1-fixed}
+### Fixed
+* (pypi) Fix a typo not allowing users to benefit from using the downloader when the hashes in the
+  requirements file are not present. Fixes
+  [#2863](https://github.com/bazel-contrib/rules_python/issues/2863).
 
 {#1-4-0}
 ## [1.4.0] - 2025-04-19

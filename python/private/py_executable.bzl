@@ -78,7 +78,6 @@ EXECUTABLE_ATTRS = dicts.add(
     AGNOSTIC_EXECUTABLE_ATTRS,
     PY_SRCS_ATTRS,
     IMPORTS_ATTRS,
-    COVERAGE_ATTRS,
     {
         "interpreter_args": lambda: attrb.StringList(
             doc = """
@@ -1903,7 +1902,7 @@ def create_executable_rule_builder(implementation, **kwargs):
     """
     builder = ruleb.Rule(
         implementation = implementation,
-        attrs = EXECUTABLE_ATTRS,
+        attrs = EXECUTABLE_ATTRS | (COVERAGE_ATTRS if kwargs.get("test") else {}),
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),  # Mutable copy
         fragments = ["py", "bazel_py"],
         provides = [PyExecutableInfo, PyInfo] + _MaybeBuiltinPyInfo,

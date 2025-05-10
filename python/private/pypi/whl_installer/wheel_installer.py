@@ -104,6 +104,7 @@ def _setup_namespace_pkg_compatibility(wheel_dir: str) -> None:
 def _extract_wheel(
     wheel_file: str,
     extras: Dict[str, Set[str]],
+    enable_pipstar: bool,
     enable_implicit_namespace_pkgs: bool,
     platforms: List[wheel.Platform],
     installation_dir: Path = Path("."),
@@ -114,6 +115,7 @@ def _extract_wheel(
         wheel_file: the filepath of the .whl
         installation_dir: the destination directory for installation of the wheel.
         extras: a list of extras to add as dependencies for the installed wheel
+        enable_pipstar: if true, turns off certain operations.
         enable_implicit_namespace_pkgs: if true, disables conversion of implicit namespace packages and will unzip as-is
     """
 
@@ -123,26 +125,31 @@ def _extract_wheel(
     if not enable_implicit_namespace_pkgs:
         _setup_namespace_pkg_compatibility(installation_dir)
 
-    extras_requested = extras[whl.name] if whl.name in extras else set()
+    metadata = {
+        "python_version": f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}",
+        "entry_points": [
+            {
+                "name": name,
+                "module": module,
+                "attribute": attribute,
+            }
+            for name, (module, attribute) in sorted(whl.entry_points().items())
+        ],
+    }
+    if not enable_pipstar:
+        extras_requested = extras[whl.name] if whl.name in extras else set()
+        dependencies = whl.dependencies(extras_requested, platforms)
 
-    dependencies = whl.dependencies(extras_requested, platforms)
+        metadata.update(
+            {
+                "name": whl.name,
+                "version": whl.version,
+                "deps": dependencies.deps,
+                "deps_by_platform": dependencies.deps_select,
+            }
+        )
 
     with open(os.path.join(installation_dir, "metadata.json"), "w") as f:
-        metadata = {
-            "name": whl.name,
-            "version": whl.version,
-            "deps": dependencies.deps,
-            "python_version": f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}",
-            "deps_by_platform": dependencies.deps_select,
-            "entry_points": [
-                {
-                    "name": name,
-                    "module": module,
-                    "attribute": attribute,
-                }
-                for name, (module, attribute) in sorted(whl.entry_points().items())
-            ],
-        }
         json.dump(metadata, f)
 
 
@@ -161,6 +168,7 @@ def main() -> None:
         _extract_wheel(
             wheel_file=whl,
             extras=extras,
+            enable_pipstar=args.enable_pipstar,
             enable_implicit_namespace_pkgs=args.enable_implicit_namespace_pkgs,
             platforms=arguments.get_platforms(args),
         )

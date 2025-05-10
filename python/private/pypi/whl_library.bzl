@@ -14,6 +14,7 @@
 
 ""
 
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
@@ -21,9 +22,11 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(":parse_requirements.bzl", "host_platform")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
+load(":whl_metadata.bzl", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
@@ -340,79 +343,147 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
-    target_platforms = rctx.attr.experimental_target_platforms or []
-    if target_platforms:
-        parsed_whl = parse_whl_name(whl_path.basename)
-
-        # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
-        # only include deps for that target platform
-        if parsed_whl.platform_tag != "any":
-            target_platforms = [
-                p.target_platform
-                for p in whl_target_platforms(
-                    platform_tag = parsed_whl.platform_tag,
-                    abi_tag = parsed_whl.abi_tag.strip("tm"),
-                )
-            ]
-
-    pypi_repo_utils.execute_checked(
-        rctx,
-        op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
-        python = python_interpreter,
-        arguments = args + [
-            "--whl-file",
-            whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
-        srcs = rctx.attr._python_srcs,
-        environment = environment,
-        quiet = rctx.attr.quiet,
-        timeout = rctx.attr.timeout,
-        logger = logger,
-    )
-
-    metadata = json.decode(rctx.read("metadata.json"))
-    rctx.delete("metadata.json")
-
-    # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
-    # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
-    #
-    # See ../../packaging.bzl line 190
-    entry_points = {}
-    for item in metadata["entry_points"]:
-        name = item["name"]
-        module = item["module"]
-        attribute = item["attribute"]
-
-        # There is an extreme edge-case with entry_points that end with `.py`
-        # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
-        entry_point_without_py = name[:-3] + "_py" if name.endswith(".py") else name
-        entry_point_target_name = (
-            _WHEEL_ENTRY_POINT_PREFIX + "_" + entry_point_without_py
+    if rp_config.enable_pipstar:
+        pypi_repo_utils.execute_checked(
+            rctx,
+            op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
+            python = python_interpreter,
+            arguments = args + [
+                "--whl-file",
+                whl_path,
+                "--enable-pipstar",
+            ],
+            srcs = rctx.attr._python_srcs,
+            environment = environment,
+            quiet = rctx.attr.quiet,
+            timeout = rctx.attr.timeout,
+            logger = logger,
         )
-        entry_point_script_name = entry_point_target_name + ".py"
 
-        rctx.file(
-            entry_point_script_name,
-            _generate_entry_point_contents(module, attribute),
+        metadata = json.decode(rctx.read("metadata.json"))
+        rctx.delete("metadata.json")
+        python_version = metadata["python_version"]
+
+        # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
+        # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
+        #
+        # See ../../packaging.bzl line 190
+        entry_points = {}
+        for item in metadata["entry_points"]:
+            name = item["name"]
+            module = item["module"]
+            attribute = item["attribute"]
+
+            # There is an extreme edge-case with entry_points that end with `.py`
+            # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
+            entry_point_without_py = name[:-3] + "_py" if name.endswith(".py") else name
+            entry_point_target_name = (
+                _WHEEL_ENTRY_POINT_PREFIX + "_" + entry_point_without_py
+            )
+            entry_point_script_name = entry_point_target_name + ".py"
+
+            rctx.file(
+                entry_point_script_name,
+                _generate_entry_point_contents(module, attribute),
+            )
+            entry_points[entry_point_without_py] = entry_point_script_name
+
+        metadata = whl_metadata(
+            install_dir = whl_path.dirname.get_child("site-packages"),
+            read_fn = rctx.read,
+            logger = logger,
         )
-        entry_points[entry_point_without_py] = entry_point_script_name
 
-    build_file_contents = generate_whl_library_build_bazel(
-        name = whl_path.basename,
-        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-        entry_points = entry_points,
-        # TODO @aignas 2025-04-14: load through the hub:
-        dependencies = metadata["deps"],
-        dependencies_by_platform = metadata["deps_by_platform"],
-        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-        data_exclude = rctx.attr.pip_data_exclude,
-        group_deps = rctx.attr.group_deps,
-        group_name = rctx.attr.group_name,
-        tags = [
-            "pypi_name={}".format(metadata["name"]),
-            "pypi_version={}".format(metadata["version"]),
-        ],
-    )
+        build_file_contents = generate_whl_library_build_bazel(
+            name = whl_path.basename,
+            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
+            entry_points = entry_points,
+            metadata_name = metadata.name,
+            metadata_version = metadata.version,
+            default_python_version = python_version,
+            requires_dist = metadata.requires_dist,
+            target_platforms = rctx.attr.experimental_target_platforms or [host_platform(rctx)],
+            # TODO @aignas 2025-04-14: load through the hub:
+            annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+            data_exclude = rctx.attr.pip_data_exclude,
+            group_deps = rctx.attr.group_deps,
+            group_name = rctx.attr.group_name,
+        )
+    else:
+        target_platforms = rctx.attr.experimental_target_platforms or []
+        if target_platforms:
+            parsed_whl = parse_whl_name(whl_path.basename)
+
+            # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
+            # only include deps for that target platform
+            if parsed_whl.platform_tag != "any":
+                target_platforms = [
+                    p.target_platform
+                    for p in whl_target_platforms(
+                        platform_tag = parsed_whl.platform_tag,
+                        abi_tag = parsed_whl.abi_tag.strip("tm"),
+                    )
+                ]
+
+        pypi_repo_utils.execute_checked(
+            rctx,
+            op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
+            python = python_interpreter,
+            arguments = args + [
+                "--whl-file",
+                whl_path,
+            ] + ["--platform={}".format(p) for p in target_platforms],
+            srcs = rctx.attr._python_srcs,
+            environment = environment,
+            quiet = rctx.attr.quiet,
+            timeout = rctx.attr.timeout,
+            logger = logger,
+        )
+
+        metadata = json.decode(rctx.read("metadata.json"))
+        rctx.delete("metadata.json")
+
+        # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
+        # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
+        #
+        # See ../../packaging.bzl line 190
+        entry_points = {}
+        for item in metadata["entry_points"]:
+            name = item["name"]
+            module = item["module"]
+            attribute = item["attribute"]
+
+            # There is an extreme edge-case with entry_points that end with `.py`
+            # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
+            entry_point_without_py = name[:-3] + "_py" if name.endswith(".py") else name
+            entry_point_target_name = (
+                _WHEEL_ENTRY_POINT_PREFIX + "_" + entry_point_without_py
+            )
+            entry_point_script_name = entry_point_target_name + ".py"
+
+            rctx.file(
+                entry_point_script_name,
+                _generate_entry_point_contents(module, attribute),
+            )
+            entry_points[entry_point_without_py] = entry_point_script_name
+
+        build_file_contents = generate_whl_library_build_bazel(
+            name = whl_path.basename,
+            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
+            entry_points = entry_points,
+            # TODO @aignas 2025-04-14: load through the hub:
+            dependencies = metadata["deps"],
+            dependencies_by_platform = metadata["deps_by_platform"],
+            annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+            data_exclude = rctx.attr.pip_data_exclude,
+            group_deps = rctx.attr.group_deps,
+            group_name = rctx.attr.group_name,
+            tags = [
+                "pypi_name={}".format(metadata["name"]),
+                "pypi_version={}".format(metadata["version"]),
+            ],
+        )
+
     rctx.file("BUILD.bazel", build_file_contents)
 
     return

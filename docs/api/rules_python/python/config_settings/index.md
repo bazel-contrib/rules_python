@@ -159,6 +159,18 @@ Values:
 :::
 ::::
 
+::::{bzl:flag} pip_env_marker_config
+The target that provides the values for pip env marker evaluation.
+
+Default: `//python/config_settings:_pip_env_marker_default_config`
+
+This flag points to a target providing {obj}`EnvMarkerInfo`, which determines
+the values used when environment markers are resolved at build time.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} pip_whl
 Set what distributions are used in the `pip` integration.
 
@@ -233,6 +245,10 @@ Values:
 ::::{bzl:flag} bootstrap_impl
 Determine how programs implement their startup process.
 
+The default for this depends on the platform:
+* Windows: `system_python` (**always** used)
+* Other: `script`
+
 Values:
 * `system_python`: Use a bootstrap that requires a system Python available
   in order to start programs. This requires
@@ -255,6 +271,11 @@ instead.
 :::
 
 :::{versionadded} 0.33.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+* The default for non-Windows changed from `system_python` to `script`.
+* On Windows, the value is forced to `system_python`.
 :::
 
 ::::

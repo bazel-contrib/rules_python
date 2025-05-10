@@ -225,10 +225,19 @@ def is_python_version_at_least(name, **kwargs):
     )
 
 def _python_version_at_least_impl(ctx):
-    at_least = tuple(ctx.attr.at_least.split("."))
-    current = tuple(
-        ctx.attr._major_minor[config_common.FeatureFlagInfo].value.split("."),
-    )
+    flag_value = ctx.attr._major_minor[config_common.FeatureFlagInfo].value
+
+    # CI is, somehow, getting an empty string for the current flag value.
+    # How isn't clear.
+    if not flag_value:
+        return [config_common.FeatureFlagInfo(value = "no")]
+
+    current = tuple([
+        int(x)
+        for x in flag_value.split(".")
+    ])
+    at_least = tuple([int(x) for x in ctx.attr.at_least.split(".")])
+
     value = "yes" if current >= at_least else "no"
     return [config_common.FeatureFlagInfo(value = value)]
 

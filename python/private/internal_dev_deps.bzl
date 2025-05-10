@@ -15,6 +15,7 @@
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+load(":runtime_env_repo.bzl", "runtime_env_repo")
 
 def _internal_dev_deps_impl(mctx):
     _ = mctx  # @unused
@@ -37,6 +38,7 @@ def _internal_dev_deps_impl(mctx):
         name = "buildkite_config",
         toolchain = "ubuntu1804-bazel-java11",
     )
+    runtime_env_repo(name = "rules_python_runtime_env_tc_info")
 
 internal_dev_deps = module_extension(
     implementation = _internal_dev_deps_impl,

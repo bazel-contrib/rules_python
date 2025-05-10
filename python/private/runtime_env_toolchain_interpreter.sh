@@ -68,6 +68,9 @@ if [ -e "$self_dir/pyvenv.cfg" ] || [ -e "$self_dir/../pyvenv.cfg" ]; then
       ;;
   esac
 
+  if [ ! -e "$PYTHON_BIN" ]; then
+    die "ERROR: Python interpreter does not exist: $PYTHON_BIN"
+  fi
   # PYTHONEXECUTABLE is also used because `exec -a` doesn't fully trick the
   # pyenv wrappers.
   # NOTE: The PYTHONEXECUTABLE envvar only works for non-Mac starting in Python 3.11

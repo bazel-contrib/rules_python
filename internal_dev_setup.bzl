@@ -24,6 +24,7 @@ load("@rules_shell//shell:repositories.bzl", "rules_shell_dependencies", "rules_
 load("//:version.bzl", "SUPPORTED_BAZEL_VERSIONS")
 load("//python:versions.bzl", "MINOR_MAPPING", "TOOL_VERSIONS")
 load("//python/private:pythons_hub.bzl", "hub_repo")  # buildifier: disable=bzl-visibility
+load("//python/private:runtime_env_repo.bzl", "runtime_env_repo")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:deps.bzl", "pypi_deps")  # buildifier: disable=bzl-visibility
 
 def rules_python_internal_setup():
@@ -39,6 +40,8 @@ def rules_python_internal_setup():
         toolchain_user_repository_names = [],
         python_versions = sorted(TOOL_VERSIONS.keys()),
     )
+
+    runtime_env_repo(name = "rules_python_runtime_env_tc_info")
 
     pypi_deps()
 

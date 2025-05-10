@@ -29,11 +29,13 @@ platform_machine_aliases = {
 
 # NOTE: There are many cpus, and unfortunately, the value isn't directly
 # accessible to Starlark. Using CcToolchain.cpu might work, though.
+# Some targets are aliases and are omitted below as their value is implied
+# by the target they resolve to.
 platform_machine_select_map = {
     "@platforms//cpu:aarch32": "aarch32",
     "@platforms//cpu:aarch64": "aarch64",
-    "@platforms//cpu:arm": "arm",
-    "@platforms//cpu:arm64": "arm64",
+    # @platforms//cpu:arm is an alias for @platforms//cpu:aarch32
+    # @platforms//cpu:arm64 is an alias for @platforms//cpu:aarch64
     "@platforms//cpu:arm64_32": "arm64_32",
     "@platforms//cpu:arm64e": "arm64e",
     "@platforms//cpu:armv6-m": "armv6-m",
@@ -64,23 +66,23 @@ platform_machine_select_map = {
 
 # Platform system returns results from the `uname` call.
 _platform_system_values = {
+    # See https://peps.python.org/pep-0738/#platform
+    "android": "Android",
+    "freebsd": "FreeBSD",
+    # See https://peps.python.org/pep-0730/#platform
+    # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
+    "ios": "iOS",
     "linux": "Linux",
+    "netbsd": "NetBSD",
+    "openbsd": "OpenBSD",
     "osx": "Darwin",
     "windows": "Windows",
 }
 
 platform_system_select_map = {
-    # See https://peps.python.org/pep-0738/#platform
-    "@platforms//os:android": "Android",
-    "@platforms//os:freebsd": "FreeBSD",
-    # See https://peps.python.org/pep-0730/#platform
-    # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
-    "@platforms//os:ios": "iOS",
-    "@platforms//os:linux": "Linux",
-    "@platforms//os:netbsd": "NetBSD",
-    "@platforms//os:openbsd": "OpenBSD",
-    "@platforms//os:osx": "Darwin",
-    "@platforms//os:windows": "Windows",
+    "@platforms//os:{}".format(bazel_os): py_system
+    for bazel_os, py_system in _platform_system_values.items()
+} | {
     # The value is empty string if it cannot be determined:
     # https://docs.python.org/3/library/platform.html#platform.machine
     "//conditions:default": "",
@@ -112,33 +114,36 @@ platform_system_select_map = {
 #
 # We are using only the subset that we actually support.
 _sys_platform_values = {
-    "linux": "linux",
-    "osx": "darwin",
-    "windows": "win32",
-}
-
-# Taken from
-# https://docs.python.org/3/library/sys.html#sys.platform
-sys_platform_select_map = {
     # These values are decided by the sys.platform docs.
-    "@platforms//os:android": "android",
-    "@platforms//os:emscripten": "emscripten",
+    "android": "android",
+    "emscripten": "emscripten",
     # NOTE: The below values are approximations. The sys.platform() docs
     # don't have documented values for these OSes. Per docs, the
     # sys.platform() value reflects the OS at the time Python was *built*
     # instead of the runtime (target) OS value.
-    "@platforms//os:freebsd": "freebsd",
-    "@platforms//os:ios": "ios",
-    "@platforms//os:linux": "linux",
-    "@platforms//os:openbsd": "openbsd",
-    "@platforms//os:osx": "darwin",
-    "@platforms//os:wasi": "wasi",
-    "@platforms//os:windows": "win32",
+    "freebsd": "freebsd",
+    "ios": "ios",
+    "linux": "linux",
+    "openbsd": "openbsd",
+    "osx": "darwin",
+    "wasi": "wasi",
+    "windows": "win32",
+}
+
+sys_platform_select_map = {
+    "@platforms//os:{}".format(bazel_os): py_platform
+    for bazel_os, py_platform in _sys_platform_values.items()
+} | {
     # For lack of a better option, use empty string. No standard doc/spec
     # about sys_platform value.
     "//conditions:default": "",
 }
 
+# The "java" value is documented, but with Jython defunct,
+# shouldn't occur in practice.
+# The os.name value is technically a property of the runtime, not the
+# targetted runtime OS, but the distinction shouldn't matter if
+# things are properly configured.
 _os_name_values = {
     "linux": "posix",
     "osx": "posix",
@@ -146,17 +151,17 @@ _os_name_values = {
 }
 
 os_name_select_map = {
-    # The "java" value is documented, but with Jython defunct,
-    # shouldn't occur in practice.
-    # The os.name value is technically a property of the runtime, not the
-    # targetted runtime OS, but the distinction shouldn't matter if
-    # things are properly configured.
-    "@platforms//os:windows": "nt",
+    "@platforms//os:{}".format(bazel_os): py_os
+    for bazel_os, py_os in _os_name_values.items()
+} | {
     "//conditions:default": "posix",
 }
 
 def env(target_platform, *, extra = None):
     """Return an env target platform
+
+    NOTE: This is for use during the loading phase. For the analysis phase,
+    `env_marker_setting()` constructs the env dict.
 
     Args:
         target_platform: {type}`str` the target platform identifier, e.g.
@@ -166,16 +171,9 @@ def env(target_platform, *, extra = None):
     Returns:
         A dict that can be used as `env` in the marker evaluation.
     """
-
-    # TODO @aignas 2025-02-13: consider moving this into config settings.
-
-    env = {"extra": extra} if extra != None else {}
-    env = env | {
-        "implementation_name": "cpython",
-        "platform_python_implementation": "CPython",
-        "platform_release": "",
-        "platform_version": "0",
-    }
+    env = create_env()
+    if extra != None:
+        env["extra"] = extra
 
     if type(target_platform) == type(""):
         target_platform = platform_from_str(target_platform, python_version = "")
@@ -196,13 +194,42 @@ def env(target_platform, *, extra = None):
             "platform_system": _platform_system_values.get(os, ""),
             "sys_platform": _sys_platform_values.get(os, ""),
         }
+    set_missing_env_defaults(env)
 
-    # This is split by topic
-    return env | env_aliases()
+    return env
 
-def env_aliases():
+def create_env():
     return {
+        # This is split by topic
         "_aliases": {
             "platform_machine": platform_machine_aliases,
         },
     }
+
+def set_missing_env_defaults(env):
+    """Sets defaults based on existing values.
+
+    Args:
+        env: dict; NOTE: modified in-place
+    """
+    if "implementation_name" not in env:
+        # Use cpython as the default because it's likely the correct value.
+        env["implementation_name"] = "cpython"
+    if "platform_python_implementation" not in env:
+        # The `platform_python_implementation` marker value is supposed to come
+        # from `platform.python_implementation()`, however, PEP 421 introduced
+        # `sys.implementation.name` and the `implementation_name` env marker to
+        # replace it. Per the platform.python_implementation docs, there's now
+        # essentially just two possible "registered" values: CPython or PyPy.
+        # Rather than add a field to the toolchain, we just special case the value
+        # from `sys.implementation.name` to handle the two documented values.
+        platform_python_impl = env["implementation_name"]
+        if platform_python_impl == "cpython":
+            platform_python_impl = "CPython"
+        elif platform_python_impl == "pypy":
+            platform_python_impl = "PyPy"
+        env["platform_python_implementation"] = platform_python_impl
+    if "platform_release" not in env:
+        env["platform_release"] = ""
+    if "platform_version" not in env:
+        env["platform_version"] = "0"
