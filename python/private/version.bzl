@@ -59,18 +59,23 @@ def _open_context(self):
     self.contexts.append(_ctx(_context(self)["start"]))
     return self.contexts[-1]
 
-def _accept(self):
+def _accept(self, key = None):
     """Close the current ctx successfully and merge the results."""
     finished = self.contexts.pop()
     self.contexts[-1]["norm"] += finished["norm"]
+    if key:
+        self.contexts[-1][key] = finished["norm"]
+
     self.contexts[-1]["start"] = finished["start"]
     return True
 
 def _context(self):
     return self.contexts[-1]
 
-def _discard(self):
+def _discard(self, key = None):
     self.contexts.pop()
+    if key:
+        self.contexts[-1][key] = ""
     return False
 
 def _new(input):
@@ -313,9 +318,9 @@ def accept_epoch(parser):
     if accept_digits(parser) and accept(parser, _is("!"), "!"):
         if ctx["norm"] == "0!":
             ctx["norm"] = ""
-        return parser.accept()
+        return parser.accept("epoch")
     else:
-        return parser.discard()
+        return parser.discard("epoch")
 
 def accept_release(parser):
     """Accept the release segment, numbers separated by dots.
@@ -329,10 +334,10 @@ def accept_release(parser):
     parser.open_context()
 
     if not accept_digits(parser):
-        return parser.discard()
+        return parser.discard("release")
 
     accept_dot_number_sequence(parser)
-    return parser.accept()
+    return parser.accept("release")
 
 def accept_pre_l(parser):
     """PEP 440: Pre-release spelling.
@@ -374,7 +379,7 @@ def accept_prerelease(parser):
     accept(parser, _in(["-", "_", "."]), "")
 
     if not accept_pre_l(parser):
-        return parser.discard()
+        return parser.discard("pre")
 
     accept(parser, _in(["-", "_", "."]), "")
 
@@ -382,7 +387,7 @@ def accept_prerelease(parser):
         # PEP 440: Implicit pre-release number
         ctx["norm"] += "0"
 
-    return parser.accept()
+    return parser.accept("pre")
 
 def accept_implicit_postrelease(parser):
     """PEP 440: Implicit post releases.
@@ -444,9 +449,9 @@ def accept_postrelease(parser):
     parser.open_context()
 
     if accept_implicit_postrelease(parser) or accept_explicit_postrelease(parser):
-        return parser.accept()
+        return parser.accept("post")
 
-    return parser.discard()
+    return parser.discard("post")
 
 def accept_devrelease(parser):
     """PEP 440: Developmental releases.
@@ -470,9 +475,9 @@ def accept_devrelease(parser):
             # PEP 440: Implicit development release number
             ctx["norm"] += "0"
 
-        return parser.accept()
+        return parser.accept("dev")
 
-    return parser.discard()
+    return parser.discard("dev")
 
 def accept_local(parser):
     """PEP 440: Local version identifiers.
@@ -487,9 +492,9 @@ def accept_local(parser):
 
     if accept(parser, _is("+"), "+") and accept_alnum(parser):
         accept_separator_alnum_sequence(parser)
-        return parser.accept()
+        return parser.accept("local")
 
-    return parser.discard()
+    return parser.discard("local")
 
 def normalize_pep440(version):
     """Escape the version component of a filename.
@@ -518,63 +523,66 @@ def _parse(version_str, strict = True):
     Returns:
       string containing the normalized version.
     """
-    version_str = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
+    version = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
     is_prefix = False
 
     if not strict:
-        is_prefix = version_str.endswith(".*")
-        version_str = version_str.strip(" .*")  # PEP 440: Leading and Trailing Whitespace and ".*"
+        is_prefix = version.endswith(".*")
+        version = version.strip(" .*")  # PEP 440: Leading and Trailing Whitespace and ".*"
 
-    parser = _new(version_str)
+    parser = _new(version)
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
-    fns = [
-        ("epoch", accept_epoch),
-        ("release", accept_release),
-        ("pre", accept_prerelease),
-        ("post", accept_postrelease),
-        ("dev", accept_devrelease),
-        ("local", accept_local),
-    ]
-    parts = {
-        "is_prefix": is_prefix,
-    }
-    for key, fn in fns:
-        start = len(parser.context()["norm"])
-        fn(parser)
-        parts[key] = parser.context()["norm"][start:]
-    parts["norm"] = parser.context()["norm"]
+    accept_epoch(parser)
+    accept_release(parser)
+    accept_prerelease(parser)
+    accept_postrelease(parser)
+    accept_devrelease(parser)
+    accept_local(parser)
 
-    # TODO @aignas 2025-05-09: move the `is_prefix` handling to `accept_release`
-    if is_prefix and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
+    parser_ctx = parser.context()
+    if is_prefix and (parser_ctx["local"] or parser_ctx["post"] or parser_ctx["dev"] or parser_ctx["pre"]):
         if strict:
             fail("local version part has been obtained, but only public segments can have prefix matches")
 
         # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
 
-    if parser.input[parser.context()["start"]:]:
+    if parser.input[parser_ctx["start"]:]:
         if strict:
             fail(
                 "Failed to parse PEP 440 version identifier '%s'." % parser.input,
-                "Parse error at '%s'" % parser.input[parser.context()["start"]:],
+                "Parse error at '%s'" % parser.input[parser_ctx["start"]:],
             )
 
         return None
 
-    return parts
+    parser_ctx["is_prefix"] = is_prefix
+    return parser_ctx
 
 def parse(version_str, strict = False):
-    """Parse a PEP4408 compliant version
+    """Parse a PEP4408 compliant version.
 
-    See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
-    and https://peps.python.org/pep-0440/
+    This is similar to `normalize_pep440`, but it parsers individual components to to
+    comparable types.
 
     Args:
       version_str: version string to be normalized according to PEP 440.
       strict: fail if the version is invalid.
 
     Returns:
-      string containing the normalized version.
+      a struct with individual components of a version:
+        * `epoch` {type}`int`, defaults to `0`
+        * `release` {type}`tuple[int]` an n-tuple of ints
+        * `pre` {type}`tuple[str, int] | None` a tuple of a string and an int,
+            e.g. ("a", 1)
+        * `post` {type}`tuple[str, int] | None` a tuple of a string and an int,
+            e.g. ("~", 1)
+        * `dev` {type}`tuple[str, int] | None` a tuple of a string and an int,
+            e.g. ("", 1)
+        * `local` {type}`tuple[str, int] | None` a tuple of components in the local
+            version, e.g. ("abc", 123).
+        * `is_prefix` {type}`bool` whether the version_str ends with `.*`.
+        * `string` {type}`str` normalized value of the input.
     """
 
     parts = _parse(version_str, strict = strict)
@@ -715,8 +723,6 @@ def _version_compatible(left, right):
     else:
         right_star = "{}.".format(right_star)
 
-    # TODO @aignas 2025-05-09: more tests:
-    #   negative tests
     return _version_ge(left, right) and left.string.startswith(right_star)
 
 def _version_ne(left, right):
