@@ -14,7 +14,6 @@
 """Tests for construction of Python version matching config settings."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private:version.bzl", "version")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # buildifier: disable=bzl-visibility
 
@@ -317,51 +316,6 @@ def _misc_expressions(env):
         _check_evaluate(env, case.expr, case.want, case.env)
 
 _tests.append(_misc_expressions)
-
-def _test_ordering(env):
-    want = [
-        # Taken from https://peps.python.org/pep-0440/#summary-of-permitted-suffixes-and-relative-ordering
-        "1.dev0",
-        "1.0.dev456",
-        "1.0a1",
-        "1.0a2.dev456",
-        "1.0a12.dev456",
-        "1.0a12",
-        "1.0b1.dev456",
-        "1.0b1.dev457",
-        "1.0b2",
-        "1.0b2.post345.dev456",
-        "1.0b2.post345.dev457",
-        "1.0b2.post345",
-        "1.0rc1.dev456",
-        "1.0rc1",
-        "1.0",
-        "1.0+abc.5",
-        "1.0+abc.7",
-        "1.0+5",
-        "1.0.post456.dev34",
-        "1.0.post456",
-        "1.0.15",
-        "1.1.dev1",
-        "1!0.1",
-    ]
-
-    for lower, higher in zip(want[:-1], want[1:]):
-        lower = version.parse(lower, strict = True)
-        higher = version.parse(higher, strict = True)
-
-        lower_key = version.key(lower)
-        higher_key = version.key(higher)
-
-        if not lower_key < higher_key:
-            env.fail("Expected '{}'.key() to be smaller than '{}'.key(), but got otherwise: {} > {}".format(
-                lower.string,
-                higher.string,
-                lower_key,
-                higher_key,
-            ))
-
-_tests.append(_test_ordering)
 
 def evaluate_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
