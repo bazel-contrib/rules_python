@@ -523,7 +523,8 @@ def _parse(version_str, strict = True):
     Returns:
       string containing the normalized version.
     """
-    version = version_str.strip()  # PEP 440: Leading and Trailing Whitespace
+    # https://packaging.python.org/en/latest/specifications/version-specifiers/#leading-and-trailing-whitespace
+    version = version_str.strip()
     is_prefix = False
 
     if not strict:
