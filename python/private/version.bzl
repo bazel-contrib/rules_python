@@ -706,7 +706,6 @@ def _version_eq(left, right):
         left.post == right.post and
         left.dev == right.dev
         # local is ignored for == checks
-        ##and left.local == right.local
     )
 
 def _version_compatible(left, right):
