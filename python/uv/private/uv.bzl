@@ -326,8 +326,8 @@ def process_modules(
                 ),
                 manifest_filename = config["manifest_filename"],
                 platforms = sorted(platforms),
-                attr = struct(**auth),
                 get_auth = get_auth,
+                **auth
             )
 
         for platform_name, platform in platforms.items():
@@ -379,7 +379,7 @@ def _overlap(first_collection, second_collection):
 
     return False
 
-def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, attr, get_auth = get_auth):
+def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, get_auth = get_auth, **auth_attrs):
     """Download the results about remote tool sources.
 
     This relies on the tools using the cargo packaging to infer the actual
@@ -447,12 +447,13 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                     "aarch64-apple-darwin"
                 ]
     """
+    auth_attr = struct(**auth_attrs)
     dist_manifest = module_ctx.path(manifest_filename)
     urls = [base_url + "/" + manifest_filename]
     result = module_ctx.download(
         url = urls,
         output = dist_manifest,
-        auth = get_auth(module_ctx, urls, ctx_attr = attr),
+        auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
     )
     if not result.success:
         fail(result)
@@ -478,7 +479,7 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                 url = urls,
                 output = checksum_path,
                 block = False,
-                auth = get_auth(module_ctx, urls, ctx_attr = attr),
+                auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
             ),
             archive_fname = fname,
             platforms = checksum["target_triples"],
