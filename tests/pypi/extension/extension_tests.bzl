@@ -62,7 +62,12 @@ def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True):
 
 def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
-        parse_modules(**kwargs),
+        parse_modules(
+            # TODO @aignas 2025-05-11: start integration testing the branch which
+            # includes this.
+            enable_pipstar = 0,
+            **kwargs
+        ),
         attrs = dict(
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
