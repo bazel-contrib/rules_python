@@ -97,6 +97,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) `RULES_PYTHON_ENABLE_PIPSTAR` environment variable: when `1`, the Starlark
   implementation of wheel METADATA parsing is used (which has improved multi-platform
   build support).
+* (uv) Handle `.netrc` and `auth_patterns` auth when downloading `uv`. Work towards
+  [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 
 {#v0-0-0-removed}
 ### Removed

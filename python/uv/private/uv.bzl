@@ -18,6 +18,7 @@ EXPERIMENTAL: This is experimental and may be removed without notice
 A module extension for working with uv.
 """
 
+load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 load(":uv_repository.bzl", "uv_repository")
 load(":uv_toolchains_repo.bzl", "uv_toolchains_repo")
@@ -77,7 +78,7 @@ The version of uv to configure the sources for. If this is not specified it will
 last version used in the module or the default version set by `rules_python`.
 """,
     ),
-}
+} | AUTH_ATTRS
 
 default = tag_class(
     doc = """\
@@ -133,7 +134,7 @@ for a particular version.
     },
 )
 
-def _configure(config, *, platform, compatible_with, target_settings, urls = [], sha256 = "", override = False, **values):
+def _configure(config, *, platform, compatible_with, target_settings, auth_patterns, urls = [], sha256 = "", override = False, **values):
     """Set the value in the config if the value is provided"""
     for key, value in values.items():
         if not value:
@@ -144,6 +145,7 @@ def _configure(config, *, platform, compatible_with, target_settings, urls = [],
 
         config[key] = value
 
+    config.setdefault("auth_patterns", {}).update(auth_patterns)
     config.setdefault("platforms", {})
     if not platform:
         if compatible_with or target_settings or urls:
@@ -189,8 +191,10 @@ def process_modules(
 
     # default values to apply for version specific config
     defaults = {
+        "auth_patterns": {},
         "base_url": "",
         "manifest_filename": "",
+        "netrc": "",
         "platforms": {
             # The structure is as follows:
             # "platform_name": struct(
@@ -216,6 +220,8 @@ def process_modules(
                 compatible_with = tag.compatible_with,
                 target_settings = tag.target_settings,
                 override = mod.is_root,
+                netrc = tag.netrc,
+                auth_patterns = tag.auth_patterns,
             )
 
     for key in [
@@ -253,8 +259,10 @@ def process_modules(
             specific_config = versions.setdefault(
                 last_version,
                 {
+                    "auth_patterns": defaults["auth_patterns"],
                     "base_url": defaults["base_url"],
                     "manifest_filename": defaults["manifest_filename"],
+                    "netrc": defaults["netrc"],
                     # shallow copy is enough as the values are structs and will
                     # be replaced on modification
                     "platforms": dict(defaults["platforms"]),
@@ -271,6 +279,8 @@ def process_modules(
                 sha256 = tag.sha256,
                 urls = tag.urls,
                 override = mod.is_root,
+                netrc = tag.netrc,
+                auth_patterns = tag.auth_patterns,
             )
 
     if not versions:
@@ -313,6 +323,10 @@ def process_modules(
                 ),
                 manifest_filename = config["manifest_filename"],
                 platforms = sorted(platforms),
+                attr = struct(
+                    netrc = config["netrc"],
+                    auth_patterns = config["auth_patterns"],
+                ),
             )
 
         for platform_name, platform in platforms.items():
@@ -327,6 +341,8 @@ def process_modules(
                 platform = platform_name,
                 urls = urls[platform_name].urls,
                 sha256 = urls[platform_name].sha256,
+                auth_patterns = config["auth_patterns"],
+                netrc = config["netrc"],
             )
 
             toolchain_names.append(toolchain_name)
@@ -363,7 +379,7 @@ def _overlap(first_collection, second_collection):
 
     return False
 
-def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms):
+def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, attr):
     """Download the results about remote tool sources.
 
     This relies on the tools using the cargo packaging to infer the actual
@@ -432,9 +448,11 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                 ]
     """
     dist_manifest = module_ctx.path(manifest_filename)
+    urls = [base_url + "/" + manifest_filename]
     result = module_ctx.download(
-        base_url + "/" + manifest_filename,
+        url = urls,
         output = dist_manifest,
+        auth = get_auth(module_ctx, urls, ctx_attr = attr),
     )
     if not result.success:
         fail(result)
@@ -454,11 +472,13 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
 
         checksum_fname = checksum["name"]
         checksum_path = module_ctx.path(checksum_fname)
+        urls = ["{}/{}".format(base_url, checksum_fname)]
         downloads[checksum_path] = struct(
             download = module_ctx.download(
-                "{}/{}".format(base_url, checksum_fname),
+                url = urls,
                 output = checksum_path,
                 block = False,
+                auth = get_auth(module_ctx, urls, ctx_attr = attr),
             ),
             archive_fname = fname,
             platforms = checksum["target_triples"],
