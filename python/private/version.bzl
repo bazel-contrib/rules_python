@@ -523,6 +523,7 @@ def _parse(version_str, strict = True):
     Returns:
       string containing the normalized version.
     """
+
     # https://packaging.python.org/en/latest/specifications/version-specifiers/#leading-and-trailing-whitespace
     version = version_str.strip()
     is_prefix = False
