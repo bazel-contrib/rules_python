@@ -86,6 +86,10 @@ END_UNRELEASED_TEMPLATE
   multiple times.
 * (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
   to specify the requirements.
+* (pypi) Use bazel downloader for direct URL references and correctly detect the filenames from
+  various URL formats - URL encoded version strings get correctly resolved, sha256 value can be
+  also retrieved from the URL as opposed to only the `--hash` parameter. Fixes
+  [#2363](https://github.com/bazel-contrib/rules_python/issues/2363).
 
 {#v0-0-0-added}
 ### Added

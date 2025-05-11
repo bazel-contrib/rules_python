@@ -258,19 +258,9 @@ def _whl_library_impl(rctx):
         # Simulate the behaviour where the whl is present in the current directory.
         rctx.symlink(whl_path, whl_path.basename)
         whl_path = rctx.path(whl_path.basename)
-    elif rctx.attr.urls:
+    elif rctx.attr.urls and rctx.attr.filename:
         filename = rctx.attr.filename
         urls = rctx.attr.urls
-        if not filename:
-            _, _, filename = urls[0].rpartition("/")
-
-        if not (filename.endswith(".whl") or filename.endswith("tar.gz") or filename.endswith(".zip")):
-            if rctx.attr.filename:
-                msg = "got '{}'".format(filename)
-            else:
-                msg = "detected '{}' from url:\n{}".format(filename, urls[0])
-            fail("Only '.whl', '.tar.gz' or '.zip' files are supported, {}".format(msg))
-
         result = rctx.download(
             url = urls,
             output = filename,

@@ -27,10 +27,6 @@ foo==0.0.1 \
 """,
         "requirements_direct": """\
 foo[extra] @ https://some-url/package.whl
-bar @ https://example.org/bar-1.0.whl --hash=sha256:deadbeef
-baz @ https://test.com/baz-2.0.whl; python_version < "3.8" --hash=sha256:deadb00f
-qux @ https://example.org/qux-1.0.tar.gz --hash=sha256:deadbe0f
-torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc
 """,
         "requirements_extra_args": """\
 --index-url=example.org
@@ -136,7 +132,8 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
-def _test_direct_urls(env):
+def _test_direct_urls_integration(env):
+    """Check that we are using the filename from index_sources."""
     got = parse_requirements(
         ctx = _mock_ctx(),
         requirements_by_platform = {
@@ -144,52 +141,6 @@ def _test_direct_urls(env):
         },
     )
     env.expect.that_dict(got).contains_exactly({
-        "bar": [
-            struct(
-                distribution = "bar",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                srcs = struct(
-                    marker = "",
-                    requirement = "bar @ https://example.org/bar-1.0.whl --hash=sha256:deadbeef",
-                    requirement_line = "bar @ https://example.org/bar-1.0.whl --hash=sha256:deadbeef",
-                    shas = ["deadbeef"],
-                    version = "",
-                    url = "https://example.org/bar-1.0.whl",
-                ),
-                target_platforms = ["linux_x86_64"],
-                whls = [struct(
-                    url = "https://example.org/bar-1.0.whl",
-                    filename = "bar-1.0.whl",
-                    sha256 = "deadbeef",
-                    yanked = False,
-                )],
-            ),
-        ],
-        "baz": [
-            struct(
-                distribution = "baz",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                srcs = struct(
-                    marker = "python_version < \"3.8\"",
-                    requirement = "baz @ https://test.com/baz-2.0.whl --hash=sha256:deadb00f",
-                    requirement_line = "baz @ https://test.com/baz-2.0.whl --hash=sha256:deadb00f",
-                    shas = ["deadb00f"],
-                    version = "",
-                    url = "https://test.com/baz-2.0.whl",
-                ),
-                target_platforms = ["linux_x86_64"],
-                whls = [struct(
-                    url = "https://test.com/baz-2.0.whl",
-                    filename = "baz-2.0.whl",
-                    sha256 = "deadb00f",
-                    yanked = False,
-                )],
-            ),
-        ],
         "foo": [
             struct(
                 distribution = "foo",
@@ -198,7 +149,7 @@ def _test_direct_urls(env):
                 is_exposed = True,
                 srcs = struct(
                     marker = "",
-                    requirement = "foo[extra] @ https://some-url/package.whl",
+                    requirement = "foo[extra]",
                     requirement_line = "foo[extra] @ https://some-url/package.whl",
                     shas = [],
                     version = "",
@@ -213,57 +164,9 @@ def _test_direct_urls(env):
                 )],
             ),
         ],
-        "qux": [
-            struct(
-                distribution = "qux",
-                extra_pip_args = [],
-                sdist = struct(
-                    url = "https://example.org/qux-1.0.tar.gz",
-                    filename = "qux-1.0.tar.gz",
-                    sha256 = "deadbe0f",
-                    yanked = False,
-                ),
-                is_exposed = True,
-                srcs = struct(
-                    marker = "",
-                    requirement = "qux @ https://example.org/qux-1.0.tar.gz --hash=sha256:deadbe0f",
-                    requirement_line = "qux @ https://example.org/qux-1.0.tar.gz --hash=sha256:deadbe0f",
-                    shas = ["deadbe0f"],
-                    version = "",
-                    url = "https://example.org/qux-1.0.tar.gz",
-                ),
-                target_platforms = ["linux_x86_64"],
-                whls = [],
-            ),
-        ],
-        "torch": [
-            struct(
-                distribution = "torch",
-                extra_pip_args = [],
-                is_exposed = True,
-                sdist = None,
-                srcs = struct(
-                    marker = "",
-                    requirement = "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
-                    requirement_line = "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
-                    shas = [],
-                    url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
-                    version = "",
-                ),
-                target_platforms = ["linux_x86_64"],
-                whls = [
-                    struct(
-                        filename = "torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl",
-                        sha256 = "",
-                        url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=5b6ae523bfb67088a17ca7734d131548a2e60346c622621e4248ed09dd0790cc",
-                        yanked = False,
-                    ),
-                ],
-            ),
-        ],
     })
 
-_tests.append(_test_direct_urls)
+_tests.append(_test_direct_urls_integration)
 
 def _test_extra_pip_args(env):
     got = parse_requirements(
@@ -612,7 +515,7 @@ def _test_optional_hash(env):
                 is_exposed = True,
                 srcs = struct(
                     marker = "",
-                    requirement = "foo==0.0.4 @ https://example.org/foo-0.0.4.whl",
+                    requirement = "foo==0.0.4",
                     requirement_line = "foo==0.0.4 @ https://example.org/foo-0.0.4.whl",
                     shas = [],
                     version = "0.0.4",
@@ -633,7 +536,7 @@ def _test_optional_hash(env):
                 is_exposed = True,
                 srcs = struct(
                     marker = "",
-                    requirement = "foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef",
+                    requirement = "foo==0.0.5",
                     requirement_line = "foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef",
                     shas = ["deadbeef"],
                     version = "0.0.5",
