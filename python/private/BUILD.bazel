@@ -212,6 +212,7 @@ bzl_library(
     deps = [
         ":enum_bzl",
         ":repo_utils.bzl",
+        "@bazel_skylib//lib:paths",
     ],
 )
 
