@@ -175,7 +175,8 @@ def process_modules(
         hub_name = "uv",
         uv_repository = uv_repository,
         toolchain_type = str(UV_TOOLCHAIN_TYPE),
-        hub_repo = uv_toolchains_repo):
+        hub_repo = uv_toolchains_repo,
+        get_auth = get_auth):
     """Parse the modules to get the config for 'uv' toolchains.
 
     Args:
@@ -184,6 +185,7 @@ def process_modules(
         uv_repository: the rule to create a uv_repository override.
         toolchain_type: the toolchain type to use here.
         hub_repo: the hub repo factory function to use.
+        get_auth: the auth function to use.
 
     Returns:
         the result of the hub_repo. Mainly used for tests.
@@ -191,10 +193,8 @@ def process_modules(
 
     # default values to apply for version specific config
     defaults = {
-        "auth_patterns": {},
         "base_url": "",
         "manifest_filename": "",
-        "netrc": "",
         "platforms": {
             # The structure is as follows:
             # "platform_name": struct(
@@ -259,10 +259,8 @@ def process_modules(
             specific_config = versions.setdefault(
                 last_version,
                 {
-                    "auth_patterns": defaults["auth_patterns"],
                     "base_url": defaults["base_url"],
                     "manifest_filename": defaults["manifest_filename"],
-                    "netrc": defaults["netrc"],
                     # shallow copy is enough as the values are structs and will
                     # be replaced on modification
                     "platforms": dict(defaults["platforms"]),
@@ -311,6 +309,11 @@ def process_modules(
             for platform, src in config.get("urls", {}).items()
             if src.urls
         }
+        auth = {
+            "auth_patterns": config.get("auth_patterns"),
+            "netrc": config.get("netrc"),
+        }
+        auth = {k: v for k, v in auth.items() if v}
 
         # Or fallback to fetching them from GH manifest file
         # Example file: https://github.com/astral-sh/uv/releases/download/0.6.3/dist-manifest.json
@@ -323,10 +326,8 @@ def process_modules(
                 ),
                 manifest_filename = config["manifest_filename"],
                 platforms = sorted(platforms),
-                attr = struct(
-                    netrc = config["netrc"],
-                    auth_patterns = config["auth_patterns"],
-                ),
+                attr = struct(**auth),
+                get_auth = get_auth,
             )
 
         for platform_name, platform in platforms.items():
@@ -341,8 +342,7 @@ def process_modules(
                 platform = platform_name,
                 urls = urls[platform_name].urls,
                 sha256 = urls[platform_name].sha256,
-                auth_patterns = config["auth_patterns"],
-                netrc = config["netrc"],
+                **auth
             )
 
             toolchain_names.append(toolchain_name)
@@ -379,7 +379,7 @@ def _overlap(first_collection, second_collection):
 
     return False
 
-def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, attr):
+def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, attr, get_auth = get_auth):
     """Download the results about remote tool sources.
 
     This relies on the tools using the cargo packaging to infer the actual
