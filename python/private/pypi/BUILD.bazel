@@ -236,13 +236,9 @@ bzl_library(
     name = "pep508_deps_bzl",
     srcs = ["pep508_deps.bzl"],
     deps = [
-        ":pep508_env_bzl",
         ":pep508_evaluate_bzl",
-        ":pep508_platform_bzl",
         ":pep508_requirement_bzl",
-        "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
-        "@pythons_hub//:versions_bzl",
     ],
 )
 

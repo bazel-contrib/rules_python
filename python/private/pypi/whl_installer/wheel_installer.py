@@ -126,7 +126,6 @@ def _extract_wheel(
         _setup_namespace_pkg_compatibility(installation_dir)
 
     metadata = {
-        "python_version": f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}",
         "entry_points": [
             {
                 "name": name,

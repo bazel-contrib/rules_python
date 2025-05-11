@@ -97,6 +97,7 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Starlark-based evaluation of environment markers (requirements.txt conditionals)
   available (not enabled by default) for improved multi-platform build support.
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
+  Work towards [#260](https://github.com/bazel-contrib/rules_python/issues/260).
 
 {#v0-0-0-removed}
 ### Removed

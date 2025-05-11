@@ -17,6 +17,7 @@
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
@@ -216,7 +217,6 @@ def _create_whl_repos(
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
             envsubst = pip_attr.envsubst,
-            experimental_target_platforms = pip_attr.experimental_target_platforms,
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
@@ -227,6 +227,9 @@ def _create_whl_repos(
                 for p, args in whl_overrides.get(whl_name, {}).items()
             },
         )
+        if not rp_config.enable_pipstar:
+            maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
+
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
         maybe_args_with_default = dict(
             # The following values have defaults next to them
@@ -305,13 +308,14 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
-        args["experimental_target_platforms"] = [
-            # Get rid of the version fot the target platforms because we are
-            # passing the interpreter any way. Ideally we should search of ways
-            # how to pass the target platforms through the hub repo.
-            p.partition("_")[2]
-            for p in requirement.target_platforms
-        ]
+        if not rp_config.enable_pipstar:
+            args["experimental_target_platforms"] = [
+                # Get rid of the version fot the target platforms because we are
+                # passing the interpreter any way. Ideally we should search of ways
+                # how to pass the target platforms through the hub repo.
+                p.partition("_")[2]
+                for p in requirement.target_platforms
+            ]
 
         # Pure python wheels or sdists may need to have a platform here
         target_platforms = None
