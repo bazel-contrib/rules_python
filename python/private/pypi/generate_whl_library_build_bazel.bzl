@@ -87,12 +87,12 @@ def generate_whl_library_build_bazel(
             """load("{}", "{}")""".format(
                 dep_template.format(
                     name = "",
-                    target = "requirements.bzl",
+                    target = "config.bzl",
                 ),
-                "all_whl_requirements_by_package",
+                "whl_map",
             ),
         )
-        kwargs["include"] = "sorted(all_whl_requirements_by_package)"
+        kwargs["include"] = "whl_map"
 
     for arg in unsupported_args:
         if kwargs.get(arg):

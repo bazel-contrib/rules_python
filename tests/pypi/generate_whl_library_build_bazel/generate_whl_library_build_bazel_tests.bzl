@@ -85,7 +85,7 @@ _tests.append(_test_all_legacy)
 
 def _test_all(env):
     want = """\
-load("@pypi//:requirements.bzl", "all_whl_requirements_by_package")
+load("@pypi//:config.bzl", "whl_map")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
 
 package(default_visibility = ["//visibility:public"])
@@ -112,7 +112,7 @@ whl_library_targets_from_requires(
         "qux",
     ],
     group_name = "qux",
-    include = sorted(all_whl_requirements_by_package),
+    include = whl_map,
     name = "foo.whl",
     requires_dist = [
         "foo",
@@ -149,7 +149,7 @@ _tests.append(_test_all)
 
 def _test_all_with_loads(env):
     want = """\
-load("@pypi//:requirements.bzl", "all_whl_requirements_by_package")
+load("@pypi//:config.bzl", "whl_map")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
 
 package(default_visibility = ["//visibility:public"])
@@ -176,7 +176,7 @@ whl_library_targets_from_requires(
         "qux",
     ],
     group_name = "qux",
-    include = sorted(all_whl_requirements_by_package),
+    include = whl_map,
     name = "foo.whl",
     requires_dist = [
         "foo",
