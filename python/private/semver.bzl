@@ -43,32 +43,6 @@ def _to_dict(self):
         "pre_release": self.pre_release,
     }
 
-def _upper(self):
-    major = self.major
-    minor = self.minor
-    patch = self.patch
-    build = ""
-    pre_release = ""
-    version = self.str()
-
-    if patch != None:
-        minor = minor + 1
-        patch = 0
-    elif minor != None:
-        major = major + 1
-        minor = 0
-    elif minor == None:
-        major = major + 1
-
-    return _new(
-        major = major,
-        minor = minor,
-        patch = patch,
-        build = build,
-        pre_release = pre_release,
-        version = "~" + version,
-    )
-
 def _new(*, major, minor, patch, pre_release, build, version = None):
     # buildifier: disable=uninitialized
     self = struct(
@@ -82,7 +56,6 @@ def _new(*, major, minor, patch, pre_release, build, version = None):
         key = lambda: _key(self),
         str = lambda: version,
         to_dict = lambda: _to_dict(self),
-        upper = lambda: _upper(self),
     )
     return self
 

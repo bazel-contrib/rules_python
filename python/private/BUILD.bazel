@@ -659,6 +659,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "version_bzl",
+    srcs = ["version.bzl"],
+)
+
+bzl_library(
     name = "version_label_bzl",
     srcs = ["version_label.bzl"],
 )
@@ -701,7 +706,7 @@ exports_files(
         "repack_whl.py",
         "py_package.bzl",
         "py_wheel.bzl",
-        "py_wheel_normalize_pep440.bzl",
+        "version.bzl",
         "reexports.bzl",
         "stamp.bzl",
         "util.bzl",

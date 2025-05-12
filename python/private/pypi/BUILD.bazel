@@ -251,6 +251,7 @@ bzl_library(
     srcs = ["pep508_env.bzl"],
     deps = [
         ":pep508_platform_bzl",
+        "//python/private:version_bzl",
     ],
 )
 
