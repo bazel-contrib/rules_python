@@ -40,6 +40,7 @@ def parse_requirements(
         extra_pip_args = [],
         get_index_urls = None,
         evaluate_markers = None,
+        extract_url_srcs = True,
         logger = None):
     """Get the requirements with platforms that the requirements apply to.
 
@@ -58,6 +59,8 @@ def parse_requirements(
             the platforms stored as values in the input dict. Returns the same
             dict, but with values being platforms that are compatible with the
             requirements line.
+        extract_url_srcs: A boolean to enable extracting URLs from requirement
+            lines to enable using bazel downloader.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
 
     Returns:
@@ -206,7 +209,7 @@ def parse_requirements(
             ret_requirements.append(
                 struct(
                     distribution = r.distribution,
-                    line = r.srcs.requirement if whls or sdist else r.srcs.requirement_line,
+                    line = r.srcs.requirement if extract_url_srcs and (whls or sdist) else r.srcs.requirement_line,
                     target_platforms = sorted(target_platforms),
                     extra_pip_args = r.extra_pip_args,
                     whls = whls,
