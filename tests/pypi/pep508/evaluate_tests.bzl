@@ -19,6 +19,12 @@ load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # bui
 
 _tests = []
 
+def _check_evaluate(env, expr, expected, values, strict = True):
+    env.expect.where(
+        expression = expr,
+        values = values,
+    ).that_bool(evaluate(expr, env = values, strict = strict)).equals(expected)
+
 def _tokenize_tests(env):
     for input, want in {
         "": [],
@@ -82,23 +88,11 @@ def _evaluate_non_version_env_tests(env):
             "{} > 'osx'".format(var_name): False,
             "{} >= 'osx'".format(var_name): True,
         }.items():
-            got = evaluate(
-                input,
-                env = marker_env,
-            )
-            env.expect.where(
-                expr = input,
-                env = marker_env,
-            ).that_bool(got).equals(want)
+            _check_evaluate(env, input, want, marker_env)
 
             # Check that the non-strict eval gives us back the input when no
             # env is supplied.
-            got = evaluate(
-                input,
-                env = {},
-                strict = False,
-            )
-            env.expect.that_bool(got).equals(input.replace("'", '"'))
+            _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_evaluate_non_version_env_tests)
 
@@ -123,6 +117,7 @@ def _evaluate_version_env_tests(env):
             "{} <= '3.7.10'".format(var_name): True,
             "{} <= '3.7.8'".format(var_name): False,
             "{} == '3.7.9'".format(var_name): True,
+            "{} == '3.7.*'".format(var_name): True,
             "{} != '3.7.9'".format(var_name): False,
             "{} ~= '3.7.1'".format(var_name): True,
             "{} ~= '3.7.10'".format(var_name): False,
@@ -131,22 +126,31 @@ def _evaluate_version_env_tests(env):
             "{} === '3.7.9'".format(var_name): True,
             "{} == '3.7.9+rc2'".format(var_name): True,
         }.items():  # buildifier: @unsorted-dict-items
-            got = evaluate(
-                input,
-                env = marker_env,
-            )
-            env.expect.that_collection((input, got)).contains_exactly((input, want))
+            _check_evaluate(env, input, want, marker_env)
 
             # Check that the non-strict eval gives us back the input when no
             # env is supplied.
-            got = evaluate(
-                input,
-                env = {},
-                strict = False,
-            )
-            env.expect.that_bool(got).equals(input.replace("'", '"'))
+            _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_evaluate_version_env_tests)
+
+def _evaluate_platform_version_is_special(env):
+    # Given
+    marker_env = {"platform_version": "FooBar Linux v1.2.3"}
+
+    # When the platform version is not
+    input = "platform_version == '0'"
+    _check_evaluate(env, input, False, marker_env)
+
+    # And when I compare it as string
+    input = "'FooBar' in platform_version"
+    _check_evaluate(env, input, True, marker_env)
+
+    # Check that the non-strict eval gives us back the input when no
+    # env is supplied.
+    _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
+
+_tests.append(_evaluate_platform_version_is_special)
 
 def _logical_expression_tests(env):
     for input, want in {
@@ -195,13 +199,7 @@ def _logical_expression_tests(env):
         "not not os_name == 'foo'": True,
         "not not not os_name == 'foo'": False,
     }.items():  # buildifier: @unsorted-dict-items
-        got = evaluate(
-            input,
-            env = {
-                "os_name": "foo",
-            },
-        )
-        env.expect.that_collection((input, got)).contains_exactly((input, want))
+        _check_evaluate(env, input, want, {"os_name": "foo"})
 
         if not input.strip("()"):
             # These cases will just return True, because they will be evaluated
@@ -210,12 +208,7 @@ def _logical_expression_tests(env):
 
         # Check that the non-strict eval gives us back the input when no env
         # is supplied.
-        got = evaluate(
-            input,
-            env = {},
-            strict = False,
-        )
-        env.expect.that_bool(got).equals(input.replace("'", '"'))
+        _check_evaluate(env, input, input.replace("'", '"'), {}, strict = False)
 
 _tests.append(_logical_expression_tests)
 
@@ -244,6 +237,7 @@ def _evaluate_partial_only_extra(env):
             strict = False,
         )
         env.expect.that_bool(got).equals(want)
+        _check_evaluate(env, input, want, {"extra": extra}, strict = False)
 
 _tests.append(_evaluate_partial_only_extra)
 
@@ -268,13 +262,60 @@ def _evaluate_with_aliases(env):
         },
     }.items():  # buildifier: @unsorted-dict-items
         for input, want in tests.items():
-            got = evaluate(
-                input,
-                env = pep508_env(target_platform),
-            )
-            env.expect.that_bool(got).equals(want)
+            _check_evaluate(env, input, want, pep508_env(target_platform))
 
 _tests.append(_evaluate_with_aliases)
+
+def _expr_case(expr, want, env):
+    return struct(expr = expr.strip(), want = want, env = env)
+
+_MISC_EXPRESSIONS = [
+    _expr_case('python_version == "3.*"', True, {"python_version": "3.10.1"}),
+    _expr_case('python_version != "3.10.*"', False, {"python_version": "3.10.1"}),
+    _expr_case('python_version != "3.11.*"', True, {"python_version": "3.10.1"}),
+    _expr_case('python_version != "3.10"', False, {"python_version": "3.10.0"}),
+    _expr_case('python_version == "3.10"', True, {"python_version": "3.10.0"}),
+    # Cases for the '>' operator
+    # Taken from spec: https://peps.python.org/pep-0440/#exclusive-ordered-comparison
+    _expr_case('python_version > "1.7"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7"', False, {"python_version": "1.7.0.post0"}),
+    _expr_case('python_version > "1.7"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7.post2"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7.post2"', True, {"python_version": "1.7.post3"}),
+    _expr_case('python_version > "1.7.post2"', False, {"python_version": "1.7.0"}),
+    _expr_case('python_version > "1.7.1+local"', False, {"python_version": "1.7.1"}),
+    _expr_case('python_version > "1.7.1+local"', True, {"python_version": "1.7.2"}),
+    # Extra cases for the '<' operator
+    _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.2"}),
+    _expr_case('python_version < "1.7.3"', True, {"python_version": "1.7.2"}),
+    _expr_case('python_version < "1.7.1"', True, {"python_version": "1.7"}),
+    _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.1-rc2"}),
+    _expr_case('python_version < "1.7.1-rc3"', True, {"python_version": "1.7.1-rc2"}),
+    _expr_case('python_version < "1.7.1-rc1"', False, {"python_version": "1.7.1-rc2"}),
+    # Extra tests
+    _expr_case('python_version <= "1.7.1"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version <= "1.7.2"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version >= "1.7.1"', True, {"python_version": "1.7.1"}),
+    _expr_case('python_version >= "1.7.0"', True, {"python_version": "1.7.1"}),
+    # Compatible version tests:
+    # https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release
+    _expr_case('python_version ~= "2.2"', True, {"python_version": "2.3"}),
+    _expr_case('python_version ~= "2.2"', False, {"python_version": "2.1"}),
+    _expr_case('python_version ~= "2.2.post3"', False, {"python_version": "2.2"}),
+    _expr_case('python_version ~= "2.2.post3"', True, {"python_version": "2.3"}),
+    _expr_case('python_version ~= "2.2.post3"', False, {"python_version": "3.0"}),
+    _expr_case('python_version ~= "1!2.2"', False, {"python_version": "2.7"}),
+    _expr_case('python_version ~= "0!2.2"', True, {"python_version": "2.7"}),
+    _expr_case('python_version ~= "1!2.2"', True, {"python_version": "1!2.7"}),
+    _expr_case('python_version ~= "1.2.3"', True, {"python_version": "1.2.4"}),
+    _expr_case('python_version ~= "1.2.3"', False, {"python_version": "1.3.2"}),
+]
+
+def _misc_expressions(env):
+    for case in _MISC_EXPRESSIONS:
+        _check_evaluate(env, case.expr, case.want, case.env)
+
+_tests.append(_misc_expressions)
 
 def evaluate_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(

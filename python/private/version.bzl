@@ -59,18 +59,23 @@ def _open_context(self):
     self.contexts.append(_ctx(_context(self)["start"]))
     return self.contexts[-1]
 
-def _accept(self):
+def _accept(self, key = None):
     """Close the current ctx successfully and merge the results."""
     finished = self.contexts.pop()
     self.contexts[-1]["norm"] += finished["norm"]
+    if key:
+        self.contexts[-1][key] = finished["norm"]
+
     self.contexts[-1]["start"] = finished["start"]
     return True
 
 def _context(self):
     return self.contexts[-1]
 
-def _discard(self):
+def _discard(self, key = None):
     self.contexts.pop()
+    if key:
+        self.contexts[-1][key] = ""
     return False
 
 def _new(input):
@@ -313,9 +318,9 @@ def accept_epoch(parser):
     if accept_digits(parser) and accept(parser, _is("!"), "!"):
         if ctx["norm"] == "0!":
             ctx["norm"] = ""
-        return parser.accept()
+        return parser.accept("epoch")
     else:
-        return parser.discard()
+        return parser.discard("epoch")
 
 def accept_release(parser):
     """Accept the release segment, numbers separated by dots.
@@ -329,10 +334,10 @@ def accept_release(parser):
     parser.open_context()
 
     if not accept_digits(parser):
-        return parser.discard()
+        return parser.discard("release")
 
     accept_dot_number_sequence(parser)
-    return parser.accept()
+    return parser.accept("release")
 
 def accept_pre_l(parser):
     """PEP 440: Pre-release spelling.
@@ -374,7 +379,7 @@ def accept_prerelease(parser):
     accept(parser, _in(["-", "_", "."]), "")
 
     if not accept_pre_l(parser):
-        return parser.discard()
+        return parser.discard("pre")
 
     accept(parser, _in(["-", "_", "."]), "")
 
@@ -382,7 +387,7 @@ def accept_prerelease(parser):
         # PEP 440: Implicit pre-release number
         ctx["norm"] += "0"
 
-    return parser.accept()
+    return parser.accept("pre")
 
 def accept_implicit_postrelease(parser):
     """PEP 440: Implicit post releases.
@@ -444,9 +449,9 @@ def accept_postrelease(parser):
     parser.open_context()
 
     if accept_implicit_postrelease(parser) or accept_explicit_postrelease(parser):
-        return parser.accept()
+        return parser.accept("post")
 
-    return parser.discard()
+    return parser.discard("post")
 
 def accept_devrelease(parser):
     """PEP 440: Developmental releases.
@@ -470,9 +475,9 @@ def accept_devrelease(parser):
             # PEP 440: Implicit development release number
             ctx["norm"] += "0"
 
-        return parser.accept()
+        return parser.accept("dev")
 
-    return parser.discard()
+    return parser.discard("dev")
 
 def accept_local(parser):
     """PEP 440: Local version identifiers.
@@ -487,9 +492,9 @@ def accept_local(parser):
 
     if accept(parser, _is("+"), "+") and accept_alnum(parser):
         accept_separator_alnum_sequence(parser)
-        return parser.accept()
+        return parser.accept("local")
 
-    return parser.discard()
+    return parser.discard("local")
 
 def normalize_pep440(version):
     """Escape the version component of a filename.
@@ -503,7 +508,31 @@ def normalize_pep440(version):
     Returns:
       string containing the normalized version.
     """
-    parser = _new(version.strip())  # PEP 440: Leading and Trailing Whitespace
+    return _parse(version, strict = True)["norm"]
+
+def _parse(version_str, strict = True):
+    """Escape the version component of a filename.
+
+    See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
+    and https://peps.python.org/pep-0440/
+
+    Args:
+      version_str: version string to be normalized according to PEP 440.
+      strict: fail if the version is invalid, defaults to True.
+
+    Returns:
+      string containing the normalized version.
+    """
+
+    # https://packaging.python.org/en/latest/specifications/version-specifiers/#leading-and-trailing-whitespace
+    version = version_str.strip()
+    is_prefix = False
+
+    if not strict:
+        is_prefix = version.endswith(".*")
+        version = version.strip(" .*")  # PEP 440: Leading and Trailing Whitespace and ".*"
+
+    parser = _new(version)
     accept(parser, _is("v"), "")  # PEP 440: Preceding v character
     accept_epoch(parser)
     accept_release(parser)
@@ -511,9 +540,317 @@ def normalize_pep440(version):
     accept_postrelease(parser)
     accept_devrelease(parser)
     accept_local(parser)
-    if parser.input[parser.context()["start"]:]:
-        fail(
-            "Failed to parse PEP 440 version identifier '%s'." % parser.input,
-            "Parse error at '%s'" % parser.input[parser.context()["start"]:],
-        )
-    return parser.context()["norm"]
+
+    parser_ctx = parser.context()
+    if parser.input[parser_ctx["start"]:]:
+        if strict:
+            fail(
+                "Failed to parse PEP 440 version identifier '%s'." % parser.input,
+                "Parse error at '%s'" % parser.input[parser_ctx["start"]:],
+            )
+
+        return None
+
+    parser_ctx["is_prefix"] = is_prefix
+    return parser_ctx
+
+def parse(version_str, strict = False):
+    """Parse a PEP4408 compliant version.
+
+    This is similar to `normalize_pep440`, but it parses individual components to
+    comparable types.
+
+    Args:
+      version_str: version string to be normalized according to PEP 440.
+      strict: fail if the version is invalid.
+
+    Returns:
+      a struct with individual components of a version:
+        * `epoch` {type}`int`, defaults to `0`
+        * `release` {type}`tuple[int]` an n-tuple of ints
+        * `pre` {type}`tuple[str, int] | None` a tuple of a string and an int,
+            e.g. ("a", 1)
+        * `post` {type}`tuple[str, int] | None` a tuple of a string and an int,
+            e.g. ("~", 1)
+        * `dev` {type}`tuple[str, int] | None` a tuple of a string and an int,
+            e.g. ("", 1)
+        * `local` {type}`tuple[str, int] | None` a tuple of components in the local
+            version, e.g. ("abc", 123).
+        * `is_prefix` {type}`bool` whether the version_str ends with `.*`.
+        * `string` {type}`str` normalized value of the input.
+    """
+
+    parts = _parse(version_str, strict = strict)
+    if not parts:
+        return None
+
+    if parts["is_prefix"] and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
+        if strict:
+            fail("local version part has been obtained, but only public segments can have prefix matches")
+
+        # https://peps.python.org/pep-0440/#public-version-identifiers
+        return None
+
+    return struct(
+        epoch = _parse_epoch(parts["epoch"]),
+        release = _parse_release(parts["release"]),
+        pre = _parse_pre(parts["pre"]),
+        post = _parse_post(parts["post"]),
+        dev = _parse_dev(parts["dev"]),
+        local = _parse_local(parts["local"]),
+        string = parts["norm"],
+        is_prefix = parts["is_prefix"],
+    )
+
+def _parse_epoch(value):
+    if not value:
+        return 0
+
+    if not value.endswith("!"):
+        fail("epoch string segment needs to end with '!', got: {}".format(value))
+
+    return int(value[:-1])
+
+def _parse_release(value):
+    return tuple([int(d) for d in value.split(".")])
+
+def _parse_local(value):
+    if not value:
+        return None
+
+    if not value.startswith("+"):
+        fail("local release identifier must start with '+', got: {}".format(value))
+
+    # If the part is numerical, handle it as a number
+    return tuple([int(part) if part.isdigit() else part for part in value[1:].split(".")])
+
+def _parse_dev(value):
+    if not value:
+        return None
+
+    if not value.startswith(".dev"):
+        fail("dev release identifier must start with '.dev', got: {}".format(value))
+    dev = int(value[len(".dev"):])
+
+    # Empty string goes first when comparing
+    return ("", dev)
+
+def _parse_pre(value):
+    if not value:
+        return None
+
+    if value.startswith("rc"):
+        prefix = "rc"
+    else:
+        prefix = value[0]
+
+    return (prefix, int(value[len(prefix):]))
+
+def _parse_post(value):
+    if not value:
+        return None
+
+    if not value.startswith(".post"):
+        fail("post release identifier must start with '.post', got: {}".format(value))
+    post = int(value[len(".post"):])
+
+    # We choose `~` since almost all of the ASCII characters will be before
+    # it. Use `ord` and `chr` functions to find a good value.
+    return ("~", post)
+
+def _pad_zeros(release, n):
+    padding = n - len(release)
+    if padding <= 0:
+        return release
+
+    release = list(release) + [0] * padding
+    return tuple(release)
+
+def _prefix_err(left, op, right):
+    if left.is_prefix or right.is_prefix:
+        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
+            left.string,
+            op,
+            right.string,
+        ))
+
+def _version_eeq(left, right):
+    """=== operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "===", right))
+
+    # https://peps.python.org/pep-0440/#arbitrary-equality
+    # > simple string equality operations
+    return left.string == right.string
+
+def _version_eq(left, right):
+    """== operator"""
+    if left.is_prefix and right.is_prefix:
+        fail("Invalid comparison: both versions cannot be prefix matching")
+    if left.is_prefix:
+        return right.string.startswith("{}.".format(left.string))
+    if right.is_prefix:
+        return left.string.startswith("{}.".format(right.string))
+
+    if left.epoch != right.epoch:
+        return False
+
+    release_len = max(len(left.release), len(right.release))
+    left_release = _pad_zeros(left.release, release_len)
+    right_release = _pad_zeros(right.release, release_len)
+
+    if left_release != right_release:
+        return False
+
+    return (
+        left.pre == right.pre and
+        left.post == right.post and
+        left.dev == right.dev
+        # local is ignored for == checks
+    )
+
+def _version_compatible(left, right):
+    """~= operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "~=", right))
+
+    # https://peps.python.org/pep-0440/#compatible-release
+    # Note, the ~= operator can be also expressed as:
+    # >= V.N, == V.*
+
+    right_star = ".".join([str(d) for d in right.release[:-1]])
+    if right.epoch:
+        right_star = "{}!{}.".format(right.epoch, right_star)
+    else:
+        right_star = "{}.".format(right_star)
+
+    return _version_ge(left, right) and left.string.startswith(right_star)
+
+def _version_ne(left, right):
+    """!= operator"""
+    return not _version_eq(left, right)
+
+def _version_lt(left, right):
+    """< operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "<", right))
+
+    if left.epoch > right.epoch:
+        return False
+    elif left.epoch < right.epoch:
+        return True
+
+    release_len = max(len(left.release), len(right.release))
+    left_release = _pad_zeros(left.release, release_len)
+    right_release = _pad_zeros(right.release, release_len)
+
+    if left_release > right_release:
+        return False
+    elif left_release < right_release:
+        return True
+
+    # From PEP440, this is not a simple ordering check and we need to check the version
+    # semantically:
+    # * The exclusive ordered comparison <V MUST NOT allow a pre-release of the specified version
+    #   unless the specified version is itself a pre-release.
+    if left.pre and right.pre:
+        return left.pre < right.pre
+    else:
+        return False
+
+def _version_gt(left, right):
+    """> operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, ">", right))
+
+    if left.epoch > right.epoch:
+        return True
+    elif left.epoch < right.epoch:
+        return False
+
+    release_len = max(len(left.release), len(right.release))
+    left_release = _pad_zeros(left.release, release_len)
+    right_release = _pad_zeros(right.release, release_len)
+
+    if left_release > right_release:
+        return True
+    elif left_release < right_release:
+        return False
+
+    # From PEP440, this is not a simple ordering check and we need to check the version
+    # semantically:
+    # * The exclusive ordered comparison >V MUST NOT allow a post-release of the given version
+    #   unless V itself is a post release.
+    #
+    # * The exclusive ordered comparison >V MUST NOT match a local version of the specified
+    #   version.
+
+    if left.post and right.post:
+        return left.post > right.post
+    else:
+        # ignore the left.post if right is not a post if right is a post, then this evaluates to
+        # False anyway.
+        return False
+
+def _version_le(left, right):
+    """<= operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, "<=", right))
+
+    # PEP440: simple order check
+    # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
+    _left = _version_key(left, local = False)
+    _right = _version_key(right, local = False)
+    return _left < _right or _version_eq(left, right)
+
+def _version_ge(left, right):
+    """>= operator"""
+    if left.is_prefix or right.is_prefix:
+        fail(_prefix_err(left, ">=", right))
+
+    # PEP440: simple order check
+    # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
+    _left = _version_key(left, local = False)
+    _right = _version_key(right, local = False)
+    return _left > _right or _version_eq(left, right)
+
+def _version_key(self, *, local = True):
+    """This function returns a tuple that can be used in 'sorted' calls.
+
+    This implements the PEP440 version sorting.
+    """
+    release_key = ("z",)
+    local = self.local if local else []
+    local = local or []
+
+    return (
+        self.epoch,
+        self.release,
+        # PEP440 Within a pre-release, post-release or development release segment with
+        # a shared prefix, ordering MUST be by the value of the numeric component.
+        # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
+        # We choose to first match the pre-release, then post release, then dev and
+        # then stable
+        self.pre or self.post or self.dev or release_key,
+        # PEP440 local versions go before post versions
+        tuple([(type(item) == "int", item) for item in local]),
+        # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
+        self.post or self.dev or release_key,
+        # PEP440 - post release ordering: .devN, <no suffix>
+        self.dev or release_key,
+    )
+
+version = struct(
+    normalize = normalize_pep440,
+    parse = parse,
+    # methods, keep sorted
+    key = _version_key,
+    is_compatible = _version_compatible,
+    is_eq = _version_eq,
+    is_eeq = _version_eeq,
+    is_ge = _version_ge,
+    is_gt = _version_gt,
+    is_le = _version_le,
+    is_lt = _version_lt,
+    is_ne = _version_ne,
+)

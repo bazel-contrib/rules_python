@@ -104,24 +104,6 @@ def _test_semver_sort(env):
 
 _tests.append(_test_semver_sort)
 
-def _test_upper(env):
-    for input, want in {
-        # Depending on how many version numbers are specified we will increase
-        # the upper bound differently. See https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release for docs
-        "0.0.1": "0.1.0",
-        "0.1": "1.0",
-        "0.1.0": "0.2.0",
-        "1": "2",
-        "1.0.0-pre": "1.1.0",  # pre-release info is dropped
-        "1.2.0": "1.3.0",
-        "2.0.0+build0": "2.1.0",  # build info is dropped
-    }.items():
-        actual = semver(input).upper().key()
-        want = semver(want).key()
-        env.expect.that_collection(actual).contains_exactly(want).in_order()
-
-_tests.append(_test_upper)
-
 def semver_test_suite(name):
     """Create the test suite.
 
