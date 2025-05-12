@@ -31,6 +31,10 @@ If the value is missing, then the default value is being used, see documentation
 {docs_url}/python/config_settings
 """
 
+# Indicates something needs public visibility so that other generated code can
+# access it, but it's not intended for general public usage.
+_NOT_ACTUALLY_PUBLIC = ["//visibility:public"]
+
 def construct_config_settings(*, name, default_version, versions, minor_mapping, documented_flags):  # buildifier: disable=function-docstring
     """Create a 'python_version' config flag and construct all config settings used in rules_python.
 
@@ -128,7 +132,30 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
         # `whl_library` in the hub repo created by `pip.parse`.
         flag_values = {"current_config": "will-never-match"},
         # Only public so that PyPI hub repo can access it
-        visibility = ["//visibility:public"],
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+
+    libc = Label("//python/config_settings:py_linux_libc")
+    native.config_setting(
+        name = "_is_py_linux_libc_glibc",
+        flag_values = {libc: "glibc"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+    native.config_setting(
+        name = "_is_py_linux_libc_musl",
+        flag_values = {libc: "glibc"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+    freethreaded = Label("//python/config_settings:py_freethreaded")
+    native.config_setting(
+        name = "_is_py_freethreaded_yes",
+        flag_values = {freethreaded: "yes"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+    native.config_setting(
+        name = "_is_py_freethreaded_no",
+        flag_values = {freethreaded: "no"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
     )
 
 def _python_version_flag_impl(ctx):
