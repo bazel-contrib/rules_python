@@ -45,6 +45,13 @@ def _impl(rctx):
     macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
 
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
+    rctx.template(
+        "config.bzl",
+        rctx.attr._config_template,
+        substitutions = {
+            "%%TARGET_PLATFORMS%%": render.list(rctx.attr.target_platforms),
+        },
+    )
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
@@ -90,6 +97,9 @@ The list of packages that will be exposed via all_*requirements macros. Defaults
 The wheel map where values are json.encoded strings of the whl_map constructed
 in the pip.parse tag class.
 """,
+        ),
+        "_config_template": attr.label(
+            default = ":config.bzl.tmpl.bzlmod",
         ),
         "_requirements_bzl_template": attr.label(
             default = ":requirements.bzl.tmpl.bzlmod",
