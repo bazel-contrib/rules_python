@@ -301,7 +301,7 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         # This is no-op because pip is not used to download the wheel.
         args.pop("download_only", None)
 
-        args["requirement"] = requirement.srcs.requirement
+        args["requirement"] = requirement.line
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
@@ -338,7 +338,7 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     # Fallback to a pip-installed wheel
     args = dict(whl_library_args)  # make a copy
-    args["requirement"] = requirement.srcs.requirement_line
+    args["requirement"] = requirement.line
     if requirement.extra_pip_args:
         args["extra_pip_args"] = requirement.extra_pip_args
 

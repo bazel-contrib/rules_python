@@ -206,16 +206,7 @@ def parse_requirements(
             ret_requirements.append(
                 struct(
                     distribution = r.distribution,
-                    srcs = struct(
-                        # Recreate the struct so that the tests stay less brittle when
-                        # r.srcs changes
-                        requirement = r.srcs.requirement,
-                        requirement_line = r.srcs.requirement_line,
-                        marker = r.srcs.marker,
-                        shas = r.srcs.shas,
-                        url = r.srcs.url,
-                        version = r.srcs.version,
-                    ),
+                    line = r.srcs.requirement if whls or sdist else r.srcs.requirement_line,
                     target_platforms = sorted(target_platforms),
                     extra_pip_args = r.extra_pip_args,
                     whls = whls,
