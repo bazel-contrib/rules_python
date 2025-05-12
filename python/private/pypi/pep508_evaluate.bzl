@@ -16,22 +16,10 @@
 """
 
 load("//python/private:enum.bzl", "enum")
-load("//python/private:semver.bzl", "semver")
+load("//python/private:version.bzl", "version")
 
 # The expression parsing and resolution for the PEP508 is below
 #
-
-# Taken from
-# https://peps.python.org/pep-0508/#grammar
-#
-# version_cmp   = wsp* '<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' | '==='
-_VERSION_CMP = sorted(
-    [
-        i.strip(" '")
-        for i in "'<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' | '==='".split(" | ")
-    ],
-    key = lambda x: (-len(x), x),
-)
 
 _STATE = enum(
     STRING = "string",
@@ -353,36 +341,34 @@ def _env_expr(left, op, right):
     elif op == ">=":
         return left >= right
     else:
-        return fail("TODO: op unsupported: '{}'".format(op))
+        return fail("unsupported op: '{}' {} '{}'".format(left, op, right))
 
 def _version_expr(left, op, right):
     """Evaluate a version comparison expression"""
-    left = semver(left)
-    right = semver(right)
-    _left = left.key()
-    _right = right.key()
-    if op == "<":
-        return _left < _right
-    elif op == ">":
-        return _left > _right
-    elif op == "<=":
-        return _left <= _right
-    elif op == ">=":
-        return _left >= _right
+    _left = version.parse(left)
+    _right = version.parse(right)
+    if _left == None or _right == None:
+        # Per spec, if either can't be normalized to a version, then
+        # fallback to simple string comparison. Usually this is `platform_version`
+        # or `platform_release`, which vary depending on platform.
+        return _env_expr(left, op, right)
+
+    if op == "===":
+        return version.is_eeq(_left, _right)
     elif op == "!=":
-        return _left != _right
+        return version.is_ne(_left, _right)
     elif op == "==":
-        # Matching of major, minor, patch only
-        return _left[:3] == _right[:3]
+        return version.is_eq(_left, _right)
+    elif op == "<":
+        return version.is_lt(_left, _right)
+    elif op == ">":
+        return version.is_gt(_left, _right)
+    elif op == "<=":
+        return version.is_le(_left, _right)
+    elif op == ">=":
+        return version.is_ge(_left, _right)
     elif op == "~=":
-        right_plus = right.upper()
-        _right_plus = right_plus.key()
-        return _left >= _right and _left < _right_plus
-    elif op == "===":
-        # Strict matching
-        return _left == _right
-    elif op in _VERSION_CMP:
-        fail("TODO: op unsupported: '{}'".format(op))
+        return version.is_compatible(_left, _right)
     else:
         return False  # Let's just ignore the invalid ops
 

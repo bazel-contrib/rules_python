@@ -52,7 +52,7 @@ def parse_simpleapi_html(*, url, content):
 
     # Each line follows the following pattern
     # <a href="https://...#sha256=..." attribute1="foo" ... attributeN="bar">filename</a><br />
-    sha256_by_version = {}
+    sha256s_by_version = {}
     for line in lines[1:]:
         dist_url, _, tail = line.partition("#sha256=")
         dist_url = _absolute_url(url, dist_url)
@@ -65,7 +65,7 @@ def parse_simpleapi_html(*, url, content):
         head, _, _ = tail.rpartition("</a>")
         maybe_metadata, _, filename = head.rpartition(">")
         version = _version(filename)
-        sha256_by_version.setdefault(version, []).append(sha256)
+        sha256s_by_version.setdefault(version, []).append(sha256)
 
         metadata_sha256 = ""
         metadata_url = ""
@@ -102,7 +102,7 @@ def parse_simpleapi_html(*, url, content):
     return struct(
         sdists = sdists,
         whls = whls,
-        sha256_by_version = sha256_by_version,
+        sha256s_by_version = sha256s_by_version,
     )
 
 _SDIST_EXTS = [

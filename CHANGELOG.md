@@ -94,13 +94,24 @@ END_UNRELEASED_TEMPLATE
   (the default), the subprocess's stdout/stderr will be logged.
 * (toolchains) Local toolchains can be activated with custom flags. See
   [Conditionally using local toolchains] docs for how to configure.
-* (pypi) `RULES_PYTHON_ENABLE_PIPSTAR` environment variable: when `1`, the Starlark
-  implementation of wheel METADATA parsing is used (which has improved multi-platform
-  build support).
+* (pypi) Starlark-based evaluation of environment markers (requirements.txt conditionals)
+  available (not enabled by default) for improved multi-platform build support.
+  Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
 
 {#v0-0-0-removed}
 ### Removed
 * Nothing removed.
+
+{#1-4-1}
+## [1.4.1] - 2025-05-08
+
+[1.4.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.1
+
+{#1-4-1-fixed}
+### Fixed
+* (pypi) Fix a typo not allowing users to benefit from using the downloader when the hashes in the
+  requirements file are not present. Fixes
+  [#2863](https://github.com/bazel-contrib/rules_python/issues/2863).
 
 {#1-4-0}
 ## [1.4.0] - 2025-04-19
