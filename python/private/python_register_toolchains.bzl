@@ -42,6 +42,7 @@ def python_register_toolchains(
         set_python_version_constraint = False,
         tool_versions = None,
         minor_mapping = None,
+        platforms = PLATFORMS,
         **kwargs):
     """Convenience macro for users which does typical setup.
 
@@ -72,6 +73,10 @@ def python_register_toolchains(
             python/versions.bzl will be used.
         minor_mapping: {type}`dict[str, str]` contains a mapping from `X.Y` to `X.Y.Z`
             version.
+        platforms: {type}`dict[str, platform_info}` The mapping of platforms to create
+            toolchains for. The `platform_info` values are structs from
+            `python/versions.bzl#platform_info`. Platforms are only created if
+            sufficient info exists in `tool_versions`.
         **kwargs: passed to each {obj}`python_repository` call.
 
     Returns:
@@ -105,7 +110,7 @@ def python_register_toolchains(
             register_coverage_tool = False
 
     loaded_platforms = []
-    for platform in PLATFORMS.keys():
+    for platform in platforms.keys():
         sha256 = tool_versions[python_version]["sha256"].get(platform, None)
         if not sha256:
             continue
