@@ -14,25 +14,7 @@
 
 "A semver version parser"
 
-def _key(version):
-    return (
-        version.major,
-        version.minor or 0,
-        version.patch or 0,
-        # non pre-release versions are higher
-        version.pre_release == "",
-        # then we compare each element of the pre_release tag separately
-        tuple([
-            (
-                i if not i.isdigit() else "",
-                # digit values take precedence
-                int(i) if i.isdigit() else 0,
-            )
-            for i in version.pre_release.split(".")
-        ]) if version.pre_release else None,
-        # And build info is just alphabetic
-        version.build,
-    )
+load(":version.bzl", "version")
 
 def _to_dict(self):
     return {
@@ -43,7 +25,7 @@ def _to_dict(self):
         "pre_release": self.pre_release,
     }
 
-def _new(*, major, minor, patch, pre_release, build, version = None):
+def _new(*, major, minor, patch, pre_release, build, ver = None):
     # buildifier: disable=uninitialized
     self = struct(
         major = int(major),
@@ -53,33 +35,35 @@ def _new(*, major, minor, patch, pre_release, build, version = None):
         pre_release = pre_release,
         build = build,
         # buildifier: disable=uninitialized
-        key = lambda: _key(self),
-        str = lambda: version,
+        key = lambda: version.key(ver),
+        str = lambda: ver.string,
         to_dict = lambda: _to_dict(self),
     )
     return self
 
-def semver(version):
+def semver(version_str):
     """Parse the semver version and return the values as a struct.
 
     Args:
-        version: {type}`str` the version string.
+        version_str: {type}`str` the version string.
 
     Returns:
         A {type}`struct` with `major`, `minor`, `patch` and `build` attributes.
     """
 
-    # Implement the https://semver.org/ spec
-    major, _, tail = version.partition(".")
-    minor, _, tail = tail.partition(".")
-    patch, _, build = tail.partition("+")
-    patch, _, pre_release = patch.partition("-")
+    # Shim the version
+    ver = version.parse(version_str, strict = True)
+    major = ver.release[0]
+    minor = ver.release[1] if len(ver.release) > 1 else None
+    patch = ver.release[2] if len(ver.release) > 2 else None
+    build = ver.local
+    pre_release = ver.pre
 
     return _new(
-        major = int(major),
-        minor = int(minor) if minor.isdigit() else None,
-        patch = int(patch) if patch.isdigit() else None,
+        major = major,
+        minor = minor,
+        patch = patch,
         build = build,
         pre_release = pre_release,
-        version = version,
+        ver = ver,
     )

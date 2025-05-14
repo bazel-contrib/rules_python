@@ -613,6 +613,7 @@ bzl_library(
 bzl_library(
     name = "semver_bzl",
     srcs = ["semver.bzl"],
+    deps = [":version_bzl"],
 )
 
 bzl_library(
