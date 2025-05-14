@@ -102,6 +102,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Starlark-based evaluation of environment markers (requirements.txt conditionals)
   available (not enabled by default) for improved multi-platform build support.
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
+* (uv) Handle `.netrc` and `auth_patterns` auth when downloading `uv`. Work towards
+  [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 
 {#v0-0-0-removed}
 ### Removed
