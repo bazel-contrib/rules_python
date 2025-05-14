@@ -139,7 +139,7 @@ bzl_library(
     name = "config_settings_bzl",
     srcs = ["config_settings.bzl"],
     deps = [
-        ":semver_bzl",
+        ":version_bzl",
         "@bazel_skylib//lib:selects",
         "@bazel_skylib//rules:common_settings",
     ],
