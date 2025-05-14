@@ -22,7 +22,7 @@ load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load("//python/private:semver.bzl", "semver")
+load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
@@ -36,9 +36,9 @@ load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_library.bzl", "whl_library")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
-def _major_minor_version(version):
-    version = semver(version)
-    return "{}.{}".format(version.major, version.minor)
+def _major_minor_version(version_str):
+    ver = version.parse(version_str)
+    return "{}.{}".format(ver.release[0], ver.release[1])
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
