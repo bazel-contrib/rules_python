@@ -180,18 +180,20 @@ _tests.append(_test_entrypoints)
 def _test_whl_and_library_deps_from_requires(env):
     filegroup_calls = []
     py_library_calls = []
+    env_marker_setting_calls = []
 
     whl_library_targets_from_requires(
         name = "foo-0-py3-none-any.whl",
         metadata_name = "Foo",
         metadata_version = "0",
-        dep_template = "@pypi_{name}//:{target}",
+        dep_template = "@pypi//{name}:{target}",
         requires_dist = [
             "foo",  # this self-edge will be ignored
-            "bar-baz",
+            "bar",
+            "bar-baz; python_version < \"8.2\"",
+            "booo",  # this is effectively excluded due to the list below
         ],
-        target_platforms = ["cp38_linux_x86_64"],
-        default_python_version = "3.8.1",
+        include = ["foo", "bar", "bar_baz"],
         data_exclude = [],
         # Overrides for testing
         filegroups = {},
@@ -203,6 +205,7 @@ def _test_whl_and_library_deps_from_requires(env):
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
         ),
     )
 
@@ -210,7 +213,10 @@ def _test_whl_and_library_deps_from_requires(env):
         {
             "name": "whl",
             "srcs": ["foo-0-py3-none-any.whl"],
-            "data": ["@pypi_bar_baz//:whl"],
+            "data": ["@pypi//bar:whl"] + _select({
+                ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
+                "//conditions:default": [],
+            }),
             "visibility": ["//visibility:public"],
         },
     ])  # buildifier: @unsorted-dict-items
@@ -233,10 +239,20 @@ def _test_whl_and_library_deps_from_requires(env):
                 ] + glob_excludes.version_dependent_exclusions(),
             ),
             "imports": ["site-packages"],
-            "deps": ["@pypi_bar_baz//:pkg"],
+            "deps": ["@pypi//bar:pkg"] + _select({
+                ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
+                "//conditions:default": [],
+            }),
             "tags": ["pypi_name=Foo", "pypi_version=0"],
             "visibility": ["//visibility:public"],
             "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+        },
+    ])  # buildifier: @unsorted-dict-items
+    env.expect.that_collection(env_marker_setting_calls).contains_exactly([
+        {
+            "name": "include_bar_baz",
+            "expression": "python_version < \"8.2\"",
+            "visibility": ["//visibility:private"],
         },
     ])  # buildifier: @unsorted-dict-items
 

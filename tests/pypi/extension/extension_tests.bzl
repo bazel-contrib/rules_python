@@ -62,7 +62,12 @@ def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True):
 
 def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
-        parse_modules(**kwargs),
+        parse_modules(
+            # TODO @aignas 2025-05-11: start integration testing the branch which
+            # includes this.
+            enable_pipstar = 0,
+            **kwargs
+        ),
         attrs = dict(
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
@@ -806,7 +811,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "direct_sdist_without_sha @ some-archive/any-name.tar.gz",
+            "requirement": "direct_sdist_without_sha",
             "sha256": "",
             "urls": ["some-archive/any-name.tar.gz"],
         },
@@ -824,7 +829,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             ],
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "direct_without_sha==0.0.1 @ example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl",
+            "requirement": "direct_without_sha==0.0.1",
             "sha256": "",
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
         },
@@ -891,7 +896,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             ],
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "some_pkg==0.0.1 @ example-direct.org/some_pkg-0.0.1-py3-none-any.whl --hash=sha256:deadbaaf",
+            "requirement": "some_pkg==0.0.1",
             "sha256": "deadbaaf",
             "urls": ["example-direct.org/some_pkg-0.0.1-py3-none-any.whl"],
         },

@@ -19,6 +19,7 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:glob_excludes.bzl", "glob_excludes")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load(":env_marker_setting.bzl", "env_marker_setting")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -29,9 +30,7 @@ load(
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
-load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_deps.bzl", "deps")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 def whl_library_targets_from_requires(
         *,
@@ -40,8 +39,7 @@ def whl_library_targets_from_requires(
         metadata_version = "",
         requires_dist = [],
         extras = [],
-        target_platforms = [],
-        default_python_version = None,
+        include = [],
         group_deps = [],
         **kwargs):
     """The macro to create whl targets from the METADATA.
@@ -57,25 +55,21 @@ def whl_library_targets_from_requires(
         requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
             the whl `METADATA`.
         extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
-        target_platforms: {type}`list[str]` The list of target platforms to create
-            dependency closures for.
-        default_python_version: {type}`str` The python version to assume when parsing
-            the `METADATA`. This is only used when the `target_platforms` do not
-            include the version information.
+        include: {type}`list[str]` The list of packages to include.
         **kwargs: Extra args passed to the {obj}`whl_library_targets`
     """
     package_deps = _parse_requires_dist(
-        name = name,
-        default_python_version = default_python_version,
+        name = metadata_name,
         requires_dist = requires_dist,
         excludes = group_deps,
         extras = extras,
-        target_platforms = target_platforms,
+        include = include,
     )
+
     whl_library_targets(
         name = name,
         dependencies = package_deps.deps,
-        dependencies_by_platform = package_deps.deps_select,
+        dependencies_with_markers = package_deps.deps_select,
         tags = [
             "pypi_name={}".format(metadata_name),
             "pypi_version={}".format(metadata_version),
@@ -86,31 +80,16 @@ def whl_library_targets_from_requires(
 def _parse_requires_dist(
         *,
         name,
-        default_python_version,
         requires_dist,
         excludes,
-        extras,
-        target_platforms):
-    parsed_whl = parse_whl_name(name)
-
-    # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
-    # only include deps for that target platform
-    if parsed_whl.platform_tag != "any":
-        target_platforms = [
-            p.target_platform
-            for p in whl_target_platforms(
-                platform_tag = parsed_whl.platform_tag,
-                abi_tag = parsed_whl.abi_tag.strip("tm"),
-            )
-        ]
-
+        include,
+        extras):
     return deps(
-        name = normalize_name(parsed_whl.distribution),
+        name = normalize_name(name),
         requires_dist = requires_dist,
-        platforms = target_platforms,
         excludes = excludes,
+        include = include,
         extras = extras,
-        default_python_version = default_python_version,
     )
 
 def whl_library_targets(
@@ -126,6 +105,7 @@ def whl_library_targets(
         },
         dependencies = [],
         dependencies_by_platform = {},
+        dependencies_with_markers = {},
         group_deps = [],
         group_name = "",
         data = [],
@@ -137,6 +117,7 @@ def whl_library_targets(
             copy_file = copy_file,
             py_binary = py_binary,
             py_library = py_library,
+            env_marker_setting = env_marker_setting,
         )):
     """Create all of the whl_library targets.
 
@@ -149,6 +130,8 @@ def whl_library_targets(
         dependencies: {type}`list[str]` A list of dependencies.
         dependencies_by_platform: {type}`dict[str, list[str]]` A list of
             dependencies by platform key.
+        dependencies_with_markers: {type}`dict[str, str]` A marker to evaluate
+            in order for the dep to be included.
         filegroups: {type}`dict[str, list[str]]` A dictionary of the target
             names and the glob matches.
         group_name: {type}`str` name of the dependency group (if any) which
@@ -207,10 +190,16 @@ def whl_library_targets(
         data.append(dest)
 
     _config_settings(
-        dependencies_by_platform.keys(),
+        dependencies_by_platform = dependencies_by_platform.keys(),
+        dependencies_with_markers = dependencies_with_markers,
         native = native,
+        rules = rules,
         visibility = ["//visibility:private"],
     )
+    deps_conditional = {
+        d: "is_include_{}_true".format(d)
+        for d in dependencies_with_markers
+    }
 
     # TODO @aignas 2024-10-25: remove the entry_point generation once
     # `py_console_script_binary` is the only way to use entry points.
@@ -290,6 +279,7 @@ def whl_library_targets(
             data = _deps(
                 deps = dependencies,
                 deps_by_platform = dependencies_by_platform,
+                deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
                 # NOTE @aignas 2024-10-28: Actually, `select` is not part of
                 # `native`, but in order to support bazel 6.4 in unit tests, I
@@ -342,6 +332,7 @@ def whl_library_targets(
             deps = _deps(
                 deps = dependencies,
                 deps_by_platform = dependencies_by_platform,
+                deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
                 select = getattr(native, "select", select),
             ),
@@ -350,7 +341,7 @@ def whl_library_targets(
             experimental_venvs_site_packages = Label("@rules_python//python/config_settings:venvs_site_packages"),
         )
 
-def _config_settings(dependencies_by_platform, native = native, **kwargs):
+def _config_settings(dependencies_by_platform, dependencies_with_markers, rules, native = native, **kwargs):
     """Generate config settings for the targets.
 
     Args:
@@ -362,9 +353,19 @@ def _config_settings(dependencies_by_platform, native = native, **kwargs):
             * `@//python/config_settings:is_python_3.{minor_version}`
             * `{os}_{cpu}`
             * `cp3{minor_version}_{os}_{cpu}`
+        dependencies_with_markers: {type}`dict[str, str]` The markers to evaluate by
+            each dep.
+        rules: used for testing
         native: {type}`native` The native struct for overriding in tests.
         **kwargs: Extra kwargs to pass to the rule.
     """
+    for dep, expression in dependencies_with_markers.items():
+        rules.env_marker_setting(
+            name = "include_{}".format(dep),
+            expression = expression,
+            **kwargs
+        )
+
     for p in dependencies_by_platform:
         if p.startswith("@") or p.endswith("default"):
             continue
@@ -404,8 +405,14 @@ def _plat_label(plat):
     else:
         return ":is_" + plat.replace("cp3", "python_3.")
 
-def _deps(deps, deps_by_platform, tmpl, select = select):
+def _deps(deps, deps_by_platform, deps_conditional, tmpl, select = select):
     deps = [tmpl.format(d) for d in sorted(deps)]
+
+    for dep, setting in deps_conditional.items():
+        deps = deps + select({
+            ":{}".format(setting): [tmpl.format(dep)],
+            "//conditions:default": [],
+        })
 
     if not deps_by_platform:
         return deps

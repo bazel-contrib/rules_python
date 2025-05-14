@@ -17,6 +17,7 @@
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
@@ -72,7 +73,8 @@ def _create_whl_repos(
         available_interpreters = INTERPRETER_LABELS,
         minor_mapping = MINOR_MAPPING,
         evaluate_markers = evaluate_markers_py,
-        get_index_urls = None):
+        get_index_urls = None,
+        enable_pipstar = False):
     """create all of the whl repositories
 
     Args:
@@ -87,6 +89,7 @@ def _create_whl_repos(
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
         evaluate_markers: the function used to evaluate the markers.
+        enable_pipstar: enable the pipstar feature.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -216,7 +219,6 @@ def _create_whl_repos(
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
             envsubst = pip_attr.envsubst,
-            experimental_target_platforms = pip_attr.experimental_target_platforms,
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
@@ -227,6 +229,9 @@ def _create_whl_repos(
                 for p, args in whl_overrides.get(whl_name, {}).items()
             },
         )
+        if not enable_pipstar:
+            maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
+
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
         maybe_args_with_default = dict(
             # The following values have defaults next to them
@@ -249,6 +254,7 @@ def _create_whl_repos(
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
                 multiple_requirements_for_whl = len(requirements) > 1.,
+                enable_pipstar = enable_pipstar,
             ).items():
                 repo_name = "{}_{}".format(pip_name, repo_name)
                 if repo_name in whl_libraries:
@@ -277,7 +283,7 @@ def _create_whl_repos(
         },
     )
 
-def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version):
+def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version, enable_pipstar = False):
     ret = {}
 
     dists = requirement.whls
@@ -301,17 +307,18 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         # This is no-op because pip is not used to download the wheel.
         args.pop("download_only", None)
 
-        args["requirement"] = requirement.srcs.requirement
+        args["requirement"] = requirement.line
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
-        args["experimental_target_platforms"] = [
-            # Get rid of the version fot the target platforms because we are
-            # passing the interpreter any way. Ideally we should search of ways
-            # how to pass the target platforms through the hub repo.
-            p.partition("_")[2]
-            for p in requirement.target_platforms
-        ]
+        if not enable_pipstar:
+            args["experimental_target_platforms"] = [
+                # Get rid of the version fot the target platforms because we are
+                # passing the interpreter any way. Ideally we should search of ways
+                # how to pass the target platforms through the hub repo.
+                p.partition("_")[2]
+                for p in requirement.target_platforms
+            ]
 
         # Pure python wheels or sdists may need to have a platform here
         target_platforms = None
@@ -338,7 +345,7 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     # Fallback to a pip-installed wheel
     args = dict(whl_library_args)  # make a copy
-    args["requirement"] = requirement.srcs.requirement_line
+    args["requirement"] = requirement.line
     if requirement.extra_pip_args:
         args["extra_pip_args"] = requirement.extra_pip_args
 
@@ -357,7 +364,11 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     return ret
 
-def parse_modules(module_ctx, _fail = fail, simpleapi_download = simpleapi_download, **kwargs):
+def parse_modules(
+        module_ctx,
+        _fail = fail,
+        simpleapi_download = simpleapi_download,
+        **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
     Args:
@@ -639,7 +650,7 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx)
+    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar)
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)

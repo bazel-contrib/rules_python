@@ -22,7 +22,6 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
-load(":parse_requirements.bzl", "host_platform")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
@@ -258,19 +257,9 @@ def _whl_library_impl(rctx):
         # Simulate the behaviour where the whl is present in the current directory.
         rctx.symlink(whl_path, whl_path.basename)
         whl_path = rctx.path(whl_path.basename)
-    elif rctx.attr.urls:
+    elif rctx.attr.urls and rctx.attr.filename:
         filename = rctx.attr.filename
         urls = rctx.attr.urls
-        if not filename:
-            _, _, filename = urls[0].rpartition("/")
-
-        if not (filename.endswith(".whl") or filename.endswith("tar.gz") or filename.endswith(".zip")):
-            if rctx.attr.filename:
-                msg = "got '{}'".format(filename)
-            else:
-                msg = "detected '{}' from url:\n{}".format(filename, urls[0])
-            fail("Only '.whl', '.tar.gz' or '.zip' files are supported, {}".format(msg))
-
         result = rctx.download(
             url = urls,
             output = filename,
@@ -288,7 +277,7 @@ def _whl_library_impl(rctx):
             fail("could not download the '{}' from {}:\n{}".format(filename, urls, result))
 
         if filename.endswith(".whl"):
-            whl_path = rctx.path(rctx.attr.filename)
+            whl_path = rctx.path(filename)
         else:
             # It is an sdist and we need to tell PyPI to use a file in this directory
             # and, allow getting build dependencies from PYTHONPATH, which we
@@ -362,7 +351,6 @@ def _whl_library_impl(rctx):
 
         metadata = json.decode(rctx.read("metadata.json"))
         rctx.delete("metadata.json")
-        python_version = metadata["python_version"]
 
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
@@ -400,9 +388,7 @@ def _whl_library_impl(rctx):
             entry_points = entry_points,
             metadata_name = metadata.name,
             metadata_version = metadata.version,
-            default_python_version = python_version,
             requires_dist = metadata.requires_dist,
-            target_platforms = rctx.attr.experimental_target_platforms or [host_platform(rctx)],
             # TODO @aignas 2025-04-14: load through the hub:
             annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
             data_exclude = rctx.attr.pip_data_exclude,

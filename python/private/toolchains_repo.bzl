@@ -31,6 +31,18 @@ load(
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
 
+_SUITE_TEMPLATE = """
+py_toolchain_suite(
+    flag_values = {flag_values},
+    target_settings = {target_settings},
+    prefix = {prefix},
+    python_version = {python_version},
+    set_python_version_constraint = {set_python_version_constraint},
+    target_compatible_with = {target_compatible_with},
+    user_repository_name = {user_repository_name},
+)
+""".lstrip()
+
 def python_toolchain_build_file_content(
         prefix,
         python_version,
@@ -53,29 +65,40 @@ def python_toolchain_build_file_content(
         build_content: Text containing toolchain definitions
     """
 
-    return "\n\n".join([
-        """\
-py_toolchain_suite(
-    user_repository_name = "{user_repository_name}_{platform}",
-    prefix = "{prefix}{platform}",
-    target_compatible_with = {compatible_with},
-    flag_values = {flag_values},
-    python_version = "{python_version}",
-    set_python_version_constraint = "{set_python_version_constraint}",
-)""".format(
-            compatible_with = render.indent(render.list(meta.compatible_with)).lstrip(),
-            flag_values = render.indent(render.dict(
-                meta.flag_values,
-                key_repr = lambda x: repr(str(x)),  # this is to correctly display labels
-            )).lstrip(),
-            platform = platform,
-            set_python_version_constraint = set_python_version_constraint,
-            user_repository_name = user_repository_name,
-            prefix = prefix,
+    entries = []
+    for platform, meta in loaded_platforms.items():
+        entries.append(toolchain_suite_content(
+            target_compatible_with = meta.compatible_with,
+            flag_values = meta.flag_values,
+            prefix = "{}{}".format(prefix, platform),
+            user_repository_name = "{}_{}".format(user_repository_name, platform),
             python_version = python_version,
-        )
-        for platform, meta in loaded_platforms.items()
-    ])
+            set_python_version_constraint = set_python_version_constraint,
+            target_settings = [],
+        ))
+    return "\n\n".join(entries)
+
+def toolchain_suite_content(
+        *,
+        flag_values,
+        prefix,
+        python_version,
+        set_python_version_constraint,
+        target_compatible_with,
+        target_settings,
+        user_repository_name):
+    return _SUITE_TEMPLATE.format(
+        prefix = render.str(prefix),
+        user_repository_name = render.str(user_repository_name),
+        target_compatible_with = render.indent(render.list(target_compatible_with)).lstrip(),
+        flag_values = render.indent(render.dict(
+            flag_values,
+            key_repr = lambda x: repr(str(x)),  # this is to correctly display labels
+        )).lstrip(),
+        target_settings = render.list(target_settings, hanging_indent = "    "),
+        set_python_version_constraint = render.str(set_python_version_constraint),
+        python_version = render.str(python_version),
+    )
 
 def _toolchains_repo_impl(rctx):
     build_content = """\

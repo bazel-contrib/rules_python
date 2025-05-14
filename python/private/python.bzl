@@ -22,14 +22,8 @@ load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
 load(":semver.bzl", "semver")
-load(":text_util.bzl", "render")
 load(":toolchains_repo.bzl", "multi_toolchain_aliases")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
-
-# This limit can be increased essentially arbitrarily, but doing so will cause a rebuild of all
-# targets using any of these toolchains due to the changed repository name.
-_MAX_NUM_TOOLCHAINS = 9999
-_TOOLCHAIN_INDEX_PAD_LENGTH = len(str(_MAX_NUM_TOOLCHAINS))
 
 def parse_modules(*, module_ctx, _fail = fail):
     """Parse the modules and return a struct for registrations.
@@ -240,9 +234,6 @@ def parse_modules(*, module_ctx, _fail = fail):
     # toolchain. We need the default last.
     toolchains.append(default_toolchain)
 
-    if len(toolchains) > _MAX_NUM_TOOLCHAINS:
-        fail("more than {} python versions are not supported".format(_MAX_NUM_TOOLCHAINS))
-
     # sort the toolchains so that the toolchain versions that are in the
     # `minor_mapping` are coming first. This ensures that `python_version =
     # "3.X"` transitions work as expected.
@@ -275,6 +266,9 @@ def parse_modules(*, module_ctx, _fail = fail):
 def _python_impl(module_ctx):
     py = parse_modules(module_ctx = module_ctx)
 
+    # dict[str version, list[str] platforms]; where version is full
+    # python version string ("3.4.5"), and platforms are keys from
+    # the PLATFORMS global.
     loaded_platforms = {}
     for toolchain_info in py.toolchains:
         # Ensure that we pass the full version here.
@@ -297,30 +291,82 @@ def _python_impl(module_ctx):
             **kwargs
         )
 
-    # Create the pythons_hub repo for the interpreter meta data and the
-    # the various toolchains.
+    # List of the base names ("python_3_10") for the toolchain repos
+    base_toolchain_repo_names = []
+
+    # list[str] The infix to use for the resulting toolchain() `name` arg.
+    toolchain_names = []
+
+    # dict[str i, str repo]; where repo is the full repo name
+    # ("python_3_10_unknown-linux-x86_64") for the toolchain
+    # i corresponds to index `i` in toolchain_names
+    toolchain_repo_names = {}
+
+    # dict[str i, list[str] constraints]; where constraints is a list
+    # of labels for target_compatible_with
+    # i corresponds to index `i` in toolchain_names
+    toolchain_tcw_map = {}
+
+    # dict[str i, list[str] settings]; where settings is a list
+    # of labels for target_settings
+    # i corresponds to index `i` in toolchain_names
+    toolchain_ts_map = {}
+
+    # dict[str i, str set_constraint]; where set_constraint is the string
+    # "True" or "False".
+    # i corresponds to index `i` in toolchain_names
+    toolchain_set_python_version_constraints = {}
+
+    # dict[str i, str python_version]; where python_version is the full
+    # python version ("3.4.5").
+    toolchain_python_versions = {}
+
+    # dict[str i, str platform_key]; where platform_key is the key within
+    # the PLATFORMS global for this toolchain
+    toolchain_platform_keys = {}
+
+    # Split the toolchain info into separate objects so they can be passed onto
+    # the repository rule.
+    for i, t in enumerate(py.toolchains):
+        is_last = (i + 1) == len(py.toolchains)
+        base_name = t.name
+        base_toolchain_repo_names.append(base_name)
+        fv = full_version(version = t.python_version, minor_mapping = py.config.minor_mapping)
+        for platform in loaded_platforms[fv]:
+            if platform not in PLATFORMS:
+                continue
+            key = str(len(toolchain_names))
+
+            full_name = "{}_{}".format(base_name, platform)
+            toolchain_names.append(full_name)
+            toolchain_repo_names[key] = full_name
+            toolchain_tcw_map[key] = PLATFORMS[platform].compatible_with
+
+            # The target_settings attribute may not be present for users
+            # patching python/versions.bzl.
+            toolchain_ts_map[key] = getattr(PLATFORMS[platform], "target_settings", [])
+            toolchain_platform_keys[key] = platform
+            toolchain_python_versions[key] = fv
+
+            # The last toolchain is the default; it can't have version constraints
+            # Despite the implication of the arg name, the values are strs, not bools
+            toolchain_set_python_version_constraints[key] = (
+                "True" if not is_last else "False"
+            )
+
     hub_repo(
         name = "pythons_hub",
-        # Last toolchain is default
+        toolchain_names = toolchain_names,
+        toolchain_repo_names = toolchain_repo_names,
+        toolchain_target_compatible_with_map = toolchain_tcw_map,
+        toolchain_target_settings_map = toolchain_ts_map,
+        toolchain_platform_keys = toolchain_platform_keys,
+        toolchain_python_versions = toolchain_python_versions,
+        toolchain_set_python_version_constraints = toolchain_set_python_version_constraints,
+        base_toolchain_repo_names = [t.name for t in py.toolchains],
         default_python_version = py.default_python_version,
         minor_mapping = py.config.minor_mapping,
         python_versions = list(py.config.default["tool_versions"].keys()),
-        toolchain_prefixes = [
-            render.toolchain_prefix(index, toolchain.name, _TOOLCHAIN_INDEX_PAD_LENGTH)
-            for index, toolchain in enumerate(py.toolchains)
-        ],
-        toolchain_python_versions = [
-            full_version(version = t.python_version, minor_mapping = py.config.minor_mapping)
-            for t in py.toolchains
-        ],
-        # The last toolchain is the default; it can't have version constraints
-        # Despite the implication of the arg name, the values are strs, not bools
-        toolchain_set_python_version_constraints = [
-            "True" if i != len(py.toolchains) - 1 else "False"
-            for i in range(len(py.toolchains))
-        ],
-        toolchain_user_repository_names = [t.name for t in py.toolchains],
-        loaded_platforms = loaded_platforms,
     )
 
     # This is require in order to support multiple version py_test

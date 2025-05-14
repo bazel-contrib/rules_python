@@ -34,15 +34,20 @@ def py_toolchain_suite(
         python_version,
         set_python_version_constraint,
         flag_values,
+        target_settings = [],
         target_compatible_with = []):
     """For internal use only.
 
     Args:
         prefix: Prefix for toolchain target names.
-        user_repository_name: The name of the user repository.
+        user_repository_name: The name of the repository with the toolchain
+            implementation (it's assumed to have particular target names within
+            it). Does not include the leading "@".
         python_version: The full (X.Y.Z) version of the interpreter.
         set_python_version_constraint: True or False as a string.
-        flag_values: Extra flag values to match for this toolchain.
+        flag_values: Extra flag values to match for this toolchain. These
+            are prepended to target_settings.
+        target_settings: Extra target_settings to match for this toolchain.
         target_compatible_with: list constraints the toolchains are compatible with.
     """
 
@@ -82,7 +87,7 @@ def py_toolchain_suite(
             match_any = match_any,
             visibility = ["//visibility:private"],
         )
-        target_settings = [name]
+        target_settings = [name] + target_settings
     else:
         fail(("Invalid set_python_version_constraint value: got {} {}, wanted " +
               "either the string 'True' or the string 'False'; " +

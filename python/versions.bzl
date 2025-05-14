@@ -682,151 +682,170 @@ MINOR_MAPPING = {
     "3.13": "3.13.2",
 }
 
+def _platform_info(
+        *,
+        compatible_with = [],
+        flag_values = {},
+        target_settings = [],
+        os_name,
+        arch):
+    """Creates a struct of platform metadata.
+
+    Args:
+        compatible_with: list[str], where the values are string labels. These
+            are the target_compatible_with values to use with the toolchain
+        flag_values: dict[str|Label, Any] of config_setting.flag_values
+            compatible values. DEPRECATED -- use target_settings instead
+        target_settings: list[str], where the values are string labels. These
+            are the target_settings values to use with the toolchain.
+        os_name: str, the os name; must match the name used in `@platfroms//os`
+        arch: str, the cpu name; must match the name used in `@platforms//cpu`
+
+    Returns:
+        A struct with attributes and values matching the args.
+    """
+    return struct(
+        compatible_with = compatible_with,
+        flag_values = flag_values,
+        target_settings = target_settings,
+        os_name = os_name,
+        arch = arch,
+    )
+
 def _generate_platforms():
-    libc = Label("//python/config_settings:py_linux_libc")
+    is_libc_glibc = str(Label("//python/config_settings:_is_py_linux_libc_glibc"))
+    is_libc_musl = str(Label("//python/config_settings:_is_py_linux_libc_musl"))
 
     platforms = {
-        "aarch64-apple-darwin": struct(
+        "aarch64-apple-darwin": _platform_info(
             compatible_with = [
                 "@platforms//os:macos",
                 "@platforms//cpu:aarch64",
             ],
-            flag_values = {},
             os_name = MACOS_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "aarch64",
         ),
-        "aarch64-unknown-linux-gnu": struct(
+        "aarch64-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:aarch64",
             ],
-            flag_values = {
-                libc: "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "aarch64",
         ),
-        "armv7-unknown-linux-gnu": struct(
+        "armv7-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:armv7",
             ],
-            flag_values = {
-                libc: "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "arm",
         ),
-        "i386-unknown-linux-gnu": struct(
+        "i386-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:i386",
             ],
-            flag_values = {
-                libc: "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "x86_32",
         ),
-        "ppc64le-unknown-linux-gnu": struct(
+        "ppc64le-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:ppc",
             ],
-            flag_values = {
-                libc: "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "ppc",
         ),
-        "riscv64-unknown-linux-gnu": struct(
+        "riscv64-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:riscv64",
             ],
-            flag_values = {
-                Label("//python/config_settings:py_linux_libc"): "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "riscv64",
         ),
-        "s390x-unknown-linux-gnu": struct(
+        "s390x-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:s390x",
             ],
-            flag_values = {
-                Label("//python/config_settings:py_linux_libc"): "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "s390x",
         ),
-        "x86_64-apple-darwin": struct(
+        "x86_64-apple-darwin": _platform_info(
             compatible_with = [
                 "@platforms//os:macos",
                 "@platforms//cpu:x86_64",
             ],
-            flag_values = {},
             os_name = MACOS_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "x86_64",
         ),
-        "x86_64-pc-windows-msvc": struct(
+        "x86_64-pc-windows-msvc": _platform_info(
             compatible_with = [
                 "@platforms//os:windows",
                 "@platforms//cpu:x86_64",
             ],
-            flag_values = {},
             os_name = WINDOWS_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "x86_64",
         ),
-        "x86_64-unknown-linux-gnu": struct(
+        "x86_64-unknown-linux-gnu": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:x86_64",
             ],
-            flag_values = {
-                libc: "glibc",
-            },
+            target_settings = [
+                is_libc_glibc,
+            ],
             os_name = LINUX_NAME,
-            # Matches the value in @platforms//cpu package
             arch = "x86_64",
         ),
-        "x86_64-unknown-linux-musl": struct(
+        "x86_64-unknown-linux-musl": _platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:x86_64",
             ],
-            flag_values = {
-                libc: "musl",
-            },
+            target_settings = [
+                is_libc_musl,
+            ],
             os_name = LINUX_NAME,
             arch = "x86_64",
         ),
     }
 
-    freethreaded = Label("//python/config_settings:py_freethreaded")
+    is_freethreaded_yes = str(Label("//python/config_settings:_is_py_freethreaded_yes"))
+    is_freethreaded_no = str(Label("//python/config_settings:_is_py_freethreaded_no"))
     return {
-        p + suffix: struct(
+        p + suffix: _platform_info(
             compatible_with = v.compatible_with,
-            flag_values = {
-                freethreaded: freethreaded_value,
-            } | v.flag_values,
+            target_settings = [
+                freethreadedness,
+            ] + v.target_settings,
             os_name = v.os_name,
             arch = v.arch,
         )
         for p, v in platforms.items()
-        for suffix, freethreaded_value in {
-            "": "no",
-            "-" + FREETHREADED: "yes",
+        for suffix, freethreadedness in {
+            "": is_freethreaded_no,
+            "-" + FREETHREADED: is_freethreaded_yes,
         }.items()
     }
 
