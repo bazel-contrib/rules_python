@@ -18,6 +18,7 @@ load("@bazel_features//:features.bzl", "bazel_features")
 load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VERSIONS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
+load(":platform_info.bzl", "platform_info")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
@@ -34,12 +35,19 @@ def parse_modules(*, module_ctx, _fail = fail):
 
     Returns:
         A struct with the following attributes:
-            * `toolchains`: The list of toolchains to register. The last
-              element is special and is treated as the default toolchain.
+            * `toolchains`: {type}`list[ToolchainConfig]` The list of
+              toolchains to register. The last element is special and is
+              treated as the default toolchain.
             * `defaults`: The default `kwargs` passed to
               {bzl:obj}`python_register_toolchains`.
             * `debug_info`: {type}`None | dict` extra information to be passed
               to the debug repo.
+
+        ToolchainConfig struct:
+            * python_version: str, full python version string
+            * name: str, the base toolchain name, e.g. "python_3_10", no
+              platform suffix.
+            * register_coverage_tool: bool
     """
     if module_ctx.os.environ.get("RULES_PYTHON_BZLMOD_DEBUG", "0") == "1":
         debug_info = {
@@ -267,8 +275,7 @@ def _python_impl(module_ctx):
     py = parse_modules(module_ctx = module_ctx)
 
     # dict[str version, list[str] platforms]; where version is full
-    # python version string ("3.4.5"), and platforms are keys from
-    # the PLATFORMS global.
+    # python version string ("3.4.5"), and platforms are platform names.
     loaded_platforms = {}
     for toolchain_info in py.toolchains:
         # Ensure that we pass the full version here.
@@ -288,6 +295,7 @@ def _python_impl(module_ctx):
         loaded_platforms[full_python_version] = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
+            platforms = PLATFORMS | py.config.platform_overrides.get(full_python_version, {}),
             **kwargs
         )
 
@@ -332,19 +340,23 @@ def _python_impl(module_ctx):
         base_name = t.name
         base_toolchain_repo_names.append(base_name)
         fv = full_version(version = t.python_version, minor_mapping = py.config.minor_mapping)
+
+        platforms = PLATFORMS | py.config.platform_overrides.get(fv, {})
         for platform in loaded_platforms[fv]:
-            if platform not in PLATFORMS:
+            if platform not in platforms:
+                # This shouldn't happen in practice, but just in case, ignore
+                # the toolchain instead of outright failing.
                 continue
             key = str(len(toolchain_names))
 
             full_name = "{}_{}".format(base_name, platform)
             toolchain_names.append(full_name)
             toolchain_repo_names[key] = full_name
-            toolchain_tcw_map[key] = PLATFORMS[platform].compatible_with
+            toolchain_tcw_map[key] = platforms[platform].compatible_with
 
             # The target_settings attribute may not be present for users
             # patching python/versions.bzl.
-            toolchain_ts_map[key] = getattr(PLATFORMS[platform], "target_settings", [])
+            toolchain_ts_map[key] = getattr(platforms[platform], "target_settings", [])
             toolchain_platform_keys[key] = platform
             toolchain_python_versions[key] = fv
 
@@ -466,7 +478,8 @@ def _validate_version(*, version, _fail = fail):
 
     return True
 
-def _process_single_version_overrides(*, tag, _fail = fail, default):
+def _process_single_version_overrides(*, tag, _fail = fail, default, platform_overrides):
+    _ = platform_overrides  # @unused
     if not _validate_version(version = tag.python_version, _fail = _fail):
         return
 
@@ -516,7 +529,7 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
     if tag.distutils:
         kwargs.setdefault(tag.python_version, {})["distutils"] = tag.distutils
 
-def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
+def _process_single_version_platform_overrides(*, tag, _fail = fail, default, platform_overrides):
     if not _validate_version(version = tag.python_version, _fail = _fail):
         return
 
@@ -541,7 +554,24 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
     if tag.urls:
         available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
 
-def _process_global_overrides(*, tag, default, _fail = fail):
+    platform_map = platform_overrides.setdefault(tag.python_version, {})
+    if tag.platform not in platform_map:
+        platform_map[tag.platform] = platform_info(
+            compatible_with = [],
+            target_settings = [],
+            os_name = None,  # Unused by this point of processing.
+            arch = None,  # Unused by this point of processing.
+        )
+    platform_entry = platform_map[tag.platform]
+    if tag.target_compatible_with:
+        platform_entry.compatible_with.clear()
+        platform_entry.compatible_with.extend(tag.target_compatible_with)
+    if tag.target_settings:
+        platform_entry.target_settings.clear()
+        platform_entry.target_settings.extend(tag.target_settings)
+
+def _process_global_overrides(*, tag, default, platform_overrides, _fail = fail):
+    _ = platform_overrides  # @unused
     if tag.available_python_versions:
         available_versions = default["tool_versions"]
         all_versions = dict(available_versions)
@@ -576,7 +606,7 @@ def _process_global_overrides(*, tag, default, _fail = fail):
         if getattr(tag, key, None):
             default[key] = getattr(tag, key)
 
-def _override_defaults(*overrides, modules, _fail = fail, default):
+def _override_defaults(*overrides, modules, _fail = fail, default, platform_overrides):
     mod = modules[0] if modules else None
     if not mod or not mod.is_root:
         return
@@ -595,7 +625,7 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
                 _fail("Only a single 'python.{}' can be present".format(override.name))
                 return
 
-            override.fn(tag = tag, _fail = _fail, default = default)
+            override.fn(tag = tag, _fail = _fail, default = default, platform_overrides = platform_overrides)
 
 def _get_toolchain_config(*, modules, _fail = fail):
     # Items that can be overridden
@@ -615,10 +645,19 @@ def _get_toolchain_config(*, modules, _fail = fail):
         }
         for version, item in TOOL_VERSIONS.items()
     }
+
+    # NOTE: These are defaults in the sense of they're the base values
+    # that overrides modify when the overrides are processed.
+    # However, these *also* become the kwargs passed to python_register_toolchains()
+    # and their value takes precedence over anything else.
     default = {
         "base_url": DEFAULT_RELEASE_BASE_URL,
         "tool_versions": available_versions,
     }
+
+    # dict[str version, dict[str platform, platform_info]]
+    # Where platform_info is a struct from platform_info().
+    platform_overrides = {}
 
     _override_defaults(
         # First override by single version, because the sha256 will replace
@@ -643,6 +682,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
         ),
         modules = modules,
         default = default,
+        platform_overrides = platform_overrides,
         _fail = _fail,
     )
 
@@ -669,6 +709,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
         minor_mapping = minor_mapping,
         default = default,
         register_all_versions = register_all_versions,
+        platform_overrides = platform_overrides,
     )
 
 def _create_defaults_attr_structs(*, mod):
@@ -1034,8 +1075,20 @@ The coverage tool to be used for a particular Python interpreter. This can overr
         ),
         "platform": attr.string(
             mandatory = True,
-            values = PLATFORMS.keys(),
-            doc = "The platform to override the values for, must be one of:\n{}.".format("\n".join(sorted(["* `{}`".format(p) for p in PLATFORMS]))),
+            doc = """
+The platform to override the values for, typically one of:\n
+{platforms}
+
+Other values are allowed, in which case, `target_compatible_with` and/or
+`target_settings` should be specified so the toolchain is only used when appropriate.
+
+:::{{versionchanged}} VERSION_NEXT_FEATURE
+Arbitrary platform strings allowed.
+:::
+
+""".format(
+                platforms = "\n".join(sorted(["* `{}`".format(p) for p in PLATFORMS])),
+            ),
         ),
         "python_version": attr.string(
             mandatory = True,
@@ -1049,6 +1102,31 @@ The coverage tool to be used for a particular Python interpreter. This can overr
             mandatory = False,
             doc = "The 'strip_prefix' for the archive, defaults to 'python'.",
             default = "python",
+        ),
+        "target_compatible_with": attr.string_list(
+            doc = """
+List of labels that will become the `target_compatible_with` value for the toolchain.
+
+Note that these must be absolute labels because they are evaluated in the context
+of the repo with the toolchain definitions.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "target_settings": attr.string_list(
+            doc = """
+List of labels that are added to the `target_settings` for the toolchain.
+
+This can refer to custom flags. Note that these labels must be absolute labels
+because they are evaluated in the context of the repo with the toolchain definitions.
+e.g. use `@@//my:flag` to refer to flags in your main repo.
+
+These settings are added in addition to e.g. python version constraints.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         ),
         "urls": attr.string_list(
             mandatory = False,

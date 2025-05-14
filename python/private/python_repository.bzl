@@ -15,7 +15,7 @@
 """This file contains repository rules and macros to support toolchain registration.
 """
 
-load("//python:versions.bzl", "FREETHREADED", "INSTALL_ONLY", "PLATFORMS")
+load("//python:versions.bzl", "FREETHREADED", "INSTALL_ONLY")
 load(":auth.bzl", "get_auth")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
@@ -327,7 +327,6 @@ function defaults (e.g. `single_version_override` for `MODULE.bazel` files.
         "platform": attr.string(
             doc = "The platform name for the Python interpreter tarball.",
             mandatory = True,
-            values = PLATFORMS.keys(),
         ),
         "python_version": attr.string(
             doc = "The Python version.",

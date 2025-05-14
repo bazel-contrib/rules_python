@@ -102,6 +102,10 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Starlark-based evaluation of environment markers (requirements.txt conditionals)
   available (not enabled by default) for improved multi-platform build support.
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
+* (toolchains) Arbitrary python-build-standalone runtimes can be registered
+  and activated with custom flags. See the [Registering custom runtimes]
+  docs and {obj}`single_version_platform_override()` API docs for more
+  information.
 
 {#v0-0-0-removed}
 ### Removed
