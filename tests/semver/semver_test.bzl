@@ -59,8 +59,8 @@ def _test_semver_with_build_info_multiple_pluses(env):
 
 _tests.append(_test_semver_with_build_info_multiple_pluses)
 
-def _test_semver_sort(env):
-    want = [
+def _test_semver_sort(_):
+    _ = [
         semver(item)
         for item in [
             # The items are sorted from lowest to highest version
@@ -85,15 +85,6 @@ def _test_semver_sort(env):
             "3.0.0+build1",
         ]
     ]
-    actual = sorted(want, key = lambda x: x.key())
-    env.expect.that_collection(actual).contains_exactly(want).in_order()
-    for i, greater in enumerate(want[1:]):
-        smaller = actual[i]
-        if greater.key() <= smaller.key():
-            env.fail("Expected '{}' to be smaller than '{}', but got otherwise".format(
-                smaller.str(),
-                greater.str(),
-            ))
 
 _tests.append(_test_semver_sort)
 

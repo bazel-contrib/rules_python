@@ -54,7 +54,10 @@ def define_hermetic_runtime_toolchain_impl(
     """
     _ = name  # @unused
     version_info = semver(python_version)
-    version_dict = version_info.to_dict()
+    version_dict = {
+        "major": version_info.major,
+        "minor": version_info.minor,
+    }
     native.filegroup(
         name = "files",
         srcs = native.glob(

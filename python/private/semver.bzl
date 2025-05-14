@@ -16,17 +16,7 @@
 
 load(":version.bzl", "version")
 
-def _to_dict(self):
-    return {
-        "build": self.build,
-        "major": self.major,
-        "minor": self.minor,
-        "patch": self.patch,
-        "pre_release": self.pre_release,
-    }
-
-def _new(*, major, minor, patch, pre_release, build, ver = None):
-    # buildifier: disable=uninitialized
+def _new(*, major, minor, patch, pre_release, build):
     self = struct(
         major = int(major),
         minor = None if minor == None else int(minor),
@@ -34,10 +24,6 @@ def _new(*, major, minor, patch, pre_release, build, ver = None):
         patch = None if patch == None else int(patch),
         pre_release = pre_release,
         build = build,
-        # buildifier: disable=uninitialized
-        key = lambda: version.key(ver),
-        str = lambda: ver.string,
-        to_dict = lambda: _to_dict(self),
     )
     return self
 
@@ -65,5 +51,4 @@ def semver(version_str):
         patch = patch,
         build = build,
         pre_release = pre_release,
-        ver = ver,
     )
