@@ -234,7 +234,8 @@ def _host_toolchain_impl(rctx):
 
 exports_files(["python"], visibility = ["//visibility:public"])
 """)
-    if not rctx.attr.backing_repo_name:
+    os_name = repo_utils.get_platforms_os_name(rctx)
+    if not rctx.attr.backing_repo_names:
         platforms = {
             p: struct(os_name = rctx.attr.os_names[p], arch = rctx.attr.archs[p])
             for p in rctx.attr.platforms
@@ -253,7 +254,15 @@ exports_files(["python"], visibility = ["//visibility:public"])
             host_platform = host_platform,
         )
     else:
-        repo = rctx.attr.backing_repo_name
+        print("host repo: candidates=", rctx.attr.backing_repo_names)
+        host_platform = rctx.attr.backing_repo_names[0]
+
+        # todo: getenv(). If set, use it or error. Else take offset 0.
+        ##repo = "@" + rctx.attr.backing_repo_names[0]
+        repo = "@@{py_repository}_{host_platform}".format(
+            py_repository = rctx.attr.name[:-len("_host")],
+            host_platform = host_platform,
+        )
 
     rctx.report_progress("Symlinking interpreter files to the target platform")
     host_python_repo = rctx.path(Label("{repo}//:BUILD.bazel".format(repo = repo)))
@@ -325,7 +334,7 @@ toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
     """,
     attrs = {
-        "backing_repo_name": attr.string(),
+        "backing_repo_names": attr.string_list(),
         "platforms": attr.string_list(mandatory = False),
         "python_version": attr.string(mandatory = False),
         "_rule_name": attr.string(default = "host_toolchain"),

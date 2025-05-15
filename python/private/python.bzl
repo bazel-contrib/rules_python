@@ -313,17 +313,17 @@ def _python_impl(module_ctx):
             platforms = platforms,
             **kwargs
         )
-        print("{} registered platforms: {}".format(toolchain_info.name, tc_created_platforms))
         loaded_platforms[full_python_version] = tc_created_platforms
+        print("{} registered platforms: {}".format(toolchain_info.name, tc_created_platforms))
         for loaded in tc_created_platforms:
             info = platforms[loaded]
             if info.os_name == host_os and info.arch == host_cpu:
                 host_compatible.append(struct(
-                    ##repo_prefix = toolchain_info.name,
+                    repo_prefix = toolchain_info.name,
                     repo_name = toolchain_info.name + "_" + loaded,
                     full_python_version = full_python_version,
-                    ##base_version = toolchain_info.python_version,
-                    ##platform_name = loaded,
+                    base_version = toolchain_info.python_version,
+                    platform_name = loaded,
                     ##platform_info = info,
                 ))
         print("create host for:", toolchain_info.name, toolchain_info.python_version)
@@ -368,6 +368,12 @@ def _python_impl(module_ctx):
     "best match" means:
       * for major.minor, the highest version <= the minor_mapping bound
       * for major.minor.patch: whatever is available, but maybe nothing.
+
+    Or, maybe just detect what needs more advanced matching.
+    So if python_register_toolchains(X) is able to find a match for host,
+    that's fine.
+    If it can't, then we use more advanced matching.
+
     """
     minor_mapping = py.config.minor_mapping
 
@@ -417,7 +423,20 @@ def _python_impl(module_ctx):
     for host_needed_base_name, host_needed in host_repos_to_create.items():
         print("find backend for:", host_needed_base_name, "v:", host_needed.version)
         needed_version_str = host_needed.version
-        backing_repo_name = None
+        backing_repo_names = None
+
+        def candidate_key(e):
+            pref = 0
+            if e.platform_name.endswith("-freethreaded"):
+                pref = -1
+            elif e.platform_name.endswith("-musl"):
+                pref = -2
+
+            return (
+                0 if e.repo_prefix == host_needed_base_name else -1,
+                version_tuple(e.full_python_version),
+                pref,
+            )
 
         # Major.Minor case: look for a minor <= the minor_mapping bound
         # that is compatible with our host
@@ -431,30 +450,43 @@ def _python_impl(module_ctx):
                     #print("add candidate:", entry)
                     candidates.append(entry)
 
-            def keyer(e):
-                return (
-                    version_tuple(e.full_python_version),
-                )
-
             candidates = sorted(
                 candidates,
                 reverse = True,
-                key = lambda e: (version_tuple(e.full_python_version), e.repo_name),
+                key = candidate_key,
             )
             print("sorted candidates:")
             for x in candidates:
                 print(" ", x)
-            if candidates:
-                backing_repo_name = candidates[0].repo_name
+            backing_repo_names = [c.repo_name for c in candidates]
         else:
-            fail("not implemented: fv", needed_version_str)
+            candidates = []
+            for entry in host_compatible:
+                if entry.full_python_version == needed_version_str:
+                    candidates.append(entry)
+            candidates = sorted(candidates, reverse = True, key = candidate_key)
+            backing_repo_names = [c.repo_name for c in candidates]
+            #fail("not implemented: fv", needed_version_str)
 
-        if not backing_repo_name:
+        if not backing_repo_names and host_needed.version not in ("3.13.3",):
             fail("no host-compatible repo found", host_needed)
-        print("{} using {}".format(host_needed_base_name, backing_repo_name))
+
+        # Argh. Old impl:
+        #   create python_3_10_linux
+        #   create python_3_10_host using python_3_10_linux
+        # new impl:
+        #   create python_3_10_linux
+        #   create python_3_10_host using python_3_10_X_linux
+        # Thing to do is give preference such that e.g.
+        # python_3_10 prefers python_3_10_linux_x86 over python_3_10_9_linux_x86
+        backing_repo_names = [
+            x.removeprefix(host_needed_base_name + "_")
+            for x in backing_repo_names
+        ]
+        print("{} using {}".format(host_needed_base_name, backing_repo_names))
         host_toolchain(
             name = host_needed_base_name + "_host",
-            backing_repo_name = backing_repo_name,
+            backing_repo_names = backing_repo_names,
         )
 
     # Now major_minor_lte maps major_minor to a list of descending full
