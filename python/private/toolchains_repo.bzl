@@ -234,20 +234,26 @@ def _host_toolchain_impl(rctx):
 
 exports_files(["python"], visibility = ["//visibility:public"])
 """)
-
-    os_name = repo_utils.get_platforms_os_name(rctx)
-    host_platform = _get_host_platform(
-        rctx = rctx,
-        logger = repo_utils.logger(rctx),
-        python_version = rctx.attr.python_version,
-        os_name = os_name,
-        cpu_name = repo_utils.get_platforms_cpu_name(rctx),
-        platforms = rctx.attr.platforms,
-    )
-    repo = "@@{py_repository}_{host_platform}".format(
-        py_repository = rctx.attr.name[:-len("_host")],
-        host_platform = host_platform,
-    )
+    if not rctx.attr.backing_repo_name:
+        platforms = {
+            p: struct(os_name = rctx.attr.os_names[p], arch = rctx.attr.archs[p])
+            for p in rctx.attr.platforms
+        }
+        os_name = repo_utils.get_platforms_os_name(rctx)
+        host_platform = _get_host_platform(
+            rctx = rctx,
+            logger = repo_utils.logger(rctx),
+            python_version = rctx.attr.python_version,
+            os_name = os_name,
+            cpu_name = repo_utils.get_platforms_cpu_name(rctx),
+            platforms = platforms,
+        )
+        repo = "@@{py_repository}_{host_platform}".format(
+            py_repository = rctx.attr.name[:-len("_host")],
+            host_platform = host_platform,
+        )
+    else:
+        repo = rctx.attr.backing_repo_name
 
     rctx.report_progress("Symlinking interpreter files to the target platform")
     host_python_repo = rctx.path(Label("{repo}//:BUILD.bazel".format(repo = repo)))
@@ -319,10 +325,13 @@ toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
     """,
     attrs = {
-        "platforms": attr.string_list(mandatory = True),
-        "python_version": attr.string(mandatory = True),
+        "backing_repo_name": attr.string(),
+        "platforms": attr.string_list(mandatory = False),
+        "python_version": attr.string(mandatory = False),
         "_rule_name": attr.string(default = "host_toolchain"),
         "_rules_python_workspace": attr.label(default = Label("//:WORKSPACE")),
+        "os_names": attr.string_dict(),
+        "archs": attr.string_dict(),
     },
 )
 
@@ -420,10 +429,10 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
     Returns:
         The host platform.
     """
+    if "3_13" in rctx.name:
+        print(rctx.name, platforms)
     candidates = []
-    for platform in platforms:
-        meta = PLATFORMS[platform]
-
+    for platform, meta in platforms.items():
         if meta.os_name == os_name and meta.arch == cpu_name:
             candidates.append(platform)
 

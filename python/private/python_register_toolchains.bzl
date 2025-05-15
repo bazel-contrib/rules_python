@@ -85,6 +85,9 @@ def python_register_toolchains(
     bzlmod_toolchain_call = kwargs.pop("_internal_bzlmod_toolchain_call", False)
     if bzlmod_toolchain_call:
         register_toolchains = False
+        register_host = False
+    else:
+        register_host = True
 
     base_url = kwargs.pop("base_url", DEFAULT_RELEASE_BASE_URL)
     tool_versions = tool_versions or TOOL_VERSIONS
@@ -165,11 +168,27 @@ def python_register_toolchains(
                 platform = platform,
             ))
 
-    host_toolchain(
-        name = name + "_host",
-        platforms = loaded_platforms,
-        python_version = python_version,
-    )
+    if register_host:
+        host_platforms = [
+            platform
+            for platform in loaded_platforms
+            if platforms[platform].os_name and platforms[platform].arch
+        ]
+        host_toolchain(
+            name = name + "_host",
+            platforms = host_platforms,
+            python_version = python_version,
+            os_names = {
+                p: platforms[p].os_name or ""
+                for p in host_platforms
+                if p in platforms
+            },
+            archs = {
+                p: platforms[p].arch or ""
+                for p in host_platforms
+                if p in platforms
+            },
+        )
 
     toolchain_aliases(
         name = name,

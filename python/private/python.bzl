@@ -23,7 +23,7 @@ load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
 load(":semver.bzl", "semver")
-load(":toolchains_repo.bzl", "multi_toolchain_aliases")
+load(":toolchains_repo.bzl", "host_toolchain", "multi_toolchain_aliases")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 
 def parse_modules(*, module_ctx, _fail = fail):
@@ -274,15 +274,29 @@ def parse_modules(*, module_ctx, _fail = fail):
 def _python_impl(module_ctx):
     py = parse_modules(module_ctx = module_ctx)
 
+    host_os = repo_utils.get_platforms_os_name(module_ctx)
+    host_cpu = repo_utils.get_platforms_cpu_name(module_ctx)
+
     # dict[str version, list[str] platforms]; where version is full
     # python version string ("3.4.5"), and platforms are platform names.
     loaded_platforms = {}
+
+    host_compatible = []
+
+    # list of versions
+    host_repos_to_create = {}
     for toolchain_info in py.toolchains:
         # Ensure that we pass the full version here.
         full_python_version = full_version(
             version = toolchain_info.python_version,
             minor_mapping = py.config.minor_mapping,
         )
+        if toolchain_info.name == "python_3_13":
+            print("{} -> {} using minor_mapping={}".format(
+                toolchain_info.python_version,
+                full_python_version,
+                py.config.minor_mapping,
+            ))
         kwargs = {
             "python_version": full_python_version,
             "register_coverage_tool": toolchain_info.register_coverage_tool,
@@ -292,12 +306,164 @@ def _python_impl(module_ctx):
         kwargs.update(py.config.kwargs.get(toolchain_info.python_version, {}))
         kwargs.update(py.config.kwargs.get(full_python_version, {}))
         kwargs.update(py.config.default)
-        loaded_platforms[full_python_version] = python_register_toolchains(
+        platforms = PLATFORMS | py.config.platform_overrides.get(full_python_version, {})
+        tc_created_platforms = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
-            platforms = PLATFORMS | py.config.platform_overrides.get(full_python_version, {}),
+            platforms = platforms,
             **kwargs
         )
+        print("{} registered platforms: {}".format(toolchain_info.name, tc_created_platforms))
+        loaded_platforms[full_python_version] = tc_created_platforms
+        for loaded in tc_created_platforms:
+            info = platforms[loaded]
+            if info.os_name == host_os and info.arch == host_cpu:
+                host_compatible.append(struct(
+                    ##repo_prefix = toolchain_info.name,
+                    repo_name = toolchain_info.name + "_" + loaded,
+                    full_python_version = full_python_version,
+                    ##base_version = toolchain_info.python_version,
+                    ##platform_name = loaded,
+                    ##platform_info = info,
+                ))
+        print("create host for:", toolchain_info.name, toolchain_info.python_version)
+
+        # "create python_3_10, using something compatible with 3.10"
+        host_repos_to_create[toolchain_info.name] = struct(
+            version = toolchain_info.python_version,
+        )
+
+    """
+    goal:
+    if name == python_3_13
+        create host_repo() pointing to 3.13.2 <host>
+
+    to do this, we look through all the available versions in descending
+    order until we find one compatible with host os/cpu.
+    if version is major.minor:
+        start at minor_mapping[version]
+        full = minor_mapping[version]
+        get all versions <= full
+        for v in all_versions_desc:
+          plats = PLATFORMS | overrides
+          for plat in plats[v]:
+            if plat compatible with host:
+               host()
+               return
+
+    if version is major.minor.micro:
+        plats = PLATFORMS | overrides
+        for plat in plat[v]:
+          if plat compatible with host:
+             host()
+             return
+
+    Lets start over.
+    Lets assume we have a list of all the created toolchains that are
+    compatible with the host.
+    We also have a list of all the host repos we need to create.
+
+    So what we have to do is, for each host repo we need to create, find
+    the best match among the ones that were created.
+    "best match" means:
+      * for major.minor, the highest version <= the minor_mapping bound
+      * for major.minor.patch: whatever is available, but maybe nothing.
+    """
+    minor_mapping = py.config.minor_mapping
+
+    # list[tuple[tuple, str]]
+    major_minor_lte = {}
+    major_minor_upper = {}
+
+    def version_tuple(v):
+        return tuple([int(x) for x in v.split(".")])
+
+    for major_minor, upper_full in minor_mapping.items():
+        upper_v = version_tuple(upper_full)
+        major_minor_upper[major_minor] = upper_v
+
+    for v in py.config.default["tool_versions"].keys():
+        major_minor, _, _ = v.rpartition(".")
+        major_minor_lte.setdefault(major_minor, [])
+        vk = version_tuple(v)
+        if vk <= major_minor_upper[major_minor]:
+            major_minor_lte[major_minor].append((vk, v))
+
+    for major_minor, entry in major_minor_lte.items():
+        major_minor_lte[major_minor] = sorted(entry, reverse = True)
+
+    print("major_minor_lte:")
+    for key, values in major_minor_lte.items():
+        print(key, ":", values)
+
+    # Sort in descending order so we go highest to lowest version
+    host_compatible = sorted(
+        host_compatible,
+        reverse = True,
+        key = lambda e: version_tuple(e.full_python_version),
+    )
+
+    # todo:
+    # host_compatible contains linux-regular and linux-freethreaded
+    # Both are compatible with host_os/host_cpu
+    # Ah, I see. host_toolchain has some logic to pick: look for an env var.
+    # if set, use that candidate. Otherwise use candidates[0]
+
+    # At this point, we have:
+    # List of host-compatible repos
+    # Map of major_minor -> versions to attempt.
+    # So next is iterating over the list of repos we have to create and find
+    # something that works with it.
+    for host_needed_base_name, host_needed in host_repos_to_create.items():
+        print("find backend for:", host_needed_base_name, "v:", host_needed.version)
+        needed_version_str = host_needed.version
+        backing_repo_name = None
+
+        # Major.Minor case: look for a minor <= the minor_mapping bound
+        # that is compatible with our host
+        if needed_version_str.count(".") == 1:
+            print("case: major.minor")
+            try_versions = major_minor_lte[needed_version_str]
+            try_versions = [x[1] for x in try_versions]
+            candidates = []
+            for entry in host_compatible:
+                if entry.full_python_version in try_versions:
+                    #print("add candidate:", entry)
+                    candidates.append(entry)
+
+            def keyer(e):
+                return (
+                    version_tuple(e.full_python_version),
+                )
+
+            candidates = sorted(
+                candidates,
+                reverse = True,
+                key = lambda e: (version_tuple(e.full_python_version), e.repo_name),
+            )
+            print("sorted candidates:")
+            for x in candidates:
+                print(" ", x)
+            if candidates:
+                backing_repo_name = candidates[0].repo_name
+        else:
+            fail("not implemented: fv", needed_version_str)
+
+        if not backing_repo_name:
+            fail("no host-compatible repo found", host_needed)
+        print("{} using {}".format(host_needed_base_name, backing_repo_name))
+        host_toolchain(
+            name = host_needed_base_name + "_host",
+            backing_repo_name = backing_repo_name,
+        )
+
+    # Now major_minor_lte maps major_minor to a list of descending full
+    # versions that are <= the minor_mapping value.
+
+    print("versions:", py.config.default["tool_versions"].keys())
+
+    # Register a host toolchain for every major_minor and major_minor_micro
+    # that there is a valid host platform for.
 
     # List of the base names ("python_3_10") for the toolchain repos
     base_toolchain_repo_names = []
@@ -694,6 +860,10 @@ def _get_toolchain_config(*, modules, _fail = fail):
         v = semver(version_string)
         versions.setdefault("{}.{}".format(v.major, v.minor), []).append((int(v.patch), version_string))
 
+    print("version map:", versions)
+
+    # Ah, this is causing the minor_mapping to automatically upgrade to the
+    # latest registered version. >.<
     minor_mapping = {
         major_minor: max(subset)[1]
         for major_minor, subset in versions.items()

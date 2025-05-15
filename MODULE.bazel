@@ -127,7 +127,7 @@ dev_python.override(
 )
 
 # Necessary so single_platform_override with a new version works
-dev_python.toolchain(python_version = "3.13.3")
+dev_python.toolchain(python_version = "3.13")
 
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
