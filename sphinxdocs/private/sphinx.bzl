@@ -203,15 +203,19 @@ def _sphinx_docs_impl(ctx):
     per_format_args = {}
     outputs = {}
     for format in ctx.attr.formats:
+        doctree_dir = ctx.actions.declare_directory(paths.join(ctx.label.name, "_build", format + "_doctrees"))
         output_dir, args_env = _run_sphinx(
             ctx = ctx,
             format = format,
             source_path = source_dir_path,
             output_prefix = paths.join(ctx.label.name, "_build"),
             inputs = inputs,
+            doctree_dir = doctree_dir,
         )
         outputs[format] = output_dir
+        outputs[format + "_doctrees"] = doctree_dir
         per_format_args[format] = args_env
+
     return [
         DefaultInfo(files = depset(outputs.values())),
         OutputGroupInfo(**{
@@ -254,7 +258,7 @@ _sphinx_docs = rule(
     },
 )
 
-def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
+def _run_sphinx(ctx, format, source_path, inputs, output_prefix, doctree_dir):
     output_dir = ctx.actions.declare_directory(paths.join(output_prefix, format))
 
     run_args = []  # Copy of the args to forward along to debug runner
@@ -272,10 +276,9 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
     # Build in parallel, if possible
     # Don't add to run_args: parallel building breaks interactive debugging
     args.add("--jobs", "auto")
-    args.add("--fresh-env")  # Don't try to use cache files. Bazel can't make use of them.
-    run_args.append("--fresh-env")
-    args.add("--write-all")  # Write all files; don't try to detect "changed" files
-    run_args.append("--write-all")
+
+    args.add("--doctree-dir", doctree_dir.path)
+    run_args.extend(("--doctree-dir", doctree_dir.path))
 
     for opt in ctx.attr.extra_opts:
         expanded = ctx.expand_location(opt)
@@ -303,7 +306,7 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
         executable = ctx.executable.sphinx,
         arguments = [args],
         inputs = inputs,
-        outputs = [output_dir],
+        outputs = [output_dir, doctree_dir],
         tools = tools,
         mnemonic = "SphinxBuildDocs",
         progress_message = "Sphinx building {} for %{{label}}".format(format),
