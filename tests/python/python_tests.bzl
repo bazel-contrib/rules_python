@@ -746,12 +746,6 @@ def _test_single_version_override_errors(env):
             ],
             want_error = "Only a single 'python.single_version_override' can be present for '3.12.4'",
         ),
-        struct(
-            overrides = [
-                _single_version_override(python_version = "3.12.4+3", distutils_content = "foo"),
-            ],
-            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '3.12.4+3'",
-        ),
     ]:
         errors = []
         parse_modules(
@@ -781,13 +775,13 @@ def _test_single_version_platform_override_errors(env):
             overrides = [
                 _single_version_platform_override(python_version = "3.12", platform = "foo"),
             ],
-            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '3.12'",
+            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' PEP440-compatible version, got: '3.12'",
         ),
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12.1+my_build", platform = "foo"),
+                _single_version_platform_override(python_version = "foo", platform = "foo"),
             ],
-            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '3.12.1+my_build'",
+            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' PEP440-compatible version, got: '3.12.1+my_build'",
         ),
     ]:
         errors = []

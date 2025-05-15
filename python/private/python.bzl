@@ -21,9 +21,9 @@ load(":full_version.bzl", "full_version")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
-load(":semver.bzl", "semver")
 load(":toolchains_repo.bzl", "multi_toolchain_aliases")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
+load(":version.bzl", "version")
 
 def parse_modules(*, module_ctx, _fail = fail):
     """Parse the modules and return a struct for registrations.
@@ -458,16 +458,20 @@ def _fail_multiple_default_toolchains(first, second):
         second = second,
     ))
 
-def _validate_version(*, version, _fail = fail):
-    parsed = semver(version)
-    if parsed.patch == None or parsed.build or parsed.pre_release:
-        _fail("The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '{}'".format(version))
+def _validate_version(version_str, *, _fail = fail):
+    v = version.parse(version_str, strict = True, _fail = _fail)
+    if v == None:
+        _fail("The 'python_version' attribute needs to specify a PEP440-compatible version, got: '{}'".format(version))
+        return False
+
+    if len(v.release) < 3:
+        _fail("The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '{}'".format(v.string))
         return False
 
     return True
 
 def _process_single_version_overrides(*, tag, _fail = fail, default):
-    if not _validate_version(version = tag.python_version, _fail = _fail):
+    if not _validate_version(tag.python_version, _fail = _fail):
         return
 
     available_versions = default["tool_versions"]
@@ -517,7 +521,7 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
         kwargs.setdefault(tag.python_version, {})["distutils"] = tag.distutils
 
 def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
-    if not _validate_version(version = tag.python_version, _fail = _fail):
+    if not _validate_version(tag.python_version, _fail = _fail):
         return
 
     available_versions = default["tool_versions"]
@@ -558,12 +562,12 @@ def _process_global_overrides(*, tag, default, _fail = fail):
 
     if tag.minor_mapping:
         for minor_version, full_version in tag.minor_mapping.items():
-            parsed = semver(minor_version)
-            if parsed.patch != None or parsed.build or parsed.pre_release:
-                fail("Expected the key to be of `X.Y` format but got `{}`".format(minor_version))
-            parsed = semver(full_version)
-            if parsed.patch == None:
-                fail("Expected the value to at least be of `X.Y.Z` format but got `{}`".format(minor_version))
+            parsed = version.parse(minor_version, strict = True, _fail = _fail)
+            if len(parsed.release) > 2 or parsed.pre or parsed.post or parsed.dev or parsed.local:
+                fail("Expected the key to be of `X.Y` format but got `{}`".format(parsed.string))
+
+            # Ensure that the version is valid
+            version.parse(full_version, strict = True, _fail = _fail)
 
         default["minor_mapping"] = tag.minor_mapping
 
@@ -651,8 +655,11 @@ def _get_toolchain_config(*, modules, _fail = fail):
 
     versions = {}
     for version_string in available_versions:
-        v = semver(version_string)
-        versions.setdefault("{}.{}".format(v.major, v.minor), []).append((int(v.patch), version_string))
+        v = version.parse(version_string, strict = True)
+        versions.setdefault(
+            "{}.{}".format(v.release[0], v.release[1]),
+            [],
+        ).append((version.key(v), v.string))
 
     minor_mapping = {
         major_minor: max(subset)[1]
