@@ -256,7 +256,7 @@ bzl_library(
     srcs = ["pep508_evaluate.bzl"],
     deps = [
         "//python/private:enum_bzl",
-        "//python/private:semver_bzl",
+        "//python/private:version_bzl",
     ],
 )
 
