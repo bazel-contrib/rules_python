@@ -582,7 +582,7 @@ def parse(version_str, strict = False, _fail = fail):
         * `string` {type}`str` normalized value of the input.
     """
 
-    parts = _parse(version_str, strict = strict)
+    parts = _parse(version_str, strict = strict, _fail = _fail)
     if not parts:
         return None
 
@@ -597,9 +597,9 @@ def parse(version_str, strict = False, _fail = fail):
         epoch = _parse_epoch(parts["epoch"], _fail),
         release = _parse_release(parts["release"]),
         pre = _parse_pre(parts["pre"]),
-        post = _parse_post(parts["post"], fail),
-        dev = _parse_dev(parts["dev"], fail),
-        local = _parse_local(parts["local"], fail),
+        post = _parse_post(parts["post"], _fail),
+        dev = _parse_dev(parts["dev"], _fail),
+        local = _parse_local(parts["local"], _fail),
         string = parts["norm"],
         is_prefix = parts["is_prefix"],
     )

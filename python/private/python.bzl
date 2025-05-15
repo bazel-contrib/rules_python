@@ -461,7 +461,7 @@ def _fail_multiple_default_toolchains(first, second):
 def _validate_version(version_str, *, _fail = fail):
     v = version.parse(version_str, strict = True, _fail = _fail)
     if v == None:
-        _fail("The 'python_version' attribute needs to specify a PEP440-compatible version, got: '{}'".format(version))
+        # Only reachable in tests
         return False
 
     if len(v.release) < 3:
