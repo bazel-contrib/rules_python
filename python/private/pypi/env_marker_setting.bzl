@@ -2,14 +2,8 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
-load(
-    ":pep508_env.bzl",
-    "env_aliases",
-    "os_name_select_map",
-    "platform_machine_select_map",
-    "platform_system_select_map",
-    "sys_platform_select_map",
-)
+load(":env_marker_info.bzl", "EnvMarkerInfo")
+load(":pep508_env.bzl", "create_env", "set_missing_env_defaults")
 load(":pep508_evaluate.bzl", "evaluate")
 
 # Use capitals to hint its not an actual boolean type.
@@ -39,72 +33,37 @@ def env_marker_setting(*, name, expression, **kwargs):
     _env_marker_setting(
         name = name,
         expression = expression,
-        os_name = select(os_name_select_map),
-        sys_platform = select(sys_platform_select_map),
-        platform_machine = select(platform_machine_select_map),
-        platform_system = select(platform_system_select_map),
-        platform_release = select({
-            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
-            "//conditions:default": "",
-        }),
         **kwargs
     )
 
 def _env_marker_setting_impl(ctx):
-    env = {}
+    env = create_env()
+    env.update(
+        ctx.attr._env_marker_config_flag[EnvMarkerInfo].env,
+    )
 
     runtime = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
-    if runtime.interpreter_version_info:
-        version_info = runtime.interpreter_version_info
-        env["python_version"] = "{major}.{minor}".format(
-            major = version_info.major,
-            minor = version_info.minor,
-        )
-        full_version = _format_full_version(version_info)
-        env["python_full_version"] = full_version
-        env["implementation_version"] = full_version
-    else:
-        env["python_version"] = _get_flag(ctx.attr._python_version_major_minor_flag)
-        full_version = _get_flag(ctx.attr._python_full_version_flag)
-        env["python_full_version"] = full_version
-        env["implementation_version"] = full_version
 
-    # We assume cpython if the toolchain doesn't specify because it's most
-    # likely to be true.
-    env["implementation_name"] = runtime.implementation_name or "cpython"
-    env["os_name"] = ctx.attr.os_name
-    env["sys_platform"] = ctx.attr.sys_platform
-    env["platform_machine"] = ctx.attr.platform_machine
+    if "python_version" not in env:
+        if runtime.interpreter_version_info:
+            version_info = runtime.interpreter_version_info
+            env["python_version"] = "{major}.{minor}".format(
+                major = version_info.major,
+                minor = version_info.minor,
+            )
+            full_version = _format_full_version(version_info)
+            env["python_full_version"] = full_version
+            env["implementation_version"] = full_version
+        else:
+            env["python_version"] = _get_flag(ctx.attr._python_version_major_minor_flag)
+            full_version = _get_flag(ctx.attr._python_full_version_flag)
+            env["python_full_version"] = full_version
+            env["implementation_version"] = full_version
 
-    # The `platform_python_implementation` marker value is supposed to come
-    # from `platform.python_implementation()`, however, PEP 421 introduced
-    # `sys.implementation.name` and the `implementation_name` env marker to
-    # replace it. Per the platform.python_implementation docs, there's now
-    # essentially just two possible "registered" values: CPython or PyPy.
-    # Rather than add a field to the toolchain, we just special case the value
-    # from `sys.implementation.name` to handle the two documented values.
-    platform_python_impl = runtime.implementation_name
-    if platform_python_impl == "cpython":
-        platform_python_impl = "CPython"
-    elif platform_python_impl == "pypy":
-        platform_python_impl = "PyPy"
-    env["platform_python_implementation"] = platform_python_impl
+    if "implementation_name" not in env and runtime.implementation_name:
+        env["implementation_name"] = runtime.implementation_name
 
-    # NOTE: Platform release for Android will be Android version:
-    # https://peps.python.org/pep-0738/#platform
-    # Similar for iOS:
-    # https://peps.python.org/pep-0730/#platform
-    platform_release = ctx.attr.platform_release
-    if platform_release == "USE_OSX_VERSION_FLAG":
-        platform_release = _get_flag(ctx.attr._pip_whl_osx_version_flag)
-    env["platform_release"] = platform_release
-    env["platform_system"] = ctx.attr.platform_system
-
-    # For lack of a better option, just use an empty string for now.
-    env["platform_version"] = ""
-
-    env.update(env_aliases())
-
+    set_missing_env_defaults(env)
     if evaluate(ctx.attr.expression, env = env):
         value = _ENV_MARKER_TRUE
     else:
@@ -125,14 +84,9 @@ for the specification of behavior.
             mandatory = True,
             doc = "Environment marker expression to evaluate.",
         ),
-        "os_name": attr.string(),
-        "platform_machine": attr.string(),
-        "platform_release": attr.string(),
-        "platform_system": attr.string(),
-        "sys_platform": attr.string(),
-        "_pip_whl_osx_version_flag": attr.label(
-            default = "//python/config_settings:pip_whl_osx_version",
-            providers = [[BuildSettingInfo], [config_common.FeatureFlagInfo]],
+        "_env_marker_config_flag": attr.label(
+            default = "//python/config_settings:pip_env_marker_config",
+            providers = [EnvMarkerInfo],
         ),
         "_python_full_version_flag": attr.label(
             default = "//python/config_settings:python_version",

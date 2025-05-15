@@ -86,6 +86,7 @@ def _test_sdist(env):
         got = parse_simpleapi_html(url = input.url, content = html)
         env.expect.that_collection(got.sdists).has_size(1)
         env.expect.that_collection(got.whls).has_size(0)
+        env.expect.that_collection(got.sha256s_by_version).has_size(1)
         if not got:
             fail("expected at least one element, but did not get anything from:\n{}".format(html))
 

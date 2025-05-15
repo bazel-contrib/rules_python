@@ -51,6 +51,7 @@ def _test_basic_windows(name, config):
             "//command_line_option:build_python_zip": "true",
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
+            "//command_line_option:extra_execution_platforms": [WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [WINDOWS_X86_64],
         },
@@ -96,6 +97,7 @@ def _test_basic_zip(name, config):
             "//command_line_option:build_python_zip": "true",
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
+            "//command_line_option:extra_execution_platforms": [LINUX_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [LINUX_X86_64],
         },
@@ -354,6 +356,7 @@ def _test_main_module_bootstrap_system_python(name, config):
         target = name + "_subject",
         config_settings = {
             BOOTSTRAP_IMPL: "system_python",
+            "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", LINUX_X86_64],
             "//command_line_option:platforms": [LINUX_X86_64],
         },
         expect_failure = True,
@@ -378,6 +381,7 @@ def _test_main_module_bootstrap_script(name, config):
         target = name + "_subject",
         config_settings = {
             BOOTSTRAP_IMPL: "script",
+            "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", LINUX_X86_64],
             "//command_line_option:platforms": [LINUX_X86_64],
         },
     )
