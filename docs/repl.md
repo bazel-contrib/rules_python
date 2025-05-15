@@ -1,7 +1,7 @@
 # Getting a REPL or Interactive Shell
 
 rules_python provides a REPL to help with debugging and developing. The goal of
-the REPL is to present an environment identical to what a `py_binary` creates
+the REPL is to present an environment identical to what a {bzl:obj}`py_binary` creates
 for your code.
 
 ## Usage
@@ -29,7 +29,7 @@ and [Environment Variables](environment-variables) for more settings.
 ## Importing Python targets
 
 The `//python/bin:repl_dep` command line flag gives the REPL access to a target
-that provides the `PyInfo` provider.
+that provides the {bzl:obj}`PyInfo` provider.
 
 ```console
 $ bazel run @rules_python//python/bin:repl --@rules_python//python/bin:repl_dep=@rules_python//tools:wheelmaker

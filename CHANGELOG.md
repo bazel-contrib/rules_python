@@ -102,6 +102,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Starlark-based evaluation of environment markers (requirements.txt conditionals)
   available (not enabled by default) for improved multi-platform build support.
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
+* (utils) Add a way to run a REPL for any `rules_python` target that returns
+  a `PyInfo` provider.
 
 {#v0-0-0-removed}
 ### Removed
