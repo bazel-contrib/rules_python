@@ -41,6 +41,7 @@ def python_register_toolchains(
         register_coverage_tool = False,
         set_python_version_constraint = False,
         tool_versions = None,
+        platforms = PLATFORMS,
         minor_mapping = None,
         **kwargs):
     """Convenience macro for users which does typical setup.
@@ -70,12 +71,18 @@ def python_register_toolchains(
         tool_versions: {type}`dict` contains a mapping of version with SHASUM
             and platform info. If not supplied, the defaults in
             python/versions.bzl will be used.
+        platforms: {type}`dict[str, platform_info]` platforms to create toolchain
+            repositories for. Note that only a subset is created, depending
+            on what's available in `tool_versions`.
         minor_mapping: {type}`dict[str, str]` contains a mapping from `X.Y` to `X.Y.Z`
             version.
         **kwargs: passed to each {obj}`python_repository` call.
 
     Returns:
-        On bzlmod this returns the loaded platform labels. Otherwise None.
+        On workspace, returns None.
+
+        On bzlmod, returns a `dict[str, platform_info]`, which is the
+        subset of `platforms` that it created repositories for.
     """
     bzlmod_toolchain_call = kwargs.pop("_internal_bzlmod_toolchain_call", False)
     if bzlmod_toolchain_call:
@@ -104,13 +111,13 @@ def python_register_toolchains(
                 ))
             register_coverage_tool = False
 
-    loaded_platforms = []
-    for platform in PLATFORMS.keys():
+    loaded_platforms = {}
+    for platform in platforms.keys():
         sha256 = tool_versions[python_version]["sha256"].get(platform, None)
         if not sha256:
             continue
 
-        loaded_platforms.append(platform)
+        loaded_platforms[platform] = platforms[platform]
         (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(platform, python_version, base_url, tool_versions)
 
         # allow passing in a tool version
@@ -162,7 +169,7 @@ def python_register_toolchains(
 
     host_toolchain(
         name = name + "_host",
-        platforms = loaded_platforms,
+        platforms = loaded_platforms.keys(),
         python_version = python_version,
     )
 
@@ -170,7 +177,7 @@ def python_register_toolchains(
         name = name,
         python_version = python_version,
         user_repository_name = name,
-        platforms = loaded_platforms,
+        platforms = loaded_platforms.keys(),
     )
 
     # in bzlmod we write out our own toolchain repos
@@ -182,6 +189,6 @@ def python_register_toolchains(
         python_version = python_version,
         set_python_version_constraint = set_python_version_constraint,
         user_repository_name = name,
-        platforms = loaded_platforms,
+        platforms = loaded_platforms.keys(),
     )
     return None

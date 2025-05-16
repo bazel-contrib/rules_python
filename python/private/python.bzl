@@ -34,12 +34,13 @@ def parse_modules(*, module_ctx, _fail = fail):
 
     Returns:
         A struct with the following attributes:
-            * `toolchains`: The list of toolchains to register. The last
-              element is special and is treated as the default toolchain.
-            * `defaults`: The default `kwargs` passed to
-              {bzl:obj}`python_register_toolchains`.
-            * `debug_info`: {type}`None | dict` extra information to be passed
-              to the debug repo.
+        * `toolchains`: The list of toolchains to register. The last
+          element is special and is treated as the default toolchain.
+        * `config`: Various toolchain config, see `_get_toolchain_config`.
+        * `debug_info`: {type}`None | dict` extra information to be passed
+          to the debug repo.
+        * `platforms`: {type}`dict[str, platform_info]` of the base set of
+          platforms toolchains should be created for, if possible.
     """
     if module_ctx.os.environ.get("RULES_PYTHON_BZLMOD_DEBUG", "0") == "1":
         debug_info = {
@@ -285,11 +286,12 @@ def _python_impl(module_ctx):
         kwargs.update(py.config.kwargs.get(toolchain_info.python_version, {}))
         kwargs.update(py.config.kwargs.get(full_python_version, {}))
         kwargs.update(py.config.default)
-        loaded_platforms[full_python_version] = python_register_toolchains(
+        toolchain_registered_platforms = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
             **kwargs
         )
+        loaded_platforms[full_python_version] = toolchain_registered_platforms
 
     # List of the base names ("python_3_10") for the toolchain repos
     base_toolchain_repo_names = []
@@ -332,20 +334,19 @@ def _python_impl(module_ctx):
         base_name = t.name
         base_toolchain_repo_names.append(base_name)
         fv = full_version(version = t.python_version, minor_mapping = py.config.minor_mapping)
-        for platform in loaded_platforms[fv]:
-            if platform not in PLATFORMS:
-                continue
+        platforms = loaded_platforms[fv]
+        for platform_name, platform_info in platforms.items():
             key = str(len(toolchain_names))
 
-            full_name = "{}_{}".format(base_name, platform)
+            full_name = "{}_{}".format(base_name, platform_name)
             toolchain_names.append(full_name)
             toolchain_repo_names[key] = full_name
-            toolchain_tcw_map[key] = PLATFORMS[platform].compatible_with
+            toolchain_tcw_map[key] = platform_info.compatible_with
 
             # The target_settings attribute may not be present for users
             # patching python/versions.bzl.
-            toolchain_ts_map[key] = getattr(PLATFORMS[platform], "target_settings", [])
-            toolchain_platform_keys[key] = platform
+            toolchain_ts_map[key] = getattr(platform_info, "target_settings", [])
+            toolchain_platform_keys[key] = platform_name
             toolchain_python_versions[key] = fv
 
             # The last toolchain is the default; it can't have version constraints
@@ -483,9 +484,9 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
             return
 
         for platform in (tag.sha256 or []):
-            if platform not in PLATFORMS:
+            if platform not in default["platforms"]:
                 _fail("The platform must be one of {allowed} but got '{got}'".format(
-                    allowed = sorted(PLATFORMS),
+                    allowed = sorted(default["platforms"]),
                     got = platform,
                 ))
                 return
@@ -602,6 +603,26 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
             override.fn(tag = tag, _fail = _fail, default = default)
 
 def _get_toolchain_config(*, modules, _fail = fail):
+    """Computes the configs for toolchains.
+
+    Args:
+        modules: The modules from module_ctx
+        _fail: Function to call for failing; only used for testing.
+
+    Returns:
+        A struct with the following:
+        * `kwargs`: {type}`dict[str, dict[str, object]` custom kwargs to pass to
+          `python_register_toolchains`, keyed by python version.
+          The first key is either a Major.Minor or Major.Minor.Patch
+          string.
+        * `minor_mapping`: {type}`dict[str, str]` the mapping of Major.Minor
+          to Major.Minor.Patch.
+        * `default`: {type}`dict[str, object]` of kwargs passed along to
+          `python_register_toolchains`. These keys take final precedence.
+        * `register_all_versions`: {type}`bool` whether all known versions
+          should be registered.
+    """
+
     # Items that can be overridden
     available_versions = {
         version: {
@@ -621,6 +642,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
     }
     default = {
         "base_url": DEFAULT_RELEASE_BASE_URL,
+        "platforms": dict(PLATFORMS),  # Copy so it's mutable.
         "tool_versions": available_versions,
     }
 
