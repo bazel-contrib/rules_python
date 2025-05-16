@@ -386,18 +386,18 @@ toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
     """,
     attrs = {
-        "platforms": attr.string_list(mandatory = True),
-        "python_version": attr.string(mandatory = True),
-        "os_names": attr.string_dict(
-            doc = """
-If set, overrides the platform metadata. Keyed by index in `platforms`
-""",
-        ),
         "archs": attr.string_dict(
             doc = """
 If set, overrides the platform metadata. Keyed by index in `platforms`
 """,
         ),
+        "os_names": attr.string_dict(
+            doc = """
+If set, overrides the platform metadata. Keyed by index in `platforms`
+""",
+        ),
+        "platforms": attr.string_list(mandatory = True),
+        "python_version": attr.string(mandatory = True),
         "_rule_name": attr.string(default = "host_toolchain"),
         "_rules_python_workspace": attr.label(default = Label("//:WORKSPACE")),
     },
