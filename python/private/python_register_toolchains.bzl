@@ -170,12 +170,6 @@ def python_register_toolchains(
                 platform = platform,
             ))
 
-    host_toolchain(
-        name = name + "_host",
-        platforms = loaded_platforms,
-        python_version = python_version,
-    )
-
     toolchain_aliases(
         name = name,
         python_version = python_version,
@@ -183,12 +177,18 @@ def python_register_toolchains(
         platforms = loaded_platforms,
     )
 
-    # in bzlmod we write out our own toolchain repos
+    # in bzlmod we write out our own toolchain repos and host repos
     if bzlmod_toolchain_call:
         return struct(
             # dict[str name, tuple[str platform_name, platform_info]]
             impl_repos = impl_repos,
         )
+
+    host_toolchain(
+        name = name + "_host",
+        platforms = loaded_platforms,
+        python_version = python_version,
+    )
 
     toolchains_repo(
         name = toolchain_repo_name,

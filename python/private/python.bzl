@@ -315,6 +315,12 @@ def _python_impl(module_ctx):
                 # The last toolchain is the default; it can't have version constraints
                 set_python_version_constraint = is_last,
             ))
+            if _is_compatible_with_host(mctx, platform_info):
+                host_toolchain(
+                    name = toolchain_info.name,
+                    platforms = [platform_name],
+                    python_version = full_python_version,
+                )
 
     # List of the base names ("python_3_10") for the toolchain repos
     base_toolchain_repo_names = []
@@ -405,6 +411,11 @@ def _python_impl(module_ctx):
         return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
+
+def _is_compatible_with_host(mctx, platform_info):
+    os_name = repo_utils.get_platforms_os_name(rctx)
+    cpu_name = repo_utils.get_platforms_cpu_name(rctx)
+    return platform_info.os_name == os_name and platform_info.arch == cpu_name
 
 def _one_or_the_same(first, second, *, onerror = None):
     if not first:
