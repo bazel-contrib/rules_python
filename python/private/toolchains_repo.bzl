@@ -404,9 +404,6 @@ multi_toolchain_aliases = repository_rule(
     },
 )
 
-def sanitize_platform_name(platform):
-    return platform.replace("-", "_")
-
 def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platforms):
     """Gets the host platform.
 
