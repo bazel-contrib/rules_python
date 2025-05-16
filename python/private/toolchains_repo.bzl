@@ -25,6 +25,8 @@ platform-specific repositories.
 
 load(
     "//python:versions.bzl",
+    "FREETHREADED",
+    "MUSL",
     "PLATFORMS",
     "WINDOWS_NAME",
 )
@@ -433,6 +435,46 @@ multi_toolchain_aliases = repository_rule(
     },
 )
 
+def sorted_host_platforms(platform_map):
+    """Sort the keys in the platform map to give correct precedence.
+
+    The order of keys in the platform mapping matters for the host toolchain
+    selection. When multiple runtimes are compatible with the host, we take the
+    first that is compatible (usually; there's also the
+    `RULES_PYTHON_REPO_TOOLCHAIN_*` environment variables). The historical
+    behavior carefully constructed the ordering of platform keys such that
+    the ordering was:
+    * Regular platforms
+    * The "-freethreaded" suffix
+    * The "-musl" suffix
+
+    Here, we formalize that so it isn't subtly encoded in the ordering of keys
+    in a dict that autoformatters like to clobber and whose only documentation
+    is an innocous looking formatter disable directive.
+
+    Args:
+        platform_map: a mapping of platforms and their metadata.
+
+    Returns:
+        dict; the same values, but with the keys inserted in the desired
+        order so that iteration happens in the desired order.
+    """
+
+    def platform_keyer(name):
+        # Ascending sort: lower is higher precedence
+        pref = 0
+        if name.endswith("-" + FREETHREADED):
+            pref = 1
+        elif name.endswith("-" + MUSL):
+            pref = 2
+        return (pref, name)
+
+    sorted_platform_keys = sorted(platform_map.keys(), key = platform_keyer)
+    return {
+        key: platform_map[key]
+        for key in sorted_platform_keys
+    }
+
 def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platforms):
     """Gets the host platform.
 
@@ -455,7 +497,7 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
                 arch = rctx.attr.archs[key],
             )
     else:
-        platform_map = PLATFORMS
+        platform_map = sorted_host_platforms(PLATFORMS)
 
     candidates = []
     for platform in platforms:

@@ -19,7 +19,9 @@
 MACOS_NAME = "osx"
 LINUX_NAME = "linux"
 WINDOWS_NAME = "windows"
+
 FREETHREADED = "freethreaded"
+MUSL = "musl"
 INSTALL_ONLY = "install_only"
 
 DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone/releases/download"
