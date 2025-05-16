@@ -111,13 +111,17 @@ def python_register_toolchains(
                 ))
             register_coverage_tool = False
 
-    loaded_platforms = {}
-    for platform in platforms.keys():
+    # list[str] of the platform names that were used
+    loaded_platforms = []
+
+    # dict[str repo name, tuple[str, platform_info]]
+    impl_repos = {}
+    for platform, platform_info in platforms.items():
         sha256 = tool_versions[python_version]["sha256"].get(platform, None)
         if not sha256:
             continue
 
-        loaded_platforms[platform] = platforms[platform]
+        loaded_platforms.append(platform)
         (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(platform, python_version, base_url, tool_versions)
 
         # allow passing in a tool version
@@ -137,11 +141,10 @@ def python_register_toolchains(
                 )],
             )
 
+        impl_repo_name = "{}_{}".format(name, platform)
+        impl_repos[impl_repo_name] = (platform, platform_info)
         python_repository(
-            name = "{name}_{platform}".format(
-                name = name,
-                platform = platform,
-            ),
+            name = impl_repo_name,
             sha256 = sha256,
             patches = patches,
             patch_strip = patch_strip,
@@ -169,7 +172,7 @@ def python_register_toolchains(
 
     host_toolchain(
         name = name + "_host",
-        platforms = loaded_platforms.keys(),
+        platforms = loaded_platforms,
         python_version = python_version,
     )
 
@@ -177,18 +180,21 @@ def python_register_toolchains(
         name = name,
         python_version = python_version,
         user_repository_name = name,
-        platforms = loaded_platforms.keys(),
+        platforms = loaded_platforms,
     )
 
     # in bzlmod we write out our own toolchain repos
     if bzlmod_toolchain_call:
-        return loaded_platforms
+        return struct(
+            # dict[str name, tuple[str platform_name, platform_info]]
+            impl_repos = impl_repos,
+        )
 
     toolchains_repo(
         name = toolchain_repo_name,
         python_version = python_version,
         set_python_version_constraint = set_python_version_constraint,
         user_repository_name = name,
-        platforms = loaded_platforms.keys(),
+        platforms = loaded_platforms,
     )
     return None
