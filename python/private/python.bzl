@@ -298,7 +298,9 @@ def _python_impl(module_ctx):
             _internal_bzlmod_toolchain_call = True,
             **kwargs
         )
-        host_compatible = []
+        host_platforms = []
+        host_os_names = {}
+        host_archs = {}
         for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
             toolchain_impls.append(struct(
                 # str: The base name to use for the toolchain() target
@@ -317,12 +319,17 @@ def _python_impl(module_ctx):
                 set_python_version_constraint = is_last,
             ))
             if _is_compatible_with_host(module_ctx, platform_info):
-                host_compatible.append(platform_name)
+                host_key = str(len(host_platforms))
+                host_platforms.append(platform_name)
+                host_os_names[host_key] = platform_info.os_name
+                host_archs[host_key] = platform_info.arch
 
         host_toolchain(
             name = toolchain_info.name + "_host",
             # NOTE: Order matters. The first found to be compatible is (usually) used.
-            platforms = host_compatible,
+            platforms = host_platforms,
+            os_names = host_os_names,
+            archs = host_archs,
             python_version = full_python_version,
         )
 

@@ -388,6 +388,16 @@ this repo causes an eager fetch of the toolchain for the host platform.
     attrs = {
         "platforms": attr.string_list(mandatory = True),
         "python_version": attr.string(mandatory = True),
+        "os_names": attr.string_dict(
+            doc = """
+If set, overrides the platform metadata. Keyed by index in `platforms`
+""",
+        ),
+        "archs": attr.string_dict(
+            doc = """
+If set, overrides the platform metadata. Keyed by index in `platforms`
+""",
+        ),
         "_rule_name": attr.string(default = "host_toolchain"),
         "_rules_python_workspace": attr.label(default = Label("//:WORKSPACE")),
     },
@@ -436,9 +446,20 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
     Returns:
         The host platform.
     """
+    if rctx.attr.os_names:
+        platform_map = {}
+        for i, platform_name in enumerate(platforms):
+            key = str(i)
+            platform_map[platform_name] = struct(
+                os_name = rctx.attr.os_names[key],
+                arch = rctx.attr.archs[key],
+            )
+    else:
+        platform_map = PLATFORMS
+
     candidates = []
     for platform in platforms:
-        meta = PLATFORMS[platform]
+        meta = platform_map[platform]
 
         if meta.os_name == os_name and meta.arch == cpu_name:
             candidates.append(platform)
