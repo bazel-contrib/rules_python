@@ -149,6 +149,7 @@ def _test_default(env):
         "base_url",
         "ignore_root_user_error",
         "tool_versions",
+        "platforms",
     ])
     env.expect.that_bool(py.config.default["ignore_root_user_error"]).equals(True)
     env.expect.that_str(py.default_python_version).equals("3.11")
