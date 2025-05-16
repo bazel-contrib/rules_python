@@ -375,6 +375,8 @@ def _host_toolchain_impl(rctx):
     if not rctx.delete(python_tester):
         fail("Failed to delete the python tester")
 
+# NOTE: The term "toolchain" is a misnomer for this rule. This doesn't define
+# a repo with toolchains or toolchain implementations.
 host_toolchain = repository_rule(
     _host_toolchain_impl,
     doc = """\

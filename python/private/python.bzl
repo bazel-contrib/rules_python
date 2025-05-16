@@ -21,7 +21,7 @@ load(":full_version.bzl", "full_version")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
-load(":toolchains_repo.bzl", "multi_toolchain_aliases")
+load(":toolchains_repo.bzl", "host_toolchain", "multi_toolchain_aliases")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 load(":version.bzl", "version")
 
@@ -298,6 +298,7 @@ def _python_impl(module_ctx):
             _internal_bzlmod_toolchain_call = True,
             **kwargs
         )
+        host_compatible = []
         for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
             toolchain_impls.append(struct(
                 # str: The base name to use for the toolchain() target
@@ -315,12 +316,15 @@ def _python_impl(module_ctx):
                 # The last toolchain is the default; it can't have version constraints
                 set_python_version_constraint = is_last,
             ))
-            if _is_compatible_with_host(mctx, platform_info):
-                host_toolchain(
-                    name = toolchain_info.name,
-                    platforms = [platform_name],
-                    python_version = full_python_version,
-                )
+            if _is_compatible_with_host(module_ctx, platform_info):
+                host_compatible.append(platform_name)
+
+        host_toolchain(
+            name = toolchain_info.name + "_host",
+            # NOTE: Order matters. The first found to be compatible is (usually) used.
+            platforms = host_compatible,
+            python_version = full_python_version,
+        )
 
     # List of the base names ("python_3_10") for the toolchain repos
     base_toolchain_repo_names = []
@@ -413,8 +417,8 @@ def _python_impl(module_ctx):
         return None
 
 def _is_compatible_with_host(mctx, platform_info):
-    os_name = repo_utils.get_platforms_os_name(rctx)
-    cpu_name = repo_utils.get_platforms_cpu_name(rctx)
+    os_name = repo_utils.get_platforms_os_name(mctx)
+    cpu_name = repo_utils.get_platforms_cpu_name(mctx)
     return platform_info.os_name == os_name and platform_info.arch == cpu_name
 
 def _one_or_the_same(first, second, *, onerror = None):
