@@ -15,6 +15,8 @@
 """The Python versions we use for the toolchains.
 """
 
+load("//python/private:platform_info.bzl", "platform_info")
+
 # Values present in the @platforms//os package
 MACOS_NAME = "osx"
 LINUX_NAME = "linux"
@@ -684,42 +686,12 @@ MINOR_MAPPING = {
     "3.13": "3.13.2",
 }
 
-def _platform_info(
-        *,
-        compatible_with = [],
-        flag_values = {},
-        target_settings = [],
-        os_name,
-        arch):
-    """Creates a struct of platform metadata.
-
-    Args:
-        compatible_with: list[str], where the values are string labels. These
-            are the target_compatible_with values to use with the toolchain
-        flag_values: dict[str|Label, Any] of config_setting.flag_values
-            compatible values. DEPRECATED -- use target_settings instead
-        target_settings: list[str], where the values are string labels. These
-            are the target_settings values to use with the toolchain.
-        os_name: str, the os name; must match the name used in `@platfroms//os`
-        arch: str, the cpu name; must match the name used in `@platforms//cpu`
-
-    Returns:
-        A struct with attributes and values matching the args.
-    """
-    return struct(
-        compatible_with = compatible_with,
-        flag_values = flag_values,
-        target_settings = target_settings,
-        os_name = os_name,
-        arch = arch,
-    )
-
 def _generate_platforms():
     is_libc_glibc = str(Label("//python/config_settings:_is_py_linux_libc_glibc"))
     is_libc_musl = str(Label("//python/config_settings:_is_py_linux_libc_musl"))
 
     platforms = {
-        "aarch64-apple-darwin": _platform_info(
+        "aarch64-apple-darwin": platform_info(
             compatible_with = [
                 "@platforms//os:macos",
                 "@platforms//cpu:aarch64",
@@ -727,7 +699,7 @@ def _generate_platforms():
             os_name = MACOS_NAME,
             arch = "aarch64",
         ),
-        "aarch64-unknown-linux-gnu": _platform_info(
+        "aarch64-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:aarch64",
@@ -738,7 +710,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "aarch64",
         ),
-        "armv7-unknown-linux-gnu": _platform_info(
+        "armv7-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:armv7",
@@ -749,7 +721,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "arm",
         ),
-        "i386-unknown-linux-gnu": _platform_info(
+        "i386-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:i386",
@@ -760,7 +732,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "x86_32",
         ),
-        "ppc64le-unknown-linux-gnu": _platform_info(
+        "ppc64le-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:ppc",
@@ -771,7 +743,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "ppc",
         ),
-        "riscv64-unknown-linux-gnu": _platform_info(
+        "riscv64-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:riscv64",
@@ -782,7 +754,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "riscv64",
         ),
-        "s390x-unknown-linux-gnu": _platform_info(
+        "s390x-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:s390x",
@@ -793,7 +765,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "s390x",
         ),
-        "x86_64-apple-darwin": _platform_info(
+        "x86_64-apple-darwin": platform_info(
             compatible_with = [
                 "@platforms//os:macos",
                 "@platforms//cpu:x86_64",
@@ -801,7 +773,7 @@ def _generate_platforms():
             os_name = MACOS_NAME,
             arch = "x86_64",
         ),
-        "x86_64-pc-windows-msvc": _platform_info(
+        "x86_64-pc-windows-msvc": platform_info(
             compatible_with = [
                 "@platforms//os:windows",
                 "@platforms//cpu:x86_64",
@@ -809,7 +781,7 @@ def _generate_platforms():
             os_name = WINDOWS_NAME,
             arch = "x86_64",
         ),
-        "x86_64-unknown-linux-gnu": _platform_info(
+        "x86_64-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:x86_64",
@@ -820,7 +792,7 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "x86_64",
         ),
-        "x86_64-unknown-linux-musl": _platform_info(
+        "x86_64-unknown-linux-musl": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
                 "@platforms//cpu:x86_64",
@@ -836,7 +808,7 @@ def _generate_platforms():
     is_freethreaded_yes = str(Label("//python/config_settings:_is_py_freethreaded_yes"))
     is_freethreaded_no = str(Label("//python/config_settings:_is_py_freethreaded_no"))
     return {
-        p + suffix: _platform_info(
+        p + suffix: platform_info(
             compatible_with = v.compatible_with,
             target_settings = [
                 freethreadedness,
