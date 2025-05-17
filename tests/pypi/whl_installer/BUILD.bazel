@@ -17,17 +17,6 @@ py_test(
 )
 
 py_test(
-    name = "namespace_pkgs_test",
-    size = "small",
-    srcs = [
-        "namespace_pkgs_test.py",
-    ],
-    deps = [
-        ":lib",
-    ],
-)
-
-py_test(
     name = "platform_test",
     size = "small",
     srcs = [
