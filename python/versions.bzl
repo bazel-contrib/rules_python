@@ -714,6 +714,8 @@ def _platform_info(
         arch = arch,
     )
 
+platform_info = _platform_info
+
 def _generate_platforms():
     is_libc_glibc = str(Label("//python/config_settings:_is_py_linux_libc_glibc"))
     is_libc_musl = str(Label("//python/config_settings:_is_py_linux_libc_musl"))
