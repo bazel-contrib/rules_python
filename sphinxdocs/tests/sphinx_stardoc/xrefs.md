@@ -45,3 +45,4 @@ Various tests of cross referencing support
 ## Tag class refs
 
 * tag class attribute using attr role: {attr}`myext.mytag.ta1`
+* tag class attribute, just attr name, attr role: {attr}`ta1`
