@@ -7,9 +7,19 @@ EXTS = [
     ".pyc",
 ]
 
-def _get_files(files, ignored_dirnames = []):
+def _add_all(dirname, dirs):
+    dir_path = "."
+    for dir_name in dirname.split("/"):
+        dir_path = "{}/{}".format(dir_path, dir_name)
+        dirs[dir_path[2:]] = None
+
+def _get_files(files, ignored_dirnames = [], root = None):
     dirs = {}
     ignored = {i: None for i in ignored_dirnames}
+
+    if root:
+        _add_all(root, ignored)
+
     for file in files:
         dirname, _, filename = file.rpartition("/")
 
@@ -30,10 +40,7 @@ def _get_files(files, ignored_dirnames = []):
         if dirname in dirs or not dirname:
             continue
 
-        dir_path = "."
-        for dir_name in dirname.split("/"):
-            dir_path = "{}/{}".format(dir_path, dir_name)
-            dirs[dir_path[2:]] = None
+        _add_all(dirname, dirs)
 
     return sorted([d for d in dirs if d not in ignored])
 

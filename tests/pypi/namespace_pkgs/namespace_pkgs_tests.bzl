@@ -24,17 +24,17 @@ _tests.append(test_in_current_dir)
 
 def test_find_correct_namespace_packages(env):
     files = [
-        "foo/bar/biz.py",
-        "foo/bee/boo.py",
-        "foo/buu/__init__.py",
-        "foo/buu/bii.py",
+        "nested/root/foo/bar/biz.py",
+        "nested/root/foo/bee/boo.py",
+        "nested/root/foo/buu/__init__.py",
+        "nested/root/foo/buu/bii.py",
     ]
 
-    got = namespace_pkgs.get_files(files)
+    got = namespace_pkgs.get_files(files, root = "nested/root")
     expected = [
-        "foo",
-        "foo/bar",
-        "foo/bee",
+        "nested/root/foo",
+        "nested/root/foo/bar",
+        "nested/root/foo/bee",
     ]
     env.expect.that_collection(got).contains_exactly(expected)
 
