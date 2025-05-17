@@ -1463,6 +1463,8 @@ class _BzlDomain(domains.Domain):
     # :obj:.
     # NOTE: We also use these object types for categorizing things in the
     # generated index page.
+    # NOTE: The object type keys control what object types are recognized
+    # in inventory files.
     object_types = {
         "arg": domains.ObjType("arg", "arg", "obj"),  # macro/function arg
         "aspect": domains.ObjType("aspect", "aspect", "obj"),
@@ -1486,6 +1488,8 @@ class _BzlDomain(domains.Domain):
         # types are objects that have a constructor and methods/attrs
         "type": domains.ObjType("type", "type", "obj"),
         "typedef": domains.ObjType("typedef", "typedef", "type", "obj"),
+        # generic objs usually come from inventories
+        "obj": domains.ObjType("object", "obj")
     }
 
     # This controls:
