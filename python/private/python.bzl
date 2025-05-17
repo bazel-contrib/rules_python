@@ -21,7 +21,13 @@ load(":full_version.bzl", "full_version")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
-load(":toolchains_repo.bzl", "multi_toolchain_aliases")
+load(
+    ":toolchains_repo.bzl",
+    "host_toolchain",
+    "multi_toolchain_aliases",
+    "sorted_host_platform_names",
+    "sorted_host_platforms",
+)
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 load(":version.bzl", "version")
 
@@ -267,11 +273,20 @@ def parse_modules(*, module_ctx, _fail = fail):
 def _python_impl(module_ctx):
     py = parse_modules(module_ctx = module_ctx)
 
-    # dict[str version, list[str] platforms]; where version is full
-    # python version string ("3.4.5"), and platforms are keys from
-    # the PLATFORMS global.
-    loaded_platforms = {}
-    for toolchain_info in py.toolchains:
+    all_host_compatible_impls = []
+
+    # list of structs; see inline struct call within the loop below.
+    toolchain_impls = []
+
+    # list[str] of the base names of toolchain repos
+    base_toolchain_repo_names = []
+
+    # Create the underlying python_repository repos that contain the
+    # python runtimes and their toolchain implementation definitions.
+    for i, toolchain_info in enumerate(py.toolchains):
+        is_last = (i + 1) == len(py.toolchains)
+        base_toolchain_repo_names.append(toolchain_info.name)
+
         # Ensure that we pass the full version here.
         full_python_version = full_version(
             version = toolchain_info.python_version,
@@ -286,12 +301,122 @@ def _python_impl(module_ctx):
         kwargs.update(py.config.kwargs.get(toolchain_info.python_version, {}))
         kwargs.update(py.config.kwargs.get(full_python_version, {}))
         kwargs.update(py.config.default)
-        toolchain_registered_platforms = python_register_toolchains(
+        register_result = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
             **kwargs
         )
-        loaded_platforms[full_python_version] = toolchain_registered_platforms
+
+        host_platforms = {}
+        for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
+            toolchain_impls.append(struct(
+                # str: The base name to use for the toolchain() target
+                name = repo_name,
+                # str: The repo name the toolchain() target points to.
+                impl_repo_name = repo_name,
+                # str: platform key in the passed-in platforms dict
+                platform_name = platform_name,
+                # struct: platform_info() struct
+                platform = platform_info,
+                # str: Major.Minor.Micro python version
+                full_python_version = full_python_version,
+                # bool: whether to implicitly add the python version constraint
+                # to the toolchain's target_settings.
+                # The last toolchain is the default; it can't have version constraints
+                set_python_version_constraint = is_last,
+            ))
+            if _is_compatible_with_host(module_ctx, platform_info):
+                host_platforms[platform_name] = platform_info
+                host_compat_entry = struct(
+                    full_python_version = full_python_version,
+                    platform = platform_info,
+                    platform_name = platform_name,
+                    impl_repo_name = repo_name,
+                )
+                all_host_compatible_impls.setdefault(full_python_version, []).append(
+                    host_compat_entry,
+                )
+                all_host_compatible_impls.setdefault(
+                    toolchain_info.python_version,
+                    [],
+                ).append(host_compat_entry)
+
+        host_repo_name = toolchain_info.name + "_host"
+        if not host_platforms:
+            needed_host_repos[toolchain_info.python_version] = struct(
+                compatible_version = toolchain_info.python_version,
+                full_python_version = full_python_version,
+            )
+        else:
+            host_platforms = sorted_host_platforms(host_platforms)
+            host_toolchain(
+                name = host_repo_name,
+                # NOTE: Order matters. The first found to be compatible is (usually) used.
+                platforms = host_platforms.keys(),
+                os_names = {
+                    str(i): platform_info.os_name
+                    for i, platform_info in enumerate(host_platforms.values())
+                },
+                archs = {
+                    str(i): platform_info.arch
+                    for i, platform_info in enumerate(host_platforms.values())
+                },
+                python_version = full_python_version,
+            )
+
+    """
+    We want to define e.g. python_3_13_host backed by e.g. python_3_13 (full
+    version 3.13.3)
+    but, we didn't see a host-compatible option when we initial did so.
+    So search from 3.13.3 down to 3.13.0, looking for compatible options.
+    """
+
+    def vt(s):
+        return tuple([int(x) for x in s.split(".")])
+
+    if needed_host_repos:
+        for key, entries in all_host_compatible_impls.items():
+            all_host_compatible_impls[key] = sorted(
+                entries,
+                reverse = True,
+                key = lambda e: vt(e.full_python_version),
+            )
+
+    for host_repo_name, info in needed_host_repos.items():
+        choices = []
+        for entry in all_host_compatible_impls[info.compatible_version]:
+            # todo: numeric version comparison
+            if vt(entry.full_python_version) <= vt(info.full_python_version):
+                choices.append(entry)
+        if choices:
+            platforms_keys = [
+                # We have to prepend the offset because the same platform
+                # name might occur accross different versions
+                "{}_{}".format(i, entry.platform_name)
+                for i, entry in enumerate(choices)
+            ]
+            platform_keys = sorted_host_platforms_names(platform_keys)
+
+            # AH no, this won't quite work.
+            # Multiple versions will have the same platform_name string.
+            # Thus when it builds the platform_map, some will get clobbered
+            # Maybe just throw an offset prefix onto it for uniqueness?
+            host_toolchain(
+                name = host_repo_name,
+                platforms = platform_keys,
+                impl_repo_suffixes = {
+                    # Internally, it prepends its own name arg, so we must remove
+                    # the common prefix
+                    str(i): entry.impl_repo_name.removeprefix(host_repo_name)
+                    for i, entry in enumerate(choices)
+                },
+                os_names = {str(i): entry.os_name for entry in enumerate(choices)},
+                archs = {str(i): entry.arch for entry in enumerate(choices)},
+                python_versions = {str(i): entry.full_python_version for entry in enumerate(choices)},
+            )
+        else:
+            # todo: figure out what to do. Define nothing, if we can.
+            fail("No host-compatible found")
 
     # List of the base names ("python_3_10") for the toolchain repos
     base_toolchain_repo_names = []
@@ -329,31 +454,23 @@ def _python_impl(module_ctx):
 
     # Split the toolchain info into separate objects so they can be passed onto
     # the repository rule.
-    for i, t in enumerate(py.toolchains):
-        is_last = (i + 1) == len(py.toolchains)
-        base_name = t.name
-        base_toolchain_repo_names.append(base_name)
-        fv = full_version(version = t.python_version, minor_mapping = py.config.minor_mapping)
-        platforms = loaded_platforms[fv]
-        for platform_name, platform_info in platforms.items():
-            key = str(len(toolchain_names))
+    for entry in toolchain_impls:
+        key = str(len(toolchain_names))
 
-            full_name = "{}_{}".format(base_name, platform_name)
-            toolchain_names.append(full_name)
-            toolchain_repo_names[key] = full_name
-            toolchain_tcw_map[key] = platform_info.compatible_with
+        toolchain_names.append(entry.name)
+        toolchain_repo_names[key] = entry.impl_repo_name
+        toolchain_tcw_map[key] = entry.platform.compatible_with
 
-            # The target_settings attribute may not be present for users
-            # patching python/versions.bzl.
-            toolchain_ts_map[key] = getattr(platform_info, "target_settings", [])
-            toolchain_platform_keys[key] = platform_name
-            toolchain_python_versions[key] = fv
+        # The target_settings attribute may not be present for users
+        # patching python/versions.bzl.
+        toolchain_ts_map[key] = getattr(entry.platform, "target_settings", [])
+        toolchain_platform_keys[key] = entry.platform_name
+        toolchain_python_versions[key] = entry.full_python_version
 
-            # The last toolchain is the default; it can't have version constraints
-            # Despite the implication of the arg name, the values are strs, not bools
-            toolchain_set_python_version_constraints[key] = (
-                "True" if not is_last else "False"
-            )
+        # Repo rules can't accept dict[str, bool], so encode them as a string value.
+        toolchain_set_python_version_constraints[key] = (
+            "True" if entry.set_python_version_constraint else "False"
+        )
 
     hub_repo(
         name = "pythons_hub",
@@ -390,6 +507,11 @@ def _python_impl(module_ctx):
         return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
+
+def _is_compatible_with_host(mctx, platform_info):
+    os_name = repo_utils.get_platforms_os_name(mctx)
+    cpu_name = repo_utils.get_platforms_cpu_name(mctx)
+    return platform_info.os_name == os_name and platform_info.arch == cpu_name
 
 def _one_or_the_same(first, second, *, onerror = None):
     if not first:
