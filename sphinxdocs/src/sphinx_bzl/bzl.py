@@ -1156,10 +1156,10 @@ class _BzlTagClass(_BzlCallable):
 
     doc_field_types = [
         _BzlGroupedField(
-            "arg",
+            "attr",
             label=_("Attributes"),
             names=["attr"],
-            rolename="arg",
+            rolename="attr",
             can_collapse=False,
         ),
     ]

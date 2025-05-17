@@ -41,3 +41,7 @@ Various tests of cross referencing support
 ## Any xref
 
 * {any}`LangInfo`
+
+## Tag class refs
+
+* tag class attribute using attr role: {attr}`myext.mytag.ta1`
