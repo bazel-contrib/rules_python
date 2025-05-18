@@ -390,8 +390,12 @@ class _BzlXrefField(docfields.Field):
                     descr=index_description,
                 ),
             ),
-            # This allows referencing an arg as e.g `funcname.argname`
-            alt_names=[anchor_id],
+            alt_names=[
+                # This allows referencing an arg as e.g `funcname.argname`
+                anchor_id,
+                # This allows referencing an arg as simply `argname`
+                arg_name
+            ],
         )
 
         # Two changes to how arg xrefs are created:
