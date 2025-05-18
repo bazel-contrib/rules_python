@@ -394,7 +394,7 @@ class _BzlXrefField(docfields.Field):
                 # This allows referencing an arg as e.g `funcname.argname`
                 anchor_id,
                 # This allows referencing an arg as simply `argname`
-                arg_name
+                arg_name,
             ],
         )
 
@@ -503,7 +503,22 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
         self.env.ref_context["bzl:object_id_stack"] = []
         self.env.ref_context["bzl:doc_id_stack"] = []
 
-        _, _, basename = file_label.partition(":")
+        package_label, _, basename = file_label.partition(":")
+
+        # Transform //foo/bar:BUILD.bazel into "bar"
+        # This allows referencing "bar" as itself
+        extra_alt_names = []
+        if basename in ("BUILD.bazel", "BUILD"):
+            # Allow xref //foo
+            extra_alt_names.append(package_label)
+            basename = os.path.basename(package_label)
+            # Handle //:BUILD.bazel
+            if not basename:
+                # There isn't a convention for referring to the root package
+                # besides `//:`, which is already the file_label. So just
+                # use some obvious value
+                basename = "__ROOT_BAZEL_PACKAGE__"
+
         index_description = f"File {label}"
         absolute_label = repo + label
         self.env.get_domain("bzl").add_object(
@@ -527,7 +542,8 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
                 file_label,
                 # Allow xref bar.bzl
                 basename,
-            ],
+            ]
+            + extra_alt_names,
         )
         index_node = addnodes.index(
             entries=[
