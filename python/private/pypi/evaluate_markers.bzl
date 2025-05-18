@@ -15,9 +15,7 @@
 """A simple function that evaluates markers using a python interpreter."""
 
 load(":deps.bzl", "record_files")
-load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
-load(":pep508_platform.bzl", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 
@@ -30,21 +28,25 @@ SRCS = [
     Label("//python/private/pypi/whl_installer:platform.py"),
 ]
 
-def evaluate_markers(requirements, python_version = None):
+def evaluate_markers(requirements, platforms = platforms):
     """Return the list of supported platforms per requirements line.
 
     Args:
         requirements: {type}`dict[str, list[str]]` of the requirement file lines to evaluate.
-        python_version: {type}`str | None` the version that can be used when evaluating the markers.
+        platforms: {type}`dict[str | struct]` TODO
 
     Returns:
         dict of string lists with target platforms
     """
     ret = {}
-    for req_string, platforms in requirements.items():
+    for req_string, platform_strings in requirements.items():
         req = requirement(req_string)
-        for platform in platforms:
-            if evaluate(req.marker, env = env(platform_from_str(platform, python_version))):
+        for platform_str in platform_strings:
+            platform = platforms.get(platform_str)
+            if not platform:
+                fail("Please define platform: TODO")
+
+            if evaluate(req.marker, env = platform.env):
                 ret.setdefault(req_string, []).append(platform)
 
     return ret

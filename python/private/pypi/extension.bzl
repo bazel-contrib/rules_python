@@ -70,6 +70,7 @@ def _create_whl_repos(
         *,
         pip_attr,
         whl_overrides,
+        config,
         available_interpreters = INTERPRETER_LABELS,
         minor_mapping = MINOR_MAPPING,
         evaluate_markers = evaluate_markers_py,
@@ -81,6 +82,7 @@ def _create_whl_repos(
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
+        config: TODO.
         get_index_urls: A function used to get the index URLs
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
@@ -104,6 +106,7 @@ def _create_whl_repos(
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
     python_interpreter_target = pip_attr.python_interpreter_target
+    platforms = config["platforms"]
 
     # containers to aggregate outputs from this function
     whl_map = {}
@@ -199,6 +202,7 @@ def _create_whl_repos(
             srcs = pip_attr._evaluate_markers_srcs,
             logger = logger,
         ),
+        platforms = platforms,
         logger = logger,
     )
 
@@ -364,6 +368,34 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     return ret
 
+def _configure(config, *, platform, constraint_values, target_settings, override = False, **values):
+    """Set the value in the config if the value is provided"""
+    for key, value in values.items():
+        if not value:
+            continue
+
+        if not override and config.get(key):
+            continue
+
+        config[key] = value
+
+    config.setdefault("platforms", {})
+    if not platform:
+        if constraint_values or target_settings:
+            fail("`platform` name must be specified when specifying `constraint_values`, `target_settings` or `urls`")
+    elif constraint_values or target_settings:
+        if not override and config.get("platforms", {}).get(platform):
+            return
+
+        config["platforms"][platform] = struct(
+            name = platform.replace("-", "_").lower(),
+            constraint_values = constraint_values,
+            target_settings = target_settings,
+            env = struct(),  # ...
+        )
+    else:
+        config["platforms"].pop(platform)
+
 def parse_modules(
         module_ctx,
         _fail = fail,
@@ -380,6 +412,32 @@ def parse_modules(
     Returns:
         A struct with the following attributes:
     """
+    defaults = {
+        "platforms": {},
+    }
+    for mod in module_ctx.modules:
+        if not (mod.is_root or mod.name == "rules_python"):
+            continue
+
+        for tag in mod.tags.default:
+            _configure(
+                # TODO @aignas 2025-05-18: actually use all of this stuff
+                defaults,
+                arch_name = tag.arch_name,
+                constraint_values = tag.constraint_values,
+                env_implementation_name = tag.env_implementation_name,
+                env_os_name = tag.env_os_name,
+                env_platform_machine = tag.env_platform_machine,
+                env_platform_release = tag.env_platform_release,
+                env_platform_system = tag.env_platform_system,
+                env_platform_version = tag.env_platform_version,
+                env_sys_platform = tag.env_sys_platform,
+                os_name = tag.os_name,
+                platform = tag.platform,
+                target_settings = tag.target_settings,
+                override = mod.is_root,
+            )
+
     whl_mods = {}
     for mod in module_ctx.modules:
         for whl_mod in mod.tags.whl_mods:
@@ -526,6 +584,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 pip_attr = pip_attr,
                 get_index_urls = get_index_urls,
                 whl_overrides = whl_overrides,
+                config = defaults,
                 **kwargs
             )
             hub_whl_map.setdefault(hub_name, {})
@@ -679,6 +738,35 @@ def _pip_impl(module_ctx):
         return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
+
+_default_attrs = {
+    "arch_name": attr.string(),
+    "constraint_values": attr.label_list(),
+    # The values for PEP508 env marker evaluation during the lock file parsing
+    "env_implementation_name": attr.string(),
+    "env_os_name": attr.string(doc = "default will be inferred from {obj}`os_name`"),
+    "env_platform_machine": attr.string(doc = "default will be inferred from {obj}`arch_name`"),
+    "env_platform_release": attr.string(),
+    "env_platform_system": attr.string(doc = "default will be inferred from {obj}`os_name`"),
+    "env_platform_version": attr.string(),
+    "env_sys_platform": attr.string(),
+    "extra_index_urls": attr.string_list(),
+    "index_url": attr.string(),
+    "os_name": attr.string(),
+    "platform": attr.string(),
+    "target_settings": attr.label_list(
+        doc = """\
+A list of config_settings that must be satisfied by the target configuration in order for this
+platform to be matched during analysis phase.
+""",
+    ),
+}
+
+_configure_attrs = _default_attrs | {
+    "hub_name": attr.string(),
+    "python_version": attr.string(),
+    "requirements_txt": attr.label(),
+}
 
 def _pip_parse_ext_attrs(**kwargs):
     """Get the attributes for the pip extension.
@@ -936,6 +1024,22 @@ the BUILD files for wheels.
 """,
     implementation = _pip_impl,
     tag_classes = {
+        "configure": tag_class(
+            attrs = _configure_attrs,
+            doc = """\
+This tag class allows for more customization of how the configuration for the hub repositories is built.
+
+This is still experimental and may be changed or removed without any notice.
+""",
+        ),
+        "default": tag_class(
+            attrs = _default_attrs,
+            doc = """\
+This tag class allows for more customization of how the configuration for the hub repositories is built.
+
+This is still experimental and may be changed or removed without any notice.
+""",
+        ),
         "override": _override_tag,
         "parse": tag_class(
             attrs = _pip_parse_ext_attrs(),

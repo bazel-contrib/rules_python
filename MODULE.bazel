@@ -56,10 +56,63 @@ use_repo(
 # This call registers the Python toolchains.
 register_toolchains("@pythons_hub//:all")
 
-#####################
-# Install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
-
+# Let's define default platforms for our users first
 pip = use_extension("//python/extensions:pip.bzl", "pip")
+
+_DEFAULT_LINUX_PLATFORM_VERSION = "0"
+
+_DEFAULT_OSX_PLATFORM_VERSION = "14.0"
+
+_DEFAULT_WINDOWS_PLATFORM_VERSION = "0"
+
+pip.default(
+    arch_name = "x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    env_platform_version = _DEFAULT_LINUX_PLATFORM_VERSION,
+    os_name = "linux",
+    platform = "linux_x86_64",
+)
+pip.default(
+    arch_name = "x86_64",
+    constraint_values = [
+        "@platforms//os:osx",
+        "@platforms//cpu:x86_64",
+    ],
+    # We choose the oldest non-EOL version at the time when we release `rules_python`.
+    # See https://endoflife.date/macos
+    env_platform_version = _DEFAULT_OSX_PLATFORM_VERSION,
+    os_name = "osx",
+    platform = "osx_x86_64",
+)
+pip.default(
+    arch_name = "aarch64",
+    constraint_values = [
+        "@platforms//os:osx",
+        "@platforms//cpu:aarch64",
+    ],
+    # We choose the oldest non-EOL version at the time when we release `rules_python`.
+    # See https://endoflife.date/macos
+    env_platform_version = _DEFAULT_OSX_PLATFORM_VERSION,
+    os_name = "osx",
+    platform = "osx_aarch64",
+)
+pip.default(
+    arch_name = "x86_64",
+    constraint_values = [
+        "@platforms//os:windows",
+        "@platforms//cpu:x86_64",
+    ],
+    env_platform_version = _DEFAULT_WINDOWS_PLATFORM_VERSION,
+    os_name = "windows",
+    platform = "windows_x86_64",
+)
+
+#####################
+# Then install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
+
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
