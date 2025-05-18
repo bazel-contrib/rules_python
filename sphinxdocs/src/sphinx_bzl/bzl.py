@@ -390,8 +390,12 @@ class _BzlXrefField(docfields.Field):
                     descr=index_description,
                 ),
             ),
-            # This allows referencing an arg as e.g `funcname.argname`
-            alt_names=[anchor_id],
+            alt_names=[
+                # This allows referencing an arg as e.g `funcname.argname`
+                anchor_id,
+                # This allows referencing an arg as simply `argname`
+                arg_name,
+            ],
         )
 
         # Two changes to how arg xrefs are created:
@@ -498,7 +502,55 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
         self.env.ref_context["bzl:file"] = file_label
         self.env.ref_context["bzl:object_id_stack"] = []
         self.env.ref_context["bzl:doc_id_stack"] = []
-        return []
+
+        package_label, _, basename = file_label.partition(":")
+
+        # Transform //foo/bar:BUILD.bazel into "bar"
+        # This allows referencing "bar" as itself
+        extra_alt_names = []
+        if basename in ("BUILD.bazel", "BUILD"):
+            # Allow xref //foo
+            extra_alt_names.append(package_label)
+            basename = os.path.basename(package_label)
+            # Handle //:BUILD.bazel
+            if not basename:
+                # There isn't a convention for referring to the root package
+                # besides `//:`, which is already the file_label. So just
+                # use some obvious value
+                basename = "__ROOT_BAZEL_PACKAGE__"
+
+        index_description = f"File {label}"
+        absolute_label = repo + label
+        self.env.get_domain("bzl").add_object(
+            _ObjectEntry(
+                full_id=absolute_label,
+                display_name=absolute_label,
+                object_type="obj",
+                search_priority=1,
+                index_entry=domains.IndexEntry(
+                    name=basename,
+                    subtype=_INDEX_SUBTYPE_NORMAL,
+                    docname=self.env.docname,
+                    anchor="",
+                    extra="",
+                    qualifier="",
+                    descr=index_description,
+                ),
+            ),
+            alt_names=[
+                # Allow xref //foo:bar.bzl
+                file_label,
+                # Allow xref bar.bzl
+                basename,
+            ]
+            + extra_alt_names,
+        )
+        index_node = addnodes.index(
+            entries=[
+                _index_node_tuple("single", f"File; {label}", ""),
+            ]
+        )
+        return [index_node]
 
 
 class _BzlAttrInfo(sphinx_docutils.SphinxDirective):
@@ -1156,10 +1208,10 @@ class _BzlTagClass(_BzlCallable):
 
     doc_field_types = [
         _BzlGroupedField(
-            "arg",
+            "attr",
             label=_("Attributes"),
             names=["attr"],
-            rolename="arg",
+            rolename="attr",
             can_collapse=False,
         ),
     ]
@@ -1463,6 +1515,8 @@ class _BzlDomain(domains.Domain):
     # :obj:.
     # NOTE: We also use these object types for categorizing things in the
     # generated index page.
+    # NOTE: The object type keys control what object types are recognized
+    # in inventory files.
     object_types = {
         "arg": domains.ObjType("arg", "arg", "obj"),  # macro/function arg
         "aspect": domains.ObjType("aspect", "aspect", "obj"),
@@ -1486,6 +1540,8 @@ class _BzlDomain(domains.Domain):
         # types are objects that have a constructor and methods/attrs
         "type": domains.ObjType("type", "type", "obj"),
         "typedef": domains.ObjType("typedef", "typedef", "type", "obj"),
+        # generic objs usually come from inventories
+        "obj": domains.ObjType("object", "obj"),
     }
 
     # This controls:
@@ -1709,6 +1765,11 @@ def _on_missing_reference(app, env: environment.BuildEnvironment, node, contnode
 
     # There's no Bazel docs for None, so prevent missing xrefs warning
     if node["reftarget"] == "None":
+        return contnode
+
+    # Any and object are just conventions from Python, but useful for
+    # indicating what something is in Starlark, so treat them specially.
+    if node["reftarget"] in ("Any", "object"):
         return contnode
     return None
 

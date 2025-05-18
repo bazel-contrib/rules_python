@@ -253,7 +253,7 @@ def _ToolchainType_build(self):
         self: implicitly added
 
     Returns:
-        {type}`config_common.toolchain_type`
+        {type}`toolchain_type`
     """
     kwargs = dict(self.kwargs)
     name = kwargs.pop("name")  # Name must be positional
@@ -673,7 +673,7 @@ def _AttrsDict_build(self):
     """Build an attribute dict for passing to `rule()`.
 
     Returns:
-        {type}`dict[str, attribute]` where the values are `attr.XXX` objects
+        {type}`dict[str, Attribute]` where the values are `attr.XXX` objects
     """
     attrs = {}
     for k, v in self.map.items():
