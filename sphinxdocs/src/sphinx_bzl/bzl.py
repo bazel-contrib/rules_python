@@ -1766,6 +1766,11 @@ def _on_missing_reference(app, env: environment.BuildEnvironment, node, contnode
     # There's no Bazel docs for None, so prevent missing xrefs warning
     if node["reftarget"] == "None":
         return contnode
+
+    # Any and object are just conventions from Python, but useful for
+    # indicating what something is in Starlark, so treat them specially.
+    if node["reftarget"] in ("Any", "object"):
+        return contnode
     return None
 
 
