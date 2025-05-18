@@ -190,7 +190,7 @@ END_UNRELEASED_TEMPLATE
   packages through SimpleAPI unless they are pulled through direct URL
   references. Fixes [#2023](https://github.com/bazel-contrib/rules_python/issues/2023).
   In case you see issues with `rules_python` being too eager to fetch the SimpleAPI
-  metadata, you can use the newly added {attr}`pip.parse.skip_sources`
+  metadata, you can use the newly added {attr}`pip.parse.simpleapi_skip`
   to skip metadata fetching for those packages.
 * (uv) A {obj}`lock` rule that is the replacement for the
   {obj}`compile_pip_requirements`. This may still have rough corners
@@ -251,7 +251,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v1-3-0-added}
 ### Added
-* (python) {attr}`python.defaults` has been added to allow users to
+* (python) {obj}`python.defaults` has been added to allow users to
   set the default python version in the root module by reading the
   default version number from a file or an environment variable.
 * {obj}`//python/bin:python`: convenience target for directly running an
