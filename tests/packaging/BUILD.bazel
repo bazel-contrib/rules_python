@@ -14,7 +14,7 @@
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 
 build_test(

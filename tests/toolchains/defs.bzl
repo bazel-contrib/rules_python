@@ -15,7 +15,7 @@
 ""
 
 load("//python:versions.bzl", "PLATFORMS", "TOOL_VERSIONS")
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
 def define_toolchain_tests(name):
     """Define the toolchain tests.
