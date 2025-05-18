@@ -1,4 +1,4 @@
-# For Developers
+# Dev Guide
 
 This document covers tips and guidance for working on the rules_python code
 base. A primary audience for it is first time contributors.

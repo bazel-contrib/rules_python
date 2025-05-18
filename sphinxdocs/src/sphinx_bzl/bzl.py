@@ -502,7 +502,39 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
         self.env.ref_context["bzl:file"] = file_label
         self.env.ref_context["bzl:object_id_stack"] = []
         self.env.ref_context["bzl:doc_id_stack"] = []
-        return []
+
+        _, _, basename = file_label.partition(":")
+        index_description = f"File {label}"
+        absolute_label = repo + label
+        self.env.get_domain("bzl").add_object(
+            _ObjectEntry(
+                full_id=absolute_label,
+                display_name=absolute_label,
+                object_type="obj",
+                search_priority=1,
+                index_entry=domains.IndexEntry(
+                    name=basename,
+                    subtype=_INDEX_SUBTYPE_NORMAL,
+                    docname=self.env.docname,
+                    anchor="",
+                    extra="",
+                    qualifier="",
+                    descr=index_description,
+                ),
+            ),
+            alt_names=[
+                # Allow xref //foo:bar.bzl
+                file_label,
+                # Allow xref bar.bzl
+                basename,
+            ],
+        )
+        index_node = addnodes.index(
+            entries=[
+                _index_node_tuple("single", f"File; {label}", ""),
+            ]
+        )
+        return [index_node]
 
 
 class _BzlAttrInfo(sphinx_docutils.SphinxDirective):
@@ -1493,7 +1525,7 @@ class _BzlDomain(domains.Domain):
         "type": domains.ObjType("type", "type", "obj"),
         "typedef": domains.ObjType("typedef", "typedef", "type", "obj"),
         # generic objs usually come from inventories
-        "obj": domains.ObjType("object", "obj")
+        "obj": domains.ObjType("object", "obj"),
     }
 
     # This controls:

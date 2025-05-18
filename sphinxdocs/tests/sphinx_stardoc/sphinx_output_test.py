@@ -65,7 +65,8 @@ class SphinxOutputTest(parameterized.TestCase):
         ("full_repo_target", "@testrepo//lang:relativetarget", "target.html#relativetarget"),
         ("tag_class_attr_using_attr_role", "myext.mytag.ta1", "module_extension.html#myext.mytag.ta1"),
         ("tag_class_attr_using_attr_role_just_attr_name", "ta1", "module_extension.html#myext.mytag.ta1"),
-
+        ("file_without_repo", "//lang:rule.bzl", "rule.html"),
+        ("file_with_repo", "@testrepo//lang:rule.bzl", "rule.html"),
         # fmt: on
     )
     def test_xrefs(self, text, href):
