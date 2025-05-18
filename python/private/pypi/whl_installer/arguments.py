@@ -58,11 +58,6 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
         help="Additional data exclusion parameters to add to the pip packages BUILD file.",
     )
     parser.add_argument(
-        "--enable_implicit_namespace_pkgs",
-        action="store_true",
-        help="Disables conversion of implicit namespace packages into pkg-util style packages.",
-    )
-    parser.add_argument(
         "--environment",
         action="store",
         help="Extra environment variables to set on the pip environment.",

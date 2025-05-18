@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from pip._vendor.packaging.utils import canonicalize_name
 
-from python.private.pypi.whl_installer import arguments, namespace_pkgs, wheel
+from python.private.pypi.whl_installer import arguments, wheel
 
 
 def _configure_reproducible_wheels() -> None:
@@ -77,35 +77,10 @@ def _parse_requirement_for_extra(
     return None, None
 
 
-def _setup_namespace_pkg_compatibility(wheel_dir: str) -> None:
-    """Converts native namespace packages to pkgutil-style packages
-
-    Namespace packages can be created in one of three ways. They are detailed here:
-    https://packaging.python.org/guides/packaging-namespace-packages/#creating-a-namespace-package
-
-    'pkgutil-style namespace packages' (2) and 'pkg_resources-style namespace packages' (3) works in Bazel, but
-    'native namespace packages' (1) do not.
-
-    We ensure compatibility with Bazel of method 1 by converting them into method 2.
-
-    Args:
-        wheel_dir: the directory of the wheel to convert
-    """
-
-    namespace_pkg_dirs = namespace_pkgs.implicit_namespace_packages(
-        wheel_dir,
-        ignored_dirnames=["%s/bin" % wheel_dir],
-    )
-
-    for ns_pkg_dir in namespace_pkg_dirs:
-        namespace_pkgs.add_pkgutil_style_namespace_pkg_init(ns_pkg_dir)
-
-
 def _extract_wheel(
     wheel_file: str,
     extras: Dict[str, Set[str]],
     enable_pipstar: bool,
-    enable_implicit_namespace_pkgs: bool,
     platforms: List[wheel.Platform],
     installation_dir: Path = Path("."),
 ) -> None:
@@ -116,14 +91,10 @@ def _extract_wheel(
         installation_dir: the destination directory for installation of the wheel.
         extras: a list of extras to add as dependencies for the installed wheel
         enable_pipstar: if true, turns off certain operations.
-        enable_implicit_namespace_pkgs: if true, disables conversion of implicit namespace packages and will unzip as-is
     """
 
     whl = wheel.Wheel(wheel_file)
     whl.unzip(installation_dir)
-
-    if not enable_implicit_namespace_pkgs:
-        _setup_namespace_pkg_compatibility(installation_dir)
 
     metadata = {
         "entry_points": [
@@ -168,7 +139,6 @@ def main() -> None:
             wheel_file=whl,
             extras=extras,
             enable_pipstar=args.enable_pipstar,
-            enable_implicit_namespace_pkgs=args.enable_implicit_namespace_pkgs,
             platforms=arguments.get_platforms(args),
         )
         return
