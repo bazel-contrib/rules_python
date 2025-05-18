@@ -253,6 +253,7 @@ def _get_site_packages_symlinks(ctx):
 
     repo_runfiles_dirname = None
     dirs_with_init = {}  # dirname -> runfile path
+    site_packages_symlinks = []
     for src in ctx.files.srcs:
         if src.extension not in PYTHON_FILE_EXTENSIONS:
             continue
@@ -261,16 +262,19 @@ def _get_site_packages_symlinks(ctx):
             continue
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
-        if not dir_name:
-            # This would be e.g. `site-packages/__init__.py`, which isn't valid
-            # because it's not within a directory for an importable Python package.
-            # However, the pypi integration over-eagerly adds a pkgutil-style
-            # __init__.py file during the repo phase. Just ignore them for now.
-            continue
 
-        if filename.startswith("__init__."):
+        if dir_name and filename.startswith("__init__."):
             dirs_with_init[dir_name] = None
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
+        elif not dir_name:
+            repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
+
+            # This would be files that do not have directories and we just need to add
+            # direct symlinks to them as is:
+            site_packages_symlinks.append((
+                paths.join(repo_runfiles_dirname, site_packages_root, filename),
+                filename,
+            ))
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
     # see the top-most explicit package first.
@@ -286,7 +290,6 @@ def _get_site_packages_symlinks(ctx):
         if not is_sub_package:
             first_level_explicit_packages.append(d)
 
-    site_packages_symlinks = []
     for dirname in first_level_explicit_packages:
         site_packages_symlinks.append((
             paths.join(repo_runfiles_dirname, site_packages_root, dirname),

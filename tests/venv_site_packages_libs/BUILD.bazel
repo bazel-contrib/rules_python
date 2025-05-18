@@ -1,6 +1,8 @@
 load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 
+package(default_visibility = ["//visibility:public"])
+
 py_reconfig_test(
     name = "venvs_site_packages_libs_test",
     srcs = ["bin.py"],
@@ -13,5 +15,6 @@ py_reconfig_test(
         "//tests/venv_site_packages_libs/nspkg_beta",
         "@other//nspkg_delta",
         "@other//nspkg_gamma",
+        "@other//nspkg_single",
     ],
 )
