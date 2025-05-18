@@ -39,7 +39,7 @@ more important for tests to balance understandability and maintainability.
 
 ### sh_py_run_test
 
-The [`sh_py_run_test`](tests/support/sh_py_run_test.bzl) rule is a helper to
+The {gh-path}`sh_py_run_test <tests/support/sh_py_run_test.bzl` rule is a helper to
 make it easy to run a Python program with custom build settings using a shell
 script to perform setup and verification. This is best to use when verifying
 behavior needs certain environment variables or directory structures to
@@ -55,6 +55,8 @@ The `py_reconfig_test` and `py_reconfig_binary` rules are helpers for running
 Python binaries and tests with custom build flags. This is best to use when
 verifying behavior that requires specific flags to be set and when the program
 itself can verify the desired state.
+
+They are located in {gh-path}`tests/support/py_reconfig.bzl`
 
 When adding a test, you may find the flag you need to set isn't supported by
 the rule. To have it support setting a new flag:

@@ -51,3 +51,8 @@ Various tests of cross referencing support
 
 * without repo {obj}`//lang:rule.bzl`
 * with repo {obj}`@testrepo//lang:rule.bzl`
+
+## Package refs
+
+* absolute label {obj}`//lang`
+* package basename {obj}`lang`
