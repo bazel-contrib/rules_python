@@ -687,6 +687,7 @@ def _AttributeBuilder_typedef():
     e.g. `attr.label`, `attr.string`, etc.
     """
 
+# buildifier: disable=name-conventions
 AttributeBuilder = struct(
     TYPEDEF = _AttributeBuilder_typedef,
 )
