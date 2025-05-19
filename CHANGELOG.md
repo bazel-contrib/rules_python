@@ -66,8 +66,8 @@ END_UNRELEASED_TEMPLATE
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
-* (rules) {obj}`pip_compile` now generates a `.test` target. The `_test` target is deprecated
-  and will be removed in the next major release.
+* (rules) {obj}`compile_pip_requirements` now generates a `.test` target. The
+  `_test` target is deprecated and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 
@@ -190,7 +190,7 @@ END_UNRELEASED_TEMPLATE
   packages through SimpleAPI unless they are pulled through direct URL
   references. Fixes [#2023](https://github.com/bazel-contrib/rules_python/issues/2023).
   In case you see issues with `rules_python` being too eager to fetch the SimpleAPI
-  metadata, you can use the newly added {attr}`pip.parse.experimental_skip_sources`
+  metadata, you can use the newly added {attr}`pip.parse.simpleapi_skip`
   to skip metadata fetching for those packages.
 * (uv) A {obj}`lock` rule that is the replacement for the
   {obj}`compile_pip_requirements`. This may still have rough corners
@@ -251,7 +251,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v1-3-0-added}
 ### Added
-* (python) {attr}`python.defaults` has been added to allow users to
+* (python) {obj}`python.defaults` has been added to allow users to
   set the default python version in the root module by reading the
   default version number from a file or an environment variable.
 * {obj}`//python/bin:python`: convenience target for directly running an
@@ -271,7 +271,7 @@ END_UNRELEASED_TEMPLATE
   and py_library rules
   ([#1647](https://github.com/bazel-contrib/rules_python/issues/1647))
 * (rules) Added env-var to allow additional interpreter args for stage1 bootstrap.
-  See {obj}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` environment variable.
+  See {any}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` environment variable.
   Only applicable for {obj}`--bootstrap_impl=script`.
 * (rules) Added {obj}`interpreter_args` attribute to `py_binary` and `py_test`,
   which allows pass arguments to the interpreter before the regular args.
@@ -377,7 +377,7 @@ END_UNRELEASED_TEMPLATE
   values. Fixes [#2466](https://github.com/bazel-contrib/rules_python/issues/2466).
 * (py_proto_library) Fix import paths in Bazel 8.
 * (whl_library) Now the changes to the dependencies are correctly tracked when
-  PyPI packages used in {bzl:obj}`whl_library` during the `repository_rule` phase
+  PyPI packages used in `whl_library` during the repository rule phase
   change. Fixes [#2468](https://github.com/bazel-contrib/rules_python/issues/2468).
 + (gazelle) Gazelle no longer ignores `setup.py` files by default. To restore
   this behavior, apply the `# gazelle:python_ignore_files setup.py` directive.
@@ -396,7 +396,7 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Freethreaded packages are now fully supported in the
   {obj}`experimental_index_url` usage or the regular `pip.parse` usage.
   To select the free-threaded interpreter in the repo phase, please use
-  the documented [env](/environment-variables.html) variables.
+  the documented [env](environment-variables) variables.
   Fixes [#2386](https://github.com/bazel-contrib/rules_python/issues/2386).
 * (toolchains) Use the latest astrahl-sh toolchain release [20241206] for Python versions:
     * 3.9.21
@@ -490,7 +490,7 @@ Other changes:
   for the latest toolchain versions for each minor Python version. You can control
   the toolchain selection by using the
   {bzl:obj}`//python/config_settings:py_linux_libc` build flag.
-* (providers) Added {obj}`py_runtime_info.site_init_template` and
+* (providers) Added {obj}`PyRuntimeInfo.site_init_template` and
   {obj}`PyRuntimeInfo.site_init_template` for specifying the template to use to
   initialize the interpreter via venv startup hooks.
 * (runfiles) (Bazel 7.4+) Added support for spaces and newlines in runfiles paths
@@ -688,8 +688,8 @@ Other changes:
 * (bzlmod) The default value for the {obj}`--python_version` flag will now be
   always set to the default python toolchain version value.
 * (bzlmod) correctly wire the {attr}`pip.parse.extra_pip_args` all the
-  way to {obj}`whl_library`. What is more we will pass the `extra_pip_args` to
-  {obj}`whl_library` for `sdist` distributions when using
+  way to `whl_library`. What is more we will pass the `extra_pip_args` to
+  `whl_library` for `sdist` distributions when using
   {attr}`pip.parse.experimental_index_url`. See
   [#2239](https://github.com/bazel-contrib/rules_python/issues/2239).
 * (whl_filegroup): Provide per default also the `RECORD` file
@@ -737,8 +737,8 @@ Other changes:
 
 {#v0-37-0-removed}
 ### Removed
-* (precompiling) {obj}`--precompile_add_to_runfiles` has been removed.
-* (precompiling) {obj}`--pyc_collection` has been removed. The `pyc_collection`
+* (precompiling) `--precompile_add_to_runfiles` has been removed.
+* (precompiling) `--pyc_collection` has been removed. The `pyc_collection`
   attribute now bases its default on {obj}`--precompile`.
 * (precompiling) The {obj}`precompile=if_generated_source` value has been removed.
 * (precompiling) The {obj}`precompile_source_retention=omit_if_generated_source` value has been removed.
@@ -790,7 +790,7 @@ Other changes:
   in extra_requires in py_wheel rule.
 * (rules) Prevent pytest from trying run the generated stage2
   bootstrap .py file when using {obj}`--bootstrap_impl=script`
-* (toolchain) The {bzl:obj}`gen_python_config_settings` has been fixed to include
+* (toolchain) The `gen_python_config_settings` has been fixed to include
   the flag_values from the platform definitions.
 
 {#v0-36-0-added}
@@ -1205,9 +1205,9 @@ Other changes:
   depend on legacy labels instead of the hub repo aliases and you use the
   `experimental_requirement_cycles`, now is a good time to migrate.
 
-[python_default_visibility]: gazelle/README.md#directive-python_default_visibility
+[python_default_visibility]: https://github.com/bazel-contrib/rules_python/tree/main/gazelle/README.md#directive-python_default_visibility
 [test_file_pattern_issue]: https://github.com/bazel-contrib/rules_python/issues/1816
-[test_file_pattern_docs]: gazelle/README.md#directive-python_test_file_pattern
+[test_file_pattern_docs]: https://github.com/bazel-contrib/rules_python/tree/main/gazelle/README.md#directive-python_test_file_pattern
 [20240224]: https://github.com/indygreg/python-build-standalone/releases/tag/20240224.
 [20240415]: https://github.com/indygreg/python-build-standalone/releases/tag/20240415.
 

@@ -14,7 +14,7 @@
 
 """This file contains helpers for testing the interpreter rule."""
 
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
 # The versions of Python that we want to run the interpreter tests against.
 PYTHON_VERSIONS_TO_TEST = (

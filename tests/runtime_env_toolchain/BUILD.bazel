@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_python_runtime_env_tc_info//:info.bzl", "PYTHON_VERSION")
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 load(":runtime_env_toolchain_tests.bzl", "runtime_env_toolchain_test_suite")
 
