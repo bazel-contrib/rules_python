@@ -104,6 +104,8 @@ END_UNRELEASED_TEMPLATE
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
 * (utils) Add a way to run a REPL for any `rules_python` target that returns
   a `PyInfo` provider.
+* (pypi) Added early developer preview `pip.default` tag class in order to customize what
+  platforms are enabled. Only `rules_python` and root modules can use this feature.
 
 {#v0-0-0-removed}
 ### Removed

@@ -15,9 +15,26 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:requirements_files_by_platform.bzl", "requirements_files_by_platform")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:requirements_files_by_platform.bzl", _sut = "requirements_files_by_platform")  # buildifier: disable=bzl-visibility
 
 _tests = []
+
+requirements_files_by_platform = lambda **kwargs: _sut(
+    platforms = kwargs.pop(
+        "platforms",
+        [
+            "linux_aarch64",
+            "linux_arm",
+            "linux_ppc",
+            "linux_s390x",
+            "linux_x86_64",
+            "osx_aarch64",
+            "osx_x86_64",
+            "windows_x86_64",
+        ],
+    ),
+    **kwargs
+)
 
 def _test_fail_no_requirements(env):
     errors = []

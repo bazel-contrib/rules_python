@@ -16,19 +16,6 @@
 
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
-# TODO @aignas 2024-05-13: consider using the same platform tags as are used in
-# the //python:versions.bzl
-DEFAULT_PLATFORMS = [
-    "linux_aarch64",
-    "linux_arm",
-    "linux_ppc",
-    "linux_s390x",
-    "linux_x86_64",
-    "osx_aarch64",
-    "osx_x86_64",
-    "windows_x86_64",
-]
-
 def _default_platforms_from(*, filter, python_version, choose_from):
     if not filter:
         fail("Must specific a filter string, got: {}".format(filter))
@@ -149,7 +136,7 @@ def requirements_files_by_platform(
     _default_platforms = lambda f: _default_platforms_from(
         filter = f,
         python_version = python_version,
-        choose_from = platforms or DEFAULT_PLATFORMS,
+        choose_from = platforms,
     )
 
     platforms_from_args = _platforms_from_args(extra_pip_args)

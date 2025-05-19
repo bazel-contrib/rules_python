@@ -65,40 +65,47 @@ _DEFAULT_OSX_PLATFORM_VERSION = "14.0"
 
 _DEFAULT_WINDOWS_PLATFORM_VERSION = "0"
 
-pip.default(
-    arch_name = "x86_64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-    ],
-    env_platform_version = _DEFAULT_LINUX_PLATFORM_VERSION,
-    os_name = "linux",
-    platform = "linux_x86_64",
-)
-pip.default(
-    arch_name = "x86_64",
-    constraint_values = [
-        "@platforms//os:osx",
-        "@platforms//cpu:x86_64",
-    ],
-    # We choose the oldest non-EOL version at the time when we release `rules_python`.
-    # See https://endoflife.date/macos
-    env_platform_version = _DEFAULT_OSX_PLATFORM_VERSION,
-    os_name = "osx",
-    platform = "osx_x86_64",
-)
-pip.default(
-    arch_name = "aarch64",
-    constraint_values = [
-        "@platforms//os:osx",
-        "@platforms//cpu:aarch64",
-    ],
-    # We choose the oldest non-EOL version at the time when we release `rules_python`.
-    # See https://endoflife.date/macos
-    env_platform_version = _DEFAULT_OSX_PLATFORM_VERSION,
-    os_name = "osx",
-    platform = "osx_aarch64",
-)
+[
+    pip.default(
+        arch_name = cpu,
+        constraint_values = [
+            "@platforms//os:linux",
+            "@platforms//cpu:{}".format(cpu),
+        ],
+        env_platform_version = _DEFAULT_LINUX_PLATFORM_VERSION,
+        os_name = "linux",
+        platform = "linux_{}".format(cpu),
+    )
+    # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
+    # `pip.default` extension
+    for cpu in [
+        "aarch64",
+        "arm",
+        "ppc",
+        "s390x",
+        "x86_64",
+    ]
+]
+
+[
+    pip.default(
+        arch_name = cpu,
+        constraint_values = [
+            "@platforms//os:osx",
+            "@platforms//cpu:{}".format(cpu),
+        ],
+        # We choose the oldest non-EOL version at the time when we release `rules_python`.
+        # See https://endoflife.date/macos
+        env_platform_version = _DEFAULT_OSX_PLATFORM_VERSION,
+        os_name = "osx",
+        platform = "osx_{}".format(cpu),
+    )
+    for cpu in [
+        "aarch64",
+        "x86_64",
+    ]
+]
+
 pip.default(
     arch_name = "x86_64",
     constraint_values = [
