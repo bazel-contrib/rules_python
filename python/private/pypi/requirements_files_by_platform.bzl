@@ -144,11 +144,11 @@ def requirements_files_by_platform(
         )
         return None
 
-    platforms = _platforms_from_args(extra_pip_args)
+    platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
-        logger.debug(lambda: "Platforms from pip args: {}".format(platforms))
+        logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
 
-    if platforms:
+    if platforms_from_args:
         lock_files = [
             f
             for f in [
@@ -168,7 +168,7 @@ def requirements_files_by_platform(
             return None
 
         files_by_platform = [
-            (lock_files[0], platforms),
+            (lock_files[0], platforms_from_args),
         ]
         if logger:
             logger.debug(lambda: "Files by platform with the platform set in the args: {}".format(files_by_platform))
