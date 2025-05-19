@@ -386,7 +386,7 @@ toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
     """,
     attrs = {
-        "archs": attr.string_dict(
+        "arch_names": attr.string_dict(
             doc = """
 If set, overrides the platform metadata. Keyed by index in `platforms`
 """,
