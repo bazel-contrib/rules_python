@@ -38,6 +38,7 @@ def pip_compile(
         requirements_windows = None,
         visibility = ["//visibility:private"],
         tags = None,
+        constraints = [],
         **kwargs):
     """Generates targets for managing pip dependencies with pip-compile.
 
@@ -77,6 +78,7 @@ def pip_compile(
         requirements_windows: File of windows specific resolve output to check validate if requirement.in has changes.
         tags: tagging attribute common to all build rules, passed to both the _test and .update rules.
         visibility: passed to both the _test and .update rules.
+        constraints: a list of files containing constraints to pass to pip-compile with `--constraint`.
         **kwargs: other bazel attributes passed to the "_test" rule.
     """
     if len([x for x in [srcs, src, requirements_in] if x != None]) > 1:
@@ -100,7 +102,7 @@ def pip_compile(
         visibility = visibility,
     )
 
-    data = [name, requirements_txt] + srcs + [f for f in (requirements_linux, requirements_darwin, requirements_windows) if f != None]
+    data = [name, requirements_txt] + srcs + [f for f in (requirements_linux, requirements_darwin, requirements_windows) if f != None] + constraints
 
     # Use the Label constructor so this is expanded in the context of the file
     # where it appears, which is to say, in @rules_python
@@ -122,6 +124,8 @@ def pip_compile(
         args.append("--requirements-darwin={}".format(loc.format(requirements_darwin)))
     if requirements_windows:
         args.append("--requirements-windows={}".format(loc.format(requirements_windows)))
+    for constraint in constraints:
+        args.append("--constraint=$(location {})".format(constraint))
     args.extend(extra_args)
 
     deps = [

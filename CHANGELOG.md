@@ -111,6 +111,9 @@ END_UNRELEASED_TEMPLATE
   and activated with custom flags. See the [Registering custom runtimes]
   docs and {obj}`single_version_platform_override()` API docs for more
   information.
+* (rules) Added support for a using constraints files with `pip_parse`.
+  Useful when an intermediate dependency needs to be upgraded to pull in
+  security patches.
 
 {#v0-0-0-removed}
 ### Removed
