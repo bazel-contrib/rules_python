@@ -86,6 +86,28 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
+def _test_simple_limited(env):
+    for got in [
+        requirements_files_by_platform(
+            requirements_lock = "requirements_lock",
+            platforms = ["linux_x86_64", "osx_x86_64"],
+        ),
+        requirements_files_by_platform(
+            requirements_by_platform = {
+                "requirements_lock": "*",
+            },
+            platforms = ["linux_x86_64", "osx_x86_64"],
+        ),
+    ]:
+        env.expect.that_dict(got).contains_exactly({
+            "requirements_lock": [
+                "linux_x86_64",
+                "osx_x86_64",
+            ],
+        })
+
+_tests.append(_test_simple_limited)
+
 def _test_simple_with_python_version(env):
     for got in [
         requirements_files_by_platform(

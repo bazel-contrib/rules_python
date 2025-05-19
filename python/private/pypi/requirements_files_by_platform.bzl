@@ -29,7 +29,7 @@ DEFAULT_PLATFORMS = [
     "windows_x86_64",
 ]
 
-def _default_platforms_from(*, filter, choose_from):
+def _default_platforms_from(*, filter, python_version, choose_from):
     if not filter:
         fail("Must specific a filter string, got: {}".format(filter))
 
@@ -48,11 +48,11 @@ def _default_platforms_from(*, filter, choose_from):
             fail("The filter can only contain '*' at the end of it")
 
         if not prefix:
-            return choose_from
+            return [_platform(p, python_version) for p in choose_from]
 
-        return [p for p in choose_from if p.startswith(prefix)]
+        return [_platform(p, python_version) for p in choose_from if p.startswith(prefix)]
     else:
-        return [p for p in choose_from if filter in p]
+        return [_platform(p, python_version) for p in choose_from if filter in p]
 
 def _platforms_from_args(extra_pip_args):
     platform_values = []
@@ -107,6 +107,7 @@ def requirements_files_by_platform(
         requirements_windows = None,
         extra_pip_args = None,
         python_version = None,
+        platforms = [],
         logger = None,
         fail_fn = fail):
     """Resolve the requirement files by target platform.
@@ -123,6 +124,7 @@ def requirements_files_by_platform(
             be joined with args fined in files.
         python_version: str or None. This is needed when the get_index_urls is
             specified. It should be of the form "3.x.x",
+        platforms: {type}`list[str]` the list of default platforms to choose from.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
         fail_fn (Callable[[str], None]): A failure function used in testing failure cases.
 
@@ -146,7 +148,8 @@ def requirements_files_by_platform(
 
     _default_platforms = lambda f: _default_platforms_from(
         filter = f,
-        choose_from = DEFAULT_PLATFORMS,
+        python_version = python_version,
+        choose_from = platforms or DEFAULT_PLATFORMS,
     )
 
     platforms_from_args = _platforms_from_args(extra_pip_args)
@@ -221,7 +224,7 @@ def requirements_files_by_platform(
 
                 configured_platforms[p] = file
         else:
-            default_platforms = [_platform(p, python_version) for p in DEFAULT_PLATFORMS]
+            default_platforms = _default_platforms("*")
             plats = [
                 p
                 for p in default_platforms
