@@ -28,7 +28,7 @@ SRCS = [
     Label("//python/private/pypi/whl_installer:platform.py"),
 ]
 
-def evaluate_markers(requirements, platforms = platforms):
+def evaluate_markers(*, requirements, platforms):
     """Return the list of supported platforms per requirements line.
 
     Args:
@@ -44,7 +44,7 @@ def evaluate_markers(requirements, platforms = platforms):
         for platform_str in platform_strings:
             platform = platforms.get(platform_str)
             if not platform:
-                fail("Please define platform: TODO")
+                fail("Please define platform: '{}'".format(platform_str))
 
             if evaluate(req.marker, env = platform.env):
                 ret.setdefault(req_string, []).append(platform)

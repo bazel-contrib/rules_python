@@ -25,10 +25,11 @@ load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
+load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS", evaluate_markers_star = "evaluate_markers")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
+load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
@@ -65,6 +66,19 @@ def _whl_mods_impl(whl_mods_dict):
             whl_mods = whl_mods,
         )
 
+def _platforms(*, python_version, minor_mapping, config):
+    platforms = {}
+    python_version = full_version(
+        version = python_version,
+        minor_mapping = minor_mapping,
+    )
+    abi = "cp3{}".format(python_version[2:])
+
+    for platform, values in config["platforms"].items():
+        key = "{}_{}".format(abi, platform)
+        platforms[key] = env(key) | values.env
+    return platforms
+
 def _create_whl_repos(
         module_ctx,
         *,
@@ -73,7 +87,7 @@ def _create_whl_repos(
         config,
         available_interpreters = INTERPRETER_LABELS,
         minor_mapping = MINOR_MAPPING,
-        evaluate_markers = evaluate_markers_py,
+        evaluate_markers = None,
         get_index_urls = None,
         enable_pipstar = False):
     """create all of the whl repositories
@@ -106,7 +120,11 @@ def _create_whl_repos(
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
     python_interpreter_target = pip_attr.python_interpreter_target
-    platforms = config["platforms"]
+    platforms = _platforms(
+        python_version = pip_attr.python_version,
+        minor_mapping = minor_mapping,
+        config = config,
+    )
 
     # containers to aggregate outputs from this function
     whl_map = {}
@@ -163,23 +181,14 @@ def _create_whl_repos(
         whl_group_mapping = {}
         requirement_cycles = {}
 
-    requirements_by_platform = parse_requirements(
-        module_ctx,
-        requirements_by_platform = requirements_files_by_platform(
-            requirements_by_platform = pip_attr.requirements_by_platform,
-            requirements_linux = pip_attr.requirements_linux,
-            requirements_lock = pip_attr.requirements_lock,
-            requirements_osx = pip_attr.requirements_darwin,
-            requirements_windows = pip_attr.requirements_windows,
-            extra_pip_args = pip_attr.extra_pip_args,
-            python_version = full_version(
-                version = pip_attr.python_version,
-                minor_mapping = minor_mapping,
-            ),
-            logger = logger,
-        ),
-        extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = get_index_urls,
+    if evaluate_markers:
+        pass
+    elif enable_pipstar:
+        evaluate_markers = lambda _, requirements: evaluate_markers_star(
+            requirements = requirements,
+            platforms = platforms,
+        )
+    else:
         # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
         # in the PATH or if specified as a label. We will configure the env
         # markers when evaluating the requirement lines based on the output
@@ -194,15 +203,39 @@ def _create_whl_repos(
         # instances to perform this manipulation. This function should be executed
         # only once by the underlying code to minimize the overhead needed to
         # spin up a Python interpreter.
-        evaluate_markers = lambda module_ctx, requirements: evaluate_markers(
+        evaluate_markers = lambda module_ctx, requirements: evaluate_markers_py(
             module_ctx,
             requirements = requirements,
             python_interpreter = pip_attr.python_interpreter,
             python_interpreter_target = python_interpreter_target,
             srcs = pip_attr._evaluate_markers_srcs,
             logger = logger,
-        ),
-        platforms = platforms,
+        )
+
+    requirements_by_platform = parse_requirements(
+        module_ctx,
+        requirements_by_platform = {
+            # TODO @aignas 2025-05-19: we probably want to pass the `platforms` to
+            # `requirements_files_by_platform so that we can customize what exactly we can/want do.
+            k: v
+            for k, v in requirements_files_by_platform(
+                requirements_by_platform = pip_attr.requirements_by_platform,
+                requirements_linux = pip_attr.requirements_linux,
+                requirements_lock = pip_attr.requirements_lock,
+                requirements_osx = pip_attr.requirements_darwin,
+                requirements_windows = pip_attr.requirements_windows,
+                extra_pip_args = pip_attr.extra_pip_args,
+                python_version = full_version(
+                    version = pip_attr.python_version,
+                    minor_mapping = minor_mapping,
+                ),
+                logger = logger,
+            ).items()
+            if k in platforms
+        },
+        extra_pip_args = pip_attr.extra_pip_args,
+        get_index_urls = get_index_urls,
+        evaluate_markers = evaluate_markers,
         logger = logger,
     )
 
@@ -368,7 +401,7 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     return ret
 
-def _configure(config, *, platform, constraint_values, target_settings, override = False, **values):
+def _configure(config, *, platform, constraint_values, target_settings, os_name, arch_name, override = False, **values):
     """Set the value in the config if the value is provided"""
     for key, value in values.items():
         if not value:
@@ -391,7 +424,13 @@ def _configure(config, *, platform, constraint_values, target_settings, override
             name = platform.replace("-", "_").lower(),
             constraint_values = constraint_values,
             target_settings = target_settings,
-            env = struct(),  # ...
+            os_name = os_name,
+            arch_name = arch_name,
+            env = {
+                k[4:]: v
+                for k, v in values.items()
+                if k.startswith("env_") and v
+            },
         )
     else:
         config["platforms"].pop(platform)
@@ -760,6 +799,7 @@ A list of config_settings that must be satisfied by the target configuration in 
 platform to be matched during analysis phase.
 """,
     ),
+    "whls_limit": attr.int(default = -1),
 }
 
 _configure_attrs = _default_attrs | {
