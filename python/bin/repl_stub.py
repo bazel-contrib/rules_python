@@ -13,6 +13,9 @@ The import and `ocde.interact()` call here his is equivalent to doing:
 The logic for PYTHONSTARTUP is handled in python/private/repl_template.py.
 """
 
+# Capture the globals from PYTHONSTARTUP so we can pass them on to the console.
+console_locals = globals().copy()
+
 import code
 import sys
 
@@ -26,4 +29,4 @@ else:
     sys.ps2 = ""
 
 # We set the banner to an empty string because the repl_template.py file already prints the banner.
-code.interact(banner="", exitmsg=exitmsg)
+code.interact(local=console_locals, banner="", exitmsg=exitmsg)
