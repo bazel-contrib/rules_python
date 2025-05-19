@@ -29,7 +29,7 @@ DEFAULT_PLATFORMS = [
     "windows_x86_64",
 ]
 
-def _default_platforms(*, filter):
+def _default_platforms_from(*, filter, choose_from):
     if not filter:
         fail("Must specific a filter string, got: {}".format(filter))
 
@@ -48,11 +48,11 @@ def _default_platforms(*, filter):
             fail("The filter can only contain '*' at the end of it")
 
         if not prefix:
-            return DEFAULT_PLATFORMS
+            return choose_from
 
-        return [p for p in DEFAULT_PLATFORMS if p.startswith(prefix)]
+        return [p for p in choose_from if p.startswith(prefix)]
     else:
-        return [p for p in DEFAULT_PLATFORMS if filter in p]
+        return [p for p in choose_from if filter in p]
 
 def _platforms_from_args(extra_pip_args):
     platform_values = []
@@ -144,6 +144,11 @@ def requirements_files_by_platform(
         )
         return None
 
+    _default_platforms = lambda f: _default_platforms_from(
+        filter = f,
+        choose_from = DEFAULT_PLATFORMS,
+    )
+
     platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
         logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
@@ -177,7 +182,7 @@ def requirements_files_by_platform(
             file: [
                 platform
                 for filter_or_platform in specifier.split(",")
-                for platform in (_default_platforms(filter = filter_or_platform) if filter_or_platform.endswith("*") else [filter_or_platform])
+                for platform in (_default_platforms(filter_or_platform) if filter_or_platform.endswith("*") else [filter_or_platform])
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
@@ -188,9 +193,9 @@ def requirements_files_by_platform(
         for f in [
             # If the users need a greater span of the platforms, they should consider
             # using the 'requirements_by_platform' attribute.
-            (requirements_linux, _default_platforms(filter = "linux_*")),
-            (requirements_osx, _default_platforms(filter = "osx_*")),
-            (requirements_windows, _default_platforms(filter = "windows_*")),
+            (requirements_linux, _default_platforms("linux_*")),
+            (requirements_osx, _default_platforms("osx_*")),
+            (requirements_windows, _default_platforms("windows_*")),
             (requirements_lock, None),
         ]:
             if f[0]:
