@@ -388,7 +388,7 @@ toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
     """,
     attrs = {
-        "archs": attr.string_dict(
+        "arch_names": attr.string_dict(
             doc = """
 If set, overrides the platform metadata. Keyed by index in `platforms`
 """,
@@ -494,7 +494,7 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
             key = str(i)
             platform_map[platform_name] = struct(
                 os_name = rctx.attr.os_names[key],
-                arch = rctx.attr.archs[key],
+                arch = rctx.attr.arch_names[key],
             )
     else:
         platform_map = sorted_host_platforms(PLATFORMS)

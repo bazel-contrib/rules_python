@@ -122,7 +122,7 @@ uv.configure(
         "urls": attr.string_list(
             doc = """\
 The urls to download the binary from. If this is used, {attr}`base_url` and
-{attr}`manifest_name` are ignored for the given version.
+{attr}`manifest_filename` are ignored for the given version.
 
 ::::note
 If the `urls` are specified, they need to be specified for all of the platforms

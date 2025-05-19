@@ -275,12 +275,6 @@ def _create_whl_repos(
         },
         extra_aliases = extra_aliases,
         whl_libraries = whl_libraries,
-        target_platforms = {
-            plat: None
-            for reqs in requirements_by_platform.values()
-            for req in reqs
-            for plat in req.target_platforms
-        },
     )
 
 def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version, enable_pipstar = False):
@@ -453,7 +447,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
     hub_group_map = {}
     exposed_packages = {}
     extra_aliases = {}
-    target_platforms = {}
     whl_libraries = {}
 
     for mod in module_ctx.modules:
@@ -536,7 +529,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
             exposed_packages.setdefault(hub_name, {}).update(out.exposed_packages)
-            target_platforms.setdefault(hub_name, {}).update(out.target_platforms)
             whl_libraries.update(out.whl_libraries)
 
             # TODO @aignas 2024-04-05: how do we support different requirement
@@ -573,10 +565,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 for whl_name, aliases in extra_whl_aliases.items()
             }
             for hub_name, extra_whl_aliases in extra_aliases.items()
-        },
-        target_platforms = {
-            hub_name: sorted(p)
-            for hub_name, p in target_platforms.items()
         },
         whl_libraries = {
             k: dict(sorted(args.items()))
@@ -669,7 +657,6 @@ def _pip_impl(module_ctx):
             },
             packages = mods.exposed_packages.get(hub_name, []),
             groups = mods.hub_group_map.get(hub_name),
-            target_platforms = mods.target_platforms.get(hub_name, []),
         )
 
     if bazel_features.external_deps.extension_metadata_has_reproducible:
