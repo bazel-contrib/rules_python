@@ -225,7 +225,7 @@ def _create_whl_repos(
                 version = pip_attr.python_version,
                 minor_mapping = minor_mapping,
             ),
-            platforms = platforms,
+            platforms = sorted(platforms),  # Only pass the keys
             logger = logger,
         ),
         extra_pip_args = pip_attr.extra_pip_args,
