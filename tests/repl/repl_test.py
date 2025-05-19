@@ -3,8 +3,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from typing import Iterable
 from pathlib import Path
+from typing import Iterable
 
 from python import runfiles
 
@@ -20,6 +20,7 @@ EXPECT_TEST_MODULE_IMPORTABLE = os.environ["EXPECT_TEST_MODULE_IMPORTABLE"] == "
 PYTHONSTARTUP_SETS_VAR = """\
 foo = 1234
 """
+
 
 class ReplTest(unittest.TestCase):
     def setUp(self):
@@ -87,9 +88,12 @@ class ReplTest(unittest.TestCase):
             env = os.environ.copy()
             env["PYTHONSTARTUP"] = str(pythonstartup)
 
-            result = self.run_code_in_repl([
-                "print(f'The value of foo is {foo}')",
-            ], env=env)
+            result = self.run_code_in_repl(
+                [
+                    "print(f'The value of foo is {foo}')",
+                ],
+                env=env,
+            )
 
         self.assertIn("The value of foo is 1234", result)
 
@@ -109,8 +113,9 @@ class ReplTest(unittest.TestCase):
             for var_name in ("exitmsg", "sys", "code", "bazel_runfiles", "STUB_PATH"):
                 with self.subTest(var_name=var_name):
                     result = self.run_code_in_repl([f"print({var_name})"], env=env)
-                    self.assertIn(f"NameError: name '{var_name}' is not defined", result)
-
+                    self.assertIn(
+                        f"NameError: name '{var_name}' is not defined", result
+                    )
 
 
 if __name__ == "__main__":
