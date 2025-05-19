@@ -431,32 +431,6 @@ def parse_modules(
     Returns:
         A struct with the following attributes:
     """
-    defaults = {
-        "platforms": {},
-    }
-    for mod in module_ctx.modules:
-        if not (mod.is_root or mod.name == "rules_python"):
-            continue
-
-        for tag in mod.tags.default:
-            _configure(
-                defaults,
-                arch_name = tag.arch_name,
-                constraint_values = tag.constraint_values,
-                # The env_ values is only used if the `PIPSTAR` is enabled
-                env_implementation_name = tag.env_implementation_name,
-                env_os_name = tag.env_os_name,
-                env_platform_machine = tag.env_platform_machine,
-                env_platform_release = tag.env_platform_release,
-                env_platform_system = tag.env_platform_system,
-                env_platform_version = tag.env_platform_version,
-                env_sys_platform = tag.env_sys_platform,
-                os_name = tag.os_name,
-                platform = tag.platform,
-                target_settings = tag.target_settings,
-                override = mod.is_root,
-            )
-
     whl_mods = {}
     for mod in module_ctx.modules:
         for whl_mod in mod.tags.whl_mods:
@@ -488,6 +462,36 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
+    defaults = {
+        "platforms": {},
+    }
+    for mod in module_ctx.modules:
+        if not (mod.is_root or mod.name == "rules_python"):
+            continue
+
+        for tag in mod.tags.default:
+            _configure(
+                defaults,
+                arch_name = tag.arch_name,
+                constraint_values = tag.constraint_values,
+                # The env_ values is only used if the `PIPSTAR` is enabled
+                env_implementation_name = tag.env_implementation_name,
+                env_os_name = tag.env_os_name,
+                env_platform_machine = tag.env_platform_machine,
+                env_platform_release = tag.env_platform_release,
+                env_platform_system = tag.env_platform_system,
+                env_platform_version = tag.env_platform_version,
+                env_sys_platform = tag.env_sys_platform,
+                os_name = tag.os_name,
+                platform = tag.platform,
+                target_settings = tag.target_settings,
+                override = mod.is_root,
+                # TODO @aignas 2025-05-19: add more attr groups:
+                # * for AUTH
+                # * for index config
+            )
+
+    # Merge override API with the builder?
     _overriden_whl_set = {}
     whl_overrides = {}
     for module in module_ctx.modules:
@@ -597,6 +601,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
             elif pip_attr.experimental_index_url_overrides:
                 fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
 
+            # TODO @aignas 2025-05-19: superimpose the pip.parse on top of the defaults
+            # and then pass everything as pip_attr
             out = _create_whl_repos(
                 module_ctx,
                 pip_attr = pip_attr,
@@ -754,6 +760,16 @@ def _pip_impl(module_ctx):
 _default_attrs = {
     "arch_name": attr.string(),
     "constraint_values": attr.label_list(),
+    "os_name": attr.string(),
+    "platform": attr.string(),
+    # TODO @aignas 2025-05-19: use the following
+    "target_settings": attr.label_list(
+        doc = """\
+A list of config_settings that must be satisfied by the target configuration in order for this
+platform to be matched during analysis phase.
+""",
+    ),
+} | {
     # The values for PEP508 env marker evaluation during the lock file parsing
     "env_implementation_name": attr.string(),
     "env_os_name": attr.string(doc = "default will be inferred from {obj}`os_name`"),
@@ -762,14 +778,22 @@ _default_attrs = {
     "env_platform_system": attr.string(doc = "default will be inferred from {obj}`os_name`"),
     "env_platform_version": attr.string(),
     "env_sys_platform": attr.string(),
+    # TODO @aignas 2025-05-19: add wiring for the following
+} | AUTH_ATTRS | {
+    # TODO @aignas 2025-05-19: add wiring for the following
     "extra_index_urls": attr.string_list(),
     "index_url": attr.string(),
-    "os_name": attr.string(),
-    "platform": attr.string(),
-    "target_settings": attr.label_list(
+    "index_url_overrides": attr.string_dict(),
+    "simpleapi_skip": attr.string_list(
         doc = """\
-A list of config_settings that must be satisfied by the target configuration in order for this
-platform to be matched during analysis phase.
+The list of packages to skip fetching metadata for from SimpleAPI index. You should
+normally not need this attribute, but in case you do, please report this as a bug
+to `rules_python` and use this attribute until the bug is fixed.
+
+EXPERIMENTAL: this may be removed without notice.
+
+:::{versionadded} 1.4.0
+:::
 """,
     ),
     "whls_limit": attr.int(default = -1),
