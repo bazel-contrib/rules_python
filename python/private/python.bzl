@@ -21,7 +21,7 @@ load(":full_version.bzl", "full_version")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
-load(":toolchains_repo.bzl", "host_toolchain", "multi_toolchain_aliases")
+load(":toolchains_repo.bzl", "host_toolchain", "multi_toolchain_aliases", "sorted_host_platforms")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 load(":version.bzl", "version")
 
@@ -329,7 +329,7 @@ def _python_impl(module_ctx):
                 str(i): platform_info.os_name
                 for i, platform_info in enumerate(host_platforms.values())
             },
-            archs = {
+            arch_names = {
                 str(i): platform_info.arch
                 for i, platform_info in enumerate(host_platforms.values())
             },
