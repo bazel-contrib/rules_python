@@ -329,7 +329,7 @@ def _python_impl(module_ctx):
             # NOTE: Order matters. The first found to be compatible is (usually) used.
             platforms = host_platforms,
             os_names = host_os_names,
-            archs = host_archs,
+            arch_names = host_archs,
             python_version = full_python_version,
         )
 

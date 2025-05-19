@@ -452,7 +452,7 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
             key = str(i)
             platform_map[platform_name] = struct(
                 os_name = rctx.attr.os_names[key],
-                arch = rctx.attr.archs[key],
+                arch = rctx.attr.arch_names[key],
             )
     else:
         platform_map = PLATFORMS
