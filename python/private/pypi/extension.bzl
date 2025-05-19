@@ -392,15 +392,6 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
 def _configure(config, *, platform, constraint_values, target_settings, os_name, arch_name, override = False, **values):
     """Set the value in the config if the value is provided"""
-    for key, value in values.items():
-        if not value:
-            continue
-
-        if not override and config.get(key):
-            continue
-
-        config[key] = value
-
     config.setdefault("platforms", {})
     if not platform:
         if constraint_values or target_settings:
@@ -453,6 +444,7 @@ def parse_modules(
                 defaults,
                 arch_name = tag.arch_name,
                 constraint_values = tag.constraint_values,
+                # The env_ values is only used if the `PIPSTAR` is enabled
                 env_implementation_name = tag.env_implementation_name,
                 env_os_name = tag.env_os_name,
                 env_platform_machine = tag.env_platform_machine,
