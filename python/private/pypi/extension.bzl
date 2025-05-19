@@ -440,7 +440,6 @@ def parse_modules(
 
         for tag in mod.tags.default:
             _configure(
-                # TODO @aignas 2025-05-18: actually use all of this stuff
                 defaults,
                 arch_name = tag.arch_name,
                 constraint_values = tag.constraint_values,
@@ -776,11 +775,11 @@ platform to be matched during analysis phase.
     "whls_limit": attr.int(default = -1),
 }
 
-_configure_attrs = _default_attrs | {
-    "hub_name": attr.string(),
-    "python_version": attr.string(),
-    "requirements_txt": attr.label(),
-}
+# _configure_attrs = _default_attrs | {
+#     "hub_name": attr.string(),
+#     "python_version": attr.string(),
+#     "requirements_txt": attr.label(),
+# }
 
 def _pip_parse_ext_attrs(**kwargs):
     """Get the attributes for the pip extension.
@@ -1038,14 +1037,6 @@ the BUILD files for wheels.
 """,
     implementation = _pip_impl,
     tag_classes = {
-        "configure": tag_class(
-            attrs = _configure_attrs,
-            doc = """\
-This tag class allows for more customization of how the configuration for the hub repositories is built.
-
-This is still experimental and may be changed or removed without any notice.
-""",
-        ),
         "default": tag_class(
             attrs = _default_attrs,
             doc = """\
