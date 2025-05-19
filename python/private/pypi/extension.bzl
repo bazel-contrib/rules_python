@@ -217,8 +217,8 @@ def _create_whl_repos(
         requirements_by_platform = {
             # TODO @aignas 2025-05-19: we probably want to pass the `platforms` to
             # `requirements_files_by_platform so that we can customize what exactly we can/want do.
-            k: v
-            for k, v in requirements_files_by_platform(
+            req_file: req_platforms
+            for req_file, req_platforms in requirements_files_by_platform(
                 requirements_by_platform = pip_attr.requirements_by_platform,
                 requirements_linux = pip_attr.requirements_linux,
                 requirements_lock = pip_attr.requirements_lock,
@@ -231,7 +231,7 @@ def _create_whl_repos(
                 ),
                 logger = logger,
             ).items()
-            if k in platforms
+            if [None for v in req_platforms if v in platforms]
         },
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
