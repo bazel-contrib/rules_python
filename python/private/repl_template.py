@@ -14,6 +14,10 @@ def start_repl():
         cprt = 'Type "help", "copyright", "credits" or "license" for more information.'
         sys.stderr.write("Python %s on %s\n%s\n" % (sys.version, sys.platform, cprt))
 
+    # If there's a PYTHONSTARTUP script, we need to capture the new variables
+    # that it defines.
+    new_globals = {}
+
     # Simulate Python's behavior when a valid startup script is defined by the
     # PYTHONSTARTUP variable. If this file path fails to load, print the error
     # and revert to the default behavior.
@@ -27,10 +31,14 @@ def start_repl():
             print(f"{type(error).__name__}: {error}")
         else:
             compiled_code = compile(source_code, filename=startup_file, mode="exec")
-            eval(compiled_code, {})
+            eval(compiled_code, new_globals)
 
     bazel_runfiles = runfiles.Create()
-    runpy.run_path(bazel_runfiles.Rlocation(STUB_PATH), run_name="__main__")
+    runpy.run_path(
+        bazel_runfiles.Rlocation(STUB_PATH),
+        init_globals=new_globals,
+        run_name="__main__",
+    )
 
 
 if __name__ == "__main__":

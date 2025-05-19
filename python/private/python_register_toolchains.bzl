@@ -48,7 +48,7 @@ def python_register_toolchains(
 
     With `bzlmod` enabled, this function is not needed since `rules_python` is
     handling everything. In order to override the default behaviour from the
-    root module one can see the docs for the {rule}`python` extension.
+    root module one can see the docs for the {obj}`python` extension.
 
     - Create a repository for each built-in platform like "python_3_8_linux_amd64" -
       this repository is lazily fetched when Python is needed for that platform.
@@ -71,9 +71,10 @@ def python_register_toolchains(
         tool_versions: {type}`dict` contains a mapping of version with SHASUM
             and platform info. If not supplied, the defaults in
             python/versions.bzl will be used.
-        platforms: {type}`dict[str, platform_info]` platforms to create toolchain
-            repositories for. Note that only a subset is created, depending
-            on what's available in `tool_versions`.
+        platforms: {type}`dict[str, struct]` platforms to create toolchain
+            repositories for. Keys are platform names, and values are platform_info
+            structs. Note that only a subset is created, depending on what's
+            available in `tool_versions`.
         minor_mapping: {type}`dict[str, str]` contains a mapping from `X.Y` to `X.Y.Z`
             version.
         **kwargs: passed to each {obj}`python_repository` call.

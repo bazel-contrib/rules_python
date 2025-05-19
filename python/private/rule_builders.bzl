@@ -192,7 +192,7 @@ ExecGroup = struct(
 )
 
 def _ToolchainType_typedef():
-    """Builder for {obj}`config_common.toolchain_type()`
+    """Builder for {obj}`config_common.toolchain_type`
 
     :::{include} /_includes/field_kwargs_doc.md
     :::
@@ -393,7 +393,7 @@ def _RuleCfg_update_inputs(self, *others):
 
     Args:
         self: implicitly added
-        *others: {type}`collection[Label]` collection of labels to add to
+        *others: {type}`list[Label]` collection of labels to add to
             inputs. Only values not already present are added. Note that a
             `Label`, not `str`, should be passed to ensure different apparent
             labels can be properly de-duplicated.
@@ -405,7 +405,7 @@ def _RuleCfg_update_outputs(self, *others):
 
     Args:
         self: implicitly added
-        *others: {type}`collection[Label]` collection of labels to add to
+        *others: {type}`list[Label]` collection of labels to add to
             outputs. Only values not already present are added. Note that a
             `Label`, not `str`, should be passed to ensure different apparent
             labels can be properly de-duplicated.
@@ -679,6 +679,18 @@ def _AttrsDict_build(self):
     for k, v in self.map.items():
         attrs[k] = v.build() if _is_builder(v) else v
     return attrs
+
+def _AttributeBuilder_typedef():
+    """An abstract base typedef for builder for a Bazel {obj}`Attribute`
+
+    Instances of this are a builder for a particular `Attribute` type,
+    e.g. `attr.label`, `attr.string`, etc.
+    """
+
+# buildifier: disable=name-conventions
+AttributeBuilder = struct(
+    TYPEDEF = _AttributeBuilder_typedef,
+)
 
 # buildifier: disable=name-conventions
 AttrsDict = struct(
