@@ -494,7 +494,7 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
 
         sha256, _, checksummed_fname = module_ctx.read(checksum_path).partition(" ")
         checksummed_fname = checksummed_fname.strip(" *\n")
-        if archive_fname != checksummed_fname:
+        if checksummed_fname and archive_fname != checksummed_fname:
             fail("The checksum is for a different file, expected '{}' but got '{}'".format(
                 archive_fname,
                 checksummed_fname,
