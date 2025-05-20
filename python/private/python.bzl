@@ -223,7 +223,7 @@ def parse_modules(*, module_ctx, _fail = fail):
     # A default toolchain is required so that the non-version-specific rules
     # are able to match a toolchain.
     if default_toolchain == None:
-        fail("No default Python toolchain configured. Is rules_python missing `is_default=True`?")
+        fail("No default Python toolchain configured. Is rules_python missing `python.defaults()`?")
     elif default_toolchain.python_version not in global_toolchain_versions:
         fail('Default version "{python_version}" selected by module ' +
              '"{module_name}", but no toolchain with that version registered'.format(
@@ -891,10 +891,8 @@ In order to use a different name than the above, you can use the following `MODU
 syntax:
 ```starlark
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(
-    is_default = True,
-    python_version = "3.11",
-)
+python.defaults(python_version = "3.11")
+python.toolchain(python_version = "3.11")
 
 use_repo(python, my_python_name = "python_3_11")
 ```
@@ -930,7 +928,7 @@ Whether the toolchain is the default version.
 
 :::{versionchanged} 1.4.0
 This setting is ignored if the default version is set using the `defaults`
-tag class.
+tag class (encouraged).
 :::
 """,
         ),

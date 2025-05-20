@@ -46,9 +46,13 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 
 # We next initialize the python toolchain using the extension.
 # You can set different Python versions in this block.
+python.defaults(
+    # The environment variable takes precedence if set.
+    python_version = "3.9",
+    python_version_env = "BAZEL_PYTHON_VERSION",
+)
 python.toolchain(
     configure_coverage_tool = True,
-    is_default = True,
     python_version = "3.9",
 )
 
