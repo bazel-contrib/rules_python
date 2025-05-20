@@ -27,6 +27,17 @@ will depend on the target that is providing the API struct.
     },
 )
 
+def _py_common_typedef():
+    """Typedef for py_common.
+
+    :::{field} API_ATTRS
+    :type: dict[str, Attribute]
+
+    The attributes that rules must have for `py_common.get()` to work.
+    :::
+
+    """
+
 def _py_common_get(ctx):
     """Get the py_common API instance.
 
@@ -45,6 +56,7 @@ def _py_common_get(ctx):
     return ctx.attr._py_common_api[ApiImplInfo].impl
 
 py_common = struct(
+    TYPEDEF = _py_common_typedef,
     get = _py_common_get,
     API_ATTRS = {
         "_py_common_api": attr.label(
