@@ -462,12 +462,10 @@ def sorted_host_platforms(platform_map):
 
     def platform_keyer(name):
         # Ascending sort: lower is higher precedence
-        pref = 0
-        if name.endswith("-" + FREETHREADED):
-            pref = 1
-        elif name.endswith("-" + MUSL):
-            pref = 2
-        return (pref, name)
+        return (
+            1 if MUSL in name else 0,
+            1 if FREETHREADED in name else 0,
+        )
 
     sorted_platform_keys = sorted(platform_map.keys(), key = platform_keyer)
     return {
