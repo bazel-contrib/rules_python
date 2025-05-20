@@ -226,7 +226,10 @@ def _create_whl_repos(
             python_interpreter_target = python_interpreter_target,
             whl_patches = {
                 p: json.encode(args)
-                for p, args in whl_overrides.get(whl_name, {}).items()
+                for p, args in (
+                    whl_overrides.get(hub_name, {}).get(whl_name, {}).items() +
+                    whl_overrides.get("", {}).get(whl_name, {}).items()  # Overrides without a hub name apply to all hubs
+                )
             },
         )
         if not enable_pipstar:
@@ -424,16 +427,18 @@ You cannot use both the additive_build_content and additive_build_content_file a
             _overriden_whl_set[attr.file] = None
 
             for patch in attr.patches:
-                if whl_name not in whl_overrides:
-                    whl_overrides[whl_name] = {}
+                if attr.hub_name not in whl_overrides:
+                    whl_overrides[attr.hub_name] = {}
+                if whl_name not in whl_overrides[attr.hub_name]:
+                    whl_overrides[attr.hub_name][whl_name] = {}
 
-                if patch not in whl_overrides[whl_name]:
-                    whl_overrides[whl_name][patch] = struct(
+                if patch not in whl_overrides[attr.hub_name][whl_name]:
+                    whl_overrides[attr.hub_name][whl_name][patch] = struct(
                         patch_strip = attr.patch_strip,
                         whls = [],
                     )
 
-                whl_overrides[whl_name][patch].whls.append(attr.file)
+                whl_overrides[attr.hub_name][whl_name][patch].whls.append(attr.file)
 
     # Used to track all the different pip hubs and the spoke pip Python
     # versions.
@@ -884,6 +889,12 @@ The Python distribution file name which needs to be patched. This will be
 applied to all repositories that setup this distribution via the pip.parse tag
 class.""",
             mandatory = True,
+        ),
+        "hub_name": attr.string(
+            doc = """
+The name of the pip repo to override the wheel in. If this is not provided the
+wheel is overridden in all pip hubs.
+""",
         ),
         "patch_strip": attr.int(
             default = 0,
