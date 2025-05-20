@@ -25,6 +25,8 @@ platform-specific repositories.
 
 load(
     "//python:versions.bzl",
+    "FREETHREADED",
+    "MUSL",
     "PLATFORMS",
     "WINDOWS_NAME",
 )
@@ -375,6 +377,8 @@ def _host_toolchain_impl(rctx):
     if not rctx.delete(python_tester):
         fail("Failed to delete the python tester")
 
+# NOTE: The term "toolchain" is a misnomer for this rule. This doesn't define
+# a repo with toolchains or toolchain implementations.
 host_toolchain = repository_rule(
     _host_toolchain_impl,
     doc = """\
@@ -384,6 +388,16 @@ toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
     """,
     attrs = {
+        "arch_names": attr.string_dict(
+            doc = """
+If set, overrides the platform metadata. Keyed by index in `platforms`
+""",
+        ),
+        "os_names": attr.string_dict(
+            doc = """
+If set, overrides the platform metadata. Keyed by index in `platforms`
+""",
+        ),
         "platforms": attr.string_list(mandatory = True),
         "python_version": attr.string(mandatory = True),
         "_rule_name": attr.string(default = "host_toolchain"),
@@ -421,6 +435,44 @@ multi_toolchain_aliases = repository_rule(
     },
 )
 
+def sorted_host_platforms(platform_map):
+    """Sort the keys in the platform map to give correct precedence.
+
+    The order of keys in the platform mapping matters for the host toolchain
+    selection. When multiple runtimes are compatible with the host, we take the
+    first that is compatible (usually; there's also the
+    `RULES_PYTHON_REPO_TOOLCHAIN_*` environment variables). The historical
+    behavior carefully constructed the ordering of platform keys such that
+    the ordering was:
+    * Regular platforms
+    * The "-freethreaded" suffix
+    * The "-musl" suffix
+
+    Here, we formalize that so it isn't subtly encoded in the ordering of keys
+    in a dict that autoformatters like to clobber and whose only documentation
+    is an innocous looking formatter disable directive.
+
+    Args:
+        platform_map: a mapping of platforms and their metadata.
+
+    Returns:
+        dict; the same values, but with the keys inserted in the desired
+        order so that iteration happens in the desired order.
+    """
+
+    def platform_keyer(name):
+        # Ascending sort: lower is higher precedence
+        return (
+            1 if MUSL in name else 0,
+            1 if FREETHREADED in name else 0,
+        )
+
+    sorted_platform_keys = sorted(platform_map.keys(), key = platform_keyer)
+    return {
+        key: platform_map[key]
+        for key in sorted_platform_keys
+    }
+
 def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platforms):
     """Gets the host platform.
 
@@ -434,9 +486,20 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
     Returns:
         The host platform.
     """
+    if rctx.attr.os_names:
+        platform_map = {}
+        for i, platform_name in enumerate(platforms):
+            key = str(i)
+            platform_map[platform_name] = struct(
+                os_name = rctx.attr.os_names[key],
+                arch = rctx.attr.arch_names[key],
+            )
+    else:
+        platform_map = sorted_host_platforms(PLATFORMS)
+
     candidates = []
     for platform in platforms:
-        meta = PLATFORMS[platform]
+        meta = platform_map[platform]
 
         if meta.os_name == os_name and meta.arch == cpu_name:
             candidates.append(platform)

@@ -19,7 +19,9 @@
 MACOS_NAME = "osx"
 LINUX_NAME = "linux"
 WINDOWS_NAME = "windows"
-FREETHREADED = "freethreaded"
+
+FREETHREADED = "-freethreaded"
+MUSL = "-musl"
 INSTALL_ONLY = "install_only"
 
 DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone/releases/download"
@@ -845,7 +847,7 @@ def _generate_platforms():
         for p, v in platforms.items()
         for suffix, freethreadedness in {
             "": is_freethreaded_no,
-            "-" + FREETHREADED: is_freethreaded_yes,
+            FREETHREADED: is_freethreaded_yes,
         }.items()
     }
 
@@ -879,11 +881,11 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
     release_filename = None
     rendered_urls = []
     for u in url:
-        p, _, _ = platform.partition("-" + FREETHREADED)
+        p, _, _ = platform.partition(FREETHREADED)
 
-        if FREETHREADED in platform:
+        if FREETHREADED.lstrip("-") in platform:
             build = "{}+{}-full".format(
-                FREETHREADED,
+                FREETHREADED.lstrip("-"),
                 {
                     "aarch64-apple-darwin": "pgo+lto",
                     "aarch64-unknown-linux-gnu": "lto",

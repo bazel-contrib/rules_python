@@ -1,6 +1,7 @@
 :::{default-domain} bzl
 :::
 
+(configuring-toolchains)=
 # Configuring Python toolchains and runtimes
 
 This documents how to configure the Python toolchain and runtimes for different
