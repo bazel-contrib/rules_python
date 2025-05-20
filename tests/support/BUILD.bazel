@@ -87,6 +87,14 @@ platform(
     ],
 )
 
+platform(
+    name = "exotic_unix",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:s390x",
+    ],
+)
+
 current_build_settings(
     name = "current_build_settings",
 )

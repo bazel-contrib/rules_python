@@ -24,7 +24,7 @@ load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "BOOTSTRAP_IMPL", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
+load("//tests/support:support.bzl", "BOOTSTRAP_IMPL", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "EXOTIC_UNIX", "LINUX_X86_64", "WINDOWS_X86_64")
 
 _tests = []
 
@@ -114,6 +114,28 @@ def _test_basic_zip_impl(env, target):
     ))
 
 _tests.append(_test_basic_zip)
+
+def _test_cross_compile_to_unix(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        main_module = "dummy",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_cross_compile_to_unix_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:host_platform": EXOTIC_UNIX,
+            "//command_line_option:platforms": [EXOTIC_UNIX],
+        },
+        expect_failure = True,
+    )
+
+def _test_cross_compile_to_unix_impl(_, _):
+    pass
+
+_tests.append(_test_cross_compile_to_unix)
 
 def _test_executable_in_runfiles(name, config):
     rt_util.helper_target(
