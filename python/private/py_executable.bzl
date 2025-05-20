@@ -13,6 +13,7 @@
 # limitations under the License.
 """Common functionality between test/binary executables."""
 
+load("@bazel_features//:features.bzl", "bazel_features")
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:structs.bzl", "structs")
@@ -69,6 +70,7 @@ load(":venv_runfiles.bzl", "create_venv_app_files")
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
+_LAUNCHER_MAKER_TOOLCHAIN_TYPE = "@bazel_tools//tools/launcher:launcher_maker_toolchain_type"
 
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
@@ -228,17 +230,19 @@ accepting arbitrary Python versions.
                 "@platforms//os:windows",
             ],
         ),
-        "_windows_launcher_maker": lambda: attrb.Label(
-            default = "@bazel_tools//tools/launcher:launcher_maker",
-            cfg = "exec",
-            executable = True,
-        ),
         "_zipper": lambda: attrb.Label(
             cfg = "exec",
             executable = True,
             default = "@bazel_tools//tools/zip:zipper",
         ),
     },
+    {
+        "_windows_launcher_maker": lambda: attrb.Label(
+            default = "@bazel_tools//tools/launcher:launcher_maker",
+            cfg = "exec",
+            executable = True,
+        ),
+    } if not bazel_features.rules._has_launcher_maker_toolchain else {},
 )
 
 def convert_legacy_create_init_to_int(kwargs):
@@ -777,6 +781,11 @@ def _create_stage1_bootstrap(
         is_executable = True,
     )
 
+def _find_launcher_maker(ctx):
+    if bazel_features.rules._has_launcher_maker_toolchain:
+        return ctx.toolchains[_LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary
+    return ctx.executable._windows_launcher_maker
+
 def _create_windows_exe_launcher(
         ctx,
         *,
@@ -797,7 +806,7 @@ def _create_windows_exe_launcher(
 
     launcher = ctx.attr._launcher[DefaultInfo].files_to_run.executable
     ctx.actions.run(
-        executable = ctx.executable._windows_launcher_maker,
+        executable = _find_launcher_maker(ctx),
         arguments = [launcher.path, launch_info, output.path],
         inputs = [launcher],
         outputs = [output],
@@ -1838,7 +1847,7 @@ def create_executable_rule_builder(implementation, **kwargs):
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-        ],
+        ] + ([ruleb.ToolchainType(_LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if bazel_features.rules._has_launcher_maker_toolchain else []),
         cfg = dict(
             implementation = _transition_executable_impl,
             inputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],
