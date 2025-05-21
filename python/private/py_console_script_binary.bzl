@@ -52,7 +52,7 @@ def py_console_script_binary(
         entry_points_txt = None,
         script = None,
         binary_rule = py_binary,
-        shebang = None,
+        shebang = "",
         **kwargs):
     """Generate a py_binary for a console_script entry_point.
 
