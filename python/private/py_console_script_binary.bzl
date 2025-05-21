@@ -69,7 +69,7 @@ def py_console_script_binary(
         binary_rule: {type}`callable`, The rule/macro to use to instantiate
             the target. It's expected to behave like {obj}`py_binary`.
             Defaults to {obj}`py_binary`.
-        shebang: [`str`], The shebang to use for the entry point python file.
+        shebang: {type}`str`, The shebang to use for the entry point python file.
             Defaults to empty string.
         **kwargs: Extra parameters forwarded to `binary_rule`.
     """
