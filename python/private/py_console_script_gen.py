@@ -139,7 +139,7 @@ def run(
     with open(out, "w") as f:
         f.write(
             _TEMPLATE.format(
-                shebang=shebang + "\n" if shebang else "",
+                shebang=f"{shebang}\n" if shebang else "",
                 module=module,
                 attr=attr,
                 entry_point=entry_point,
