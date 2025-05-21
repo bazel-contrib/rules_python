@@ -132,7 +132,7 @@ def _test_cross_compile_to_unix(name, config):
         expect_failure = True,
     )
 
-def _test_cross_compile_to_unix_impl(_, _):
+def _test_cross_compile_to_unix_impl(_env, _target):
     pass
 
 _tests.append(_test_cross_compile_to_unix)
