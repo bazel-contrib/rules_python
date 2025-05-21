@@ -50,9 +50,9 @@ py_console_script_binary(
 
 #### Adding a Shebang Line
 
-You can specify a shebang line for the generated binary, which is particularly
-useful for Unix-like systems where the shebang line determines which interpreter
-is used to execute the script:
+You can specify a shebang line for the generated binary, useful for Unix-like
+systems where the shebang line determines which interpreter is used to execute
+the script, per [PEP441]:
 
 ```starlark
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
@@ -64,10 +64,8 @@ py_console_script_binary(
 )
 ```
 
-The shebang line enables direct script execution with the correct Python version
-across different systems, aligning with principles in [PEP441]. Note that when
-executing directly via the shebang line, you must ensure the specified
-Python interpreter is available in the user's environment.
+Note that to execute via the shebang line, you need to ensure the specified
+Python interpreter is available in the environment.
 
 
 #### Using a specific Python Version directly from a Toolchain
