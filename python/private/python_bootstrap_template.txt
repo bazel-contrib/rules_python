@@ -499,8 +499,7 @@ def Main():
   # The magic string percent-main-percent is replaced with the runfiles-relative
   # filename of the main file of the Python binary in BazelPythonSemantics.java.
   main_rel_path = '%main%'
-  if IsWindows():
-    main_rel_path = main_rel_path.replace('/', os.sep)
+  main_rel_path = os.path.normpath(main_rel_path)
 
   if IsRunningFromZip():
     module_space = CreateModuleSpace()
