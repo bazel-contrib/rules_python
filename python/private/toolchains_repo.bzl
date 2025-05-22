@@ -379,7 +379,7 @@ def _host_toolchain_impl(rctx):
 
 # NOTE: The term "toolchain" is a misnomer for this rule. This doesn't define
 # a repo with toolchains or toolchain implementations.
-host_toolchain = repository_rule(
+host_compatible_python_repo = repository_rule(
     _host_toolchain_impl,
     doc = """\
 Creates a repository with a shorter name meant to be used in the repository_ctx,
@@ -400,7 +400,7 @@ If set, overrides the platform metadata. Keyed by index in `platforms`
         ),
         "platforms": attr.string_list(mandatory = True),
         "python_version": attr.string(mandatory = True),
-        "_rule_name": attr.string(default = "host_toolchain"),
+        "_rule_name": attr.string(default = "host_compatible_python_repo"),
         "_rules_python_workspace": attr.label(default = Label("//:WORKSPACE")),
     },
 )

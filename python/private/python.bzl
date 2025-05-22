@@ -21,7 +21,7 @@ load(":full_version.bzl", "full_version")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
-load(":toolchains_repo.bzl", "host_toolchain", "multi_toolchain_aliases", "sorted_host_platforms")
+load(":toolchains_repo.bzl", "host_compatible_python_repo", "multi_toolchain_aliases", "sorted_host_platforms")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 load(":version.bzl", "version")
 
@@ -321,7 +321,7 @@ def _python_impl(module_ctx):
                 host_platforms[platform_name] = platform_info
 
         host_platforms = sorted_host_platforms(host_platforms)
-        host_toolchain(
+        host_compatible_python_repo(
             name = toolchain_info.name + "_host",
             # NOTE: Order matters. The first found to be compatible is (usually) used.
             platforms = host_platforms.keys(),

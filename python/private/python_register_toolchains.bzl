@@ -28,7 +28,7 @@ load(":full_version.bzl", "full_version")
 load(":python_repository.bzl", "python_repository")
 load(
     ":toolchains_repo.bzl",
-    "host_toolchain",
+    "host_compatible_python_repo",
     "toolchain_aliases",
     "toolchains_repo",
 )
@@ -185,7 +185,7 @@ def python_register_toolchains(
             impl_repos = impl_repos,
         )
 
-    host_toolchain(
+    host_compatible_python_repo(
         name = name + "_host",
         platforms = loaded_platforms,
         python_version = python_version,
