@@ -42,8 +42,10 @@ python = use_extension("//python/extensions:python.bzl", "python")
 # NOTE: This is not a stable version. It is provided for convenience, but will
 # change frequently to track the most recent Python version.
 # NOTE: The root module can override this.
-python.defaults(python_version = "3.11")
-python.toolchain(python_version = "3.11")
+python.toolchain(
+    is_default = True,
+    python_version = "3.11",
+)
 use_repo(
     python,
     "python_3_11",
