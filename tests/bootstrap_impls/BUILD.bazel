@@ -169,6 +169,10 @@ sh_test(
     name = "external_binary_test",
     srcs = ["external_binary_test.sh"],
     data = [":external_binary"],
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 relative_path_test_suite(name = "relative_path_tests")
