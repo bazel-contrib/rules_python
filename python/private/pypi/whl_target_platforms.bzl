@@ -46,13 +46,15 @@ _OS_PREFIXES = {
     "win": "windows",
 }  # buildifier: disable=unsorted-dict-items
 
-def select_whls(*, whls, want_platforms = [], logger = None):
+def select_whls(*, whls, want_platforms = {}, logger = None):
     """Select a subset of wheels suitable for target platforms from a list.
 
     Args:
-        whls(list[struct]): A list of candidates which have a `filename`
-            attribute containing the `whl` filename.
-        want_platforms(str): The platforms in "{abi}_{os}_{cpu}" or "{os}_{cpu}" format.
+        whls: {type}`list[struct]` candidates which have a `filename` attribute containing
+            the `whl` filename.
+        want_platforms: {type}`dict[str, struct]` The platforms in "{abi}_{os}_{cpu}" or
+            "{os}_{cpu}" format for the keys and the values are options for further fine
+            tuning the selection.
         logger: A logger for printing diagnostic messages.
 
     Returns:

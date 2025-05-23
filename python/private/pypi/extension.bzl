@@ -758,45 +758,90 @@ def _pip_impl(module_ctx):
         return None
 
 _default_attrs = {
-    "arch_name": attr.string(),
-    "constraint_values": attr.label_list(),
-    "os_name": attr.string(),
-    "platform": attr.string(),
+    "arch_name": attr.string(
+        doc = """\
+The CPU architecture name to be used. 
+
+:::{note}
+Either this or {attr}`env_platform_machine` should be specified.
+:::
+""",
+    ),
+    "constraint_values": attr.label_list(
+        doc = """\
+The list of labels to {obj}`constraint_value` that will be used in the `hub repository` when
+including python packages that are compatible with this platform.
+""",
+    ),
+    "os_name": attr.string(
+        doc = """\
+The OS name to be used.
+
+:::{note}
+Either this or the appropriate `env_*` attributes should be specified.
+:::
+""",
+    ),
+    "platform": attr.string(
+        doc = """\
+A platform identifier which will be used as the unique identifier within the extension evaluation.
+If you are defining custom platforms in your project and don't want things to clash, use extension
+[isolation] feature.
+
+[isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
+""",
+    ),
     # TODO @aignas 2025-05-19: use the following
     "target_settings": attr.label_list(
         doc = """\
-A list of config_settings that must be satisfied by the target configuration in order for this
-platform to be matched during analysis phase.
+A list of labels to {obj}`config_setting` targets that must be satisfied by the target
+configuration in order for this platform to be matched during analysis phase.
+""",
+    ),
+    "whl_limit": attr.int(
+        default = 1,
+        doc = """\
+The limit of wheels that we are going to include per platform.
+""",
+    ),
+    "whl_platforms": attr.string_list(
+        doc = """\
+The platform_tag values to consider as supported for the target platforms.
+
+For `manylinux` and `musllinux` platform tags, please use the `manylinux_x_y_<arch>`
+or `musllinux_x_y_<arch>` syntax.
 """,
     ),
 } | {
     # The values for PEP508 env marker evaluation during the lock file parsing
-    "env_implementation_name": attr.string(),
-    "env_os_name": attr.string(doc = "default will be inferred from {obj}`os_name`"),
-    "env_platform_machine": attr.string(doc = "default will be inferred from {obj}`arch_name`"),
-    "env_platform_release": attr.string(),
-    "env_platform_system": attr.string(doc = "default will be inferred from {obj}`os_name`"),
-    "env_platform_version": attr.string(),
-    "env_sys_platform": attr.string(),
+    "env_implementation_name": attr.string(
+        doc = "Value for `implementation_name` to evaluate environment markers. Defaults to `cpython`.",
+    ),
+    "env_os_name": attr.string(
+        doc = "Value for `os_name` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
+    ),
+    "env_platform_machine": attr.string(
+        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to a value inferred from the {attr}`arch_name`.",
+    ),
+    "env_platform_release": attr.string(
+        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to an empty value.",
+    ),
+    "env_platform_system": attr.string(
+        doc = "Value for `platform_system` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
+    ),
+    "env_platform_version": attr.string(
+        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to `0`.",
+    ),
+    "env_sys_platform": attr.string(
+        doc = "Value for `sys_platform` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
+    ),
     # TODO @aignas 2025-05-19: add wiring for the following
 } | AUTH_ATTRS | {
     # TODO @aignas 2025-05-19: add wiring for the following
-    "extra_index_urls": attr.string_list(),
-    "index_url": attr.string(),
-    "index_url_overrides": attr.string_dict(),
-    "simpleapi_skip": attr.string_list(
-        doc = """\
-The list of packages to skip fetching metadata for from SimpleAPI index. You should
-normally not need this attribute, but in case you do, please report this as a bug
-to `rules_python` and use this attribute until the bug is fixed.
-
-EXPERIMENTAL: this may be removed without notice.
-
-:::{versionadded} 1.4.0
-:::
-""",
-    ),
-    "whls_limit": attr.int(default = -1),
+    # "extra_index_urls": attr.string_list(),
+    # "index_url": attr.string(),
+    # "index_url_overrides": attr.string_dict(),
+    # "simpleapi_skip": attr.string_list(),
 }
 
 # _configure_attrs = _default_attrs | {
@@ -1067,6 +1112,13 @@ the BUILD files for wheels.
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
 This is still experimental and may be changed or removed without any notice.
+
+:::{seealso}
+The [environment markers][environment_markers] specification for the explanation of the
+terms used in this extension.
+
+[environment_markers]: https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
+:::
 """,
         ),
         "override": _override_tag,
