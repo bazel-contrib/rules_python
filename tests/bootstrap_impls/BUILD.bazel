@@ -163,12 +163,15 @@ pkg_tar(
     testonly = True,
     srcs = ["@other//:external_main"],
     include_runfiles = True,
+   tags = ["manual"], # Don't build as part of wildcards
 )
 
 sh_test(
     name = "external_binary_test",
     srcs = ["external_binary_test.sh"],
     data = [":external_binary"],
+    # For now, skip this test on Windows because it fails for reasons
+    # other than the code path being tested.
     target_compatible_with = select({
         "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
