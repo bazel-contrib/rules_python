@@ -163,7 +163,7 @@ pkg_tar(
     testonly = True,
     srcs = ["@other//:external_main"],
     include_runfiles = True,
-   tags = ["manual"], # Don't build as part of wildcards
+    tags = ["manual"],  # Don't build as part of wildcards
 )
 
 sh_test(
