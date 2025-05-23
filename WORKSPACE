@@ -78,7 +78,7 @@ python_register_multi_toolchains(
     python_versions = PYTHON_VERSIONS,
 )
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Used for Bazel CI
 http_archive(
@@ -155,14 +155,3 @@ pip_parse(
 load("@dev_pip//:requirements.bzl", docs_install_deps = "install_deps")
 
 docs_install_deps()
-
-# This wheel is purely here to validate the wheel extraction code. It's not
-# intended for anything else.
-http_file(
-    name = "wheel_for_testing",
-    downloaded_file_path = "numpy-1.25.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
-    sha256 = "0d60fbae8e0019865fc4784745814cff1c421df5afee233db6d88ab4f14655a2",
-    urls = [
-        "https://files.pythonhosted.org/packages/50/67/3e966d99a07d60a21a21d7ec016e9e4c2642a86fea251ec68677daf71d4d/numpy-1.25.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
-    ],
-)
