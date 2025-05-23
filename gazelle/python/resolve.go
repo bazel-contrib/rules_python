@@ -71,6 +71,7 @@ func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 		pythonProjectRoot := cfg.PythonProjectRoot()
 		provide := importSpecFromSrc(pythonProjectRoot, f.Pkg, src)
+		// log.Printf("import to index: %v", provide.Imp)
 		provides = append(provides, provide)
 	}
 	if len(provides) == 0 {
@@ -156,45 +157,55 @@ func (py *Resolver) Resolve(
 			mod := it.Value().(module)
 			moduleName := mod.Name
 			// Transform relative imports `.` or `..foo.bar` into the package path from root.
-			if strings.HasPrefix(moduleName, ".") {
-				// If not package generation mode, skip relative imports
+			if strings.HasPrefix(mod.From, ".") {
 				if !isPackageGeneration {
 					continue MODULES_LOOP
 				}
+
+				// Count number of leading dots in mod.From (e.g., ".." = 2, "...foo.bar" = 3)
 				relativeDepth := 0
-				for i := 0; i < len(moduleName); i++ {
-					if moduleName[i] == '.' {
+				for i := 0; i < len(mod.From); i++ {
+					if mod.From[i] == '.' {
 						relativeDepth++
 					} else {
 						break
 					}
 				}
 
-				// Extract suffix after leading dots
-				relativeSuffix := moduleName[relativeDepth:]
-				var relativeSuffixParts []string
-				if relativeSuffix != "" {
-					relativeSuffixParts = strings.Split(relativeSuffix, ".")
+				// Extract final symbol (e.g., "some_function") from mod.Name
+				imported := mod.Name
+				if idx := strings.LastIndex(mod.Name, "."); idx >= 0 {
+					imported = mod.Name[idx+1:]
 				}
 
-				// Split current package label into parts
+				// Optional subpath in 'from' clause, e.g. "from ...my_library.foo import x"
+				fromPath := strings.TrimLeft(mod.From, ".")
+				var fromParts []string
+				if fromPath != "" {
+					fromParts = strings.Split(fromPath, ".")
+				}
+
+				// Current Bazel package as path segments
 				pkgParts := strings.Split(from.Pkg, "/")
 
-				if relativeDepth- 1 > len(pkgParts) {
-					// Trying to go above the root
-					log.Printf("ERROR: Invalid relative import %q in %q: exceeds package root.", moduleName, mod.Filepath)
+				if relativeDepth-1 > len(pkgParts) {
+					log.Printf("ERROR: Invalid relative import %q in %q: exceeds package root.", mod.Name, mod.Filepath)
 					continue MODULES_LOOP
 				}
 
-				// Go up `relativeDepth - 1` levels
+				// Go up relativeDepth - 1 levels
 				baseParts := pkgParts
 				if relativeDepth > 1 {
 					baseParts = pkgParts[:len(pkgParts)-(relativeDepth-1)]
 				}
+				// Build absolute module path
+				absParts := append([]string{}, baseParts...)       // base path
+				absParts = append(absParts, fromParts...)          // subpath from 'from'
+				absParts = append(absParts, imported)              // actual imported symbol
 
-				absParts := append(baseParts, relativeSuffixParts...)
 				moduleName = strings.Join(absParts, ".")
 			}
+
 
 			moduleParts := strings.Split(moduleName, ".")
 			possibleModules := []string{moduleName}
