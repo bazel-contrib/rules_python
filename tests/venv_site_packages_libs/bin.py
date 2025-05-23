@@ -26,6 +26,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_imported_from_venv("nspkg.subnspkg.beta")
         self.assert_imported_from_venv("nspkg.subnspkg.gamma")
         self.assert_imported_from_venv("nspkg.subnspkg.delta")
+        self.assert_imported_from_venv("single_file")
 
 
 if __name__ == "__main__":

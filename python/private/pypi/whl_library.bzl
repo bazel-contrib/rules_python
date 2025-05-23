@@ -173,9 +173,6 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
             json.encode(struct(arg = rctx.attr.pip_data_exclude)),
         ]
 
-    if rctx.attr.enable_implicit_namespace_pkgs:
-        args.append("--enable_implicit_namespace_pkgs")
-
     env = {}
     if rctx.attr.environment != None:
         for key, value in rctx.attr.environment.items():
@@ -389,6 +386,8 @@ def _whl_library_impl(rctx):
             metadata_name = metadata.name,
             metadata_version = metadata.version,
             requires_dist = metadata.requires_dist,
+            # TODO @aignas 2025-05-17: maybe have a build flag for this instead
+            enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
             # TODO @aignas 2025-04-14: load through the hub:
             annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
             data_exclude = rctx.attr.pip_data_exclude,
@@ -457,6 +456,8 @@ def _whl_library_impl(rctx):
             name = whl_path.basename,
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
             entry_points = entry_points,
+            # TODO @aignas 2025-05-17: maybe have a build flag for this instead
+            enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
             # TODO @aignas 2025-04-14: load through the hub:
             dependencies = metadata["deps"],
             dependencies_by_platform = metadata["deps_by_platform"],
@@ -580,7 +581,6 @@ attr makes `extra_pip_args` and `download_only` ignored.""",
             Label("//python/private/pypi/whl_installer:wheel.py"),
             Label("//python/private/pypi/whl_installer:wheel_installer.py"),
             Label("//python/private/pypi/whl_installer:arguments.py"),
-            Label("//python/private/pypi/whl_installer:namespace_pkgs.py"),
         ] + record_files.values(),
     ),
     "_rule_name": attr.string(default = "whl_library"),
