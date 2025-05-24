@@ -223,7 +223,7 @@ def _package_srcs(
         env_marker_target_platforms,
         extract_url_srcs):
     """A function to return sources for a particular package."""
-    srcs = []
+    srcs = {}
     for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
         whls, sdist = _add_dists(
             requirement = r,
@@ -249,21 +249,31 @@ def _package_srcs(
             )]
             req_line = r.srcs.requirement_line
 
+        extra_pip_args = tuple(r.extra_pip_args)
         for dist in all_dists:
-            srcs.append(
+            key = (
+                dist.filename,
+                req_line,
+                extra_pip_args,
+            )
+            entry = srcs.setdefault(
+                key,
                 struct(
                     distribution = name,
                     extra_pip_args = r.extra_pip_args,
                     requirement_line = req_line,
-                    target_platforms = target_platforms,
+                    target_platforms = [],
                     filename = dist.filename,
                     sha256 = dist.sha256,
                     url = dist.url,
                     yanked = dist.yanked,
                 ),
             )
+            for p in target_platforms:
+                if p not in entry.target_platforms:
+                    entry.target_platforms.append(p)
 
-    return srcs
+    return srcs.values()
 
 def select_requirement(requirements, *, platform):
     """A simple function to get a requirement for a particular platform.
