@@ -309,7 +309,7 @@ actions.""",
     environ = [REPO_DEBUG_ENV_VAR],
 )
 
-def _host_toolchain_impl(rctx):
+def _host_compatible_python_repo(rctx):
     rctx.file("BUILD.bazel", _HOST_TOOLCHAIN_BUILD_CONTENT)
 
     os_name = repo_utils.get_platforms_os_name(rctx)
@@ -380,7 +380,7 @@ def _host_toolchain_impl(rctx):
 # NOTE: The term "toolchain" is a misnomer for this rule. This doesn't define
 # a repo with toolchains or toolchain implementations.
 host_compatible_python_repo = repository_rule(
-    _host_toolchain_impl,
+    _host_compatible_python_repo,
     doc = """\
 Creates a repository with a shorter name meant to be used in the repository_ctx,
 which needs to have `symlinks` for the interpreter. This is separate from the
