@@ -27,6 +27,11 @@ BEGIN_UNRELEASED_TEMPLATE
 ## Unreleased
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+and the sha256 values
+  behave differently when using `github.com` and the private mirror that mirrors
+  `github.com`. The contents of the `.sha256` files differ. What is more, to be able
+  to use the private mirror I need to set the `base_url` attribute in the uv.configure.
+  The bazel downloader config is not enough.
 
 {#v0-0-0-changed}
 ### Changed
@@ -103,6 +108,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Starlark-based evaluation of environment markers (requirements.txt conditionals)
   available (not enabled by default) for improved multi-platform build support.
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
+* (uv) Handle `.netrc` and `auth_patterns` auth when downloading `uv`. Work towards
+  [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 * (utils) Add a way to run a REPL for any `rules_python` target that returns
   a `PyInfo` provider.
 

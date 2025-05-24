@@ -18,6 +18,7 @@ EXPERIMENTAL: This is experimental and may be removed without notice
 A module extension for working with uv.
 """
 
+load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 load(":uv_repository.bzl", "uv_repository")
 load(":uv_toolchains_repo.bzl", "uv_toolchains_repo")
@@ -77,7 +78,7 @@ The version of uv to configure the sources for. If this is not specified it will
 last version used in the module or the default version set by `rules_python`.
 """,
     ),
-}
+} | AUTH_ATTRS
 
 default = tag_class(
     doc = """\
@@ -133,7 +134,7 @@ for a particular version.
     },
 )
 
-def _configure(config, *, platform, compatible_with, target_settings, urls = [], sha256 = "", override = False, **values):
+def _configure(config, *, platform, compatible_with, target_settings, auth_patterns, urls = [], sha256 = "", override = False, **values):
     """Set the value in the config if the value is provided"""
     for key, value in values.items():
         if not value:
@@ -144,6 +145,7 @@ def _configure(config, *, platform, compatible_with, target_settings, urls = [],
 
         config[key] = value
 
+    config.setdefault("auth_patterns", {}).update(auth_patterns)
     config.setdefault("platforms", {})
     if not platform:
         if compatible_with or target_settings or urls:
@@ -173,7 +175,8 @@ def process_modules(
         hub_name = "uv",
         uv_repository = uv_repository,
         toolchain_type = str(UV_TOOLCHAIN_TYPE),
-        hub_repo = uv_toolchains_repo):
+        hub_repo = uv_toolchains_repo,
+        get_auth = get_auth):
     """Parse the modules to get the config for 'uv' toolchains.
 
     Args:
@@ -182,6 +185,7 @@ def process_modules(
         uv_repository: the rule to create a uv_repository override.
         toolchain_type: the toolchain type to use here.
         hub_repo: the hub repo factory function to use.
+        get_auth: the auth function to use.
 
     Returns:
         the result of the hub_repo. Mainly used for tests.
@@ -216,6 +220,8 @@ def process_modules(
                 compatible_with = tag.compatible_with,
                 target_settings = tag.target_settings,
                 override = mod.is_root,
+                netrc = tag.netrc,
+                auth_patterns = tag.auth_patterns,
             )
 
     for key in [
@@ -271,6 +277,8 @@ def process_modules(
                 sha256 = tag.sha256,
                 urls = tag.urls,
                 override = mod.is_root,
+                netrc = tag.netrc,
+                auth_patterns = tag.auth_patterns,
             )
 
     if not versions:
@@ -301,6 +309,11 @@ def process_modules(
             for platform, src in config.get("urls", {}).items()
             if src.urls
         }
+        auth = {
+            "auth_patterns": config.get("auth_patterns"),
+            "netrc": config.get("netrc"),
+        }
+        auth = {k: v for k, v in auth.items() if v}
 
         # Or fallback to fetching them from GH manifest file
         # Example file: https://github.com/astral-sh/uv/releases/download/0.6.3/dist-manifest.json
@@ -313,6 +326,8 @@ def process_modules(
                 ),
                 manifest_filename = config["manifest_filename"],
                 platforms = sorted(platforms),
+                get_auth = get_auth,
+                **auth
             )
 
         for platform_name, platform in platforms.items():
@@ -327,6 +342,7 @@ def process_modules(
                 platform = platform_name,
                 urls = urls[platform_name].urls,
                 sha256 = urls[platform_name].sha256,
+                **auth
             )
 
             toolchain_names.append(toolchain_name)
@@ -363,7 +379,7 @@ def _overlap(first_collection, second_collection):
 
     return False
 
-def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms):
+def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, get_auth = get_auth, **auth_attrs):
     """Download the results about remote tool sources.
 
     This relies on the tools using the cargo packaging to infer the actual
@@ -431,10 +447,13 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                     "aarch64-apple-darwin"
                 ]
     """
+    auth_attr = struct(**auth_attrs)
     dist_manifest = module_ctx.path(manifest_filename)
+    urls = [base_url + "/" + manifest_filename]
     result = module_ctx.download(
-        base_url + "/" + manifest_filename,
+        url = urls,
         output = dist_manifest,
+        auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
     )
     if not result.success:
         fail(result)
@@ -454,11 +473,13 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
 
         checksum_fname = checksum["name"]
         checksum_path = module_ctx.path(checksum_fname)
+        urls = ["{}/{}".format(base_url, checksum_fname)]
         downloads[checksum_path] = struct(
             download = module_ctx.download(
-                "{}/{}".format(base_url, checksum_fname),
+                url = urls,
                 output = checksum_path,
                 block = False,
+                auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
             ),
             archive_fname = fname,
             platforms = checksum["target_triples"],
@@ -473,7 +494,7 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
 
         sha256, _, checksummed_fname = module_ctx.read(checksum_path).partition(" ")
         checksummed_fname = checksummed_fname.strip(" *\n")
-        if archive_fname != checksummed_fname:
+        if checksummed_fname and archive_fname != checksummed_fname:
             fail("The checksum is for a different file, expected '{}' but got '{}'".format(
                 archive_fname,
                 checksummed_fname,
