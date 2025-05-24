@@ -71,6 +71,7 @@ func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 		pythonProjectRoot := cfg.PythonProjectRoot()
 		provide := importSpecFromSrc(pythonProjectRoot, f.Pkg, src)
+		// log.Printf("import to index: %v", provide.Imp)
 		provides = append(provides, provide)
 	}
 	if len(provides) == 0 {
@@ -148,12 +149,66 @@ func (py *Resolver) Resolve(
 		modules := modulesRaw.(*treeset.Set)
 		it := modules.Iterator()
 		explainDependency := os.Getenv("EXPLAIN_DEPENDENCY")
+		// Resolve relative paths for package generation
+		isPackageGeneration := !cfg.PerFileGeneration() && !cfg.CoarseGrainedGeneration()
 		hasFatalError := false
 	MODULES_LOOP:
 		for it.Next() {
 			mod := it.Value().(module)
-			moduleParts := strings.Split(mod.Name, ".")
-			possibleModules := []string{mod.Name}
+			moduleName := mod.Name
+			// Transform relative imports `.` or `..foo.bar` into the package path from root.
+			if strings.HasPrefix(mod.From, ".") {
+				if !isPackageGeneration {
+					continue MODULES_LOOP
+				}
+
+				// Count number of leading dots in mod.From (e.g., ".." = 2, "...foo.bar" = 3)
+				relativeDepth := 0
+				for i := 0; i < len(mod.From); i++ {
+					if mod.From[i] == '.' {
+						relativeDepth++
+					} else {
+						break
+					}
+				}
+
+				// Extract final symbol (e.g., "some_function") from mod.Name
+				imported := mod.Name
+				if idx := strings.LastIndex(mod.Name, "."); idx >= 0 {
+					imported = mod.Name[idx+1:]
+				}
+
+				// Optional subpath in 'from' clause, e.g. "from ...my_library.foo import x"
+				fromPath := strings.TrimLeft(mod.From, ".")
+				var fromParts []string
+				if fromPath != "" {
+					fromParts = strings.Split(fromPath, ".")
+				}
+
+				// Current Bazel package as path segments
+				pkgParts := strings.Split(from.Pkg, "/")
+
+				if relativeDepth-1 > len(pkgParts) {
+					log.Printf("ERROR: Invalid relative import %q in %q: exceeds package root.", mod.Name, mod.Filepath)
+					continue MODULES_LOOP
+				}
+
+				// Go up relativeDepth - 1 levels
+				baseParts := pkgParts
+				if relativeDepth > 1 {
+					baseParts = pkgParts[:len(pkgParts)-(relativeDepth-1)]
+				}
+				// Build absolute module path
+				absParts := append([]string{}, baseParts...)       // base path
+				absParts = append(absParts, fromParts...)          // subpath from 'from'
+				absParts = append(absParts, imported)              // actual imported symbol
+
+				moduleName = strings.Join(absParts, ".")
+			}
+
+
+			moduleParts := strings.Split(moduleName, ".")
+			possibleModules := []string{moduleName}
 			for len(moduleParts) > 1 {
 				// Iterate back through the possible imports until
 				// a match is found.
