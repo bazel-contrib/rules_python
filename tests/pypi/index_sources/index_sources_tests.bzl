@@ -23,42 +23,72 @@ def _test_no_simple_api_sources(env):
     inputs = {
         "foo @ git+https://github.com/org/foo.git@deadbeef": struct(
             requirement = "foo @ git+https://github.com/org/foo.git@deadbeef",
+            requirement_line = "foo @ git+https://github.com/org/foo.git@deadbeef",
             marker = "",
             url = "git+https://github.com/org/foo.git@deadbeef",
             shas = [],
             version = "",
+            filename = "",
         ),
         "foo==0.0.1": struct(
             requirement = "foo==0.0.1",
+            requirement_line = "foo==0.0.1",
             marker = "",
             url = "",
             version = "0.0.1",
+            filename = "",
         ),
         "foo==0.0.1 @ https://someurl.org": struct(
             requirement = "foo==0.0.1 @ https://someurl.org",
+            requirement_line = "foo==0.0.1 @ https://someurl.org",
             marker = "",
             url = "https://someurl.org",
             version = "0.0.1",
+            filename = "",
         ),
         "foo==0.0.1 @ https://someurl.org/package.whl": struct(
-            requirement = "foo==0.0.1 @ https://someurl.org/package.whl",
+            requirement = "foo==0.0.1",
+            requirement_line = "foo==0.0.1 @ https://someurl.org/package.whl",
             marker = "",
             url = "https://someurl.org/package.whl",
             version = "0.0.1",
+            filename = "package.whl",
         ),
         "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef": struct(
-            requirement = "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef",
+            requirement = "foo==0.0.1",
+            requirement_line = "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef",
             marker = "",
             url = "https://someurl.org/package.whl",
             shas = ["deadbeef"],
             version = "0.0.1",
+            filename = "package.whl",
         ),
         "foo==0.0.1 @ https://someurl.org/package.whl; python_version < \"2.7\"\\    --hash=sha256:deadbeef": struct(
-            requirement = "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef",
+            requirement = "foo==0.0.1",
+            requirement_line = "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef",
             marker = "python_version < \"2.7\"",
             url = "https://someurl.org/package.whl",
             shas = ["deadbeef"],
             version = "0.0.1",
+            filename = "package.whl",
+        ),
+        "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f": struct(
+            requirement = "foo[extra]",
+            requirement_line = "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f",
+            marker = "",
+            url = "https://example.org/foo-1.0.tar.gz",
+            shas = ["deadbe0f"],
+            version = "",
+            filename = "foo-1.0.tar.gz",
+        ),
+        "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=deadbeef": struct(
+            requirement = "torch",
+            requirement_line = "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=deadbeef",
+            marker = "",
+            url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl",
+            shas = ["deadbeef"],
+            version = "",
+            filename = "torch-2.6.0+cpu-cp311-cp311-linux_x86_64.whl",
         ),
     }
     for input, want in inputs.items():
@@ -66,9 +96,10 @@ def _test_no_simple_api_sources(env):
         env.expect.that_collection(got.shas).contains_exactly(want.shas if hasattr(want, "shas") else [])
         env.expect.that_str(got.version).equals(want.version)
         env.expect.that_str(got.requirement).equals(want.requirement)
-        env.expect.that_str(got.requirement_line).equals(got.requirement)
+        env.expect.that_str(got.requirement_line).equals(got.requirement_line)
         env.expect.that_str(got.marker).equals(want.marker)
         env.expect.that_str(got.url).equals(want.url)
+        env.expect.that_str(got.filename).equals(want.filename)
 
 _tests.append(_test_no_simple_api_sources)
 

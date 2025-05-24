@@ -49,7 +49,7 @@ def _impl(rctx):
         "config.bzl",
         rctx.attr._config_template,
         substitutions = {
-            "%%TARGET_PLATFORMS%%": render.list(rctx.attr.target_platforms),
+            "%%WHL_MAP%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
         },
     )
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
@@ -86,10 +86,6 @@ The list of packages that will be exposed via all_*requirements macros. Defaults
         "repo_name": attr.string(
             mandatory = True,
             doc = "The apparent name of the repo. This is needed because in bzlmod, the name attribute becomes the canonical name.",
-        ),
-        "target_platforms": attr.string_list(
-            mandatory = True,
-            doc = "All of the target platforms for the hub repo",
         ),
         "whl_map": attr.string_dict(
             mandatory = True,

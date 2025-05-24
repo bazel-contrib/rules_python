@@ -499,8 +499,12 @@ def Main():
   # The magic string percent-main-percent is replaced with the runfiles-relative
   # filename of the main file of the Python binary in BazelPythonSemantics.java.
   main_rel_path = '%main%'
-  if IsWindows():
-    main_rel_path = main_rel_path.replace('/', os.sep)
+  # NOTE: We call normpath for two reasons:
+  # 1. Transform Bazel `foo/bar` to Windows `foo\bar`
+  # 2. Transform `_main/../foo/main.py` to simply `foo/main.py`, which
+  #    matters if `_main` doesn't exist (which can occur if a binary
+  #    is packaged and needs no artifacts from the main repo)
+  main_rel_path = os.path.normpath(main_rel_path)
 
   if IsRunningFromZip():
     module_space = CreateModuleSpace()

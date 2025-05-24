@@ -162,7 +162,7 @@ def _test_py_info_builder_impl(env, targets):
         direct_pyi,
         trans_pyi,
     ) = targets.misc[DefaultInfo].files.to_list()
-    builder = PyInfoBuilder()
+    builder = PyInfoBuilder.new()
     builder.direct_pyc_files.add(direct_pyc)
     builder.direct_original_sources.add(original_py)
     builder.direct_pyi_files.add(direct_pyi)

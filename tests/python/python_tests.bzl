@@ -149,6 +149,7 @@ def _test_default(env):
         "base_url",
         "ignore_root_user_error",
         "tool_versions",
+        "platforms",
     ])
     env.expect.that_bool(py.config.default["ignore_root_user_error"]).equals(True)
     env.expect.that_str(py.default_python_version).equals("3.11")
@@ -746,12 +747,6 @@ def _test_single_version_override_errors(env):
             ],
             want_error = "Only a single 'python.single_version_override' can be present for '3.12.4'",
         ),
-        struct(
-            overrides = [
-                _single_version_override(python_version = "3.12.4+3", distutils_content = "foo"),
-            ],
-            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '3.12.4+3'",
-        ),
     ]:
         errors = []
         parse_modules(
@@ -781,13 +776,13 @@ def _test_single_version_platform_override_errors(env):
             overrides = [
                 _single_version_platform_override(python_version = "3.12", platform = "foo"),
             ],
-            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '3.12'",
+            want_error = "The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '3.12'",
         ),
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12.1+my_build", platform = "foo"),
+                _single_version_platform_override(python_version = "foo", platform = "foo"),
             ],
-            want_error = "The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '3.12.1+my_build'",
+            want_error = "Failed to parse PEP 440 version identifier 'foo'. Parse error at 'foo'",
         ),
     ]:
         errors = []
@@ -799,7 +794,7 @@ def _test_single_version_platform_override_errors(env):
                     single_version_platform_override = test.overrides,
                 ),
             ),
-            _fail = errors.append,
+            _fail = lambda *a: errors.append(" ".join(a)),
         )
         env.expect.that_collection(errors).contains_exactly([test.want_error])
 

@@ -72,7 +72,7 @@ class TestWhlFilegroup(unittest.TestCase):
             extras={},
             enable_implicit_namespace_pkgs=False,
             platforms=[],
-            enable_pipstar = False,
+            enable_pipstar=False,
         )
 
         want_files = [
@@ -97,7 +97,6 @@ class TestWhlFilegroup(unittest.TestCase):
             deps_by_platform={},
             entry_points=[],
             name="example-minimal-package",
-            python_version="3.11.11",
             version="0.0.1",
         )
         self.assertEqual(want, metadata_file_content)

@@ -122,7 +122,9 @@ def evaluate(marker, *, env, strict = True, **kwargs):
         **kwargs: Extra kwargs to be passed to the expression evaluator.
 
     Returns:
-        The {type}`bool` If the marker is compatible with the given env.
+        The {type}`bool | str` If the marker is compatible with the given env. If strict is
+        `False`, then the output type is `str` which will represent the remaining
+        expression that has not been evaluated.
     """
     tokens = tokenize(marker)
 

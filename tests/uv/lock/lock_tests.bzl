@@ -16,7 +16,7 @@
 
 load("@bazel_skylib//rules:native_binary.bzl", "native_test")
 load("//python/uv:lock.bzl", "lock")
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
 def lock_test_suite(name):
     """The test suite with various lock-related integration tests

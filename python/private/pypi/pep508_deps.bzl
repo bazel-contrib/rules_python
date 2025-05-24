@@ -15,23 +15,17 @@
 """This module is for implementing PEP508 compliant METADATA deps parsing.
 """
 
-load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING")
-load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
-load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
-load(":pep508_platform.bzl", "platform", "platform_from_str")
 load(":pep508_requirement.bzl", "requirement")
 
 def deps(
         name,
         *,
         requires_dist,
-        platforms = [],
         extras = [],
         excludes = [],
-        default_python_version = None,
-        minor_mapping = MINOR_MAPPING):
+        include = []):
     """Parse the RequiresDist from wheel METADATA
 
     Args:
@@ -39,12 +33,9 @@ def deps(
         requires_dist: {type}`list[str]` the list of RequiresDist lines from the
             METADATA file.
         excludes: {type}`list[str]` what packages should we exclude.
+        include: {type}`list[str]` what packages should we exclude. If it is not
+            specified, then we will include all deps from `requires_dist`.
         extras: {type}`list[str]` the requested extras to generate targets for.
-        platforms: {type}`list[str]` the list of target platform strings.
-        default_python_version: {type}`str` the host python version.
-        minor_mapping: {type}`type[str, str]` the minor mapping to use when
-            resolving to the full python version as DEFAULT_PYTHON_VERSION can by
-            of format `3.x`.
 
     Returns:
         A struct with attributes:
@@ -60,37 +51,18 @@ def deps(
     deps_select = {}
     name = normalize_name(name)
     want_extras = _resolve_extras(name, reqs, extras)
+    include = [normalize_name(n) for n in include]
 
     # drop self edges
     excludes = [name] + [normalize_name(x) for x in excludes]
-
-    default_python_version = default_python_version or DEFAULT_PYTHON_VERSION
-    if default_python_version:
-        # if it is not bzlmod, then DEFAULT_PYTHON_VERSION may be unset
-        default_python_version = full_version(
-            version = default_python_version,
-            minor_mapping = minor_mapping,
-        )
-    platforms = [
-        platform_from_str(p, python_version = default_python_version)
-        for p in platforms
-    ]
-
-    abis = sorted({p.abi: True for p in platforms if p.abi})
-    if default_python_version and len(abis) > 1:
-        _, _, tail = default_python_version.partition(".")
-        default_abi = "cp3" + tail
-    elif len(abis) > 1:
-        fail(
-            "all python versions need to be specified explicitly, got: {}".format(platforms),
-        )
-    else:
-        default_abi = None
 
     reqs_by_name = {}
 
     for req in reqs:
         if req.name_ in excludes:
+            continue
+
+        if include and req.name_ not in include:
             continue
 
         reqs_by_name.setdefault(req.name, []).append(req)
@@ -102,55 +74,25 @@ def deps(
             normalize_name(name),
             reqs,
             extras = want_extras,
-            platforms = platforms,
-            default_abi = default_abi,
         )
 
     return struct(
         deps = sorted(deps),
         deps_select = {
-            _platform_str(p): sorted(deps)
-            for p, deps in deps_select.items()
+            d: markers
+            for d, markers in sorted(deps_select.items())
         },
     )
 
-def _platform_str(self):
-    if self.abi == None:
-        return "{}_{}".format(self.os, self.arch)
-
-    return "{}_{}_{}".format(
-        self.abi,
-        self.os or "anyos",
-        self.arch or "anyarch",
-    )
-
-def _add(deps, deps_select, dep, platform):
+def _add(deps, deps_select, dep, markers = None):
     dep = normalize_name(dep)
 
-    if platform == None:
+    if not markers:
         deps[dep] = True
-
-        # If the dep is in the platform-specific list, remove it from the select.
-        pop_keys = []
-        for p, _deps in deps_select.items():
-            if dep not in _deps:
-                continue
-
-            _deps.pop(dep)
-            if not _deps:
-                pop_keys.append(p)
-
-        for p in pop_keys:
-            deps_select.pop(p)
-        return
-
-    if dep in deps:
-        # If the dep is already in the main dependency list, no need to add it in the
-        # platform-specific dependency list.
-        return
-
-    # Add the platform-specific branch
-    deps_select.setdefault(platform, {})[dep] = True
+    elif len(markers) == 1:
+        deps_select[dep] = markers[0]
+    else:
+        deps_select[dep] = "({})".format(") or (".join(sorted(markers)))
 
 def _resolve_extras(self_name, reqs, extras):
     """Resolve extras which are due to depending on self[some_other_extra].
@@ -207,37 +149,24 @@ def _resolve_extras(self_name, reqs, extras):
     # Poor mans set
     return sorted({x: None for x in extras})
 
-def _add_reqs(deps, deps_select, dep, reqs, *, extras, platforms, default_abi = None):
+def _add_reqs(deps, deps_select, dep, reqs, *, extras):
     for req in reqs:
         if not req.marker:
-            _add(deps, deps_select, dep, None)
+            _add(deps, deps_select, dep)
             return
 
-    platforms_to_add = {}
-    for plat in platforms:
-        if plat in platforms_to_add:
-            # marker evaluation is more expensive than this check
-            continue
-
-        added = False
-        for extra in extras:
-            if added:
+    markers = {}
+    for req in reqs:
+        for x in extras:
+            m = evaluate(req.marker, env = {"extra": x}, strict = False)
+            if m == False:
+                continue
+            elif m == True:
+                _add(deps, deps_select, dep)
                 break
+            else:
+                markers[m] = None
+                continue
 
-            for req in reqs:
-                if evaluate(req.marker, env = env(target_platform = plat, extra = extra)):
-                    platforms_to_add[plat] = True
-                    added = True
-                    break
-
-    if len(platforms_to_add) == len(platforms):
-        # the dep is in all target platforms, let's just add it to the regular
-        # list
-        _add(deps, deps_select, dep, None)
-        return
-
-    for plat in platforms_to_add:
-        if default_abi:
-            _add(deps, deps_select, dep, plat)
-        if plat.abi == default_abi or not default_abi:
-            _add(deps, deps_select, dep, platform(os = plat.os, arch = plat.arch))
+    if markers:
+        _add(deps, deps_select, dep, sorted(markers))

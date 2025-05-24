@@ -210,7 +210,7 @@ If True, suppress printing stdout and stderr output to the terminal.
 If you would like to get more diagnostic output, set
 {envvar}`RULES_PYTHON_REPO_DEBUG=1 <RULES_PYTHON_REPO_DEBUG>`
 or
-{envvar}`RULES_PYTHON_REPO_DEBUG_VERBOSITY=<INFO|DEBUG|TRACE> <RULES_PYTHON_REPO_DEBUG_VERBOSITY>`
+{envvar}`RULES_PYTHON_REPO_DEBUG_VERBOSITY=INFO|DEBUG|TRACE <RULES_PYTHON_REPO_DEBUG_VERBOSITY>`
 """,
     ),
     # 600 is documented as default here: https://docs.bazel.build/versions/master/skylark/lib/repository_ctx.html#execute

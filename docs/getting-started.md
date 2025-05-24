@@ -7,7 +7,7 @@ and the older way of using `WORKSPACE`.
 It assumes you have a `requirements.txt` file with your PyPI dependencies.
 
 For more details information about configuring `rules_python`, see:
-* [Configuring the runtime](toolchains)
+* [Configuring the runtime](configuring-toolchains)
 * [Configuring third party dependencies (pip/pypi)](pypi-dependencies)
 * [API docs](api/index)
 

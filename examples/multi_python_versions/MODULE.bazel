@@ -17,8 +17,6 @@ python.defaults(
 )
 python.toolchain(
     configure_coverage_tool = True,
-    # Only set when you have mulitple toolchain versions.
-    is_default = True,
     python_version = "3.9",
 )
 python.toolchain(

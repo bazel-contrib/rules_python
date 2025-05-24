@@ -405,7 +405,7 @@ def create_py_info(
         transitive sources collected from dependencies (the latter is only
         necessary for deprecated extra actions support).
     """
-    py_info = PyInfoBuilder()
+    py_info = PyInfoBuilder.new()
     py_info.site_packages_symlinks.add(site_packages_symlinks)
     py_info.direct_original_sources.add(original_sources)
     py_info.direct_pyc_files.add(required_pyc_files)

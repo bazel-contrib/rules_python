@@ -276,6 +276,41 @@ BZLMOD_EXT_TAG_A_DOC_STRING
 """
         self.assertIn(expected, actual)
 
+    def test_render_repo_rule(self):
+        proto_text = """
+file: "@repo//pkg:foo.bzl"
+repository_rule_info: {
+  rule_name: "repository_rule",
+  doc_string: "REPOSITORY_RULE_DOC_STRING"
+  attribute: {
+    name: "repository_rule_attribute_a",
+    doc_string: "REPOSITORY_RULE_ATTRIBUTE_A_DOC_STRING"
+    type: BOOLEAN
+    default_value: "True"
+  }
+  environ: "ENV_VAR_A"
+}
+"""
+        actual = self._render(proto_text)
+        expected = """
+::::::{bzl:repo-rule} repository_rule(repository_rule_attribute_a=True)
+
+REPOSITORY_RULE_DOC_STRING
+
+:attr repository_rule_attribute_a:
+  {bzl:default-value}`True`
+  {type}`bool`
+  REPOSITORY_RULE_ATTRIBUTE_A_DOC_STRING
+  :::{bzl:attr-info} Info
+  :::
+
+
+:envvars: ENV_VAR_A
+
+::::::
+"""
+        self.assertIn(expected, actual)
+
 
 if __name__ == "__main__":
     absltest.main()

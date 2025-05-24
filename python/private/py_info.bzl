@@ -82,7 +82,11 @@ def _PyInfo_init(
     }
 
 PyInfo, _unused_raw_py_info_ctor = define_bazel_6_provider(
-    doc = "Encapsulates information provided by the Python rules.",
+    doc = """Encapsulates information provided by the Python rules.
+
+Instead of creating this object directly, use {obj}`PyInfoBuilder` and
+the {obj}`PyCommonApi` utilities.
+""",
     init = _PyInfo_init,
     fields = {
         "direct_original_sources": """
@@ -265,7 +269,65 @@ This field is currently unused in Bazel and may go away in the future.
 # The "effective" PyInfo is what the canonical //python:py_info.bzl%PyInfo symbol refers to
 _EffectivePyInfo = PyInfo if (config.enable_pystar or BuiltinPyInfo == None) else BuiltinPyInfo
 
-def PyInfoBuilder():
+def _PyInfoBuilder_typedef():
+    """Builder for PyInfo.
+
+    To create an instance, use {obj}`py_common.get()` and call `PyInfoBuilder()`
+
+    :::{field} direct_original_sources
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} direct_pyc_files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} direct_pyi_files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} imports
+    :type: DepsetBuilder[str]
+    :::
+
+    :::{field} transitive_implicit_pyc_files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} transitive_implicit_pyc_source_files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} transitive_original_sources
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} transitive_pyc_files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} transitive_pyi_files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} transitive_sources
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{field} site_packages_symlinks
+    :type: DepsetBuilder[tuple[str | None, str]]
+
+    NOTE: This depset has `topological` order
+    :::
+    """
+
+def _PyInfoBuilder_new():
+    """Creates an instance.
+
+    Returns:
+        {type}`PyInfoBuilder`
+    """
+
     # buildifier: disable=uninitialized
     self = struct(
         _has_py2_only_sources = [False],
@@ -301,35 +363,116 @@ def PyInfoBuilder():
     return self
 
 def _PyInfoBuilder_get_has_py3_only_sources(self):
+    """Get the `has_py3_only_sources` value.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`bool`
+    """
     return self._has_py3_only_sources[0]
 
 def _PyInfoBuilder_get_has_py2_only_sources(self):
+    """Get the `has_py2_only_sources` value.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`bool`
+    """
     return self._has_py2_only_sources[0]
 
 def _PyInfoBuilder_set_has_py2_only_sources(self, value):
+    """Sets `has_py2_only_sources` to `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`bool` The value to set.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
     self._has_py2_only_sources[0] = value
     return self
 
 def _PyInfoBuilder_set_has_py3_only_sources(self, value):
+    """Sets `has_py3_only_sources` to `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`bool` The value to set.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
     self._has_py3_only_sources[0] = value
     return self
 
 def _PyInfoBuilder_merge_has_py2_only_sources(self, value):
+    """Sets `has_py2_only_sources` based on current and incoming `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`bool` Another `has_py2_only_sources` value. It will
+            be merged into this builder's state.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
     self._has_py2_only_sources[0] = self._has_py2_only_sources[0] or value
     return self
 
 def _PyInfoBuilder_merge_has_py3_only_sources(self, value):
+    """Sets `has_py3_only_sources` based on current and incoming `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`bool` Another `has_py3_only_sources` value. It will
+            be merged into this builder's state.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
     self._has_py3_only_sources[0] = self._has_py3_only_sources[0] or value
     return self
 
 def _PyInfoBuilder_merge_uses_shared_libraries(self, value):
+    """Sets `uses_shared_libraries` based on current and incoming `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`bool` Another `uses_shared_libraries` value. It will
+            be merged into this builder's state.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
     self._uses_shared_libraries[0] = self._uses_shared_libraries[0] or value
     return self
 
 def _PyInfoBuilder_get_uses_shared_libraries(self):
+    """Get the `uses_shared_libraries` value.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`bool`
+    """
     return self._uses_shared_libraries[0]
 
 def _PyInfoBuilder_set_uses_shared_libraries(self, value):
+    """Sets `uses_shared_libraries` to `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`bool` The value to set.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
     self._uses_shared_libraries[0] = value
     return self
 
@@ -344,7 +487,7 @@ def _PyInfoBuilder_merge(self, *infos, direct = []):
             direct fields into this object's direct fields.
 
     Returns:
-        {type}`PyInfoBuilder` the current object
+        {type}`PyInfoBuilder` self
     """
     return self.merge_all(list(infos), direct = direct)
 
@@ -359,7 +502,7 @@ def _PyInfoBuilder_merge_all(self, transitive, *, direct = []):
             direct fields into this object's direct fields.
 
     Returns:
-        {type}`PyInfoBuilder` the current object
+        {type}`PyInfoBuilder` self
     """
     for info in direct:
         # BuiltinPyInfo doesn't have this field
@@ -392,11 +535,11 @@ def _PyInfoBuilder_merge_target(self, target):
     Args:
         self: implicitly added.
         target: {type}`Target` targets that provide PyInfo, or other relevant
-        providers, will be merged into this object. If a target doesn't provide
-        any relevant providers, it is ignored.
+            providers, will be merged into this object. If a target doesn't provide
+            any relevant providers, it is ignored.
 
     Returns:
-        {type}`PyInfoBuilder` the current object.
+        {type}`PyInfoBuilder` self.
     """
     if PyInfo in target:
         self.merge(target[PyInfo])
@@ -410,18 +553,26 @@ def _PyInfoBuilder_merge_targets(self, targets):
     Args:
         self: implicitly added.
         targets: {type}`list[Target]`
-        targets that provide PyInfo, or other relevant
-        providers, will be merged into this object. If a target doesn't provide
-        any relevant providers, it is ignored.
+            targets that provide PyInfo, or other relevant
+            providers, will be merged into this object. If a target doesn't provide
+            any relevant providers, it is ignored.
 
     Returns:
-        {type}`PyInfoBuilder` the current object.
+        {type}`PyInfoBuilder` self.
     """
     for t in targets:
         self.merge_target(t)
     return self
 
 def _PyInfoBuilder_build(self):
+    """Builds into a {obj}`PyInfo` object.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`PyInfo`
+    """
     if config.enable_pystar:
         kwargs = dict(
             direct_original_sources = self.direct_original_sources.build(),
@@ -447,6 +598,15 @@ def _PyInfoBuilder_build(self):
     )
 
 def _PyInfoBuilder_build_builtin_py_info(self):
+    """Builds into a Bazel-builtin PyInfo object, if available.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`BuiltinPyInfo | None` None is returned if Bazel's
+        builtin PyInfo object is disabled.
+    """
     if BuiltinPyInfo == None:
         return None
 
@@ -457,3 +617,25 @@ def _PyInfoBuilder_build_builtin_py_info(self):
         transitive_sources = self.transitive_sources.build(),
         uses_shared_libraries = self._uses_shared_libraries[0],
     )
+
+# Provided for documentation purposes
+# buildifier: disable=name-conventions
+PyInfoBuilder = struct(
+    TYPEDEF = _PyInfoBuilder_typedef,
+    new = _PyInfoBuilder_new,
+    build = _PyInfoBuilder_build,
+    build_builtin_py_info = _PyInfoBuilder_build_builtin_py_info,
+    get_has_py2_only_sources = _PyInfoBuilder_get_has_py2_only_sources,
+    get_has_py3_only_sources = _PyInfoBuilder_get_has_py3_only_sources,
+    get_uses_shared_libraries = _PyInfoBuilder_get_uses_shared_libraries,
+    merge = _PyInfoBuilder_merge,
+    merge_all = _PyInfoBuilder_merge_all,
+    merge_has_py2_only_sources = _PyInfoBuilder_merge_has_py2_only_sources,
+    merge_has_py3_only_sources = _PyInfoBuilder_merge_has_py3_only_sources,
+    merge_target = _PyInfoBuilder_merge_target,
+    merge_targets = _PyInfoBuilder_merge_targets,
+    merge_uses_shared_libraries = _PyInfoBuilder_merge_uses_shared_libraries,
+    set_has_py2_only_sources = _PyInfoBuilder_set_has_py2_only_sources,
+    set_has_py3_only_sources = _PyInfoBuilder_set_has_py3_only_sources,
+    set_uses_shared_libraries = _PyInfoBuilder_set_uses_shared_libraries,
+)

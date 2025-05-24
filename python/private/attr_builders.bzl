@@ -1222,7 +1222,7 @@ def _StringList_typedef():
     :::
 
     :::{field} default
-    :type: Value[list[str] | configuration_field]
+    :type: list[str] | configuration_field
     :::
 
     :::{function} doc() -> str
@@ -1235,6 +1235,9 @@ def _StringList_typedef():
     :::
 
     :::{function} set_allow_empty(v: bool)
+    :::
+
+    :::{function} set_default(v: list[str] | configuration_field)
     :::
 
     :::{function} set_doc(v: str)

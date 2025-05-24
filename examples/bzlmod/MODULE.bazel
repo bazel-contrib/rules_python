@@ -28,10 +28,13 @@ bazel_dep(name = "rules_rust", version = "0.54.1")
 # We next initialize the python toolchain using the extension.
 # You can set different Python versions in this block.
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    # Use python.defaults if you have defined multiple toolchain versions.
+    python_version = "3.9",
+    python_version_env = "BAZEL_PYTHON_VERSION",
+)
 python.toolchain(
     configure_coverage_tool = True,
-    # Only set when you have multiple toolchain versions.
-    is_default = True,
     python_version = "3.9",
 )
 

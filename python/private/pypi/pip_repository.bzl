@@ -89,19 +89,20 @@ def _pip_repository_impl(rctx):
             python_interpreter_target = rctx.attr.python_interpreter_target,
             srcs = rctx.attr._evaluate_markers_srcs,
         ),
+        extract_url_srcs = False,
     )
     selected_requirements = {}
     options = None
     repository_platform = host_platform(rctx)
     for name, requirements in requirements_by_platform.items():
-        r = select_requirement(
+        requirement = select_requirement(
             requirements,
             platform = None if rctx.attr.download_only else repository_platform,
         )
-        if not r:
+        if not requirement:
             continue
-        options = options or r.extra_pip_args
-        selected_requirements[name] = r.srcs.requirement_line
+        options = options or requirement.extra_pip_args
+        selected_requirements[name] = requirement.line
 
     bzl_packages = sorted(selected_requirements.keys())
 

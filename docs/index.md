@@ -101,8 +101,10 @@ pip
 coverage
 precompiling
 gazelle
+REPL <repl>
 Extending <extending>
 Contributing <contributing>
+devguide
 support
 Changelog <changelog>
 api/index

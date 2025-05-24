@@ -262,9 +262,9 @@ s3cmd==2.1.0 \
     --hash=sha256:49cd23d516b17974b22b611a95ce4d93fe326feaa07320bd1d234fed68cbccfa \
     --hash=sha256:966b0a494a916fc3b4324de38f089c86c70ee90e8e1cae6d59102103a4c0cc03
     # via -r examples/bzlmod/requirements.in
-setuptools==65.6.3 \
-    --hash=sha256:57f6f22bde4e042978bcd50176fdb381d7c21a9efa4041202288d3737a0c6a54 \
-    --hash=sha256:a7620757bf984b58deaf32fc8a4577a9bbc0850cf92c20e1ce41c38c19e5fb75
+setuptools==78.1.1 \
+    --hash=sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561 \
+    --hash=sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d
     # via
     #   babel
     #   yamllint

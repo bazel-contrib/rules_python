@@ -20,7 +20,7 @@ load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
 load(":glob_excludes.bzl", "glob_excludes")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
-load(":semver.bzl", "semver")
+load(":version.bzl", "version")
 
 _IS_FREETHREADED = Label("//python/config_settings:is_py_freethreaded")
 
@@ -53,8 +53,11 @@ def define_hermetic_runtime_toolchain_impl(
             use.
     """
     _ = name  # @unused
-    version_info = semver(python_version)
-    version_dict = version_info.to_dict()
+    version_info = version.parse(python_version)
+    version_dict = {
+        "major": version_info.release[0],
+        "minor": version_info.release[1],
+    }
     native.filegroup(
         name = "files",
         srcs = native.glob(
@@ -198,9 +201,9 @@ def define_hermetic_runtime_toolchain_impl(
         files = [":files"],
         interpreter = python_bin,
         interpreter_version_info = {
-            "major": str(version_info.major),
-            "micro": str(version_info.patch),
-            "minor": str(version_info.minor),
+            "major": str(version_info.release[0]),
+            "micro": str(version_info.release[2]),
+            "minor": str(version_info.release[1]),
         },
         coverage_tool = select({
             # Convert empty string to None

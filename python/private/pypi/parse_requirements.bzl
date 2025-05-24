@@ -40,6 +40,7 @@ def parse_requirements(
         extra_pip_args = [],
         get_index_urls = None,
         evaluate_markers = None,
+        extract_url_srcs = True,
         logger = None):
     """Get the requirements with platforms that the requirements apply to.
 
@@ -58,6 +59,8 @@ def parse_requirements(
             the platforms stored as values in the input dict. Returns the same
             dict, but with values being platforms that are compatible with the
             requirements line.
+        extract_url_srcs: A boolean to enable extracting URLs from requirement
+            lines to enable using bazel downloader.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
 
     Returns:
@@ -206,7 +209,7 @@ def parse_requirements(
             ret_requirements.append(
                 struct(
                     distribution = r.distribution,
-                    srcs = r.srcs,
+                    line = r.srcs.requirement if extract_url_srcs and (whls or sdist) else r.srcs.requirement_line,
                     target_platforms = sorted(target_platforms),
                     extra_pip_args = r.extra_pip_args,
                     whls = whls,
@@ -281,32 +284,26 @@ def _add_dists(*, requirement, index_urls, logger = None):
         logger: A logger for printing diagnostic info.
     """
 
-    # Handle direct URLs in requirements
     if requirement.srcs.url:
-        url = requirement.srcs.url
-        _, _, filename = url.rpartition("/")
-        filename, _, _ = filename.partition("#sha256=")
-        if "." not in filename:
-            # detected filename has no extension, it might be an sdist ref
-            # TODO @aignas 2025-04-03: should be handled if the following is fixed:
-            # https://github.com/bazel-contrib/rules_python/issues/2363
+        if not requirement.srcs.filename:
+            if logger:
+                logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
+                    requirement.srcs.url,
+                ))
             return [], None
 
-        if "@" in filename:
-            # this is most likely foo.git@git_sha, skip special handling of these
-            return [], None
-
-        direct_url_dist = struct(
-            url = url,
-            filename = filename,
+        # Handle direct URLs in requirements
+        dist = struct(
+            url = requirement.srcs.url,
+            filename = requirement.srcs.filename,
             sha256 = requirement.srcs.shas[0] if requirement.srcs.shas else "",
             yanked = False,
         )
 
-        if filename.endswith(".whl"):
-            return [direct_url_dist], None
+        if dist.filename.endswith(".whl"):
+            return [dist], None
         else:
-            return [], direct_url_dist
+            return [], dist
 
     if not index_urls:
         return [], None

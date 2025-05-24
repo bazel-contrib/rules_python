@@ -17,11 +17,12 @@
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load("//python/private:semver.bzl", "semver")
+load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
@@ -35,9 +36,9 @@ load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_library.bzl", "whl_library")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
-def _major_minor_version(version):
-    version = semver(version)
-    return "{}.{}".format(version.major, version.minor)
+def _major_minor_version(version_str):
+    ver = version.parse(version_str)
+    return "{}.{}".format(ver.release[0], ver.release[1])
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -72,7 +73,8 @@ def _create_whl_repos(
         available_interpreters = INTERPRETER_LABELS,
         minor_mapping = MINOR_MAPPING,
         evaluate_markers = evaluate_markers_py,
-        get_index_urls = None):
+        get_index_urls = None,
+        enable_pipstar = False):
     """create all of the whl repositories
 
     Args:
@@ -87,6 +89,7 @@ def _create_whl_repos(
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
         evaluate_markers: the function used to evaluate the markers.
+        enable_pipstar: enable the pipstar feature.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -216,7 +219,6 @@ def _create_whl_repos(
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
             envsubst = pip_attr.envsubst,
-            experimental_target_platforms = pip_attr.experimental_target_platforms,
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
@@ -227,6 +229,9 @@ def _create_whl_repos(
                 for p, args in whl_overrides.get(whl_name, {}).items()
             },
         )
+        if not enable_pipstar:
+            maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
+
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
         maybe_args_with_default = dict(
             # The following values have defaults next to them
@@ -249,6 +254,7 @@ def _create_whl_repos(
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
                 multiple_requirements_for_whl = len(requirements) > 1.,
+                enable_pipstar = enable_pipstar,
             ).items():
                 repo_name = "{}_{}".format(pip_name, repo_name)
                 if repo_name in whl_libraries:
@@ -269,15 +275,9 @@ def _create_whl_repos(
         },
         extra_aliases = extra_aliases,
         whl_libraries = whl_libraries,
-        target_platforms = {
-            plat: None
-            for reqs in requirements_by_platform.values()
-            for req in reqs
-            for plat in req.target_platforms
-        },
     )
 
-def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version):
+def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version, enable_pipstar = False):
     ret = {}
 
     dists = requirement.whls
@@ -301,17 +301,18 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
         # This is no-op because pip is not used to download the wheel.
         args.pop("download_only", None)
 
-        args["requirement"] = requirement.srcs.requirement
+        args["requirement"] = requirement.line
         args["urls"] = [distribution.url]
         args["sha256"] = distribution.sha256
         args["filename"] = distribution.filename
-        args["experimental_target_platforms"] = [
-            # Get rid of the version fot the target platforms because we are
-            # passing the interpreter any way. Ideally we should search of ways
-            # how to pass the target platforms through the hub repo.
-            p.partition("_")[2]
-            for p in requirement.target_platforms
-        ]
+        if not enable_pipstar:
+            args["experimental_target_platforms"] = [
+                # Get rid of the version fot the target platforms because we are
+                # passing the interpreter any way. Ideally we should search of ways
+                # how to pass the target platforms through the hub repo.
+                p.partition("_")[2]
+                for p in requirement.target_platforms
+            ]
 
         # Pure python wheels or sdists may need to have a platform here
         target_platforms = None
@@ -338,7 +339,7 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     # Fallback to a pip-installed wheel
     args = dict(whl_library_args)  # make a copy
-    args["requirement"] = requirement.srcs.requirement_line
+    args["requirement"] = requirement.line
     if requirement.extra_pip_args:
         args["extra_pip_args"] = requirement.extra_pip_args
 
@@ -357,7 +358,11 @@ def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patt
 
     return ret
 
-def parse_modules(module_ctx, _fail = fail, simpleapi_download = simpleapi_download, **kwargs):
+def parse_modules(
+        module_ctx,
+        _fail = fail,
+        simpleapi_download = simpleapi_download,
+        **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
     Args:
@@ -442,7 +447,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
     hub_group_map = {}
     exposed_packages = {}
     extra_aliases = {}
-    target_platforms = {}
     whl_libraries = {}
 
     for mod in module_ctx.modules:
@@ -525,7 +529,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
             exposed_packages.setdefault(hub_name, {}).update(out.exposed_packages)
-            target_platforms.setdefault(hub_name, {}).update(out.target_platforms)
             whl_libraries.update(out.whl_libraries)
 
             # TODO @aignas 2024-04-05: how do we support different requirement
@@ -562,10 +565,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 for whl_name, aliases in extra_whl_aliases.items()
             }
             for hub_name, extra_whl_aliases in extra_aliases.items()
-        },
-        target_platforms = {
-            hub_name: sorted(p)
-            for hub_name, p in target_platforms.items()
         },
         whl_libraries = {
             k: dict(sorted(args.items()))
@@ -639,7 +638,7 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx)
+    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar)
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
@@ -658,7 +657,6 @@ def _pip_impl(module_ctx):
             },
             packages = mods.exposed_packages.get(hub_name, []),
             groups = mods.hub_group_map.get(hub_name),
-            target_platforms = mods.target_platforms.get(hub_name, []),
         )
 
     if bazel_features.external_deps.extension_metadata_has_reproducible:
