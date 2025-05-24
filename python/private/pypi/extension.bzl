@@ -202,8 +202,12 @@ def _create_whl_repos(
         logger = logger,
     )
 
-    for whl_name, requirements in requirements_by_platform.items():
-        group_name = whl_group_mapping.get(whl_name)
+    exposed_packages = {}
+    for whl in requirements_by_platform:
+        if whl.is_exposed:
+            exposed_packages[whl.name] = None
+
+        group_name = whl_group_mapping.get(whl.name)
         group_deps = requirement_cycles.get(group_name, [])
 
         # Construct args separately so that the lock file can be smaller and does not include unused
@@ -214,7 +218,7 @@ def _create_whl_repos(
         maybe_args = dict(
             # The following values are safe to omit if they have false like values
             add_libdir_to_library_search_path = pip_attr.add_libdir_to_library_search_path,
-            annotation = whl_modifications.get(whl_name),
+            annotation = whl_modifications.get(whl.name),
             download_only = pip_attr.download_only,
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
@@ -226,7 +230,7 @@ def _create_whl_repos(
             python_interpreter_target = python_interpreter_target,
             whl_patches = {
                 p: json.encode(args)
-                for p, args in whl_overrides.get(whl_name, {}).items()
+                for p, args in whl_overrides.get(whl.name, {}).items()
             },
         )
         if not enable_pipstar:
@@ -245,118 +249,98 @@ def _create_whl_repos(
             if v != default
         })
 
-        for requirement in requirements:
-            for repo_name, (args, config_setting) in _whl_repos(
-                requirement = requirement,
+        for src in whl.srcs:
+            repo = _whl_repo(
+                src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = pip_attr.netrc,
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
-                multiple_requirements_for_whl = len(requirements) > 1.,
+                is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = enable_pipstar,
-            ).items():
-                repo_name = "{}_{}".format(pip_name, repo_name)
-                if repo_name in whl_libraries:
-                    fail("Attempting to creating a duplicate library {} for {}".format(
-                        repo_name,
-                        whl_name,
-                    ))
+            )
 
-                whl_libraries[repo_name] = args
-                whl_map.setdefault(whl_name, {})[config_setting] = repo_name
+            repo_name = "{}_{}".format(pip_name, repo.repo_name)
+            if repo_name in whl_libraries:
+                fail("Attempting to creating a duplicate library {} for {}".format(
+                    repo_name,
+                    whl.name,
+                ))
+
+            whl_libraries[repo_name] = repo.args
+            whl_map.setdefault(whl.name, {})[repo.config_setting] = repo_name
 
     return struct(
         whl_map = whl_map,
-        exposed_packages = {
-            whl_name: None
-            for whl_name, requirements in requirements_by_platform.items()
-            if len([r for r in requirements if r.is_exposed]) > 0
-        },
+        exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         whl_libraries = whl_libraries,
     )
 
-def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version, enable_pipstar = False):
-    ret = {}
+def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, netrc, auth_patterns, python_version, enable_pipstar = False):
+    args = dict(whl_library_args)
+    args["requirement"] = src.requirement_line
+    is_whl = src.filename.endswith(".whl")
 
-    dists = requirement.whls
-    if not download_only and requirement.sdist:
-        dists = dists + [requirement.sdist]
+    if src.extra_pip_args and not is_whl:
+        # pip is not used to download wheels and the python
+        # `whl_library` helpers are only extracting things, however
+        # for sdists, they will be built by `pip`, so we still
+        # need to pass the extra args there, so only pop this for whls
+        args["extra_pip_args"] = src.extra_pip_args
 
-    for distribution in dists:
-        args = dict(whl_library_args)
-        if netrc:
-            args["netrc"] = netrc
-        if auth_patterns:
-            args["auth_patterns"] = auth_patterns
-
-        if not distribution.filename.endswith(".whl"):
-            # pip is not used to download wheels and the python
-            # `whl_library` helpers are only extracting things, however
-            # for sdists, they will be built by `pip`, so we still
-            # need to pass the extra args there.
-            args["extra_pip_args"] = requirement.extra_pip_args
-
-        # This is no-op because pip is not used to download the wheel.
-        args.pop("download_only", None)
-
-        args["requirement"] = requirement.line
-        args["urls"] = [distribution.url]
-        args["sha256"] = distribution.sha256
-        args["filename"] = distribution.filename
-        if not enable_pipstar:
-            args["experimental_target_platforms"] = [
-                # Get rid of the version fot the target platforms because we are
-                # passing the interpreter any way. Ideally we should search of ways
-                # how to pass the target platforms through the hub repo.
-                p.partition("_")[2]
-                for p in requirement.target_platforms
-            ]
-
-        # Pure python wheels or sdists may need to have a platform here
-        target_platforms = None
-        if distribution.filename.endswith(".whl") and not distribution.filename.endswith("-any.whl"):
-            pass
-        elif multiple_requirements_for_whl:
-            target_platforms = requirement.target_platforms
-
-        repo_name = whl_repo_name(
-            distribution.filename,
-            distribution.sha256,
-        )
-        ret[repo_name] = (
-            args,
-            whl_config_setting(
+    if not src.url or (not is_whl and download_only):
+        # Fallback to a pip-installed wheel
+        target_platforms = src.target_platforms if is_multiple_versions else []
+        return struct(
+            repo_name = pypi_repo_name(
+                normalize_name(src.distribution),
+                *target_platforms
+            ),
+            args = args,
+            config_setting = whl_config_setting(
                 version = python_version,
-                filename = distribution.filename,
-                target_platforms = target_platforms,
+                target_platforms = target_platforms or None,
             ),
         )
 
-    if ret:
-        return ret
+    # This is no-op because pip is not used to download the wheel.
+    args.pop("download_only", None)
 
-    # Fallback to a pip-installed wheel
-    args = dict(whl_library_args)  # make a copy
-    args["requirement"] = requirement.line
-    if requirement.extra_pip_args:
-        args["extra_pip_args"] = requirement.extra_pip_args
+    if netrc:
+        args["netrc"] = netrc
+    if auth_patterns:
+        args["auth_patterns"] = auth_patterns
 
-    target_platforms = requirement.target_platforms if multiple_requirements_for_whl else []
-    repo_name = pypi_repo_name(
-        normalize_name(requirement.distribution),
-        *target_platforms
-    )
-    ret[repo_name] = (
-        args,
-        whl_config_setting(
+    args["urls"] = [src.url]
+    args["sha256"] = src.sha256
+    args["filename"] = src.filename
+    if not enable_pipstar:
+        args["experimental_target_platforms"] = [
+            # Get rid of the version fot the target platforms because we are
+            # passing the interpreter any way. Ideally we should search of ways
+            # how to pass the target platforms through the hub repo.
+            p.partition("_")[2]
+            for p in src.target_platforms
+        ]
+
+    # Pure python wheels or sdists may need to have a platform here
+    target_platforms = None
+    if is_whl and not src.filename.endswith("-any.whl"):
+        pass
+    elif is_multiple_versions:
+        target_platforms = src.target_platforms
+
+    return struct(
+        repo_name = whl_repo_name(src.filename, src.sha256),
+        args = args,
+        config_setting = whl_config_setting(
             version = python_version,
-            target_platforms = target_platforms or None,
+            filename = src.filename,
+            target_platforms = target_platforms,
         ),
     )
-
-    return ret
 
 def parse_modules(
         module_ctx,
