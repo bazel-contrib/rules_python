@@ -44,7 +44,7 @@ import textwrap
 _ENTRY_POINTS_TXT = "entry_points.txt"
 
 _TEMPLATE = """\
-import sys
+{shebang}import sys
 
 # See @rules_python//python/private:py_console_script_gen.py for explanation
 if getattr(sys.flags, "safe_path", False):
@@ -87,6 +87,7 @@ def run(
     out: pathlib.Path,
     console_script: str,
     console_script_guess: str,
+    shebang: str,
 ):
     """Run the generator
 
@@ -94,6 +95,8 @@ def run(
         entry_points: The entry_points.txt file to be parsed.
         out: The output file.
         console_script: The console_script entry in the entry_points.txt file.
+        console_script_guess: The string used for guessing the console_script if it is not provided.
+        shebang: The shebang to use for the entry point python file. Defaults to empty string (no shebang).
     """
     config = EntryPointsParser()
     config.read(entry_points)
@@ -136,6 +139,7 @@ def run(
     with open(out, "w") as f:
         f.write(
             _TEMPLATE.format(
+                shebang=f"{shebang}\n" if shebang else "",
                 module=module,
                 attr=attr,
                 entry_point=entry_point,
@@ -153,6 +157,10 @@ def main():
         "--console-script-guess",
         required=True,
         help="The string used for guessing the console_script if it is not provided.",
+    )
+    parser.add_argument(
+        "--shebang",
+        help="The shebang to use for the entry point python file.",
     )
     parser.add_argument(
         "entry_points",
@@ -173,6 +181,7 @@ def main():
         out=args.out,
         console_script=args.console_script,
         console_script_guess=args.console_script_guess,
+        shebang=args.shebang,
     )
 
 

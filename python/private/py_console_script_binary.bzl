@@ -52,6 +52,7 @@ def py_console_script_binary(
         entry_points_txt = None,
         script = None,
         binary_rule = py_binary,
+        shebang = "",
         **kwargs):
     """Generate a py_binary for a console_script entry_point.
 
@@ -68,6 +69,8 @@ def py_console_script_binary(
         binary_rule: {type}`callable`, The rule/macro to use to instantiate
             the target. It's expected to behave like {obj}`py_binary`.
             Defaults to {obj}`py_binary`.
+        shebang: {type}`str`, The shebang to use for the entry point python file.
+            Defaults to empty string.
         **kwargs: Extra parameters forwarded to `binary_rule`.
     """
     main = "rules_python_entry_point_{}.py".format(name)
@@ -81,6 +84,7 @@ def py_console_script_binary(
         out = main,
         console_script = script,
         console_script_guess = name,
+        shebang = shebang,
         visibility = ["//visibility:private"],
     )
 

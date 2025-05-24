@@ -47,6 +47,7 @@ class RunTest(unittest.TestCase):
                     out=outfile,
                     console_script=None,
                     console_script_guess="",
+                    shebang="",
                 )
 
         self.assertEqual(
@@ -76,6 +77,7 @@ class RunTest(unittest.TestCase):
                     out=outfile,
                     console_script=None,
                     console_script_guess="bar-baz",
+                    shebang="",
                 )
 
         self.assertEqual(
@@ -106,6 +108,7 @@ class RunTest(unittest.TestCase):
                     out=outfile,
                     console_script="baz",
                     console_script_guess="",
+                    shebang="",
                 )
 
         self.assertEqual(
@@ -134,6 +137,7 @@ class RunTest(unittest.TestCase):
                 out=out,
                 console_script=None,
                 console_script_guess="foo",
+                shebang="",
             )
 
             got = out.read_text()
@@ -185,12 +189,42 @@ class RunTest(unittest.TestCase):
                 out=out,
                 console_script="bar",
                 console_script_guess="",
+                shebang="",
             )
 
             got = out.read_text()
 
         self.assertRegex(got, "from foo\.baz import Bar")
         self.assertRegex(got, "sys\.exit\(Bar\.baz\(\)\)")
+
+    def test_shebang_included(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = pathlib.Path(tmpdir)
+            given_contents = (
+                textwrap.dedent(
+                    """
+            [console_scripts]
+            foo = foo.bar:baz
+            """
+                ).strip()
+                + "\n"
+            )
+            entry_points = tmpdir / "entry_points.txt"
+            entry_points.write_text(given_contents)
+            out = tmpdir / "foo.py"
+
+            shebang = "#!/usr/bin/env python3"
+            run(
+                entry_points=entry_points,
+                out=out,
+                console_script=None,
+                console_script_guess="foo",
+                shebang=shebang,
+            )
+
+            got = out.read_text()
+
+        self.assertTrue(got.startswith(shebang + "\n"))
 
 
 if __name__ == "__main__":
