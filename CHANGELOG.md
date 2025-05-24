@@ -105,6 +105,9 @@ END_UNRELEASED_TEMPLATE
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
 * (utils) Add a way to run a REPL for any `rules_python` target that returns
   a `PyInfo` provider.
+* (rules) Added support for a constraints file that is passed to pip-compile.
+  Useful when an intermediate dependency needs to be upgraded to pull in
+  security patches.
 
 {#v0-0-0-removed}
 ### Removed
