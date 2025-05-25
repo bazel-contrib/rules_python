@@ -94,15 +94,15 @@ def _pip_repository_impl(rctx):
     selected_requirements = {}
     options = None
     repository_platform = host_platform(rctx)
-    for name, requirements in requirements_by_platform.items():
+    for whl in requirements_by_platform:
         requirement = select_requirement(
-            requirements,
+            whl.srcs,
             platform = None if rctx.attr.download_only else repository_platform,
         )
         if not requirement:
             continue
         options = options or requirement.extra_pip_args
-        selected_requirements[name] = requirement.line
+        selected_requirements[whl.name] = requirement.requirement_line
 
     bzl_packages = sorted(selected_requirements.keys())
 

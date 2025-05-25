@@ -179,49 +179,91 @@ def parse_requirements(
             }),
         )
 
-    ret = {}
-    for whl_name, reqs in sorted(requirements_by_platform.items()):
+    ret = []
+    for name, reqs in sorted(requirements_by_platform.items()):
         requirement_target_platforms = {}
         for r in reqs.values():
             target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
             for p in target_platforms:
                 requirement_target_platforms[p] = None
 
-        is_exposed = len(requirement_target_platforms) == len(requirements)
-        if not is_exposed and logger:
+        item = struct(
+            # Return normalized names
+            name = normalize_name(name),
+            is_exposed = len(requirement_target_platforms) == len(requirements),
+            is_multiple_versions = len(reqs.values()) > 1,
+            srcs = _package_srcs(
+                name = name,
+                reqs = reqs,
+                index_urls = index_urls,
+                env_marker_target_platforms = env_marker_target_platforms,
+                extract_url_srcs = extract_url_srcs,
+                logger = logger,
+            ),
+        )
+        ret.append(item)
+        if not item.is_exposed and logger:
             logger.debug(lambda: "Package '{}' will not be exposed because it is only present on a subset of platforms: {} out of {}".format(
-                whl_name,
+                name,
                 sorted(requirement_target_platforms),
                 sorted(requirements),
             ))
 
-        # Return normalized names
-        ret_requirements = ret.setdefault(normalize_name(whl_name), [])
+    if logger:
+        logger.debug(lambda: "Will configure whl repos: {}".format([w.name for w in ret]))
 
-        for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
-            whls, sdist = _add_dists(
-                requirement = r,
-                index_urls = index_urls.get(whl_name),
-                logger = logger,
-            )
+    return ret
 
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
-            ret_requirements.append(
+def _package_srcs(
+        *,
+        name,
+        reqs,
+        index_urls,
+        logger,
+        env_marker_target_platforms,
+        extract_url_srcs):
+    """A function to return sources for a particular package."""
+    srcs = []
+    for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
+        whls, sdist = _add_dists(
+            requirement = r,
+            index_urls = index_urls.get(name),
+            logger = logger,
+        )
+
+        target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
+        target_platforms = sorted(target_platforms)
+
+        all_dists = [] + whls
+        if sdist:
+            all_dists.append(sdist)
+
+        if extract_url_srcs and all_dists:
+            req_line = r.srcs.requirement
+        else:
+            all_dists = [struct(
+                url = "",
+                filename = "",
+                sha256 = "",
+                yanked = False,
+            )]
+            req_line = r.srcs.requirement_line
+
+        for dist in all_dists:
+            srcs.append(
                 struct(
-                    distribution = r.distribution,
-                    line = r.srcs.requirement if extract_url_srcs and (whls or sdist) else r.srcs.requirement_line,
-                    target_platforms = sorted(target_platforms),
+                    distribution = name,
                     extra_pip_args = r.extra_pip_args,
-                    whls = whls,
-                    sdist = sdist,
-                    is_exposed = is_exposed,
+                    requirement_line = req_line,
+                    target_platforms = target_platforms,
+                    filename = dist.filename,
+                    sha256 = dist.sha256,
+                    url = dist.url,
+                    yanked = dist.yanked,
                 ),
             )
 
-    if logger:
-        logger.debug(lambda: "Will configure whl repos: {}".format(ret.keys()))
-
-    return ret
+    return srcs
 
 def select_requirement(requirements, *, platform):
     """A simple function to get a requirement for a particular platform.

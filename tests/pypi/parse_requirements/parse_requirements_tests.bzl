@@ -100,22 +100,28 @@ def _test_simple(env):
             "requirements_lock": ["linux_x86_64", "windows_x86_64"],
         },
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
-                target_platforms = [
-                    "linux_x86_64",
-                    "windows_x86_64",
-                ],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = [
+                        "linux_x86_64",
+                        "windows_x86_64",
+                    ],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_simple)
 
@@ -127,24 +133,25 @@ def _test_direct_urls_integration(env):
             "requirements_direct": ["linux_x86_64"],
         },
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                line = "foo[extra]",
-                target_platforms = ["linux_x86_64"],
-                whls = [struct(
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]",
+                    target_platforms = ["linux_x86_64"],
                     url = "https://some-url/package.whl",
                     filename = "package.whl",
                     sha256 = "",
                     yanked = False,
-                )],
-            ),
-        ],
-    })
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_direct_urls_integration)
 
@@ -156,21 +163,27 @@ def _test_extra_pip_args(env):
         },
         extra_pip_args = ["--trusted-host=example.org"],
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = ["--index-url=example.org", "--trusted-host=example.org"],
-                sdist = None,
-                is_exposed = True,
-                line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
-                target_platforms = [
-                    "linux_x86_64",
-                ],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = ["--index-url=example.org", "--trusted-host=example.org"],
+                    requirement_line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = [
+                        "linux_x86_64",
+                    ],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_extra_pip_args)
 
@@ -181,19 +194,25 @@ def _test_dupe_requirements(env):
             "requirements_lock_dupe": ["linux_x86_64"],
         },
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                line = "foo[extra,extra_2]==0.0.1 --hash=sha256:deadbeef",
-                target_platforms = ["linux_x86_64"],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra,extra_2]==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_dupe_requirements)
 
@@ -206,44 +225,57 @@ def _test_multi_os(env):
         },
     )
 
-    env.expect.that_dict(got).contains_exactly({
-        "bar": [
-            struct(
-                distribution = "bar",
-                extra_pip_args = [],
-                line = "bar==0.0.1 --hash=sha256:deadb00f",
-                target_platforms = ["windows_x86_64"],
-                whls = [],
-                sdist = None,
-                is_exposed = False,
-            ),
-        ],
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                line = "foo==0.0.3 --hash=sha256:deadbaaf",
-                target_platforms = ["linux_x86_64"],
-                whls = [],
-                sdist = None,
-                is_exposed = True,
-            ),
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                line = "foo[extra]==0.0.2 --hash=sha256:deadbeef",
-                target_platforms = ["windows_x86_64"],
-                whls = [],
-                sdist = None,
-                is_exposed = True,
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = [],
+                    requirement_line = "bar==0.0.1 --hash=sha256:deadb00f",
+                    target_platforms = ["windows_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.3 --hash=sha256:deadbaaf",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.2 --hash=sha256:deadbeef",
+                    target_platforms = ["windows_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
     env.expect.that_str(
         select_requirement(
-            got["foo"],
+            got[1].srcs,
             platform = "windows_x86_64",
-        ).line,
+        ).requirement_line,
     ).equals("foo[extra]==0.0.2 --hash=sha256:deadbeef")
 
 _tests.append(_test_multi_os)
@@ -257,39 +289,52 @@ def _test_multi_os_legacy(env):
         },
     )
 
-    env.expect.that_dict(got).contains_exactly({
-        "bar": [
-            struct(
-                distribution = "bar",
-                extra_pip_args = ["--platform=manylinux_2_17_x86_64", "--python-version=39", "--implementation=cp", "--abi=cp39"],
-                is_exposed = False,
-                sdist = None,
-                line = "bar==0.0.1 --hash=sha256:deadb00f",
-                target_platforms = ["cp39_linux_x86_64"],
-                whls = [],
-            ),
-        ],
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = ["--platform=manylinux_2_17_x86_64", "--python-version=39", "--implementation=cp", "--abi=cp39"],
-                is_exposed = True,
-                sdist = None,
-                line = "foo==0.0.1 --hash=sha256:deadbeef",
-                target_platforms = ["cp39_linux_x86_64"],
-                whls = [],
-            ),
-            struct(
-                distribution = "foo",
-                extra_pip_args = ["--platform=macosx_10_9_arm64", "--python-version=39", "--implementation=cp", "--abi=cp39"],
-                is_exposed = True,
-                sdist = None,
-                line = "foo==0.0.3 --hash=sha256:deadbaaf",
-                target_platforms = ["cp39_osx_aarch64"],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = ["--platform=manylinux_2_17_x86_64", "--python-version=39", "--implementation=cp", "--abi=cp39"],
+                    requirement_line = "bar==0.0.1 --hash=sha256:deadb00f",
+                    target_platforms = ["cp39_linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = ["--platform=manylinux_2_17_x86_64", "--python-version=39", "--implementation=cp", "--abi=cp39"],
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = ["cp39_linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = ["--platform=macosx_10_9_arm64", "--python-version=39", "--implementation=cp", "--abi=cp39"],
+                    requirement_line = "foo==0.0.3 --hash=sha256:deadbaaf",
+                    target_platforms = ["cp39_osx_aarch64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_multi_os_legacy)
 
@@ -324,30 +369,42 @@ def _test_env_marker_resolution(env):
         },
         evaluate_markers = _mock_eval_markers,
     )
-    env.expect.that_dict(got).contains_exactly({
-        "bar": [
-            struct(
-                distribution = "bar",
-                extra_pip_args = [],
-                is_exposed = True,
-                sdist = None,
-                line = "bar==0.0.1 --hash=sha256:deadbeef",
-                target_platforms = ["cp311_linux_super_exotic", "cp311_windows_x86_64"],
-                whls = [],
-            ),
-        ],
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                is_exposed = False,
-                sdist = None,
-                line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
-                target_platforms = ["cp311_windows_x86_64"],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = [],
+                    requirement_line = "bar==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = ["cp311_linux_super_exotic", "cp311_windows_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = ["cp311_windows_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_env_marker_resolution)
 
@@ -358,28 +415,35 @@ def _test_different_package_version(env):
             "requirements_different_package_version": ["linux_x86_64"],
         },
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                is_exposed = True,
-                sdist = None,
-                line = "foo==0.0.1 --hash=sha256:deadb00f",
-                target_platforms = ["linux_x86_64"],
-                whls = [],
-            ),
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                is_exposed = True,
-                sdist = None,
-                line = "foo==0.0.1+local --hash=sha256:deadbeef",
-                target_platforms = ["linux_x86_64"],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadb00f",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1+local --hash=sha256:deadbeef",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_different_package_version)
 
@@ -390,38 +454,35 @@ def _test_optional_hash(env):
             "requirements_optional_hash": ["linux_x86_64"],
         },
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                line = "foo==0.0.4",
-                target_platforms = ["linux_x86_64"],
-                whls = [struct(
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.4",
+                    target_platforms = ["linux_x86_64"],
                     url = "https://example.org/foo-0.0.4.whl",
                     filename = "foo-0.0.4.whl",
                     sha256 = "",
                     yanked = False,
-                )],
-            ),
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                sdist = None,
-                is_exposed = True,
-                line = "foo==0.0.5",
-                target_platforms = ["linux_x86_64"],
-                whls = [struct(
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.5",
+                    target_platforms = ["linux_x86_64"],
                     url = "https://example.org/foo-0.0.5.whl",
                     filename = "foo-0.0.5.whl",
                     sha256 = "deadbeef",
                     yanked = False,
-                )],
-            ),
-        ],
-    })
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_optional_hash)
 
@@ -432,19 +493,25 @@ def _test_git_sources(env):
             "requirements_git": ["linux_x86_64"],
         },
     )
-    env.expect.that_dict(got).contains_exactly({
-        "foo": [
-            struct(
-                distribution = "foo",
-                extra_pip_args = [],
-                is_exposed = True,
-                sdist = None,
-                line = "foo @ git+https://github.com/org/foo.git@deadbeef",
-                target_platforms = ["linux_x86_64"],
-                whls = [],
-            ),
-        ],
-    })
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo @ git+https://github.com/org/foo.git@deadbeef",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
 
 _tests.append(_test_git_sources)
 
