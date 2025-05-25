@@ -116,7 +116,7 @@ bzl_library(
         ":whl_target_platforms_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
-        "//python/private:semver_bzl",
+        "//python/private:version_bzl",
         "//python/private:version_label_bzl",
         "@bazel_features//:features",
         "@pythons_hub//:interpreters_bzl",
@@ -256,7 +256,7 @@ bzl_library(
     srcs = ["pep508_evaluate.bzl"],
     deps = [
         "//python/private:enum_bzl",
-        "//python/private:semver_bzl",
+        "//python/private:version_bzl",
     ],
 )
 

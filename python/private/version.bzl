@@ -510,7 +510,7 @@ def normalize_pep440(version):
     """
     return _parse(version, strict = True)["norm"]
 
-def _parse(version_str, strict = True):
+def _parse(version_str, strict = True, _fail = fail):
     """Escape the version component of a filename.
 
     See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
@@ -519,6 +519,7 @@ def _parse(version_str, strict = True):
     Args:
       version_str: version string to be normalized according to PEP 440.
       strict: fail if the version is invalid, defaults to True.
+      _fail: Used for tests
 
     Returns:
       string containing the normalized version.
@@ -544,7 +545,7 @@ def _parse(version_str, strict = True):
     parser_ctx = parser.context()
     if parser.input[parser_ctx["start"]:]:
         if strict:
-            fail(
+            _fail(
                 "Failed to parse PEP 440 version identifier '%s'." % parser.input,
                 "Parse error at '%s'" % parser.input[parser_ctx["start"]:],
             )
@@ -554,7 +555,7 @@ def _parse(version_str, strict = True):
     parser_ctx["is_prefix"] = is_prefix
     return parser_ctx
 
-def parse(version_str, strict = False):
+def parse(version_str, strict = False, _fail = fail):
     """Parse a PEP4408 compliant version.
 
     This is similar to `normalize_pep440`, but it parses individual components to
@@ -563,6 +564,7 @@ def parse(version_str, strict = False):
     Args:
       version_str: version string to be normalized according to PEP 440.
       strict: fail if the version is invalid.
+      _fail: used for tests
 
     Returns:
       a struct with individual components of a version:
@@ -580,29 +582,29 @@ def parse(version_str, strict = False):
         * `string` {type}`str` normalized value of the input.
     """
 
-    parts = _parse(version_str, strict = strict)
+    parts = _parse(version_str, strict = strict, _fail = _fail)
     if not parts:
         return None
 
     if parts["is_prefix"] and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
         if strict:
-            fail("local version part has been obtained, but only public segments can have prefix matches")
+            _fail("local version part has been obtained, but only public segments can have prefix matches")
 
         # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
 
     return struct(
-        epoch = _parse_epoch(parts["epoch"]),
+        epoch = _parse_epoch(parts["epoch"], _fail),
         release = _parse_release(parts["release"]),
         pre = _parse_pre(parts["pre"]),
-        post = _parse_post(parts["post"]),
-        dev = _parse_dev(parts["dev"]),
-        local = _parse_local(parts["local"]),
+        post = _parse_post(parts["post"], _fail),
+        dev = _parse_dev(parts["dev"], _fail),
+        local = _parse_local(parts["local"], _fail),
         string = parts["norm"],
         is_prefix = parts["is_prefix"],
     )
 
-def _parse_epoch(value):
+def _parse_epoch(value, fail):
     if not value:
         return 0
 
@@ -614,7 +616,7 @@ def _parse_epoch(value):
 def _parse_release(value):
     return tuple([int(d) for d in value.split(".")])
 
-def _parse_local(value):
+def _parse_local(value, fail):
     if not value:
         return None
 
@@ -624,7 +626,7 @@ def _parse_local(value):
     # If the part is numerical, handle it as a number
     return tuple([int(part) if part.isdigit() else part for part in value[1:].split(".")])
 
-def _parse_dev(value):
+def _parse_dev(value, fail):
     if not value:
         return None
 
@@ -646,7 +648,7 @@ def _parse_pre(value):
 
     return (prefix, int(value[len(prefix):]))
 
-def _parse_post(value):
+def _parse_post(value, fail):
     if not value:
         return None
 

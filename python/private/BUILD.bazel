@@ -139,7 +139,7 @@ bzl_library(
     name = "config_settings_bzl",
     srcs = ["config_settings.bzl"],
     deps = [
-        ":semver_bzl",
+        ":version_bzl",
         "@bazel_skylib//lib:selects",
         "@bazel_skylib//rules:common_settings",
     ],
@@ -255,9 +255,9 @@ bzl_library(
         ":python_register_toolchains_bzl",
         ":pythons_hub_bzl",
         ":repo_utils_bzl",
-        ":semver_bzl",
         ":toolchains_repo_bzl",
         ":util_bzl",
+        ":version_bzl",
         "@bazel_features//:features",
     ],
 )
@@ -617,11 +617,6 @@ bzl_library(
 )
 
 bzl_library(
-    name = "semver_bzl",
-    srcs = ["semver.bzl"],
-)
-
-bzl_library(
     name = "sentinel_bzl",
     srcs = ["sentinel.bzl"],
 )
@@ -826,6 +821,10 @@ current_interpreter_executable(
     # Not actually public. Only public because it's an implicit dependency of
     # py_exec_tools_toolchain.
     visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "empty",
 )
 
 sentinel(

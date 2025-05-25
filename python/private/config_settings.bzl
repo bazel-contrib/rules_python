@@ -18,7 +18,7 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:text_util.bzl", "render")
-load(":semver.bzl", "semver")
+load(":version.bzl", "version")
 
 _PYTHON_VERSION_FLAG = Label("//python/config_settings:python_version")
 _PYTHON_VERSION_MAJOR_MINOR_FLAG = Label("//python/config_settings:python_version_major_minor")
@@ -181,8 +181,8 @@ _python_version_flag = rule(
 def _python_version_major_minor_flag_impl(ctx):
     input = _flag_value(ctx.attr._python_version_flag)
     if input:
-        version = semver(input)
-        value = "{}.{}".format(version.major, version.minor)
+        ver = version.parse(input)
+        value = "{}.{}".format(ver.release[0], ver.release[1])
     else:
         value = ""
 

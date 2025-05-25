@@ -1,6 +1,7 @@
 :::{default-domain} bzl
 :::
 
+(configuring-toolchains)=
 # Configuring Python toolchains and runtimes
 
 This documents how to configure the Python toolchain and runtimes for different
@@ -43,7 +44,8 @@ you should read the dev-only library module section.
 bazel_dep(name="rules_python", version=...)
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 
-python.toolchain(python_version = "3.12", is_default = True)
+python.defaults(python_version = "3.12")
+python.toolchain(python_version = "3.12")
 ```
 
 ### Library modules
@@ -71,7 +73,8 @@ python = use_extension(
     dev_dependency = True
 )
 
-python.toolchain(python_version = "3.12", is_default=True)
+python.defaults(python_version = "3.12")
+python.toolchain(python_version = "3.12")
 ```
 
 #### Library modules without version constraints
@@ -160,9 +163,13 @@ Multiple versions can be specified and used within a single build.
 # MODULE.bazel
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 
+python.defaults(
+    # The environment variable takes precedence if set.
+    python_version = "3.11",
+    python_version_env = "BAZEL_PYTHON_VERSION",
+)
 python.toolchain(
     python_version = "3.11",
-    is_default = True,
 )
 
 python.toolchain(
@@ -336,7 +343,8 @@ bazel_dep(name = "rules_python", version = "0.40.0")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 
-python.toolchain(is_default = True, python_version = "3.10")
+python.defaults(python_version = "3.10")
+python.toolchain(python_version = "3.10")
 
 use_repo(python, "python_3_10", "python_3_10_host")
 ```
@@ -830,3 +838,13 @@ a fixed version.
 The `python` target does not provide access to any modules from `py_*`
 targets on its own. Please file a feature request if this is desired.
 :::
+
+### Differences from `//python/bin:repl`
+
+The `//python/bin:python` target provides access to the underlying interpreter
+without any hermeticity guarantees.
+
+The [`//python/bin:repl` target](repl) provides an environment indentical to
+what `py_binary` provides. That means it handles things like the
+[`PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSAFEPATH)
+environment variable automatically. The `//python/bin:python` target will not.

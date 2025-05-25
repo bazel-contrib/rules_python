@@ -22,9 +22,9 @@ load(":platform_info.bzl", "platform_info")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
-load(":semver.bzl", "semver")
-load(":toolchains_repo.bzl", "host_toolchain", "multi_toolchain_aliases")
+load(":toolchains_repo.bzl", "host_compatible_python_repo", "multi_toolchain_aliases", "sorted_host_platforms")
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
+load(":version.bzl", "version")
 
 def parse_modules(*, module_ctx, _fail = fail):
     """Parse the modules and return a struct for registrations.
@@ -230,7 +230,7 @@ def parse_modules(*, module_ctx, _fail = fail):
     # A default toolchain is required so that the non-version-specific rules
     # are able to match a toolchain.
     if default_toolchain == None:
-        fail("No default Python toolchain configured. Is rules_python missing `is_default=True`?")
+        fail("No default Python toolchain configured. Is rules_python missing `python.defaults()`?")
     elif default_toolchain.python_version not in global_toolchain_versions:
         fail('Default version "{python_version}" selected by module ' +
              '"{module_name}", but no toolchain with that version registered'.format(
@@ -306,8 +306,7 @@ def _python_impl(module_ctx):
         kwargs.update(py.config.kwargs.get(toolchain_info.python_version, {}))
         kwargs.update(py.config.kwargs.get(full_python_version, {}))
         kwargs.update(py.config.default)
-        platforms = PLATFORMS | py.config.platform_overrides.get(full_python_version, {})
-        tc_created_platforms = python_register_toolchains(
+        register_result = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
             platforms = platforms,
@@ -497,6 +496,43 @@ def _python_impl(module_ctx):
     # Register a host toolchain for every major_minor and major_minor_micro
     # that there is a valid host platform for.
 
+        host_platforms = {}
+        for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
+            toolchain_impls.append(struct(
+                # str: The base name to use for the toolchain() target
+                name = repo_name,
+                # str: The repo name the toolchain() target points to.
+                impl_repo_name = repo_name,
+                # str: platform key in the passed-in platforms dict
+                platform_name = platform_name,
+                # struct: platform_info() struct
+                platform = platform_info,
+                # str: Major.Minor.Micro python version
+                full_python_version = full_python_version,
+                # bool: whether to implicitly add the python version constraint
+                # to the toolchain's target_settings.
+                # The last toolchain is the default; it can't have version constraints
+                set_python_version_constraint = is_last,
+            ))
+            if _is_compatible_with_host(module_ctx, platform_info):
+                host_platforms[platform_name] = platform_info
+
+        host_platforms = sorted_host_platforms(host_platforms)
+        host_compatible_python_repo(
+            name = toolchain_info.name + "_host",
+            # NOTE: Order matters. The first found to be compatible is (usually) used.
+            platforms = host_platforms.keys(),
+            os_names = {
+                str(i): platform_info.os_name
+                for i, platform_info in enumerate(host_platforms.values())
+            },
+            arch_names = {
+                str(i): platform_info.arch
+                for i, platform_info in enumerate(host_platforms.values())
+            },
+            python_version = full_python_version,
+        )
+
     # List of the base names ("python_3_10") for the toolchain repos
     base_toolchain_repo_names = []
 
@@ -558,11 +594,10 @@ def _python_impl(module_ctx):
             toolchain_platform_keys[key] = platform
             toolchain_python_versions[key] = fv
 
-            # The last toolchain is the default; it can't have version constraints
-            # Despite the implication of the arg name, the values are strs, not bools
-            toolchain_set_python_version_constraints[key] = (
-                "True" if not is_last else "False"
-            )
+        # Repo rules can't accept dict[str, bool], so encode them as a string value.
+        toolchain_set_python_version_constraints[key] = (
+            "True" if entry.set_python_version_constraint else "False"
+        )
 
     hub_repo(
         name = "pythons_hub",
@@ -599,6 +634,11 @@ def _python_impl(module_ctx):
         return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
+
+def _is_compatible_with_host(mctx, platform_info):
+    os_name = repo_utils.get_platforms_os_name(mctx)
+    cpu_name = repo_utils.get_platforms_cpu_name(mctx)
+    return platform_info.os_name == os_name and platform_info.arch == cpu_name
 
 def _one_or_the_same(first, second, *, onerror = None):
     if not first:
@@ -668,10 +708,14 @@ def _fail_multiple_default_toolchains(first, second):
         second = second,
     ))
 
-def _validate_version(*, version, _fail = fail):
-    parsed = semver(version)
-    if parsed.patch == None or parsed.build or parsed.pre_release:
-        _fail("The 'python_version' attribute needs to specify an 'X.Y.Z' semver-compatible version, got: '{}'".format(version))
+def _validate_version(version_str, *, _fail = fail):
+    v = version.parse(version_str, strict = True, _fail = _fail)
+    if v == None:
+        # Only reachable in tests
+        return False
+
+    if len(v.release) < 3:
+        _fail("The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '{}'".format(v.string))
         return False
 
     return True
@@ -690,9 +734,9 @@ def _process_single_version_overrides(*, tag, _fail = fail, default, platform_ov
             return
 
         for platform in (tag.sha256 or []):
-            if platform not in PLATFORMS:
+            if platform not in default["platforms"]:
                 _fail("The platform must be one of {allowed} but got '{got}'".format(
-                    allowed = sorted(PLATFORMS),
+                    allowed = sorted(default["platforms"]),
                     got = platform,
                 ))
                 return
@@ -786,12 +830,12 @@ def _process_global_overrides(*, tag, default, platform_overrides, _fail = fail)
 
     if tag.minor_mapping:
         for minor_version, full_version in tag.minor_mapping.items():
-            parsed = semver(minor_version)
-            if parsed.patch != None or parsed.build or parsed.pre_release:
-                fail("Expected the key to be of `X.Y` format but got `{}`".format(minor_version))
-            parsed = semver(full_version)
-            if parsed.patch == None:
-                fail("Expected the value to at least be of `X.Y.Z` format but got `{}`".format(minor_version))
+            parsed = version.parse(minor_version, strict = True, _fail = _fail)
+            if len(parsed.release) > 2 or parsed.pre or parsed.post or parsed.dev or parsed.local:
+                fail("Expected the key to be of `X.Y` format but got `{}`".format(parsed.string))
+
+            # Ensure that the version is valid
+            version.parse(full_version, strict = True, _fail = _fail)
 
         default["minor_mapping"] = tag.minor_mapping
 
@@ -826,6 +870,26 @@ def _override_defaults(*overrides, modules, _fail = fail, default, platform_over
             override.fn(tag = tag, _fail = _fail, default = default, platform_overrides = platform_overrides)
 
 def _get_toolchain_config(*, modules, _fail = fail):
+    """Computes the configs for toolchains.
+
+    Args:
+        modules: The modules from module_ctx
+        _fail: Function to call for failing; only used for testing.
+
+    Returns:
+        A struct with the following:
+        * `kwargs`: {type}`dict[str, dict[str, object]` custom kwargs to pass to
+          `python_register_toolchains`, keyed by python version.
+          The first key is either a Major.Minor or Major.Minor.Patch
+          string.
+        * `minor_mapping`: {type}`dict[str, str]` the mapping of Major.Minor
+          to Major.Minor.Patch.
+        * `default`: {type}`dict[str, object]` of kwargs passed along to
+          `python_register_toolchains`. These keys take final precedence.
+        * `register_all_versions`: {type}`bool` whether all known versions
+          should be registered.
+    """
+
     # Items that can be overridden
     available_versions = {
         version: {
@@ -850,6 +914,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
     # and their value takes precedence over anything else.
     default = {
         "base_url": DEFAULT_RELEASE_BASE_URL,
+        "platforms": dict(PLATFORMS),  # Copy so it's mutable.
         "tool_versions": available_versions,
     }
 
@@ -889,8 +954,11 @@ def _get_toolchain_config(*, modules, _fail = fail):
 
     versions = {}
     for version_string in available_versions:
-        v = semver(version_string)
-        versions.setdefault("{}.{}".format(v.major, v.minor), []).append((int(v.patch), version_string))
+        v = version.parse(version_string, strict = True)
+        versions.setdefault(
+            "{}.{}".format(v.release[0], v.release[1]),
+            [],
+        ).append((version.key(v), v.string))
 
     print("version map:", versions)
 
@@ -1065,10 +1133,8 @@ In order to use a different name than the above, you can use the following `MODU
 syntax:
 ```starlark
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(
-    is_default = True,
-    python_version = "3.11",
-)
+python.defaults(python_version = "3.11")
+python.toolchain(python_version = "3.11")
 
 use_repo(python, my_python_name = "python_3_11")
 ```
@@ -1104,7 +1170,7 @@ Whether the toolchain is the default version.
 
 :::{versionchanged} 1.4.0
 This setting is ignored if the default version is set using the `defaults`
-tag class.
+tag class (encouraged).
 :::
 """,
         ),

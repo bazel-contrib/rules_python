@@ -34,7 +34,7 @@ def _path_inside_wheel(input_file):
 
 def _py_package_impl(ctx):
     inputs = builders.DepsetBuilder()
-    py_info = PyInfoBuilder()
+    py_info = PyInfoBuilder.new()
     for dep in ctx.attr.deps:
         inputs.add(dep[DefaultInfo].data_runfiles.files)
         inputs.add(dep[DefaultInfo].default_runfiles.files)
