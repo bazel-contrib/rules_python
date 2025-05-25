@@ -43,7 +43,6 @@ def python_register_toolchains(
         tool_versions = None,
         platforms = PLATFORMS,
         minor_mapping = None,
-        platforms = PLATFORMS,
         **kwargs):
     """Convenience macro for users which does typical setup.
 
@@ -78,10 +77,6 @@ def python_register_toolchains(
             available in `tool_versions`.
         minor_mapping: {type}`dict[str, str]` contains a mapping from `X.Y` to `X.Y.Z`
             version.
-        platforms: {type}`dict[str, platform_info}` The mapping of platforms to create
-            toolchains for. The `platform_info` values are structs from
-            `python/versions.bzl#platform_info`. Platforms are only created if
-            sufficient info exists in `tool_versions`.
         **kwargs: passed to each {obj}`python_repository` call.
 
     Returns:
@@ -93,9 +88,6 @@ def python_register_toolchains(
     bzlmod_toolchain_call = kwargs.pop("_internal_bzlmod_toolchain_call", False)
     if bzlmod_toolchain_call:
         register_toolchains = False
-        register_host = False
-    else:
-        register_host = True
 
     base_url = kwargs.pop("base_url", DEFAULT_RELEASE_BASE_URL)
     tool_versions = tool_versions or TOOL_VERSIONS
@@ -125,6 +117,8 @@ def python_register_toolchains(
 
     # dict[str repo name, tuple[str, platform_info]]
     impl_repos = {}
+    if "3.13" in python_version:
+        print("plat map:", platforms.keys())
     for platform, platform_info in platforms.items():
         sha256 = tool_versions[python_version]["sha256"].get(platform, None)
         if not sha256:
@@ -152,6 +146,12 @@ def python_register_toolchains(
 
         impl_repo_name = "{}_{}".format(name, platform)
         impl_repos[impl_repo_name] = (platform, platform_info)
+        if "3.13" in python_version:
+            print("py repo:", impl_repo_name, python_version)
+            print(sha256, patches, patch_strip, platform)
+            print(release_filename, urls, strip_prefix)
+            print(coverage_tool)
+            print(kwargs)
         python_repository(
             name = impl_repo_name,
             sha256 = sha256,
@@ -178,28 +178,6 @@ def python_register_toolchains(
                 toolchain_repo_name = toolchain_repo_name,
                 platform = platform,
             ))
-
-    if register_host:
-        host_platforms = [
-            platform
-            for platform in loaded_platforms
-            if platforms[platform].os_name and platforms[platform].arch
-        ]
-        host_toolchain(
-            name = name + "_host",
-            platforms = host_platforms,
-            python_version = python_version,
-            os_names = {
-                p: platforms[p].os_name or ""
-                for p in host_platforms
-                if p in platforms
-            },
-            archs = {
-                p: platforms[p].arch or ""
-                for p in host_platforms
-                if p in platforms
-            },
-        )
 
     toolchain_aliases(
         name = name,

@@ -275,15 +275,12 @@ python.single_version_platform_override(
     ],
     urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20250409/cpython-3.13.3+20250409-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
 )
-
 # File: //:BUILD.bazel
-
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 string_flag(
     name = "custom_runtime",
     build_setting_default = "",
 )
-
 config_setting(
     name = "is_custom_runtime_linux-x86-install-only-stripped",
     flag_values = {
