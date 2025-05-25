@@ -60,7 +60,7 @@ load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_cons
 py_console_script_binary(
     name = "black",
     pkg = "@pip//black",
-    interpreter = "/usr/bin/env python3",
+    shebang = "#!/usr/bin/env python3",
 )
 ```
 
