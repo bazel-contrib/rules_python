@@ -25,14 +25,16 @@ PYTHON_NAME_39 = "python_3_9"
 PYTHON_NAME_311 = "python_3_11"
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    # In a submodule this is ignored
+    python_version = "3.11",
+)
 python.toolchain(
     configure_coverage_tool = True,
     python_version = "3.9",
 )
 python.toolchain(
     configure_coverage_tool = True,
-    # In a submodule this is ignored
-    is_default = True,
     python_version = "3.11",
 )
 

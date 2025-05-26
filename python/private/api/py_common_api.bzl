@@ -22,17 +22,40 @@ def _py_common_api_impl(ctx):
 
 py_common_api = rule(
     implementation = _py_common_api_impl,
-    doc = "Rule implementing py_common API.",
+    doc = "Internal Rule implementing py_common API.",
 )
 
+def _py_common_api_typedef():
+    """The py_common API implementation.
+
+    An instance of this object is obtained using {obj}`py_common.get()`
+    """
+
 def _merge_py_infos(transitive, *, direct = []):
-    builder = PyInfoBuilder()
+    """Merge PyInfo objects into a single PyInfo.
+
+    This is a convenience wrapper around {obj}`PyInfoBuilder.merge_all`. For
+    more control over merging PyInfo objects, use {obj}`PyInfoBuilder`.
+
+    Args:
+        transitive: {type}`list[PyInfo]` The PyInfo objects with info
+            considered indirectly provided by something (e.g. via
+            its deps attribute).
+        direct: {type}`list[PyInfo]` The PyInfo objects that are
+            considered directly provided by something (e.g. via
+            the srcs attribute).
+
+    Returns:
+        {type}`PyInfo` A PyInfo containing the merged values.
+    """
+    builder = PyInfoBuilder.new()
     builder.merge_all(transitive, direct = direct)
     return builder.build()
 
 # Exposed for doc generation, not directly used.
 # buildifier: disable=name-conventions
 PyCommonApi = struct(
+    TYPEDEF = _py_common_api_typedef,
     merge_py_infos = _merge_py_infos,
-    PyInfoBuilder = PyInfoBuilder,
+    PyInfoBuilder = PyInfoBuilder.new,
 )

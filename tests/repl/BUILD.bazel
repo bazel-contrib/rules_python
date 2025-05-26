@@ -1,5 +1,5 @@
 load("//python:py_library.bzl", "py_library")
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
 # A library that adds a special import path only when this is specified as a
 # dependency. This makes it easy for a dependency to have this import path
