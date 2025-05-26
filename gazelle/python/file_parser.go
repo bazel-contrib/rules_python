@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	sitter "github.com/dougthor42/go-tree-sitter"
-	"github.com/dougthor42/go-tree-sitter/python"
+	sitter "github.com/smacker/go-tree-sitter"
+	"github.com/smacker/go-tree-sitter/python"
 )
 
 const (
@@ -115,10 +115,10 @@ func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
 				a, b = b, a
 			}
 			if a.Type() == sitterNodeTypeIdentifier && a.Content(p.code) == "__name__" &&
-				// at github.com/dougthor42/go-tree-sitter@latest (after v0.0.0-20240422154435-0628b34cbf9c we used)
+				// at github.com/smacker/go-tree-sitter@latest (after v0.0.0-20240422154435-0628b34cbf9c we used)
 				// "__main__" is the second child of b. But now, it isn't.
 				// we cannot use the latest go-tree-sitter because of the top level reference in scanner.c.
-				// https://github.com/dougthor42/go-tree-sitter/blob/04d6b33fe138a98075210f5b770482ded024dc0f/python/scanner.c#L1
+				// https://github.com/smacker/go-tree-sitter/blob/04d6b33fe138a98075210f5b770482ded024dc0f/python/scanner.c#L1
 				b.Type() == sitterNodeTypeString && string(p.code[b.StartByte()+1:b.EndByte()-1]) == "__main__" {
 				return true
 			}
