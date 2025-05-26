@@ -41,6 +41,7 @@ def parse_requirements(
         get_index_urls = None,
         evaluate_markers = None,
         extract_url_srcs = True,
+        select_whls = {},
         logger = None):
     """Get the requirements with platforms that the requirements apply to.
 
@@ -61,6 +62,7 @@ def parse_requirements(
             requirements line.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
+        select_whls: TODO.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
 
     Returns:
@@ -202,6 +204,7 @@ def parse_requirements(
             whls, sdist = _add_dists(
                 requirement = r,
                 index_urls = index_urls.get(whl_name),
+                include_whls = select_whls,
                 logger = logger,
             )
 
@@ -273,7 +276,7 @@ def host_platform(ctx):
         repo_utils.get_platforms_cpu_name(ctx),
     )
 
-def _add_dists(*, requirement, index_urls, logger = None):
+def _add_dists(*, requirement, index_urls, include_whls, logger = None):
     """Populate dists based on the information from the PyPI index.
 
     This function will modify the given requirements_by_platform data structure.
@@ -353,6 +356,7 @@ def _add_dists(*, requirement, index_urls, logger = None):
     whls = select_whls(
         whls = whls,
         want_platforms = requirement.target_platforms,
+        include_whls = include_whls,
         logger = logger,
     )
 

@@ -103,7 +103,8 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         os_name = "osx",
         platform = "osx_{}".format(cpu),
         whl_platforms = [
-            "macosx_*_*_{}".format(wheel_cpu)
+            # TODO @aignas 2025-05-23: how do we specify the default osx version?
+            "macosx_*_{}".format(wheel_cpu)
             for wheel_cpu in wheel_cpu_values
         ],
     )

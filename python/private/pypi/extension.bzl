@@ -231,6 +231,13 @@ def _create_whl_repos(
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
         evaluate_markers = evaluate_markers,
+        select_whls = {
+            key: struct(
+                platforms = p.whl_platforms,
+                whl_limit = p.whl_limit,
+            )
+            for key, p in config["platforms"].items()
+        },
         logger = logger,
     )
 
@@ -411,6 +418,8 @@ def _configure(config, *, platform, constraint_values, target_settings, os_name,
                 for k, v in values.items()
                 if k.startswith("env_") and v
             },
+            whl_platforms = values["whl_platforms"],
+            whl_limit = values["whl_limit"],
         )
     else:
         config["platforms"].pop(platform)
@@ -485,6 +494,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 os_name = tag.os_name,
                 platform = tag.platform,
                 target_settings = tag.target_settings,
+                whl_limit = tag.whl_limit,
+                whl_platforms = tag.whl_platforms,
                 override = mod.is_root,
                 # TODO @aignas 2025-05-19: add more attr groups:
                 # * for AUTH
@@ -753,7 +764,7 @@ def _pip_impl(module_ctx):
         # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
         # results after calling the PyPI index should be reproducible on each
         # machine.
-        return module_ctx.extension_metadata(reproducible = True)
+        return module_ctx.extension_metadata(reproducible = False)
     else:
         return None
 

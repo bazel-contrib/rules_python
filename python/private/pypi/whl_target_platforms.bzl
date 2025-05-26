@@ -46,7 +46,7 @@ _OS_PREFIXES = {
     "win": "windows",
 }  # buildifier: disable=unsorted-dict-items
 
-def select_whls(*, whls, want_platforms = {}, logger = None):
+def select_whls(*, whls, want_platforms = {}, include_whls = {}, logger = None):
     """Select a subset of wheels suitable for target platforms from a list.
 
     Args:
@@ -55,12 +55,22 @@ def select_whls(*, whls, want_platforms = {}, logger = None):
         want_platforms: {type}`dict[str, struct]` The platforms in "{abi}_{os}_{cpu}" or
             "{os}_{cpu}" format for the keys and the values are options for further fine
             tuning the selection.
+        include_whls: TODO
         logger: A logger for printing diagnostic messages.
 
     Returns:
         A filtered list of items from the `whls` arg where `filename` matches
         the selected criteria. If no match is found, an empty list is returned.
     """
+
+    # TODO @aignas 2025-05-26: this function has to be completely rewritten if we want users
+    # to modify the following:
+    # * include freethreaded or not? (restrict by ABIs)
+    # * include certain platform_tags
+    # * limit the number of wheels that are included. The list has to be sorted by
+    # specificity, the sorting function should be trivial to implement.
+    #
+    # This has to be done even if we want to include only 1 wheel per target platform.
     if not whls:
         return []
 
@@ -115,7 +125,7 @@ def select_whls(*, whls, want_platforms = {}, logger = None):
             if tag.startswith("cp3") or tag.startswith("py3"):
                 version = int(tag[len("..3"):] or 0)
             else:
-                # In this case it should be eithor "cp2" or "py2" and we will default
+                # In this case it should be either "cp2" or "py2" and we will default
                 # to `whl_version_min` = 0
                 continue
 
@@ -142,10 +152,12 @@ def select_whls(*, whls, want_platforms = {}, logger = None):
         if parsed.platform_tag == "any":
             compatible = True
         else:
-            for p in whl_target_platforms(parsed.platform_tag, abi_tag = parsed.abi_tag.strip("m") if parsed.abi_tag.startswith("cp") else None):
-                if p.target_platform in want_platforms:
-                    compatible = True
-                    break
+            supported_platform_tag = _supported(include_whls, parsed.platform_tag)
+            if supported_platform_tag:
+                for p in whl_target_platforms(supported_platform_tag, abi_tag = parsed.abi_tag.strip("m") if parsed.abi_tag.startswith("cp") else None):
+                    if p.target_platform in want_platforms:
+                        compatible = True
+                        break
 
         if not compatible:
             if logger:
@@ -173,10 +185,32 @@ def select_whls(*, whls, want_platforms = {}, logger = None):
                 [],
             ).append(whl)
 
-    return [
+    ret = [
         candidates[key][sorted(v)[-1]][-1]
         for key, v in candidates.items()
     ]
+    return ret
+
+def _supported(include_whls, actual_platform_tag):
+    if not include_whls:
+        return actual_platform_tag
+
+    ret = []
+    for _, includes in include_whls.items():
+        for include in includes.platforms:
+            head, _, tail = include.partition("*")
+
+            for actual in actual_platform_tag.split("."):
+                if actual == head and not tail:
+                    pass
+                elif tail and actual.startswith(head) and actual.endswith(tail):
+                    pass
+                else:
+                    continue
+
+                ret.append(actual)
+
+    return ".".join(ret)
 
 def whl_target_platforms(platform_tag, abi_tag = ""):
     """Parse the wheel abi and platform tags and return (os, cpu) tuples.
