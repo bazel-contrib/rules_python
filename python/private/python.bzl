@@ -305,6 +305,10 @@ def _python_impl(module_ctx):
     # list[str] of the repo names for host compatible repos
     all_host_compatible_repo_names = []
 
+    # todo: The 3.13.1-custom-runtime ends up _last_ in the toolchain
+    # ordering, so it never gets picked.
+    # Need to move it first
+
     # Create the underlying python_repository repos that contain the
     # python runtimes and their toolchain implementation definitions.
     for i, toolchain_info in enumerate(py.toolchains):
@@ -331,10 +335,13 @@ def _python_impl(module_ctx):
             **kwargs
         )
         if not register_result.impl_repos:
+            fail("hit")
             continue
 
         host_platforms = {}
         for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
+            if "3.13.1" in full_python_version:
+                print("registered:", repo_name)
             toolchain_impls.append(struct(
                 # str: The base name to use for the toolchain() target
                 name = repo_name,
@@ -669,7 +676,14 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
     if tag.sha256:
         available_versions[tag.python_version].setdefault("sha256", {})[tag.platform] = tag.sha256
     if tag.strip_prefix:
-        available_versions[tag.python_version].setdefault("strip_prefix", {})[tag.platform] = tag.strip_prefix
+        v = available_versions
+        v1 = available_versions[tag.python_version]
+        v1.setdefault("strip_prefix", {})
+        v2 = v1["strip_prefix"]
+        print(v2)
+        v2[tag.platform] = tag.strip_prefix
+        ##available_versions[tag.python_version].setdefault("strip_prefix", {})[tag.platform] = tag.strip_prefix
+
     if tag.urls:
         available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
 
@@ -784,22 +798,29 @@ def _get_toolchain_config(*, modules, _fail = fail):
     """
 
     # Items that can be overridden
-    available_versions = {
-        version: {
-            # Use a dicts straight away so that we could do URL overrides for a
-            # single version.
-            "sha256": dict(item["sha256"]),
-            "strip_prefix": {
-                platform: item["strip_prefix"]
-                for platform in item["sha256"]
-            } if type(item["strip_prefix"]) == type("") else item["strip_prefix"],
-            "url": {
-                platform: [item["url"]]
-                for platform in item["sha256"]
-            } if type(item["url"]) == type("") else item["url"],
-        }
-        for version, item in TOOL_VERSIONS.items()
-    }
+    available_versions = {}
+    for py_version, item in TOOL_VERSIONS.items():
+        available_versions[py_version] = {}
+        available_versions[py_version]["sha256"] = dict(item["sha256"])
+        platforms = item["sha256"].keys()
+
+        strip_prefix = item["strip_prefix"]
+        if type(strip_prefix) == type(""):
+            available_versions[py_version]["strip_prefix"] = {
+                platform: strip_prefix
+                for platform in platforms
+            }
+        else:
+            available_versions[py_version]["strip_prefix"] = dict(strip_prefix)
+        url = item["url"]
+        if type(url) == type(""):
+            available_versions[py_version]["url"] = {
+                platform: url
+                for platform in platforms
+            }
+        else:
+            available_versions[py_version]["url"] = dict(url)
+
     default = {
         "base_url": DEFAULT_RELEASE_BASE_URL,
         "platforms": dict(PLATFORMS),  # Copy so it's mutable.
