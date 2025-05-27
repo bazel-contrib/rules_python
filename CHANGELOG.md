@@ -86,6 +86,7 @@ END_UNRELEASED_TEMPLATE
   multiple times.
 * (tools/wheelmaker.py) Extras are now preserved in Requires-Dist metadata when using requires_file
   to specify the requirements.
+* (gazelle): Skip indexing py_binary rules if a corresponding py_library rule contains the same srcs: https://github.com/bazel-contrib/rules_python/pull/2822
 
 {#v0-0-0-added}
 ### Added
