@@ -30,6 +30,7 @@ load(
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
+load(":namespace_pkgs.bzl", "create_inits")
 load(":pep508_deps.bzl", "deps")
 
 def whl_library_targets_from_requires(
@@ -113,6 +114,7 @@ def whl_library_targets(
         copy_executables = {},
         entry_points = {},
         native = native,
+        enable_implicit_namespace_pkgs = False,
         rules = struct(
             copy_file = copy_file,
             py_binary = py_binary,
@@ -153,6 +155,8 @@ def whl_library_targets(
         data: {type}`list[str]` A list of labels to include as part of the `data` attribute in `py_library`.
         entry_points: {type}`dict[str, str]` The mapping between the script
             name and the python file to use. DEPRECATED.
+        enable_implicit_namespace_pkgs: {type}`boolean` generate __init__.py
+            files for namespace pkgs.
         native: {type}`native` The native struct for overriding in tests.
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
@@ -293,6 +297,14 @@ def whl_library_targets(
         )
 
     if hasattr(rules, "py_library"):
+        srcs = native.glob(
+            ["site-packages/**/*.py"],
+            exclude = srcs_exclude,
+            # Empty sources are allowed to support wheels that don't have any
+            # pure-Python code, e.g. pymssql, which is written in Cython.
+            allow_empty = True,
+        )
+
         # NOTE: pyi files should probably be excluded because they're carried
         # by the pyi_srcs attribute. However, historical behavior included
         # them in data and some tools currently rely on that.
@@ -309,23 +321,31 @@ def whl_library_targets(
             if item not in _data_exclude:
                 _data_exclude.append(item)
 
+        data = data + native.glob(
+            ["site-packages/**/*"],
+            exclude = _data_exclude,
+        )
+
+        pyi_srcs = native.glob(
+            ["site-packages/**/*.pyi"],
+            allow_empty = True,
+        )
+
+        if enable_implicit_namespace_pkgs:
+            srcs = srcs + getattr(native, "select", select)({
+                Label("//python/config_settings:is_venvs_site_packages"): [],
+                "//conditions:default": create_inits(
+                    srcs = srcs + data + pyi_srcs,
+                    ignore_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
+                    root = "site-packages",
+                ),
+            })
+
         rules.py_library(
             name = py_library_label,
-            srcs = native.glob(
-                ["site-packages/**/*.py"],
-                exclude = srcs_exclude,
-                # Empty sources are allowed to support wheels that don't have any
-                # pure-Python code, e.g. pymssql, which is written in Cython.
-                allow_empty = True,
-            ),
-            pyi_srcs = native.glob(
-                ["site-packages/**/*.pyi"],
-                allow_empty = True,
-            ),
-            data = data + native.glob(
-                ["site-packages/**/*"],
-                exclude = _data_exclude,
-            ),
+            srcs = srcs,
+            pyi_srcs = pyi_srcs,
+            data = data,
             # This makes this directory a top-level in the python import
             # search path for anything that depends on this.
             imports = ["site-packages"],

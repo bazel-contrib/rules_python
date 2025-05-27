@@ -18,6 +18,11 @@ package(default_visibility = ["//:__subpackages__"])
 
 licenses(["notice"])
 
+exports_files(
+    srcs = ["namespace_pkg_tmpl.py"],
+    visibility = ["//visibility:public"],
+)
+
 filegroup(
     name = "distribution",
     srcs = glob(
