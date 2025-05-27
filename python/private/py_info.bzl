@@ -148,11 +148,11 @@ The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
 """,
         "site_packages_symlinks": """
-:type: depset[tuple[str | None, str]]
+:type: depset[tuple[str | None, str, str | None]]
 
 A depset with `topological` ordering.
 
-Tuples of `(runfiles_path, site_packages_path)`. Where
+Tuples of `(runfiles_path, site_packages_path, symlink_key)`. Where
 * `runfiles_path` is a runfiles-root relative path. It is the path that
   has the code to make importable. If `None` or empty string, then it means
   to not create a site packages directory with the `site_packages_path`
@@ -161,6 +161,11 @@ Tuples of `(runfiles_path, site_packages_path)`. Where
   the venv for whatever creates the venv (typically py_binary). It makes
   the code in `runfiles_path` available for import. Note that this
   is created as a "raw" symlink (via `declare_symlink`).
+* `symlink_key` is a path which should be checked instead of the
+  `site_packages_path`. This is typically used for dist-info directories as
+  they include version in the filenames and we want to ensure that we can
+  replace the whole package and not have orphan .dist-info packages in the
+  virtual environment.
 
 :::{include} /_includes/experimental_api.md
 :::

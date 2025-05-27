@@ -444,6 +444,7 @@ bzl_library(
         ":attributes_bzl",
         ":common_bzl",
         ":flags_bzl",
+        ":normalize_name_bzl",
         ":precompile_bzl",
         ":py_cc_link_params_info_bzl",
         ":py_internal_bzl",

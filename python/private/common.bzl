@@ -396,8 +396,8 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
-        site_packages_symlinks: {type}`list[tuple[str, str]]` tuples of
-            `(runfiles_path, site_packages_path)` for symlinks to create
+        site_packages_symlinks: {type}`list[tuple[str, str, str]]` tuples of
+            `(normalized_package_name, runfiles_path, site_packages_path)` for symlinks to create
             in the consuming binary's venv site packages.
 
     Returns:

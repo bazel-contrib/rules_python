@@ -41,6 +41,7 @@ load(
     "runfiles_root_path",
 )
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
+load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo")
@@ -206,16 +207,32 @@ Source files are no longer added to the runfiles directly.
 :::
 """
 
+def _get_distinfo_metadata(ctx):
+    data = ctx.files.data or []
+    for d in data:
+        # work on case insensitive FSes
+        if d.basename.lower() != "metadata":
+            continue
+
+        if d.dirname.endswith(".dist-info"):
+            return d
+
+    return None
+
 def _get_imports_and_site_packages_symlinks(ctx, semantics):
     imports = depset()
     site_packages_symlinks = depset()
     if VenvsSitePackages.is_enabled(ctx):
-        site_packages_symlinks = _get_site_packages_symlinks(ctx)
+        dist_info_metadata = _get_distinfo_metadata(ctx)
+        site_packages_symlinks = _get_site_packages_symlinks(
+            ctx,
+            dist_info_metadata,
+        )
     else:
         imports = collect_imports(ctx, semantics)
     return imports, site_packages_symlinks
 
-def _get_site_packages_symlinks(ctx):
+def _get_site_packages_symlinks(ctx, dist_info_metadata):
     imports = ctx.attr.imports
     if len(imports) == 0:
         fail("When venvs_site_packages is enabled, exactly one `imports` " +
@@ -254,6 +271,23 @@ def _get_site_packages_symlinks(ctx):
     repo_runfiles_dirname = None
     dirs_with_init = {}  # dirname -> runfile path
     site_packages_symlinks = []
+    if dist_info_metadata:
+        # in order to be able to have replacements in the venv, we have to add a
+        # third value into the site_packages_symlinks, which would be the normalized
+        # package name. This allows us to ensure that we can replace the `dist-info`
+        # directories by checking if the package key is there.
+        dist_info_dir = paths.basename(dist_info_metadata.dirname)
+        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+        package, _, _version = package.rpartition("-")
+        symlink_key = "{}.dist-info".format(normalize_name(package))
+
+        repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
+        site_packages_symlinks.append((
+            paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
+            dist_info_dir,
+            symlink_key,
+        ))
+
     for src in ctx.files.srcs:
         if src.extension not in PYTHON_FILE_EXTENSIONS:
             continue
@@ -274,6 +308,7 @@ def _get_site_packages_symlinks(ctx):
             site_packages_symlinks.append((
                 paths.join(repo_runfiles_dirname, site_packages_root, filename),
                 filename,
+                None,
             ))
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
@@ -294,6 +329,7 @@ def _get_site_packages_symlinks(ctx):
         site_packages_symlinks.append((
             paths.join(repo_runfiles_dirname, site_packages_root, dirname),
             dirname,
+            None,
         ))
     return site_packages_symlinks
 
