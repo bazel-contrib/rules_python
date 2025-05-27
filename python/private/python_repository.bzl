@@ -327,7 +327,6 @@ function defaults (e.g. `single_version_override` for `MODULE.bazel` files.
         "platform": attr.string(
             doc = "The platform name for the Python interpreter tarball.",
             mandatory = True,
-            ##values = PLATFORMS.keys(),
         ),
         "python_version": attr.string(
             doc = "The Python version.",
