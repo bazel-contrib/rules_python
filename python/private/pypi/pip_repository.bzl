@@ -80,6 +80,16 @@ def _pip_repository_impl(rctx):
             requirements_osx = rctx.attr.requirements_darwin,
             requirements_windows = rctx.attr.requirements_windows,
             extra_pip_args = rctx.attr.extra_pip_args,
+            platforms = [
+                "linux_aarch64",
+                "linux_arm",
+                "linux_ppc",
+                "linux_s390x",
+                "linux_x86_64",
+                "osx_aarch64",
+                "osx_x86_64",
+                "windows_x86_64",
+            ],
         ),
         extra_pip_args = rctx.attr.extra_pip_args,
         evaluate_markers = lambda rctx, requirements: evaluate_markers_py(

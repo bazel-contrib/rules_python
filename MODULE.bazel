@@ -56,10 +56,87 @@ use_repo(
 # This call registers the Python toolchains.
 register_toolchains("@pythons_hub//:all")
 
-#####################
-# Install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
-
+# Let's define default platforms for our users first
 pip = use_extension("//python/extensions:pip.bzl", "pip")
+
+[
+    pip.default(
+        arch_name = cpu,
+        constraint_values = [
+            "@platforms//os:linux",
+            "@platforms//cpu:{}".format(cpu),
+        ],
+        env_platform_version = "0",
+        os_name = "linux",
+        platform = "linux_{}".format(cpu),
+        whl_platforms = [
+            # this is by the order of preference.
+            # TODO @aignas 2025-05-23: how do we specify the default libc version?
+            "manylinux_*_{}".format(cpu),
+            "linux_*_{}".format(cpu),
+            "musllinux_*_{}".format(cpu),
+        ],
+    )
+    for cpu in [
+        "x86_64",
+        "aarch64",
+        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
+        # `pip.default` extension. i.e. drop the below values - users will have to
+        # define themselves if they need them.
+        "arm",
+        "ppc",
+        "ppc64le",
+        "s390x",
+    ]
+]
+
+[
+    pip.default(
+        arch_name = cpu,
+        constraint_values = [
+            "@platforms//os:osx",
+            "@platforms//cpu:{}".format(cpu),
+        ],
+        # We choose the oldest non-EOL version at the time when we release `rules_python`.
+        # See https://endoflife.date/macos
+        env_platform_version = "14.0",
+        os_name = "osx",
+        platform = "osx_{}".format(cpu),
+        whl_platforms = [
+            # TODO @aignas 2025-05-23: how do we specify the default osx version?
+            "macosx_*_{}".format(wheel_cpu)
+            for wheel_cpu in wheel_cpu_values
+        ],
+    )
+    for cpu, wheel_cpu_values in {
+        # this is by the order of preference.
+        "aarch64": [
+            "arm64",
+            "universal2",
+        ],
+        "x86_64": [
+            "x86_64",
+            "universal2",
+            "intel",
+        ],
+    }.items()
+]
+
+pip.default(
+    arch_name = "x86_64",
+    constraint_values = [
+        "@platforms//os:windows",
+        "@platforms//cpu:x86_64",
+    ],
+    env_platform_version = "0",
+    os_name = "windows",
+    platform = "windows_x86_64",
+    whl_platforms = ["win_amd64"],
+)
+
+#####################
+# Then install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
+
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.

@@ -49,13 +49,35 @@ simple==0.0.1 \
         ],
     )
 
-def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True):
+def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_root = True):
     return struct(
         name = name,
         tags = struct(
             parse = parse,
             override = override,
             whl_mods = whl_mods,
+            # TODO @aignas 2025-05-19: add a test with the default tag
+            default = default or [
+                _default(
+                    arch_name = cpu,
+                    constraint_values = [
+                        "@platforms//os:{}".format(os),
+                        "@platforms//cpu:{}".format(cpu),
+                    ],
+                    os_name = os,
+                    platform = "{}_{}".format(os, cpu),
+                )
+                for os, cpu in [
+                    ("linux", "aarch64"),
+                    ("linux", "arm"),
+                    ("linux", "ppc"),
+                    ("linux", "s390x"),
+                    ("linux", "x86_64"),
+                    ("osx", "aarch64"),
+                    ("osx", "x86_64"),
+                    ("windows", "x86_64"),
+                ]
+            ],
         ),
         is_root = is_root,
     )
@@ -75,6 +97,34 @@ def _parse_modules(env, **kwargs):
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
         ),
+    )
+
+def _default(
+        arch_name = None,
+        constraint_values = None,
+        os_name = None,
+        platform = None,
+        target_settings = None,
+        env_implementation_name = None,
+        env_os_name = None,
+        env_platform_machine = None,
+        env_platform_release = None,
+        env_platform_system = None,
+        env_platform_version = None,
+        env_sys_platform = None):
+    return struct(
+        arch_name = arch_name,
+        constraint_values = constraint_values,
+        os_name = os_name,
+        platform = platform,
+        target_settings = target_settings,
+        env_implementation_name = env_implementation_name,
+        env_os_name = env_os_name,
+        env_platform_machine = env_platform_machine,
+        env_platform_release = env_platform_release,
+        env_platform_system = env_platform_system,
+        env_platform_version = env_platform_version,
+        env_sys_platform = env_sys_platform,
     )
 
 def _parse(
