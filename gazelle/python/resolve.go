@@ -71,7 +71,6 @@ func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 		pythonProjectRoot := cfg.PythonProjectRoot()
 		provide := importSpecFromSrc(pythonProjectRoot, f.Pkg, src)
-		// log.Printf("import to index: %v", provide.Imp)
 		provides = append(provides, provide)
 	}
 	if len(provides) == 0 {
@@ -158,18 +157,14 @@ func (py *Resolver) Resolve(
 			moduleName := mod.Name
 			// Transform relative imports `.` or `..foo.bar` into the package path from root.
 			if strings.HasPrefix(mod.From, ".") {
-				if !isPackageGeneration {
+				if !cfg.ExperimentalAllowRelativeImports() || !isPackageGeneration {
 					continue MODULES_LOOP
 				}
 
 				// Count number of leading dots in mod.From (e.g., ".." = 2, "...foo.bar" = 3)
-				relativeDepth := 0
-				for i := 0; i < len(mod.From); i++ {
-					if mod.From[i] == '.' {
-						relativeDepth++
-					} else {
-						break
-					}
+				relativeDepth := strings.IndexFunc(mod.From, func(r rune) bool { return r != '.' })
+				if relativeDepth == -1 {
+					relativeDepth = len(mod.From)
 				}
 
 				// Extract final symbol (e.g., "some_function") from mod.Name
