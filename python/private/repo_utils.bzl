@@ -405,11 +405,13 @@ def _get_platforms_cpu_name(mrctx = None, *, arch = None):
 
     Args:
         mrctx: module_ctx or repository_ctx.
+        arch: {type}`str` Arch to map to @platforms cpu. If not set, taken
+            from `mrctx`.
 
     Returns:
         `str`. The target name.
     """
-    if mrctx:
+    if arch == None:
         arch = mrctx.os.arch.lower()
 
     if arch in ["i386", "i486", "i586", "i686", "i786", "x86"]:

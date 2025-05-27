@@ -261,7 +261,6 @@ that is activated for Linux x86 builds when the custom flag
 bazel_dep(name = "bazel_skylib", version = "1.7.1.")
 bazel_dep(name = "rules_python", version = "1.5.0")
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(python_version="3.13.3")
 python.single_version_platform_override(
     platform = "my-platform",
     python_version = "3.13.3",
@@ -290,8 +289,6 @@ config_setting(
 Notes:
 - While any URL and archive can be used, it's assumed their content looks how
   a python-build-standalone archive looks.
-- `python.toolchain()` is required if the version is unknown; if the version
-  is already known, it can be omitted.
 - A "version aware" toolchain is registered, which means the Python version flag
   must also match (e.g. `--@rules_python//python/config_settings:python_version=3.13.3`
   must be set -- see `minor_mapping` and `is_default` for controls and docs

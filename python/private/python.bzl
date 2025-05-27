@@ -37,6 +37,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
 
     Args:
         module_ctx: {type}`module_ctx` module context.
+        logger: {type}`repo_utils.logger` A logger to use.
         _fail: {type}`function` the failure function, mainly for testing.
 
     Returns:
@@ -335,7 +336,6 @@ def _python_impl(module_ctx):
             **kwargs
         )
         if not register_result.impl_repos:
-            fail("hit")
             continue
 
         host_platforms = {}
@@ -674,13 +674,7 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
     if tag.sha256:
         available_versions[tag.python_version].setdefault("sha256", {})[tag.platform] = tag.sha256
     if tag.strip_prefix:
-        v = available_versions
-        v1 = available_versions[tag.python_version]
-        v1.setdefault("strip_prefix", {})
-        v2 = v1["strip_prefix"]
-        print(v2)
-        v2[tag.platform] = tag.strip_prefix
-        ##available_versions[tag.python_version].setdefault("strip_prefix", {})[tag.platform] = tag.strip_prefix
+        available_versions[tag.python_version].setdefault("strip_prefix", {})[tag.platform] = tag.strip_prefix
 
     if tag.urls:
         available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
@@ -712,7 +706,9 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
             arch = "UNKNOWN_CUSTOM_ARCH"
 
         # Move the override earlier in the ordering -- the platform key ordering
-        # becomes the toolchain ordering within the version.
+        # becomes the toolchain ordering within the version. This allows the
+        # override to have a superset of constraints from a regular runtimes
+        # (e.g. same platform, but with a custom flag required).
         override_first = {
             tag.platform: platform_info(
                 compatible_with = target_compatible_with,

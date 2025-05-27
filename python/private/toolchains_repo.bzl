@@ -604,26 +604,16 @@ def _get_host_impl_repo_name(*, rctx, logger, python_version, os_name, cpu_name,
                 candidates,
             ))
         elif preference not in candidates:
-            # todo: need to map names like 3_13_0_linux_x86_64 back to
-            # the input values. Ah, er, wait
-            # Is this working?
-            # The return value is appended to this repo's name.
-            # This repo's name is e.g. python_3_13.
-            # the net result would be
-            # python_3_10_3_13_0_linux_x86_64
-            # which isn't a valid name
             return logger.fail("Please choose a preferred interpreter out of the following platforms: {}".format(candidates))
         else:
             candidates = [preference]
 
     if candidates:
         platform_name, meta = candidates[0]
-        print("multiple candidates:", candidates)
         suffix = getattr(meta, "impl_repo_name", None)
         if not suffix:
             suffix = platform_name
         return suffix
-        ##return getattr(meta, "impl_repo_name", platform_name)
 
     return logger.fail("Could not find a compatible 'host' python for '{os_name}', '{cpu_name}' from the loaded platforms: {platforms}".format(
         os_name = os_name,

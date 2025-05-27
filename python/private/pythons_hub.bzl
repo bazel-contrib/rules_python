@@ -141,13 +141,13 @@ This rule also writes out the various toolchains for the different Python versio
 """,
     implementation = _hub_repo_impl,
     attrs = {
+        "default_python_version": attr.string(
+            doc = "Default Python version for the build in `X.Y` or `X.Y.Z` format.",
+            mandatory = True,
+        ),
         "host_compatible_repo_names": attr.string_list(
             doc = "The base repo name for toolchains ('python_3_10', no " +
                   "platform suffix)",
-            mandatory = True,
-        ),
-        "default_python_version": attr.string(
-            doc = "Default Python version for the build in `X.Y` or `X.Y.Z` format.",
             mandatory = True,
         ),
         "minor_mapping": attr.string_dict(
