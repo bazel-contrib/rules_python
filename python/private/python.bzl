@@ -15,9 +15,10 @@
 "Python toolchain module extensions for use with bzlmod."
 
 load("@bazel_features//:features.bzl", "bazel_features")
-load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VERSIONS", "platform_info")
+load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VERSIONS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
+load(":platform_info.bzl", "platform_info")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
@@ -31,7 +32,7 @@ load(
 load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 load(":version.bzl", "version")
 
-def parse_modules(*, module_ctx, _fail = fail):
+def parse_modules(*, module_ctx, logger, _fail = fail):
     """Parse the modules and return a struct for registrations.
 
     Args:
@@ -76,8 +77,6 @@ def parse_modules(*, module_ctx, _fail = fail):
     global_toolchain_versions = {}
 
     ignore_root_user_error = None
-
-    logger = repo_utils.logger(module_ctx, "python")
 
     # if the root module does not register any toolchain then the
     # ignore_root_user_error takes its default value: True
@@ -278,7 +277,8 @@ def parse_modules(*, module_ctx, _fail = fail):
     )
 
 def _python_impl(module_ctx):
-    py = parse_modules(module_ctx = module_ctx)
+    logger = repo_utils.logger(module_ctx, "python")
+    py = parse_modules(module_ctx = module_ctx, logger = logger)
 
     # Host compatible runtime repos
     # dict[str version, struct] where struct has:
@@ -302,13 +302,13 @@ def _python_impl(module_ctx):
     toolchain_impls = []
 
     # list[str] of the base names of toolchain repos
-    base_toolchain_repo_names = []
+    # list[str] of the repo names for host compatible repos
+    all_host_compatible_repo_names = []
 
     # Create the underlying python_repository repos that contain the
     # python runtimes and their toolchain implementation definitions.
     for i, toolchain_info in enumerate(py.toolchains):
         is_last = (i + 1) == len(py.toolchains)
-        base_toolchain_repo_names.append(toolchain_info.name)
 
         # Ensure that we pass the full version here.
         full_python_version = full_version(
@@ -324,24 +324,14 @@ def _python_impl(module_ctx):
         kwargs.update(py.config.kwargs.get(toolchain_info.python_version, {}))
         kwargs.update(py.config.kwargs.get(full_python_version, {}))
         kwargs.update(py.config.default)
-        if "3.13" in full_python_version:
-            print("bzlmod register:", toolchain_info.name, full_python_version)
-            print("kwargs.platforms:", kwargs["platforms"].keys())
-            ##print("kwargs.tool_versions:", kwargs["tool_versions"])
 
-        # todo: this part is failing. python_register_toolchains doesn't have
-        # the new platform in its platform map, so never tries
         register_result = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
             **kwargs
         )
         if not register_result.impl_repos:
-            # If nothing was registered, something has gone wrong. This probably
-            # means the `platforms` map and `tool_versions[version]["shas"]`
-            # aren't in sync.
-            # todo: ignore instead of fail?
-            fail("No impls registered for", toolchain_info)
+            continue
 
         host_platforms = {}
         for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
@@ -379,97 +369,62 @@ def _python_impl(module_ctx):
 
         host_repo_name = toolchain_info.name + "_host"
         if not host_platforms:
-            print("need:", host_repo_name)
             needed_host_repos[host_repo_name] = struct(
                 compatible_version = toolchain_info.python_version,
                 full_python_version = full_python_version,
             )
         else:
-            print("create:", host_repo_name)
+            all_host_compatible_repo_names.append(host_repo_name)
             host_platforms = sorted_host_platforms(host_platforms)
             entries = host_platforms.values()
             host_compatible_python_repo(
                 name = host_repo_name,
                 base_name = host_repo_name,
-                # NOTE: Order matters. The first found to be compatible is (usually) used.
+                # NOTE: Order matters. The first found to be compatible is
+                # (usually) used.
                 platforms = host_platforms.keys(),
-                os_names = {
-                    str(i): entry.platform.os_name
-                    for i, entry in enumerate(entries)
-                },
-                arch_names = {
-                    str(i): entry.platform.arch
-                    for i, entry in enumerate(entries)
-                },
-                python_versions = {
-                    str(i): entry.full_python_version
-                    for i, entry in enumerate(entries)
-                },
-                impl_repo_names = {
-                    str(i): entry.impl_repo_name
-                    for i, entry in enumerate(entries)
-                },
+                os_names = {str(i): e.platform.os_name for i, e in enumerate(entries)},
+                arch_names = {str(i): e.platform.arch for i, e in enumerate(entries)},
+                python_versions = {str(i): e.full_python_version for i, e in enumerate(entries)},
+                impl_repo_names = {str(i): e.impl_repo_name for i, e in enumerate(entries)},
             )
 
-    def vt(s):
-        return tuple([int(x) for x in s.split(".")])
-
     if needed_host_repos:
-        print("host repos still needed:", needed_host_repos)
         for key, entries in all_host_compatible_impls.items():
             all_host_compatible_impls[key] = sorted(
                 entries,
                 reverse = True,
-                key = lambda e: vt(e.full_python_version),
+                key = lambda e: version.key(version.parse(e.full_python_version)),
             )
 
     for host_repo_name, info in needed_host_repos.items():
         choices = []
         if info.compatible_version not in all_host_compatible_impls:
-            print(
-                "No host compatible for:",
-                info.compatible_version,
-                "available:",
-                all_host_compatible_impls.keys(),
-            )
+            logger.warn("No host compatible runtime found compatible with version {}".format(info.compatible_version))
             continue
-            ##fail(" version missing", info.compatible_version)
 
-        for entry in all_host_compatible_impls[info.compatible_version]:
-            # todo: numeric version comparison
-            # todo: should we restrict at all? Maybe just take the highest?
-            if vt(entry.full_python_version) <= vt(info.full_python_version):
-                choices.append(entry)
-        if choices:
-            platform_keys = [
-                # We have to prepend the offset because the same platform
-                # name might occur across different versions
-                "{}_{}".format(i, entry.platform_name)
+        choices = all_host_compatible_impls[info.compatible_version]
+        platform_keys = [
+            # We have to prepend the offset because the same platform
+            # name might occur across different versions
+            "{}_{}".format(i, entry.platform_name)
+            for i, entry in enumerate(choices)
+        ]
+        platform_keys = sorted_host_platform_names(platform_keys)
+
+        all_host_compatible_repo_names.append(host_repo_name)
+        host_compatible_python_repo(
+            name = host_repo_name,
+            base_name = host_repo_name,
+            platforms = platform_keys,
+            impl_repo_names = {
+                str(i): entry.impl_repo_name
                 for i, entry in enumerate(choices)
-            ]
-            platform_keys = sorted_host_platform_names(platform_keys)
-
-            print("create alt: {} for {}".format(host_repo_name, info.compatible_version))
-            print("platforms=", platform_keys)
-
-            host_compatible_python_repo(
-                name = host_repo_name,
-                base_name = host_repo_name,
-                platforms = platform_keys,
-                impl_repo_names = {
-                    str(i): entry.impl_repo_name
-                    for i, entry in enumerate(choices)
-                },
-                os_names = {str(i): entry.platform.os_name for i, entry in enumerate(choices)},
-                arch_names = {str(i): entry.platform.arch for i, entry in enumerate(choices)},
-                python_versions = {str(i): entry.full_python_version for i, entry in enumerate(choices)},
-            )
-        else:
-            # todo: figure out what to do. Define nothing, if we can.
-            fail("No host-compatible found")
-
-    # List of the base names ("python_3_10") for the toolchain repos
-    base_toolchain_repo_names = []
+            },
+            os_names = {str(i): entry.platform.os_name for i, entry in enumerate(choices)},
+            arch_names = {str(i): entry.platform.arch for i, entry in enumerate(choices)},
+            python_versions = {str(i): entry.full_python_version for i, entry in enumerate(choices)},
+        )
 
     # list[str] The infix to use for the resulting toolchain() `name` arg.
     toolchain_names = []
@@ -531,7 +486,7 @@ def _python_impl(module_ctx):
         toolchain_platform_keys = toolchain_platform_keys,
         toolchain_python_versions = toolchain_python_versions,
         toolchain_set_python_version_constraints = toolchain_set_python_version_constraints,
-        base_toolchain_repo_names = [t.name for t in py.toolchains],
+        host_compatible_repo_names = sorted(all_host_compatible_repo_names),
         default_python_version = py.default_python_version,
         minor_mapping = py.config.minor_mapping,
         python_versions = list(py.config.default["tool_versions"].keys()),
@@ -718,48 +673,38 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
     if tag.urls:
         available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
 
-    if tag.platform not in default["platforms"]:
+    # If platform is customized, or doesn't exist, (re)define one.
+    if ((tag.target_compatible_with or tag.target_settings or tag.os_name or tag.arch) or
+        tag.platform not in default["platforms"]):
         os_name = tag.os_name
         arch = tag.arch
-        if not os_name or not arch:
-            for v in tag.target_compatible_with:
-                if os_name and arch:
-                    break
-                if not os_name:
-                    if v.startswith("@platforms//os:"):
-                        if v.endswith(":linux"):
-                            os_name = "linux"
 
-                if not arch:
-                    if v.startswith("@platforms//cpu:"):
-                        if v.endswith(":x86_64"):
-                            arch = "x86_64"
+        if not tag.target_compatible_with:
+            target_compatible_with = []
+            if os_name:
+                target_compatible_with.append("@platforms//os:{}".format(
+                    repo_utils.get_platforms_os_name(os_name),
+                ))
+            if arch:
+                target_compatible_with.append("@platforms//cpu:{}".format(
+                    repo_utils.get_platforms_cpu_name(arch),
+                ))
+        else:
+            target_compatible_with = tag.target_compatible_with
 
+        # For lack of a better option, give a bogus value. It only affects
+        # if the runtime is considered host-compatible.
         if not os_name:
-            os_name = "UNKNOWN_CUSTOM"
+            os_name = "UNKNOWN_CUSTOM_OS"
         if not arch:
-            arch = "UNKNOWN_CUSTOM"
-
-        # todo: figure out why these can't be none
-        os_name = struct()
-        arch = struct()
+            arch = "UNKNOWN_CUSTOM_ARCH"
 
         default["platforms"][tag.platform] = platform_info(
-            compatible_with = tag.target_compatible_with,
+            compatible_with = target_compatible_with,
             target_settings = tag.target_settings,
             os_name = os_name,
             arch = arch,
         )
-    elif (
-        tag.target_compatible_with or tag.target_settings or
-        tag.os_name or tag.arch
-    ):
-        # todo: fail, or ignore?
-        fail((
-            "Cannot override platform {} with custom platform settings"
-        ).format(
-            tag.platform,
-        ))
 
 def _process_global_overrides(*, tag, default, _fail = fail):
     if tag.available_python_versions:
@@ -1259,14 +1204,50 @@ configuration, please use {obj}`single_version_override`.
 :::
 """,
     attrs = {
-        "arch": attr.string(),
+        "arch": attr.string(
+            doc = """
+The arch (cpu) the runtime is compatible with.
+
+If not set, then the runtime cannot be used as a `python_X_Y_host` runtime.
+
+If set, the `os_name`, `target_compatible_with` and `target_settings` attributes
+should also be set.
+
+The values should be one of the values in `@platforms//cpu`
+
+:::{seealso}
+Docs for [Registering custom runtimes]
+:::
+
+:::{{versionadded}} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "coverage_tool": attr.label(
             doc = """\
 The coverage tool to be used for a particular Python interpreter. This can override
 `rules_python` defaults.
 """,
         ),
-        "os_name": attr.string(),
+        "os_name": attr.string(
+            doc = """
+The host OS the runtime is compatible with.
+
+If not set, then the runtime cannot be used as a `python_X_Y_host` runtime.
+
+If set, the `os_name`, `target_compatible_with` and `target_settings` attributes
+should also be set.
+
+The values should be one of the values in `@platforms//os`
+
+:::{seealso}
+Docs for [Registering custom runtimes]
+:::
+
+:::{{versionadded}} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "patch_strip": attr.int(
             mandatory = False,
             doc = "Same as the --strip argument of Unix patch.",
@@ -1282,8 +1263,9 @@ The coverage tool to be used for a particular Python interpreter. This can overr
 The platform to override the values for, typically one of:\n
 {platforms}
 
-Other values are allowed, in which case, `target_compatible_with` and/or
-`target_settings` should be specified so the toolchain is only used when appropriate.
+Other values are allowed, in which case, `target_compatible_with`,
+`target_settings`, `os_name`, and `arch` should be specified so the toolchain is
+only used when appropriate.
 
 :::{{versionchanged}} VERSION_NEXT_FEATURE
 Arbitrary platform strings allowed.
@@ -1305,8 +1287,36 @@ Arbitrary platform strings allowed.
             doc = "The 'strip_prefix' for the archive, defaults to 'python'.",
             default = "python",
         ),
-        "target_compatible_with": attr.string_list(),
-        "target_settings": attr.string_list(),
+        "target_compatible_with": attr.string_list(
+            doc = """
+The `target_compatible_with` values to use for the toolchain definition.
+
+If not set, then `os_name` and `arch` will be used to populate it.
+
+If set, `target_settings`, `os_name`, and `arch` should also be set.
+
+:::{seealso}
+Docs for [Registering custom runtimes]
+:::
+
+:::{{versionadded}} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "target_settings": attr.string_list(
+            doc = """
+The `target_setings` values to use for the toolchain definition.
+
+If set, `target_compatible_with`, `os_name`, and `arch` should also be set.
+
+:::{seealso}
+Docs for [Registering custom runtimes]
+:::
+
+:::{{versionadded}} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "urls": attr.string_list(
             mandatory = False,
             doc = "The URL template to fetch releases for this Python version. If the URL template results in a relative fragment, default base URL is going to be used. Occurrences of `{python_version}`, `{platform}` and `{build}` will be interpolated based on the contents in the override and the known {attr}`platform` values.",

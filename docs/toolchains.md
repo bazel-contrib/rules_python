@@ -266,10 +266,8 @@ python.single_version_platform_override(
     platform = "my-platform",
     python_version = "3.13.3",
     sha256 = "01d08b9bc8a96698b9d64c2fc26da4ecc4fa9e708ce0a34fb88f11ab7e552cbd",
-    target_compatible_with = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-    ],
+    os_name = "linux",
+    arch = "x86_64",
     target_settings = [
         "@@//:runtime=my-custom-runtime",
     ],
@@ -298,6 +296,8 @@ Notes:
   must also match (e.g. `--@rules_python//python/config_settings:python_version=3.13.3`
   must be set -- see `minor_mapping` and `is_default` for controls and docs
   about version matching and selection).
+- The `target_compatible_with` attribute can be used to entirely specify the
+  arg of the same name the toolchain uses.
 - The labels in `target_settings` must be absolute; `@@` refers to the main repo.
 - The `target_settings` are `config_setting` targets, which means you can
   customize how matching occurs.

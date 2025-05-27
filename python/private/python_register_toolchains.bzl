@@ -117,8 +117,6 @@ def python_register_toolchains(
 
     # dict[str repo name, tuple[str, platform_info]]
     impl_repos = {}
-    if "3.13" in python_version:
-        print("plat map:", platforms.keys())
     for platform, platform_info in platforms.items():
         sha256 = tool_versions[python_version]["sha256"].get(platform, None)
         if not sha256:
@@ -146,12 +144,6 @@ def python_register_toolchains(
 
         impl_repo_name = "{}_{}".format(name, platform)
         impl_repos[impl_repo_name] = (platform, platform_info)
-        if "3.13" in python_version:
-            print("py repo:", impl_repo_name, python_version)
-            print(sha256, patches, patch_strip, platform)
-            print(release_filename, urls, strip_prefix)
-            print(coverage_tool)
-            print(kwargs)
         python_repository(
             name = impl_repo_name,
             sha256 = sha256,
