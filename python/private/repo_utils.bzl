@@ -403,8 +403,6 @@ def _get_platforms_cpu_name(mrctx):
 
     Args:
         mrctx: module_ctx or repository_ctx.
-        arch: {type}`str` Arch to map to @platforms cpu. If not set, taken
-            from `mrctx`.
 
     Returns:
         `str`. The target name.
