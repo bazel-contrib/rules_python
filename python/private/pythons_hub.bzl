@@ -96,8 +96,8 @@ PYTHON_VERSIONS = {python_versions}
 def _hub_repo_impl(rctx):
     # Create the various toolchain definitions and
     # write them to the BUILD file.
-    content = _hub_build_file_content(rctx)
-    print(content, "===")
+    ##content = _hub_build_file_content(rctx)
+    ##print(content, "===")
     rctx.file(
         "BUILD.bazel",
         _hub_build_file_content(rctx),

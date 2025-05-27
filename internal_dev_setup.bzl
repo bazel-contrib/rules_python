@@ -42,7 +42,7 @@ def rules_python_internal_setup():
         toolchain_platform_keys = {},
         toolchain_python_versions = {},
         toolchain_set_python_version_constraints = {},
-        base_toolchain_repo_names = [],
+        host_compatible_repo_names = [],
     )
 
     runtime_env_repo(name = "rules_python_runtime_env_tc_info")

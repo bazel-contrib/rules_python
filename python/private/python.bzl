@@ -340,8 +340,6 @@ def _python_impl(module_ctx):
 
         host_platforms = {}
         for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
-            if "3.13.1" in full_python_version:
-                print("registered:", repo_name)
             toolchain_impls.append(struct(
                 # str: The base name to use for the toolchain() target
                 name = repo_name,
@@ -713,12 +711,23 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
         if not arch:
             arch = "UNKNOWN_CUSTOM_ARCH"
 
-        default["platforms"][tag.platform] = platform_info(
-            compatible_with = target_compatible_with,
-            target_settings = tag.target_settings,
-            os_name = os_name,
-            arch = arch,
-        )
+        # Move the override earlier in the ordering -- the platform key ordering
+        # becomes the toolchain ordering within the version.
+        override_first = {
+            tag.platform: platform_info(
+                compatible_with = target_compatible_with,
+                target_settings = tag.target_settings,
+                os_name = os_name,
+                arch = arch,
+            ),
+        }
+        for key, value in default["platforms"].items():
+            # Don't replace our override with the old value
+            if key in override_first:
+                continue
+            override_first[key] = value
+
+        default["platforms"] = override_first
 
 def _process_global_overrides(*, tag, default, _fail = fail):
     if tag.available_python_versions:
