@@ -375,18 +375,16 @@ def _outputs_to_str(result, log_stdout = True, log_stderr = True):
 # @platforms//host:extension.bzl at version 0.0.9 so that we don't
 # force the users to depend on it.
 
-def _get_platforms_os_name(mrctx = None, *, os = None):
+def _get_platforms_os_name(mrctx):
     """Return the name in @platforms//os for the host os.
 
     Args:
         mrctx: {type}`module_ctx | repository_ctx`
-        os: {type}`str` os value to map.
 
     Returns:
         `str`. The target name.
     """
-    if mrctx:
-        os = mrctx.os.name.lower()
+    os = mrctx.os.name.lower()
 
     if os.startswith("mac os"):
         return "osx"
@@ -400,7 +398,7 @@ def _get_platforms_os_name(mrctx = None, *, os = None):
         return "windows"
     return os
 
-def _get_platforms_cpu_name(mrctx = None, *, arch = None):
+def _get_platforms_cpu_name(mrctx):
     """Return the name in @platforms//cpu for the host arch.
 
     Args:
@@ -411,8 +409,7 @@ def _get_platforms_cpu_name(mrctx = None, *, arch = None):
     Returns:
         `str`. The target name.
     """
-    if arch == None:
-        arch = mrctx.os.arch.lower()
+    arch = mrctx.os.arch.lower()
 
     if arch in ["i386", "i486", "i586", "i686", "i786", "x86"]:
         return "x86_32"

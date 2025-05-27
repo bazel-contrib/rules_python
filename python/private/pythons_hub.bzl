@@ -96,8 +96,6 @@ PYTHON_VERSIONS = {python_versions}
 def _hub_repo_impl(rctx):
     # Create the various toolchain definitions and
     # write them to the BUILD file.
-    ##content = _hub_build_file_content(rctx)
-    ##print(content, "===")
     rctx.file(
         "BUILD.bazel",
         _hub_build_file_content(rctx),
@@ -146,8 +144,7 @@ This rule also writes out the various toolchains for the different Python versio
             mandatory = True,
         ),
         "host_compatible_repo_names": attr.string_list(
-            doc = "The base repo name for toolchains ('python_3_10', no " +
-                  "platform suffix)",
+            doc = "Names of `host_compatible_python_repo` repos.",
             mandatory = True,
         ),
         "minor_mapping": attr.string_dict(

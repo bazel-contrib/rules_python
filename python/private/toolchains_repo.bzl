@@ -327,11 +327,6 @@ def _host_compatible_python_repo_impl(rctx):
     # bzlmod extension. To work around this, we use a canonical label.
     repo = "@@{}".format(impl_repo_name)
 
-    ##repo = "@@{py_repository}_{host_platform}".format(
-    ##    py_repository = rctx.attr.name[:-len("_host")],
-    ##    host_platform = host_platform,
-    ##)
-
     rctx.report_progress("Symlinking interpreter files to the target platform")
     host_python_repo = rctx.path(Label("{repo}//:BUILD.bazel".format(repo = repo)))
 
@@ -399,7 +394,8 @@ This repo has two ways in which is it called:
    PLATFORMS global. It assumes `name` + <matching platform name> is a
    valid repo name which it can use as the backing repo.
 
-2. Bzlmod. All platform and backing repo information is passed in.
+2. Bzlmod. All platform and backing repo information is passed in via the
+   arch_names, impl_repo_names, os_names, python_versions attributes.
 """,
     attrs = {
         "arch_names": attr.string_dict(
@@ -557,7 +553,7 @@ def _get_host_impl_repo_name(*, rctx, logger, python_version, os_name, cpu_name,
         platform_map = {}
         base_name = rctx.attr.base_name
         if not base_name:
-            fail("base name missing")
+            fail("The `base_name` attribute must be set under bzlmod")
         for i, platform_name in enumerate(platforms):
             key = str(i)
             impl_repo_name = rctx.attr.impl_repo_names[key]
@@ -588,9 +584,8 @@ def _get_host_impl_repo_name(*, rctx, logger, python_version, os_name, cpu_name,
 
     if len(candidates) == 1:
         platform_name, meta = candidates[0]
-        return getattr(meta, "impl_repo_name", platform_name)
+        return meta.impl_repo_name
 
-    # todo: have this handle multiple python versions
     if candidates:
         env_var = "RULES_PYTHON_REPO_TOOLCHAIN_{}_{}_{}".format(
             python_version.replace(".", "_"),
@@ -610,7 +605,7 @@ def _get_host_impl_repo_name(*, rctx, logger, python_version, os_name, cpu_name,
 
     if candidates:
         platform_name, meta = candidates[0]
-        suffix = getattr(meta, "impl_repo_name", None)
+        suffix = meta.impl_repo_name
         if not suffix:
             suffix = platform_name
         return suffix
