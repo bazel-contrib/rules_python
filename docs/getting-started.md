@@ -8,13 +8,13 @@ It assumes you have a `requirements.txt` file with your PyPI dependencies.
 
 For more details information about configuring `rules_python`, see:
 * [Configuring the runtime](configuring-toolchains)
-* [Configuring third party dependencies (pip/pypi)](pypi-dependencies)
+* [Configuring third party dependencies (pip/pypi)](./pypi/index)
 * [API docs](api/index)
 
-## Using bzlmod
+## Including dependencies
 
-The first step to using rules_python with bzlmod is to add the dependency to
-your MODULE.bazel file:
+The first step to using `rules_python` is to add the dependency to
+your `MODULE.bazel` file:
 
 ```starlark
 # Update the version "0.0.0" to the release found here:
@@ -30,7 +30,7 @@ pip.parse(
 use_repo(pip, "pypi")
 ```
 
-## Using a WORKSPACE file
+### Using a WORKSPACE file
 
 Using WORKSPACE is deprecated, but still supported, and a bit more involved than
 using Bzlmod. Here is a simplified setup to download the prebuilt runtimes.
