@@ -7,9 +7,9 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20231103205921-433ea8554e82
 	github.com/bazelbuild/rules_go v0.41.0
 	github.com/bmatcuk/doublestar/v4 v4.7.1
-	github.com/dougthor42/go-tree-sitter v0.0.0-20241210060307-2737e1d0de6b
 	github.com/emirpasic/gods v1.18.1
 	github.com/ghodss/yaml v1.0.0
+	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.2.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -24,3 +24,5 @@ require (
 	golang.org/x/tools v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/smacker/go-tree-sitter => github.com/dougthor42/go-tree-sitter v0.0.0-20250311040318-71e8858be7ad
