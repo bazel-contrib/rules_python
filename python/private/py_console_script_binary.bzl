@@ -52,22 +52,25 @@ def py_console_script_binary(
         entry_points_txt = None,
         script = None,
         binary_rule = py_binary,
+        shebang = "",
         **kwargs):
     """Generate a py_binary for a console_script entry_point.
 
     Args:
-        name: [`target-name`] The name of the resulting target.
-        pkg: {any}`simple label` the package for which to generate the script.
-        entry_points_txt: optional [`label`], the entry_points.txt file to parse
+        name: {type}`Name` The name of the resulting target.
+        pkg: {type}`Label` the package for which to generate the script.
+        entry_points_txt: {type}`label | None`, the entry_points.txt file to parse
             for available console_script values. It may be a single file, or a
             group of files, but must contain a file named `entry_points.txt`.
             If not specified, defaults to the `dist_info` target in the same
             package as the `pkg` Label.
-        script: [`str`], The console script name that the py_binary is going to be
+        script: {type}`str`, The console script name that the py_binary is going to be
             generated for. Defaults to the normalized name attribute.
-        binary_rule: {any}`rule callable`, The rule/macro to use to instantiate
-            the target. It's expected to behave like {any}`py_binary`.
-            Defaults to {any}`py_binary`.
+        binary_rule: {type}`callable`, The rule/macro to use to instantiate
+            the target. It's expected to behave like {obj}`py_binary`.
+            Defaults to {obj}`py_binary`.
+        shebang: {type}`str`, The shebang to use for the entry point python file.
+            Defaults to empty string.
         **kwargs: Extra parameters forwarded to `binary_rule`.
     """
     main = "rules_python_entry_point_{}.py".format(name)
@@ -81,6 +84,7 @@ def py_console_script_binary(
         out = main,
         console_script = script,
         console_script_guess = name,
+        shebang = shebang,
         visibility = ["//visibility:private"],
     )
 

@@ -1,5 +1,3 @@
-load("@rules_shell//shell:sh_test.bzl", "sh_test")
-
 # Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +11,8 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
@@ -156,6 +156,26 @@ py_reconfig_test(
     interpreter_args = ["-XSPECIAL=1"],
     main = "interpreter_args_test.py",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+pkg_tar(
+    name = "external_binary",
+    testonly = True,
+    srcs = ["@other//:external_main"],
+    include_runfiles = True,
+    tags = ["manual"],  # Don't build as part of wildcards
+)
+
+sh_test(
+    name = "external_binary_test",
+    srcs = ["external_binary_test.sh"],
+    data = [":external_binary"],
+    # For now, skip this test on Windows because it fails for reasons
+    # other than the code path being tested.
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 relative_path_test_suite(name = "relative_path_tests")

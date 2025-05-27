@@ -28,7 +28,7 @@ load(":full_version.bzl", "full_version")
 load(":python_repository.bzl", "python_repository")
 load(
     ":toolchains_repo.bzl",
-    "host_toolchain",
+    "host_compatible_python_repo",
     "toolchain_aliases",
     "toolchains_repo",
 )
@@ -48,7 +48,7 @@ def python_register_toolchains(
 
     With `bzlmod` enabled, this function is not needed since `rules_python` is
     handling everything. In order to override the default behaviour from the
-    root module one can see the docs for the {rule}`python` extension.
+    root module one can see the docs for the {obj}`python` extension.
 
     - Create a repository for each built-in platform like "python_3_8_linux_amd64" -
       this repository is lazily fetched when Python is needed for that platform.
@@ -71,9 +71,10 @@ def python_register_toolchains(
         tool_versions: {type}`dict` contains a mapping of version with SHASUM
             and platform info. If not supplied, the defaults in
             python/versions.bzl will be used.
-        platforms: {type}`dict[str, platform_info]` platforms to create toolchain
-            repositories for. Note that only a subset is created, depending
-            on what's available in `tool_versions`.
+        platforms: {type}`dict[str, struct]` platforms to create toolchain
+            repositories for. Keys are platform names, and values are platform_info
+            structs. Note that only a subset is created, depending on what's
+            available in `tool_versions`.
         minor_mapping: {type}`dict[str, str]` contains a mapping from `X.Y` to `X.Y.Z`
             version.
         **kwargs: passed to each {obj}`python_repository` call.
@@ -111,13 +112,17 @@ def python_register_toolchains(
                 ))
             register_coverage_tool = False
 
-    loaded_platforms = {}
-    for platform in platforms.keys():
+    # list[str] of the platform names that were used
+    loaded_platforms = []
+
+    # dict[str repo name, tuple[str, platform_info]]
+    impl_repos = {}
+    for platform, platform_info in platforms.items():
         sha256 = tool_versions[python_version]["sha256"].get(platform, None)
         if not sha256:
             continue
 
-        loaded_platforms[platform] = platforms[platform]
+        loaded_platforms.append(platform)
         (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(platform, python_version, base_url, tool_versions)
 
         # allow passing in a tool version
@@ -137,11 +142,10 @@ def python_register_toolchains(
                 )],
             )
 
+        impl_repo_name = "{}_{}".format(name, platform)
+        impl_repos[impl_repo_name] = (platform, platform_info)
         python_repository(
-            name = "{name}_{platform}".format(
-                name = name,
-                platform = platform,
-            ),
+            name = impl_repo_name,
             sha256 = sha256,
             patches = patches,
             patch_strip = patch_strip,
@@ -167,28 +171,31 @@ def python_register_toolchains(
                 platform = platform,
             ))
 
-    host_toolchain(
-        name = name + "_host",
-        platforms = loaded_platforms.keys(),
-        python_version = python_version,
-    )
-
     toolchain_aliases(
         name = name,
         python_version = python_version,
         user_repository_name = name,
-        platforms = loaded_platforms.keys(),
+        platforms = loaded_platforms,
     )
 
-    # in bzlmod we write out our own toolchain repos
+    # in bzlmod we write out our own toolchain repos and host repos
     if bzlmod_toolchain_call:
-        return loaded_platforms
+        return struct(
+            # dict[str name, tuple[str platform_name, platform_info]]
+            impl_repos = impl_repos,
+        )
+
+    host_compatible_python_repo(
+        name = name + "_host",
+        platforms = loaded_platforms,
+        python_version = python_version,
+    )
 
     toolchains_repo(
         name = toolchain_repo_name,
         python_version = python_version,
         set_python_version_constraint = set_python_version_constraint,
         user_repository_name = name,
-        platforms = loaded_platforms.keys(),
+        platforms = loaded_platforms,
     )
     return None
