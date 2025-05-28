@@ -92,6 +92,7 @@ def simpleapi_download(
         sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
         for pkg in sources:
             pkg_normalized = normalize_name(pkg)
+            ctx.report_progress("Fetch package lists from PyPI index: {}".format(pkg))
             result = read_simpleapi(
                 ctx = ctx,
                 url = "{}/{}/".format(
