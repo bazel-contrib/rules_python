@@ -1,7 +1,9 @@
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Iterable
 
 from python import runfiles
@@ -13,18 +15,26 @@ rfiles = runfiles.Create()
 EXPECT_TEST_MODULE_IMPORTABLE = os.environ["EXPECT_TEST_MODULE_IMPORTABLE"] == "1"
 
 
+# An arbitrary piece of code that sets some kind of variable. The variable needs to persist into the
+# actual shell.
+PYTHONSTARTUP_SETS_VAR = """\
+foo = 1234
+"""
+
+
 class ReplTest(unittest.TestCase):
     def setUp(self):
         self.repl = rfiles.Rlocation("rules_python/python/bin/repl")
         assert self.repl
 
-    def run_code_in_repl(self, lines: Iterable[str]) -> str:
+    def run_code_in_repl(self, lines: Iterable[str], *, env=None) -> str:
         """Runs the lines of code in the REPL and returns the text output."""
         return subprocess.check_output(
             [self.repl],
             text=True,
             stderr=subprocess.STDOUT,
             input="\n".join(lines),
+            env=env,
         ).strip()
 
     def test_repl_version(self):
@@ -68,6 +78,44 @@ class ReplTest(unittest.TestCase):
             ]
         )
         self.assertIn("ModuleNotFoundError: No module named 'test_module'", result)
+
+    def test_pythonstartup_gets_executed(self):
+        """Validates that we can use the variables from PYTHONSTARTUP in the console itself."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            pythonstartup = Path(tempdir) / "pythonstartup.py"
+            pythonstartup.write_text(PYTHONSTARTUP_SETS_VAR)
+
+            env = os.environ.copy()
+            env["PYTHONSTARTUP"] = str(pythonstartup)
+
+            result = self.run_code_in_repl(
+                [
+                    "print(f'The value of foo is {foo}')",
+                ],
+                env=env,
+            )
+
+        self.assertIn("The value of foo is 1234", result)
+
+    def test_pythonstartup_doesnt_leak(self):
+        """Validates that we don't accidentally leak code into the console.
+
+        This test validates that a few of the variables we use in the template and stub are not
+        accessible in the REPL itself.
+        """
+        with tempfile.TemporaryDirectory() as tempdir:
+            pythonstartup = Path(tempdir) / "pythonstartup.py"
+            pythonstartup.write_text(PYTHONSTARTUP_SETS_VAR)
+
+            env = os.environ.copy()
+            env["PYTHONSTARTUP"] = str(pythonstartup)
+
+            for var_name in ("exitmsg", "sys", "code", "bazel_runfiles", "STUB_PATH"):
+                with self.subTest(var_name=var_name):
+                    result = self.run_code_in_repl([f"print({var_name})"], env=env)
+                    self.assertIn(
+                        f"NameError: name '{var_name}' is not defined", result
+                    )
 
 
 if __name__ == "__main__":

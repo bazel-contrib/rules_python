@@ -87,10 +87,6 @@ The list of packages that will be exposed via all_*requirements macros. Defaults
             mandatory = True,
             doc = "The apparent name of the repo. This is needed because in bzlmod, the name attribute becomes the canonical name.",
         ),
-        "target_platforms": attr.string_list(
-            mandatory = True,
-            doc = "All of the target platforms for the hub repo",
-        ),
         "whl_map": attr.string_dict(
             mandatory = True,
             doc = """\

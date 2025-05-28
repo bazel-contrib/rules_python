@@ -113,6 +113,7 @@ sphinx_stardocs(
         "//python/private:builders_util_bzl",
         "//python/private:py_binary_rule_bzl",
         "//python/private:py_cc_toolchain_rule_bzl",
+        "//python/private:py_info_bzl",
         "//python/private:py_library_rule_bzl",
         "//python/private:py_runtime_rule_bzl",
         "//python/private:py_test_rule_bzl",

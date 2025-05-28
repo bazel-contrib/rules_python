@@ -48,6 +48,26 @@ py_console_script_binary(
 )
 ```
 
+#### Adding a Shebang Line
+
+You can specify a shebang line for the generated binary, useful for Unix-like
+systems where the shebang line determines which interpreter is used to execute
+the script, per [PEP441]:
+
+```starlark
+load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
+
+py_console_script_binary(
+    name = "black",
+    pkg = "@pip//black",
+    shebang = "#!/usr/bin/env python3",
+)
+```
+
+Note that to execute via the shebang line, you need to ensure the specified
+Python interpreter is available in the environment.
+
+
 #### Using a specific Python Version directly from a Toolchain
 :::{deprecated} 1.1.0
 The toolchain specific `py_binary` and `py_test` symbols are aliases to the regular rules. 
@@ -71,3 +91,4 @@ py_console_script_binary(
 
 [specification]: https://packaging.python.org/en/latest/specifications/entry-points/
 [`py_console_script_binary.binary_rule`]: #py_console_script_binary_binary_rule
+[PEP441]: https://peps.python.org/pep-0441/#minimal-tooling-the-zipapp-module
