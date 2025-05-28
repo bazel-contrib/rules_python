@@ -27,11 +27,10 @@ install_deps()
 
 ## Interpreter selection
 
-Note that since {obj}`pip_parse` is executed at evaluation time, Bazel has no information about
-the active Python toolchain and cannot enforce that the interpreter used to invoke `pip` matches
-the interpreter used to run `py_binary` targets. By default, `pip_parse` uses the system command
-`"python3"`. To override this, pass in the {attr}`pip_parse.python_interpreter` attribute or
-{attr}`pip_parse.python_interpreter_target`
+Note that pip parse runs before the Bazel before decides which Python toolchain to use, it cannot
+enforce that the interpreter used to invoke `pip` matches the interpreter used to run `py_binary`
+targets. By default, `pip_parse` uses the system command `"python3"`. To override this, pass in the
+{attr}`pip_parse.python_interpreter` attribute or {attr}`pip_parse.python_interpreter_target`.
 
 You can have multiple `pip_parse`s in the same workspace. This configuration will create multiple
 external repos that have no relation to one another and may result in downloading the same wheels
@@ -45,7 +44,10 @@ your system `python` interpreter), you can force it to re-execute by running
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
 
-In some cases you may need to use different requirements files for different OS, Arch combinations. This is enabled via the {attr}`pip_parse.requirements_by_platform` attribute. The keys of the dictionary are labels to the file and the values are a list of comma separated target (os, arch) tuples.
+In some cases you may need to use different requirements files for different OS, Arch combinations.
+This is enabled via the {attr}`pip_parse.requirements_by_platform` attribute. The keys of the
+dictionary are labels to the file and the values are a list of comma separated target (os, arch)
+tuples.
 
 For example:
 ```starlark

@@ -27,7 +27,7 @@ use_repo(pip, "my_deps")
 For more documentation, see the bzlmod examples under the {gh-path}`examples` folder or the documentation
 for the {obj}`@rules_python//python/extensions:pip.bzl` extension.
 
-```{note}
+:::note}
 We are using a host-platform compatible toolchain by default to setup pip dependencies.
 During the setup phase, we create some symlinks, which may be inefficient on Windows
 by default. In that case use the following `.bazelrc` options to improve performance if
@@ -38,7 +38,7 @@ you have admin privileges:
 This will enable symlinks on Windows and help with bootstrap performance of setting up the 
 hermetic host python interpreter on this platform. Linux and OSX users should see no
 difference.
-```
+:::
 
 ## Interpreter selection
 
@@ -58,7 +58,10 @@ name]`.
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
 
-In some cases you may need to use different requirements files for different OS, Arch combinations. This is enabled via the `requirements_by_platform` attribute in `pip.parse` extension and the {obj}`pip.parse` tag class. The keys of the dictionary are labels to the file and the values are a list of comma separated target (os, arch) tuples.
+In some cases you may need to use different requirements files for different OS, Arch combinations.
+This is enabled via the `requirements_by_platform` attribute in `pip.parse` extension and the
+{obj}`pip.parse` tag class. The keys of the dictionary are labels to the file and the values are a
+list of comma separated target (os, arch) tuples.
 
 For example:
 ```starlark
@@ -105,6 +108,11 @@ Multi-platform support of cross-building the wheels can be done in two ways:
 1. using {attr}`experimental_index_url` for the {bzl:obj}`pip.parse` bzlmod tag class
 2. using {attr}`pip.parse.download_only` setting.
 
+:::{warning}
+This will not for sdists with C extensions, but pure Python sdists may still work using the first
+approach.
+:::
+
 ### Using `download_only` attribute
 
 Let's say you have 2 requirements files:
@@ -130,7 +138,7 @@ foo==0.0.3 --hash=sha256:deadbaaf
 ```
 
 With these 2 files your {bzl:obj}`pip.parse` could look like:
-```
+```starlark
 pip.parse(
     hub_name = "pip",
     python_version = "3.9",
@@ -148,22 +156,22 @@ support only two platforms - `cp39_osx_aarch64` and `cp39_linux_x86_64` and it
 will only use `wheels` and ignore any sdists that it may find on the PyPI
 compatible indexes.
 
-```{warning}
+:::{warning}
 Because bazel is not aware what exactly is downloaded, the same wheel may be downloaded
 multiple times.
-```
+:::
 
-```{note}
+:::{note}
 This will only work for wheel-only setups, i.e. all of your dependencies need to have wheels
 available on the PyPI index that you use.
-```
+:::
 
 ### Customizing `Requires-Dist` resolution
 
-```{note}
+:::{note}
 Currently this is disabled by default, but you can turn it on using 
 {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` environment variable.
-```
+:::
 
 In order to understand what dependencies to pull for a particular package
 `rules_python` parses the `whl` file [`METADATA`][metadata].
@@ -189,7 +197,7 @@ additional keys, which become available during dependency evaluation.
 (bazel-downloader)=
 ### Bazel downloader and multi-platform wheel hub repository.
 
-```{warning}
+:::{warning}
 This is currently still experimental and whilst it has been proven to work in quite a few
 environments, the APIs are still being finalized and there may be changes to the APIs for this
 feature without much notice.
@@ -197,7 +205,7 @@ feature without much notice.
 The issues that you can subscribe to for updates are:
 * {gh-issue}`260`
 * {gh-issue}`1357`
-```
+:::
 
 The {obj}`pip` extension supports pulling information from `PyPI` (or a compatible mirror) and it
 will ensure that the [bazel downloader][bazel_downloader] is used for downloading the wheels.
@@ -222,9 +230,9 @@ index that is used for a single package. By default we first search in the index
 When using this feature during the `pip` extension evaluation you will see the accessed indexes similar to below:
 ```console
 Loading: 0 packages loaded
-    currently loading: docs/
-    Fetching module extension pip in @@//python/extensions:pip.bzl; starting
-    Fetching https://pypi.org/simple/twine/
+    Fetching module extension @@//python/extensions:pip.bzl%pip; Fetch package lists from PyPI index
+    Fetching https://pypi.org/simple/jinja2/
+
 ```
 
 This does not mean that `rules_python` is fetching the wheels eagerly, but it

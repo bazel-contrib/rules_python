@@ -8,7 +8,7 @@ version `sphinx` (this is no longer the case in the latest version as of
 2024-06-02) depends on `sphinxcontrib-serializinghtml`. When using them as
 `requirement()`s, ala
 
-```
+```starlark
 py_binary(
     name = "doctool",
     ...
@@ -31,13 +31,12 @@ ERROR: .../external/pypi_sphinxcontrib_serializinghtml/BUILD.bazel:44:6: in alia
 `-- @pypi_sphinxcontrib_serializinghtml//:pkg (...)
 ```
 
-The `experimental_requirement_cycles` argument allows you to work around these
+The `experimental_requirement_cycles` attribute allows you to work around these
 issues by specifying groups of packages which form cycles. `pip_parse` will
 transparently fix the cycles for you and provide the cyclic dependencies
 simultaneously.
 
 ```starlark
-pip_parse(
     ...
     experimental_requirement_cycles = {
         "sphinx": [
@@ -54,7 +53,6 @@ of its optional dependencies, which means those optional dependencies must all
 be a part of the `airflow` cycle. For instance --
 
 ```starlark
-pip_parse(
     ...
     experimental_requirement_cycles = {
         "airflow": [
