@@ -1,8 +1,6 @@
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 
-package(default_visibility = ["//visibility:public"])
-
 py_reconfig_test(
     name = "venvs_site_packages_libs_test",
     srcs = ["bin.py"],
