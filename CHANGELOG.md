@@ -70,6 +70,7 @@ END_UNRELEASED_TEMPLATE
   `_test` target is deprecated and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
+* (gazelle) For package mode, resolve dependencies when imports are relative to the package path. (https://github.com/bazel-contrib/rules_python/issues/2203)
 
 {#v0-0-0-fixed}
 ### Fixed
