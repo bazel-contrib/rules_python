@@ -641,7 +641,8 @@ def _create_venv_symlinks(ctx, venv_dir_map):
 
     Args:
         ctx: current rule ctx
-        venv_dir_map: todo
+        venv_dir_map: mapping of VenvSymlinkKind constants to the
+            venv path.
 
     Returns:
         {type}`list[File]` list of the File symlink objects created.
