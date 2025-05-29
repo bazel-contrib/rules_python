@@ -689,13 +689,6 @@ def _build_link_map(entries):
             # We ignore duplicates by design. The dependency closer to the
             # binary gets precedence due to the topological ordering.
             continue
-        elif site_packages_path in link_map:
-            # The packages are not duplicate, but have overlapping paths, for
-            # now we ignore these.
-            continue
-        elif package:
-            package_map[package] = site_packages_path
-            link_map[site_packages_path] = link_to_runfiles_path
         else:
             kind_map[entry.venv_path] = entry.link_to_path
 
