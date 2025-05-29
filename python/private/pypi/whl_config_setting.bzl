@@ -21,14 +21,14 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
     aliases in a hub repository.
 
     Args:
-        version: optional(str), the version of the python toolchain that this
+        version: {type}`str | None`the version of the python toolchain that this
             whl alias is for. If not set, then non-version aware aliases will be
             constructed. This is mainly used for better error messages when there
             is no match found during a select.
-        config_setting: optional(Label or str), the config setting that we should use. Defaults
+        config_setting: {type}`str | Label | None` the config setting that we should use. Defaults
             to "//_config:is_python_{version}".
-        filename: optional(str), the distribution filename to derive the config_setting.
-        target_platforms: optional(list[str]), the list of target_platforms for this
+        filename: {type}`str | None` the distribution filename to derive the config_setting.
+        target_platforms: {type}`list[str] | None` the list of target_platforms for this
             distribution.
 
     Returns:
