@@ -44,7 +44,6 @@ def pip_compile(
     By default this rules generates a filegroup named "[name]" which can be included in the data
     of some other compile_pip_requirements rule that references these requirements
     (e.g. with `-r ../other/requirements.txt`).
-
     It also generates two targets for running pip-compile:
 
     - validate with `bazel test [name].test`
@@ -178,6 +177,7 @@ def pip_compile(
             "@@platforms//os:windows": {"USERPROFILE": "Z:\\FakeSetuptoolsHomeDirectoryHack"},
             "//conditions:default": {},
         }) | env,
+        env_inherit = ["https_proxy", "http_proxy", "no_proxy", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"],
         # kwargs could contain test-specific attributes like size
         **dict(attrs, **kwargs)
     )
