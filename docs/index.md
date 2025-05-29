@@ -95,9 +95,8 @@ See {gh-path}`Bzlmod support <BZLMOD_SUPPORT.md>` for any behaviour differences 
 :hidden:
 self
 getting-started
-pypi-dependencies
+pypi/index
 Toolchains <toolchains>
-pip
 coverage
 precompiling
 gazelle

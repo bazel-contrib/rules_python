@@ -43,6 +43,7 @@ def _test_simple(env):
     contents = simpleapi_download(
         ctx = struct(
             os = struct(environ = {}),
+            report_progress = lambda _: None,
         ),
         attr = struct(
             index_url_overrides = {},
@@ -95,6 +96,7 @@ def _test_fail(env):
     simpleapi_download(
         ctx = struct(
             os = struct(environ = {}),
+            report_progress = lambda _: None,
         ),
         attr = struct(
             index_url_overrides = {},
@@ -136,6 +138,7 @@ def _test_download_url(env):
         ctx = struct(
             os = struct(environ = {}),
             download = download,
+            report_progress = lambda _: None,
             read = lambda i: "contents of " + i,
             path = lambda i: "path/for/" + i,
         ),
@@ -171,6 +174,7 @@ def _test_download_url_parallel(env):
         ctx = struct(
             os = struct(environ = {}),
             download = download,
+            report_progress = lambda _: None,
             read = lambda i: "contents of " + i,
             path = lambda i: "path/for/" + i,
         ),
@@ -206,6 +210,7 @@ def _test_download_envsubst_url(env):
         ctx = struct(
             os = struct(environ = {"INDEX_URL": "https://example.com/main/simple/"}),
             download = download,
+            report_progress = lambda _: None,
             read = lambda i: "contents of " + i,
             path = lambda i: "path/for/" + i,
         ),

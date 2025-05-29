@@ -41,10 +41,9 @@ load(
     "runfiles_root_path",
 )
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
-load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
-load(":py_info.bzl", "PyInfo")
+load(":py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
 load(":py_internal.bzl", "py_internal")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
@@ -91,9 +90,9 @@ won't be understood as namespace packages; they'll be seen as regular packages. 
 likely lead to conflicts with other targets that contribute to the namespace.
 
 :::{tip}
-This attributes populates {obj}`PyInfo.site_packages_symlinks`, which is
+This attributes populates {obj}`PyInfo.venv_symlinks`, which is
 a topologically ordered depset. This means dependencies closer and earlier
-to a consumer have precedence. See {obj}`PyInfo.site_packages_symlinks` for
+to a consumer have precedence. See {obj}`PyInfo.venv_symlinks` for
 more information.
 :::
 
@@ -156,9 +155,9 @@ def py_library_impl(ctx, *, semantics):
     runfiles = runfiles.build(ctx)
 
     imports = []
-    site_packages_symlinks = []
+    venv_symlinks = []
 
-    imports, site_packages_symlinks = _get_imports_and_site_packages_symlinks(ctx, semantics)
+    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
     py_info, deps_transitive_sources, builtins_py_info = create_py_info(
@@ -169,7 +168,7 @@ def py_library_impl(ctx, *, semantics):
         implicit_pyc_files = implicit_pyc_files,
         implicit_pyc_source_files = implicit_pyc_source_files,
         imports = imports,
-        site_packages_symlinks = site_packages_symlinks,
+        venv_symlinks = venv_symlinks,
     )
 
     # TODO(b/253059598): Remove support for extra actions; https://github.com/bazelbuild/bazel/issues/16455
@@ -219,20 +218,20 @@ def _get_distinfo_metadata(ctx):
 
     return None
 
-def _get_imports_and_site_packages_symlinks(ctx, semantics):
+def _get_imports_and_venv_symlinks(ctx, semantics):
     imports = depset()
-    site_packages_symlinks = depset()
+    venv_symlinks = depset()
     if VenvsSitePackages.is_enabled(ctx):
         dist_info_metadata = _get_distinfo_metadata(ctx)
-        site_packages_symlinks = _get_site_packages_symlinks(
+        venv_symlinks = _get_venv_symlinks(
             ctx,
             dist_info_metadata,
         )
     else:
         imports = collect_imports(ctx, semantics)
-    return imports, site_packages_symlinks
+    return imports, venv_symlinks
 
-def _get_site_packages_symlinks(ctx, dist_info_metadata):
+def _get_venv_symlinks(ctx, dist_info_metadata):
     imports = ctx.attr.imports
     if len(imports) == 0:
         fail("When venvs_site_packages is enabled, exactly one `imports` " +
@@ -270,22 +269,23 @@ def _get_site_packages_symlinks(ctx, dist_info_metadata):
 
     repo_runfiles_dirname = None
     dirs_with_init = {}  # dirname -> runfile path
-    site_packages_symlinks = []
+    venv_symlinks = []
     if dist_info_metadata:
         # in order to be able to have replacements in the venv, we have to add a
-        # third value into the site_packages_symlinks, which would be the normalized
+        # third value into the venv_symlinks, which would be the normalized
         # package name. This allows us to ensure that we can replace the `dist-info`
         # directories by checking if the package key is there.
         dist_info_dir = paths.basename(dist_info_metadata.dirname)
-        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
-        package, _, _version = package.rpartition("-")
-        symlink_key = "{}.dist-info".format(normalize_name(package))
+        #TODO remove
+        #package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+        #package, _, _version = package.rpartition("-")
+        #symlink_key = "{}.dist-info".format(normalize_name(package))
 
         repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
-        site_packages_symlinks.append((
-            paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
-            dist_info_dir,
-            symlink_key,
+        venv_symlinks.append(VenvSymlinkEntry(
+            kind = VenvSymlinkKind.LIB,
+            link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
+            venv_path = dist_info_dir,
         ))
 
     for src in ctx.files.srcs:
@@ -305,10 +305,10 @@ def _get_site_packages_symlinks(ctx, dist_info_metadata):
 
             # This would be files that do not have directories and we just need to add
             # direct symlinks to them as is:
-            site_packages_symlinks.append((
-                paths.join(repo_runfiles_dirname, site_packages_root, filename),
-                filename,
-                None,
+            venv_symlinks.append(VenvSymlinkEntry(
+                kind = VenvSymlinkKind.LIB,
+                link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
+                venv_path = filename,
             ))
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
@@ -326,12 +326,12 @@ def _get_site_packages_symlinks(ctx, dist_info_metadata):
             first_level_explicit_packages.append(d)
 
     for dirname in first_level_explicit_packages:
-        site_packages_symlinks.append((
-            paths.join(repo_runfiles_dirname, site_packages_root, dirname),
-            dirname,
-            None,
+        venv_symlinks.append(VenvSymlinkEntry(
+            kind = VenvSymlinkKind.LIB,
+            link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dirname),
+            venv_path = dirname,
         ))
-    return site_packages_symlinks
+    return venv_symlinks
 
 def _repo_relative_short_path(short_path):
     # Convert `../+pypi+foo/some/file.py` to `some/file.py`
