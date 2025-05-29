@@ -283,7 +283,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
 
         repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
         venv_symlinks.append(VenvSymlinkEntry(
-            kind = VenvSymlinkKind.LIB,
+            kind = VenvSymlinkKind.DISTINFO,
             link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
             venv_path = dist_info_dir,
         ))

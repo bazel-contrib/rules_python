@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 import unittest
+from pathlib import Path
 
 
 class VenvSitePackagesLibraryTest(unittest.TestCase):
@@ -27,6 +28,20 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_imported_from_venv("nspkg.subnspkg.gamma")
         self.assert_imported_from_venv("nspkg.subnspkg.delta")
         self.assert_imported_from_venv("single_file")
+        self.assert_imported_from_venv("simple")
+
+    def test_distinfo_is_overriden(self):
+        self.assert_imported_from_venv("simple")
+        module = importlib.import_module("simple")
+        module_path = Path(module.__file__)
+        site_packages = module_path.parent.parent
+
+        dist_info_dirs = [p.name for p in site_packages.glob("*.dist-info")]
+
+        self.assertEqual(
+            ["simple-2.0.0.dist-info"],
+            dist_info_dirs,
+        )
 
 
 if __name__ == "__main__":

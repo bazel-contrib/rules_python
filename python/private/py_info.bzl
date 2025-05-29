@@ -45,6 +45,7 @@ def _VenvSymlinkKind_typedef():
 VenvSymlinkKind = struct(
     TYPEDEF = _VenvSymlinkKind_typedef,
     BIN = "BIN",
+    DISTINFO = "DISTINFO",
     LIB = "LIB",
     INCLUDE = "INCLUDE",
 )
