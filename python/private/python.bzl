@@ -302,13 +302,8 @@ def _python_impl(module_ctx):
     # list of structs; see inline struct call within the loop below.
     toolchain_impls = []
 
-    # list[str] of the base names of toolchain repos
     # list[str] of the repo names for host compatible repos
     all_host_compatible_repo_names = []
-
-    # todo: The 3.13.1-custom-runtime ends up _last_ in the toolchain
-    # ordering, so it never gets picked.
-    # Need to move it first
 
     # Create the underlying python_repository repos that contain the
     # python runtimes and their toolchain implementation definitions.
@@ -329,7 +324,6 @@ def _python_impl(module_ctx):
         kwargs.update(py.config.kwargs.get(toolchain_info.python_version, {}))
         kwargs.update(py.config.kwargs.get(full_python_version, {}))
         kwargs.update(py.config.default)
-
         register_result = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
@@ -367,18 +361,14 @@ def _python_impl(module_ctx):
                 all_host_compatible_impls.setdefault(full_python_version, []).append(
                     host_compat_entry,
                 )
+                parsed_version = version.parse(full_python_version)
                 all_host_compatible_impls.setdefault(
-                    full_python_version.rpartition(".")[0],
+                    "{}.{}".format(*parsed_version.release[0:2]),
                     [],
                 ).append(host_compat_entry)
 
         host_repo_name = toolchain_info.name + "_host"
-        if not host_platforms:
-            needed_host_repos[host_repo_name] = struct(
-                compatible_version = toolchain_info.python_version,
-                full_python_version = full_python_version,
-            )
-        else:
+        if host_platforms:
             all_host_compatible_repo_names.append(host_repo_name)
             host_platforms = sorted_host_platforms(host_platforms)
             entries = host_platforms.values()
@@ -392,6 +382,11 @@ def _python_impl(module_ctx):
                 arch_names = {str(i): e.platform.arch for i, e in enumerate(entries)},
                 python_versions = {str(i): e.full_python_version for i, e in enumerate(entries)},
                 impl_repo_names = {str(i): e.impl_repo_name for i, e in enumerate(entries)},
+            )
+        else:
+            needed_host_repos[host_repo_name] = struct(
+                compatible_version = toolchain_info.python_version,
+                full_python_version = full_python_version,
             )
 
     if needed_host_repos:

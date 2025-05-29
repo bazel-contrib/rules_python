@@ -448,7 +448,7 @@ Only set in workspace calls.
         "python_versions": attr.string_dict(
             doc = """
 If set, the Python version for the corresponding selected platform. Values in
-Major.Minor.Patch format. Keyed by index in `platforms`.
+Major.Minor.Micro format. Keyed by index in `platforms`.
 """,
         ),
         "_rule_name": attr.string(default = "host_compatible_python_repo"),
