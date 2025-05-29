@@ -253,7 +253,7 @@ def _get_venv_symlinks(ctx):
 
     repo_runfiles_dirname = None
     dirs_with_init = {}  # dirname -> runfile path
-    site_packages_symlinks = []
+    venv_symlinks = []
     for src in ctx.files.srcs:
         if src.extension not in PYTHON_FILE_EXTENSIONS:
             continue
@@ -271,9 +271,10 @@ def _get_venv_symlinks(ctx):
 
             # This would be files that do not have directories and we just need to add
             # direct symlinks to them as is:
-            site_packages_symlinks.append((
-                paths.join(repo_runfiles_dirname, site_packages_root, filename),
-                filename,
+            venv_symlinks.append(VenvSymlinkEntry(
+                kind = VenvSymlinkKind.LIB,
+                link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
+                venv_path = filename,
             ))
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
@@ -290,7 +291,6 @@ def _get_venv_symlinks(ctx):
         if not is_sub_package:
             first_level_explicit_packages.append(d)
 
-    venv_symlinks = []
     for dirname in first_level_explicit_packages:
         venv_symlinks.append(VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
