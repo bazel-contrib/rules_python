@@ -543,6 +543,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         VenvsUseDeclareSymlinkFlag.get_value(ctx) == VenvsUseDeclareSymlinkFlag.YES
     )
     recreate_venv_at_runtime = False
+    bin_dir = "{}/bin".format(venv)
 
     if not venvs_use_declare_symlink_enabled or not runtime.supports_build_time_venv:
         recreate_venv_at_runtime = True
@@ -556,7 +557,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         # When the venv symlinks are disabled, the $venv/bin/python3 file isn't
         # needed or used at runtime. However, the zip code uses the interpreter
         # File object to figure out some paths.
-        interpreter = ctx.actions.declare_file("{}/bin/{}".format(venv, py_exe_basename))
+        interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
         ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
     elif runtime.interpreter:
@@ -568,7 +569,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         # declare_symlink() is required to ensure that the resulting file
         # in runfiles is always a symlink. An RBE implementation, for example,
         # may choose to write what symlink() points to instead.
-        interpreter = ctx.actions.declare_symlink("{}/bin/{}".format(venv, py_exe_basename))
+        interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
 
         interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
         rel_path = relative_path(
@@ -581,7 +582,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         ctx.actions.symlink(output = interpreter, target_path = rel_path)
     else:
         py_exe_basename = paths.basename(runtime.interpreter_path)
-        interpreter = ctx.actions.declare_symlink("{}/bin/{}".format(venv, py_exe_basename))
+        interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
         ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
         interpreter_actual_path = runtime.interpreter_path
 
@@ -619,7 +620,6 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         computed_substitutions = computed_subs,
     )
 
-    bin_dir = "bin"
     venv_dir_map = {
         VenvSymlinkKind.BIN: bin_dir,
         VenvSymlinkKind.LIB: site_packages,

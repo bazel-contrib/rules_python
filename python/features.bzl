@@ -35,7 +35,7 @@ def _features_typedef():
 
     True if the `PyInfo.venv_symlinks` field is available.
 
-    :::{versionadded} 1.4.0
+    :::{versionadded} VERSION_NEXT_FEATURE
     :::
     ::::
 
