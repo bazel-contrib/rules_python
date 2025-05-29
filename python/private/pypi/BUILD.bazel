@@ -398,6 +398,7 @@ bzl_library(
         ":pep508_requirement_bzl",
         ":pypi_repo_utils_bzl",
         ":whl_metadata_bzl",
+        ":whl_target_platforms_bzl",
         "//python/private:auth_bzl",
         "//python/private:bzlmod_enabled_bzl",
         "//python/private:envsubst_bzl",

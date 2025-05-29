@@ -91,6 +91,8 @@ redirects = {
     "api/sphinxdocs/private/sphinx_docs_library": "/api/sphinxdocs/sphinxdocs/private/sphinx_docs_library.html",
     "api/sphinxdocs/sphinx_docs_library": "/api/sphinxdocs/sphinxdocs/sphinx_docs_library.html",
     "api/sphinxdocs/inventories/index": "/api/sphinxdocs/sphinxdocs/inventories/index.html",
+    "pip.html": "pypi/index.html",
+    "pypi-dependencies.html": "pypi/index.html",
 }
 
 # Adapted from the template code:
@@ -139,7 +141,9 @@ intersphinx_mapping = {
 
 # --- Extlinks configuration
 extlinks = {
+    "gh-issue": (f"https://github.com/bazel-contrib/rules_python/issues/%s", "#%s issue"),
     "gh-path": (f"https://github.com/bazel-contrib/rules_python/tree/main/%s", "%s"),
+    "gh-pr": (f"https://github.com/bazel-contrib/rules_python/pulls/%s", "#%s PR"),
 }
 
 # --- MyST configuration

@@ -68,7 +68,7 @@ to the actual rules_python project and begin the code review process.
 ## Developer guide
 
 For more more details, guidance, and tips for working with the code base,
-see [DEVELOPING.md](DEVELOPING.md)
+see [docs/devguide.md](./devguide)
 
 ## Formatting
 

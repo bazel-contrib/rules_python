@@ -154,12 +154,12 @@ def _venvs_site_packages_is_enabled(ctx):
     flag_value = ctx.attr.experimental_venvs_site_packages[BuildSettingInfo].value
     return flag_value == VenvsSitePackages.YES
 
-# Decides if libraries try to use a site-packages layout using site_packages_symlinks
+# Decides if libraries try to use a site-packages layout using venv_symlinks
 # buildifier: disable=name-conventions
 VenvsSitePackages = FlagEnum(
-    # Use site_packages_symlinks
+    # Use venv_symlinks
     YES = "yes",
-    # Don't use site_packages_symlinks
+    # Don't use venv_symlinks
     NO = "no",
     is_enabled = _venvs_site_packages_is_enabled,
 )
