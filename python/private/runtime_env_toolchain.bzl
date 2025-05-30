@@ -17,6 +17,7 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
+load("//python/private:config_settings.bzl", "is_python_version_at_least")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
 load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "PY_CC_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE")
 
@@ -38,6 +39,11 @@ def define_runtime_env_toolchain(name):
     """
     base_name = name.replace("_toolchain", "")
 
+    supports_build_time_venv = select({
+        ":_is_at_least_py3.11": True,
+        "//conditions:default": False,
+    })
+
     py_runtime(
         name = "_runtime_env_py3_runtime",
         interpreter = "//python/private:runtime_env_toolchain_interpreter.sh",
@@ -45,6 +51,7 @@ def define_runtime_env_toolchain(name):
         stub_shebang = "#!/usr/bin/env python3",
         visibility = ["//visibility:private"],
         tags = ["manual"],
+        supports_build_time_venv = supports_build_time_venv,
     )
 
     # This is a dummy runtime whose interpreter_path triggers the native rule
@@ -56,6 +63,7 @@ def define_runtime_env_toolchain(name):
         python_version = "PY3",
         visibility = ["//visibility:private"],
         tags = ["manual"],
+        supports_build_time_venv = supports_build_time_venv,
     )
 
     py_runtime_pair(
@@ -109,4 +117,8 @@ def define_runtime_env_toolchain(name):
         toolchain = ":_runtime_env_py_cc_toolchain_impl",
         toolchain_type = PY_CC_TOOLCHAIN_TYPE,
         visibility = ["//visibility:public"],
+    )
+    is_python_version_at_least(
+        name = "_is_at_least_py3.11",
+        at_least = "3.11",
     )

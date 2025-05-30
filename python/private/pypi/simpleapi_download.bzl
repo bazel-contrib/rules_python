@@ -83,6 +83,7 @@ def simpleapi_download(
 
     found_on_index = {}
     warn_overrides = False
+    ctx.report_progress("Fetch package lists from PyPI index")
     for i, index_url in enumerate(index_urls):
         if i != 0:
             # Warn the user about a potential fix for the overrides
@@ -127,10 +128,17 @@ def simpleapi_download(
 
     failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
     if failed_sources:
-        _fail("Failed to download metadata for {} for from urls: {}".format(
-            failed_sources,
-            index_urls,
-        ))
+        _fail(
+            "\n".join([
+                "Failed to download metadata for {} for from urls: {}.".format(
+                    failed_sources,
+                    index_urls,
+                ),
+                "If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={}' to your 'pip.parse' call.".format(
+                    render.list(failed_sources),
+                ),
+            ]),
+        )
         return None
 
     if warn_overrides:

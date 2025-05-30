@@ -143,6 +143,18 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
     return files
 
+def _major_minor(python_version):
+    major, _, tail = python_version.partition(".")
+    minor, _, _ = tail.partition(".")
+    return "{}.{}".format(major, minor)
+
+def _major_minor_versions(python_versions):
+    if not python_versions:
+        return []
+
+    # Use a dict as a simple set
+    return sorted({_major_minor(v): None for v in python_versions})
+
 def render_multiplatform_pkg_aliases(*, aliases, **kwargs):
     """Render the multi-platform pkg aliases.
 
@@ -174,7 +186,7 @@ def render_multiplatform_pkg_aliases(*, aliases, **kwargs):
         glibc_versions = flag_versions.get("glibc_versions", []),
         muslc_versions = flag_versions.get("muslc_versions", []),
         osx_versions = flag_versions.get("osx_versions", []),
-        python_versions = flag_versions.get("python_versions", []),
+        python_versions = _major_minor_versions(flag_versions.get("python_versions", [])),
         target_platforms = flag_versions.get("target_platforms", []),
         visibility = ["//:__subpackages__"],
     )

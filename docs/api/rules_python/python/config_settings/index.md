@@ -46,7 +46,7 @@ of builtin, known versions.
 
 If you need to match a version that isn't present, then you have two options:
 1. Manually define a `config_setting` and have it match {obj}`--python_version`
-   or {ob}`python_version_major_minor`. This works best when you don't control the
+   or {obj}`python_version_major_minor`. This works best when you don't control the
    root module, or don't want to rely on the MODULE.bazel configuration. Such
    a config settings would look like:
    ```
@@ -159,6 +159,18 @@ Values:
 :::
 ::::
 
+::::{bzl:flag} pip_env_marker_config
+The target that provides the values for pip env marker evaluation.
+
+Default: `//python/config_settings:_pip_env_marker_default_config`
+
+This flag points to a target providing {obj}`EnvMarkerInfo`, which determines
+the values used when environment markers are resolved at build time.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} pip_whl
 Set what distributions are used in the `pip` integration.
 
@@ -213,8 +225,29 @@ Values:
 ::::
 
 
+::::
+
+:::{flag} venvs_site_packages
+
+Determines if libraries use a site-packages layout for their files.
+
+Note this flag only affects PyPI dependencies of `--bootstrap_impl=script` binaries
+
+:::{include} /_includes/experimental_api.md
+:::
+
+
+Values:
+* `no` (default): Make libraries importable by adding to `sys.path`
+* `yes`: Make libraries importable by creating paths in a binary's site-packages directory.
+::::
+
 ::::{bzl:flag} bootstrap_impl
 Determine how programs implement their startup process.
+
+The default for this depends on the platform:
+* Windows: `system_python` (**always** used)
+* Other: `script`
 
 Values:
 * `system_python`: Use a bootstrap that requires a system Python available
@@ -238,6 +271,11 @@ instead.
 :::
 
 :::{versionadded} 0.33.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+* The default for non-Windows changed from `system_python` to `script`.
+* On Windows, the value is forced to `system_python`.
 :::
 
 ::::

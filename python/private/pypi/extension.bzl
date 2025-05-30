@@ -16,13 +16,16 @@
 
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
+load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
+load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load("//python/private:semver.bzl", "semver")
+load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers")
+load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -32,11 +35,10 @@ load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_library.bzl", "whl_library")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
 
-def _major_minor_version(version):
-    version = semver(version)
-    return "{}.{}".format(version.major, version.minor)
+def _major_minor_version(version_str):
+    ver = version.parse(version_str)
+    return "{}.{}".format(ver.release[0], ver.release[1])
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -68,21 +70,26 @@ def _create_whl_repos(
         *,
         pip_attr,
         whl_overrides,
-        evaluate_markers = evaluate_markers,
         available_interpreters = INTERPRETER_LABELS,
-        get_index_urls = None):
+        minor_mapping = MINOR_MAPPING,
+        evaluate_markers = evaluate_markers_py,
+        get_index_urls = None,
+        enable_pipstar = False):
     """create all of the whl repositories
 
     Args:
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
-        evaluate_markers: the function to use to evaluate markers.
         get_index_urls: A function used to get the index URLs
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
             used during the `repository_rule` and must be always compatible with the host.
+        minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
+            python version used to parse package METADATA files.
+        evaluate_markers: the function used to evaluate the markers.
+        enable_pipstar: enable the pipstar feature.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -162,37 +169,60 @@ def _create_whl_repos(
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
             extra_pip_args = pip_attr.extra_pip_args,
-            python_version = major_minor,
+            python_version = full_version(
+                version = pip_attr.python_version,
+                minor_mapping = minor_mapping,
+            ),
             logger = logger,
         ),
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
-        # NOTE @aignas 2025-02-24: we will use the "cp3xx_os_arch" platform labels
-        # for converting to the PEP508 environment and will evaluate them in starlark
-        # without involving the interpreter at all.
-        evaluate_markers = evaluate_markers,
+        # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
+        # in the PATH or if specified as a label. We will configure the env
+        # markers when evaluating the requirement lines based on the output
+        # from the `requirements_files_by_platform` which should have something
+        # similar to:
+        # {
+        #    "//:requirements.txt": ["cp311_linux_x86_64", ...]
+        # }
+        #
+        # We know the target python versions that we need to evaluate the
+        # markers for and thus we don't need to use multiple python interpreter
+        # instances to perform this manipulation. This function should be executed
+        # only once by the underlying code to minimize the overhead needed to
+        # spin up a Python interpreter.
+        evaluate_markers = lambda module_ctx, requirements: evaluate_markers(
+            module_ctx,
+            requirements = requirements,
+            python_interpreter = pip_attr.python_interpreter,
+            python_interpreter_target = python_interpreter_target,
+            srcs = pip_attr._evaluate_markers_srcs,
+            logger = logger,
+        ),
         logger = logger,
     )
 
-    for whl_name, requirements in requirements_by_platform.items():
-        group_name = whl_group_mapping.get(whl_name)
+    exposed_packages = {}
+    for whl in requirements_by_platform:
+        if whl.is_exposed:
+            exposed_packages[whl.name] = None
+
+        group_name = whl_group_mapping.get(whl.name)
         group_deps = requirement_cycles.get(group_name, [])
 
         # Construct args separately so that the lock file can be smaller and does not include unused
         # attrs.
         whl_library_args = dict(
-            repo = pip_name,
             dep_template = "@{}//{{name}}:{{target}}".format(hub_name),
         )
         maybe_args = dict(
             # The following values are safe to omit if they have false like values
             add_libdir_to_library_search_path = pip_attr.add_libdir_to_library_search_path,
-            annotation = whl_modifications.get(whl_name),
+            annotation = whl_modifications.get(whl.name),
             download_only = pip_attr.download_only,
             enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
             environment = pip_attr.environment,
             envsubst = pip_attr.envsubst,
-            experimental_target_platforms = pip_attr.experimental_target_platforms,
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
@@ -200,9 +230,12 @@ def _create_whl_repos(
             python_interpreter_target = python_interpreter_target,
             whl_patches = {
                 p: json.encode(args)
-                for p, args in whl_overrides.get(whl_name, {}).items()
+                for p, args in whl_overrides.get(whl.name, {}).items()
             },
         )
+        if not enable_pipstar:
+            maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
+
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
         maybe_args_with_default = dict(
             # The following values have defaults next to them
@@ -216,123 +249,104 @@ def _create_whl_repos(
             if v != default
         })
 
-        for requirement in requirements:
-            for repo_name, (args, config_setting) in _whl_repos(
-                requirement = requirement,
+        for src in whl.srcs:
+            repo = _whl_repo(
+                src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = pip_attr.netrc,
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
-                multiple_requirements_for_whl = len(requirements) > 1.,
-            ).items():
-                repo_name = "{}_{}".format(pip_name, repo_name)
-                if repo_name in whl_libraries:
-                    fail("Attempting to creating a duplicate library {} for {}".format(
-                        repo_name,
-                        whl_name,
-                    ))
+                is_multiple_versions = whl.is_multiple_versions,
+                enable_pipstar = enable_pipstar,
+            )
 
-                whl_libraries[repo_name] = args
-                whl_map.setdefault(whl_name, {})[config_setting] = repo_name
+            repo_name = "{}_{}".format(pip_name, repo.repo_name)
+            if repo_name in whl_libraries:
+                fail("Attempting to creating a duplicate library {} for {}".format(
+                    repo_name,
+                    whl.name,
+                ))
+
+            whl_libraries[repo_name] = repo.args
+            whl_map.setdefault(whl.name, {})[repo.config_setting] = repo_name
 
     return struct(
         whl_map = whl_map,
-        exposed_packages = {
-            whl_name: None
-            for whl_name, requirements in requirements_by_platform.items()
-            if len([r for r in requirements if r.is_exposed]) > 0
-        },
+        exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         whl_libraries = whl_libraries,
     )
 
-def _whl_repos(*, requirement, whl_library_args, download_only, netrc, auth_patterns, multiple_requirements_for_whl = False, python_version):
-    ret = {}
+def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, netrc, auth_patterns, python_version, enable_pipstar = False):
+    args = dict(whl_library_args)
+    args["requirement"] = src.requirement_line
+    is_whl = src.filename.endswith(".whl")
 
-    dists = requirement.whls
-    if not download_only and requirement.sdist:
-        dists = dists + [requirement.sdist]
+    if src.extra_pip_args and not is_whl:
+        # pip is not used to download wheels and the python
+        # `whl_library` helpers are only extracting things, however
+        # for sdists, they will be built by `pip`, so we still
+        # need to pass the extra args there, so only pop this for whls
+        args["extra_pip_args"] = src.extra_pip_args
 
-    for distribution in dists:
-        args = dict(whl_library_args)
-        if netrc:
-            args["netrc"] = netrc
-        if auth_patterns:
-            args["auth_patterns"] = auth_patterns
-
-        if not distribution.filename.endswith(".whl"):
-            # pip is not used to download wheels and the python
-            # `whl_library` helpers are only extracting things, however
-            # for sdists, they will be built by `pip`, so we still
-            # need to pass the extra args there.
-            args["extra_pip_args"] = requirement.extra_pip_args
-
-        # This is no-op because pip is not used to download the wheel.
-        args.pop("download_only", None)
-
-        args["requirement"] = requirement.srcs.requirement
-        args["urls"] = [distribution.url]
-        args["sha256"] = distribution.sha256
-        args["filename"] = distribution.filename
-        args["experimental_target_platforms"] = requirement.target_platforms
-
-        # Pure python wheels or sdists may need to have a platform here
-        target_platforms = None
-        if distribution.filename.endswith(".whl") and not distribution.filename.endswith("-any.whl"):
-            parsed_whl = parse_whl_name(distribution.filename)
-            whl_platforms = whl_target_platforms(
-                platform_tag = parsed_whl.platform_tag,
-            )
-            args["experimental_target_platforms"] = [
-                p
-                for p in requirement.target_platforms
-                if [None for wp in whl_platforms if p.endswith(wp.target_platform)]
-            ]
-        elif multiple_requirements_for_whl:
-            target_platforms = requirement.target_platforms
-
-        repo_name = whl_repo_name(
-            distribution.filename,
-            distribution.sha256,
-        )
-        ret[repo_name] = (
-            args,
-            whl_config_setting(
+    if not src.url or (not is_whl and download_only):
+        # Fallback to a pip-installed wheel
+        target_platforms = src.target_platforms if is_multiple_versions else []
+        return struct(
+            repo_name = pypi_repo_name(
+                normalize_name(src.distribution),
+                *target_platforms
+            ),
+            args = args,
+            config_setting = whl_config_setting(
                 version = python_version,
-                filename = distribution.filename,
-                target_platforms = target_platforms,
+                target_platforms = target_platforms or None,
             ),
         )
 
-    if ret:
-        return ret
+    # This is no-op because pip is not used to download the wheel.
+    args.pop("download_only", None)
 
-    # Fallback to a pip-installed wheel
-    args = dict(whl_library_args)  # make a copy
-    args["requirement"] = requirement.srcs.requirement_line
-    if requirement.extra_pip_args:
-        args["extra_pip_args"] = requirement.extra_pip_args
+    if netrc:
+        args["netrc"] = netrc
+    if auth_patterns:
+        args["auth_patterns"] = auth_patterns
 
-    if download_only:
-        args.setdefault("experimental_target_platforms", requirement.target_platforms)
+    args["urls"] = [src.url]
+    args["sha256"] = src.sha256
+    args["filename"] = src.filename
+    if not enable_pipstar:
+        args["experimental_target_platforms"] = [
+            # Get rid of the version fot the target platforms because we are
+            # passing the interpreter any way. Ideally we should search of ways
+            # how to pass the target platforms through the hub repo.
+            p.partition("_")[2]
+            for p in src.target_platforms
+        ]
 
-    target_platforms = requirement.target_platforms if multiple_requirements_for_whl else []
-    repo_name = pypi_repo_name(
-        normalize_name(requirement.distribution),
-        *target_platforms
-    )
-    ret[repo_name] = (
-        args,
-        whl_config_setting(
+    # Pure python wheels or sdists may need to have a platform here
+    target_platforms = None
+    if is_whl and not src.filename.endswith("-any.whl"):
+        pass
+    elif is_multiple_versions:
+        target_platforms = src.target_platforms
+
+    return struct(
+        repo_name = whl_repo_name(src.filename, src.sha256),
+        args = args,
+        config_setting = whl_config_setting(
             version = python_version,
-            target_platforms = target_platforms or None,
+            filename = src.filename,
+            target_platforms = target_platforms,
         ),
     )
 
-    return ret
-
-def parse_modules(module_ctx, _fail = fail, simpleapi_download = simpleapi_download, **kwargs):
+def parse_modules(
+        module_ctx,
+        _fail = fail,
+        simpleapi_download = simpleapi_download,
+        **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
     Args:
@@ -419,8 +433,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
     extra_aliases = {}
     whl_libraries = {}
 
-    is_reproducible = True
-
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
             hub_name = pip_attr.hub_name
@@ -458,14 +470,21 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
             get_index_urls = None
             if pip_attr.experimental_index_url:
-                is_reproducible = False
+                skip_sources = [
+                    normalize_name(s)
+                    for s in pip_attr.simpleapi_skip
+                ]
                 get_index_urls = lambda ctx, distributions: simpleapi_download(
                     ctx,
                     attr = struct(
                         index_url = pip_attr.experimental_index_url,
                         extra_index_urls = pip_attr.experimental_extra_index_urls or [],
                         index_url_overrides = pip_attr.experimental_index_url_overrides or {},
-                        sources = distributions,
+                        sources = [
+                            d
+                            for d in distributions
+                            if normalize_name(d) not in skip_sources
+                        ],
                         envsubst = pip_attr.envsubst,
                         # Auth related info
                         netrc = pip_attr.netrc,
@@ -535,7 +554,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             k: dict(sorted(args.items()))
             for k, args in sorted(whl_libraries.items())
         },
-        is_reproducible = is_reproducible,
     )
 
 def _pip_impl(module_ctx):
@@ -604,7 +622,7 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx)
+    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar)
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
@@ -626,13 +644,10 @@ def _pip_impl(module_ctx):
         )
 
     if bazel_features.external_deps.extension_metadata_has_reproducible:
-        # If we are not using the `experimental_index_url feature, the extension is fully
-        # deterministic and we don't need to create a lock entry for it.
-        #
-        # In order to be able to dogfood the `experimental_index_url` feature before it gets
-        # stabilized, we have created the `_pip_non_reproducible` function, that will result
-        # in extra entries in the lock file.
-        return module_ctx.extension_metadata(reproducible = mods.is_reproducible)
+        # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
+        # results after calling the PyPI index should be reproducible on each
+        # machine.
+        return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
 
@@ -681,6 +696,11 @@ This is equivalent to `--index-url` `pip` option.
 :::{versionchanged} 0.37.0
 If {attr}`download_only` is set, then `sdist` archives will be discarded and `pip.parse` will
 operate in wheel-only mode.
+:::
+
+:::{versionchanged} 1.4.0
+Index metadata will be used to deduct `sha256` values for packages even if the
+`sha256` values are not present in the requirements.txt lock file.
 :::
 """,
         ),
@@ -751,11 +771,30 @@ If an interpreter isn't explicitly provided (using `python_interpreter` or
 a corresponding `python.toolchain()` configured.
 """,
         ),
+        "simpleapi_skip": attr.string_list(
+            doc = """\
+The list of packages to skip fetching metadata for from SimpleAPI index. You should
+normally not need this attribute, but in case you do, please report this as a bug
+to `rules_python` and use this attribute until the bug is fixed.
+
+EXPERIMENTAL: this may be removed without notice.
+
+:::{versionadded} 1.4.0
+:::
+""",
+        ),
         "whl_modifications": attr.label_keyed_string_dict(
             mandatory = False,
             doc = """\
 A dict of labels to wheel names that is typically generated by the whl_modifications.
 The labels are JSON config files describing the modifications.
+""",
+        ),
+        "_evaluate_markers_srcs": attr.label_list(
+            default = EVALUATE_MARKERS_SRCS,
+            doc = """\
+The list of labels to use as SRCS for the marker evaluation code. This ensures that the
+code will be re-evaluated when any of files in the default changes.
 """,
         ),
     }, **ATTRS)

@@ -18,6 +18,7 @@
 # to force them to resolve in the proper context.
 # ====================
 
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load(":sh_py_run_test.bzl", "current_build_settings")
 
 package(
@@ -89,4 +90,16 @@ platform(
 
 current_build_settings(
     name = "current_build_settings",
+)
+
+string_flag(
+    name = "custom_runtime",
+    build_setting_default = "",
+)
+
+config_setting(
+    name = "is_custom_runtime_linux-x86-install-only-stripped",
+    flag_values = {
+        ":custom_runtime": "linux-x86-install-only-stripped",
+    },
 )

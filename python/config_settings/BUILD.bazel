@@ -9,7 +9,9 @@ load(
     "LibcFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
+    "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
+    rp_string_flag = "string_flag",
 )
 load(
     "//python/private/pypi:flags.bzl",
@@ -86,12 +88,25 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
-string_flag(
+rp_string_flag(
     name = "bootstrap_impl",
-    build_setting_default = BootstrapImplFlag.SYSTEM_PYTHON,
+    build_setting_default = BootstrapImplFlag.SCRIPT,
+    override = select({
+        # Windows doesn't yet support bootstrap=script, so force disable it
+        ":_is_windows": BootstrapImplFlag.SYSTEM_PYTHON,
+        "//conditions:default": "",
+    }),
     values = sorted(BootstrapImplFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
     visibility = ["//visibility:public"],
+)
+
+# For some reason, @platforms//os:windows can't be directly used
+# in the select() for the flag. But it can be used when put behind
+# a config_setting().
+config_setting(
+    name = "_is_windows",
+    constraint_values = ["@platforms//os:windows"],
 )
 
 # This is used for pip and hermetic toolchain resolution.
@@ -195,6 +210,29 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
+string_flag(
+    name = "venvs_site_packages",
+    build_setting_default = VenvsSitePackages.NO,
+    # NOTE: Only public because it is used in pip hub repos.
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "is_venvs_site_packages",
+    flag_values = {
+        ":venvs_site_packages": VenvsSitePackages.YES,
+    },
+    # NOTE: Only public because it is used in whl_library repos.
+    visibility = ["//visibility:public"],
+)
+
 define_pypi_internal_flags(
     name = "define_pypi_internal_flags",
+)
+
+label_flag(
+    name = "pip_env_marker_config",
+    build_setting_default = ":_pip_env_marker_default_config",
+    # NOTE: Only public because it is used in pip hub repos.
+    visibility = ["//visibility:public"],
 )

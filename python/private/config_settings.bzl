@@ -18,7 +18,7 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:text_util.bzl", "render")
-load(":semver.bzl", "semver")
+load(":version.bzl", "version")
 
 _PYTHON_VERSION_FLAG = Label("//python/config_settings:python_version")
 _PYTHON_VERSION_MAJOR_MINOR_FLAG = Label("//python/config_settings:python_version_major_minor")
@@ -30,6 +30,10 @@ The current configuration rules_python config flags is:
 If the value is missing, then the default value is being used, see documentation:
 {docs_url}/python/config_settings
 """
+
+# Indicates something needs public visibility so that other generated code can
+# access it, but it's not intended for general public usage.
+_NOT_ACTUALLY_PUBLIC = ["//visibility:public"]
 
 def construct_config_settings(*, name, default_version, versions, minor_mapping, documented_flags):  # buildifier: disable=function-docstring
     """Create a 'python_version' config flag and construct all config settings used in rules_python.
@@ -128,7 +132,30 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
         # `whl_library` in the hub repo created by `pip.parse`.
         flag_values = {"current_config": "will-never-match"},
         # Only public so that PyPI hub repo can access it
-        visibility = ["//visibility:public"],
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+
+    libc = Label("//python/config_settings:py_linux_libc")
+    native.config_setting(
+        name = "_is_py_linux_libc_glibc",
+        flag_values = {libc: "glibc"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+    native.config_setting(
+        name = "_is_py_linux_libc_musl",
+        flag_values = {libc: "glibc"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+    freethreaded = Label("//python/config_settings:py_freethreaded")
+    native.config_setting(
+        name = "_is_py_freethreaded_yes",
+        flag_values = {freethreaded: "yes"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
+    )
+    native.config_setting(
+        name = "_is_py_freethreaded_no",
+        flag_values = {freethreaded: "no"},
+        visibility = _NOT_ACTUALLY_PUBLIC,
     )
 
 def _python_version_flag_impl(ctx):
@@ -154,8 +181,8 @@ _python_version_flag = rule(
 def _python_version_major_minor_flag_impl(ctx):
     input = _flag_value(ctx.attr._python_version_flag)
     if input:
-        version = semver(input)
-        value = "{}.{}".format(version.major, version.minor)
+        ver = version.parse(input)
+        value = "{}.{}".format(ver.release[0], ver.release[1])
     else:
         value = ""
 
@@ -207,5 +234,44 @@ _current_config = rule(
     attrs = {
         "settings": attr.label_list(mandatory = True),
         "_template": attr.string(default = _DEBUG_ENV_MESSAGE_TEMPLATE),
+    },
+)
+
+def is_python_version_at_least(name, **kwargs):
+    flag_name = "_{}_flag".format(name)
+    native.config_setting(
+        name = name,
+        flag_values = {
+            flag_name: "yes",
+        },
+    )
+    _python_version_at_least(
+        name = flag_name,
+        visibility = ["//visibility:private"],
+        **kwargs
+    )
+
+def _python_version_at_least_impl(ctx):
+    flag_value = ctx.attr._major_minor[config_common.FeatureFlagInfo].value
+
+    # CI is, somehow, getting an empty string for the current flag value.
+    # How isn't clear.
+    if not flag_value:
+        return [config_common.FeatureFlagInfo(value = "no")]
+
+    current = tuple([
+        int(x)
+        for x in flag_value.split(".")
+    ])
+    at_least = tuple([int(x) for x in ctx.attr.at_least.split(".")])
+
+    value = "yes" if current >= at_least else "no"
+    return [config_common.FeatureFlagInfo(value = value)]
+
+_python_version_at_least = rule(
+    implementation = _python_version_at_least_impl,
+    attrs = {
+        "at_least": attr.string(mandatory = True),
+        "_major_minor": attr.label(default = _PYTHON_VERSION_MAJOR_MINOR_FLAG),
     },
 )

@@ -51,9 +51,11 @@ buildifier:
   test_flags:
     - "--noenable_bzlmod"
     - "--enable_workspace"
+    - "--test_tag_filters=-integration-test"
   build_flags:
     - "--noenable_bzlmod"
     - "--enable_workspace"
+    - "--build_tag_filters=-integration-test"
   bazel: 7.x
 .common_bazelinbazel_config: &common_bazelinbazel_config
     build_flags:

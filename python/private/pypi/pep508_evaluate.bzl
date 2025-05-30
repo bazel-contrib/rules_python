@@ -16,22 +16,10 @@
 """
 
 load("//python/private:enum.bzl", "enum")
-load("//python/private:semver.bzl", "semver")
+load("//python/private:version.bzl", "version")
 
 # The expression parsing and resolution for the PEP508 is below
 #
-
-# Taken from
-# https://peps.python.org/pep-0508/#grammar
-#
-# version_cmp   = wsp* '<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' | '==='
-_VERSION_CMP = sorted(
-    [
-        i.strip(" '")
-        for i in "'<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' | '==='".split(" | ")
-    ],
-    key = lambda x: (-len(x), x),
-)
 
 _STATE = enum(
     STRING = "string",
@@ -134,11 +122,13 @@ def evaluate(marker, *, env, strict = True, **kwargs):
         **kwargs: Extra kwargs to be passed to the expression evaluator.
 
     Returns:
-        The {type}`bool` If the marker is compatible with the given env.
+        The {type}`bool | str` If the marker is compatible with the given env. If strict is
+        `False`, then the output type is `str` which will represent the remaining
+        expression that has not been evaluated.
     """
     tokens = tokenize(marker)
 
-    ast = _new_expr(**kwargs)
+    ast = _new_expr(marker = marker, **kwargs)
     for _ in range(len(tokens) * 2):
         if not tokens:
             break
@@ -219,17 +209,20 @@ def _not_fn(x):
         return not x
 
 def _new_expr(
+        *,
+        marker,
         and_fn = _and_fn,
         or_fn = _or_fn,
         not_fn = _not_fn):
     # buildifier: disable=uninitialized
     self = struct(
+        marker = marker,
         tree = [],
         parse = lambda **kwargs: _parse(self, **kwargs),
         value = lambda: _value(self),
         # This is a way for us to have a handle to the currently constructed
         # expression tree branch.
-        current = lambda: self._current[0] if self._current else None,
+        current = lambda: self._current[-1] if self._current else None,
         _current = [],
         _and = and_fn,
         _or = or_fn,
@@ -313,6 +306,7 @@ def marker_expr(left, op, right, *, env, strict = True):
             #
             # The following normalizes the values
             left = env.get(_ENV_ALIASES, {}).get(var_name, {}).get(left, left)
+
     else:
         var_name = left
         left = env[left]
@@ -340,37 +334,43 @@ def _env_expr(left, op, right):
         return left in right
     elif op == "not in":
         return left not in right
+    elif op == "<":
+        return left < right
+    elif op == "<=":
+        return left <= right
+    elif op == ">":
+        return left > right
+    elif op == ">=":
+        return left >= right
     else:
-        return fail("TODO: op unsupported: '{}'".format(op))
+        return fail("unsupported op: '{}' {} '{}'".format(left, op, right))
 
 def _version_expr(left, op, right):
     """Evaluate a version comparison expression"""
-    left = semver(left)
-    right = semver(right)
-    _left = left.key()
-    _right = right.key()
-    if op == "<":
-        return _left < _right
-    elif op == ">":
-        return _left > _right
-    elif op == "<=":
-        return _left <= _right
-    elif op == ">=":
-        return _left >= _right
+    _left = version.parse(left)
+    _right = version.parse(right)
+    if _left == None or _right == None:
+        # Per spec, if either can't be normalized to a version, then
+        # fallback to simple string comparison. Usually this is `platform_version`
+        # or `platform_release`, which vary depending on platform.
+        return _env_expr(left, op, right)
+
+    if op == "===":
+        return version.is_eeq(_left, _right)
     elif op == "!=":
-        return _left != _right
+        return version.is_ne(_left, _right)
     elif op == "==":
-        # Matching of major, minor, patch only
-        return _left[:3] == _right[:3]
+        return version.is_eq(_left, _right)
+    elif op == "<":
+        return version.is_lt(_left, _right)
+    elif op == ">":
+        return version.is_gt(_left, _right)
+    elif op == "<=":
+        return version.is_le(_left, _right)
+    elif op == ">=":
+        return version.is_ge(_left, _right)
     elif op == "~=":
-        right_plus = right.upper()
-        _right_plus = right_plus.key()
-        return _left >= _right and _left < _right_plus
-    elif op == "===":
-        # Strict matching
-        return _left == _right
-    elif op in _VERSION_CMP:
-        fail("TODO: op unsupported: '{}'".format(op))
+        return version.is_compatible(_left, _right)
     else:
         return False  # Let's just ignore the invalid ops
 
@@ -392,12 +392,15 @@ def _append(self, value):
         current.tree.append(value)
     elif hasattr(current.tree[-1], "append"):
         current.tree[-1].append(value)
-    else:
+    elif hasattr(current.tree, "_append"):
         current.tree._append(value)
+    else:
+        fail("Cannot evaluate '{}' in '{}', current: {}".format(value, self.marker, current))
 
 def _open_parenthesis(self):
     """Add an extra node into the tree to perform evaluate inside parenthesis."""
     self._current.append(_new_expr(
+        marker = self.marker,
         and_fn = self._and,
         or_fn = self._or,
         not_fn = self._not,

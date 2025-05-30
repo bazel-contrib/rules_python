@@ -43,3 +43,23 @@ def enum(methods = {}, **kwargs):
 
     self = struct(__members__ = members, **kwargs)
     return self
+
+def _FlagEnum_flag_values(self):
+    return sorted(self.__members__.values())
+
+def FlagEnum(**kwargs):
+    """Define an enum specialized for flags.
+
+    Args:
+        **kwargs: members of the enum.
+
+    Returns:
+        {type}`FlagEnum` struct. This is an enum with the following extras:
+        * `flag_values`: A function that returns a sorted list of the
+          flag values (enum `__members__`). Useful for passing to the
+          `values` attribute for string flags.
+    """
+    return enum(
+        methods = dict(flag_values = _FlagEnum_flag_values),
+        **kwargs
+    )

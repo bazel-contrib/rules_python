@@ -1,11 +1,5 @@
 %shebang%
 
-# This script must retain compatibility with a wide variety of Python versions
-# since it is run for every py_binary target. Currently we guarantee support
-# going back to Python 2.7, and try to support even Python 2.6 on a best-effort
-# basis. We might abandon 2.6 support once users have the ability to control the
-# above shebang string via the Python toolchain (#8685).
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -52,7 +46,15 @@ def GetWindowsPathWithUNCPrefix(path):
   # removed from common Win32 file and directory functions.
   # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
   import platform
-  if platform.win32_ver()[1] >= '10.0.14393':
+  win32_version = None
+  # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
+  for _ in range(3):
+    try:
+      win32_version = platform.win32_ver()[1]
+      break
+    except (ValueError, KeyError):
+      pass
+  if win32_version and win32_version >= '10.0.14393':
     return path
 
   # import sysconfig only now to maintain python 2.6 compatibility
@@ -95,19 +97,17 @@ def print_verbose(*args, mapping=None, values=None):
             for key, value in sorted((mapping or {}).items()):
                 print(
                     "bootstrap:",
-                    *args,
-                    f"{key}={value!r}",
+                    *(list(args) + ["{}={}".format(key, repr(value))]),
                     file=sys.stderr,
-                    flush=True,
+                    flush=True
                 )
         elif values is not None:
             for i, v in enumerate(values):
                 print(
                     "bootstrap:",
-                    *args,
-                    f"[{i}] {v!r}",
+                    *(list(args) + ["[{}] {}".format(i, repr(v))]),
                     file=sys.stderr,
-                    flush=True,
+                    flush=True
                 )
         else:
             print("bootstrap:", *args, file=sys.stderr, flush=True)
@@ -499,8 +499,12 @@ def Main():
   # The magic string percent-main-percent is replaced with the runfiles-relative
   # filename of the main file of the Python binary in BazelPythonSemantics.java.
   main_rel_path = '%main%'
-  if IsWindows():
-    main_rel_path = main_rel_path.replace('/', os.sep)
+  # NOTE: We call normpath for two reasons:
+  # 1. Transform Bazel `foo/bar` to Windows `foo\bar`
+  # 2. Transform `_main/../foo/main.py` to simply `foo/main.py`, which
+  #    matters if `_main` doesn't exist (which can occur if a binary
+  #    is packaged and needs no artifacts from the main repo)
+  main_rel_path = os.path.normpath(main_rel_path)
 
   if IsRunningFromZip():
     module_space = CreateModuleSpace()

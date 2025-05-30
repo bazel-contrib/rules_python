@@ -46,11 +46,28 @@ When `1`, the rules_python will warn users about deprecated functionality that w
 be removed in a subsequent major `rules_python` version. Defaults to `0` if unset.
 :::
 
-:::{envvar} RULES_PYTHON_ENABLE_PYSTAR
+::::{envvar} RULES_PYTHON_ENABLE_PYSTAR
 
 When `1`, the rules_python Starlark implementation of the core rules is used
-instead of the Bazel-builtin rules. Note this requires Bazel 7+.
+instead of the Bazel-builtin rules. Note this requires Bazel 7+. Defaults
+to `1`.
+
+:::{versionadded} 0.26.0
+Defaults to `0` if unspecified.
 :::
+:::{versionchanged} 0.40.0
+The default became `1` if unspecified
+:::
+::::
+
+::::{envvar} RULES_PYTHON_ENABLE_PIPSTAR
+
+When `1`, the rules_python Starlark implementation of the pypi/pip integration is used
+instead of the legacy Python scripts.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
 
 ::::{envvar} RULES_PYTHON_EXTRACT_ROOT
 
@@ -101,6 +118,7 @@ doing. This is mostly useful for development to debug errors.
 Determines the verbosity of logging output for repo rules. Valid values:
 
 * `DEBUG`
+* `FAIL`
 * `INFO`
 * `TRACE`
 :::

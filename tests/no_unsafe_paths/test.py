@@ -40,5 +40,5 @@ class NoUnsafePathsTest(unittest.TestCase):
             self.assertEqual(os.path.basename(sys.path[0]), archive)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

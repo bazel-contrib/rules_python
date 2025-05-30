@@ -16,6 +16,23 @@
 A file that houses private functions used in the `bzlmod` extension with the same name.
 """
 
+# Just list them here and me super conservative
+_KNOWN_EXTS = [
+    # Note, the following source in pip has more extensions
+    # https://github.com/pypa/pip/blob/3c5a189141a965f21a473e46c3107e689eb9f79f/src/pip/_vendor/distlib/locators.py#L90
+    #
+    # ".tar.bz2",
+    # ".tar",
+    # ".tgz",
+    # ".tbz",
+    #
+    # But we support only the following, used in 'packaging'
+    # https://github.com/pypa/pip/blob/3c5a189141a965f21a473e46c3107e689eb9f79f/src/pip/_vendor/packaging/utils.py#L137
+    ".whl",
+    ".tar.gz",
+    ".zip",
+]
+
 def index_sources(line):
     """Get PyPI sources from a requirements.txt line.
 
@@ -58,10 +75,30 @@ def index_sources(line):
     ).strip()
 
     url = ""
+    filename = ""
     if "@" in head:
-        requirement = requirement_line
-        _, _, url_and_rest = requirement.partition("@")
+        maybe_requirement, _, url_and_rest = requirement.partition("@")
         url = url_and_rest.strip().partition(" ")[0].strip()
+
+        url, _, sha256 = url.partition("#sha256=")
+        if sha256:
+            shas.append(sha256)
+        _, _, filename = url.rpartition("/")
+
+        # Replace URL encoded characters and luckily there is only one case
+        filename = filename.replace("%2B", "+")
+        is_known_ext = False
+        for ext in _KNOWN_EXTS:
+            if filename.endswith(ext):
+                is_known_ext = True
+                break
+
+        if is_known_ext:
+            requirement = maybe_requirement.strip()
+        else:
+            # could not detect filename from the URL
+            filename = ""
+            requirement = requirement_line
 
     return struct(
         requirement = requirement,
@@ -70,4 +107,5 @@ def index_sources(line):
         shas = sorted(shas),
         marker = marker,
         url = url,
+        filename = filename,
     )

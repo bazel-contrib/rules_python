@@ -19,27 +19,7 @@ unnecessary files when all that are needed are flag definitions.
 """
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load(":enum.bzl", "enum")
-
-def _FlagEnum_flag_values(self):
-    return sorted(self.__members__.values())
-
-def FlagEnum(**kwargs):
-    """Define an enum specialized for flags.
-
-    Args:
-        **kwargs: members of the enum.
-
-    Returns:
-        {type}`FlagEnum` struct. This is an enum with the following extras:
-        * `flag_values`: A function that returns a sorted list of the
-          flag values (enum `__members__`). Useful for passing to the
-          `values` attribute for string flags.
-    """
-    return enum(
-        methods = dict(flag_values = _FlagEnum_flag_values),
-        **kwargs
-    )
+load(":enum.bzl", "FlagEnum", "enum")
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value
@@ -55,8 +35,38 @@ AddSrcsToRunfilesFlag = FlagEnum(
     is_enabled = _AddSrcsToRunfilesFlag_is_enabled,
 )
 
+def _string_flag_impl(ctx):
+    if ctx.attr.override:
+        value = ctx.attr.override
+    else:
+        value = ctx.build_setting_value
+
+    if value not in ctx.attr.values:
+        fail((
+            "Invalid value for {name}: got {value}, must " +
+            "be one of {allowed}"
+        ).format(
+            name = ctx.label,
+            value = value,
+            allowed = ctx.attr.values,
+        ))
+
+    return [
+        BuildSettingInfo(value = value),
+        config_common.FeatureFlagInfo(value = value),
+    ]
+
+string_flag = rule(
+    implementation = _string_flag_impl,
+    build_setting = config.string(flag = True),
+    attrs = {
+        "override": attr.string(),
+        "values": attr.string_list(),
+    },
+)
+
 def _bootstrap_impl_flag_get_value(ctx):
-    return ctx.attr._bootstrap_impl_flag[BuildSettingInfo].value
+    return ctx.attr._bootstrap_impl_flag[config_common.FeatureFlagInfo].value
 
 # buildifier: disable=name-conventions
 BootstrapImplFlag = enum(
@@ -136,6 +146,22 @@ VenvsUseDeclareSymlinkFlag = FlagEnum(
     # Do not use declare_file() and relative symlinks in the venv
     NO = "no",
     get_value = _venvs_use_declare_symlink_flag_get_value,
+)
+
+def _venvs_site_packages_is_enabled(ctx):
+    if not ctx.attr.experimental_venvs_site_packages:
+        return False
+    flag_value = ctx.attr.experimental_venvs_site_packages[BuildSettingInfo].value
+    return flag_value == VenvsSitePackages.YES
+
+# Decides if libraries try to use a site-packages layout using venv_symlinks
+# buildifier: disable=name-conventions
+VenvsSitePackages = FlagEnum(
+    # Use venv_symlinks
+    YES = "yes",
+    # Don't use venv_symlinks
+    NO = "no",
+    is_enabled = _venvs_site_packages_is_enabled,
 )
 
 # Used for matching freethreaded toolchains and would have to be used in wheels

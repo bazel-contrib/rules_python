@@ -57,6 +57,10 @@ py_console_script_binary(
 compile_pip_requirements(
     name = "requirements",
     src = "requirements.in",
+    constraints = [
+        "constraints_certifi.txt",
+        "constraints_urllib3.txt",
+    ],
     requirements_txt = "requirements_lock.txt",
     requirements_windows = "requirements_windows.txt",
 )

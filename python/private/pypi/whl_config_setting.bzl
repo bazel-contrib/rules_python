@@ -21,23 +21,33 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
     aliases in a hub repository.
 
     Args:
-        version: optional(str), the version of the python toolchain that this
+        version: {type}`str | None`the version of the python toolchain that this
             whl alias is for. If not set, then non-version aware aliases will be
             constructed. This is mainly used for better error messages when there
             is no match found during a select.
-        config_setting: optional(Label or str), the config setting that we should use. Defaults
+        config_setting: {type}`str | Label | None` the config setting that we should use. Defaults
             to "//_config:is_python_{version}".
-        filename: optional(str), the distribution filename to derive the config_setting.
-        target_platforms: optional(list[str]), the list of target_platforms for this
+        filename: {type}`str | None` the distribution filename to derive the config_setting.
+        target_platforms: {type}`list[str] | None` the list of target_platforms for this
             distribution.
 
     Returns:
         a struct with the validated and parsed values.
     """
     if target_platforms:
-        for p in target_platforms:
+        target_platforms_input = target_platforms
+        target_platforms = []
+        for p in target_platforms_input:
             if not p.startswith("cp"):
                 fail("target_platform should start with 'cp' denoting the python version, got: " + p)
+
+            abi, _, tail = p.partition("_")
+
+            # drop the micro version here, currently there is no usecase to use
+            # multiple python interpreters with the same minor version but
+            # different micro version.
+            abi, _, _ = abi.partition(".")
+            target_platforms.append("{}_{}".format(abi, tail))
 
     return struct(
         config_setting = config_setting,
