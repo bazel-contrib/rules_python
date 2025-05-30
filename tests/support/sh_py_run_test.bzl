@@ -42,6 +42,7 @@ def _perform_transition_impl(input_settings, attr, base_impl):
 # value into the output settings
 _RECONFIG_ATTR_SETTING_MAP = {
     "bootstrap_impl": "//python/config_settings:bootstrap_impl",
+    "custom_runtime": "//tests/support:custom_runtime",
     "extra_toolchains": "//command_line_option:extra_toolchains",
     "python_src": "//python/bin:python_src",
     "venvs_site_packages": "//python/config_settings:venvs_site_packages",
@@ -58,6 +59,7 @@ _RECONFIG_INHERITED_OUTPUTS = [v for v in _RECONFIG_OUTPUTS if v in _RECONFIG_IN
 _RECONFIG_ATTRS = {
     "bootstrap_impl": attrb.String(),
     "build_python_zip": attrb.String(default = "auto"),
+    "custom_runtime": attrb.String(),
     "extra_toolchains": attrb.StringList(
         doc = """
 Value for the --extra_toolchains flag.

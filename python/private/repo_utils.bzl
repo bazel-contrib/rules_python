@@ -31,13 +31,15 @@ def _is_repo_debug_enabled(mrctx):
     """
     return _getenv(mrctx, REPO_DEBUG_ENV_VAR) == "1"
 
-def _logger(mrctx, name = None):
+def _logger(mrctx = None, name = None, verbosity_level = None):
     """Creates a logger instance for printing messages.
 
     Args:
         mrctx: repository_ctx or module_ctx object. If the attribute
             `_rule_name` is present, it will be included in log messages.
         name: name for the logger. Optional for repository_ctx usage.
+        verbosity_level: {type}`int | None` verbosity level. If not set,
+            taken from `mrctx`
 
     Returns:
         A struct with attributes logging: trace, debug, info, warn, fail.
@@ -46,13 +48,14 @@ def _logger(mrctx, name = None):
         the logger injected into the function work as expected by terminating
         on the given line.
     """
-    if _is_repo_debug_enabled(mrctx):
-        verbosity_level = "DEBUG"
-    else:
-        verbosity_level = "WARN"
+    if verbosity_level == None:
+        if _is_repo_debug_enabled(mrctx):
+            verbosity_level = "DEBUG"
+        else:
+            verbosity_level = "WARN"
 
-    env_var_verbosity = _getenv(mrctx, REPO_VERBOSITY_ENV_VAR)
-    verbosity_level = env_var_verbosity or verbosity_level
+        env_var_verbosity = _getenv(mrctx, REPO_VERBOSITY_ENV_VAR)
+        verbosity_level = env_var_verbosity or verbosity_level
 
     verbosity = {
         "DEBUG": 2,
@@ -376,7 +379,7 @@ def _get_platforms_os_name(mrctx):
     """Return the name in @platforms//os for the host os.
 
     Args:
-        mrctx: module_ctx or repository_ctx.
+        mrctx: {type}`module_ctx | repository_ctx`
 
     Returns:
         `str`. The target name.
@@ -405,6 +408,7 @@ def _get_platforms_cpu_name(mrctx):
         `str`. The target name.
     """
     arch = mrctx.os.arch.lower()
+
     if arch in ["i386", "i486", "i586", "i686", "i786", "x86"]:
         return "x86_32"
     if arch in ["amd64", "x86_64", "x64"]:

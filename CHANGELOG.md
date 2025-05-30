@@ -93,6 +93,8 @@ END_UNRELEASED_TEMPLATE
   also retrieved from the URL as opposed to only the `--hash` parameter. Fixes
   [#2363](https://github.com/bazel-contrib/rules_python/issues/2363).
 * (pypi) `whl_library` now infers file names from its `urls` attribute correctly.
+* (pypi) When running under `bazel test`, be sure that temporary `requirements` file
+  remains writable.
 * (py_test, py_binary) Allow external files to be used for main
 * (pypi) `compile_pip_requirements` test rule works behind the proxy
 
@@ -108,6 +110,13 @@ END_UNRELEASED_TEMPLATE
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
 * (utils) Add a way to run a REPL for any `rules_python` target that returns
   a `PyInfo` provider.
+* (toolchains) Arbitrary python-build-standalone runtimes can be registered
+  and activated with custom flags. See the [Registering custom runtimes]
+  docs and {obj}`single_version_platform_override()` API docs for more
+  information.
+* (rules) Added support for a using constraints files with `compile_pip_requirements`.
+  Useful when an intermediate dependency needs to be upgraded to pull in
+  security patches.
 
 {#v0-0-0-removed}
 ### Removed

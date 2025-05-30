@@ -125,6 +125,22 @@ dev_python.override(
     register_all_versions = True,
 )
 
+# For testing an arbitrary runtime triggered by a custom flag.
+# See //tests/toolchains:custom_platform_toolchain_test
+dev_python.single_version_platform_override(
+    platform = "linux-x86-install-only-stripped",
+    python_version = "3.13.1",
+    sha256 = "56817aa976e4886bec1677699c136cb01c1cdfe0495104c0d8ef546541864bbb",
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_settings = [
+        "@@//tests/support:is_custom_runtime_linux-x86-install-only-stripped",
+    ],
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20250115/cpython-3.13.1+20250115-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
+)
+
 dev_pip = use_extension(
     "//python/extensions:pip.bzl",
     "pip",
