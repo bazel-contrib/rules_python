@@ -38,7 +38,7 @@ foo[extra]==0.0.1 \
 foo @ git+https://github.com/org/foo.git@deadbeef
 """,
         "requirements_linux": """\
-foo==0.0.3 --hash=sha256:deadbaaf
+foo==0.0.3 --hash=sha256:deadbaaf --hash=sha256:5d15t
 """,
         # download_only = True
         "requirements_linux_download_only": """\
@@ -67,7 +67,7 @@ foo==0.0.4 @ https://example.org/foo-0.0.4.whl
 foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef
 """,
         "requirements_osx": """\
-foo==0.0.3 --hash=sha256:deadbaaf --hash=sha256:deadb11f
+foo==0.0.3 --hash=sha256:deadbaaf --hash=sha256:deadb11f --hash=sha256:5d15t
 """,
         "requirements_osx_download_only": """\
 --platform=macosx_10_9_arm64
@@ -251,7 +251,7 @@ def _test_multi_os(env):
                 struct(
                     distribution = "foo",
                     extra_pip_args = [],
-                    requirement_line = "foo==0.0.3 --hash=sha256:deadbaaf",
+                    requirement_line = "foo==0.0.3 --hash=sha256:deadbaaf --hash=sha256:5d15t",
                     target_platforms = ["linux_x86_64"],
                     url = "",
                     filename = "",
@@ -525,6 +525,12 @@ def _test_overlapping_shas_with_index_results(env):
         get_index_urls = lambda _, __: {
             "foo": struct(
                 sdists = {
+                    "5d15t": struct(
+                        url = "sdist",
+                        sha256 = "5d15t",
+                        filename = "foo-0.0.1.tar.gz",
+                        yanked = False,
+                    ),
                 },
                 whls = {
                     "deadb11f": struct(
@@ -559,6 +565,16 @@ def _test_overlapping_shas_with_index_results(env):
                     sha256 = "deadbaaf",
                     target_platforms = ["cp39_linux_x86_64", "cp39_osx_x86_64"],
                     url = "super2",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "foo-0.0.1.tar.gz",
+                    requirement_line = "foo==0.0.3",
+                    sha256 = "5d15t",
+                    target_platforms = ["cp39_linux_x86_64", "cp39_osx_x86_64"],
+                    url = "sdist",
                     yanked = False,
                 ),
                 struct(
