@@ -94,6 +94,8 @@ END_UNRELEASED_TEMPLATE
   [#2363](https://github.com/bazel-contrib/rules_python/issues/2363).
 * (pypi) `whl_library` now infers file names from its `urls` attribute correctly.
 * (py_test, py_binary) Allow external files to be used for main
+* (pypi) Correctly aggregate the sources when the hashes specified in the lockfile differ
+  by platform even though the same version is used. Fixes [#2648](https://github.com/bazel-contrib/rules_python/issues/2648).
 
 {#v0-0-0-added}
 ### Added
