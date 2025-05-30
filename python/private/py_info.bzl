@@ -56,11 +56,6 @@ VenvSymlinkEntry = provider(
 An entry in `PyInfo.venv_symlinks`
 """,
     fields = {
-        "key": """
-:type: str | None
-
-Represents the value that gets used to key entries so that each package is represented only once.
-""",
         "kind": """
 :type: str
 
@@ -72,6 +67,11 @@ the venv to create the path under.
 
 A runfiles-root relative path that `venv_path` will symlink to. If `None`,
 it means to not create a symlink.
+""",
+        "src": """
+:type: str | None
+
+Represents the PyPI package that the code originates from.
 """,
         "venv_path": """
 :type: str

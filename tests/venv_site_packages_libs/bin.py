@@ -33,18 +33,24 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
     def test_distinfo_is_overriden(self):
         self.assert_imported_from_venv("simple")
         module = importlib.import_module("simple")
-        module_path = Path(module.__file__)
-        site_packages = module_path.parent.parent
-
-        dist_info_dirs = [p.name for p in site_packages.glob("*.dist-info")]
-
         self.assertEqual(
             "2.0.0",
             module.__version__,
         )
+        module_path = Path(module.__file__)
+
+        site_packages = module_path.parent.parent
+        dist_info_dirs = [p.name for p in site_packages.glob("*.dist-info")]
         self.assertEqual(
             ["simple-2.0.0.dist-info"],
             dist_info_dirs,
+        )
+
+        # Ensure that packages from simple v1 are not present
+        files = [p.name for p in site_packages.glob("*")]
+        self.assertNotIn(
+            "simple_extras",
+            files,
         )
 
 

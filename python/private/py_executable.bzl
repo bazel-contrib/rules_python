@@ -680,17 +680,32 @@ def _create_venv_symlinks(ctx, venv_dir_map):
     return venv_files
 
 def _build_link_map(entries):
-    # dict[str kind, dict[str key or rel_path, tuple[str rel_path, str link_to_path]]]
+    # dict[str kind, dict[str rel_path, str link_to_path]]
     link_map = {}
+
+    # Here we store venv paths by package
+    # dict[str package, dict[str kind, list[str venv_path]]]
+    pkg_map = {}
     for entry in entries:
         kind = entry.kind
         kind_map = link_map.setdefault(kind, {})
+
+        # If we detect that we are adding a dist-info for an already existing package
+        # we need to pop all of the previous symlinks from the link_map
+        if entry.venv_path.endswith(".dist-info") and entry.src in pkg_map:
+            # dist-info will come always first
+            for kind, dir_paths in pkg_map.pop(entry.src).items():
+                for dir_path in dir_paths:
+                    link_map[kind].pop(dir_path)
+
+        pkg_venv_paths = pkg_map.setdefault(entry.src, {}).setdefault(entry.kind, [])
+        pkg_venv_paths.append(entry.venv_path)
 
         # We overwrite duplicates by design. The dependency closer to the
         # binary gets precedence due to the topological ordering.
         #
         # This allows us to store only one version of the dist-info that is needed
-        kind_map[entry.key or entry.venv_path] = (entry.venv_path, entry.link_to_path)
+        kind_map[entry.venv_path] = entry.link_to_path
 
     # An empty link_to value means to not create the site package symlink.
     # Because of the topological ordering, this allows binaries to remove
@@ -710,7 +725,7 @@ def _build_link_map(entries):
         for _ in range(len(kind_map)):
             if not kind_map:
                 break
-            _, (dirname, value) = kind_map.popitem()
+            dirname, value = kind_map.popitem()
             keep_kind_map[dirname] = value
             prefix = dirname + "/"  # Add slash to prevent /X matching /XY
             for maybe_suffix in kind_map.keys():
