@@ -290,16 +290,22 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             venv_path = dist_info_dir,
         ))
 
-    for src in ctx.files.srcs:
-        if src.extension not in PYTHON_FILE_EXTENSIONS:
-            continue
+    for src in ctx.files.srcs + ctx.files.data:
         path = _repo_relative_short_path(src.short_path)
         if not path.startswith(site_packages_root):
             continue
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
 
-        if dir_name and filename.startswith("__init__."):
+        if src.extension not in PYTHON_FILE_EXTENSIONS:
+            if dir_name.endswith(".dist-info"):
+                # we have already handled the stuff
+                pass
+            elif dir_name:
+                # TODO @aignas 2025-05-30: is this the right way?
+                dirs_with_init[dir_name] = None
+                repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
+        elif dir_name and filename.startswith("__init__."):
             dirs_with_init[dir_name] = None
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
         elif not dir_name:
