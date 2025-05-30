@@ -39,6 +39,10 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         dist_info_dirs = [p.name for p in site_packages.glob("*.dist-info")]
 
         self.assertEqual(
+            "2.0.0",
+            module.__version__,
+        )
+        self.assertEqual(
             ["simple-2.0.0.dist-info"],
             dist_info_dirs,
         )

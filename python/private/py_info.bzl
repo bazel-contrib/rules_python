@@ -45,7 +45,6 @@ def _VenvSymlinkKind_typedef():
 VenvSymlinkKind = struct(
     TYPEDEF = _VenvSymlinkKind_typedef,
     BIN = "BIN",
-    DISTINFO = "DISTINFO",
     LIB = "LIB",
     INCLUDE = "INCLUDE",
 )
@@ -57,6 +56,11 @@ VenvSymlinkEntry = provider(
 An entry in `PyInfo.venv_symlinks`
 """,
     fields = {
+        "key": """
+:type: str | None
+
+Represents the value that gets used to key entries so that each package is represented only once.
+""",
         "kind": """
 :type: str
 

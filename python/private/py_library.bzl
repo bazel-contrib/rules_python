@@ -41,6 +41,7 @@ load(
     "runfiles_root_path",
 )
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
+load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
@@ -270,20 +271,21 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
     repo_runfiles_dirname = None
     dirs_with_init = {}  # dirname -> runfile path
     venv_symlinks = []
+    package = ""
     if dist_info_metadata:
         # in order to be able to have replacements in the venv, we have to add a
         # third value into the venv_symlinks, which would be the normalized
         # package name. This allows us to ensure that we can replace the `dist-info`
         # directories by checking if the package key is there.
         dist_info_dir = paths.basename(dist_info_metadata.dirname)
-        #TODO remove
-        #package, _, _suffix = dist_info_dir.rpartition(".dist-info")
-        #package, _, _version = package.rpartition("-")
-        #symlink_key = "{}.dist-info".format(normalize_name(package))
+        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+        package, _, _version = package.rpartition("-")
+        package = normalize_name(package)
 
         repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
         venv_symlinks.append(VenvSymlinkEntry(
-            kind = VenvSymlinkKind.DISTINFO,
+            key = "{}.dist-info".format(package),
+            kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
             venv_path = dist_info_dir,
         ))
@@ -306,6 +308,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             # This would be files that do not have directories and we just need to add
             # direct symlinks to them as is:
             venv_symlinks.append(VenvSymlinkEntry(
+                key = None,
                 kind = VenvSymlinkKind.LIB,
                 link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
                 venv_path = filename,
@@ -327,6 +330,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
 
     for dirname in first_level_explicit_packages:
         venv_symlinks.append(VenvSymlinkEntry(
+            key = None,
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dirname),
             venv_path = dirname,
