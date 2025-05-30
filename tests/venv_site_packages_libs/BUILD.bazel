@@ -13,5 +13,6 @@ py_reconfig_test(
         "//tests/venv_site_packages_libs/nspkg_beta",
         "@other//nspkg_delta",
         "@other//nspkg_gamma",
+        "@other//nspkg_single",
     ],
 )

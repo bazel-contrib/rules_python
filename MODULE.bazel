@@ -134,6 +134,7 @@ dev_pip.parse(
     download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
+    parallel_download = False,
     python_version = "3.11",
     requirements_lock = "//docs:requirements.txt",
 )

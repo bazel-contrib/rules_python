@@ -378,7 +378,7 @@ def create_py_info(
         implicit_pyc_files,
         implicit_pyc_source_files,
         imports,
-        site_packages_symlinks = []):
+        venv_symlinks = []):
     """Create PyInfo provider.
 
     Args:
@@ -396,7 +396,7 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
-        site_packages_symlinks: {type}`list[tuple[str, str]]` tuples of
+        venv_symlinks: {type}`list[tuple[str, str]]` tuples of
             `(runfiles_path, site_packages_path)` for symlinks to create
             in the consuming binary's venv site packages.
 
@@ -406,7 +406,7 @@ def create_py_info(
         necessary for deprecated extra actions support).
     """
     py_info = PyInfoBuilder.new()
-    py_info.site_packages_symlinks.add(site_packages_symlinks)
+    py_info.venv_symlinks.add(venv_symlinks)
     py_info.direct_original_sources.add(original_sources)
     py_info.direct_pyc_files.add(required_pyc_files)
     py_info.direct_pyi_files.add(ctx.files.pyi_srcs)

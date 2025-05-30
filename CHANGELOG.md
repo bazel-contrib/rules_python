@@ -70,6 +70,8 @@ END_UNRELEASED_TEMPLATE
   `_test` target is deprecated and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
+* (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
+  `PyInfo.site_packages_symlinks`
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -203,7 +205,7 @@ END_UNRELEASED_TEMPLATE
   please check the {obj}`uv.configure` tag class.
 * Add support for riscv64 linux platform.
 * (toolchains) Add python 3.13.2 and 3.12.9 toolchains
-* (providers) (experimental) {obj}`PyInfo.site_packages_symlinks` field added to
+* (providers) (experimental) `PyInfo.site_packages_symlinks` field added to
   allow specifying links to create within the venv site packages (only
   applicable with {obj}`--bootstrap_impl=script`)
   ([#2156](https://github.com/bazelbuild/rules_python/issues/2156)).

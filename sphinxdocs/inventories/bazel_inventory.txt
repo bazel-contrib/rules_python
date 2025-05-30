@@ -15,6 +15,7 @@ RBE bzl:obj 1 remote/rbe -
 RunEnvironmentInfo bzl:type 1 rules/lib/providers/RunEnvironmentInfo -
 Target bzl:type 1 rules/lib/builtins/Target -
 ToolchainInfo bzl:type 1 rules/lib/providers/ToolchainInfo.html -
+alias bzl:rule 1 reference/be/general#alias -
 attr.bool bzl:type 1 rules/lib/toplevel/attr#bool -
 attr.int bzl:type 1 rules/lib/toplevel/attr#int -
 attr.int_list bzl:type 1 rules/lib/toplevel/attr#int_list -
@@ -40,6 +41,7 @@ config.string_list bzl:function 1 rules/lib/toplevel/config#string_list -
 config.target bzl:function 1 rules/lib/toplevel/config#target -
 config_common.FeatureFlagInfo bzl:type 1 rules/lib/toplevel/config_common#FeatureFlagInfo -
 config_common.toolchain_type bzl:function 1 rules/lib/toplevel/config_common#toolchain_type -
+config_setting bzl:rule 1 reference/be/general#config_setting -
 ctx bzl:type 1 rules/lib/builtins/repository_ctx -
 ctx.actions bzl:obj 1 rules/lib/builtins/ctx#actions -
 ctx.aspect_ids bzl:obj 1 rules/lib/builtins/ctx#aspect_ids -
@@ -79,6 +81,8 @@ depset bzl:type 1 rules/lib/depset -
 dict bzl:type 1 rules/lib/dict -
 exec_compatible_with bzl:attr 1 reference/be/common-definitions#common.exec_compatible_with -
 exec_group bzl:function 1 rules/lib/globals/bzl#exec_group -
+filegroup bzl:rule 1 reference/be/general#filegroup -
+filegroup.data bzl:attr 1 reference/be/general#filegroup.data -
 int bzl:type 1 rules/lib/int -
 label bzl:type 1 concepts/labels -
 list bzl:type 1 rules/lib/list -
