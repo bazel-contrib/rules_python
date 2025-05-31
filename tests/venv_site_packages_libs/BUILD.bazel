@@ -29,5 +29,6 @@ py_reconfig_test(
         "@other//nspkg_delta",
         "@other//nspkg_gamma",
         "@other//nspkg_single",
+        "@other//with_external_data",
     ],
 )

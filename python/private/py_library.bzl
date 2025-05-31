@@ -269,7 +269,6 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
     # directories that _do_ have an `__init__.py` file and treat those as
     # the path to symlink to.
 
-    repo_runfiles_dirname = None
     dir_symlinks = {}  # dirname -> runfile path
     venv_symlinks = []
     package = None
@@ -286,14 +285,6 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             version.normalize(version_str),
         )
 
-        repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
-        venv_symlinks.append(VenvSymlinkEntry(
-            kind = VenvSymlinkKind.LIB,
-            link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
-            package = package,
-            venv_path = dist_info_dir,
-        ))
-
     for src in ctx.files.srcs + ctx.files.data:
         path = _repo_relative_short_path(src.short_path)
         if not path.startswith(site_packages_root):
@@ -301,10 +292,11 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
 
-        if dist_info_metadata and dir_name in path:
-            # we have already handled the stuff
+        if dir_name in dir_symlinks:
+            # we already have this dir.
             continue
 
+        runfiles_dir_name, _, _ = runfiles_root_path(ctx, src.short_path).partition("/")
         if dir_name:
             # This can be either a directory with libs (e.g. numpy.libs)
             # or a directory with `__init__.py` file that potentially also needs to be
@@ -312,19 +304,17 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             #
             # This could be also regular files, that just need to be symlinked, so we will
             # add the directory here.
-            repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
-            dir_symlinks[dir_name] = repo_runfiles_dirname
+            dir_symlinks[dir_name] = runfiles_dir_name
         elif src.extension in PYTHON_FILE_EXTENSIONS:
-            repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
-
             # This would be files that do not have directories and we just need to add
             # direct symlinks to them as is:
-            venv_symlinks.append(VenvSymlinkEntry(
+            entry = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
-                link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
+                link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
                 package = package,
                 venv_path = filename,
-            ))
+            )
+            venv_symlinks.append(entry)
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
     # see the top-most explicit package first.
@@ -342,12 +332,14 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
 
     for dirname in first_level_explicit_packages:
         prefix = dir_symlinks[dirname]
-        venv_symlinks.append(VenvSymlinkEntry(
+        entry = VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(prefix, site_packages_root, dirname),
             package = package,
             venv_path = dirname,
-        ))
+        )
+        venv_symlinks.append(entry)
+
     return venv_symlinks
 
 def _repo_relative_short_path(short_path):

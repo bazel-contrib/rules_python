@@ -73,6 +73,17 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         files = [p.name for p in site_packages.glob("*")]
         self.assertNotIn("simple_v1_extras", files)
 
+    def test_data_from_another_pkg_is_included_via_copy_file(self):
+        self.assert_imported_from_venv("simple")
+        module = importlib.import_module("simple")
+        module_path = Path(module.__file__)
+
+        site_packages = module_path.parent.parent
+        # Ensure that packages from simple v1 are not present
+        d = site_packages / "external_data"
+        files = [p.name for p in d.glob("*")]
+        self.assertIn("another_module_data.txt", files)
+
 
 if __name__ == "__main__":
     unittest.main()
