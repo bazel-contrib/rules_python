@@ -24,6 +24,7 @@ sphinx_docs(
     formats = ["html"],
     sphinx = ":sphinx-build",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    use_persistent_workers = True,
 )
 
 gen_directory(

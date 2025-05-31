@@ -103,6 +103,7 @@ def sphinx_docs(
         strip_prefix = "",
         extra_opts = [],
         tools = [],
+        use_persistent_workers = False,
         **kwargs):
     """Generate docs using Sphinx.
 
@@ -165,6 +166,7 @@ def sphinx_docs(
         source_tree = internal_name + "/_sources",
         extra_opts = extra_opts,
         tools = tools,
+        use_persistent_workers = use_persistent_workers,
         **kwargs
     )
 
@@ -209,6 +211,7 @@ def _sphinx_docs_impl(ctx):
             source_path = source_dir_path,
             output_prefix = paths.join(ctx.label.name, "_build"),
             inputs = inputs,
+            use_persistent_workers = ctx.attr.use_persistent_workers,
         )
         outputs[format] = output_dir
         per_format_args[format] = args_env
@@ -240,7 +243,7 @@ _sphinx_docs = rule(
         ),
         "sphinx": attr.label(
             executable = True,
-            cfg = "exec",
+            cfg = "host",
             mandatory = True,
             doc = "Sphinx binary to generate documentation.",
         ),
@@ -248,34 +251,48 @@ _sphinx_docs = rule(
             cfg = "exec",
             doc = "Additional tools that are used by Sphinx and its plugins.",
         ),
+        "use_persistent_workers": attr.bool(
+            doc = "TODO",
+            default = False,
+        ),
         "_extra_defines_flag": attr.label(default = "//sphinxdocs:extra_defines"),
         "_extra_env_flag": attr.label(default = "//sphinxdocs:extra_env"),
         "_quiet_flag": attr.label(default = "//sphinxdocs:quiet"),
     },
 )
 
-def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
+def _run_sphinx(ctx, format, source_path, inputs, output_prefix, use_persistent_workers):
     output_dir = ctx.actions.declare_directory(paths.join(output_prefix, format))
 
     run_args = []  # Copy of the args to forward along to debug runner
     args = ctx.actions.args()  # Args passed to the action
 
+    args.add(source_path)
+    args.add(output_dir.path)
+
     args.add("--show-traceback")  # Full tracebacks on error
     run_args.append("--show-traceback")
-    args.add("--builder", format)
-    run_args.extend(("--builder", format))
+    args.add(format, format = "--builder=%s")
+    run_args.append("--builder={}".format(format))
 
-    if ctx.attr._quiet_flag[BuildSettingInfo].value:
-        # Not added to run_args because run_args is for debugging
-        args.add("--quiet")  # Suppress stdout informational text
+    ##if ctx.attr._quiet_flag[BuildSettingInfo].value:
+    ##    # Not added to run_args because run_args is for debugging
+    ##    args.add("--quiet")  # Suppress stdout informational text
 
     # Build in parallel, if possible
     # Don't add to run_args: parallel building breaks interactive debugging
-    args.add("--jobs", "auto")
-    args.add("--fresh-env")  # Don't try to use cache files. Bazel can't make use of them.
-    run_args.append("--fresh-env")
-    args.add("--write-all")  # Write all files; don't try to detect "changed" files
-    run_args.append("--write-all")
+    args.add("--jobs=auto")
+
+    if use_persistent_workers:
+        # Sphinx normally uses `.doctrees`, but we use underscore so it isn't
+        # hidden by default
+        args.add(paths.join(output_dir.path + "_doctrees"), format = "--doctree-dir=%s")
+
+    else:
+        args.add("--fresh-env")  # Don't try to use cache files. Bazel can't make use of them.
+        run_args.append("--fresh-env")
+        args.add("--write-all")  # Write all files; don't try to detect "changed" files
+        run_args.append("--write-all")
 
     for opt in ctx.attr.extra_opts:
         expanded = ctx.expand_location(opt)
@@ -287,9 +304,6 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
     for define in extra_defines:
         run_args.extend(("--define", define))
 
-    args.add(source_path)
-    args.add(output_dir.path)
-
     env = dict([
         v.split("=", 1)
         for v in ctx.attr._extra_env_flag[_FlagInfo].value
@@ -298,6 +312,16 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
     tools = []
     for tool in ctx.attr.tools:
         tools.append(tool[DefaultInfo].files_to_run)
+
+    execution_requirements = {}
+    if use_persistent_workers:
+        args.add("-v")
+        args.add("-v")
+        args.add("-v")
+        args.use_param_file("@%s", use_always = True)
+        args.set_param_file_format("multiline")
+        execution_requirements["supports-workers"] = "1"
+        execution_requirements["requires-worker-protocol"] = "json"
 
     ctx.actions.run(
         executable = ctx.executable.sphinx,
@@ -308,6 +332,7 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
         mnemonic = "SphinxBuildDocs",
         progress_message = "Sphinx building {} for %{{label}}".format(format),
         env = env,
+        execution_requirements = execution_requirements,
     )
     return output_dir, struct(args = run_args, env = env)
 
