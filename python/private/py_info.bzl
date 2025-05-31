@@ -68,7 +68,7 @@ the venv to create the path under.
 A runfiles-root relative path that `venv_path` will symlink to. If `None`,
 it means to not create a symlink.
 """,
-        "src": """
+        "package": """
 :type: str | None
 
 Represents the PyPI package that the code originates from.

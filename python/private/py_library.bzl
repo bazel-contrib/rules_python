@@ -286,7 +286,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         venv_symlinks.append(VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
-            src = package,
+            package = package,
             venv_path = dist_info_dir,
         ))
 
@@ -314,7 +314,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             venv_symlinks.append(VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
                 link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
-                src = package,
+                package = package,
                 venv_path = filename,
             ))
 
@@ -336,7 +336,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         venv_symlinks.append(VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dirname),
-            src = package,
+            package = package,
             venv_path = dirname,
         ))
     return venv_symlinks
