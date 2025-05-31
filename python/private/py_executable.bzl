@@ -680,32 +680,30 @@ def _create_venv_symlinks(ctx, venv_dir_map):
     return venv_files
 
 def _build_link_map(entries):
-    # dict[str kind, dict[str rel_path, str link_to_path]]
-    link_map = {}
+    # dict[str package, dict[str kind, dict[str rel_path, str link_to_path]]]
+    pkg_link_map = {}
 
-    # Here we store venv paths by package
-    # dict[str package, dict[str kind, list[str venv_path]]]
-    pkg_map = {}
+    # dict[str package, str version]
+    version_by_pkg = {}
 
     for entry in entries:
+        package = ""
+        if entry.package:
+            # We have normalized the version/package to PEP440 spec
+            package, _, version = entry.package.partition("-")
+
+            if version_by_pkg.get(package) != version:
+                # If we detect that we are adding a different package version, clear the
+                # previously added values.
+                version_by_pkg[package] = version
+
+                # Ensure that we start fresh
+                pkg_link_map.pop(package, None)
+
+        link_map = pkg_link_map.setdefault(package, {})
+
         kind = entry.kind
         kind_map = link_map.setdefault(kind, {})
-
-        # TODO @aignas 2025-05-31: explain where we use the version
-        package = None
-        if entry.package:
-            package, _, _version = entry.package.partition("-")
-
-        # If we detect that we are adding a dist-info for an already existing package
-        # we need to pop all of the previous symlinks from the link_map
-        if entry.venv_path.endswith(".dist-info") and package in pkg_map:
-            # dist-info will come always first
-            for kind, dir_paths in pkg_map.pop(package).items():
-                for dir_path in dir_paths:
-                    link_map[kind].pop(dir_path)
-
-        pkg_venv_paths = pkg_map.setdefault(package, {}).setdefault(entry.kind, [])
-        pkg_venv_paths.append(entry.venv_path)
 
         # We overwrite duplicates by design. The dependency closer to the
         # binary gets precedence due to the topological ordering.
@@ -716,28 +714,30 @@ def _build_link_map(entries):
     # An empty link_to value means to not create the site package symlink.
     # Because of the topological ordering, this allows binaries to remove
     # entries by having an earlier dependency produce empty link_to values.
-    for kind, kind_map in link_map.items():
-        for dir_path, link_to in kind_map.items():
-            if not link_to:
-                kind_map.pop(dir_path)
+    for link_map in pkg_link_map.values():
+        for kind, kind_map in link_map.items():
+            for dir_path, link_to in kind_map.items():
+                if not link_to:
+                    kind_map.pop(dir_path)
 
     # dict[str kind, dict[str rel_path, str link_to_path]]
     keep_link_map = {}
 
     # Remove entries that would be a child path of a created symlink.
     # Earlier entries have precedence to match how exact matches are handled.
-    for kind, kind_map in link_map.items():
-        keep_kind_map = keep_link_map.setdefault(kind, {})
-        for _ in range(len(kind_map)):
-            if not kind_map:
-                break
-            dirname, value = kind_map.popitem()
-            keep_kind_map[dirname] = value
-            prefix = dirname + "/"  # Add slash to prevent /X matching /XY
-            for maybe_suffix in kind_map.keys():
-                maybe_suffix += "/"  # Add slash to prevent /X matching /XY
-                if maybe_suffix.startswith(prefix) or prefix.startswith(maybe_suffix):
-                    kind_map.pop(maybe_suffix)
+    for link_map in pkg_link_map.values():
+        for kind, kind_map in link_map.items():
+            keep_kind_map = keep_link_map.setdefault(kind, {})
+            for _ in range(len(kind_map)):
+                if not kind_map:
+                    break
+                dirname, value = kind_map.popitem()
+                keep_kind_map[dirname] = value
+                prefix = dirname + "/"  # Add slash to prevent /X matching /XY
+                for maybe_suffix in kind_map.keys():
+                    maybe_suffix += "/"  # Add slash to prevent /X matching /XY
+                    if maybe_suffix.startswith(prefix) or prefix.startswith(maybe_suffix):
+                        kind_map.pop(maybe_suffix)
     return keep_link_map
 
 def _map_each_identity(v):
