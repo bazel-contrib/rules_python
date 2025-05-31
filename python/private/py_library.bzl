@@ -53,6 +53,7 @@ load(
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
+load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
@@ -279,8 +280,11 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         # directories by checking if the package key is there.
         dist_info_dir = paths.basename(dist_info_metadata.dirname)
         package, _, _suffix = dist_info_dir.rpartition(".dist-info")
-        package, _, _version = package.rpartition("-")
-        package = normalize_name(package)
+        package, _, version_str = package.rpartition("-")
+        package = "{}-{}".format(
+            normalize_name(package),
+            version.normalize(version_str),
+        )
 
         repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
         venv_symlinks.append(VenvSymlinkEntry(

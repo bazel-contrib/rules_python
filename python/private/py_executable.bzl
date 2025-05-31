@@ -686,19 +686,25 @@ def _build_link_map(entries):
     # Here we store venv paths by package
     # dict[str package, dict[str kind, list[str venv_path]]]
     pkg_map = {}
+
     for entry in entries:
         kind = entry.kind
         kind_map = link_map.setdefault(kind, {})
 
+        # TODO @aignas 2025-05-31: explain where we use the version
+        package = None
+        if entry.package:
+            package, _, _version = entry.package.partition("-")
+
         # If we detect that we are adding a dist-info for an already existing package
         # we need to pop all of the previous symlinks from the link_map
-        if entry.venv_path.endswith(".dist-info") and entry.package in pkg_map:
+        if entry.venv_path.endswith(".dist-info") and package in pkg_map:
             # dist-info will come always first
-            for kind, dir_paths in pkg_map.pop(entry.package).items():
+            for kind, dir_paths in pkg_map.pop(package).items():
                 for dir_path in dir_paths:
                     link_map[kind].pop(dir_path)
 
-        pkg_venv_paths = pkg_map.setdefault(entry.package, {}).setdefault(entry.kind, [])
+        pkg_venv_paths = pkg_map.setdefault(package, {}).setdefault(entry.kind, [])
         pkg_venv_paths.append(entry.venv_path)
 
         # We overwrite duplicates by design. The dependency closer to the
