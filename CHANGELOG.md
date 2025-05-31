@@ -70,6 +70,8 @@ END_UNRELEASED_TEMPLATE
   `_test` target is deprecated and will be removed in the next major release.
   ([#2794](https://github.com/bazel-contrib/rules_python/issues/2794)
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
+* (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
+  `PyInfo.site_packages_symlinks`
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -91,6 +93,8 @@ END_UNRELEASED_TEMPLATE
   also retrieved from the URL as opposed to only the `--hash` parameter. Fixes
   [#2363](https://github.com/bazel-contrib/rules_python/issues/2363).
 * (pypi) `whl_library` now infers file names from its `urls` attribute correctly.
+* (pypi) When running under `bazel test`, be sure that temporary `requirements` file
+  remains writable.
 * (py_test, py_binary) Allow external files to be used for main
 
 {#v0-0-0-added}
@@ -107,6 +111,13 @@ END_UNRELEASED_TEMPLATE
   a `PyInfo` provider.
 * (uv) Handle `.netrc` and `auth_patterns` auth when downloading `uv`. Work towards
   [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
+* (toolchains) Arbitrary python-build-standalone runtimes can be registered
+  and activated with custom flags. See the [Registering custom runtimes]
+  docs and {obj}`single_version_platform_override()` API docs for more
+  information.
+* (rules) Added support for a using constraints files with `compile_pip_requirements`.
+  Useful when an intermediate dependency needs to be upgraded to pull in
+  security patches.
 
 {#v0-0-0-removed}
 ### Removed
@@ -205,7 +216,7 @@ END_UNRELEASED_TEMPLATE
   please check the {obj}`uv.configure` tag class.
 * Add support for riscv64 linux platform.
 * (toolchains) Add python 3.13.2 and 3.12.9 toolchains
-* (providers) (experimental) {obj}`PyInfo.site_packages_symlinks` field added to
+* (providers) (experimental) `PyInfo.site_packages_symlinks` field added to
   allow specifying links to create within the venv site packages (only
   applicable with {obj}`--bootstrap_impl=script`)
   ([#2156](https://github.com/bazelbuild/rules_python/issues/2156)).

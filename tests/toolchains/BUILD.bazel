@@ -12,8 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
 load(":defs.bzl", "define_toolchain_tests")
 
 define_toolchain_tests(
     name = "toolchain_tests",
+)
+
+py_reconfig_test(
+    name = "custom_platform_toolchain_test",
+    srcs = ["custom_platform_toolchain_test.py"],
+    custom_runtime = "linux-x86-install-only-stripped",
+    python_version = "3.13.1",
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
 )

@@ -31,11 +31,11 @@ def _features_typedef():
     :::
     ::::
 
-    ::::{field} py_info_site_packages_symlinks
+    ::::{field} py_info_venv_symlinks
 
-    True if the `PyInfo.site_packages_symlinks` field is available.
+    True if the `PyInfo.venv_symlinks` field is available.
 
-    :::{versionadded} 1.4.0
+    :::{versionadded} VERSION_NEXT_FEATURE
     :::
     ::::
 
@@ -61,7 +61,7 @@ features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
     precompile = True,
-    py_info_site_packages_symlinks = True,
+    py_info_venv_symlinks = True,
     uses_builtin_rules = not config.enable_pystar,
     version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
 )

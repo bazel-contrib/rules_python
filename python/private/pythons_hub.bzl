@@ -84,13 +84,7 @@ def _hub_build_file_content(rctx):
     )
 
 _interpreters_bzl_template = """
-INTERPRETER_LABELS = {{
-{interpreter_labels}
-}}
-"""
-
-_line_for_hub_template = """\
-    "{name}_host": Label("@{name}_host//:python"),
+INTERPRETER_LABELS = {labels}
 """
 
 _versions_bzl_template = """
@@ -110,15 +104,16 @@ def _hub_repo_impl(rctx):
 
     # Create a dict that is later used to create
     # a symlink to a interpreter.
-    interpreter_labels = "".join([
-        _line_for_hub_template.format(name = name)
-        for name in rctx.attr.base_toolchain_repo_names
-    ])
-
     rctx.file(
         "interpreters.bzl",
         _interpreters_bzl_template.format(
-            interpreter_labels = interpreter_labels,
+            labels = render.dict(
+                {
+                    name: 'Label("@{}//:python")'.format(name)
+                    for name in rctx.attr.host_compatible_repo_names
+                },
+                value_repr = str,
+            ),
         ),
         executable = False,
     )
@@ -144,13 +139,12 @@ This rule also writes out the various toolchains for the different Python versio
 """,
     implementation = _hub_repo_impl,
     attrs = {
-        "base_toolchain_repo_names": attr.string_list(
-            doc = "The base repo name for toolchains ('python_3_10', no " +
-                  "platform suffix)",
-            mandatory = True,
-        ),
         "default_python_version": attr.string(
             doc = "Default Python version for the build in `X.Y` or `X.Y.Z` format.",
+            mandatory = True,
+        ),
+        "host_compatible_repo_names": attr.string_list(
+            doc = "Names of `host_compatible_python_repo` repos.",
             mandatory = True,
         ),
         "minor_mapping": attr.string_dict(

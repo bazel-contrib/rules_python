@@ -17,6 +17,7 @@
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:python.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -131,6 +132,10 @@ def _single_version_platform_override(
         python_version = python_version,
         patch_strip = patch_strip,
         patches = patches,
+        target_compatible_with = [],
+        target_settings = [],
+        os_name = "",
+        arch = "",
     )
 
 def _test_default(env):
@@ -138,6 +143,7 @@ def _test_default(env):
         module_ctx = _mock_mctx(
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     # The value there should be consistent in bzlmod with the automatically
@@ -168,6 +174,7 @@ def _test_default_some_module(env):
         module_ctx = _mock_mctx(
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")], is_root = False),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.11")
@@ -186,6 +193,7 @@ def _test_default_with_patch_version(env):
         module_ctx = _mock_mctx(
             _mod(name = "rules_python", toolchain = [_toolchain("3.11.2")]),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.11.2")
@@ -207,6 +215,7 @@ def _test_default_non_rules_python(env):
             # does not make any calls to the extension.
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")], is_root = False),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.11")
@@ -228,6 +237,7 @@ def _test_default_non_rules_python_ignore_root_user_error(env):
             ),
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_bool(py.config.default["ignore_root_user_error"]).equals(False)
@@ -257,6 +267,7 @@ def _test_default_non_rules_python_ignore_root_user_error_non_root_module(env):
             _mod(name = "some_module", toolchain = [_toolchain("3.12", ignore_root_user_error = False)]),
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.13")
@@ -302,6 +313,7 @@ def _test_toolchain_ordering(env):
             ),
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
     got_versions = [
         t.python_version
@@ -347,6 +359,7 @@ def _test_default_from_defaults(env):
                 is_root = True,
             ),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.11")
@@ -374,6 +387,7 @@ def _test_default_from_defaults_env(env):
             ),
             environ = {"PYENV_VERSION": "3.12"},
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.12")
@@ -401,6 +415,7 @@ def _test_default_from_defaults_file(env):
             ),
             mocked_files = {"@@//:.python-version": "3.12\n"},
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.12")
@@ -427,6 +442,7 @@ def _test_first_occurance_of_the_toolchain_wins(env):
                 "RULES_PYTHON_BZLMOD_DEBUG": "1",
             },
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.12")
@@ -472,6 +488,7 @@ def _test_auth_overrides(env):
             ),
             _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_dict(py.config.default).contains_at_least({
@@ -541,6 +558,7 @@ def _test_add_new_version(env):
                 ],
             ),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.13")
@@ -609,6 +627,7 @@ def _test_register_all_versions(env):
                 ],
             ),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.13")
@@ -685,6 +704,7 @@ def _test_add_patches(env):
                 ],
             ),
         ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_str(py.default_python_version).equals("3.13")
@@ -731,6 +751,7 @@ def _test_fail_two_overrides(env):
             ),
         ),
         _fail = errors.append,
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
     env.expect.that_collection(errors).contains_exactly([
         "Only a single 'python.override' can be present",
@@ -758,6 +779,7 @@ def _test_single_version_override_errors(env):
                 ),
             ),
             _fail = errors.append,
+            logger = repo_utils.logger(verbosity_level = 0, name = "python"),
         )
         env.expect.that_collection(errors).contains_exactly([test.want_error])
 
@@ -795,6 +817,7 @@ def _test_single_version_platform_override_errors(env):
                 ),
             ),
             _fail = lambda *a: errors.append(" ".join(a)),
+            logger = repo_utils.logger(verbosity_level = 0, name = "python"),
         )
         env.expect.that_collection(errors).contains_exactly([test.want_error])
 

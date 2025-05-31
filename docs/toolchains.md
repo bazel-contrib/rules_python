@@ -243,6 +243,73 @@ existing attributes:
 * Adding additional Python versions via {bzl:obj}`python.single_version_override` or
   {bzl:obj}`python.single_version_platform_override`.
 
+### Registering custom runtimes
+
+Because the python-build-standalone project has _thousands_ of prebuilt runtimes
+available, rules_python only includes popular runtimes in its built in
+configurations. If you want to use a runtime that isn't already known to
+rules_python then {obj}`single_version_platform_override()` can be used to do
+so. In short, it allows specifying an arbitrary URL and using custom flags
+to control when a runtime is used.
+
+In the example below, we register a particular python-build-standalone runtime
+that is activated for Linux x86 builds when the custom flag
+`--//:runtime=my-custom-runtime` is set.
+
+```
+# File: MODULE.bazel
+bazel_dep(name = "bazel_skylib", version = "1.7.1.")
+bazel_dep(name = "rules_python", version = "1.5.0")
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.single_version_platform_override(
+    platform = "my-platform",
+    python_version = "3.13.3",
+    sha256 = "01d08b9bc8a96698b9d64c2fc26da4ecc4fa9e708ce0a34fb88f11ab7e552cbd",
+    os_name = "linux",
+    arch = "x86_64",
+    target_settings = [
+        "@@//:runtime=my-custom-runtime",
+    ],
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20250409/cpython-3.13.3+20250409-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
+)
+# File: //:BUILD.bazel
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+string_flag(
+    name = "custom_runtime",
+    build_setting_default = "",
+)
+config_setting(
+    name = "is_custom_runtime_linux-x86-install-only-stripped",
+    flag_values = {
+        ":custom_runtime": "linux-x86-install-only-stripped",
+    },
+)
+```
+
+Notes:
+- While any URL and archive can be used, it's assumed their content looks how
+  a python-build-standalone archive looks.
+- A "version aware" toolchain is registered, which means the Python version flag
+  must also match (e.g. `--@rules_python//python/config_settings:python_version=3.13.3`
+  must be set -- see `minor_mapping` and `is_default` for controls and docs
+  about version matching and selection).
+- The `target_compatible_with` attribute can be used to entirely specify the
+  arg of the same name the toolchain uses.
+- The labels in `target_settings` must be absolute; `@@` refers to the main repo.
+- The `target_settings` are `config_setting` targets, which means you can
+  customize how matching occurs.
+
+:::{seealso}
+See {obj}`//python/config_settings` for flags rules_python already defines
+that can be used with `target_settings`. Some particular ones of note are:
+{flag}`--py_linux_libc` and {flag}`--py_freethreaded`, among others.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+Added support for custom platform names, `target_compatible_with`, and
+`target_settings` with `single_version_platform_override`.
+:::
+
 ### Using defined toolchains from WORKSPACE
 
 It is possible to use toolchains defined in `MODULE.bazel` in `WORKSPACE`. For example
