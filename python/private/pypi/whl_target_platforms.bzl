@@ -51,7 +51,7 @@ _PY310 = version.parse("3.10")
 _PY313 = version.parse("3.13")
 
 # factor this out
-def _is_supported(p):
+def _is_supported(p, parsed, min_py_version):
     if parsed.abi_tag in ["none", "abi3"]:
         if not version.is_ge(p.version, min_py_version):
             # unsupported on target plat
@@ -141,7 +141,7 @@ def select_whls(*, whls, want_platforms = {}, include_whls = {}, logger = None):
         #     continue
 
         for p in _want_platforms:
-            if not _is_supported(p):
+            if not _is_supported(p, parsed, min_py_version):
                 continue
 
             compatible.setdefault(whl.filename, struct(

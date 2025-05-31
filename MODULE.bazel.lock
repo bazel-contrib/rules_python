@@ -158,7 +158,7 @@
   "moduleExtensions": {
     "//python/extensions:pip.bzl%pip": {
       "general": {
-        "bzlTransitiveDigest": "wgV3E1uDD0aYmE2vM7ZzkzLR9UciIKX/Dwa2Uk0TqJg=",
+        "bzlTransitiveDigest": "lkGa/4ZT8qJ2FIGrrgRGTQqMWPaW/dVS/2Fvz7wR8+s=",
         "usagesDigest": "mU0sm7FMKDU3t2PlFnKkLcjv+It6/smRWnj4tbZPOOg=",
         "recordedFileInputs": {
           "@@//docs/requirements.txt": "05539283c8ade7d9211dfddca4d6c3ae47ebf56f8c1ca17e52b715e17a494c44",
