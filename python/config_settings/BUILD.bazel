@@ -217,6 +217,15 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "is_venvs_site_packages",
+    flag_values = {
+        ":venvs_site_packages": VenvsSitePackages.YES,
+    },
+    # NOTE: Only public because it is used in whl_library repos.
+    visibility = ["//visibility:public"],
+)
+
 define_pypi_internal_flags(
     name = "define_pypi_internal_flags",
 )

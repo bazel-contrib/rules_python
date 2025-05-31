@@ -179,7 +179,6 @@ use_repo(
     internal_dev_deps,
     "buildkite_config",
     "rules_python_runtime_env_tc_info",
-    "wheel_for_testing",
 )
 
 # Add gazelle plugin so that we can run the gazelle example as an e2e integration
@@ -212,6 +211,7 @@ dev_pip.parse(
     download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
+    parallel_download = False,
     python_version = "3.11",
     requirements_lock = "//docs:requirements.txt",
 )
