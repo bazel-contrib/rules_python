@@ -687,6 +687,9 @@ def _build_link_map(entries):
     version_by_pkg = {}
 
     for entry in entries:
+        # We overwrite duplicates by design. The dependency closer to the
+        # binary gets precedence due to the topological ordering.
+
         package = ""
         if entry.package:
             # We have normalized the version/package to PEP440 spec
@@ -697,18 +700,13 @@ def _build_link_map(entries):
                 # previously added values.
                 version_by_pkg[package] = version
 
-                # Ensure that we start fresh
+                # Overwrite any existing values because this is closer to the terminal
+                # node
                 pkg_link_map.pop(package, None)
 
+        # Overwrite any existing values because this is closer to the terminal node
         link_map = pkg_link_map.setdefault(package, {})
-
-        kind = entry.kind
-        kind_map = link_map.setdefault(kind, {})
-
-        # We overwrite duplicates by design. The dependency closer to the
-        # binary gets precedence due to the topological ordering.
-        #
-        # This allows us to store only one version of the dist-info that is needed
+        kind_map = link_map.setdefault(entry.kind, {})
         kind_map[entry.venv_path] = entry.link_to_path
 
     # An empty link_to value means to not create the site package symlink.
