@@ -396,9 +396,8 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
-        venv_symlinks: {type}`list[tuple[str, str]]` tuples of
-            `(runfiles_path, site_packages_path)` for symlinks to create
-            in the consuming binary's venv site packages.
+        venv_symlinks: {type}`list[VenvSymlinkEntry]` instances for
+            symlinks to create in the consuming binary's venv.
 
     Returns:
         A tuple of the PyInfo instance and a depset of the

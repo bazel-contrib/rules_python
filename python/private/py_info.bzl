@@ -68,6 +68,11 @@ the venv to create the path under.
 A runfiles-root relative path that `venv_path` will symlink to. If `None`,
 it means to not create a symlink.
 """,
+        "src": """
+:type: str | None
+
+Represents the PyPI package that the code originates from.
+""",
         "venv_path": """
 :type: str
 
@@ -297,17 +302,6 @@ This field is currently unused in Bazel and may go away in the future.
 :type: depset[VenvSymlinkEntry]
 
 A depset with `topological` ordering.
-
-
-Tuples of `(runfiles_path, site_packages_path)`. Where
-* `runfiles_path` is a runfiles-root relative path. It is the path that
-  has the code to make importable. If `None` or empty string, then it means
-  to not create a site packages directory with the `site_packages_path`
-  name.
-* `site_packages_path` is a path relative to the site-packages directory of
-  the venv for whatever creates the venv (typically py_binary). It makes
-  the code in `runfiles_path` available for import. Note that this
-  is created as a "raw" symlink (via `declare_symlink`).
 
 :::{include} /_includes/experimental_api.md
 :::

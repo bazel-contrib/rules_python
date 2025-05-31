@@ -41,6 +41,7 @@ load(
     "runfiles_root_path",
 )
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
+load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
@@ -206,16 +207,32 @@ Source files are no longer added to the runfiles directly.
 :::
 """
 
+def _get_distinfo_metadata(ctx):
+    data = ctx.files.data or []
+    for d in data:
+        # work on case insensitive FSes
+        if d.basename.lower() != "metadata":
+            continue
+
+        if d.dirname.endswith(".dist-info"):
+            return d
+
+    return None
+
 def _get_imports_and_venv_symlinks(ctx, semantics):
     imports = depset()
     venv_symlinks = depset()
     if VenvsSitePackages.is_enabled(ctx):
-        venv_symlinks = _get_venv_symlinks(ctx)
+        dist_info_metadata = _get_distinfo_metadata(ctx)
+        venv_symlinks = _get_venv_symlinks(
+            ctx,
+            dist_info_metadata,
+        )
     else:
         imports = collect_imports(ctx, semantics)
     return imports, venv_symlinks
 
-def _get_venv_symlinks(ctx):
+def _get_venv_symlinks(ctx, dist_info_metadata):
     imports = ctx.attr.imports
     if len(imports) == 0:
         fail("When venvs_site_packages is enabled, exactly one `imports` " +
@@ -254,16 +271,41 @@ def _get_venv_symlinks(ctx):
     repo_runfiles_dirname = None
     dirs_with_init = {}  # dirname -> runfile path
     venv_symlinks = []
-    for src in ctx.files.srcs:
-        if src.extension not in PYTHON_FILE_EXTENSIONS:
-            continue
+    package = None
+    if dist_info_metadata:
+        # in order to be able to have replacements in the venv, we have to add a
+        # third value into the venv_symlinks, which would be the normalized
+        # package name. This allows us to ensure that we can replace the `dist-info`
+        # directories by checking if the package key is there.
+        dist_info_dir = paths.basename(dist_info_metadata.dirname)
+        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+        package, _, _version = package.rpartition("-")
+        package = normalize_name(package)
+
+        repo_runfiles_dirname = runfiles_root_path(ctx, dist_info_metadata.short_path).partition("/")[0]
+        venv_symlinks.append(VenvSymlinkEntry(
+            kind = VenvSymlinkKind.LIB,
+            link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dist_info_dir),
+            src = package,
+            venv_path = dist_info_dir,
+        ))
+
+    for src in ctx.files.srcs + ctx.files.data:
         path = _repo_relative_short_path(src.short_path)
         if not path.startswith(site_packages_root):
             continue
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
 
-        if dir_name and filename.startswith("__init__."):
+        if src.extension not in PYTHON_FILE_EXTENSIONS:
+            if dir_name.endswith(".dist-info"):
+                # we have already handled the stuff
+                pass
+            elif dir_name:
+                # TODO @aignas 2025-05-30: is this the right way?
+                dirs_with_init[dir_name] = None
+                repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
+        elif dir_name and filename.startswith("__init__."):
             dirs_with_init[dir_name] = None
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
         elif not dir_name:
@@ -274,6 +316,7 @@ def _get_venv_symlinks(ctx):
             venv_symlinks.append(VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
                 link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
+                src = package,
                 venv_path = filename,
             ))
 
@@ -295,6 +338,7 @@ def _get_venv_symlinks(ctx):
         venv_symlinks.append(VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dirname),
+            src = package,
             venv_path = dirname,
         ))
     return venv_symlinks
