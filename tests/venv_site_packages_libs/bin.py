@@ -71,7 +71,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
         # Ensure that packages from simple v1 are not present
         files = [p.name for p in site_packages.glob("*")]
-        self.assertNotIn("simple_extras", files)
+        self.assertNotIn("simple_v1_extras", files)
 
 
 if __name__ == "__main__":

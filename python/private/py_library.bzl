@@ -297,18 +297,16 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
 
-        if src.extension not in PYTHON_FILE_EXTENSIONS:
-            if dir_name.endswith(".dist-info"):
-                # we have already handled the stuff
-                pass
-            elif dir_name:
-                # TODO @aignas 2025-05-30: is this the right way?
-                dirs_with_init[dir_name] = None
-                repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
-        elif dir_name and filename.startswith("__init__."):
+        if dir_name.endswith(".dist-info") and src.extension not in PYTHON_FILE_EXTENSIONS:
+            # we have already handled the stuff
+            continue
+        elif dir_name:
+            # This can be either a directory with libs (e.g. numpy.libs)
+            # or a directory with `__init__.py` file that potentially also needs to be
+            # symlinked.
             dirs_with_init[dir_name] = None
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
-        elif not dir_name:
+        else:
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
 
             # This would be files that do not have directories and we just need to add
