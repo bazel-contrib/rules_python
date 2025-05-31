@@ -270,7 +270,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
     # the path to symlink to.
 
     repo_runfiles_dirname = None
-    dirs_with_init = {}  # dirname -> runfile path
+    dir_symlinks = {}  # dirname -> runfile path
     venv_symlinks = []
     package = None
     if dist_info_metadata:
@@ -305,15 +305,16 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             # we have already handled the stuff
             continue
 
-        if src.extension not in PYTHON_FILE_EXTENSIONS:
-            fail("TODO, symlinking non-Python files is not yet supported: {}".format(src))
-        elif dir_name:
+        if dir_name:
             # This can be either a directory with libs (e.g. numpy.libs)
             # or a directory with `__init__.py` file that potentially also needs to be
             # symlinked.
-            dirs_with_init[dir_name] = None
+            #
+            # This could be also regular files, that just need to be symlinked, so we will
+            # add the directory here.
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
-        else:
+            dir_symlinks[dir_name] = repo_runfiles_dirname
+        elif src.extension in PYTHON_FILE_EXTENSIONS:
             repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
 
             # This would be files that do not have directories and we just need to add
@@ -327,7 +328,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
     # see the top-most explicit package first.
-    dirnames = sorted(dirs_with_init.keys())
+    dirnames = sorted(dir_symlinks.keys())
     first_level_explicit_packages = []
     for d in dirnames:
         is_sub_package = False
@@ -340,9 +341,10 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             first_level_explicit_packages.append(d)
 
     for dirname in first_level_explicit_packages:
+        prefix = dir_symlinks[dirname]
         venv_symlinks.append(VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
-            link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dirname),
+            link_to_path = paths.join(prefix, site_packages_root, dirname),
             package = package,
             venv_path = dirname,
         ))
