@@ -408,6 +408,81 @@ def _configure(config, *, platform, constraint_values, target_settings, os_name,
     else:
         config["platforms"].pop(platform)
 
+def _configure_defaults(defaults):
+    # this is probably a test, so add sane defaults
+    for cpu in [
+        "x86_64",
+        "aarch64",
+        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
+        # `pip.default` extension. i.e. drop the below values - users will have to
+        # define themselves if they need them.
+        "arm",
+        "ppc",
+        "ppc64le",
+        "s390x",
+    ]:
+        _configure(
+            defaults,
+            arch_name = cpu,
+            constraint_values = [
+                "@platforms//os:linux",
+                "@platforms//cpu:{}".format(cpu),
+            ],
+            env_platform_version = "0",
+            os_name = "linux",
+            platform = "linux_{}".format(cpu),
+            whl_platforms = [
+                # this is by the order of preference.
+                # TODO @aignas 2025-05-23: how do we specify the default libc version?
+                "manylinux_*_{}".format(cpu),
+                "linux_*_{}".format(cpu),
+                "musllinux_*_{}".format(cpu),
+            ],
+        )
+    for cpu, wheel_cpu_values in {
+        # this is by the order of preference.
+        "aarch64": [
+            "arm64",
+            "universal2",
+        ],
+        "x86_64": [
+            "x86_64",
+            "universal2",
+            "intel",
+        ],
+    }.items():
+        _configure(
+            defaults,
+            arch_name = cpu,
+            constraint_values = [
+                "@platforms//os:osx",
+                "@platforms//cpu:{}".format(cpu),
+            ],
+            # We choose the oldest non-EOL version at the time when we release `rules_python`.
+            # See https://endoflife.date/macos
+            env_platform_version = "14.0",
+            os_name = "osx",
+            platform = "osx_{}".format(cpu),
+            whl_platforms = [
+                # TODO @aignas 2025-05-23: how do we specify the default osx version?
+                "macosx_*_{}".format(wheel_cpu)
+                for wheel_cpu in wheel_cpu_values
+            ],
+        )
+
+    _configure(
+        defaults,
+        arch_name = "x86_64",
+        constraint_values = [
+            "@platforms//os:windows",
+            "@platforms//cpu:x86_64",
+        ],
+        env_platform_version = "0",
+        os_name = "windows",
+        platform = "windows_x86_64",
+        whl_platforms = ["win_amd64"],
+    )
+
 def parse_modules(
         module_ctx,
         _fail = fail,
@@ -485,6 +560,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 # * for AUTH
                 # * for index config
             )
+
+    if not defaults["platforms"]:
+        _configure_defaults(defaults)
 
     # Merge override API with the builder?
     _overriden_whl_set = {}
@@ -794,7 +872,6 @@ configuration in order for this platform to be matched during analysis phase.
 """,
     ),
     "whl_limit": attr.int(
-        default = 1,
         doc = """\
 The limit of wheels that we are going to include per platform.
 """,

@@ -232,7 +232,7 @@ def _package_srcs(
         whls, sdist = _add_dists(
             requirement = r,
             index_urls = index_urls.get(name),
-            select_whls = select_whls,
+            include_whls = select_whls,
             logger = logger,
         )
 

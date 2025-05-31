@@ -111,7 +111,10 @@ def _default(
         env_platform_release = None,
         env_platform_system = None,
         env_platform_version = None,
-        env_sys_platform = None):
+        env_sys_platform = None,
+        whl_limit = None,
+        whl_platforms = None,
+):
     return struct(
         arch_name = arch_name,
         constraint_values = constraint_values,
@@ -125,6 +128,8 @@ def _default(
         env_platform_system = env_platform_system,
         env_platform_version = env_platform_version,
         env_sys_platform = env_sys_platform,
+        whl_platforms = whl_platforms,
+        whl_limit = whl_limit,
     )
 
 def _parse(
