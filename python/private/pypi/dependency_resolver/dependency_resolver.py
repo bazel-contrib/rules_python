@@ -165,7 +165,7 @@ def main(
     update_command = (
         os.getenv("CUSTOM_COMPILE_COMMAND") or f"bazel run {target_label_prefix}.update"
     )
-    test_command = f"bazel test {target_label_prefix}_test"
+    test_command = f"bazel test {target_label_prefix}.test"
 
     os.environ["CUSTOM_COMPILE_COMMAND"] = update_command
     os.environ["PIP_CONFIG_FILE"] = os.getenv("PIP_CONFIG_FILE") or os.devnull

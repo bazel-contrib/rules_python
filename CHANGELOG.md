@@ -96,6 +96,7 @@ END_UNRELEASED_TEMPLATE
 * (pypi) When running under `bazel test`, be sure that temporary `requirements` file
   remains writable.
 * (py_test, py_binary) Allow external files to be used for main
+* (pypi) `compile_pip_requirements` test rule works behind the proxy
 
 {#v0-0-0-added}
 ### Added
