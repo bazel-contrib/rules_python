@@ -69,13 +69,15 @@ def select_whls(*, whls, want_platforms = {}, include_whls = {}, logger = None):
     if not whls:
         return []
 
-    compatible_by_plat = {}
+    # TODO @aignas 2025-06-01: do this want_platforms conversion before parse_requirements
+    _want_platforms = []
     for p in want_platforms:
         if not p.startswith("cp3"):
-            fail("expected all platforms to start with ABI, but got: {}".format(p))
+            logger.fail("expected all platforms to start with ABI, but got: {}".format(p))
+            return []
 
         abi, _, os_cpu = p.partition("_")
-        target_version = version.parse(abi.replace("cp3", "3."))
+        target_version = version.parse(abi.replace("cp3", "3."), strict=True)
         abi, _, _ = abi.partition(".")
         want_abis = {
             abi: None,
@@ -91,166 +93,95 @@ def select_whls(*, whls, want_platforms = {}, include_whls = {}, logger = None):
             # Free threaded is present recently
             want_abis["{}t".format(abi)] = None
 
-        _include = include_whls.get(os_cpu)
+        include = include_whls.get(os_cpu)
+        _want_platforms.append(struct(
+            name = p,
+            os_cpu = os_cpu,
+            abis = want_abis,
+            version = target_version,
+            whl_platforms = include.platforms,
+        ))
 
-        compatible = compatible_by_plat.setdefault(p, [])
-        for whl in whls:
-            parsed = parse_whl_name(whl.filename)
 
-            whl_py_version = version.parse(parsed.python_tag[2:])
+    compatible = {}
+    for whl in whls:
+        parsed = parse_whl_name(whl.filename)
+        python_tag = parsed.python_tag
+        _, _, python_tag = python_tag.rpartition(".")
+        min_py_version = version.parse(python_tag[2:], strict=True)
+        implementation = python_tag[:2]
+
+        # if not ("cp" in supported_implementations or "py" in supported_implementations):
+        #     if logger:
+        #         logger.trace(lambda: "Discarding the whl because the whl does not support CPython, whl supported implementations are: {}".format(supported_implementations))
+        #     continue
+
+        # factor this out
+        def _is_supported(p):
             if parsed.abi_tag in ["none", "abi3"]:
-                min_py_version = whl_py_version
-                if not version.is_ge(target_version, min_py_version):
-                    # unsupported
-                    continue
-
-                if parsed.platform_tag != "any":
-                    pass
-            elif parsed.abi_tag not in want_abis:
+                if not version.is_ge(p.version, min_py_version):
+                    # unsupported on target plat
+                    return False
+            elif parsed.abi_tag not in p.abis:
                 # unsupported
-                continue
+                return False
 
             if parsed.platform_tag == "any":
-                compatible.append(whl)
+                return True
+
+            # TODO @aignas 2025-06-01: handle priority
+            for _prio, match_plat in enumerate(p.whl_platforms):
+                head, _, tail = match_plat.partition("*")
+                for whl_plat in parsed.platform_tag.split("."):
+                    if not tail and match_plat == whl_plat:
+                        return True
+                    elif tail and whl_plat.startswith(head) and whl_plat.endswith(tail):
+                        return True
+
+            return False
+
+        for p in _want_platforms:
+            if not _is_supported(p):
                 continue
 
-            fail("TODO: {}".format(whl))
-
-        # limit the number of whls by platform
+            compatible.setdefault(whl.filename, struct(
+                whl = whl,
+                implementation = implementation,
+                version = version.key(min_py_version),
+                parsed = parsed,
+                target_platforms = [],
+            )).target_platforms.append(p.name)
 
     # return unique whls
-    fail(compatible_by_plat)
+    candidates = {}
+    for whl in compatible.values():
+        candidates.setdefault(
+            (
+                whl.parsed.abi_tag,
+                whl.parsed.platform_tag,
+            ),
+            {},
+        ).setdefault(
+            (
+                # prefer cp implementation
+                whl.implementation == "cp",
+                # prefer higher versions
+                whl.version,
+                # prefer abi3 over none
+                whl.parsed.abi_tag != "none",
+                # prefer cpx abi over abi3
+                whl.parsed.abi_tag != "abi3",
+                # prefer platform wheels
+                whl.parsed.platform_tag != "any",
+            ),
+            [],
+        ).append(whl.whl)
 
-    # for p in want_platforms:
-    #     _want_platforms[os_cpu] = None
-
-    #     # TODO @aignas 2025-04-20: add a test
-    #     _want_platforms["{}_{}".format(abi, os_cpu)] = None
-
-    #     # For some legacy implementations the wheels may target the `cp3xm` ABI
-    #     _want_platforms["{}m_{}".format(abi, os_cpu)] = None
-    #     want_abis[abi] = None
-    #     want_abis[abi + "m"] = None
-
-    #     # Also add freethreaded wheels if we find them since we started supporting them
-    #     _want_platforms["{}t_{}".format(abi, os_cpu)] = None
-    #     want_abis[abi + "t"] = None
-
-
-    # # TODO @aignas 2025-05-26: this function has to be completely rewritten if we want users
-    # # to modify the following:
-    # # * include freethreaded or not? (restrict by ABIs)
-    # # * include certain platform_tags
-    # # * limit the number of wheels that are included. The list has to be sorted by
-    # # specificity, the sorting function should be trivial to implement.
-    # #
-    # # This has to be done even if we want to include only 1 wheel per target platform.
-
-    # _want_platforms = {}
-
-    # want_platforms = sorted(_want_platforms)
-
-    # candidates = {}
-    # for whl in whls:
-    #     parsed = parse_whl_name(whl.filename)
-
-    #     if logger:
-    #         logger.trace(lambda: "Deciding whether to use '{}'".format(whl.filename))
-
-    #     supported_implementations = {}
-    #     whl_version_min = 0
-    #     for tag in parsed.python_tag.split("."):
-    #         supported_implementations[tag[:2]] = None
-
-    #         if tag.startswith("cp3") or tag.startswith("py3"):
-    #             _version = int(tag[len("..3"):] or 0)
-    #         else:
-    #             # In this case it should be either "cp2" or "py2" and we will default
-    #             # to `whl_version_min` = 0
-    #             continue
-
-    #         if whl_version_min == 0 or version < whl_version_min:
-    #             whl_version_min = version
-
-    #     if not ("cp" in supported_implementations or "py" in supported_implementations):
-    #         if logger:
-    #             logger.trace(lambda: "Discarding the whl because the whl does not support CPython, whl supported implementations are: {}".format(supported_implementations))
-    #         continue
-
-    #     if want_abis and parsed.abi_tag not in want_abis:
-    #         # Filter out incompatible ABIs
-    #         if logger:
-    #             logger.trace(lambda: "Discarding the whl because the whl abi did not match")
-    #         continue
-
-    #     if whl_version_min > version_limit:
-    #         if logger:
-    #             logger.trace(lambda: "Discarding the whl because the whl supported python version is too high")
-    #         continue
-
-    #     compatible = False
-    #     if parsed.platform_tag == "any":
-    #         compatible = True
-    #     else:
-    #         supported_platform_tag = _supported(include_whls, parsed.platform_tag)
-    #         if supported_platform_tag:
-    #             for p in whl_target_platforms(supported_platform_tag, abi_tag = parsed.abi_tag.strip("m") if parsed.abi_tag.startswith("cp") else None):
-    #                 if p.target_platform in want_platforms:
-    #                     compatible = True
-    #                     break
-
-    #     if not compatible:
-    #         if logger:
-    #             logger.trace(lambda: "Discarding the whl because the whl does not support the desired platforms: {}".format(want_platforms))
-    #         continue
-
-    #     for implementation in supported_implementations:
-    #         candidates.setdefault(
-    #             (
-    #                 parsed.abi_tag,
-    #                 parsed.platform_tag,
-    #             ),
-    #             {},
-    #         ).setdefault(
-    #             (
-    #                 # prefer cp implementation
-    #                 implementation == "cp",
-    #                 # prefer higher versions
-    #                 whl_version_min,
-    #                 # prefer abi3 over none
-    #                 parsed.abi_tag != "none",
-    #                 # prefer cpx abi over abi3
-    #                 parsed.abi_tag != "abi3",
-    #             ),
-    #             [],
-    #         ).append(whl)
-
-    # ret = [
-    #     candidates[key][sorted(v)[-1]][-1]
-    #     for key, v in candidates.items()
-    # ]
-    # return ret
-
-def _supported(include_whls, actual_platform_tag):
-    if not include_whls:
-        return actual_platform_tag
-
-    ret = []
-    for _, includes in include_whls.items():
-        for include in includes.platforms:
-            head, _, tail = include.partition("*")
-
-            for actual in actual_platform_tag.split("."):
-                if actual == head and not tail:
-                    pass
-                elif tail and actual.startswith(head) and actual.endswith(tail):
-                    pass
-                else:
-                    continue
-
-                ret.append(actual)
-
-    return ".".join(ret)
+    ret = [
+        candidates[key][sorted(v)[-1]][-1]
+        for key, v in candidates.items()
+    ]
+    return ret
 
 def whl_target_platforms(platform_tag, abi_tag = ""):
     """Parse the wheel abi and platform tags and return (os, cpu) tuples.
