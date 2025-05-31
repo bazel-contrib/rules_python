@@ -301,9 +301,12 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
 
-        if dir_name.endswith(".dist-info") and src.extension not in PYTHON_FILE_EXTENSIONS:
+        if dist_info_metadata and dir_name in path:
             # we have already handled the stuff
             continue
+
+        if src.extension not in PYTHON_FILE_EXTENSIONS:
+            fail("TODO, symlinking non-Python files is not yet supported: {}".format(src))
         elif dir_name:
             # This can be either a directory with libs (e.g. numpy.libs)
             # or a directory with `__init__.py` file that potentially also needs to be
