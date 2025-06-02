@@ -29,7 +29,6 @@ go_library(
     importpath = "github.com/bazel-contrib/rules_python/gazelle/python",
     visibility = ["//visibility:public"],
     deps = [
-        "//manifest",
         "//pythonconfig",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
@@ -42,8 +41,8 @@ go_library(
         "@com_github_emirpasic_gods//lists/singlylinkedlist",
         "@com_github_emirpasic_gods//sets/treeset",
         "@com_github_emirpasic_gods//utils",
-        "@com_github_smacker_go_tree_sitter//:go-tree-sitter",
-        "@com_github_smacker_go_tree_sitter//python",
+        "@com_github_tree_sitter_go_tree_sitter//:go-tree-sitter",
+        "@com_github_tree_sitter_tree_sitter_python//bindings/go",
         "@org_golang_x_sync//errgroup",
     ],
 )

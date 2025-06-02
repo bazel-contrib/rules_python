@@ -170,6 +170,13 @@ def go_deps():
         version = "v0.5.9",
     )
     go_repository(
+        name = "com_github_mattn_go_pointer",
+        importpath = "github.com/mattn/go-pointer",
+        sum = "h1:n+XhsuGeVO6MEAp7xyEukFINEa+Quek5psIR/ylA6o0=",
+        version = "v0.0.1",
+    )
+
+    go_repository(
         name = "com_github_pmezard_go_difflib",
         importpath = "github.com/pmezard/go-difflib",
         sum = "h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=",
@@ -182,12 +189,7 @@ def go_deps():
         sum = "h1:gQz4mCbXsO+nc9n1hCxHcGA3Zx3Eo+UHZoInFGUIXNM=",
         version = "v0.0.0-20190812154241-14fe0d1b01d4",
     )
-    go_repository(
-        name = "com_github_smacker_go_tree_sitter",
-        importpath = "github.com/smacker/go-tree-sitter",
-        sum = "h1:6C8qej6f1bStuePVkLSFxoU22XBS165D3klxlzRg8F4=",
-        version = "v0.0.0-20240827094217-dd81d9e9be82",
-    )
+
     go_repository(
         name = "com_github_stretchr_objx",
         importpath = "github.com/stretchr/objx",
@@ -197,8 +199,94 @@ def go_deps():
     go_repository(
         name = "com_github_stretchr_testify",
         importpath = "github.com/stretchr/testify",
-        sum = "h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=",
-        version = "v1.9.0",
+        sum = "h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=",
+        version = "v1.10.0",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_go_tree_sitter",
+        importpath = "github.com/tree-sitter/go-tree-sitter",
+        sum = "h1:sx6kcg8raRFCvc9BnXglke6axya12krCJF5xJ2sftRU=",
+        version = "v0.25.0",
+        patches = [
+            "//patches:go-tree-sitter-cc_library.patch",  # keep
+        ],
+        patch_strip = 1,  # keep
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_c",
+        importpath = "github.com/tree-sitter/tree-sitter-c",
+        sum = "h1:nBPH3FV07DzAD7p0GfNvXM+Y7pNIoPenQWBpvM++t4c=",
+        version = "v0.23.4",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_cpp",
+        importpath = "github.com/tree-sitter/tree-sitter-cpp",
+        sum = "h1:LaWZsiqQKvR65yHgKmnaqA+uz6tlDJTJFCyFIeZU/8w=",
+        version = "v0.23.4",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_embedded_template",
+        importpath = "github.com/tree-sitter/tree-sitter-embedded-template",
+        sum = "h1:nFkkH6Sbe56EXLmZBqHHcamTpmz3TId97I16EnGy4rg=",
+        version = "v0.23.2",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_go",
+        importpath = "github.com/tree-sitter/tree-sitter-go",
+        sum = "h1:yt5KMGnTHS+86pJmLIAZMWxukr8W7Ae1STPvQUuNROA=",
+        version = "v0.23.4",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_html",
+        importpath = "github.com/tree-sitter/tree-sitter-html",
+        sum = "h1:1UYDV+Yd05GGRhVnTcbP58GkKLSHHZwVaN+lBZV11Lc=",
+        version = "v0.23.2",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_java",
+        importpath = "github.com/tree-sitter/tree-sitter-java",
+        sum = "h1:J9YeMGMwXYlKSP3K4Us8CitC6hjtMjqpeOf2GGo6tig=",
+        version = "v0.23.5",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_javascript",
+        importpath = "github.com/tree-sitter/tree-sitter-javascript",
+        sum = "h1:1fWupaRC0ArlHJ/QJzsfQ3Ibyopw7ZfQK4xXc40Zveo=",
+        version = "v0.23.1",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_json",
+        importpath = "github.com/tree-sitter/tree-sitter-json",
+        sum = "h1:tV5rMkihgtiOe14a9LHfDY5kzTl5GNUYe6carZBn0fQ=",
+        version = "v0.24.8",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_php",
+        importpath = "github.com/tree-sitter/tree-sitter-php",
+        sum = "h1:iHewsLNDmznh8kgGyfWfujsZxIz1YGbSd2ZTEM0ZiP8=",
+        version = "v0.23.11",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_python",
+        importpath = "github.com/tree-sitter/tree-sitter-python",
+        sum = "h1:qHnWFR5WhtMQpxBZRwiaU5Hk/29vGju6CVtmvu5Haas=",
+        version = "v0.23.6",
+        patches = [
+            "//patches:tree-sitter-python-cc_library.patch",  # keep
+        ],
+        patch_strip = 1, # keep
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_ruby",
+        importpath = "github.com/tree-sitter/tree-sitter-ruby",
+        sum = "h1:T/NKHUA+iVbHM440hFx+lzVOzS4dV6z8Qw8ai+72bYo=",
+        version = "v0.23.1",
+    )
+    go_repository(
+        name = "com_github_tree_sitter_tree_sitter_rust",
+        importpath = "github.com/tree-sitter/tree-sitter-rust",
+        sum = "h1:6AtoooCW5GqNrRpfnvl0iUhxTAZEovEmLKDbyHlfw90=",
+        version = "v0.23.2",
     )
 
     go_repository(
