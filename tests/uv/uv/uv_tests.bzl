@@ -100,7 +100,7 @@ def _mod(*, name = None, default = [], configure = [], is_root = True):
     )
 
 def _process_modules(env, **kwargs):
-    result = process_modules(hub_repo = struct, **kwargs)
+    result = process_modules(hub_repo = struct, get_auth = lambda *_, **__: None, **kwargs)
 
     return env.expect.that_struct(
         struct(
@@ -124,6 +124,8 @@ def _default(
         platform = None,
         target_settings = None,
         version = None,
+        netrc = None,
+        auth_patterns = None,
         **kwargs):
     return struct(
         base_url = base_url,
@@ -132,6 +134,8 @@ def _default(
         platform = platform,
         target_settings = [] + (target_settings or []),  # ensure that the type is correct
         version = version,
+        netrc = netrc,
+        auth_patterns = {} | (auth_patterns or {}),  # ensure that the type is correct
         **kwargs
     )
 
@@ -377,6 +381,11 @@ def _test_complex_configuring(env):
                         platform = "linux",
                         compatible_with = ["@platforms//os:linux"],
                     ),
+                    _configure(
+                        version = "1.0.4",
+                        netrc = "~/.my_netrc",
+                        auth_patterns = {"foo": "bar"},
+                    ),  # use auth
                 ],
             ),
         ),
@@ -388,18 +397,21 @@ def _test_complex_configuring(env):
         "1_0_1_osx",
         "1_0_2_osx",
         "1_0_3_linux",
+        "1_0_4_osx",
     ])
     uv.implementations().contains_exactly({
         "1_0_0_osx": "@uv_1_0_0_osx//:uv_toolchain",
         "1_0_1_osx": "@uv_1_0_1_osx//:uv_toolchain",
         "1_0_2_osx": "@uv_1_0_2_osx//:uv_toolchain",
         "1_0_3_linux": "@uv_1_0_3_linux//:uv_toolchain",
+        "1_0_4_osx": "@uv_1_0_4_osx//:uv_toolchain",
     })
     uv.compatible_with().contains_exactly({
         "1_0_0_osx": ["@platforms//os:os"],
         "1_0_1_osx": ["@platforms//os:os"],
         "1_0_2_osx": ["@platforms//os:different"],
         "1_0_3_linux": ["@platforms//os:linux"],
+        "1_0_4_osx": ["@platforms//os:os"],
     })
     uv.target_settings().contains_exactly({})
     env.expect.that_collection(calls).contains_exactly([
@@ -430,6 +442,15 @@ def _test_complex_configuring(env):
             "sha256": "deadbeef",
             "urls": ["https://example.org/1.0.3/linux"],
             "version": "1.0.3",
+        },
+        {
+            "auth_patterns": {"foo": "bar"},
+            "name": "uv_1_0_4_osx",
+            "netrc": "~/.my_netrc",
+            "platform": "osx",
+            "sha256": "deadb00f",
+            "urls": ["https://example.org/1.0.4/osx"],
+            "version": "1.0.4",
         },
     ])
 

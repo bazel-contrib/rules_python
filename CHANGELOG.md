@@ -96,6 +96,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) When running under `bazel test`, be sure that temporary `requirements` file
   remains writable.
 * (py_test, py_binary) Allow external files to be used for main
+* (pypi) Correctly aggregate the sources when the hashes specified in the lockfile differ
+  by platform even though the same version is used. Fixes [#2648](https://github.com/bazel-contrib/rules_python/issues/2648).
 * (pypi) `compile_pip_requirements` test rule works behind the proxy
 
 {#v0-0-0-added}
@@ -110,6 +112,8 @@ END_UNRELEASED_TEMPLATE
   Set the `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable to enable it.
 * (utils) Add a way to run a REPL for any `rules_python` target that returns
   a `PyInfo` provider.
+* (uv) Handle `.netrc` and `auth_patterns` auth when downloading `uv`. Work towards
+  [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 * (toolchains) Arbitrary python-build-standalone runtimes can be registered
   and activated with custom flags. See the [Registering custom runtimes]
   docs and {obj}`single_version_platform_override()` API docs for more

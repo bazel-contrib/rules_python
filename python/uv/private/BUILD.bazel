@@ -62,6 +62,7 @@ bzl_library(
         ":toolchain_types_bzl",
         ":uv_repository_bzl",
         ":uv_toolchains_repo_bzl",
+        "//python/private:auth_bzl",
     ],
 )
 
@@ -69,6 +70,7 @@ bzl_library(
     name = "uv_repository_bzl",
     srcs = ["uv_repository.bzl"],
     visibility = ["//python/uv:__subpackages__"],
+    deps = ["//python/private:auth_bzl"],
 )
 
 bzl_library(
