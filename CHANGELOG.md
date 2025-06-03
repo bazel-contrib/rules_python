@@ -72,6 +72,7 @@ END_UNRELEASED_TEMPLATE
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 * (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
   `PyInfo.site_packages_symlinks`
+* (deps) Updating setuptools to patch CVE-2025-47273
 
 {#v0-0-0-fixed}
 ### Fixed
