@@ -17,14 +17,25 @@ local_path_override(
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
+go_deps.module_override(
+    patches = ["//patches:go-tree-sitter-cc_library.patch"],
+    path = "github.com/tree-sitter/go-tree-sitter",
+    patch_strip = 1,
+)
+go_deps.module_override(
+    path = "github.com/tree-sitter/tree-sitter-python",
+    patches = ["//patches:tree-sitter-python-cc_library.patch"],
+    patch_strip = 1,
+)
 use_repo(
     go_deps,
     "com_github_bazelbuild_buildtools",
     "com_github_bmatcuk_doublestar_v4",
-    "com_github_dougthor42_go_tree_sitter",
     "com_github_emirpasic_gods",
     "com_github_ghodss_yaml",
     "com_github_stretchr_testify",
+    "com_github_tree_sitter_go_tree_sitter",
+    "com_github_tree_sitter_tree_sitter_python",
     "in_gopkg_yaml_v2",
     "org_golang_x_sync",
 )

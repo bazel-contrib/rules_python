@@ -152,7 +152,7 @@ type module struct {
 	// statements.
 	Name string `json:"name"`
 	// The line number where the import happened.
-	LineNumber uint32 `json:"lineno"`
+	LineNumber uint `json:"lineno"`
 	// The path to the module file relative to the Bazel workspace root.
 	Filepath string `json:"filepath"`
 	// If this was a from import, e.g. from foo import bar, From indicates the module

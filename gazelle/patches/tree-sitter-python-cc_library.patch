@@ -1,0 +1,32 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index e69de29..1f5d973 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -0,0 +1,11 @@
++filegroup(
++    name = "csrcs",
++    srcs = glob(["src/**/*.h"]),
++    visibility = ["//visibility:public"],
++)
++
++cc_library(
++    name = "clib",
++    hdrs = ["src/parser.c", "src/scanner.c"] + glob(["src/tree_sitter/*.h"]),
++    visibility  = ["//bindings/go:__subpackages__"],
++)
+diff --git a/bindings/go/BUILD.bazel b/bindings/go/BUILD.bazel
+index f3e5232..cec7083 100644
+--- a/bindings/go/BUILD.bazel
++++ b/bindings/go/BUILD.bazel
+@@ -2,9 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+ 
+ go_library(
+     name = "go",
+-    srcs = ["binding.go"],
++    srcs = ["binding.go", "//:csrcs"],
+     cgo = True,
+     copts = ["-std=c11 -fPIC"],
++    cdeps = ["//:clib"],
+     importpath = "github.com/tree-sitter/tree-sitter-python/bindings/go",
+     visibility = ["//visibility:public"],
+ )
