@@ -348,7 +348,7 @@ def _get_venv_symlinks(ctx, package, version_str):
         )
         venv_symlinks.append(entry)
 
-    return depset(venv_symlinks)
+    return depset(venv_symlinks, order = "topological")
 
 def _repo_relative_short_path(short_path):
     # Convert `../+pypi+foo/some/file.py` to `some/file.py`
