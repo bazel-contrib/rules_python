@@ -159,6 +159,17 @@ def py_library_impl(ctx, *, semantics):
     imports = []
     venv_symlinks = []
 
+    # TODO @aignas 2025-06-05: refactor code
+    package = None
+    dist_info_metadata = _get_distinfo_metadata(ctx)
+    if dist_info_metadata:
+        # in order to be able to have replacements in the venv, we have to add a
+        # third value into the venv_symlinks, which would be the normalized
+        # package name. This allows us to ensure that we can replace the `dist-info`
+        # directories by checking if the package key is there.
+        dist_info_dir = paths.basename(dist_info_metadata.dirname)
+        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+
     imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
@@ -169,6 +180,7 @@ def py_library_impl(ctx, *, semantics):
         required_pyc_files = required_pyc_files,
         implicit_pyc_files = implicit_pyc_files,
         implicit_pyc_source_files = implicit_pyc_source_files,
+        package = package,
         imports = imports,
         venv_symlinks = venv_symlinks,
     )
@@ -222,7 +234,7 @@ def _get_distinfo_metadata(ctx):
 
 def _get_imports_and_venv_symlinks(ctx, semantics):
     imports = depset()
-    venv_symlinks = depset()
+    venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
         venv_symlinks = _get_venv_symlinks(ctx)
     else:

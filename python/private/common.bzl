@@ -378,6 +378,7 @@ def create_py_info(
         implicit_pyc_files,
         implicit_pyc_source_files,
         imports,
+        package = None,
         venv_symlinks = []):
     """Create PyInfo provider.
 
@@ -396,6 +397,7 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
+        package: TODO
         venv_symlinks: {type}`list[VenvSymlinkEntry]` instances for
             symlinks to create in the consuming binary's venv.
 
@@ -418,9 +420,15 @@ def create_py_info(
     py_info.merge_has_py2_only_sources(ctx.attr.srcs_version in ("PY2", "PY2ONLY"))
     py_info.merge_has_py3_only_sources(ctx.attr.srcs_version in ("PY3", "PY3ONLY"))
 
+    # First merge the third party deps
+    # TODO @aignas 2025-06-05: refactor the code
+
     for target in ctx.attr.deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
+            if not target[PyInfo].package:
+                continue
+
             py_info.merge(_get_py_info(target))
         else:
             # TODO(b/228692666): Remove this once non-PyInfo targets are no
@@ -433,6 +441,34 @@ def create_py_info(
     for target in ctx.attr.pyi_deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
+            if not target[PyInfo].package:
+                continue
+
+            py_info.merge(_get_py_info(target))
+
+    # Now proceed with the first party deps
+
+    for target in ctx.attr.deps:
+        # PyInfo may not be present e.g. cc_library rules.
+        if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
+            if target[PyInfo].package:
+                continue
+
+            py_info.merge(_get_py_info(target))
+        else:
+            # TODO(b/228692666): Remove this once non-PyInfo targets are no
+            # longer supported in `deps`.
+            files = target.files.to_list()
+            for f in files:
+                if f.extension == "py":
+                    py_info.transitive_sources.add(f)
+                py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
+    for target in ctx.attr.pyi_deps:
+        # PyInfo may not be present e.g. cc_library rules.
+        if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
+            if target[PyInfo].package:
+                continue
+
             py_info.merge(_get_py_info(target))
 
     deps_transitive_sources = py_info.transitive_sources.build()
@@ -457,7 +493,7 @@ def create_py_info(
             if py_info.get_uses_shared_libraries():
                 break
 
-    return py_info.build(), deps_transitive_sources, py_info.build_builtin_py_info()
+    return py_info.build(package), deps_transitive_sources, py_info.build_builtin_py_info()
 
 def _get_py_info(target):
     return target[PyInfo] if PyInfo in target or BuiltinPyInfo == None else target[BuiltinPyInfo]

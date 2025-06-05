@@ -107,6 +107,7 @@ def _PyInfo_init(
         has_py2_only_sources = False,
         has_py3_only_sources = False,
         direct_pyc_files = depset(),
+        package = None,
         transitive_pyc_files = depset(),
         transitive_implicit_pyc_files = depset(),
         transitive_implicit_pyc_source_files = depset(),
@@ -142,6 +143,7 @@ def _PyInfo_init(
         "has_py2_only_sources": has_py2_only_sources,
         "has_py3_only_sources": has_py2_only_sources,
         "imports": imports,
+        "package": package,
         "transitive_implicit_pyc_files": transitive_implicit_pyc_files,
         "transitive_implicit_pyc_source_files": transitive_implicit_pyc_source_files,
         "transitive_original_sources": transitive_original_sources,
@@ -218,6 +220,7 @@ Python targets. These are accumulated from the transitive `deps`.
 The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
 """,
+        "package": "TODO",
         "transitive_implicit_pyc_files": """
 :type: depset[File]
 
@@ -625,11 +628,12 @@ def _PyInfoBuilder_merge_targets(self, targets):
         self.merge_target(t)
     return self
 
-def _PyInfoBuilder_build(self):
+def _PyInfoBuilder_build(self, package = None):
     """Builds into a {obj}`PyInfo` object.
 
     Args:
         self: implicitly added.
+        package: TODO
 
     Returns:
         {type}`PyInfo`
@@ -639,6 +643,7 @@ def _PyInfoBuilder_build(self):
             direct_original_sources = self.direct_original_sources.build(),
             direct_pyc_files = self.direct_pyc_files.build(),
             direct_pyi_files = self.direct_pyi_files.build(),
+            package = package,
             transitive_implicit_pyc_files = self.transitive_implicit_pyc_files.build(),
             transitive_implicit_pyc_source_files = self.transitive_implicit_pyc_source_files.build(),
             transitive_original_sources = self.transitive_original_sources.build(),
