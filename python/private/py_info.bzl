@@ -115,7 +115,7 @@ def _PyInfo_init(
         transitive_original_sources = depset(),
         direct_pyi_files = depset(),
         transitive_pyi_files = depset(),
-        venv_symlinks = depset()):
+        venv_symlinks = depset(order = "topological")):
     _check_arg_type("transitive_sources", "depset", transitive_sources)
 
     # Verify it's postorder compatible, but retain is original ordering.
