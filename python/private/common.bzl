@@ -369,6 +369,18 @@ def collect_runfiles(ctx, files = depset()):
         collect_default = True,
     )
 
+def _third_party_first(targets):
+    """Sort targets to allow for deterministic depset merging.
+
+    First return the third party deps so that the depsets get merged in a way to allow
+    topological traversal so that the first dependency that is met during traversing
+    will be a third party dep.
+
+    This is because the DAG is going from first-party deps to third-party deps and usually
+    no third-party deps include first-party deps.
+    """
+    return sorted(targets, lambda x: PyInfo in x and not x[PyInfo].package)
+
 def create_py_info(
         ctx,
         *,
@@ -420,20 +432,9 @@ def create_py_info(
     py_info.merge_has_py2_only_sources(ctx.attr.srcs_version in ("PY2", "PY2ONLY"))
     py_info.merge_has_py3_only_sources(ctx.attr.srcs_version in ("PY3", "PY3ONLY"))
 
-    # First merge the third party deps so that the depsets get merged in a way to allow
-    # topological traversal so that the first dependency that is met during traversing
-    # will be a third party dep.
-    #
-    # This is because the DAG is going from first-party deps to third-party deps and usually
-    # no third-party deps include first-party deps.
-
-    # TODO @aignas 2025-06-05: refactor the code
-    for target in ctx.attr.deps:
+    for target in _third_party_first(ctx.attr.deps):
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if PyInfo in target and not target[PyInfo].package:
-                continue
-
             py_info.merge(_get_py_info(target))
         else:
             # TODO(b/228692666): Remove this once non-PyInfo targets are no
@@ -443,41 +444,9 @@ def create_py_info(
                 if f.extension == "py":
                     py_info.transitive_sources.add(f)
                 py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
-    for target in ctx.attr.pyi_deps:
+    for target in _third_party_first(ctx.attr.pyi_deps):
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if PyInfo in target and not target[PyInfo].package:
-                continue
-
-            py_info.merge(_get_py_info(target))
-
-    # Now proceed with the first party deps
-
-    for target in ctx.attr.deps:
-        # PyInfo may not be present e.g. cc_library rules.
-        if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if PyInfo in target and target[PyInfo].package:
-                continue
-            elif PyInfo not in target:
-                continue
-
-            py_info.merge(_get_py_info(target))
-        else:
-            # TODO(b/228692666): Remove this once non-PyInfo targets are no
-            # longer supported in `deps`.
-            files = target.files.to_list()
-            for f in files:
-                if f.extension == "py":
-                    py_info.transitive_sources.add(f)
-                py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
-    for target in ctx.attr.pyi_deps:
-        # PyInfo may not be present e.g. cc_library rules.
-        if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if PyInfo in target and target[PyInfo].package:
-                continue
-            elif PyInfo not in target:
-                continue
-
             py_info.merge(_get_py_info(target))
 
     deps_transitive_sources = py_info.transitive_sources.build()
