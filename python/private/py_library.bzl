@@ -93,7 +93,7 @@ likely lead to conflicts with other targets that contribute to the namespace.
 
 :::{tip}
 This attributes populates {obj}`PyInfo.venv_symlinks`, which is
-a `postorder` ordered depset. This means dependencies closer and earlier
+a topologically ordered depset. This means dependencies closer and earlier
 to a consumer have precedence. See {obj}`PyInfo.venv_symlinks` for
 more information.
 :::
