@@ -309,13 +309,13 @@ This field is currently unused in Bazel and may go away in the future.
         "venv_symlinks": """
 :type: depset[VenvSymlinkEntry]
 
-A depset with `topological` ordering.
+A depset with `postorder` ordering.
 
 :::{include} /_includes/experimental_api.md
 :::
 
 :::{tip}
-The topological ordering means dependencies earlier and closer to the consumer
+The postorder ordering means dependencies earlier and closer to the consumer
 have precedence. This allows e.g. a binary to add dependencies that override
 values from further way dependencies, such as forcing symlinks to point to
 specific paths or preventing symlinks from being created.
@@ -378,7 +378,7 @@ def _PyInfoBuilder_typedef():
     :::{field} venv_symlinks
     :type: DepsetBuilder[tuple[str | None, str]]
 
-    NOTE: This depset has `topological` order
+    NOTE: This depset has `postorder` order
     :::
     """
 
@@ -419,7 +419,7 @@ def _PyInfoBuilder_new():
         transitive_pyc_files = builders.DepsetBuilder(),
         transitive_pyi_files = builders.DepsetBuilder(),
         transitive_sources = builders.DepsetBuilder(),
-        venv_symlinks = builders.DepsetBuilder(order = "topological"),
+        venv_symlinks = builders.DepsetBuilder(order = "postorder"),
     )
     return self
 
