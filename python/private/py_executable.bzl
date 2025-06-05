@@ -687,24 +687,16 @@ def _build_link_map(entries):
     version_by_pkg = {}
 
     for entry in entries:
-        # We overwrite duplicates by design. The dependency closer to the
-        # binary gets precedence due to the topological ordering.
-
-        if entry.package and version_by_pkg.get(entry.package) != entry.version:
-            # If we detect that we are adding a different package version, clear the
-            # previously added values.
-            version_by_pkg[entry.package] = entry.version
-
-            # Overwrite any existing values because this is closer to the terminal
-            # node
-            pkg_link_map.pop(entry.package, None)
-
         link_map = pkg_link_map.setdefault(entry.package, {})
         kind_map = link_map.setdefault(entry.kind, {})
 
-        if entry.venv_path in kind_map:
+        if version_by_pkg.setdefault(entry.package, entry.version) != entry.version:
             # We ignore duplicates by design. The dependency closer to the
             # binary gets precedence due to the topological ordering.
+            continue
+        elif entry.venv_path in kind_map:
+            # NOTE @aignas 2025-06-05: This branch should be hit only for first party
+            # packages, maybe we should error here?
             continue
         else:
             kind_map[entry.venv_path] = entry.link_to_path
