@@ -1184,6 +1184,7 @@ Other changes:
   See [#1371](https://github.com/bazel-contrib/rules_python/issues/1371).
 * (refactor) The pre-commit developer workflow should now pass `isort` and `black`
   checks (see [#1674](https://github.com/bazel-contrib/rules_python/issues/1674)).
+* (refactor) Export module as a public struct
 
 ### Added
 
