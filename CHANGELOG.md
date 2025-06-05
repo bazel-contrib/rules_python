@@ -72,6 +72,10 @@ END_UNRELEASED_TEMPLATE
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 * (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
   `PyInfo.site_packages_symlinks`
+* (gazelle) For package mode, resolve dependencies when imports are relative
+  to the package path. This is enabled via the
+  `# gazelle:experimental_allow_relative_imports` true directive.
+  (https://github.com/bazel-contrib/rules_python/issues/2203)
 
 {#v0-0-0-fixed}
 ### Fixed
