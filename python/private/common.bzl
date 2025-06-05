@@ -420,13 +420,18 @@ def create_py_info(
     py_info.merge_has_py2_only_sources(ctx.attr.srcs_version in ("PY2", "PY2ONLY"))
     py_info.merge_has_py3_only_sources(ctx.attr.srcs_version in ("PY3", "PY3ONLY"))
 
-    # First merge the third party deps
-    # TODO @aignas 2025-06-05: refactor the code
+    # First merge the third party deps so that the depsets get merged in a way to allow
+    # topological traversal so that the first dependency that is met during traversing
+    # will be a third party dep.
+    #
+    # This is because the DAG is going from first-party deps to third-party deps and usually
+    # no third-party deps include first-party deps.
 
+    # TODO @aignas 2025-06-05: refactor the code
     for target in ctx.attr.deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if not target[PyInfo].package:
+            if PyInfo in target and not target[PyInfo].package:
                 continue
 
             py_info.merge(_get_py_info(target))
@@ -441,7 +446,7 @@ def create_py_info(
     for target in ctx.attr.pyi_deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if not target[PyInfo].package:
+            if PyInfo in target and not target[PyInfo].package:
                 continue
 
             py_info.merge(_get_py_info(target))
@@ -451,7 +456,9 @@ def create_py_info(
     for target in ctx.attr.deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if target[PyInfo].package:
+            if PyInfo in target and target[PyInfo].package:
+                continue
+            elif PyInfo not in target:
                 continue
 
             py_info.merge(_get_py_info(target))
@@ -466,7 +473,9 @@ def create_py_info(
     for target in ctx.attr.pyi_deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            if target[PyInfo].package:
+            if PyInfo in target and target[PyInfo].package:
+                continue
+            elif PyInfo not in target:
                 continue
 
             py_info.merge(_get_py_info(target))
