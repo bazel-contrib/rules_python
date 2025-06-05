@@ -34,7 +34,7 @@ func init() {
 	}
 }
 
-func isStdModule(m module) bool {
+func isStdModule(m Module) bool {
 	_, ok := stdModules[m.Name]
 	return ok
 }

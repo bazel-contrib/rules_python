@@ -41,7 +41,7 @@ const (
 
 type ParserOutput struct {
 	FileName string
-	Modules  []module
+	Modules  []Module
 	Comments []comment
 	HasMain  bool
 }
@@ -127,24 +127,24 @@ func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
 	return false
 }
 
-// parseImportStatement parses a node for an import statement, returning a `module` and a boolean
+// parseImportStatement parses a node for an import statement, returning a `Module` and a boolean
 // representing if the parse was OK or not.
-func parseImportStatement(node *sitter.Node, code []byte) (module, bool) {
+func parseImportStatement(node *sitter.Node, code []byte) (Module, bool) {
 	switch node.Type() {
 	case sitterNodeTypeDottedName:
-		return module{
+		return Module{
 			Name:       node.Content(code),
 			LineNumber: node.StartPoint().Row + 1,
 		}, true
 	case sitterNodeTypeAliasedImport:
 		return parseImportStatement(node.Child(0), code)
 	case sitterNodeTypeWildcardImport:
-		return module{
+		return Module{
 			Name:       "*",
 			LineNumber: node.StartPoint().Row + 1,
 		}, true
 	}
-	return module{}, false
+	return Module{}, false
 }
 
 // parseImportStatements parses a node for import statements, returning true if the node is
