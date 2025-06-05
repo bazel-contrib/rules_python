@@ -690,21 +690,16 @@ def _build_link_map(entries):
         # We overwrite duplicates by design. The dependency closer to the
         # binary gets precedence due to the topological ordering.
 
-        package = ""
-        if entry.package:
-            # We have normalized the version/package to PEP440 spec
-            package, _, version = entry.package.partition("-")
+        if entry.package and version_by_pkg.get(entry.package) != entry.version:
+            # If we detect that we are adding a different package version, clear the
+            # previously added values.
+            version_by_pkg[entry.package] = entry.version
 
-            if version_by_pkg.get(package) != version:
-                # If we detect that we are adding a different package version, clear the
-                # previously added values.
-                version_by_pkg[package] = version
+            # Overwrite any existing values because this is closer to the terminal
+            # node
+            pkg_link_map.pop(entry.package, None)
 
-                # Overwrite any existing values because this is closer to the terminal
-                # node
-                pkg_link_map.pop(package, None)
-
-        link_map = pkg_link_map.setdefault(package, {})
+        link_map = pkg_link_map.setdefault(entry.package, {})
         kind_map = link_map.setdefault(entry.kind, {})
 
         if entry.venv_path in kind_map:

@@ -71,12 +71,20 @@ it means to not create a symlink.
         "package": """
 :type: str | None
 
-Represents the PyPI package that the code originates from.
+Represents the PyPI package name that the code originates from. It is normalized according to the
+PEP440 with all `-` replaced with `_`, i.e. the same as the package name in the hub repository that
+it would come from.
 """,
         "venv_path": """
 :type: str
 
 A path relative to the `kind` directory within the venv.
+""",
+        "version": """
+:type: str | None
+
+Represents the PyPI package version that the code originates from. It is normalized according to the
+PEP440 standard.
 """,
     },
 )

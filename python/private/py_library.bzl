@@ -224,16 +224,12 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
     imports = depset()
     venv_symlinks = depset()
     if VenvsSitePackages.is_enabled(ctx):
-        dist_info_metadata = _get_distinfo_metadata(ctx)
-        venv_symlinks = _get_venv_symlinks(
-            ctx,
-            dist_info_metadata,
-        )
+        venv_symlinks = _get_venv_symlinks(ctx)
     else:
         imports = collect_imports(ctx, semantics)
     return imports, venv_symlinks
 
-def _get_venv_symlinks(ctx, dist_info_metadata):
+def _get_venv_symlinks(ctx):
     imports = ctx.attr.imports
     if len(imports) == 0:
         fail("When venvs_site_packages is enabled, exactly one `imports` " +
@@ -254,24 +250,13 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
     # Append slash to prevent incorrectly prefix-string matches
     site_packages_root += "/"
 
-    # We have to build a list of (runfiles path, site-packages path) pairs of
-    # the files to create in the consuming binary's venv site-packages directory.
-    # To minimize the number of files to create, we just return the paths
-    # to the directories containing the code of interest.
-    #
-    # However, namespace packages complicate matters: multiple
-    # distributions install in the same directory in site-packages. This
-    # works out because they don't overlap in their files. Typically, they
-    # install to different directories within the namespace package
-    # directory. Namespace package directories are simply directories
-    # within site-packages that *don't* have an `__init__.py` file, which
-    # can be arbitrarily deep. Thus, we simply have to look for the
-    # directories that _do_ have an `__init__.py` file and treat those as
-    # the path to symlink to.
+    # If the package comes from PyPI then it will have a `.dist-info` as part of `data`, which
+    # allows us to get the name of the package and its version. This means that we can ensure that
+    # package usage closer to the terminal node can override dependencies.
 
-    dir_symlinks = {}  # dirname -> runfile path
-    venv_symlinks = []
     package = None
+    version_str = None
+    dist_info_metadata = _get_distinfo_metadata(ctx)
     if dist_info_metadata:
         # in order to be able to have replacements in the venv, we have to add a
         # third value into the venv_symlinks, which would be the normalized
@@ -280,12 +265,29 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         dist_info_dir = paths.basename(dist_info_metadata.dirname)
         package, _, _suffix = dist_info_dir.rpartition(".dist-info")
         package, _, version_str = package.rpartition("-")
-        package = "{}-{}".format(
-            normalize_name(package),
-            version.normalize(version_str),
+        package, version_str = (
+            normalize_name(package),  # will have no dashes
+            version.normalize(version_str),  # will have no dashes either
         )
 
-    for src in ctx.files.srcs + ctx.files.data:
+    # We have to build a list of (runfiles path, site-packages path) pairs of the files to
+    # create in the consuming binary's venv site-packages directory. To minimize the number of
+    # files to create, we just return the paths to the directories containing the code of
+    # interest.
+    #
+    # However, namespace packages complicate matters: multiple distributions install in the
+    # same directory in site-packages. This works out because they don't overlap in their
+    # files. Typically, they install to different directories within the namespace package
+    # directory. We also need to ensure that we can handle a case where the main package (e.g.
+    # airflow) has directories only containing data files and then namespace packages coming
+    # along and being next to it.
+    #
+    # Lastly we have to assume python modules just being `.py` files (e.g. typing-extensions)
+    # is just a single Python file.
+
+    dir_symlinks = {}  # dirname -> runfile path
+    venv_symlinks = []
+    for src in ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs:
         path = _repo_relative_short_path(src.short_path)
         if not path.startswith(site_packages_root):
             continue
@@ -293,25 +295,29 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         dir_name, _, filename = path.rpartition("/")
 
         if dir_name in dir_symlinks:
-            # we already have this dir.
+            # we already have this dir, this allows us to short-circuit since most of the
+            # ctx.files.data might share the same directories as ctx.files.srcs
             continue
 
         runfiles_dir_name, _, _ = runfiles_root_path(ctx, src.short_path).partition("/")
         if dir_name:
-            # This can be either a directory with libs (e.g. numpy.libs)
-            # or a directory with `__init__.py` file that potentially also needs to be
-            # symlinked.
+            # This can be either:
+            # * a directory with libs (e.g. numpy.libs, created by auditwheel)
+            # * a directory with `__init__.py` file that potentially also needs to be
+            #   symlinked.
+            # * `.dist-info` directory
             #
             # This could be also regular files, that just need to be symlinked, so we will
             # add the directory here.
             dir_symlinks[dir_name] = runfiles_dir_name
         elif src.extension in PYTHON_FILE_EXTENSIONS:
             # This would be files that do not have directories and we just need to add
-            # direct symlinks to them as is:
+            # direct symlinks to them as is, we only allow Python files in here
             entry = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
                 link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
                 package = package,
+                version = version_str,
                 venv_path = filename,
             )
             venv_symlinks.append(entry)
@@ -336,6 +342,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(prefix, site_packages_root, dirname),
             package = package,
+            version = version_str,
             venv_path = dirname,
         )
         venv_symlinks.append(entry)
