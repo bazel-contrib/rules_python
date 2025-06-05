@@ -159,18 +159,8 @@ def py_library_impl(ctx, *, semantics):
     imports = []
     venv_symlinks = []
 
-    # TODO @aignas 2025-06-05: refactor code
-    package = None
-    dist_info_metadata = _get_distinfo_metadata(ctx)
-    if dist_info_metadata:
-        # in order to be able to have replacements in the venv, we have to add a
-        # third value into the venv_symlinks, which would be the normalized
-        # package name. This allows us to ensure that we can replace the `dist-info`
-        # directories by checking if the package key is there.
-        dist_info_dir = paths.basename(dist_info_metadata.dirname)
-        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
-
-    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
+    package, version_str = _get_package_and_version(ctx)
+    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics, package, version_str)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
     py_info, deps_transitive_sources, builtins_py_info = create_py_info(
@@ -220,28 +210,47 @@ Source files are no longer added to the runfiles directly.
 :::
 """
 
-def _get_distinfo_metadata(ctx):
-    data = ctx.files.data or []
-    for d in data:
+def _get_package_and_version(ctx):
+    """Return package name and version
+
+    If the package comes from PyPI then it will have a `.dist-info` as part of `data`, which
+    allows us to get the name of the package and its version. This means that we can ensure
+    that package usage closer to the terminal node can override dependencies.
+    """
+    dist_info_metadata = None
+    for d in ctx.files.data:
         # work on case insensitive FSes
         if d.basename.lower() != "metadata":
             continue
 
         if d.dirname.endswith(".dist-info"):
-            return d
+            dist_info_metadata = d
 
-    return None
+    if not dist_info_metadata:
+        return None, None
 
-def _get_imports_and_venv_symlinks(ctx, semantics):
+    # in order to be able to have replacements in the venv, we have to add a
+    # third value into the venv_symlinks, which would be the normalized
+    # package name. This allows us to ensure that we can replace the `dist-info`
+    # directories by checking if the package key is there.
+    dist_info_dir = paths.basename(dist_info_metadata.dirname)
+    package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+    package, _, version_str = package.rpartition("-")
+    return (
+        normalize_name(package),  # will have no dashes
+        version.normalize(version_str),  # will have no dashes either
+    )
+
+def _get_imports_and_venv_symlinks(ctx, semantics, package, version_str):
     imports = depset()
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
-        venv_symlinks = _get_venv_symlinks(ctx)
+        venv_symlinks = _get_venv_symlinks(ctx, package, version_str)
     else:
         imports = collect_imports(ctx, semantics)
     return imports, venv_symlinks
 
-def _get_venv_symlinks(ctx):
+def _get_venv_symlinks(ctx, package, version_str):
     imports = ctx.attr.imports
     if len(imports) == 0:
         fail("When venvs_site_packages is enabled, exactly one `imports` " +
@@ -261,26 +270,6 @@ def _get_venv_symlinks(ctx):
 
     # Append slash to prevent incorrectly prefix-string matches
     site_packages_root += "/"
-
-    # If the package comes from PyPI then it will have a `.dist-info` as part of `data`, which
-    # allows us to get the name of the package and its version. This means that we can ensure that
-    # package usage closer to the terminal node can override dependencies.
-
-    package = None
-    version_str = None
-    dist_info_metadata = _get_distinfo_metadata(ctx)
-    if dist_info_metadata:
-        # in order to be able to have replacements in the venv, we have to add a
-        # third value into the venv_symlinks, which would be the normalized
-        # package name. This allows us to ensure that we can replace the `dist-info`
-        # directories by checking if the package key is there.
-        dist_info_dir = paths.basename(dist_info_metadata.dirname)
-        package, _, _suffix = dist_info_dir.rpartition(".dist-info")
-        package, _, version_str = package.rpartition("-")
-        package, version_str = (
-            normalize_name(package),  # will have no dashes
-            version.normalize(version_str),  # will have no dashes either
-        )
 
     # We have to build a list of (runfiles path, site-packages path) pairs of the files to
     # create in the consuming binary's venv site-packages directory. To minimize the number of
