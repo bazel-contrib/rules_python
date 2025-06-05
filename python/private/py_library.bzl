@@ -340,7 +340,7 @@ def _get_venv_symlinks(ctx, dist_info_metadata):
         )
         venv_symlinks.append(entry)
 
-    return venv_symlinks
+    return depset(venv_symlinks)
 
 def _repo_relative_short_path(short_path):
     # Convert `../+pypi+foo/some/file.py` to `some/file.py`
