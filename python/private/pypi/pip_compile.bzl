@@ -38,13 +38,13 @@ def pip_compile(
         requirements_windows = None,
         visibility = ["//visibility:private"],
         tags = None,
+        constraints = [],
         **kwargs):
     """Generates targets for managing pip dependencies with pip-compile.
 
     By default this rules generates a filegroup named "[name]" which can be included in the data
     of some other compile_pip_requirements rule that references these requirements
     (e.g. with `-r ../other/requirements.txt`).
-
     It also generates two targets for running pip-compile:
 
     - validate with `bazel test [name].test`
@@ -77,6 +77,7 @@ def pip_compile(
         requirements_windows: File of windows specific resolve output to check validate if requirement.in has changes.
         tags: tagging attribute common to all build rules, passed to both the _test and .update rules.
         visibility: passed to both the _test and .update rules.
+        constraints: a list of files containing constraints to pass to pip-compile with `--constraint`.
         **kwargs: other bazel attributes passed to the "_test" rule.
     """
     if len([x for x in [srcs, src, requirements_in] if x != None]) > 1:
@@ -100,7 +101,7 @@ def pip_compile(
         visibility = visibility,
     )
 
-    data = [name, requirements_txt] + srcs + [f for f in (requirements_linux, requirements_darwin, requirements_windows) if f != None]
+    data = [name, requirements_txt] + srcs + [f for f in (requirements_linux, requirements_darwin, requirements_windows) if f != None] + constraints
 
     # Use the Label constructor so this is expanded in the context of the file
     # where it appears, which is to say, in @rules_python
@@ -122,6 +123,8 @@ def pip_compile(
         args.append("--requirements-darwin={}".format(loc.format(requirements_darwin)))
     if requirements_windows:
         args.append("--requirements-windows={}".format(loc.format(requirements_windows)))
+    for constraint in constraints:
+        args.append("--constraint=$(location {})".format(constraint))
     args.extend(extra_args)
 
     deps = [
@@ -156,6 +159,12 @@ def pip_compile(
     }
 
     env = kwargs.pop("env", {})
+    env_inherit = kwargs.pop("env_inherit", [])
+    proxy_variables = ["https_proxy", "http_proxy", "no_proxy", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"]
+
+    for var in proxy_variables:
+        if var not in env_inherit:
+            env_inherit.append(var)
 
     py_binary(
         name = name + ".update",
@@ -178,6 +187,7 @@ def pip_compile(
             "@@platforms//os:windows": {"USERPROFILE": "Z:\\FakeSetuptoolsHomeDirectoryHack"},
             "//conditions:default": {},
         }) | env,
+        env_inherit = env_inherit,
         # kwargs could contain test-specific attributes like size
         **dict(attrs, **kwargs)
     )

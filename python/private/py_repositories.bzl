@@ -47,7 +47,7 @@ def py_repositories():
         toolchain_platform_keys = {},
         toolchain_python_versions = {},
         toolchain_set_python_version_constraints = {},
-        base_toolchain_repo_names = [],
+        host_compatible_repo_names = [],
     )
     http_archive(
         name = "bazel_skylib",

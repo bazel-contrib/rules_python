@@ -151,14 +151,21 @@ def main(
         requirements_out = os.path.join(
             os.environ["TEST_TMPDIR"], os.path.basename(requirements_file) + ".out"
         )
+        # Why this uses shutil.copyfileobj:
+        #
         # Those two files won't necessarily be on the same filesystem, so we can't use os.replace
         # or shutil.copyfile, as they will fail with OSError: [Errno 18] Invalid cross-device link.
-        shutil.copy(resolved_requirements_file, requirements_out)
+        #
+        # Further, shutil.copy preserves the source file's mode, and so if
+        # our source file is read-only (the default under Perforce Helix),
+        # this scratch file will also be read-only, defeating its purpose.
+        with open(resolved_requirements_file, "rb") as fsrc, open(requirements_out, "wb") as fdst:
+            shutil.copyfileobj(fsrc, fdst)
 
     update_command = (
         os.getenv("CUSTOM_COMPILE_COMMAND") or f"bazel run {target_label_prefix}.update"
     )
-    test_command = f"bazel test {target_label_prefix}_test"
+    test_command = f"bazel test {target_label_prefix}.test"
 
     os.environ["CUSTOM_COMPILE_COMMAND"] = update_command
     os.environ["PIP_CONFIG_FILE"] = os.getenv("PIP_CONFIG_FILE") or os.devnull

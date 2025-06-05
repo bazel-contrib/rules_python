@@ -309,11 +309,11 @@ actions.""",
     environ = [REPO_DEBUG_ENV_VAR],
 )
 
-def _host_compatible_python_repo(rctx):
+def _host_compatible_python_repo_impl(rctx):
     rctx.file("BUILD.bazel", _HOST_TOOLCHAIN_BUILD_CONTENT)
 
     os_name = repo_utils.get_platforms_os_name(rctx)
-    host_platform = _get_host_platform(
+    impl_repo_name = _get_host_impl_repo_name(
         rctx = rctx,
         logger = repo_utils.logger(rctx),
         python_version = rctx.attr.python_version,
@@ -321,10 +321,11 @@ def _host_compatible_python_repo(rctx):
         cpu_name = repo_utils.get_platforms_cpu_name(rctx),
         platforms = rctx.attr.platforms,
     )
-    repo = "@@{py_repository}_{host_platform}".format(
-        py_repository = rctx.attr.name[:-len("_host")],
-        host_platform = host_platform,
-    )
+
+    # Bzlmod quirk: A repository rule can't, in its **implemention function**,
+    # resolve an apparent repo name referring to a repo created by the same
+    # bzlmod extension. To work around this, we use a canonical label.
+    repo = "@@{}".format(impl_repo_name)
 
     rctx.report_progress("Symlinking interpreter files to the target platform")
     host_python_repo = rctx.path(Label("{repo}//:BUILD.bazel".format(repo = repo)))
@@ -380,26 +381,76 @@ def _host_compatible_python_repo(rctx):
 # NOTE: The term "toolchain" is a misnomer for this rule. This doesn't define
 # a repo with toolchains or toolchain implementations.
 host_compatible_python_repo = repository_rule(
-    _host_compatible_python_repo,
+    implementation = _host_compatible_python_repo_impl,
     doc = """\
 Creates a repository with a shorter name meant to be used in the repository_ctx,
 which needs to have `symlinks` for the interpreter. This is separate from the
 toolchain_aliases repo because referencing the `python` interpreter target from
 this repo causes an eager fetch of the toolchain for the host platform.
-    """,
+
+This repo has two ways in which is it called:
+
+1. Workspace. The `platforms` attribute is set, which are keys into the
+   PLATFORMS global. It assumes `name` + <matching platform name> is a
+   valid repo name which it can use as the backing repo.
+
+2. Bzlmod. All platform and backing repo information is passed in via the
+   arch_names, impl_repo_names, os_names, python_versions attributes.
+""",
     attrs = {
         "arch_names": attr.string_dict(
             doc = """
-If set, overrides the platform metadata. Keyed by index in `platforms`
+Arch (cpu) names. Only set in bzlmod. Keyed by index in `platforms`
+""",
+        ),
+        "base_name": attr.string(
+            doc = """
+The name arg, but without bzlmod canonicalization applied. Only set in bzlmod.
+""",
+        ),
+        "impl_repo_names": attr.string_dict(
+            doc = """
+The names of backing runtime repos. Only set in bzlmod. The names must be repos
+in the same extension as creates the host repo. Keyed by index in `platforms`.
 """,
         ),
         "os_names": attr.string_dict(
             doc = """
-If set, overrides the platform metadata. Keyed by index in `platforms`
+If set, overrides the platform metadata. Only set in bzlmod. Keyed by
+index in `platforms`
 """,
         ),
-        "platforms": attr.string_list(mandatory = True),
-        "python_version": attr.string(mandatory = True),
+        "platforms": attr.string_list(
+            mandatory = True,
+            doc = """
+Platform names (workspace) or platform name-like keys (bzlmod)
+
+NOTE: The order of this list matters. The first platform that is compatible
+with the host will be selected; this can be customized by using the
+`RULES_PYTHON_REPO_TOOLCHAIN_*` env vars.
+
+The values passed vary depending on workspace vs bzlmod.
+
+Workspace: the values are keys into the `PLATFORMS` dict and are the suffix
+to append to `name` to point to the backing repo name.
+
+Bzlmod: The values are arbitrary keys to create the platform map from the
+other attributes (os_name, arch_names, et al).
+""",
+        ),
+        "python_version": attr.string(
+            doc = """
+Full python version, Major.Minor.Micro.
+
+Only set in workspace calls.
+""",
+        ),
+        "python_versions": attr.string_dict(
+            doc = """
+If set, the Python version for the corresponding selected platform. Values in
+Major.Minor.Micro format. Keyed by index in `platforms`.
+""",
+        ),
         "_rule_name": attr.string(default = "host_compatible_python_repo"),
         "_rules_python_workspace": attr.label(default = Label("//:WORKSPACE")),
     },
@@ -435,8 +486,8 @@ multi_toolchain_aliases = repository_rule(
     },
 )
 
-def sorted_host_platforms(platform_map):
-    """Sort the keys in the platform map to give correct precedence.
+def sorted_host_platform_names(platform_names):
+    """Sort platform names to give correct precedence.
 
     The order of keys in the platform mapping matters for the host toolchain
     selection. When multiple runtimes are compatible with the host, we take the
@@ -453,11 +504,10 @@ def sorted_host_platforms(platform_map):
     is an innocous looking formatter disable directive.
 
     Args:
-        platform_map: a mapping of platforms and their metadata.
+        platform_names: a list of platform names
 
     Returns:
-        dict; the same values, but with the keys inserted in the desired
-        order so that iteration happens in the desired order.
+        list[str] the same values, but in the desired order.
     """
 
     def platform_keyer(name):
@@ -467,13 +517,26 @@ def sorted_host_platforms(platform_map):
             1 if FREETHREADED in name else 0,
         )
 
-    sorted_platform_keys = sorted(platform_map.keys(), key = platform_keyer)
+    return sorted(platform_names, key = platform_keyer)
+
+def sorted_host_platforms(platform_map):
+    """Sort the keys in the platform map to give correct precedence.
+
+    See sorted_host_platform_names for explanation.
+
+    Args:
+        platform_map: a mapping of platforms and their metadata.
+
+    Returns:
+        dict; the same values, but with the keys inserted in the desired
+        order so that iteration happens in the desired order.
+    """
     return {
         key: platform_map[key]
-        for key in sorted_platform_keys
+        for key in sorted_host_platform_names(platform_map.keys())
     }
 
-def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platforms):
+def _get_host_impl_repo_name(*, rctx, logger, python_version, os_name, cpu_name, platforms):
     """Gets the host platform.
 
     Args:
@@ -488,24 +551,40 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
     """
     if rctx.attr.os_names:
         platform_map = {}
+        base_name = rctx.attr.base_name
+        if not base_name:
+            fail("The `base_name` attribute must be set under bzlmod")
         for i, platform_name in enumerate(platforms):
             key = str(i)
+            impl_repo_name = rctx.attr.impl_repo_names[key]
+            impl_repo_name = rctx.name.replace(base_name, impl_repo_name)
             platform_map[platform_name] = struct(
                 os_name = rctx.attr.os_names[key],
                 arch = rctx.attr.arch_names[key],
+                python_version = rctx.attr.python_versions[key],
+                impl_repo_name = impl_repo_name,
             )
     else:
-        platform_map = sorted_host_platforms(PLATFORMS)
+        base_name = rctx.name.removesuffix("_host")
+        platform_map = {}
+        for platform_name, info in sorted_host_platforms(PLATFORMS).items():
+            platform_map[platform_name] = struct(
+                os_name = info.os_name,
+                arch = info.arch,
+                python_version = python_version,
+                impl_repo_name = "{}_{}".format(base_name, platform_name),
+            )
 
     candidates = []
     for platform in platforms:
         meta = platform_map[platform]
 
         if meta.os_name == os_name and meta.arch == cpu_name:
-            candidates.append(platform)
+            candidates.append((platform, meta))
 
     if len(candidates) == 1:
-        return candidates[0]
+        platform_name, meta = candidates[0]
+        return meta.impl_repo_name
 
     if candidates:
         env_var = "RULES_PYTHON_REPO_TOOLCHAIN_{}_{}_{}".format(
@@ -525,7 +604,11 @@ def _get_host_platform(*, rctx, logger, python_version, os_name, cpu_name, platf
             candidates = [preference]
 
     if candidates:
-        return candidates[0]
+        platform_name, meta = candidates[0]
+        suffix = meta.impl_repo_name
+        if not suffix:
+            suffix = platform_name
+        return suffix
 
     return logger.fail("Could not find a compatible 'host' python for '{os_name}', '{cpu_name}' from the loaded platforms: {platforms}".format(
         os_name = os_name,
