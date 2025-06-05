@@ -704,10 +704,15 @@ def _build_link_map(entries):
                 # node
                 pkg_link_map.pop(package, None)
 
-        # Overwrite any existing values because this is closer to the terminal node
         link_map = pkg_link_map.setdefault(package, {})
         kind_map = link_map.setdefault(entry.kind, {})
-        kind_map[entry.venv_path] = entry.link_to_path
+
+        if entry.venv_path in kind_map:
+            # We ignore duplicates by design. The dependency closer to the
+            # binary gets precedence due to the topological ordering.
+            continue
+        else:
+            kind_map[entry.venv_path] = entry.link_to_path
 
     # An empty link_to value means to not create the site package symlink.
     # Because of the topological ordering, this allows binaries to remove
