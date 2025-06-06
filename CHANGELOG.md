@@ -72,6 +72,7 @@ END_UNRELEASED_TEMPLATE
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 * (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
   `PyInfo.site_packages_symlinks`
+  (refactor) Export module as a public struct
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -1184,7 +1185,6 @@ Other changes:
   See [#1371](https://github.com/bazel-contrib/rules_python/issues/1371).
 * (refactor) The pre-commit developer workflow should now pass `isort` and `black`
   checks (see [#1674](https://github.com/bazel-contrib/rules_python/issues/1674)).
-* (refactor) Export module as a public struct
 
 ### Added
 
