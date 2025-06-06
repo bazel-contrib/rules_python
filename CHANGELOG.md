@@ -72,6 +72,8 @@ END_UNRELEASED_TEMPLATE
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 * (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
   `PyInfo.site_packages_symlinks`
+* (deps) Upgrade `rules_go` 0.41.0 -> 0.55.0. Note that this might result in a slight
+  reordering of load statements in gazelle-generated `BUILD(.bazel)` files.
 
 {#v0-0-0-fixed}
 ### Fixed
