@@ -145,9 +145,9 @@ func removeDupesFromStringTreeSetSlice(array []string) []string {
 	return dedupe
 }
 
-// module represents a fully-qualified, dot-separated, Python module as seen on
+// Module represents a fully-qualified, dot-separated, Python module as seen on
 // the import statement, alongside the line number where it happened.
-type module struct {
+type Module struct {
 	// The fully-qualified, dot-separated, Python module name as seen on import
 	// statements.
 	Name string `json:"name"`
@@ -162,7 +162,7 @@ type module struct {
 
 // moduleComparator compares modules by name.
 func moduleComparator(a, b interface{}) int {
-	return godsutils.StringComparator(a.(module).Name, b.(module).Name)
+	return godsutils.StringComparator(a.(Module).Name, b.(Module).Name)
 }
 
 // annotationKind represents Gazelle annotation kinds.
