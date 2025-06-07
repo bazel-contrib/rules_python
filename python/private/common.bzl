@@ -379,7 +379,18 @@ def _third_party_first(targets):
     This is because the DAG is going from first-party deps to third-party deps and usually
     no third-party deps include first-party deps.
     """
-    return sorted(targets, lambda x: PyInfo in x and not x[PyInfo].package)
+
+    # this ensures that within the 2 groups of packages the order is maintained
+    pypi_targets = []
+    nonpypi_targets = []
+
+    for target in targets:
+        if PyInfo in target and target[PyInfo].package:
+            pypi_targets.append(target)
+        else:
+            nonpypi_targets.append(target)
+
+    return pypi_targets + nonpypi_targets
 
 def create_py_info(
         ctx,
