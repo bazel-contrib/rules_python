@@ -331,7 +331,7 @@ def collect_runfiles(ctx, files = depset()):
         #   If the target is a File, then add that file to the runfiles.
         #   Otherwise, add the target's **data runfiles** to the runfiles.
         #
-        # Note that, contray to best practice, the default outputs of the
+        # Note that, contrary to best practice, the default outputs of the
         # targets in `data` are *not* added, nor are the default runfiles.
         #
         # This ends up being important for several reasons, some of which are
@@ -369,6 +369,29 @@ def collect_runfiles(ctx, files = depset()):
         collect_default = True,
     )
 
+def _third_party_first(targets):
+    """Sort targets to allow for deterministic depset merging.
+
+    First return the third party deps so that the depsets get merged in a way to allow
+    traversal so that the first dependency that is met during traversing will be a third party
+    dep.
+
+    This is because the DAG is going from first-party deps to third-party deps and usually
+    no third-party deps include first-party deps.
+    """
+
+    # this ensures that within the 2 groups of packages the order is maintained
+    pypi_targets = []
+    nonpypi_targets = []
+
+    for target in targets:
+        if PyInfo in target and target[PyInfo].package:
+            pypi_targets.append(target)
+        else:
+            nonpypi_targets.append(target)
+
+    return pypi_targets + nonpypi_targets
+
 def create_py_info(
         ctx,
         *,
@@ -378,6 +401,7 @@ def create_py_info(
         implicit_pyc_files,
         implicit_pyc_source_files,
         imports,
+        package = None,
         venv_symlinks = []):
     """Create PyInfo provider.
 
@@ -396,9 +420,9 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
-        venv_symlinks: {type}`list[tuple[str, str]]` tuples of
-            `(runfiles_path, site_packages_path)` for symlinks to create
-            in the consuming binary's venv site packages.
+        package: TODO
+        venv_symlinks: {type}`list[VenvSymlinkEntry]` instances for
+            symlinks to create in the consuming binary's venv.
 
     Returns:
         A tuple of the PyInfo instance and a depset of the
@@ -418,8 +442,9 @@ def create_py_info(
     py_info.imports.add(imports)
     py_info.merge_has_py2_only_sources(ctx.attr.srcs_version in ("PY2", "PY2ONLY"))
     py_info.merge_has_py3_only_sources(ctx.attr.srcs_version in ("PY3", "PY3ONLY"))
+    py_info.set_package(package)
 
-    for target in ctx.attr.deps:
+    for target in _third_party_first(ctx.attr.deps):
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
             py_info.merge(_get_py_info(target))
@@ -431,7 +456,7 @@ def create_py_info(
                 if f.extension == "py":
                     py_info.transitive_sources.add(f)
                 py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
-    for target in ctx.attr.pyi_deps:
+    for target in _third_party_first(ctx.attr.pyi_deps):
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
             py_info.merge(_get_py_info(target))

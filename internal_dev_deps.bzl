@@ -48,6 +48,11 @@ def rules_python_internal_deps():
         path = "tests/modules/other",
     )
 
+    local_repository(
+        name = "another_module",
+        path = "tests/modules/another_module",
+    )
+
     http_archive(
         name = "bazel_skylib",
         sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",

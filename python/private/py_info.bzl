@@ -68,10 +68,23 @@ the venv to create the path under.
 A runfiles-root relative path that `venv_path` will symlink to. If `None`,
 it means to not create a symlink.
 """,
+        "package": """
+:type: str | None
+
+Represents the PyPI package name that the code originates from. It is normalized according to the
+PEP440 with all `-` replaced with `_`, i.e. the same as the package name in the hub repository that
+it would come from.
+""",
         "venv_path": """
 :type: str
 
 A path relative to the `kind` directory within the venv.
+""",
+        "version": """
+:type: str | None
+
+Represents the PyPI package version that the code originates from. It is normalized according to the
+PEP440 standard.
 """,
     },
 )
@@ -94,6 +107,7 @@ def _PyInfo_init(
         has_py2_only_sources = False,
         has_py3_only_sources = False,
         direct_pyc_files = depset(),
+        package = None,
         transitive_pyc_files = depset(),
         transitive_implicit_pyc_files = depset(),
         transitive_implicit_pyc_source_files = depset(),
@@ -129,6 +143,7 @@ def _PyInfo_init(
         "has_py2_only_sources": has_py2_only_sources,
         "has_py3_only_sources": has_py2_only_sources,
         "imports": imports,
+        "package": package,
         "transitive_implicit_pyc_files": transitive_implicit_pyc_files,
         "transitive_implicit_pyc_source_files": transitive_implicit_pyc_source_files,
         "transitive_original_sources": transitive_original_sources,
@@ -204,6 +219,15 @@ A depset of import path strings to be added to the `PYTHONPATH` of executable
 Python targets. These are accumulated from the transitive `deps`.
 The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
+""",
+        "package": """
+:type: str
+
+The source third-party dependency name, which is normalized to PEP440 schema with
+`-` replaced with `_`.
+
+::::{versionadded} VERSION_NEXT_FEATURE
+::::
 """,
         "transitive_implicit_pyc_files": """
 :type: depset[File]
@@ -296,24 +320,13 @@ This field is currently unused in Bazel and may go away in the future.
         "venv_symlinks": """
 :type: depset[VenvSymlinkEntry]
 
-A depset with `topological` ordering.
-
-
-Tuples of `(runfiles_path, site_packages_path)`. Where
-* `runfiles_path` is a runfiles-root relative path. It is the path that
-  has the code to make importable. If `None` or empty string, then it means
-  to not create a site packages directory with the `site_packages_path`
-  name.
-* `site_packages_path` is a path relative to the site-packages directory of
-  the venv for whatever creates the venv (typically py_binary). It makes
-  the code in `runfiles_path` available for import. Note that this
-  is created as a "raw" symlink (via `declare_symlink`).
+A depset with default ordering.
 
 :::{include} /_includes/experimental_api.md
 :::
 
 :::{tip}
-The topological ordering means dependencies earlier and closer to the consumer
+The way we merge depsets means dependencies earlier and closer to the consumer
 have precedence. This allows e.g. a binary to add dependencies that override
 values from further way dependencies, such as forcing symlinks to point to
 specific paths or preventing symlinks from being created.
@@ -375,9 +388,6 @@ def _PyInfoBuilder_typedef():
 
     :::{field} venv_symlinks
     :type: DepsetBuilder[tuple[str | None, str]]
-
-    NOTE: This depset has `topological` order
-    :::
     """
 
 def _PyInfoBuilder_new():
@@ -392,6 +402,7 @@ def _PyInfoBuilder_new():
         _has_py2_only_sources = [False],
         _has_py3_only_sources = [False],
         _uses_shared_libraries = [False],
+        _package = [None],
         build = lambda *a, **k: _PyInfoBuilder_build(self, *a, **k),
         build_builtin_py_info = lambda *a, **k: _PyInfoBuilder_build_builtin_py_info(self, *a, **k),
         direct_original_sources = builders.DepsetBuilder(),
@@ -411,13 +422,14 @@ def _PyInfoBuilder_new():
         set_has_py2_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py2_only_sources(self, *a, **k),
         set_has_py3_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py3_only_sources(self, *a, **k),
         set_uses_shared_libraries = lambda *a, **k: _PyInfoBuilder_set_uses_shared_libraries(self, *a, **k),
+        set_package = lambda *a, **k: _PyInfoBuilder_set_package(self, *a, **k),
         transitive_implicit_pyc_files = builders.DepsetBuilder(),
         transitive_implicit_pyc_source_files = builders.DepsetBuilder(),
         transitive_original_sources = builders.DepsetBuilder(),
         transitive_pyc_files = builders.DepsetBuilder(),
         transitive_pyi_files = builders.DepsetBuilder(),
         transitive_sources = builders.DepsetBuilder(),
-        venv_symlinks = builders.DepsetBuilder(order = "topological"),
+        venv_symlinks = builders.DepsetBuilder(),
     )
     return self
 
@@ -535,6 +547,19 @@ def _PyInfoBuilder_set_uses_shared_libraries(self, value):
     self._uses_shared_libraries[0] = value
     return self
 
+def _PyInfoBuilder_set_package(self, value):
+    """Sets `uses_shared_libraries` to `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`str` The value to set.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
+    self._package[0] = value
+    return self
+
 def _PyInfoBuilder_merge(self, *infos, direct = []):
     """Merge other PyInfos into this PyInfo.
 
@@ -637,6 +662,7 @@ def _PyInfoBuilder_build(self):
             direct_original_sources = self.direct_original_sources.build(),
             direct_pyc_files = self.direct_pyc_files.build(),
             direct_pyi_files = self.direct_pyi_files.build(),
+            package = self._package[0],
             transitive_implicit_pyc_files = self.transitive_implicit_pyc_files.build(),
             transitive_implicit_pyc_source_files = self.transitive_implicit_pyc_source_files.build(),
             transitive_original_sources = self.transitive_original_sources.build(),
@@ -697,4 +723,5 @@ PyInfoBuilder = struct(
     set_has_py2_only_sources = _PyInfoBuilder_set_has_py2_only_sources,
     set_has_py3_only_sources = _PyInfoBuilder_set_has_py3_only_sources,
     set_uses_shared_libraries = _PyInfoBuilder_set_uses_shared_libraries,
+    set_package = _PyInfoBuilder_set_package,
 )

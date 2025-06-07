@@ -41,6 +41,7 @@ load(
     "runfiles_root_path",
 )
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
+load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
@@ -52,6 +53,7 @@ load(
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
+load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
@@ -90,13 +92,17 @@ won't be understood as namespace packages; they'll be seen as regular packages. 
 likely lead to conflicts with other targets that contribute to the namespace.
 
 :::{tip}
-This attributes populates {obj}`PyInfo.venv_symlinks`, which is
-a topologically ordered depset. This means dependencies closer and earlier
+This attributes populates {obj}`PyInfo.venv_symlinks` a custom ordered depset - third party dependencies come first when the depsets are merged. This means dependencies closer and earlier
 to a consumer have precedence. See {obj}`PyInfo.venv_symlinks` for
 more information.
 :::
 
 :::{versionadded} 1.4.0
+:::
+:::{versionchanged} VERSION_NEXT_FEATURE
+The topological order has been reverted and instead we merge the depsets for all of the
+targets in the {attr}`py_library.deps` in a particular way - first merging depsets
+of the third-party PyPI dependencies and then merging the first-party dependencies.
 :::
 """,
         ),
@@ -157,7 +163,8 @@ def py_library_impl(ctx, *, semantics):
     imports = []
     venv_symlinks = []
 
-    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
+    package, version_str = _get_package_and_version(ctx)
+    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics, package, version_str)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
     py_info, deps_transitive_sources, builtins_py_info = create_py_info(
@@ -167,6 +174,7 @@ def py_library_impl(ctx, *, semantics):
         required_pyc_files = required_pyc_files,
         implicit_pyc_files = implicit_pyc_files,
         implicit_pyc_source_files = implicit_pyc_source_files,
+        package = package,
         imports = imports,
         venv_symlinks = venv_symlinks,
     )
@@ -206,16 +214,47 @@ Source files are no longer added to the runfiles directly.
 :::
 """
 
-def _get_imports_and_venv_symlinks(ctx, semantics):
+def _get_package_and_version(ctx):
+    """Return package name and version
+
+    If the package comes from PyPI then it will have a `.dist-info` as part of `data`, which
+    allows us to get the name of the package and its version. This means that we can ensure
+    that package usage closer to the terminal node can override dependencies.
+    """
+    dist_info_metadata = None
+    for d in ctx.files.data:
+        # work on case insensitive FSes
+        if d.basename.lower() != "metadata":
+            continue
+
+        if d.dirname.endswith(".dist-info"):
+            dist_info_metadata = d
+
+    if not dist_info_metadata:
+        return None, None
+
+    # in order to be able to have replacements in the venv, we have to add a
+    # third value into the venv_symlinks, which would be the normalized
+    # package name. This allows us to ensure that we can replace the `dist-info`
+    # directories by checking if the package key is there.
+    dist_info_dir = paths.basename(dist_info_metadata.dirname)
+    package, _, _suffix = dist_info_dir.rpartition(".dist-info")
+    package, _, version_str = package.rpartition("-")
+    return (
+        normalize_name(package),  # will have no dashes
+        version.normalize(version_str),  # will have no dashes either
+    )
+
+def _get_imports_and_venv_symlinks(ctx, semantics, package, version_str):
     imports = depset()
-    venv_symlinks = depset()
+    venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
-        venv_symlinks = _get_venv_symlinks(ctx)
+        venv_symlinks = _get_venv_symlinks(ctx, package, version_str)
     else:
         imports = collect_imports(ctx, semantics)
     return imports, venv_symlinks
 
-def _get_venv_symlinks(ctx):
+def _get_venv_symlinks(ctx, package, version_str):
     imports = ctx.attr.imports
     if len(imports) == 0:
         fail("When venvs_site_packages is enabled, exactly one `imports` " +
@@ -236,50 +275,61 @@ def _get_venv_symlinks(ctx):
     # Append slash to prevent incorrectly prefix-string matches
     site_packages_root += "/"
 
-    # We have to build a list of (runfiles path, site-packages path) pairs of
-    # the files to create in the consuming binary's venv site-packages directory.
-    # To minimize the number of files to create, we just return the paths
-    # to the directories containing the code of interest.
+    # We have to build a list of (runfiles path, site-packages path) pairs of the files to
+    # create in the consuming binary's venv site-packages directory. To minimize the number of
+    # files to create, we just return the paths to the directories containing the code of
+    # interest.
     #
-    # However, namespace packages complicate matters: multiple
-    # distributions install in the same directory in site-packages. This
-    # works out because they don't overlap in their files. Typically, they
-    # install to different directories within the namespace package
-    # directory. Namespace package directories are simply directories
-    # within site-packages that *don't* have an `__init__.py` file, which
-    # can be arbitrarily deep. Thus, we simply have to look for the
-    # directories that _do_ have an `__init__.py` file and treat those as
-    # the path to symlink to.
+    # However, namespace packages complicate matters: multiple distributions install in the
+    # same directory in site-packages. This works out because they don't overlap in their
+    # files. Typically, they install to different directories within the namespace package
+    # directory. We also need to ensure that we can handle a case where the main package (e.g.
+    # airflow) has directories only containing data files and then namespace packages coming
+    # along and being next to it.
+    #
+    # Lastly we have to assume python modules just being `.py` files (e.g. typing-extensions)
+    # is just a single Python file.
 
-    repo_runfiles_dirname = None
-    dirs_with_init = {}  # dirname -> runfile path
+    dir_symlinks = {}  # dirname -> runfile path
     venv_symlinks = []
-    for src in ctx.files.srcs:
-        if src.extension not in PYTHON_FILE_EXTENSIONS:
-            continue
+    for src in ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs:
         path = _repo_relative_short_path(src.short_path)
         if not path.startswith(site_packages_root):
             continue
         path = path.removeprefix(site_packages_root)
         dir_name, _, filename = path.rpartition("/")
 
-        if dir_name and filename.startswith("__init__."):
-            dirs_with_init[dir_name] = None
-            repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
-        elif not dir_name:
-            repo_runfiles_dirname = runfiles_root_path(ctx, src.short_path).partition("/")[0]
+        if dir_name in dir_symlinks:
+            # we already have this dir, this allows us to short-circuit since most of the
+            # ctx.files.data might share the same directories as ctx.files.srcs
+            continue
 
+        runfiles_dir_name, _, _ = runfiles_root_path(ctx, src.short_path).partition("/")
+        if dir_name:
+            # This can be either:
+            # * a directory with libs (e.g. numpy.libs, created by auditwheel)
+            # * a directory with `__init__.py` file that potentially also needs to be
+            #   symlinked.
+            # * `.dist-info` directory
+            #
+            # This could be also regular files, that just need to be symlinked, so we will
+            # add the directory here.
+            dir_symlinks[dir_name] = runfiles_dir_name
+        elif src.extension in PYTHON_FILE_EXTENSIONS:
             # This would be files that do not have directories and we just need to add
-            # direct symlinks to them as is:
-            venv_symlinks.append(VenvSymlinkEntry(
+            # direct symlinks to them as is, we only allow Python files in here
+            entry = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
-                link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, filename),
+                link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
+                package = package,
+                version = version_str,
                 venv_path = filename,
-            ))
+            )
+            venv_symlinks.append(entry)
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
     # see the top-most explicit package first.
-    dirnames = sorted(dirs_with_init.keys())
+    dirnames = sorted(dir_symlinks.keys())
     first_level_explicit_packages = []
     for d in dirnames:
         is_sub_package = False
@@ -292,11 +342,16 @@ def _get_venv_symlinks(ctx):
             first_level_explicit_packages.append(d)
 
     for dirname in first_level_explicit_packages:
-        venv_symlinks.append(VenvSymlinkEntry(
+        prefix = dir_symlinks[dirname]
+        entry = VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
-            link_to_path = paths.join(repo_runfiles_dirname, site_packages_root, dirname),
+            link_to_path = paths.join(prefix, site_packages_root, dirname),
+            package = package,
+            version = version_str,
             venv_path = dirname,
-        ))
+        )
+        venv_symlinks.append(entry)
+
     return venv_symlinks
 
 def _repo_relative_short_path(short_path):
