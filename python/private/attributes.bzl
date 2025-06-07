@@ -260,7 +260,7 @@ The order of this list can matter because it affects the order that information
 from dependencies is merged in, which can be relevant depending on the ordering
 mode of depsets that are merged.
 
-* {obj}`PyInfo.venv_symlinks` uses topological ordering.
+* {obj}`PyInfo.venv_symlinks` uses default ordering.
 
 See {obj}`PyInfo` for more information about the ordering of its depsets and
 how its fields are merged.

@@ -650,10 +650,6 @@ def _create_venv_symlinks(ctx, venv_dir_map):
 
     # maps venv-relative path to the runfiles path it should point to
     entries = depset(
-        # NOTE: Topological ordering is used so that dependencies closer to the
-        # binary have precedence in creating their symlinks. This allows the
-        # binary a modicum of control over the result.
-        order = "topological",
         transitive = [
             dep[PyInfo].venv_symlinks
             for dep in ctx.attr.deps
@@ -692,7 +688,8 @@ def _build_link_map(entries):
 
         if version_by_pkg.setdefault(entry.package, entry.version) != entry.version:
             # We ignore duplicates by design. The dependency closer to the
-            # binary gets precedence due to the topological ordering.
+            # binary gets precedence due to how we merge the third_party dependencies
+            # first.
             continue
         elif entry.venv_path in kind_map:
             # NOTE @aignas 2025-06-05: This branch should be hit only for first party
@@ -701,9 +698,9 @@ def _build_link_map(entries):
         else:
             kind_map[entry.venv_path] = entry.link_to_path
 
-    # An empty link_to value means to not create the site package symlink.
-    # Because of the topological ordering, this allows binaries to remove
-    # entries by having an earlier dependency produce empty link_to values.
+    # An empty link_to value means to not create the site package symlink. Because of the
+    # ordering, this allows binaries to remove entries by having an earlier dependency produce
+    # empty link_to values.
     for link_map in pkg_link_map.values():
         for kind, kind_map in link_map.items():
             for dir_path, link_to in kind_map.items():

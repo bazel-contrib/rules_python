@@ -92,13 +92,17 @@ won't be understood as namespace packages; they'll be seen as regular packages. 
 likely lead to conflicts with other targets that contribute to the namespace.
 
 :::{tip}
-This attributes populates {obj}`PyInfo.venv_symlinks`, which is
-a topologically ordered depset. This means dependencies closer and earlier
+This attributes populates {obj}`PyInfo.venv_symlinks` a custom ordered depset - third party dependencies come first when the depsets are merged. This means dependencies closer and earlier
 to a consumer have precedence. See {obj}`PyInfo.venv_symlinks` for
 more information.
 :::
 
 :::{versionadded} 1.4.0
+:::
+:::{versionchanged} VERSION_NEXT_FEATURE
+The topological order has been reverted and instead we merge the depsets for all of the
+targets in the {attr}`py_library.deps` in a particular way - first merging depsets
+of the third-party PyPI dependencies and then merging the first-party dependencies.
 :::
 """,
         ),

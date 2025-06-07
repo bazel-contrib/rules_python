@@ -373,8 +373,8 @@ def _third_party_first(targets):
     """Sort targets to allow for deterministic depset merging.
 
     First return the third party deps so that the depsets get merged in a way to allow
-    topological traversal so that the first dependency that is met during traversing
-    will be a third party dep.
+    traversal so that the first dependency that is met during traversing will be a third party
+    dep.
 
     This is because the DAG is going from first-party deps to third-party deps and usually
     no third-party deps include first-party deps.

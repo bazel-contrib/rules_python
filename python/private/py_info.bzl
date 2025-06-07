@@ -115,7 +115,7 @@ def _PyInfo_init(
         transitive_original_sources = depset(),
         direct_pyi_files = depset(),
         transitive_pyi_files = depset(),
-        venv_symlinks = depset(order = "topological")):
+        venv_symlinks = depset()):
     _check_arg_type("transitive_sources", "depset", transitive_sources)
 
     # Verify it's postorder compatible, but retain is original ordering.
@@ -220,7 +220,15 @@ Python targets. These are accumulated from the transitive `deps`.
 The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
 """,
-        "package": "TODO",
+        "package": """
+:type: str
+
+The source third-party dependency name, which is normalized to PEP440 schema with
+`-` replaced with `_`.
+
+::::{versionadded} VERSION_NEXT_FEATURE
+::::
+""",
         "transitive_implicit_pyc_files": """
 :type: depset[File]
 
@@ -312,13 +320,13 @@ This field is currently unused in Bazel and may go away in the future.
         "venv_symlinks": """
 :type: depset[VenvSymlinkEntry]
 
-A depset with `topological` ordering.
+A depset with default ordering.
 
 :::{include} /_includes/experimental_api.md
 :::
 
 :::{tip}
-The topological ordering means dependencies earlier and closer to the consumer
+The way we merge depsets means dependencies earlier and closer to the consumer
 have precedence. This allows e.g. a binary to add dependencies that override
 values from further way dependencies, such as forcing symlinks to point to
 specific paths or preventing symlinks from being created.
@@ -380,9 +388,6 @@ def _PyInfoBuilder_typedef():
 
     :::{field} venv_symlinks
     :type: DepsetBuilder[tuple[str | None, str]]
-
-    NOTE: This depset has `topological` order
-    :::
     """
 
 def _PyInfoBuilder_new():
@@ -422,7 +427,7 @@ def _PyInfoBuilder_new():
         transitive_pyc_files = builders.DepsetBuilder(),
         transitive_pyi_files = builders.DepsetBuilder(),
         transitive_sources = builders.DepsetBuilder(),
-        venv_symlinks = builders.DepsetBuilder(order = "topological"),
+        venv_symlinks = builders.DepsetBuilder(),
     )
     return self
 
