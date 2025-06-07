@@ -331,7 +331,7 @@ def collect_runfiles(ctx, files = depset()):
         #   If the target is a File, then add that file to the runfiles.
         #   Otherwise, add the target's **data runfiles** to the runfiles.
         #
-        # Note that, contray to best practice, the default outputs of the
+        # Note that, contrary to best practice, the default outputs of the
         # targets in `data` are *not* added, nor are the default runfiles.
         #
         # This ends up being important for several reasons, some of which are
