@@ -402,6 +402,7 @@ def _PyInfoBuilder_new():
         _has_py2_only_sources = [False],
         _has_py3_only_sources = [False],
         _uses_shared_libraries = [False],
+        _package = [None],
         build = lambda *a, **k: _PyInfoBuilder_build(self, *a, **k),
         build_builtin_py_info = lambda *a, **k: _PyInfoBuilder_build_builtin_py_info(self, *a, **k),
         direct_original_sources = builders.DepsetBuilder(),
@@ -421,6 +422,7 @@ def _PyInfoBuilder_new():
         set_has_py2_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py2_only_sources(self, *a, **k),
         set_has_py3_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py3_only_sources(self, *a, **k),
         set_uses_shared_libraries = lambda *a, **k: _PyInfoBuilder_set_uses_shared_libraries(self, *a, **k),
+        set_package = lambda *a, **k: _PyInfoBuilder_set_package(self, *a, **k),
         transitive_implicit_pyc_files = builders.DepsetBuilder(),
         transitive_implicit_pyc_source_files = builders.DepsetBuilder(),
         transitive_original_sources = builders.DepsetBuilder(),
@@ -545,6 +547,19 @@ def _PyInfoBuilder_set_uses_shared_libraries(self, value):
     self._uses_shared_libraries[0] = value
     return self
 
+def _PyInfoBuilder_set_package(self, value):
+    """Sets `uses_shared_libraries` to `value`.
+
+    Args:
+        self: implicitly added.
+        value: {type}`str` The value to set.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
+    self._package[0] = value
+    return self
+
 def _PyInfoBuilder_merge(self, *infos, direct = []):
     """Merge other PyInfos into this PyInfo.
 
@@ -633,12 +648,11 @@ def _PyInfoBuilder_merge_targets(self, targets):
         self.merge_target(t)
     return self
 
-def _PyInfoBuilder_build(self, package = None):
+def _PyInfoBuilder_build(self):
     """Builds into a {obj}`PyInfo` object.
 
     Args:
         self: implicitly added.
-        package: TODO
 
     Returns:
         {type}`PyInfo`
@@ -648,7 +662,7 @@ def _PyInfoBuilder_build(self, package = None):
             direct_original_sources = self.direct_original_sources.build(),
             direct_pyc_files = self.direct_pyc_files.build(),
             direct_pyi_files = self.direct_pyi_files.build(),
-            package = package,
+            package = self._package[0],
             transitive_implicit_pyc_files = self.transitive_implicit_pyc_files.build(),
             transitive_implicit_pyc_source_files = self.transitive_implicit_pyc_source_files.build(),
             transitive_original_sources = self.transitive_original_sources.build(),
@@ -709,4 +723,5 @@ PyInfoBuilder = struct(
     set_has_py2_only_sources = _PyInfoBuilder_set_has_py2_only_sources,
     set_has_py3_only_sources = _PyInfoBuilder_set_has_py3_only_sources,
     set_uses_shared_libraries = _PyInfoBuilder_set_uses_shared_libraries,
+    set_package = _PyInfoBuilder_set_package,
 )

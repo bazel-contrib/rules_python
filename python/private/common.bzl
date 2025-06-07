@@ -442,6 +442,7 @@ def create_py_info(
     py_info.imports.add(imports)
     py_info.merge_has_py2_only_sources(ctx.attr.srcs_version in ("PY2", "PY2ONLY"))
     py_info.merge_has_py3_only_sources(ctx.attr.srcs_version in ("PY3", "PY3ONLY"))
+    py_info.set_package(package)
 
     for target in _third_party_first(ctx.attr.deps):
         # PyInfo may not be present e.g. cc_library rules.
@@ -482,7 +483,7 @@ def create_py_info(
             if py_info.get_uses_shared_libraries():
                 break
 
-    return py_info.build(package), deps_transitive_sources, py_info.build_builtin_py_info()
+    return py_info.build(), deps_transitive_sources, py_info.build_builtin_py_info()
 
 def _get_py_info(target):
     return target[PyInfo] if PyInfo in target or BuiltinPyInfo == None else target[BuiltinPyInfo]
