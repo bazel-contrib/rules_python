@@ -379,8 +379,7 @@ def _third_party_first(targets):
     This is because the DAG is going from first-party deps to third-party deps and usually
     no third-party deps include first-party deps.
     """
-    return targets
-    # return sorted(targets, lambda x: PyInfo in x and not x[PyInfo].package)
+    return sorted(targets, lambda x: PyInfo in x and not x[PyInfo].package)
 
 def create_py_info(
         ctx,
