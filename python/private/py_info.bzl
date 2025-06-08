@@ -309,16 +309,7 @@ This field is currently unused in Bazel and may go away in the future.
         "venv_symlinks": """
 :type: depset[VenvSymlinkEntry]
 
-A depset with default ordering.
-
 :::{include} /_includes/experimental_api.md
-:::
-
-:::{tip}
-The way we merge depsets means dependencies earlier and closer to the consumer
-have precedence. This allows e.g. a binary to add dependencies that override
-values from further way dependencies, such as forcing symlinks to point to
-specific paths or preventing symlinks from being created.
 :::
 
 :::{versionadded} VERSION_NEXT_FEATURE
