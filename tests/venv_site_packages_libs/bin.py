@@ -29,15 +29,6 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_imported_from_venv("single_file")
         self.assert_imported_from_venv("simple")
 
-    def test_pyi_is_included(self):
-        self.assert_imported_from_venv("simple")
-        module = importlib.import_module("simple")
-        module_path = Path(module.__file__)
-
-        # this has been not included through data but through `pyi_srcs`
-        pyi_files = [p.name for p in module_path.parent.glob("*.pyi")]
-        self.assertIn("__init__.pyi", pyi_files)
-
     def test_data_is_included(self):
         self.assert_imported_from_venv("simple")
         module = importlib.import_module("simple")
@@ -47,13 +38,13 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
         # Ensure that packages from simple v1 are not present
         files = [p.name for p in site_packages.glob("*")]
-        self.assertIn("simple.libs", files)
+        self.assertIn("simple_v1_extras", files)
 
     def test_override_pkg(self):
         self.assert_imported_from_venv("simple")
         module = importlib.import_module("simple")
         self.assertEqual(
-            "2.0.0",
+            "1.0.0",
             module.__version__,
         )
 
@@ -65,13 +56,13 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         site_packages = module_path.parent.parent
         dist_info_dirs = [p.name for p in site_packages.glob("*.dist-info")]
         self.assertEqual(
-            ["simple-2.0.0.dist-info"],
+            ["simple-1.0.0.dist-info"],
             dist_info_dirs,
         )
 
         # Ensure that packages from simple v1 are not present
         files = [p.name for p in site_packages.glob("*")]
-        self.assertNotIn("simple_v1_extras", files)
+        self.assertNotIn("simple.libs", files)
 
     def test_data_from_another_pkg_is_included_via_copy_file(self):
         self.assert_imported_from_venv("simple")

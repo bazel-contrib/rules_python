@@ -687,13 +687,10 @@ def _build_link_map(entries):
         kind_map = link_map.setdefault(entry.kind, {})
 
         if version_by_pkg.setdefault(entry.package, entry.version) != entry.version:
-            # We ignore duplicates by design. The dependency closer to the
-            # binary gets precedence due to how we merge the third_party dependencies
-            # first.
+            # We ignore duplicates by design.
             continue
         elif entry.venv_path in kind_map:
-            # NOTE @aignas 2025-06-05: This branch should be hit only for first party
-            # packages, maybe we should error here?
+            # We ignore duplicates by design.
             continue
         else:
             kind_map[entry.venv_path] = entry.link_to_path

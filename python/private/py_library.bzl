@@ -86,7 +86,7 @@ under the binary's venv site-packages directory that should be made available (i
 namespace packages](
 https://packaging.python.org/en/latest/guides/packaging-namespace-packages/#native-namespace-packages).
 However, the *content* of the files cannot be taken into account, merely their
-presence or absense. Stated another way: [pkgutil-style namespace packages](
+presence or absence. Stated another way: [pkgutil-style namespace packages](
 https://packaging.python.org/en/latest/guides/packaging-namespace-packages/#pkgutil-style-namespace-packages)
 won't be understood as namespace packages; they'll be seen as regular packages. This will
 likely lead to conflicts with other targets that contribute to the namespace.
@@ -100,9 +100,9 @@ more information.
 :::{versionadded} 1.4.0
 :::
 :::{versionchanged} VERSION_NEXT_FEATURE
-The topological order has been reverted and instead we merge the depsets for all of the
-targets in the {attr}`py_library.deps` in a particular way - first merging depsets
-of the third-party PyPI dependencies and then merging the first-party dependencies.
+The topological order has been removed and if 2 different versions of the same PyPI
+package are observed, the behaviour has no guarantees except that it is deterministic
+and that only one package version will be included.
 :::
 """,
         ),
@@ -174,7 +174,6 @@ def py_library_impl(ctx, *, semantics):
         required_pyc_files = required_pyc_files,
         implicit_pyc_files = implicit_pyc_files,
         implicit_pyc_source_files = implicit_pyc_source_files,
-        package = package,
         imports = imports,
         venv_symlinks = venv_symlinks,
     )

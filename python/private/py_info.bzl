@@ -107,7 +107,6 @@ def _PyInfo_init(
         has_py2_only_sources = False,
         has_py3_only_sources = False,
         direct_pyc_files = depset(),
-        package = None,
         transitive_pyc_files = depset(),
         transitive_implicit_pyc_files = depset(),
         transitive_implicit_pyc_source_files = depset(),
@@ -143,7 +142,6 @@ def _PyInfo_init(
         "has_py2_only_sources": has_py2_only_sources,
         "has_py3_only_sources": has_py2_only_sources,
         "imports": imports,
-        "package": package,
         "transitive_implicit_pyc_files": transitive_implicit_pyc_files,
         "transitive_implicit_pyc_source_files": transitive_implicit_pyc_source_files,
         "transitive_original_sources": transitive_original_sources,
@@ -219,15 +217,6 @@ A depset of import path strings to be added to the `PYTHONPATH` of executable
 Python targets. These are accumulated from the transitive `deps`.
 The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
-""",
-        "package": """
-:type: str
-
-The source third-party dependency name, which is normalized to PEP440 schema with
-`-` replaced with `_`.
-
-::::{versionadded} VERSION_NEXT_FEATURE
-::::
 """,
         "transitive_implicit_pyc_files": """
 :type: depset[File]
@@ -402,7 +391,6 @@ def _PyInfoBuilder_new():
         _has_py2_only_sources = [False],
         _has_py3_only_sources = [False],
         _uses_shared_libraries = [False],
-        _package = [None],
         build = lambda *a, **k: _PyInfoBuilder_build(self, *a, **k),
         build_builtin_py_info = lambda *a, **k: _PyInfoBuilder_build_builtin_py_info(self, *a, **k),
         direct_original_sources = builders.DepsetBuilder(),
@@ -422,7 +410,6 @@ def _PyInfoBuilder_new():
         set_has_py2_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py2_only_sources(self, *a, **k),
         set_has_py3_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py3_only_sources(self, *a, **k),
         set_uses_shared_libraries = lambda *a, **k: _PyInfoBuilder_set_uses_shared_libraries(self, *a, **k),
-        set_package = lambda *a, **k: _PyInfoBuilder_set_package(self, *a, **k),
         transitive_implicit_pyc_files = builders.DepsetBuilder(),
         transitive_implicit_pyc_source_files = builders.DepsetBuilder(),
         transitive_original_sources = builders.DepsetBuilder(),
@@ -547,19 +534,6 @@ def _PyInfoBuilder_set_uses_shared_libraries(self, value):
     self._uses_shared_libraries[0] = value
     return self
 
-def _PyInfoBuilder_set_package(self, value):
-    """Sets `uses_shared_libraries` to `value`.
-
-    Args:
-        self: implicitly added.
-        value: {type}`str` The value to set.
-
-    Returns:
-        {type}`PyInfoBuilder` self
-    """
-    self._package[0] = value
-    return self
-
 def _PyInfoBuilder_merge(self, *infos, direct = []):
     """Merge other PyInfos into this PyInfo.
 
@@ -662,7 +636,6 @@ def _PyInfoBuilder_build(self):
             direct_original_sources = self.direct_original_sources.build(),
             direct_pyc_files = self.direct_pyc_files.build(),
             direct_pyi_files = self.direct_pyi_files.build(),
-            package = self._package[0],
             transitive_implicit_pyc_files = self.transitive_implicit_pyc_files.build(),
             transitive_implicit_pyc_source_files = self.transitive_implicit_pyc_source_files.build(),
             transitive_original_sources = self.transitive_original_sources.build(),
@@ -723,5 +696,4 @@ PyInfoBuilder = struct(
     set_has_py2_only_sources = _PyInfoBuilder_set_has_py2_only_sources,
     set_has_py3_only_sources = _PyInfoBuilder_set_has_py3_only_sources,
     set_uses_shared_libraries = _PyInfoBuilder_set_uses_shared_libraries,
-    set_package = _PyInfoBuilder_set_package,
 )
