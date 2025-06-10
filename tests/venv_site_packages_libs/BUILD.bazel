@@ -1,11 +1,6 @@
 load("//python:py_library.bzl", "py_library")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
-load(":depset_tests.bzl", "depset_test_suite")
-
-depset_test_suite(
-    name = "depset_tests",
-)
 
 py_library(
     name = "user_lib",
