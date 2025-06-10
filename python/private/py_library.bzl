@@ -91,10 +91,8 @@ https://packaging.python.org/en/latest/guides/packaging-namespace-packages/#pkgu
 won't be understood as namespace packages; they'll be seen as regular packages. This will
 likely lead to conflicts with other targets that contribute to the namespace.
 
-:::{tip}
-This attributes populates {obj}`PyInfo.venv_symlinks` a custom ordered depset - third party dependencies come first when the depsets are merged. This means dependencies closer and earlier
-to a consumer have precedence. See {obj}`PyInfo.venv_symlinks` for
-more information.
+:::{seealso}
+This attributes populates {obj}`PyInfo.venv_symlinks`.
 :::
 
 :::{versionadded} 1.4.0
@@ -217,8 +215,7 @@ def _get_package_and_version(ctx):
     """Return package name and version
 
     If the package comes from PyPI then it will have a `.dist-info` as part of `data`, which
-    allows us to get the name of the package and its version. This means that we can ensure
-    that package usage closer to the terminal node can override dependencies.
+    allows us to get the name of the package and its version.
     """
     dist_info_metadata = None
     for d in ctx.files.data:
