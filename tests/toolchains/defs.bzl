@@ -41,6 +41,11 @@ def define_toolchain_tests(name):
 
         parsed = version.parse(python_version, strict = True)
         expect_python_version = "{0}.{1}.{2}".format(*parsed.release)
+        if parsed.pre:
+            expect_python_version = "{0}{1}{2}".format(
+                expect_python_version,
+                *parsed.pre
+            )
         py_reconfig_test(
             name = "python_{}_test".format(python_version),
             srcs = ["python_toolchain_test.py"],

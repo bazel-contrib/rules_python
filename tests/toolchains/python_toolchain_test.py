@@ -3,11 +3,8 @@ import os
 import pathlib
 import pprint
 import sys
-import textwrap
 import unittest
 
-print("PYTHONPATH is:")
-print(textwrap.indent("\n".join(sys.path), prefix=" " * 4))
 from python.runfiles import runfiles
 
 
@@ -30,7 +27,18 @@ class PythonToolchainTest(unittest.TestCase):
         )
         self.assertIn(expected, settings["toolchain_label"], msg)
 
-        actual = "{v.major}.{v.minor}.{v.micro}".format(v=sys.version_info)
+        if sys.version_info.releaselevel == "final":
+            actual = "{v.major}.{v.minor}.{v.micro}".format(v=sys.version_info)
+        elif sys.version_info.releaselevel in ["beta"]:
+            actual = (
+                "{v.major}.{v.minor}.{v.micro}{v.releaselevel[0]}{v.serial}".format(
+                    v=sys.version_info
+                )
+            )
+        else:
+            raise NotImplementedError(
+                "Unsupported release level, please update the test"
+            )
         self.assertEqual(actual, expect_version)
 
 
