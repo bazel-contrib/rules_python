@@ -425,7 +425,7 @@ def create_py_info(
         else:
             # TODO(b/228692666): Remove this once non-PyInfo targets are no
             # longer supported in `deps`.
-            files = target.files.to_list()
+            files = target[DefaultInfo].files.to_list()
             for f in files:
                 if f.extension == "py":
                     py_info.transitive_sources.add(f)
@@ -449,7 +449,7 @@ def create_py_info(
                 info = _get_py_info(target)
                 py_info.merge_uses_shared_libraries(info.uses_shared_libraries)
             else:
-                files = target.files.to_list()
+                files = target[DefaultInfo].files.to_list()
                 for f in files:
                     py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
                     if py_info.get_uses_shared_libraries():

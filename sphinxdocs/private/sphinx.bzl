@@ -386,7 +386,7 @@ def _sphinx_source_tree_impl(ctx):
         _relocate(orig_file)
 
     for src_target, dest in ctx.attr.renamed_srcs.items():
-        src_files = src_target.files.to_list()
+        src_files = src_target[DefaultInfo].files.to_list()
         if len(src_files) != 1:
             fail("A single file must be specified to be renamed. Target {} " +
                  "generate {} files: {}".format(

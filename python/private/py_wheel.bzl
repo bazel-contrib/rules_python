@@ -480,7 +480,7 @@ def _py_wheel_impl(ctx):
         args.add("--no_compress")
 
     for target, filename in ctx.attr.extra_distinfo_files.items():
-        target_files = target.files.to_list()
+        target_files = target[DefaultInfo].files.to_list()
         if len(target_files) != 1:
             fail(
                 "Multi-file target listed in extra_distinfo_files %s",
@@ -493,7 +493,7 @@ def _py_wheel_impl(ctx):
         )
 
     for target, filename in ctx.attr.data_files.items():
-        target_files = target.files.to_list()
+        target_files = target[DefaultInfo].files.to_list()
         if len(target_files) != 1:
             fail(
                 "Multi-file target listed in data_files %s",
