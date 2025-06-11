@@ -148,10 +148,11 @@ def simpleapi_download(
             if found_on_index[pkg] != attr.index_url
         }
 
-        # buildifier: disable=print
-        print("You can use the following `index_url_overrides` to avoid the 404 warnings:\n{}".format(
-            render.dict(index_url_overrides),
-        ))
+        if index_url_overrides:
+            # buildifier: disable=print
+            print("You can use the following `index_url_overrides` to avoid the 404 warnings:\n{}".format(
+                render.dict(index_url_overrides),
+            ))
 
     return contents
 
