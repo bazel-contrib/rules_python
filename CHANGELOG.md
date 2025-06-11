@@ -55,6 +55,12 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 
+* (toolchain) Bundled toolchain version updates:
+    * 3.9 now references 3.9.23
+    * 3.10 now references 3.10.18
+    * 3.11 now references 3.11.13
+    * 3.12 now references 3.12.11
+    * 3.13 now references 3.13.4
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
@@ -114,6 +120,7 @@ END_UNRELEASED_TEMPLATE
 * (rules) Added support for a using constraints files with `compile_pip_requirements`.
   Useful when an intermediate dependency needs to be upgraded to pull in
   security patches.
+* (toolchains): 3.14.0b2 has been added as a preview.
 
 {#v0-0-0-removed}
 ### Removed
