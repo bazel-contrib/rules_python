@@ -436,8 +436,8 @@ local_runtime_repo = use_repo_rule(
 )
 
 local_runtime_toolchains_repo = use_repo_rule(
-    "@rules_python//python/local_toolchains:repos.bzl"
-    "local_runtime_toolchains_repo"
+    "@rules_python//python/local_toolchains:repos.bzl",
+    "local_runtime_toolchains_repo",
     dev_dependency = True,
 )
 
