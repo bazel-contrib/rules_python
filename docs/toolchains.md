@@ -305,7 +305,7 @@ that can be used with `target_settings`. Some particular ones of note are:
 {flag}`--py_linux_libc` and {flag}`--py_freethreaded`, among others.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 Added support for custom platform names, `target_compatible_with`, and
 `target_settings` with `single_version_platform_override`.
 :::

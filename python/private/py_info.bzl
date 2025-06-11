@@ -312,7 +312,7 @@ This field is currently unused in Bazel and may go away in the future.
 :::{include} /_includes/experimental_api.md
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 """,
     },

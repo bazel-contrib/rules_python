@@ -97,7 +97,7 @@ This attributes populates {obj}`PyInfo.venv_symlinks`.
 
 :::{versionadded} 1.4.0
 :::
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.5.0
 The topological order has been removed and if 2 different versions of the same PyPI
 package are observed, the behaviour has no guarantees except that it is deterministic
 and that only one package version will be included.

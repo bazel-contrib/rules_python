@@ -96,7 +96,7 @@ conditions are met, typically values from `@platforms`.
 
 See the [Local toolchains] docs for examples and further information.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 """,
         ),
@@ -145,7 +145,7 @@ The `target_settings` attribute, which handles `config_setting` values,
 instead of constraints.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 """,
         ),
@@ -183,7 +183,7 @@ The `target_compatible_with` attribute, which handles *constraint* values,
 instead of `config_settings`.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 """,
         ),

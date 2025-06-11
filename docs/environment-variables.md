@@ -65,7 +65,7 @@ The default became `1` if unspecified
 When `1`, the rules_python Starlark implementation of the pypi/pip integration is used
 instead of the legacy Python scripts.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 ::::
 
