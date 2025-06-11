@@ -7,10 +7,11 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20231103205921-433ea8554e82
 	github.com/bazelbuild/rules_go v0.41.0
 	github.com/bmatcuk/doublestar/v4 v4.7.1
-	github.com/dougthor42/go-tree-sitter v0.0.0-20241210060307-2737e1d0de6b
 	github.com/emirpasic/gods v1.18.1
 	github.com/ghodss/yaml v1.0.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
+	github.com/tree-sitter/go-tree-sitter v0.25.0
+	github.com/tree-sitter/tree-sitter-python v0.23.6
 	golang.org/x/sync v0.2.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -18,6 +19,7 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
