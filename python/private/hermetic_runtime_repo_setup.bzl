@@ -204,6 +204,12 @@ def define_hermetic_runtime_toolchain_impl(
             "major": str(version_info.release[0]),
             "micro": str(version_info.release[2]),
             "minor": str(version_info.release[1]),
+            "releaselevel": {
+                "a": "alpha",
+                "b": "beta",
+                "c": "candidate",
+            }.get(version_info.pre[0]) if version_info.pre else "final",
+            "serial": str(version_info.pre[1]) if version_info.pre else "0",
         },
         coverage_tool = select({
             # Convert empty string to None

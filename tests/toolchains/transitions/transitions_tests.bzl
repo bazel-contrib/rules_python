@@ -56,14 +56,21 @@ def _impl(ctx):
 
     exec_tools = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
     got_version = exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime.interpreter_version_info
+    got = "{}.{}.{}".format(
+        got_version.major,
+        got_version.minor,
+        got_version.micro,
+    )
+    if got_version.releaselevel != "final":
+        got = "{}{}{}".format(
+            got,
+            got_version.releaselevel[0],
+            got_version.serial,
+        )
 
     return [
         TestInfo(
-            got = "{}.{}.{}".format(
-                got_version.major,
-                got_version.minor,
-                got_version.micro,
-            ),
+            got = got,
             want = ctx.attr.want_version,
         ),
     ]
