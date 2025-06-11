@@ -3,8 +3,11 @@ import os
 import pathlib
 import pprint
 import sys
+import textwrap
 import unittest
 
+print("PYTHONPATH is:")
+print(textwrap.indent("\n".join(sys.path), prefix=" " * 4))
 from python.runfiles import runfiles
 
 
