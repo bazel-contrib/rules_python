@@ -55,14 +55,6 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 
-* If using the (deprecated) autodetecting/runtime_env toolchain, then the Python
-  version specified at build-time *must* match the Python version used at
-  runtime (the {obj}`--@rules_python//python/config_settings:python_version`
-  flag and the {attr}`python_version` attribute control the build-time version
-  for a target). If they don't match, dependencies won't be importable. (Such a
-  misconfiguration was unlikely to work to begin with; this is called out as an
-  FYI).
-* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows.
 * (rules) On Windows, {obj}`--bootstrap_impl=system_python` is forced. This
   allows setting `--bootstrap_impl=script` in bazelrc for mixed-platform
   environments.
