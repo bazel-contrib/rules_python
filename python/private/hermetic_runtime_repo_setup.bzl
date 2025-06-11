@@ -201,7 +201,7 @@ def define_hermetic_runtime_toolchain_impl(
         releaselevel = {
             "a": "alpha",
             "b": "beta",
-            "c": "candidate",
+            "rc": "candidate",
         }.get(version_info.pre[0])
 
     py_runtime(
