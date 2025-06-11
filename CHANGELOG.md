@@ -98,6 +98,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Correctly aggregate the sources when the hashes specified in the lockfile differ
   by platform even though the same version is used. Fixes [#2648](https://github.com/bazel-contrib/rules_python/issues/2648).
 * (pypi) `compile_pip_requirements` test rule works behind the proxy
+* (toolchains) The hermetic toolchains now correctly statically advertise the
+  `releaselevel` and `serial` for pre-release hermetic toolchains ({gh-issue}`2837`).
 
 {#v0-0-0-added}
 ### Added
