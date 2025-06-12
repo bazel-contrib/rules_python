@@ -9,6 +9,13 @@ py_library(
 )
 
 py_binary(
+    name = "pep_695_type_parameter_bin",
+    srcs = ["pep_695_type_parameter.py"],
+    visibility = ["//:__subpackages__"],
+    deps = [":_other_module"],
+)
+
+py_library(
     name = "pep_695_type_parameter",
     srcs = ["pep_695_type_parameter.py"],
     visibility = ["//:__subpackages__"],
