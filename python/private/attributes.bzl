@@ -156,12 +156,6 @@ def copy_common_test_kwargs(kwargs):
         if key in kwargs
     }
 
-CC_TOOLCHAIN = {
-    # NOTE: The `cc_helper.find_cpp_toolchain()` function expects the attribute
-    # name to be this name.
-    "_cc_toolchain": attr.label(default = "@bazel_tools//tools/cpp:current_cc_toolchain"),
-}
-
 # The common "data" attribute definition.
 DATA_ATTRS = {
     # NOTE: The "flags" attribute is deprecated, but there isn't an alternative
