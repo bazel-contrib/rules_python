@@ -90,7 +90,7 @@ tasks:
   gazelle_extension_min:
     <<: *common_workspace_flags_min_bazel
     <<: *minimum_supported_version
-    name: "Gazelle: workspace, minumum supported Bazel version"
+    name: "Gazelle: workspace, minimum supported Bazel version"
     platform: ubuntu2004
     build_targets: ["//..."]
     test_targets: ["//..."]
@@ -338,7 +338,7 @@ tasks:
   integration_test_bzlmod_build_file_generation_windows:
     <<: *reusable_build_test_all
     # coverage is not supported on Windows
-    name: "examples/bzlmod_build_file_generateion: Windows"
+    name: "examples/bzlmod_build_file_generation: Windows"
     working_directory: examples/bzlmod_build_file_generation
     platform: windows
 
