@@ -8,7 +8,7 @@ The values to use during environment marker evaluation.
 The {obj}`--//python/config_settings:pip_env_marker_config` flag.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 """,
     fields = {
         "env": """

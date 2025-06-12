@@ -263,7 +263,7 @@ def _create_whl_repos(
 
             repo_name = "{}_{}".format(pip_name, repo.repo_name)
             if repo_name in whl_libraries:
-                fail("Attempting to creating a duplicate library {} for {}".format(
+                fail("attempting to create a duplicate library {} for {}".format(
                     repo_name,
                     whl.name,
                 ))

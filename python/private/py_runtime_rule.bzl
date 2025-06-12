@@ -360,7 +360,7 @@ Whether this runtime supports virtualenvs created at build time.
 
 See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 """,
                 default = True,

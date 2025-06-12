@@ -47,12 +47,12 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
-{#v0-0-0}
-## Unreleased
+{#1-5-0}
+## [1.5.0] - 2025-06-11
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[1.5.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.0
 
-{#v0-0-0-changed}
+{#1-5-0-changed}
 ### Changed
 
 * (toolchain) Bundled toolchain version updates:
@@ -72,7 +72,7 @@ END_UNRELEASED_TEMPLATE
   `PyInfo.site_packages_symlinks`
 * (deps) Updating setuptools to patch CVE-2025-47273.
 
-{#v0-0-0-fixed}
+{#1-5-0-fixed}
 ### Fixed
 
 * (rules) PyInfo provider is now advertised by py_test, py_binary, and py_library;
@@ -101,7 +101,7 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) The hermetic toolchains now correctly statically advertise the
   `releaselevel` and `serial` for pre-release hermetic toolchains ({gh-issue}`2837`).
 
-{#v0-0-0-added}
+{#1-5-0-added}
 ### Added
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
@@ -124,7 +124,7 @@ END_UNRELEASED_TEMPLATE
   security patches.
 * (toolchains): 3.14.0b2 has been added as a preview.
 
-{#v0-0-0-removed}
+{#1-5-0-removed}
 ### Removed
 * Nothing removed.
 

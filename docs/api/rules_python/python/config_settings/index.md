@@ -167,7 +167,7 @@ Default: `//python/config_settings:_pip_env_marker_default_config`
 This flag points to a target providing {obj}`EnvMarkerInfo`, which determines
 the values used when environment markers are resolved at build time.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 ::::
 

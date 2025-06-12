@@ -1240,7 +1240,7 @@ The values should be one of the values in `@platforms//cpu`
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} VERSION_NEXT_FEATURE
+:::{{versionadded}} 1.5.0
 :::
 """,
         ),
@@ -1265,7 +1265,7 @@ The values should be one of the values in `@platforms//os`
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} VERSION_NEXT_FEATURE
+:::{{versionadded}} 1.5.0
 :::
 """,
         ),
@@ -1288,7 +1288,7 @@ Other values are allowed, in which case, `target_compatible_with`,
 `target_settings`, `os_name`, and `arch` should be specified so the toolchain is
 only used when appropriate.
 
-:::{{versionchanged}} VERSION_NEXT_FEATURE
+:::{{versionchanged}} 1.5.0
 Arbitrary platform strings allowed.
 :::
 """.format(
@@ -1320,7 +1320,7 @@ If set, `target_settings`, `os_name`, and `arch` should also be set.
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} VERSION_NEXT_FEATURE
+:::{{versionadded}} 1.5.0
 :::
 """,
         ),
@@ -1334,7 +1334,7 @@ If set, `target_compatible_with`, `os_name`, and `arch` should also be set.
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} VERSION_NEXT_FEATURE
+:::{{versionadded}} 1.5.0
 :::
 """,
         ),

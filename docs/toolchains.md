@@ -305,7 +305,7 @@ that can be used with `target_settings`. Some particular ones of note are:
 {flag}`--py_linux_libc` and {flag}`--py_freethreaded`, among others.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 Added support for custom platform names, `target_compatible_with`, and
 `target_settings` with `single_version_platform_override`.
 :::
@@ -436,8 +436,8 @@ local_runtime_repo = use_repo_rule(
 )
 
 local_runtime_toolchains_repo = use_repo_rule(
-    "@rules_python//python/local_toolchains:repos.bzl"
-    "local_runtime_toolchains_repo"
+    "@rules_python//python/local_toolchains:repos.bzl",
+    "local_runtime_toolchains_repo",
     dev_dependency = True,
 )
 

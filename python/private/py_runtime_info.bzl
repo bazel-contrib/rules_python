@@ -334,7 +334,7 @@ to meet two criteria:
    interpreter. This typically requires the Python version to be known at
    build-time and match at runtime.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.5.0
 :::
 """,
         "zip_main_template": """
