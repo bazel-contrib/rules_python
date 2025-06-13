@@ -336,7 +336,7 @@ def whl_library_targets(
                 Label("//python/config_settings:is_venvs_site_packages"): [],
                 "//conditions:default": create_inits(
                     srcs = srcs + data + pyi_srcs,
-                    ignore_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
+                    ignored_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
                     root = "site-packages",
                 ),
             })
