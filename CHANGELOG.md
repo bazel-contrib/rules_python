@@ -47,6 +47,29 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-changed}
+### Changed
+* (gazelle) For package mode, resolve dependencies when imports are relative
+  to the package path. This is enabled via the
+  `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
 {#1-5-0}
 ## [1.5.0] - 2025-06-11
 
