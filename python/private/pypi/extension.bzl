@@ -25,10 +25,11 @@ load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
+load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS", evaluate_markers_star = "evaluate_markers")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
+load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
@@ -65,22 +66,36 @@ def _whl_mods_impl(whl_mods_dict):
             whl_mods = whl_mods,
         )
 
+def _platforms(*, python_version, minor_mapping, config):
+    platforms = {}
+    python_version = full_version(
+        version = python_version,
+        minor_mapping = minor_mapping,
+    )
+    abi = "cp3{}".format(python_version[2:])
+
+    for platform, values in config.platforms.items():
+        key = "{}_{}".format(abi, platform)
+        platforms[key] = env(key) | values.env
+    return platforms
+
 def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
         whl_overrides,
+        config,
         available_interpreters = INTERPRETER_LABELS,
         minor_mapping = MINOR_MAPPING,
-        evaluate_markers = evaluate_markers_py,
-        get_index_urls = None,
-        enable_pipstar = False):
+        evaluate_markers = None,
+        get_index_urls = None):
     """create all of the whl repositories
 
     Args:
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
+        config: The platform configuration.
         get_index_urls: A function used to get the index URLs
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
@@ -89,7 +104,6 @@ def _create_whl_repos(
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
         evaluate_markers: the function used to evaluate the markers.
-        enable_pipstar: enable the pipstar feature.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -160,23 +174,19 @@ def _create_whl_repos(
         whl_group_mapping = {}
         requirement_cycles = {}
 
-    requirements_by_platform = parse_requirements(
-        module_ctx,
-        requirements_by_platform = requirements_files_by_platform(
-            requirements_by_platform = pip_attr.requirements_by_platform,
-            requirements_linux = pip_attr.requirements_linux,
-            requirements_lock = pip_attr.requirements_lock,
-            requirements_osx = pip_attr.requirements_darwin,
-            requirements_windows = pip_attr.requirements_windows,
-            extra_pip_args = pip_attr.extra_pip_args,
-            python_version = full_version(
-                version = pip_attr.python_version,
+    if evaluate_markers:
+        # This is most likely unit tests
+        pass
+    elif config.enable_pipstar:
+        evaluate_markers = lambda _, requirements: evaluate_markers_star(
+            requirements = requirements,
+            platforms = _platforms(
+                python_version = pip_attr.python_version,
                 minor_mapping = minor_mapping,
+                config = config,
             ),
-            logger = logger,
-        ),
-        extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = get_index_urls,
+        )
+    else:
         # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
         # in the PATH or if specified as a label. We will configure the env
         # markers when evaluating the requirement lines based on the output
@@ -191,14 +201,34 @@ def _create_whl_repos(
         # instances to perform this manipulation. This function should be executed
         # only once by the underlying code to minimize the overhead needed to
         # spin up a Python interpreter.
-        evaluate_markers = lambda module_ctx, requirements: evaluate_markers(
+        evaluate_markers = lambda module_ctx, requirements: evaluate_markers_py(
             module_ctx,
             requirements = requirements,
             python_interpreter = pip_attr.python_interpreter,
             python_interpreter_target = python_interpreter_target,
             srcs = pip_attr._evaluate_markers_srcs,
             logger = logger,
+        )
+
+    requirements_by_platform = parse_requirements(
+        module_ctx,
+        requirements_by_platform = requirements_files_by_platform(
+            requirements_by_platform = pip_attr.requirements_by_platform,
+            requirements_linux = pip_attr.requirements_linux,
+            requirements_lock = pip_attr.requirements_lock,
+            requirements_osx = pip_attr.requirements_darwin,
+            requirements_windows = pip_attr.requirements_windows,
+            extra_pip_args = pip_attr.extra_pip_args,
+            platforms = sorted(config.platforms),  # here we only need keys
+            python_version = full_version(
+                version = pip_attr.python_version,
+                minor_mapping = minor_mapping,
+            ),
+            logger = logger,
         ),
+        extra_pip_args = pip_attr.extra_pip_args,
+        get_index_urls = get_index_urls,
+        evaluate_markers = evaluate_markers,
         logger = logger,
     )
 
@@ -233,7 +263,7 @@ def _create_whl_repos(
                 for p, args in whl_overrides.get(whl.name, {}).items()
             },
         )
-        if not enable_pipstar:
+        if not config.enable_pipstar:
             maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
@@ -258,7 +288,7 @@ def _create_whl_repos(
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
                 is_multiple_versions = whl.is_multiple_versions,
-                enable_pipstar = enable_pipstar,
+                enable_pipstar = config.enable_pipstar,
             )
 
             repo_name = "{}_{}".format(pip_name, repo.repo_name)
@@ -342,16 +372,85 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
+def _configure(config, *, platform, os_name, arch_name, override = False, **values):
+    """Set the value in the config if the value is provided"""
+    config.setdefault("platforms", {})
+    if platform:
+        if not override and config.get("platforms", {}).get(platform):
+            return
+
+        config["platforms"][platform] = struct(
+            name = platform.replace("-", "_").lower(),
+            os_name = os_name,
+            arch_name = arch_name,
+            env = {
+                k[4:]: v
+                for k, v in values.items()
+                if k.startswith("env_") and v
+            },
+        )
+    else:
+        config["platforms"].pop(platform)
+
+def _create_config(defaults):
+    if defaults["platforms"]:
+        return struct(**defaults)
+
+    # NOTE: We have this so that it is easier to maintain unit tests assuming certain
+    # defaults
+    for cpu in [
+        "x86_64",
+        "aarch64",
+        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
+        # `pip.default` extension. i.e. drop the below values - users will have to
+        # define themselves if they need them.
+        "arm",
+        "ppc",
+        "s390x",
+    ]:
+        _configure(
+            defaults,
+            arch_name = cpu,
+            env_platform_version = "0",
+            os_name = "linux",
+            platform = "linux_{}".format(cpu),
+        )
+    for cpu in [
+        "aarch64",
+        "x86_64",
+    ]:
+        _configure(
+            defaults,
+            arch_name = cpu,
+            # We choose the oldest non-EOL version at the time when we release `rules_python`.
+            # See https://endoflife.date/macos
+            env_platform_version = "14.0",
+            os_name = "osx",
+            platform = "osx_{}".format(cpu),
+        )
+
+    _configure(
+        defaults,
+        arch_name = "x86_64",
+        env_platform_version = "0",
+        os_name = "windows",
+        platform = "windows_x86_64",
+    )
+    return struct(**defaults)
+
 def parse_modules(
         module_ctx,
         _fail = fail,
         simpleapi_download = simpleapi_download,
+        enable_pipstar = False,
         **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         simpleapi_download: Used for testing overrides
+        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
+            evaluation of the extension.
         _fail: {type}`function` the failure function, mainly for testing.
         **kwargs: Extra arguments passed to the layers below.
 
@@ -389,6 +488,39 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
+    defaults = {
+        "enable_pipstar": enable_pipstar,
+        "platforms": {},
+    }
+    for mod in module_ctx.modules:
+        if not (mod.is_root or mod.name == "rules_python"):
+            continue
+
+        for tag in mod.tags.default:
+            _configure(
+                defaults,
+                arch_name = tag.arch_name,
+                # The env_ values is only used if the `PIPSTAR` is enabled
+                env_implementation_name = tag.env_implementation_name,
+                env_os_name = tag.env_os_name,
+                env_platform_machine = tag.env_platform_machine,
+                env_platform_release = tag.env_platform_release,
+                env_platform_system = tag.env_platform_system,
+                env_platform_version = tag.env_platform_version,
+                env_sys_platform = tag.env_sys_platform,
+                os_name = tag.os_name,
+                platform = tag.platform,
+                override = mod.is_root,
+                # TODO @aignas 2025-05-19: add more attr groups:
+                # * for AUTH
+                # * for index config
+                # * for whl selection
+                # * for custom platform definition
+            )
+
+    config = _create_config(defaults)
+
+    # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
     whl_overrides = {}
     for module in module_ctx.modules:
@@ -498,11 +630,13 @@ You cannot use both the additive_build_content and additive_build_content_file a
             elif pip_attr.experimental_index_url_overrides:
                 fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
 
+            # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
             out = _create_whl_repos(
                 module_ctx,
                 pip_attr = pip_attr,
                 get_index_urls = get_index_urls,
                 whl_overrides = whl_overrides,
+                config = config,
                 **kwargs
             )
             hub_whl_map.setdefault(hub_name, {})
@@ -647,9 +781,62 @@ def _pip_impl(module_ctx):
         # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
         # results after calling the PyPI index should be reproducible on each
         # machine.
-        return module_ctx.extension_metadata(reproducible = True)
+        return module_ctx.extension_metadata(reproducible = False)
     else:
         return None
+
+_default_attrs = {
+    "arch_name": attr.string(
+        doc = """\
+The CPU architecture name to be used.
+
+:::{note}
+Either this or {attr}`env_platform_machine` should be specified.
+:::
+""",
+    ),
+    "os_name": attr.string(
+        doc = """\
+The OS name to be used.
+
+:::{note}
+Either this or the appropriate `env_*` attributes should be specified.
+:::
+""",
+    ),
+    "platform": attr.string(
+        doc = """\
+A platform identifier which will be used as the unique identifier within the extension evaluation.
+If you are defining custom platforms in your project and don't want things to clash, use extension
+[isolation] feature.
+
+[isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
+""",
+    ),
+} | {
+    # The values for PEP508 env marker evaluation during the lock file parsing
+    "env_implementation_name": attr.string(
+        doc = "Value for `implementation_name` to evaluate environment markers. Defaults to `cpython`.",
+    ),
+    "env_os_name": attr.string(
+        doc = "Value for `os_name` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
+    ),
+    "env_platform_machine": attr.string(
+        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to a value inferred from the {attr}`arch_name`.",
+    ),
+    "env_platform_release": attr.string(
+        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to an empty value.",
+    ),
+    "env_platform_system": attr.string(
+        doc = "Value for `platform_system` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
+    ),
+    "env_platform_version": attr.string(
+        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to `0`.",
+    ),
+    "env_sys_platform": attr.string(
+        doc = "Value for `sys_platform` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
+    ),
+}
 
 def _pip_parse_ext_attrs(**kwargs):
     """Get the attributes for the pip extension.
@@ -907,6 +1094,21 @@ the BUILD files for wheels.
 """,
     implementation = _pip_impl,
     tag_classes = {
+        "default": tag_class(
+            attrs = _default_attrs,
+            doc = """\
+This tag class allows for more customization of how the configuration for the hub repositories is built.
+
+This is still experimental and may be changed or removed without any notice.
+
+:::{seealso}
+The [environment markers][environment_markers] specification for the explanation of the
+terms used in this extension.
+
+[environment_markers]: https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
+:::
+""",
+        ),
         "override": _override_tag,
         "parse": tag_class(
             attrs = _pip_parse_ext_attrs(),
