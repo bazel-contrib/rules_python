@@ -48,8 +48,8 @@ var (
 	buildFilenames = []string{"BUILD", "BUILD.bazel"}
 )
 
-func GetActualKindName(kind string, args language.GenerateArgs) string {
-	if kindOverride, ok := args.Config.KindMap[kind]; ok {
+func GetActualKindName(kind string, c *config.Config) string {
+	if kindOverride, ok := c.KindMap[kind]; ok {
 		return kindOverride.KindName
 	}
 	return kind
@@ -90,9 +90,9 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	actualPyBinaryKind := GetActualKindName(pyBinaryKind, args)
-	actualPyLibraryKind := GetActualKindName(pyLibraryKind, args)
-	actualPyTestKind := GetActualKindName(pyTestKind, args)
+	actualPyBinaryKind := GetActualKindName(pyBinaryKind, args.Config)
+	actualPyLibraryKind := GetActualKindName(pyLibraryKind, args.Config)
+	actualPyTestKind := GetActualKindName(pyTestKind, args.Config)
 
 	pythonProjectRoot := cfg.PythonProjectRoot()
 
@@ -244,16 +244,10 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			mainFileNames := make([]string, 0, len(mainModules))
 			for name := range mainModules {
 				mainFileNames = append(mainFileNames, name)
-
-				// Remove the file from srcs if we're doing per-file library generation so
-				// that we don't also generate a py_library target for it.
-				if cfg.PerFileGeneration() {
-					srcs.Remove(name)
-				}
 			}
 			sort.Strings(mainFileNames)
 			for _, filename := range mainFileNames {
-				pyBinaryTargetName := strings.TrimSuffix(filepath.Base(filename), ".py")
+				pyBinaryTargetName := strings.TrimSuffix(filepath.Base(filename), ".py") + "_bin"
 				if err := ensureNoCollision(args.File, pyBinaryTargetName, actualPyBinaryKind); err != nil {
 					fqTarget := label.New("", args.Rel, pyBinaryTargetName)
 					log.Printf("failed to generate target %q of kind %q: %v",
@@ -271,7 +265,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		// If we're doing per-file generation, srcs could be empty at this point, meaning we shouldn't make a py_library.
 		// If there is already a package named py_library target before, we should generate an empty py_library.
 		if srcs.Empty() {
 			if args.File == nil {
