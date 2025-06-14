@@ -97,10 +97,10 @@ bzl_library(
     name = "evaluate_markers_bzl",
     srcs = ["evaluate_markers.bzl"],
     deps = [
-        ":pep508_env_bzl",
+        ":deps_bzl",
         ":pep508_evaluate_bzl",
-        ":pep508_platform_bzl",
         ":pep508_requirement_bzl",
+        ":pypi_repo_utils_bzl",
     ],
 )
 
@@ -113,6 +113,7 @@ bzl_library(
         ":hub_repository_bzl",
         ":parse_requirements_bzl",
         ":parse_whl_name_bzl",
+        ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
         ":simpleapi_download_bzl",
         ":whl_config_setting_bzl",
