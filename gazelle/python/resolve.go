@@ -57,6 +57,11 @@ func (*Resolver) Name() string { return languageName }
 func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	cfgs := c.Exts[languageName].(pythonconfig.Configs)
 	cfg := cfgs[f.Pkg]
+	if !cfg.PerFileGeneration() && GetActualKindName(r.Kind(), c) == pyBinaryKind {
+		// Don't index py_binary in except in file mode, because all non-test Python files
+		// are in py_library already.
+		return nil
+	}
 	srcs := r.AttrStrings("srcs")
 	provides := make([]resolve.ImportSpec, 0, len(srcs)+1)
 	for _, src := range srcs {
