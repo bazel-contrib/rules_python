@@ -93,6 +93,12 @@ def _test_bzlmod_aliases(env):
             },
         },
         extra_hub_aliases = {"bar_baz": ["foo"]},
+        platform_constraint_values = {
+            "linux_x86_64": [
+                "@platforms//os:linux",
+                "@platforms//cpu:x86_64",
+            ],
+        },
     )
 
     want_key = "bar_baz/BUILD.bazel"
@@ -130,8 +136,13 @@ load("@rules_python//python/private/pypi:config_settings.bzl", "config_settings"
 
 config_settings(
     name = "config_settings",
+    platform_constraint_values = {
+        "linux_x86_64": [
+            "@platforms//os:linux",
+            "@platforms//cpu:x86_64",
+        ],
+    },
     python_versions = ["3.2"],
-    target_platforms = ["linux_x86_64"],
     visibility = ["//:__subpackages__"],
 )""",
     )

@@ -657,13 +657,34 @@ def config_settings_test_suite(name):  # buildifier: disable=function-docstring
         glibc_versions = [(2, 14), (2, 17)],
         muslc_versions = [(1, 1)],
         osx_versions = [(10, 9), (11, 0)],
-        target_platforms = [
-            "windows_x86_64",
-            "windows_aarch64",
-            "linux_x86_64",
-            "linux_ppc",
-            "linux_aarch64",
-            "osx_x86_64",
-            "osx_aarch64",
-        ],
+        platform_constraint_values = {
+            "linux_aarch64": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux",
+            ],
+            "linux_ppc": [
+                "@platforms//cpu:ppc",
+                "@platforms//os:linux",
+            ],
+            "linux_x86_64": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux",
+            ],
+            "osx_aarch64": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:osx",
+            ],
+            "osx_x86_64": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:osx",
+            ],
+            "windows_aarch64": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows",
+            ],
+            "windows_x86_64": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows",
+            ],
+        },
     )
