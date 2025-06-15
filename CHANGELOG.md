@@ -64,7 +64,7 @@ END_UNRELEASED_TEMPLATE
 ### Added
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
-  this feature.
+  this feature. You can also configure `constraint_values` using `pip.default`.
 
 {#v0-0-0-removed}
 ### Removed

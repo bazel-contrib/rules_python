@@ -372,7 +372,7 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, override = False, **values):
+def _configure(config, *, platform, os_name, arch_name, constraint_values, override = False, **values):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
     if platform:
@@ -383,6 +383,7 @@ def _configure(config, *, platform, os_name, arch_name, override = False, **valu
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
+            constraint_values = constraint_values,
             env = {
                 k[4:]: v
                 for k, v in values.items()
@@ -414,6 +415,10 @@ def _create_config(defaults):
             env_platform_version = "0",
             os_name = "linux",
             platform = "linux_{}".format(cpu),
+            constraint_values = [
+                "@platforms//os:linux",
+                "@platforms//cpu:{}".format(cpu),
+            ],
         )
     for cpu in [
         "aarch64",
@@ -427,6 +432,10 @@ def _create_config(defaults):
             env_platform_version = "14.0",
             os_name = "osx",
             platform = "osx_{}".format(cpu),
+            constraint_values = [
+                "@platforms//os:osx",
+                "@platforms//cpu:{}".format(cpu),
+            ],
         )
 
     _configure(
@@ -435,6 +444,10 @@ def _create_config(defaults):
         env_platform_version = "0",
         os_name = "windows",
         platform = "windows_x86_64",
+        constraint_values = [
+            "@platforms//os:windows",
+            "@platforms//cpu:x86_64",
+        ],
     )
     return struct(**defaults)
 
@@ -500,6 +513,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             _configure(
                 defaults,
                 arch_name = tag.arch_name,
+                constraint_values = tag.constraint_values,
                 # The env_ values is only used if the `PIPSTAR` is enabled
                 env_implementation_name = tag.env_implementation_name,
                 env_os_name = tag.env_os_name,
@@ -684,6 +698,13 @@ You cannot use both the additive_build_content and additive_build_content_file a
             }
             for hub_name, extra_whl_aliases in extra_aliases.items()
         },
+        platform_constraint_values = {
+            hub_name: {
+                platform_name: sorted([str(Label(cv)) for cv in p.constraint_values])
+                for platform_name, p in config.platforms.items()
+            }
+            for hub_name in hub_whl_map
+        },
         whl_libraries = {
             k: dict(sorted(args.items()))
             for k, args in sorted(whl_libraries.items())
@@ -774,6 +795,7 @@ def _pip_impl(module_ctx):
                 for key, values in whl_map.items()
             },
             packages = mods.exposed_packages.get(hub_name, []),
+            platform_constraint_values = mods.platform_constraint_values.get(hub_name, {}),
             groups = mods.hub_group_map.get(hub_name),
         )
 
@@ -793,6 +815,12 @@ The CPU architecture name to be used.
 :::{note}
 Either this or {attr}`env_platform_machine` should be specified.
 :::
+""",
+    ),
+    "constraint_values": attr.label_list(
+        mandatory = True,
+        doc = """\
+The constraint_values to use in select statements.
 """,
     ),
     "os_name": attr.string(
