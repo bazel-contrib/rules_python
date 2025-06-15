@@ -151,7 +151,7 @@ func (py *Resolver) Resolve(
 		hasFatalError := false
 	MODULES_LOOP:
 		for it.Next() {
-			mod := it.Value().(module)
+			mod := it.Value().(Module)
 			moduleParts := strings.Split(mod.Name, ".")
 			possibleModules := []string{mod.Name}
 			for len(moduleParts) > 1 {
@@ -214,7 +214,7 @@ func (py *Resolver) Resolve(
 						matches := ix.FindRulesByImportWithConfig(c, imp, languageName)
 						if len(matches) == 0 {
 							// Check if the imported module is part of the standard library.
-							if isStdModule(module{Name: moduleName}) {
+							if isStdModule(Module{Name: moduleName}) {
 								continue MODULES_LOOP
 							} else if cfg.ValidateImportStatements() {
 								err := fmt.Errorf(

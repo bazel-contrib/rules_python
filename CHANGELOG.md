@@ -70,6 +70,7 @@ END_UNRELEASED_TEMPLATE
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 * (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
   `PyInfo.site_packages_symlinks`
+* (gazelle) Export `parser.Module` as a public struct.
 * (deps) Updating setuptools to patch CVE-2025-47273.
 
 {#1-5-0-fixed}

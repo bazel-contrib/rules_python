@@ -21,7 +21,7 @@ import (
 )
 
 func TestIsStdModule(t *testing.T) {
-	assert.True(t, isStdModule(module{Name: "unittest"}))
-	assert.True(t, isStdModule(module{Name: "os.path"}))
-	assert.False(t, isStdModule(module{Name: "foo"}))
+	assert.True(t, isStdModule(Module{Name: "unittest"}))
+	assert.True(t, isStdModule(Module{Name: "os.path"}))
+	assert.False(t, isStdModule(Module{Name: "foo"}))
 }
