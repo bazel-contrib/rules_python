@@ -392,6 +392,9 @@ _tests.append(_test_multiplatform_whl_aliases_filename_versioned)
 def _mock_alias(container):
     return lambda name, **kwargs: container.append(name)
 
+def _mock_config_setting_group(container):
+    return lambda name, **kwargs: container.append(name)
+
 def _mock_config_setting(container):
     def _inner(name, flag_values = None, constraint_values = None, **_):
         if flag_values or constraint_values:
@@ -417,9 +420,12 @@ def _test_config_settings_exist_legacy(env):
         python_versions = ["3.11"],
         native = struct(
             alias = _mock_alias(available_config_settings),
-            config_setting = _mock_config_setting(available_config_settings),
+            config_setting = _mock_config_setting([]),
         ),
-        platform_constraint_values = {
+        selects = struct(
+            config_setting_group = _mock_config_setting_group(available_config_settings),
+        ),
+        platform_config_settings = {
             "linux_aarch64": [
                 "@platforms//cpu:aarch64",
                 "@platforms//os:linux",
@@ -454,7 +460,7 @@ def _test_config_settings_exist(env):
                 "any": {},
                 "macosx_11_0_arm64": {
                     "osx_versions": [(11, 0)],
-                    "platform_constraint_values": {
+                    "platform_config_settings": {
                         "osx_aarch64": [
                             "@platforms//cpu:aarch64",
                             "@platforms//os:osx",
@@ -463,7 +469,7 @@ def _test_config_settings_exist(env):
                 },
                 "manylinux_2_17_x86_64": {
                     "glibc_versions": [(2, 17), (2, 18)],
-                    "platform_constraint_values": {
+                    "platform_config_settings": {
                         "linux_x86_64": [
                             "@platforms//cpu:x86_64",
                             "@platforms//os:linux",
@@ -472,7 +478,7 @@ def _test_config_settings_exist(env):
                 },
                 "manylinux_2_18_x86_64": {
                     "glibc_versions": [(2, 17), (2, 18)],
-                    "platform_constraint_values": {
+                    "platform_config_settings": {
                         "linux_x86_64": [
                             "@platforms//cpu:x86_64",
                             "@platforms//os:linux",
@@ -481,7 +487,7 @@ def _test_config_settings_exist(env):
                 },
                 "musllinux_1_1_aarch64": {
                     "muslc_versions": [(1, 2), (1, 1), (1, 0)],
-                    "platform_constraint_values": {
+                    "platform_config_settings": {
                         "linux_aarch64": [
                             "@platforms//cpu:aarch64",
                             "@platforms//os:linux",
@@ -500,7 +506,10 @@ def _test_config_settings_exist(env):
                     python_versions = ["3.11"],
                     native = struct(
                         alias = _mock_alias(available_config_settings),
-                        config_setting = _mock_config_setting(available_config_settings),
+                        config_setting = _mock_config_setting([]),
+                    ),
+                    selects = struct(
+                        config_setting_group = _mock_config_setting_group(available_config_settings),
                     ),
                     **kwargs
                 )

@@ -93,7 +93,7 @@ def _test_bzlmod_aliases(env):
             },
         },
         extra_hub_aliases = {"bar_baz": ["foo"]},
-        platform_constraint_values = {
+        platform_config_settings = {
             "linux_x86_64": [
                 "@platforms//os:linux",
                 "@platforms//cpu:x86_64",
@@ -136,7 +136,7 @@ load("@rules_python//python/private/pypi:config_settings.bzl", "config_settings"
 
 config_settings(
     name = "config_settings",
-    platform_constraint_values = {
+    platform_config_settings = {
         "linux_x86_64": [
             "@platforms//os:linux",
             "@platforms//cpu:x86_64",
