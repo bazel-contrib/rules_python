@@ -1,5 +1,7 @@
 requests~=2.25.1
 s3cmd~=2.1.0
-yamllint~=1.28.0
+# Just to ensure environment markers are handled properly.
+yamllint~=1.28.0; python_version == '3.9'
+yamllint~=1.28.0; python_version != '3.9'
 sphinx
 sphinxcontrib-serializinghtml
