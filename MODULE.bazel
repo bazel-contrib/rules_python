@@ -63,6 +63,8 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
+    #
+    # how do we test sdists? Maybe just worth adding a single sdist somewhere?
     download_only = False,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "rules_python_publish_deps",
@@ -155,7 +157,6 @@ dev_pip = use_extension(
     dev_dependency = True,
 )
 dev_pip.parse(
-    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
     parallel_download = False,
@@ -163,14 +164,12 @@ dev_pip.parse(
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
-    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
     python_version = "3.13",
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
-    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "pypiserver",
     python_version = "3.11",

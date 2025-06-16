@@ -158,6 +158,23 @@ pip.whl_mods(
 )
 use_repo(pip, "whl_mods_hub")
 
+# Because below we are using `windows_aarch64` platform, we have to define various
+# properties for it.
+pip.default(
+    arch_name = "aarch64",
+    config_settings = [
+        "@platforms//os:windows",
+        "@platforms//cpu:aarch64",
+    ],
+    env = {
+        "platform_version": "0",
+    },
+    os_name = "windows",
+    platform = "windows_aarch64",
+    platform_tags = ["win_amd64"],
+    want_abis = [],  # default to all ABIs
+)
+
 # To fetch pip dependencies, use pip.parse. We can pass in various options,
 # but typically we pass requirements and the Python version. The Python
 # version must have been configured by a corresponding `python.toolchain()`
