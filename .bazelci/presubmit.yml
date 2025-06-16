@@ -504,6 +504,7 @@ tasks:
     shell_commands:
     - "bazel vendor --vendor_dir=./vendor //..."
     - "bazel build --vendor_dir=./vendor //..."
+    - "rm -rf ./vendor"
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: Ubuntu"
