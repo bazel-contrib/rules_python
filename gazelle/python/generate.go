@@ -85,8 +85,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			if parent != nil && parent.CoarseGrainedGeneration() {
 				return language.GenerateResult{}
 			}
-		} else if !hasEntrypointFile(args.Dir) {
-			return language.GenerateResult{}
 		}
 	}
 
