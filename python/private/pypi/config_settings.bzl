@@ -80,8 +80,8 @@ FLAGS = struct(
             "is_pip_whl_auto",
             "is_pip_whl_no",
             "is_pip_whl_only",
-            "is_py_freethreaded",
-            "is_py_non_freethreaded",
+            "_is_py_freethreaded_yes",
+            "_is_py_freethreaded_no",
             "pip_whl_glibc_version",
             "pip_whl_muslc_version",
             "pip_whl_osx_arch",
@@ -205,12 +205,12 @@ def _dist_config_settings(*, suffix, plat_flag_values, python_version, **kwargs)
     for name, f, compatible_with in [
         ("py_none", _flags.whl, None),
         ("py3_none", _flags.whl_py3, None),
-        ("py3_abi3", _flags.whl_py3_abi3, (FLAGS.is_py_non_freethreaded,)),
+        ("py3_abi3", _flags.whl_py3_abi3, (FLAGS._is_py_freethreaded_no,)),
         ("none", _flags.whl_pycp3x, None),
-        ("abi3", _flags.whl_pycp3x_abi3, (FLAGS.is_py_non_freethreaded,)),
+        ("abi3", _flags.whl_pycp3x_abi3, (FLAGS._is_py_freethreaded_no,)),
         # The below are not specializations of one another, they are variants
-        (cpv, _flags.whl_pycp3x_abicp, (FLAGS.is_py_non_freethreaded,)),
-        (cpv + "t", _flags.whl_pycp3x_abicp, (FLAGS.is_py_freethreaded,)),
+        (cpv, _flags.whl_pycp3x_abicp, (FLAGS._is_py_freethreaded_no,)),
+        (cpv + "t", _flags.whl_pycp3x_abicp, (FLAGS._is_py_freethreaded_yes,)),
     ]:
         if (f, compatible_with) in used_flags:
             # This should never happen as all of the different whls should have
@@ -237,12 +237,12 @@ def _dist_config_settings(*, suffix, plat_flag_values, python_version, **kwargs)
         for name, f, compatible_with in [
             ("py_none", _flags.whl_plat, None),
             ("py3_none", _flags.whl_plat_py3, None),
-            ("py3_abi3", _flags.whl_plat_py3_abi3, (FLAGS.is_py_non_freethreaded,)),
+            ("py3_abi3", _flags.whl_plat_py3_abi3, (FLAGS._is_py_freethreaded_no,)),
             ("none", _flags.whl_plat_pycp3x, None),
-            ("abi3", _flags.whl_plat_pycp3x_abi3, (FLAGS.is_py_non_freethreaded,)),
+            ("abi3", _flags.whl_plat_pycp3x_abi3, (FLAGS._is_py_freethreaded_no,)),
             # The below are not specializations of one another, they are variants
-            (cpv, _flags.whl_plat_pycp3x_abicp, (FLAGS.is_py_non_freethreaded,)),
-            (cpv + "t", _flags.whl_plat_pycp3x_abicp, (FLAGS.is_py_freethreaded,)),
+            (cpv, _flags.whl_plat_pycp3x_abicp, (FLAGS._is_py_freethreaded_no,)),
+            (cpv + "t", _flags.whl_plat_pycp3x_abicp, (FLAGS._is_py_freethreaded_yes,)),
         ]:
             if (f, compatible_with) in used_flags:
                 # This should never happen as all of the different whls should have
@@ -329,7 +329,7 @@ def _dist_config_setting(*, name, compatible_with = None, native = native, **kwa
         compatible_with: {type}`tuple[Label]` A collection of config settings that are
             compatible with the given dist config setting. For example, if only
             non-freethreaded python builds are allowed, add
-            FLAGS.is_py_non_freethreaded here.
+            FLAGS._is_py_freethreaded_no here.
         native (struct): The struct containing alias and config_setting rules
             to use for creating the objects. Can be overridden for unit tests
             reasons.
