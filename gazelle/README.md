@@ -121,12 +121,12 @@ gazelle_python_manifest(
     requirements = "//:requirements_lock.txt",
     # include_stub_packages: bool (default: False)
     # If set to True, this flag automatically includes any corresponding type stub packages
-    # for the third-party libraries that are present and used. For example, if you have 
+    # for the third-party libraries that are present and used. For example, if you have
     # `boto3` as a dependency, and this flag is enabled, the corresponding `boto3-stubs`
     # package will be automatically included in the BUILD file.
     #
-    # Enabling this feature helps ensure that type hints and stubs are readily available 
-    # for tools like type checkers and IDEs, improving the development experience and 
+    # Enabling this feature helps ensure that type hints and stubs are readily available
+    # for tools like type checkers and IDEs, improving the development experience and
     # reducing manual overhead in managing separate stub packages.
     include_stub_packages = True
 )
@@ -220,6 +220,8 @@ Python-specific directives are as follows:
 | Defines the format of the distribution name in labels to third-party deps. Useful for using Gazelle plugin with other rules with different repository conventions (e.g. `rules_pycross`). Full label is always prepended with (pip) repository name, e.g. `@pip//numpy`.                        |
 | `# gazelle:python_label_normalization`                                                                                                                                                                                                                                                          | `snake_case` |
 | Controls how distribution names in labels to third-party deps are normalized. Useful for using Gazelle plugin with other rules with different label conventions (e.g. `rules_pycross` uses PEP-503). Can be "snake_case", "none", or "pep503".                                                  |
+| `# gazelle:experimental_allow_relative_imports`          | `false` |
+| Controls whether Gazelle resolves dependencies for import statements that use paths relative to the current package. Can be "true" or "false".|
 
 #### Directive: `python_root`:
 
@@ -468,7 +470,7 @@ def py_test(name, main=None, **kwargs):
             name = "__test__",
             deps = ["@pip_pytest//:pkg"],  # change this to the pytest target in your repo.
         )
-    
+
         deps.append(":__test__")
         main = ":__test__.py"
 
@@ -581,6 +583,44 @@ deps = [
 ]
 ```
 
+#### Annotation: `experimental_allow_relative_imports`
+Enables experimental support for resolving relative imports in
+`python_generation_mode package`.
+
+By default, when `# gazelle:python_generation_mode package` is enabled,
+relative imports (e.g., from .library import foo) are not added to the
+deps field of the generated target. This results in incomplete py_library
+rules that lack required dependencies on sibling packages.
+
+Example:
+Given this Python file import:
+```python
+from .library import add as _add
+from .library import subtract as _subtract
+```
+
+Expected BUILD file output:
+```starlark
+py_library(
+    name = "py_default_library",
+    srcs = ["__init__.py"],
+    deps = [
+        "//example/library:py_default_library",
+    ],
+    visibility = ["//visibility:public"],
+)
+```
+
+Actual output without this annotation:
+```starlark
+py_library(
+    name = "py_default_library",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
+)
+```
+If the directive is set to `true`, gazelle will resolve imports
+that are relative to the current package.
 
 ### Libraries
 
