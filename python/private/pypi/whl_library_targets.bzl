@@ -24,6 +24,7 @@ load(
     ":labels.bzl",
     "DATA_LABEL",
     "DIST_INFO_LABEL",
+    "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "WHEEL_ENTRY_POINT_PREFIX",
@@ -101,8 +102,16 @@ def whl_library_targets(
         srcs_exclude = [],
         tags = [],
         filegroups = {
-            DIST_INFO_LABEL: ["site-packages/*.dist-info/**"],
-            DATA_LABEL: ["data/**"],
+            EXTRACTED_WHEEL_FILES: dict(
+                include = ["**"],
+                exclude = ["*.whl"],
+            ),
+            DIST_INFO_LABEL: dict(
+                include = ["site-packages/*.dist-info/**"],
+            ),
+            DATA_LABEL: dict(
+                include = ["data/**"],
+            ),
         },
         dependencies = [],
         dependencies_by_platform = {},
@@ -168,10 +177,11 @@ def whl_library_targets(
     tags = sorted(tags)
     data = [] + data
 
-    for filegroup_name, glob in filegroups.items():
+    for filegroup_name, glob_kwargs in filegroups.items():
+        glob_kwargs = {"allow_empty": True} | glob_kwargs
         native.filegroup(
             name = filegroup_name,
-            srcs = native.glob(glob, allow_empty = True),
+            srcs = native.glob(**glob_kwargs),
             visibility = ["//visibility:public"],
         )
 
