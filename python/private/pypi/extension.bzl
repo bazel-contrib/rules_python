@@ -781,7 +781,7 @@ def _pip_impl(module_ctx):
         # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
         # results after calling the PyPI index should be reproducible on each
         # machine.
-        return module_ctx.extension_metadata(reproducible = False)
+        return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
 
