@@ -1099,7 +1099,9 @@ the BUILD files for wheels.
             doc = """\
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
-This is still experimental and may be changed or removed without any notice.
+
+:::{include} /_includes/experimtal_api.md
+:::
 
 :::{seealso}
 The [environment markers][environment_markers] specification for the explanation of the
