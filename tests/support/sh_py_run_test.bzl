@@ -135,6 +135,7 @@ def _current_build_settings_impl(ctx):
     ctx.actions.write(
         output = info,
         content = json.encode({
+            "bootstrap_impl": ctx.attr._bootstrap_impl_flag[config_common.FeatureFlagInfo].value,
             "interpreter": {
                 "short_path": runtime.interpreter.short_path if runtime.interpreter else None,
             },
@@ -153,6 +154,11 @@ Writes information about the current build config to JSON for testing.
 This is so tests can verify information about the build config used for them.
 """,
     implementation = _current_build_settings_impl,
+    attrs = {
+        "_bootstrap_impl_flag": attr.label(
+            default = "//python/config_settings:bootstrap_impl",
+        ),
+    },
     toolchains = [
         TARGET_TOOLCHAIN_TYPE,
     ],

@@ -1,6 +1,7 @@
 import json
 import pathlib
 import platform
+import sys
 import unittest
 
 from python.runfiles import runfiles
@@ -22,6 +23,11 @@ class RunTest(unittest.TestCase):
                 "runtime_env_toolchain_interpreter.sh",
                 settings["interpreter"]["short_path"],
             )
+
+        if settings["bootstrap_impl"] == "script":
+            # Verify we're running in a venv
+            self.assertNotEqual(sys.prefix, sys.base_prefix)
+            self.assertIn(".venv/", sys.executable)
 
 
 if __name__ == "__main__":
