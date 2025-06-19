@@ -811,7 +811,13 @@ If you are defining custom platforms in your project and don't want things to cl
 } | {
     "env": attr.string_dict(
         doc = """\
-Values for the PEP508 environment marker evaluation during lock file parsing.
+The values to use for environment markers when evaluating an expression.
+
+The keys and values should be compatible with the [PyPA dependency specifiers
+specification](https://packaging.python.org/en/latest/specifications/dependency-specifiers/).
+
+Missing values will be set to the specification's defaults or computed using
+available toolchain information.
 
 Supported keys:
 * `implementation_name`, defaults to `cpython`.
