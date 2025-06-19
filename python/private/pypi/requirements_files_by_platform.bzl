@@ -113,7 +113,8 @@ def requirements_files_by_platform(
             be joined with args fined in files.
         python_version: str or None. This is needed when the get_index_urls is
             specified. It should be of the form "3.x.x",
-        platforms: TODO
+        platforms: {type}`list[str]` the list of human-friendly platform labels that should
+            be used for the evaluation.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
         fail_fn (Callable[[str], None]): A failure function used in testing failure cases.
 
@@ -137,7 +138,7 @@ def requirements_files_by_platform(
 
     platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
-        logger.debug(lambda: "Platforms from pip args: {}".format(platforms))
+        logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
 
     default_platforms = [_platform(p, python_version) for p in platforms]
 

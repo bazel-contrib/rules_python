@@ -505,10 +505,12 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 platform = tag.platform,
                 override = mod.is_root,
                 # TODO @aignas 2025-05-19: add more attr groups:
-                # * for AUTH
-                # * for index config
-                # * for whl selection
-                # * for custom platform definition
+                # * for AUTH - the default `netrc` usage could be configured through a common
+                # attribute.
+                # * for index/downloader config. This includes all of those attributes for
+                # overrides, etc. Index overrides per platform could be also used here.
+                # * for whl selection - selecting preferences of which `platform_tag`s we should use
+                # for what. We could also model the `cp313t` freethreaded as separate platforms.
             )
 
     config = _create_config(defaults)
