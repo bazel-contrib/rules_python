@@ -41,8 +41,8 @@ const (
 
 type ParserOutput struct {
 	FileName string
-	Modules  []module
-	Comments []comment
+	Modules  []Module
+	Comments []Comment
 	HasMain  bool
 }
 
@@ -127,24 +127,24 @@ func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
 	return false
 }
 
-// parseImportStatement parses a node for an import statement, returning a `module` and a boolean
+// parseImportStatement parses a node for an import statement, returning a `Module` and a boolean
 // representing if the parse was OK or not.
-func parseImportStatement(node *sitter.Node, code []byte) (module, bool) {
+func parseImportStatement(node *sitter.Node, code []byte) (Module, bool) {
 	switch node.Type() {
 	case sitterNodeTypeDottedName:
-		return module{
+		return Module{
 			Name:       node.Content(code),
 			LineNumber: node.StartPoint().Row + 1,
 		}, true
 	case sitterNodeTypeAliasedImport:
 		return parseImportStatement(node.Child(0), code)
 	case sitterNodeTypeWildcardImport:
-		return module{
+		return Module{
 			Name:       "*",
 			LineNumber: node.StartPoint().Row + 1,
 		}, true
 	}
-	return module{}, false
+	return Module{}, false
 }
 
 // parseImportStatements parses a node for import statements, returning true if the node is
@@ -188,7 +188,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 // It updates FileParser.output.Comments with the parsed comment.
 func (p *FileParser) parseComments(node *sitter.Node) bool {
 	if node.Type() == sitterNodeTypeComment {
-		p.output.Comments = append(p.output.Comments, comment(node.Content(p.code)))
+		p.output.Comments = append(p.output.Comments, Comment(node.Content(p.code)))
 		return true
 	}
 	return false

@@ -54,7 +54,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 
 {#v0-0-0-fixed}
 ### Fixed

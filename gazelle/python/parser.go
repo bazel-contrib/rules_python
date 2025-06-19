@@ -145,9 +145,9 @@ func removeDupesFromStringTreeSetSlice(array []string) []string {
 	return dedupe
 }
 
-// module represents a fully-qualified, dot-separated, Python module as seen on
+// Module represents a fully-qualified, dot-separated, Python module as seen on
 // the import statement, alongside the line number where it happened.
-type module struct {
+type Module struct {
 	// The fully-qualified, dot-separated, Python module name as seen on import
 	// statements.
 	Name string `json:"name"`
@@ -162,7 +162,7 @@ type module struct {
 
 // moduleComparator compares modules by name.
 func moduleComparator(a, b interface{}) int {
-	return godsutils.StringComparator(a.(module).Name, b.(module).Name)
+	return godsutils.StringComparator(a.(Module).Name, b.(Module).Name)
 }
 
 // annotationKind represents Gazelle annotation kinds.
@@ -176,12 +176,12 @@ const (
 	annotationKindIncludeDep annotationKind = "include_dep"
 )
 
-// comment represents a Python comment.
-type comment string
+// Comment represents a Python comment.
+type Comment string
 
 // asAnnotation returns an annotation object if the comment has the
 // annotationPrefix.
-func (c *comment) asAnnotation() (*annotation, error) {
+func (c *Comment) asAnnotation() (*annotation, error) {
 	uncomment := strings.TrimLeft(string(*c), "# ")
 	if !strings.HasPrefix(uncomment, annotationPrefix) {
 		return nil, nil
@@ -215,7 +215,7 @@ type annotations struct {
 
 // annotationsFromComments returns all the annotations parsed out of the
 // comments of a Python module.
-func annotationsFromComments(comments []comment) (*annotations, error) {
+func annotationsFromComments(comments []Comment) (*annotations, error) {
 	ignore := make(map[string]struct{})
 	includeDeps := []string{}
 	for _, comment := range comments {
