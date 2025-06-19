@@ -22,7 +22,8 @@ load(":glob_excludes.bzl", "glob_excludes")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
 load(":version.bzl", "version")
 
-_IS_FREETHREADED = Label("//python/config_settings:is_py_freethreaded")
+_IS_FREETHREADED_YES = Label("//python/config_settings:_is_py_freethreaded_yes")
+_IS_FREETHREADED_NO = Label("//python/config_settings:_is_py_freethreaded_no")
 
 def define_hermetic_runtime_toolchain_impl(
         *,
@@ -87,16 +88,16 @@ def define_hermetic_runtime_toolchain_impl(
     cc_import(
         name = "interface",
         interface_library = select({
-            _IS_FREETHREADED: "libs/python{major}{minor}t.lib".format(**version_dict),
-            "//conditions:default": "libs/python{major}{minor}.lib".format(**version_dict),
+            _IS_FREETHREADED_YES: "libs/python{major}{minor}t.lib".format(**version_dict),
+            _IS_FREETHREADED_NO: "libs/python{major}{minor}.lib".format(**version_dict),
         }),
         system_provided = True,
     )
     cc_import(
         name = "abi3_interface",
         interface_library = select({
-            _IS_FREETHREADED: "libs/python3t.lib",
-            "//conditions:default": "libs/python3.lib",
+            _IS_FREETHREADED_YES: "libs/python3t.lib",
+            _IS_FREETHREADED_NO: "libs/python3.lib",
         }),
         system_provided = True,
     )
@@ -115,10 +116,10 @@ def define_hermetic_runtime_toolchain_impl(
         includes = [
             "include",
         ] + select({
-            _IS_FREETHREADED: [
+            _IS_FREETHREADED_YES: [
                 "include/python{major}.{minor}t".format(**version_dict),
             ],
-            "//conditions:default": [
+            _IS_FREETHREADED_NO: [
                 "include/python{major}.{minor}".format(**version_dict),
                 "include/python{major}.{minor}m".format(**version_dict),
             ],
@@ -224,8 +225,8 @@ def define_hermetic_runtime_toolchain_impl(
         implementation_name = "cpython",
         # See https://peps.python.org/pep-3147/ for pyc tag infix format
         pyc_tag = select({
-            _IS_FREETHREADED: "cpython-{major}{minor}t".format(**version_dict),
-            "//conditions:default": "cpython-{major}{minor}".format(**version_dict),
+            _IS_FREETHREADED_YES: "cpython-{major}{minor}t".format(**version_dict),
+            _IS_FREETHREADED_NO: "cpython-{major}{minor}".format(**version_dict),
         }),
     )
 

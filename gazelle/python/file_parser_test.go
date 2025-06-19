@@ -27,7 +27,7 @@ func TestParseImportStatements(t *testing.T) {
 		name     string
 		code     string
 		filepath string
-		result   []module
+		result   []Module
 	}{
 		{
 			name:     "not has import",
@@ -39,7 +39,7 @@ func TestParseImportStatements(t *testing.T) {
 			name:     "has import",
 			code:     "import unittest\nimport os.path\nfrom foo.bar import abc.xyz",
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "unittest",
 					LineNumber: 1,
@@ -66,7 +66,7 @@ func TestParseImportStatements(t *testing.T) {
 	import unittest
 `,
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "unittest",
 					LineNumber: 2,
@@ -79,7 +79,7 @@ func TestParseImportStatements(t *testing.T) {
 			name:     "invalid syntax",
 			code:     "import os\nimport",
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "os",
 					LineNumber: 1,
@@ -92,7 +92,7 @@ func TestParseImportStatements(t *testing.T) {
 			name:     "import as",
 			code:     "import os as b\nfrom foo import bar as c# 123",
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "os",
 					LineNumber: 1,
@@ -111,7 +111,7 @@ func TestParseImportStatements(t *testing.T) {
 		{
 			name: "complex import",
 			code: "from unittest import *\nfrom foo import (bar as c, baz, qux as d)\nfrom . import abc",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "unittest.*",
 					LineNumber: 1,
@@ -152,7 +152,7 @@ func TestParseComments(t *testing.T) {
 	units := []struct {
 		name   string
 		code   string
-		result []comment
+		result []Comment
 	}{
 		{
 			name:   "not has comment",
@@ -162,17 +162,17 @@ func TestParseComments(t *testing.T) {
 		{
 			name:   "has comment",
 			code:   "# a = 1\n# b = 2",
-			result: []comment{"# a = 1", "# b = 2"},
+			result: []Comment{"# a = 1", "# b = 2"},
 		},
 		{
 			name:   "has comment in if",
 			code:   "if True:\n  # a = 1\n  # b = 2",
-			result: []comment{"# a = 1", "# b = 2"},
+			result: []Comment{"# a = 1", "# b = 2"},
 		},
 		{
 			name:   "has comment inline",
 			code:   "import os# 123\nfrom pathlib import Path as b#456",
-			result: []comment{"# 123", "#456"},
+			result: []Comment{"# 123", "#456"},
 		},
 	}
 	for _, u := range units {
@@ -248,7 +248,7 @@ func TestParseFull(t *testing.T) {
 	output, err := p.Parse(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, ParserOutput{
-		Modules:  []module{{Name: "bar.abc", LineNumber: 1, Filepath: "foo/a.py", From: "bar"}},
+		Modules:  []Module{{Name: "bar.abc", LineNumber: 1, Filepath: "foo/a.py", From: "bar"}},
 		Comments: nil,
 		HasMain:  false,
 		FileName: "a.py",

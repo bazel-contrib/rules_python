@@ -372,23 +372,23 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, constraint_values, override = False, **values):
+def _configure(config, *, platform, os_name, arch_name, constraint_values, env = {}, override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
     if platform:
         if not override and config.get("platforms", {}).get(platform):
             return
 
+        for key in env:
+            if key not in _SUPPORTED_PEP508_KEYS:
+                fail("Unsupported key in the PEP508 environment: {}".format(key))
+
         config["platforms"][platform] = struct(
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
             constraint_values = constraint_values,
-            env = {
-                k[4:]: v
-                for k, v in values.items()
-                if k.startswith("env_") and v
-            },
+            env = env,
         )
     else:
         config["platforms"].pop(platform)
@@ -412,13 +412,13 @@ def _create_config(defaults):
         _configure(
             defaults,
             arch_name = cpu,
-            env_platform_version = "0",
             os_name = "linux",
             platform = "linux_{}".format(cpu),
             constraint_values = [
                 "@platforms//os:linux",
                 "@platforms//cpu:{}".format(cpu),
             ],
+            env = {"platform_version": "0"},
         )
     for cpu in [
         "aarch64",
@@ -429,25 +429,25 @@ def _create_config(defaults):
             arch_name = cpu,
             # We choose the oldest non-EOL version at the time when we release `rules_python`.
             # See https://endoflife.date/macos
-            env_platform_version = "14.0",
             os_name = "osx",
             platform = "osx_{}".format(cpu),
             constraint_values = [
                 "@platforms//os:osx",
                 "@platforms//cpu:{}".format(cpu),
             ],
+            env = {"platform_version": "14.0"},
         )
 
     _configure(
         defaults,
         arch_name = "x86_64",
-        env_platform_version = "0",
         os_name = "windows",
         platform = "windows_x86_64",
         constraint_values = [
             "@platforms//os:windows",
             "@platforms//cpu:x86_64",
         ],
+        env = {"platform_version": "0"},
     )
     return struct(**defaults)
 
@@ -514,22 +514,17 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 defaults,
                 arch_name = tag.arch_name,
                 constraint_values = tag.constraint_values,
-                # The env_ values is only used if the `PIPSTAR` is enabled
-                env_implementation_name = tag.env_implementation_name,
-                env_os_name = tag.env_os_name,
-                env_platform_machine = tag.env_platform_machine,
-                env_platform_release = tag.env_platform_release,
-                env_platform_system = tag.env_platform_system,
-                env_platform_version = tag.env_platform_version,
-                env_sys_platform = tag.env_sys_platform,
+                env = tag.env,
                 os_name = tag.os_name,
                 platform = tag.platform,
                 override = mod.is_root,
                 # TODO @aignas 2025-05-19: add more attr groups:
-                # * for AUTH
-                # * for index config
-                # * for whl selection
-                # * for custom platform definition
+                # * for AUTH - the default `netrc` usage could be configured through a common
+                # attribute.
+                # * for index/downloader config. This includes all of those attributes for
+                # overrides, etc. Index overrides per platform could be also used here.
+                # * for whl selection - selecting preferences of which `platform_tag`s we should use
+                # for what. We could also model the `cp313t` freethreaded as separate platforms.
             )
 
     config = _create_config(defaults)
@@ -803,7 +798,7 @@ def _pip_impl(module_ctx):
         # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
         # results after calling the PyPI index should be reproducible on each
         # machine.
-        return module_ctx.extension_metadata(reproducible = False)
+        return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
 
@@ -813,7 +808,7 @@ _default_attrs = {
 The CPU architecture name to be used.
 
 :::{note}
-Either this or {attr}`env_platform_machine` should be specified.
+Either this or {attr}`env` `platform_machine` key should be specified.
 :::
 """,
     ),
@@ -828,7 +823,7 @@ The constraint_values to use in select statements.
 The OS name to be used.
 
 :::{note}
-Either this or the appropriate `env_*` attributes should be specified.
+Either this or the appropriate `env` keys should be specified.
 :::
 """,
     ),
@@ -842,29 +837,42 @@ If you are defining custom platforms in your project and don't want things to cl
 """,
     ),
 } | {
+    "env": attr.string_dict(
+        doc = """\
+The values to use for environment markers when evaluating an expression.
+
+The keys and values should be compatible with the [PyPA dependency specifiers
+specification](https://packaging.python.org/en/latest/specifications/dependency-specifiers/).
+
+Missing values will be set to the specification's defaults or computed using
+available toolchain information.
+
+Supported keys:
+* `implementation_name`, defaults to `cpython`.
+* `os_name`, defaults to a value inferred from the {attr}`os_name`.
+* `platform_machine`, defaults to a value inferred from the {attr}`arch_name`.
+* `platform_release`, defaults to an empty value.
+* `platform_system`, defaults to a value inferred from the {attr}`os_name`.
+* `platform_version`, defaults to `0`.
+* `sys_platform`, defaults to a value inferred from the {attr}`os_name`.
+
+::::{note}
+This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
+::::
+""",
+    ),
     # The values for PEP508 env marker evaluation during the lock file parsing
-    "env_implementation_name": attr.string(
-        doc = "Value for `implementation_name` to evaluate environment markers. Defaults to `cpython`.",
-    ),
-    "env_os_name": attr.string(
-        doc = "Value for `os_name` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
-    ),
-    "env_platform_machine": attr.string(
-        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to a value inferred from the {attr}`arch_name`.",
-    ),
-    "env_platform_release": attr.string(
-        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to an empty value.",
-    ),
-    "env_platform_system": attr.string(
-        doc = "Value for `platform_system` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
-    ),
-    "env_platform_version": attr.string(
-        doc = "Value for `platform_machine` to evaluate environment markers. Defaults to `0`.",
-    ),
-    "env_sys_platform": attr.string(
-        doc = "Value for `sys_platform` to evaluate environment markers. Defaults to a value inferred from the {attr}`os_name`.",
-    ),
 }
+
+_SUPPORTED_PEP508_KEYS = [
+    "implementation_name",
+    "os_name",
+    "platform_machine",
+    "platform_release",
+    "platform_system",
+    "platform_version",
+    "sys_platform",
+]
 
 def _pip_parse_ext_attrs(**kwargs):
     """Get the attributes for the pip extension.
@@ -1127,7 +1135,9 @@ the BUILD files for wheels.
             doc = """\
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
-This is still experimental and may be changed or removed without any notice.
+
+:::{include} /_includes/experimtal_api.md
+:::
 
 :::{seealso}
 The [environment markers][environment_markers] specification for the explanation of the

@@ -69,7 +69,7 @@ func (t *targetBuilder) addSrcs(srcs *treeset.Set) *targetBuilder {
 }
 
 // addModuleDependency adds a single module dep to the target.
-func (t *targetBuilder) addModuleDependency(dep module) *targetBuilder {
+func (t *targetBuilder) addModuleDependency(dep Module) *targetBuilder {
 	fileName := dep.Name + ".py"
 	if dep.From != "" {
 		fileName = dep.From + ".py"
@@ -87,7 +87,7 @@ func (t *targetBuilder) addModuleDependency(dep module) *targetBuilder {
 func (t *targetBuilder) addModuleDependencies(deps *treeset.Set) *targetBuilder {
 	it := deps.Iterator()
 	for it.Next() {
-		t.addModuleDependency(it.Value().(module))
+		t.addModuleDependency(it.Value().(Module))
 	}
 	return t
 }

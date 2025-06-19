@@ -33,7 +33,8 @@ def evaluate_markers(*, requirements, platforms):
 
     Args:
         requirements: {type}`dict[str, list[str]]` of the requirement file lines to evaluate.
-        platforms: {type}`dict[str | struct]` TODO
+        platforms: {type}`dict[str, dict[str, str]]` The environments that we for each requirement
+            file to evaluate. The keys between the platforms and requirements should be shared.
 
     Returns:
         dict of string lists with target platforms

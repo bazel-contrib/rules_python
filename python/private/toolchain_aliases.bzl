@@ -14,7 +14,8 @@
 
 """Create toolchain alias targets."""
 
-load("@rules_python//python:versions.bzl", "PLATFORMS")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//python:versions.bzl", "PLATFORMS")
 
 def toolchain_aliases(*, name, platforms, visibility = None, native = native):
     """Create toolchain aliases for the python toolchains.
@@ -30,10 +31,15 @@ def toolchain_aliases(*, name, platforms, visibility = None, native = native):
         if platform not in platforms:
             continue
 
+        _platform = "_" + platform
         native.config_setting(
-            name = platform,
-            flag_values = PLATFORMS[platform].flag_values,
+            name = _platform,
             constraint_values = PLATFORMS[platform].compatible_with,
+            visibility = ["//visibility:private"],
+        )
+        selects.config_setting_group(
+            name = platform,
+            match_all = PLATFORMS[platform].target_settings + [_platform],
             visibility = ["//visibility:private"],
         )
 
