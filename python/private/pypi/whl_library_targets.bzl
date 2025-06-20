@@ -168,8 +168,6 @@ def whl_library_targets(
 
     if filesgroups == None:
         filegroups = {
-            # TODO(#3011): Consider parsing the RECORD file to get a precise list of files
-            # instead of relying on a glob with excludes.
             EXTRACTED_WHEEL_FILES: dict(
                 include = ["**"],
                 exclude = [name],
