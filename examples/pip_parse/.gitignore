@@ -1,5 +1,4 @@
 # git ignore patterns
 
 /bazel-*
-/vendor
 user.bazelrc

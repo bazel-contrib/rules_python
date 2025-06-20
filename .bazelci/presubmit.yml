@@ -498,8 +498,8 @@ tasks:
 
   integration_test_bazel_vendor_ubuntu:
     <<: *reusable_build_test_all
-    name: "compile_pip_requirements: Ubuntu"
-    working_directory: tests/integration/pip_parse
+    name: "test_bazel_vendor: Ubuntu"
+    working_directory: examples/bzlmod
     platform: ubuntu2004
     shell_commands:
     - "bazel vendor --vendor_dir=./vendor //..."
