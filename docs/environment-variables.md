@@ -38,13 +38,13 @@ stderr.
 
 When `1`, bzlmod extensions will print debug information about what they're
 doing. This is mostly useful for development to debug errors.
-::::
+:::
 
 :::{envvar} RULES_PYTHON_DEPRECATION_WARNINGS
 
 When `1`, `rules_python` will warn users about deprecated functionality that will
 be removed in a subsequent major `rules_python` version. Defaults to `0` if unset.
-::::
+:::
 
 ::::{envvar} RULES_PYTHON_ENABLE_PYSTAR
 
@@ -131,7 +131,7 @@ Replace the `VERSION_OS_ARCH` part with actual values when using, e.g.,
 `3_13_0_linux_x86_64`. The version values must have `_` instead of `.` and the
 os, arch values are the same as the ones mentioned in the
 `//python:versions.bzl` file.
-::::
+:::
 
 :::{envvar} VERBOSE_COVERAGE
 
