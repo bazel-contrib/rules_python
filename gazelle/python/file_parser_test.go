@@ -254,3 +254,40 @@ func TestParseFull(t *testing.T) {
 		FileName: "a.py",
 	}, *output)
 }
+
+func TestTypeCheckingImports(t *testing.T) {
+	code := `
+import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import boto3
+    from rest_framework import serializers
+
+def example_function():
+    _ = sys.version_info
+`
+	p := NewFileParser()
+	p.SetCodeAndFile([]byte(code), "", "test.py")
+
+	result, err := p.Parse(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	// Check that we found the expected modules
+	expectedModules := map[string]bool{
+		"sys": false,
+		"typing.TYPE_CHECKING": false,
+		"boto3": true,
+		"rest_framework.serializers": true,
+	}
+
+	for _, mod := range result.Modules {
+		if expected, exists := expectedModules[mod.Name]; exists {
+			if mod.TypeCheckingOnly != expected {
+				t.Errorf("Module %s: expected TypeCheckingOnly=%v, got %v", mod.Name, expected, mod.TypeCheckingOnly)
+			}
+		}
+	}
+}
