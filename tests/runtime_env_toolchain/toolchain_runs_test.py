@@ -27,7 +27,10 @@ class RunTest(unittest.TestCase):
         if settings["bootstrap_impl"] == "script":
             # Verify we're running in a venv
             self.assertNotEqual(sys.prefix, sys.base_prefix)
-            self.assertIn(".venv/", sys.executable)
+            # .venv/ occurs for a build-time venv.
+            # For a runtime created venv, it goes into a temp dir, so
+            # look for the /bin/ dir as an indicator.
+            self.assertRegex(sys.executable, r"[.]venv/|/bin/")
 
 
 if __name__ == "__main__":
