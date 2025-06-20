@@ -17,11 +17,11 @@ you're using Python. There are four basic use cases:
 2. A library module with dev-only uses of Python. For example, a Java project
    that only uses Python as part of testing itself.
 3. A library module without version constraints. For example, a rule set with
-   Python build tools, but it defers to the user as to what Python version is used
+   Python build tools, but defers to the user as to what Python version is used
    for the tools.
 4. A library module with version constraints. For example, a rule set with
    Python build tools, and the module requires a specific version of Python
-   to be used with its tools.
+   be used with its tools.
 
 ### Root modules
 
