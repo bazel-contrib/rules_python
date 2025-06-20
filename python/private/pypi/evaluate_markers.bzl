@@ -96,11 +96,11 @@ def evaluate_markers_py(mrctx, *, requirements, python_interpreter, python_inter
         ],
         srcs = srcs,
         environment = {
+            "PYTHONHOME": str(interpreter.dirname),
             "PYTHONPATH": [
                 Label("@pypi__packaging//:BUILD.bazel"),
                 Label("//:BUILD.bazel"),
             ],
-            "PYTHONHOME": str(interpreter.dirname),
         },
         logger = logger,
     )
