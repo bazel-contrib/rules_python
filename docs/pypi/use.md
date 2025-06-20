@@ -45,6 +45,11 @@ Note, that the hub repo contains the following targets for each package:
 * `@pypi//numpy:whl` - the {obj}`filegroup` that is the `.whl` file itself which includes all of
   the transitive dependencies via the {attr}`filegroup.data` attribute.
 
+:::{versionadded} VERSION_NEXT_FEATURE
+
+The `:extracted_whl_files` target was added
+:::
+
 ## Entry points
 
 If you would like to access [entry points][whl_ep], see the `py_console_script_binary` rule documentation,
