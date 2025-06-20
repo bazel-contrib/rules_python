@@ -495,6 +495,16 @@ tasks:
     name: "tests/integration bazel-in-bazel: Debian"
     platform: debian11
 
+
+  integration_test_bazel_vendor_ubuntu:
+    <<: *reusable_build_test_all
+    name: "test_bazel_vendor: Ubuntu"
+    working_directory: examples/bzlmod
+    platform: ubuntu2004
+    shell_commands:
+    - "bazel vendor --vendor_dir=./vendor //..."
+    - "bazel build --vendor_dir=./vendor //..."
+    - "rm -rf ./vendor"
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: Ubuntu"
