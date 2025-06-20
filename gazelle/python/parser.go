@@ -158,6 +158,8 @@ type Module struct {
 	// If this was a from import, e.g. from foo import bar, From indicates the module
 	// from which it is imported.
 	From string `json:"from"`
+	// Whether this import is type-checking only (inside if TYPE_CHECKING block).
+	TypeCheckingOnly bool `json:"type_checking_only"`
 }
 
 // moduleComparator compares modules by name.
