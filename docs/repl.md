@@ -1,6 +1,6 @@
 # Getting a REPL or Interactive Shell
 
-rules_python provides a REPL to help with debugging and developing. The goal of
+`rules_python` provides a REPL to help with debugging and developing. The goal of
 the REPL is to present an environment identical to what a {bzl:obj}`py_binary` creates
 for your code.
 

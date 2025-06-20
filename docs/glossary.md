@@ -5,7 +5,7 @@
 common attributes
 : Every rule has a set of common attributes. See Bazel's
   [Common attributes](https://bazel.build/reference/be/common-definitions#common-attributes)
-  for a complete listing
+  for a complete listing.
 
 in-build runtime
 : An in-build runtime is one where the Python runtime, and all its files, are
@@ -21,9 +21,9 @@ which can be a significant number of files.
 
 platform runtime
 : A platform runtime is a Python runtime that is assumed to be installed on the
-system where a Python binary runs, whereever that may be. For example, using `/usr/bin/python3`
+system where a Python binary runs, wherever that may be. For example, using `/usr/bin/python3`
 as the interpreter is a platform runtime -- it assumes that, wherever the binary
-runs (your local machine, a remote worker, within a container, etc), that path
+runs (your local machine, a remote worker, within a container, etc.), that path
 is available. Such runtimes are _not_ part of a binary's runfiles.
 
 The main advantage of platform runtimes is they are lightweight insofar as
@@ -42,8 +42,8 @@ rule callable
   accepted; refer to the respective API accepting this type.
 
 simple label
-: A `str` or `Label` object but not a _direct_ `select` object. These usually
-  mean a string manipulation is occuring, which can't be done on `select`
+  A `str` or `Label` object but not a _direct_ `select` object. This usually
+  means a string manipulation is occurring, which can't be done on `select`
   objects. Such attributes are usually still configurable if an alias is used,
   and a reference to the alias is passed instead.
 
