@@ -1051,6 +1051,10 @@ def _test_pipstar_platforms(env):
                 default = [
                     _default(
                         platform = "{}_{}".format(os, cpu),
+                        constraint_values = [
+                            "@platforms//os:{}".format(os),
+                            "@platforms//cpu:{}".format(cpu),
+                        ],
                     )
                     for os, cpu in [
                         ("linux", "x86_64"),
