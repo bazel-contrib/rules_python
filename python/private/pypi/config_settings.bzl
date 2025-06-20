@@ -127,7 +127,9 @@ def config_settings(
         osx_versions (list[str]): The list of OSX OS versions to configure
             config settings for.
         platform_constraint_values: {type}`dict[str, list[str]]` the constraint
-            values to use instead of the default ones.
+            values to use instead of the default ones. Key are platform names
+            (a human-friendly platform string). Values are lists of
+            `constraint_value` label strings.
         **kwargs: Other args passed to the underlying implementations, such as
             {obj}`native`.
     """
