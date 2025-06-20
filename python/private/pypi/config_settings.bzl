@@ -111,8 +111,8 @@ def config_settings(
         glibc_versions = [],
         muslc_versions = [],
         osx_versions = [],
-        target_platforms = [],
         name = None,
+        platform_constraint_values = {},
         **kwargs):
     """Generate all of the pip config settings.
 
@@ -126,8 +126,10 @@ def config_settings(
             configure config settings for.
         osx_versions (list[str]): The list of OSX OS versions to configure
             config settings for.
-        target_platforms (list[str]): The list of "{os}_{cpu}" for deriving
-            constraint values for each condition.
+        platform_constraint_values: {type}`dict[str, list[str]]` the constraint
+            values to use instead of the default ones. Key are platform names
+            (a human-friendly platform string). Values are lists of
+            `constraint_value` label strings.
         **kwargs: Other args passed to the underlying implementations, such as
             {obj}`native`.
     """
@@ -135,22 +137,17 @@ def config_settings(
     glibc_versions = [""] + glibc_versions
     muslc_versions = [""] + muslc_versions
     osx_versions = [""] + osx_versions
-    target_platforms = [("", ""), ("osx", "universal2")] + [
-        t.split("_", 1)
-        for t in target_platforms
-    ]
+    target_platforms = {
+        "": [],
+        # TODO @aignas 2025-06-15: allowing universal2 and platform specific wheels in one
+        # closure is making things maybe a little bit too complicated.
+        "osx_universal2": ["@platforms//os:osx"],
+    } | platform_constraint_values
 
     for python_version in python_versions:
-        for os, cpu in target_platforms:
-            constraint_values = []
-            suffix = ""
-            if os:
-                constraint_values.append("@platforms//os:" + os)
-                suffix += "_" + os
-            if cpu:
-                suffix += "_" + cpu
-                if cpu != "universal2":
-                    constraint_values.append("@platforms//cpu:" + cpu)
+        for platform_name, constraint_values in target_platforms.items():
+            suffix = "_{}".format(platform_name) if platform_name else ""
+            os, _, cpu = platform_name.partition("_")
 
             _dist_config_settings(
                 suffix = suffix,

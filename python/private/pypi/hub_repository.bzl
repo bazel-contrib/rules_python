@@ -34,6 +34,7 @@ def _impl(rctx):
         },
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
+        platform_constraint_values = rctx.attr.platform_constraint_values,
     )
     for path, contents in aliases.items():
         rctx.file(path, contents)
@@ -82,6 +83,10 @@ hub_repository = repository_rule(
             doc = """\
 The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys.
 """,
+        ),
+        "platform_constraint_values": attr.string_list_dict(
+            doc = "The constraint values for each platform name. The values are string canonical string Label representations",
+            mandatory = False,
         ),
         "repo_name": attr.string(
             mandatory = True,
