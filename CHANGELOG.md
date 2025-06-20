@@ -65,6 +65,7 @@ END_UNRELEASED_TEMPLATE
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
   this feature.
+* (pypi) A new filegroup target `{name}_extracted_whl_files` is now available in `whl_library`, providing access to all files extracted from a wheel.
 
 {#v0-0-0-removed}
 ### Removed
