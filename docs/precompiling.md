@@ -13,7 +13,7 @@ While precompiling helps runtime performance, it has two main costs:
 1. Increasing the size (count and disk usage) of runfiles. It approximately
    double the count of the runfiles because for every `.py` file, there is also
    a `.pyc` file. Compiled files are generally around the same size as the
-   source files, so it approximately doubles disk usage.
+   source files, so it approximately doubles the disk usage.
 2. Precompiling requires running an extra action at build time. While
    compiling itself isn't that expensive, the overhead can become noticeable
    as more files need to be compiled.
