@@ -3,8 +3,8 @@
 
 # Circular dependencies
 
-Sometimes PyPi packages contain dependency cycles -- for instance a particular
-version `sphinx` (this is no longer the case in the latest version as of
+Sometimes PyPI packages contain dependency cycles. For instance, a particular
+version of `sphinx` (this is no longer the case in the latest version as of
 2024-06-02) depends on `sphinxcontrib-serializinghtml`. When using them as
 `requirement()`s, ala
 
@@ -47,10 +47,10 @@ simultaneously.
 )
 ```
 
-`pip_parse` supports fixing multiple cycles simultaneously, however cycles must
-be distinct. `apache-airflow` for instance has dependency cycles with a number
+`pip_parse` supports fixing multiple cycles simultaneously, however, cycles must
+be distinct. `apache-airflow`, for instance, has dependency cycles with a number
 of its optional dependencies, which means those optional dependencies must all
-be a part of the `airflow` cycle. For instance --
+be a part of the `airflow` cycle. For instance:
 
 ```starlark
     ...
@@ -67,9 +67,9 @@ be a part of the `airflow` cycle. For instance --
 
 Alternatively, one could resolve the cycle by removing one leg of it.
 
-For example while `apache-airflow-providers-sqlite` is "baked into" the Airflow
+For example, while `apache-airflow-providers-sqlite` is "baked into" the Airflow
 package, `apache-airflow-providers-postgres` is not and is an optional feature.
-Rather than listing `apache-airflow[postgres]` in your `requirements.txt` which
+Rather than listing `apache-airflow[postgres]` in your `requirements.txt`, which
 would expose a cycle via the extra, one could either _manually_ depend on
 `apache-airflow` and `apache-airflow-providers-postgres` separately as
 requirements. Bazel rules which need only `apache-airflow` can take it as a
@@ -77,6 +77,6 @@ dependency, and rules which explicitly want to mix in
 `apache-airflow-providers-postgres` now can.
 
 Alternatively, one could use `rules_python`'s patching features to remove one
-leg of the dependency manually. For instance by making
+leg of the dependency manually, for instance, by making
 `apache-airflow-providers-postgres` not explicitly depend on `apache-airflow` or
 perhaps `apache-airflow-providers-common-sql`.

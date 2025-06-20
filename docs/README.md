@@ -1,14 +1,14 @@
 # rules_python Sphinx docs generation
 
 The docs for rules_python are generated using a combination of Sphinx, Bazel,
-and Readthedocs.org. The Markdown files in source control are unlikely to render
+and Read the Docs. The Markdown files in source control are unlikely to render
 properly without the Sphinx processing step because they rely on Sphinx and
 MyST-specific Markdown functionality.
 
 The actual sources that Sphinx consumes are in this directory, with Stardoc
-generating additional sources or Sphinx.
+generating additional sources for Sphinx.
 
-Manually building the docs isn't necessary -- readthedocs.org will
+Manually building the docs isn't necessary -- Read the Docs will
 automatically build and deploy them when commits are pushed to the repo.
 
 ## Generating docs for development
@@ -31,8 +31,8 @@ equivalent bazel command if desired.
 ### Installing ibazel
 
 The `ibazel` tool can be used to automatically rebuild the docs as you
-development them. See the [ibazel docs](https://github.com/bazelbuild/bazel-watcher) for
-how to install it. The quick start for linux is:
+develop them. See the [ibazel docs](https://github.com/bazelbuild/bazel-watcher) for
+how to install it. The quick start for Linux is:
 
 ```
 sudo apt install npm
@@ -57,9 +57,9 @@ docs/.
 The Sphinx configuration is `docs/conf.py`. See
 https://www.sphinx-doc.org/ for details about the configuration file.
 
-## Readthedocs configuration
+## Read the Docs configuration
 
-There's two basic parts to the readthedocs configuration:
+There's two basic parts to the Read the Docs configuration:
 
 *   `.readthedocs.yaml`: This configuration file controls most settings, such as
     the OS version used to build, Python version, dependencies, what Bazel
@@ -69,4 +69,4 @@ There's two basic parts to the readthedocs configuration:
     controls additional settings such as permissions, what versions are
     published, when to publish changes, etc.
 
-For more readthedocs configuration details, see docs.readthedocs.io.
+For more Read the Docs configuration details, see docs.readthedocs.io.

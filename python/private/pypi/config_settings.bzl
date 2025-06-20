@@ -70,6 +70,7 @@ suffix.
 :::
 """
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//python/private:flags.bzl", "LibcFlag")
 load(":flags.bzl", "INTERNAL_FLAGS", "UniversalWhlFlag")
 
@@ -80,8 +81,8 @@ FLAGS = struct(
             "is_pip_whl_auto",
             "is_pip_whl_no",
             "is_pip_whl_only",
-            "is_py_freethreaded",
-            "is_py_non_freethreaded",
+            "_is_py_freethreaded_yes",
+            "_is_py_freethreaded_no",
             "pip_whl_glibc_version",
             "pip_whl_muslc_version",
             "pip_whl_osx_arch",
@@ -111,8 +112,8 @@ def config_settings(
         glibc_versions = [],
         muslc_versions = [],
         osx_versions = [],
-        target_platforms = [],
         name = None,
+        platform_config_settings = {},
         **kwargs):
     """Generate all of the pip config settings.
 
@@ -126,8 +127,10 @@ def config_settings(
             configure config settings for.
         osx_versions (list[str]): The list of OSX OS versions to configure
             config settings for.
-        target_platforms (list[str]): The list of "{os}_{cpu}" for deriving
-            constraint values for each condition.
+        platform_config_settings: {type}`dict[str, list[str]]` the constraint
+            values to use instead of the default ones. Key are platform names
+            (a human-friendly platform string). Values are lists of
+            `constraint_value` label strings.
         **kwargs: Other args passed to the underlying implementations, such as
             {obj}`native`.
     """
@@ -135,22 +138,28 @@ def config_settings(
     glibc_versions = [""] + glibc_versions
     muslc_versions = [""] + muslc_versions
     osx_versions = [""] + osx_versions
-    target_platforms = [("", ""), ("osx", "universal2")] + [
-        t.split("_", 1)
-        for t in target_platforms
-    ]
+    target_platforms = {
+        "": [],
+        # TODO @aignas 2025-06-15: allowing universal2 and platform specific wheels in one
+        # closure is making things maybe a little bit too complicated.
+        "osx_universal2": ["@platforms//os:osx"],
+    } | platform_config_settings
 
     for python_version in python_versions:
-        for os, cpu in target_platforms:
+        for platform_name, config_settings in target_platforms.items():
+            suffix = "_{}".format(platform_name) if platform_name else ""
+            os, _, cpu = platform_name.partition("_")
+
+            # We parse the target settings and if there is a "platforms//os" or
+            # "platforms//cpu" value in here, we also add it into the constraint_values
+            #
+            # this is to ensure that we can still pass all of the unit tests for config
+            # setting specialization.
             constraint_values = []
-            suffix = ""
-            if os:
-                constraint_values.append("@platforms//os:" + os)
-                suffix += "_" + os
-            if cpu:
-                suffix += "_" + cpu
-                if cpu != "universal2":
-                    constraint_values.append("@platforms//cpu:" + cpu)
+            for setting in config_settings:
+                setting_label = Label(setting)
+                if setting_label.repo_name == "platforms" and setting_label.package in ["os", "cpu"]:
+                    constraint_values.append(setting)
 
             _dist_config_settings(
                 suffix = suffix,
@@ -161,6 +170,7 @@ def config_settings(
                     glibc_versions = glibc_versions,
                     muslc_versions = muslc_versions,
                 ),
+                config_settings = config_settings,
                 constraint_values = constraint_values,
                 python_version = python_version,
                 **kwargs
@@ -205,12 +215,12 @@ def _dist_config_settings(*, suffix, plat_flag_values, python_version, **kwargs)
     for name, f, compatible_with in [
         ("py_none", _flags.whl, None),
         ("py3_none", _flags.whl_py3, None),
-        ("py3_abi3", _flags.whl_py3_abi3, (FLAGS.is_py_non_freethreaded,)),
+        ("py3_abi3", _flags.whl_py3_abi3, (FLAGS._is_py_freethreaded_no,)),
         ("none", _flags.whl_pycp3x, None),
-        ("abi3", _flags.whl_pycp3x_abi3, (FLAGS.is_py_non_freethreaded,)),
+        ("abi3", _flags.whl_pycp3x_abi3, (FLAGS._is_py_freethreaded_no,)),
         # The below are not specializations of one another, they are variants
-        (cpv, _flags.whl_pycp3x_abicp, (FLAGS.is_py_non_freethreaded,)),
-        (cpv + "t", _flags.whl_pycp3x_abicp, (FLAGS.is_py_freethreaded,)),
+        (cpv, _flags.whl_pycp3x_abicp, (FLAGS._is_py_freethreaded_no,)),
+        (cpv + "t", _flags.whl_pycp3x_abicp, (FLAGS._is_py_freethreaded_yes,)),
     ]:
         if (f, compatible_with) in used_flags:
             # This should never happen as all of the different whls should have
@@ -237,12 +247,12 @@ def _dist_config_settings(*, suffix, plat_flag_values, python_version, **kwargs)
         for name, f, compatible_with in [
             ("py_none", _flags.whl_plat, None),
             ("py3_none", _flags.whl_plat_py3, None),
-            ("py3_abi3", _flags.whl_plat_py3_abi3, (FLAGS.is_py_non_freethreaded,)),
+            ("py3_abi3", _flags.whl_plat_py3_abi3, (FLAGS._is_py_freethreaded_no,)),
             ("none", _flags.whl_plat_pycp3x, None),
-            ("abi3", _flags.whl_plat_pycp3x_abi3, (FLAGS.is_py_non_freethreaded,)),
+            ("abi3", _flags.whl_plat_pycp3x_abi3, (FLAGS._is_py_freethreaded_no,)),
             # The below are not specializations of one another, they are variants
-            (cpv, _flags.whl_plat_pycp3x_abicp, (FLAGS.is_py_non_freethreaded,)),
-            (cpv + "t", _flags.whl_plat_pycp3x_abicp, (FLAGS.is_py_freethreaded,)),
+            (cpv, _flags.whl_plat_pycp3x_abicp, (FLAGS._is_py_freethreaded_no,)),
+            (cpv + "t", _flags.whl_plat_pycp3x_abicp, (FLAGS._is_py_freethreaded_yes,)),
         ]:
             if (f, compatible_with) in used_flags:
                 # This should never happen as all of the different whls should have
@@ -321,7 +331,7 @@ def _plat_flag_values(os, cpu, osx_versions, glibc_versions, muslc_versions):
 
     return ret
 
-def _dist_config_setting(*, name, compatible_with = None, native = native, **kwargs):
+def _dist_config_setting(*, name, compatible_with = None, selects = selects, native = native, config_settings = None, **kwargs):
     """A macro to create a target for matching Python binary and source distributions.
 
     Args:
@@ -329,7 +339,13 @@ def _dist_config_setting(*, name, compatible_with = None, native = native, **kwa
         compatible_with: {type}`tuple[Label]` A collection of config settings that are
             compatible with the given dist config setting. For example, if only
             non-freethreaded python builds are allowed, add
-            FLAGS.is_py_non_freethreaded here.
+            FLAGS._is_py_freethreaded_no here.
+        config_settings: {type}`list[str | Label]` the list of target settings that must
+            be matched before we try to evaluate the config_setting that we may create in
+            this function.
+        selects (struct): The struct containing config_setting_group function
+            to use for creating config setting groups. Can be overridden for unit tests
+            reasons.
         native (struct): The struct containing alias and config_setting rules
             to use for creating the objects. Can be overridden for unit tests
             reasons.
@@ -349,4 +365,14 @@ def _dist_config_setting(*, name, compatible_with = None, native = native, **kwa
         )
         name = dist_config_setting_name
 
-    native.config_setting(name = name, **kwargs)
+    # first define the config setting that has all of the constraint values
+    _name = "_" + name
+    native.config_setting(
+        name = _name,
+        **kwargs
+    )
+    selects.config_setting_group(
+        name = name,
+        match_all = config_settings + [_name],
+        visibility = kwargs.get("visibility"),
+    )

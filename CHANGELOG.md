@@ -47,6 +47,29 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-changed}
+### Changed
+* (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
+### Added
+* (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
+  developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
+  this feature. You can also configure custom `config_settings` using `pip.default`.
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
 {#1-5-0}
 ## [1.5.0] - 2025-06-11
 

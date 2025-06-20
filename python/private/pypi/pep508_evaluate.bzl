@@ -117,7 +117,7 @@ def evaluate(marker, *, env, strict = True, **kwargs):
 
     Args:
         marker: {type}`str` The string marker to evaluate.
-        env: {type}`dict` The environment to evaluate the marker against.
+        env: {type}`dict[str, str]` The environment to evaluate the marker against.
         strict: {type}`bool` A setting to not fail on missing values in the env.
         **kwargs: Extra kwargs to be passed to the expression evaluator.
 

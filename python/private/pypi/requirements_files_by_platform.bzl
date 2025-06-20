@@ -16,20 +16,7 @@
 
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
-# TODO @aignas 2024-05-13: consider using the same platform tags as are used in
-# the //python:versions.bzl
-DEFAULT_PLATFORMS = [
-    "linux_aarch64",
-    "linux_arm",
-    "linux_ppc",
-    "linux_s390x",
-    "linux_x86_64",
-    "osx_aarch64",
-    "osx_x86_64",
-    "windows_x86_64",
-]
-
-def _default_platforms(*, filter):
+def _default_platforms(*, filter, platforms):
     if not filter:
         fail("Must specific a filter string, got: {}".format(filter))
 
@@ -48,11 +35,13 @@ def _default_platforms(*, filter):
             fail("The filter can only contain '*' at the end of it")
 
         if not prefix:
-            return DEFAULT_PLATFORMS
+            return platforms
 
-        return [p for p in DEFAULT_PLATFORMS if p.startswith(prefix)]
+        match = [p for p in platforms if p.startswith(prefix)]
     else:
-        return [p for p in DEFAULT_PLATFORMS if filter in p]
+        match = [p for p in platforms if filter in p]
+
+    return match
 
 def _platforms_from_args(extra_pip_args):
     platform_values = []
@@ -105,6 +94,7 @@ def requirements_files_by_platform(
         requirements_linux = None,
         requirements_lock = None,
         requirements_windows = None,
+        platforms,
         extra_pip_args = None,
         python_version = None,
         logger = None,
@@ -123,6 +113,8 @@ def requirements_files_by_platform(
             be joined with args fined in files.
         python_version: str or None. This is needed when the get_index_urls is
             specified. It should be of the form "3.x.x",
+        platforms: {type}`list[str]` the list of human-friendly platform labels that should
+            be used for the evaluation.
         logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
         fail_fn (Callable[[str], None]): A failure function used in testing failure cases.
 
@@ -144,11 +136,13 @@ def requirements_files_by_platform(
         )
         return None
 
-    platforms = _platforms_from_args(extra_pip_args)
+    platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
-        logger.debug(lambda: "Platforms from pip args: {}".format(platforms))
+        logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
 
-    if platforms:
+    default_platforms = [_platform(p, python_version) for p in platforms]
+
+    if platforms_from_args:
         lock_files = [
             f
             for f in [
@@ -168,7 +162,7 @@ def requirements_files_by_platform(
             return None
 
         files_by_platform = [
-            (lock_files[0], platforms),
+            (lock_files[0], platforms_from_args),
         ]
         if logger:
             logger.debug(lambda: "Files by platform with the platform set in the args: {}".format(files_by_platform))
@@ -177,7 +171,7 @@ def requirements_files_by_platform(
             file: [
                 platform
                 for filter_or_platform in specifier.split(",")
-                for platform in (_default_platforms(filter = filter_or_platform) if filter_or_platform.endswith("*") else [filter_or_platform])
+                for platform in (_default_platforms(filter = filter_or_platform, platforms = platforms) if filter_or_platform.endswith("*") else [filter_or_platform])
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
@@ -188,9 +182,9 @@ def requirements_files_by_platform(
         for f in [
             # If the users need a greater span of the platforms, they should consider
             # using the 'requirements_by_platform' attribute.
-            (requirements_linux, _default_platforms(filter = "linux_*")),
-            (requirements_osx, _default_platforms(filter = "osx_*")),
-            (requirements_windows, _default_platforms(filter = "windows_*")),
+            (requirements_linux, _default_platforms(filter = "linux_*", platforms = platforms)),
+            (requirements_osx, _default_platforms(filter = "osx_*", platforms = platforms)),
+            (requirements_windows, _default_platforms(filter = "windows_*", platforms = platforms)),
             (requirements_lock, None),
         ]:
             if f[0]:
@@ -215,8 +209,7 @@ def requirements_files_by_platform(
                     return None
 
                 configured_platforms[p] = file
-        else:
-            default_platforms = [_platform(p, python_version) for p in DEFAULT_PLATFORMS]
+        elif plats == None:
             plats = [
                 p
                 for p in default_platforms
@@ -230,6 +223,13 @@ def requirements_files_by_platform(
                 ))
             for p in plats:
                 configured_platforms[p] = file
+
+        elif logger:
+            logger.warn(lambda: "File {} will be ignored because there are no configured platforms: {}".format(
+                file,
+                default_platforms,
+            ))
+            continue
 
         if logger:
             logger.debug(lambda: "Configured platforms for file {} are {}".format(file, plats))

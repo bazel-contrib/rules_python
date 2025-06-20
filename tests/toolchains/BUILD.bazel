@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
 load(":defs.bzl", "define_toolchain_tests")
@@ -29,4 +30,11 @@ py_reconfig_test(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
     ] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
+)
+
+build_test(
+    name = "build_test",
+    targets = [
+        "@python_3_11//:python_headers",
+    ],
 )

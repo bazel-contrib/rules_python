@@ -125,15 +125,19 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
-config_setting(
+alias(
     name = "is_py_freethreaded",
-    flag_values = {":py_freethreaded": FreeThreadedFlag.YES},
+    actual = ":_is_py_freethreaded_yes",
+    deprecation = "not actually public, please create your own config_setting using the flag that rules_python exposes",
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 
-config_setting(
+alias(
     name = "is_py_non_freethreaded",
-    flag_values = {":py_freethreaded": FreeThreadedFlag.NO},
+    actual = ":_is_py_freethreaded_no",
+    deprecation = "not actually public, please create your own config_setting using the flag that rules_python exposes",
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 

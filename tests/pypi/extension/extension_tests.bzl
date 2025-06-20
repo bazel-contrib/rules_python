@@ -49,23 +49,22 @@ simple==0.0.1 \
         ],
     )
 
-def _mod(*, name, parse = [], override = [], whl_mods = [], is_root = True):
+def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_root = True):
     return struct(
         name = name,
         tags = struct(
             parse = parse,
             override = override,
             whl_mods = whl_mods,
+            default = default,
         ),
         is_root = is_root,
     )
 
-def _parse_modules(env, **kwargs):
+def _parse_modules(env, enable_pipstar = 0, **kwargs):
     return env.expect.that_struct(
         parse_modules(
-            # TODO @aignas 2025-05-11: start integration testing the branch which
-            # includes this.
-            enable_pipstar = 0,
+            enable_pipstar = enable_pipstar,
             **kwargs
         ),
         attrs = dict(
@@ -75,6 +74,24 @@ def _parse_modules(env, **kwargs):
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
         ),
+    )
+
+def _default(
+        arch_name = None,
+        config_settings = None,
+        os_name = None,
+        platform = None,
+        env = None,
+        whl_limit = None,
+        whl_platforms = None):
+    return struct(
+        arch_name = arch_name,
+        os_name = os_name,
+        platform = platform,
+        config_settings = config_settings,
+        env = env or {},
+        whl_platforms = whl_platforms,
+        whl_limit = whl_limit,
     )
 
 def _parse(
@@ -1022,6 +1039,92 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_optimum_sys_platform_extra)
+
+def _test_pipstar_platforms(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                default = [
+                    _default(
+                        platform = "{}_{}".format(os, cpu),
+                        config_settings = [
+                            "@platforms//os:{}".format(os),
+                            "@platforms//cpu:{}".format(cpu),
+                        ],
+                    )
+                    for os, cpu in [
+                        ("linux", "x86_64"),
+                        ("osx", "aarch64"),
+                    ]
+                ],
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        requirements_lock = "universal.txt",
+                    ),
+                ],
+            ),
+            read = lambda x: {
+                "universal.txt": """\
+optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
+optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
+""",
+            }[x],
+        ),
+        enable_pipstar = True,
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi": ["optimum"]})
+    pypi.hub_group_map().contains_exactly({"pypi": {}})
+    pypi.hub_whl_map().contains_exactly({
+        "pypi": {
+            "optimum": {
+                "pypi_315_optimum_linux_x86_64": [
+                    whl_config_setting(
+                        version = "3.15",
+                        target_platforms = [
+                            "cp315_linux_x86_64",
+                        ],
+                        config_setting = None,
+                        filename = None,
+                    ),
+                ],
+                "pypi_315_optimum_osx_aarch64": [
+                    whl_config_setting(
+                        version = "3.15",
+                        target_platforms = [
+                            "cp315_osx_aarch64",
+                        ],
+                        config_setting = None,
+                        filename = None,
+                    ),
+                ],
+            },
+        },
+    })
+
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_optimum_linux_x86_64": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
+        },
+        "pypi_315_optimum_osx_aarch64": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "optimum[onnxruntime]==1.17.1",
+        },
+    })
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_pipstar_platforms)
 
 def extension_test_suite(name):
     """Create the test suite.

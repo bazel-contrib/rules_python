@@ -1,6 +1,6 @@
 # Precompiling
 
-Precompiling is compiling Python source files (`.py` files) into byte code
+Precompiling is compiling Python source files (`.py` files) into bytecode
 (`.pyc` files) at build time instead of runtime. Doing it at build time can
 improve performance by skipping that work at runtime.
 
@@ -15,12 +15,12 @@ While precompiling helps runtime performance, it has two main costs:
    a `.pyc` file. Compiled files are generally around the same size as the
    source files, so it approximately doubles the disk usage.
 2. Precompiling requires running an extra action at build time. While
-   compiling itself isn't that expensive, the overhead can become noticable
+   compiling itself isn't that expensive, the overhead can become noticeable
    as more files need to be compiled.
 
 ## Binary-level opt-in
 
-Binary-level opt-in allows enabling precompiling on a per-target basic. This is
+Binary-level opt-in allows enabling precompiling on a per-target basis. This is
 useful for situations such as:
 
 * Globally enabling precompiling in your `.bazelrc` isn't feasible. This may
@@ -41,7 +41,7 @@ can use an opt-in or opt-out approach by setting its value:
 
 ## Pyc-only builds
 
-A pyc-only build (aka "source less" builds) is when only `.pyc` files are
+A pyc-only build (aka "sourceless" builds) is when only `.pyc` files are
 included; the source `.py` files are not included.
 
 To enable this, set
@@ -55,8 +55,8 @@ The advantage of pyc-only builds are:
 
 The disadvantages are:
 * Error messages will be less precise because the precise line and offset
-  information isn't in an pyc file.
-* pyc files are Python major-version specific.
+  information isn't in a pyc file.
+* pyc files are Python major-version-specific.
 
 :::{note}
 pyc files are not a form of hiding source code. They are trivial to uncompile,
@@ -75,11 +75,11 @@ mechanisms are available:
   the {bzl:attr}`precompiler` attribute. Arbitrary binaries are supported.
 * The execution requirements can be customized using
   `--@rules_python//tools/precompiler:execution_requirements`. This is a list
-  flag that can be repeated. Each entry is a key=value that is added to the
+  flag that can be repeated. Each entry is a `key=value` pair that is added to the
   execution requirements of the `PyCompile` action. Note that this flag
-  is specific to the rules_python precompiler. If a custom binary is used,
+  is specific to the `rules_python` precompiler. If a custom binary is used,
   this flag will have to be propagated from the custom binary using the
-  `testing.ExecutionInfo` provider; refer to the `py_interpreter_program` an
+  `testing.ExecutionInfo` provider; refer to the `py_interpreter_program` example.
 
 The default precompiler implementation is an asynchronous/concurrent
 implementation. If you find it has bugs or hangs, please report them. In the
@@ -90,18 +90,18 @@ as well, but is less likely to have issues.
 The `execution_requirements` keys of most relevance are:
 * `supports-workers`: 1 or 0, to indicate if a regular persistent worker is
   desired.
-* `supports-multiplex-workers`: 1 o 0, to indicate if a multiplexed persistent
+* `supports-multiplex-workers`: `1` or `0`, to indicate if a multiplexed persistent
   worker is desired.
-* `requires-worker-protocol`: json or proto; the rules_python precompiler
-  currently only supports json.
-* `supports-multiplex-sandboxing`: 1 or 0, to indicate if sanboxing is of the
+* `requires-worker-protocol`: `json` or `proto`; the `rules_python` precompiler
+  currently only supports `json`.
+* `supports-multiplex-sandboxing`: `1` or `0`, to indicate if sandboxing of the
   worker is supported.
-* `supports-worker-cancellation`: 1 or 1, to indicate if requests to the worker
+* `supports-worker-cancellation`: `1` or `0`, to indicate if requests to the worker
   can be cancelled.
 
 Note that any execution requirements values can be specified in the flag.
 
-## Known issues, caveats, and idiosyncracies
+## Known issues, caveats, and idiosyncrasies
 
 * Precompiling requires Bazel 7+ with the Pystar rule implementation enabled.
 * Mixing rules_python PyInfo with Bazel builtin PyInfo will result in pyc files
@@ -111,14 +111,14 @@ Note that any execution requirements values can be specified in the flag.
   causes the module to be found in the workspace source directory instead of
   within the binary's runfiles directory (where the pyc files are). This can
   usually be worked around by removing `sys.path[0]` (or otherwise ensuring the
-  runfiles directory comes before the repos source directory in `sys.path`).
-* The pyc filename does not include the optimization level (e.g.
-  `foo.cpython-39.opt-2.pyc`). This works fine (it's all byte code), but also
+  runfiles directory comes before the repo's source directory in `sys.path`).
+* The pyc filename does not include the optimization level (e.g.,
+  `foo.cpython-39.opt-2.pyc`). This works fine (it's all bytecode), but also
   means the interpreter `-O` argument can't be used -- doing so will cause the
   interpreter to look for the non-existent `opt-N` named files.
-* Targets with the same source files and different exec properites will result
+* Targets with the same source files and different exec properties will result
   in action conflicts. This most commonly occurs when a `py_binary` and
-  `py_library` have the same source files. To fix, modify both targets so
+  a `py_library` have the same source files. To fix this, modify both targets so
   they have the same exec properties. If this is difficult because unsupported
   exec groups end up being passed to the Python rules, please file an issue
   to have those exec groups added to the Python rules.

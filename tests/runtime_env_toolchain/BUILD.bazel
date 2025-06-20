@@ -40,3 +40,26 @@ py_reconfig_test(
     tags = ["no-remote-exec"],
     deps = ["//python/runfiles"],
 )
+
+py_reconfig_test(
+    name = "bootstrap_script_test",
+    srcs = ["toolchain_runs_test.py"],
+    bootstrap_impl = "script",
+    data = [
+        "//tests/support:current_build_settings",
+    ],
+    extra_toolchains = [
+        "//python/runtime_env_toolchains:all",
+        # Necessary for RBE CI
+        CC_TOOLCHAIN,
+    ],
+    main = "toolchain_runs_test.py",
+    # With bootstrap=script, the build version must match the runtime version
+    # because the venv has the version in the lib/site-packages dir name.
+    python_version = PYTHON_VERSION,
+    # Our RBE has Python 3.6, which is too old for the language features
+    # we use now. Using the runtime-env toolchain on RBE is pretty
+    # questionable anyways.
+    tags = ["no-remote-exec"],
+    deps = ["//python/runfiles"],
+)

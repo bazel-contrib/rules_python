@@ -1,7 +1,7 @@
 # Dev Guide
 
-This document covers tips and guidance for working on the rules_python code
-base. A primary audience for it is first time contributors.
+This document covers tips and guidance for working on the `rules_python` code
+base. Its primary audience is first-time contributors.
 
 ## Running tests
 
@@ -12,8 +12,8 @@ bazel test //...
 ```
 
 And it will run all the tests it can find. The first time you do this, it will
-probably take long time because various dependencies will need to be downloaded
-and setup. Subsequent runs will be faster, but there are many tests, and some of
+probably take a long time because various dependencies will need to be downloaded
+and set up. Subsequent runs will be faster, but there are many tests, and some of
 them are slow. If you're working on a particular area of code, you can run just
 the tests in those directories instead, which can speed up your edit-run cycle.
 
@@ -22,14 +22,14 @@ the tests in those directories instead, which can speed up your edit-run cycle.
 Most code should have tests of some sort. This helps us have confidence that
 refactors didn't break anything and that releases won't have regressions.
 
-We don't require 100% test coverage, testing certain Bazel functionality is
+We don't require 100% test coverage; testing certain Bazel functionality is
 difficult, and some edge cases are simply too hard to test or not worth the
 extra complexity. We try to judiciously decide when not having tests is a good
 idea.
 
 Tests go under `tests/`. They are loosely organized into directories for the
 particular subsystem or functionality they are testing. If an existing directory
-doesn't seem like a good match for the functionality being testing, then it's
+doesn't seem like a good match for the functionality being tested, then it's
 fine to create a new directory.
 
 Re-usable test helpers and support code go in `tests/support`. Tests don't need
@@ -72,9 +72,9 @@ the rule. To have it support setting a new flag:
 
 An integration test is one that runs a separate Bazel instance inside the test.
 These tests are discouraged unless absolutely necessary because they are slow,
-require much memory and CPU, and are generally harder to debug. Integration
-tests are reserved for things that simple can't be tested otherwise, or for
-simple high level verification tests.
+require a lot of memory and CPU, and are generally harder to debug. Integration
+tests are reserved for things that simply can't be tested otherwise, or for
+simple high-level verification tests.
 
 Integration tests live in `tests/integration`. When possible, add to an existing
 integration test.
@@ -98,9 +98,9 @@ integration test.
 
 ## Updating tool dependencies
 
-It's suggested to routinely update the tool versions within our repo - some of the
-tools are using requirement files compiled by `uv` and others use other means. In order
-to have everything self-documented, we have a special target -
-`//private:requirements.update`, which uses `rules_multirun` to run in sequence all
-of the requirement updating scripts in one go. This can be done once per release as
+It's suggested to routinely update the tool versions within our repo. Some of the
+tools are using requirement files compiled by `uv`, and others use other means. In order
+to have everything self-documented, we have a special target,
+`//private:requirements.update`, which uses `rules_multirun` to run all
+of the requirement-updating scripts in sequence in one go. This can be done once per release as
 we prepare for releases.
