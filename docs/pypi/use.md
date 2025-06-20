@@ -40,6 +40,8 @@ Note, that the hub repo contains the following targets for each package:
 * `@pypi//numpy:data` - the {obj}`filegroup` that is for all of the extra files that are included
   as data in the `pkg` target.
 * `@pypi//numpy:dist_info` - the {obj}`filegroup` that is for all of the files in the `<pkg prefix with version>.distinfo` directory.
+* `@pypi//numpy:extracted_whl_files` - a {obj}`filegroup` of all the files
+  extracted from the whl file.
 * `@pypi//numpy:whl` - the {obj}`filegroup` that is the `.whl` file itself which includes all of
   the transitive dependencies via the {attr}`filegroup.data` attribute.
 

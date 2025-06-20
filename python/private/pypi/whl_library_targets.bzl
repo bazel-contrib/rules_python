@@ -101,18 +101,6 @@ def whl_library_targets(
         data_exclude = [],
         srcs_exclude = [],
         tags = [],
-        filegroups = {
-            EXTRACTED_WHEEL_FILES: dict(
-                include = ["**"],
-                exclude = ["*.whl"],
-            ),
-            DIST_INFO_LABEL: dict(
-                include = ["site-packages/*.dist-info/**"],
-            ),
-            DATA_LABEL: dict(
-                include = ["data/**"],
-            ),
-        },
         dependencies = [],
         dependencies_by_platform = {},
         dependencies_with_markers = {},
@@ -177,7 +165,22 @@ def whl_library_targets(
     tags = sorted(tags)
     data = [] + data
 
-    for filegroup_name, glob_kwargs in filegroups.items():
+    _filegroups = {
+        # TODO(#3011): Consider parsing the RECORD file to get a precise list of files
+        # instead of relying on a glob with excludes.
+        EXTRACTED_WHEEL_FILES: dict(
+            include = ["**"],
+            exclude = [name],
+        ),
+        DIST_INFO_LABEL: dict(
+            include = ["site-packages/*.dist-info/**"],
+        ),
+        DATA_LABEL: dict(
+            include = ["data/**"],
+        ),
+    }
+
+    for filegroup_name, glob_kwargs in _filegroups.items():
         glob_kwargs = {"allow_empty": True} | glob_kwargs
         native.filegroup(
             name = filegroup_name,
