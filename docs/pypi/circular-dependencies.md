@@ -6,7 +6,7 @@
 Sometimes PyPI packages contain dependency cycles. For instance, a particular
 version of `sphinx` (this is no longer the case in the latest version as of
 2024-06-02) depends on `sphinxcontrib-serializinghtml`. When using them as
-`requirement()`s, like so:
+`requirement()`s, ala
 
 ```starlark
 py_binary(
@@ -47,7 +47,7 @@ simultaneously.
 )
 ```
 
-`pip_parse` supports fixing multiple cycles simultaneously; however, cycles must
+`pip_parse` supports fixing multiple cycles simultaneously, however, cycles must
 be distinct. `apache-airflow`, for instance, has dependency cycles with a number
 of its optional dependencies, which means those optional dependencies must all
 be a part of the `airflow` cycle. For instance:

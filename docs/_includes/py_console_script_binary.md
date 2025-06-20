@@ -2,7 +2,7 @@ This rule is to make it easier to generate `console_script` entry points
 as per Python [specification].
 
 Generate a `py_binary` target for a particular `console_script` entry_point
-from a PyPI package. For example, to create an executable `pylint` target, use:
+from a PyPI package, e.g. for creating an executable `pylint` target, use:
 ```starlark
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 
@@ -14,9 +14,10 @@ py_console_script_binary(
 
 #### Specifying extra dependencies
 You can also specify extra dependencies and the
-exact script name you want to call. This is useful for tools like `flake8`, `pylint`,
-and `pytest`, which have plugin discovery methods and discover dependencies from the
-PyPI packages available in the `PYTHONPATH`.
+exact script name you want to call. This is useful for tools like `flake8`,
+`pylint`, and `pytest`, which have plugin discovery methods and discover
+dependencies from the PyPI packages available in the `PYTHONPATH`.
+
 ```starlark
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 
@@ -75,7 +76,7 @@ For example, `load("@python_versions//3.11:defs.bzl", "py_binary")` and `load("@
 
 You should instead specify the desired Python version with `python_version`; see the example above.
 :::
-Alternatively, the `py_console_script_binary.binary_rule` arg can be passed
+Alternatively, the {obj}`py_console_script_binary.binary_rule` arg can be passed
 the version-bound `py_binary` symbol, or any other `py_binary`-compatible rule
 of your choosing:
 ```starlark
