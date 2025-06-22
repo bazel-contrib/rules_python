@@ -155,10 +155,10 @@ func (py *Resolver) Resolve(
 	// other generators that generate py_* targets.
 	deps := treeset.NewWith(godsutils.StringComparator)
 	pyiDeps := treeset.NewWith(godsutils.StringComparator)
+	cfgs := c.Exts[languageName].(pythonconfig.Configs)
+	cfg := cfgs[from.Pkg]
 
 	if modulesRaw != nil {
-		cfgs := c.Exts[languageName].(pythonconfig.Configs)
-		cfg := cfgs[from.Pkg]
 		pythonProjectRoot := cfg.PythonProjectRoot()
 		modules := modulesRaw.(*treeset.Set)
 		it := modules.Iterator()
@@ -301,8 +301,17 @@ func (py *Resolver) Resolve(
 		}
 	}
 
-	addResolvedDepsAndSetAttr(r, deps, resolvedDepsKey, "deps")
-	addResolvedDepsAndSetAttr(r, pyiDeps, resolvedPyiDepsKey, "pyi_deps")
+	if cfg.GeneratePyiDeps() {
+		addResolvedDepsAndSetAttr(r, deps, resolvedDepsKey, "deps")
+		addResolvedDepsAndSetAttr(r, pyiDeps, resolvedPyiDepsKey, "pyi_deps")
+	} else {
+		// When generate_pyi_deps is false, merge both deps and pyiDeps into deps
+		combinedDeps := treeset.NewWith(godsutils.StringComparator)
+		combinedDeps.Add(deps.Values()...)
+		combinedDeps.Add(pyiDeps.Values()...)
+
+		addResolvedDepsAndSetAttr(r, combinedDeps, resolvedDepsKey, "deps")
+	}
 }
 
 // addResolvedDepsAndSetAttr adds the pre-resolved dependencies from the rule's private attributes

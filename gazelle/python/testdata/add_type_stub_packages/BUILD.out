@@ -1,5 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
+# gazelle:python_generate_pyi_deps true
+
 py_binary(
     name = "add_type_stub_packages_bin",
     srcs = ["__main__.py"],

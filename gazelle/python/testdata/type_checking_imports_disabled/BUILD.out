@@ -1,14 +1,16 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
 # gazelle:python_generation_mode file
-# gazelle:python_generate_pyi_deps true
+# gazelle:python_generate_pyi_deps false
 
 py_library(
     name = "bar",
     srcs = ["bar.py"],
-    pyi_deps = [":foo"],
     visibility = ["//:__subpackages__"],
-    deps = [":baz"],
+    deps = [
+        ":baz",
+        ":foo",
+    ],
 )
 
 py_library(
@@ -20,7 +22,9 @@ py_library(
 py_library(
     name = "foo",
     srcs = ["foo.py"],
-    pyi_deps = ["@gazelle_python_test//djangorestframework"],
     visibility = ["//:__subpackages__"],
-    deps = ["@gazelle_python_test//boto3"],
+    deps = [
+        "@gazelle_python_test//boto3",
+        "@gazelle_python_test//djangorestframework",
+    ],
 )

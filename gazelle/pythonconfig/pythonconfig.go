@@ -91,6 +91,10 @@ const (
 	// names of labels to third-party dependencies are normalized. Supported values
 	// are 'none', 'pep503' and 'snake_case' (default). See LabelNormalizationType.
 	LabelNormalization = "python_label_normalization"
+	// GeneratePyiDeps represents the directive that controls whether to generate
+	// separate pyi_deps attribute or merge type-checking dependencies into deps.
+	// Defaults to false for backward compatibility.
+	GeneratePyiDeps = "python_generate_pyi_deps"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -177,6 +181,7 @@ type Config struct {
 	testFilePattern                           []string
 	labelConvention                           string
 	labelNormalization                        LabelNormalizationType
+	generatePyiDeps                           bool
 }
 
 type LabelNormalizationType int
@@ -212,6 +217,7 @@ func New(
 		testFilePattern:                           strings.Split(DefaultTestFilePatternString, ","),
 		labelConvention:                           DefaultLabelConvention,
 		labelNormalization:                        DefaultLabelNormalizationType,
+		generatePyiDeps:                           false,
 	}
 }
 
@@ -244,6 +250,7 @@ func (c *Config) NewChild() *Config {
 		testFilePattern:                           c.testFilePattern,
 		labelConvention:                           c.labelConvention,
 		labelNormalization:                        c.labelNormalization,
+		generatePyiDeps:                           c.generatePyiDeps,
 	}
 }
 
@@ -518,6 +525,18 @@ func (c *Config) SetLabelNormalization(normalizationType LabelNormalizationType)
 // LabelConvention returns the label normalization applied to distribution names of third-party dependencies.
 func (c *Config) LabelNormalization() LabelNormalizationType {
 	return c.labelNormalization
+}
+
+// SetGeneratePyiDeps sets whether pyi_deps attribute should be generated separately
+// or type-checking dependencies should be merged into the regular deps attribute.
+func (c *Config) SetGeneratePyiDeps(generatePyiDeps bool) {
+	c.generatePyiDeps = generatePyiDeps
+}
+
+// GeneratePyiDeps returns whether pyi_deps attribute should be generated separately
+// or type-checking dependencies should be merged into the regular deps attribute.
+func (c *Config) GeneratePyiDeps() bool {
+	return c.generatePyiDeps
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

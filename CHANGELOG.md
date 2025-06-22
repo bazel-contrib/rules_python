@@ -55,8 +55,11 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
-* (gazelle) Dependencies added to satisfy type-only imports (`if TYPE_CHECKING`) and type stub packages are
-  now added to `pyi_deps` instead of `deps`.
+
+### Added
+* (gazelle) New directive `gazelle:python_generate_pyi_deps`; when `true`,
+  dependencies added to satisfy type-only imports (`if TYPE_CHECKING`) and type
+  stub packages are added to `pyi_deps` instead of `deps`.
 
 {#v0-0-0-fixed}
 ### Fixed
