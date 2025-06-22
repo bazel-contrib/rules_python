@@ -165,7 +165,9 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 		}
 	} else if node.Type() == sitterNodeTypeImportFromStatement {
 		from := node.Child(1).Content(p.code)
-		if strings.HasPrefix(from, ".") {
+		// If the import is from the current package, we don't need to add it to the modules i.e. from . import Class1.
+		// If the import is from a different relative package i.e. from .package1 import foo, we need to add it to the modules.
+		if from == "." {
 			return true
 		}
 		for j := 3; j < int(node.ChildCount()); j++ {

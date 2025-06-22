@@ -91,6 +91,9 @@ const (
 	// names of labels to third-party dependencies are normalized. Supported values
 	// are 'none', 'pep503' and 'snake_case' (default). See LabelNormalizationType.
 	LabelNormalization = "python_label_normalization"
+	// ExperimentalAllowRelativeImports represents the directive that controls
+	// whether relative imports are allowed.
+	ExperimentalAllowRelativeImports = "experimental_allow_relative_imports"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -177,6 +180,7 @@ type Config struct {
 	testFilePattern                           []string
 	labelConvention                           string
 	labelNormalization                        LabelNormalizationType
+	experimentalAllowRelativeImports          bool
 }
 
 type LabelNormalizationType int
@@ -212,6 +216,7 @@ func New(
 		testFilePattern:                           strings.Split(DefaultTestFilePatternString, ","),
 		labelConvention:                           DefaultLabelConvention,
 		labelNormalization:                        DefaultLabelNormalizationType,
+		experimentalAllowRelativeImports:          false,
 	}
 }
 
@@ -244,6 +249,7 @@ func (c *Config) NewChild() *Config {
 		testFilePattern:                           c.testFilePattern,
 		labelConvention:                           c.labelConvention,
 		labelNormalization:                        c.labelNormalization,
+		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
 	}
 }
 
@@ -518,6 +524,16 @@ func (c *Config) SetLabelNormalization(normalizationType LabelNormalizationType)
 // LabelConvention returns the label normalization applied to distribution names of third-party dependencies.
 func (c *Config) LabelNormalization() LabelNormalizationType {
 	return c.labelNormalization
+}
+
+// SetExperimentalAllowRelativeImports sets whether relative imports are allowed.
+func (c *Config) SetExperimentalAllowRelativeImports(allowRelativeImports bool) {
+	c.experimentalAllowRelativeImports = allowRelativeImports
+}
+
+// ExperimentalAllowRelativeImports returns whether relative imports are allowed.
+func (c *Config) ExperimentalAllowRelativeImports() bool {
+	return c.experimentalAllowRelativeImports
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

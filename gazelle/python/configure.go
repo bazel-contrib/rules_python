@@ -68,6 +68,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.TestFilePattern,
 		pythonconfig.LabelConvention,
 		pythonconfig.LabelNormalization,
+		pythonconfig.ExperimentalAllowRelativeImports,
 	}
 }
 
@@ -222,6 +223,13 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			default:
 				config.SetLabelNormalization(pythonconfig.DefaultLabelNormalizationType)
 			}
+		case pythonconfig.ExperimentalAllowRelativeImports:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Printf("invalid value for gazelle:%s in %q: %q",
+					pythonconfig.ExperimentalAllowRelativeImports, rel, d.Value)
+			}
+			config.SetExperimentalAllowRelativeImports(v)
 		}
 	}
 
