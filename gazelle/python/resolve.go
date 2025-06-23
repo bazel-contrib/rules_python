@@ -301,37 +301,39 @@ func (py *Resolver) Resolve(
 		}
 	}
 
+	addResolvedDeps(r, deps)
+
 	if cfg.GeneratePyiDeps() {
-		addResolvedDepsAndSetAttr(r, deps, resolvedDepsKey, "deps")
-		addResolvedDepsAndSetAttr(r, pyiDeps, resolvedPyiDepsKey, "pyi_deps")
+		if !deps.Empty() {
+			r.SetAttr("deps", convertDependencySetToExpr(deps))
+		}
+		if !pyiDeps.Empty() {
+			r.SetAttr("pyi_deps", convertDependencySetToExpr(pyiDeps))
+		}
 	} else {
 		// When generate_pyi_deps is false, merge both deps and pyiDeps into deps
 		combinedDeps := treeset.NewWith(godsutils.StringComparator)
 		combinedDeps.Add(deps.Values()...)
 		combinedDeps.Add(pyiDeps.Values()...)
 
-		addResolvedDepsAndSetAttr(r, combinedDeps, resolvedDepsKey, "deps")
+		if !combinedDeps.Empty() {
+			r.SetAttr("deps", convertDependencySetToExpr(combinedDeps))
+		}
 	}
 }
 
-// addResolvedDepsAndSetAttr adds the pre-resolved dependencies from the rule's private attributes
-// to the provided deps set and sets the attribute on the rule.
-func addResolvedDepsAndSetAttr(
+// addResolvedDeps adds the pre-resolved dependencies from the rule's private attributes
+// to the provided deps set.
+func addResolvedDeps(
 	r *rule.Rule,
 	deps *treeset.Set,
-	resolvedDepsAttrName string,
-	depsAttrName string,
 ) {
-	resolvedDeps := r.PrivateAttr(resolvedDepsAttrName).(*treeset.Set)
+	resolvedDeps := r.PrivateAttr(resolvedDepsKey).(*treeset.Set)
 	if !resolvedDeps.Empty() {
 		it := resolvedDeps.Iterator()
 		for it.Next() {
 			deps.Add(it.Value())
 		}
-	}
-
-	if !deps.Empty() {
-		r.SetAttr(depsAttrName, convertDependencySetToExpr(deps))
 	}
 }
 
