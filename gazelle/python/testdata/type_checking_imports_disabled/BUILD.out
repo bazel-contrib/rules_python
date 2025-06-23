@@ -17,6 +17,10 @@ py_library(
     name = "baz",
     srcs = ["baz.py"],
     visibility = ["//:__subpackages__"],
+    deps = [
+        "@gazelle_python_test//boto3",
+        "@gazelle_python_test//boto3_stubs",
+    ],
 )
 
 py_library(
@@ -25,6 +29,7 @@ py_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "@gazelle_python_test//boto3",
+        "@gazelle_python_test//boto3_stubs",
         "@gazelle_python_test//djangorestframework",
     ],
 )

@@ -14,13 +14,20 @@ py_library(
 py_library(
     name = "baz",
     srcs = ["baz.py"],
+    pyi_deps = [
+        "@gazelle_python_test//boto3",
+        "@gazelle_python_test//boto3_stubs",
+    ],
     visibility = ["//:__subpackages__"],
 )
 
 py_library(
     name = "foo",
     srcs = ["foo.py"],
-    pyi_deps = ["@gazelle_python_test//djangorestframework"],
+    pyi_deps = [
+        "@gazelle_python_test//boto3_stubs",
+        "@gazelle_python_test//djangorestframework",
+    ],
     visibility = ["//:__subpackages__"],
     deps = ["@gazelle_python_test//boto3"],
 )

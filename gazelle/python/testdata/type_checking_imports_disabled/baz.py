@@ -12,4 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# While this format is not official, it is supported by most type checkers and
+# is used in the wild to avoid importing the typing module.
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    # Both boto3 and boto3_stubs should be added to pyi_deps.
+    import boto3
+
 X = 1

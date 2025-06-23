@@ -15,5 +15,6 @@
 manifest:
   modules_mapping:
     boto3: boto3
+    boto3_stubs: boto3_stubs
     rest_framework: djangorestframework
   pip_deps_repository_name: gazelle_python_test

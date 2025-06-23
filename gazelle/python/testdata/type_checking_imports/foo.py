@@ -14,6 +14,7 @@
 
 import typing
 
+# boto3 should be added to deps. boto3_stubs and djangorestframework should be added to pyi_deps.
 import boto3
 
 if typing.TYPE_CHECKING:
