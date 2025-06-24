@@ -39,9 +39,6 @@ const (
 	// resolvedDepsKey is the attribute key used to pass dependencies that don't
 	// need to be resolved by the dependency resolver in the Resolver step.
 	resolvedDepsKey = "_gazelle_python_resolved_deps"
-	// resolvedPyiDepsKey is the attribute key used to pass type-checking dependencies that don't
-	// need to be resolved by the dependency resolver in the Resolver step.
-	resolvedPyiDepsKey = "_gazelle_python_resolved_pyi_deps"
 )
 
 // Resolver satisfies the resolve.Resolver interface. It resolves dependencies
