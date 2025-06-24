@@ -32,7 +32,6 @@ type targetBuilder struct {
 	srcs              *treeset.Set
 	siblingSrcs       *treeset.Set
 	deps              *treeset.Set
-	pyiDeps           *treeset.Set
 	resolvedDeps      *treeset.Set
 	visibility        *treeset.Set
 	main              *string
@@ -50,7 +49,6 @@ func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingS
 		srcs:              treeset.NewWith(godsutils.StringComparator),
 		siblingSrcs:       siblingSrcs,
 		deps:              treeset.NewWith(moduleComparator),
-		pyiDeps:           treeset.NewWith(moduleComparator),
 		resolvedDeps:      treeset.NewWith(godsutils.StringComparator),
 		visibility:        treeset.NewWith(godsutils.StringComparator),
 	}
@@ -83,12 +81,7 @@ func (t *targetBuilder) addModuleDependency(dep Module) *targetBuilder {
 		dep.Name = importSpecFromSrc(t.pythonProjectRoot, t.bzlPackage, fileName).Imp
 	}
 
-	// Add to appropriate dependency set based on whether it's type-checking only
-	if dep.TypeCheckingOnly {
-		t.pyiDeps.Add(dep)
-	} else {
-		t.deps.Add(dep)
-	}
+	addModuleToTreeSet(t.deps, dep)
 	return t
 }
 
@@ -171,24 +164,12 @@ func (t *targetBuilder) build() *rule.Rule {
 	if t.imports != nil {
 		r.SetAttr("imports", t.imports)
 	}
-	if combinedDeps := t.combinedDeps(); !combinedDeps.Empty() {
-		r.SetPrivateAttr(config.GazelleImportsKey, combinedDeps)
+	if !t.deps.Empty() {
+		r.SetPrivateAttr(config.GazelleImportsKey, t.deps)
 	}
 	if t.testonly {
 		r.SetAttr("testonly", true)
 	}
 	r.SetPrivateAttr(resolvedDepsKey, t.resolvedDeps)
 	return r
-}
-
-// Combine both regular and type-checking imports into a single set
-// for passing to the resolver. The resolver will distinguish them
-// based on the TypeCheckingOnly field.
-func (t *targetBuilder) combinedDeps() *treeset.Set {
-	combinedDeps := treeset.NewWith(moduleComparator)
-	// If an import is in both pyi_deps and deps, the one in deps will override the one in pyi_deps, resulting
-	// in the resolver properly adding to deps instead of pyi_deps.
-	combinedDeps.Add(t.pyiDeps.Values()...)
-	combinedDeps.Add(t.deps.Values()...)
-	return combinedDeps
 }
