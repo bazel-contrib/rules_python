@@ -91,6 +91,9 @@ const (
 	// names of labels to third-party dependencies are normalized. Supported values
 	// are 'none', 'pep503' and 'snake_case' (default). See LabelNormalizationType.
 	LabelNormalization = "python_label_normalization"
+	// ExperimentalAllowRelativeImports represents the directive that controls
+	// whether relative imports are allowed.
+	ExperimentalAllowRelativeImports = "experimental_allow_relative_imports"
 	// GeneratePyiDeps represents the directive that controls whether to generate
 	// separate pyi_deps attribute or merge type-checking dependencies into deps.
 	// Defaults to false for backward compatibility.
@@ -181,6 +184,7 @@ type Config struct {
 	testFilePattern                           []string
 	labelConvention                           string
 	labelNormalization                        LabelNormalizationType
+	experimentalAllowRelativeImports          bool
 	generatePyiDeps                           bool
 }
 
@@ -217,6 +221,7 @@ func New(
 		testFilePattern:                           strings.Split(DefaultTestFilePatternString, ","),
 		labelConvention:                           DefaultLabelConvention,
 		labelNormalization:                        DefaultLabelNormalizationType,
+		experimentalAllowRelativeImports:          false,
 		generatePyiDeps:                           false,
 	}
 }
@@ -250,6 +255,7 @@ func (c *Config) NewChild() *Config {
 		testFilePattern:                           c.testFilePattern,
 		labelConvention:                           c.labelConvention,
 		labelNormalization:                        c.labelNormalization,
+		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
 		generatePyiDeps:                           c.generatePyiDeps,
 	}
 }
@@ -525,6 +531,16 @@ func (c *Config) SetLabelNormalization(normalizationType LabelNormalizationType)
 // LabelConvention returns the label normalization applied to distribution names of third-party dependencies.
 func (c *Config) LabelNormalization() LabelNormalizationType {
 	return c.labelNormalization
+}
+
+// SetExperimentalAllowRelativeImports sets whether relative imports are allowed.
+func (c *Config) SetExperimentalAllowRelativeImports(allowRelativeImports bool) {
+	c.experimentalAllowRelativeImports = allowRelativeImports
+}
+
+// ExperimentalAllowRelativeImports returns whether relative imports are allowed.
+func (c *Config) ExperimentalAllowRelativeImports() bool {
+	return c.experimentalAllowRelativeImports
 }
 
 // SetGeneratePyiDeps sets whether pyi_deps attribute should be generated separately

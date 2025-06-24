@@ -11,9 +11,14 @@ Currently `rules_python` only supports `requirements.txt` format.
 
 ### pip compile
 
-Generally, when working on a Python project, you'll have some dependencies that themselves have other dependencies. You might also specify dependency bounds instead of specific versions. So you'll need to generate a full list of all transitive dependencies and pinned versions for every dependency.
+Generally, when working on a Python project, you'll have some dependencies that themselves have
+other dependencies. You might also specify dependency bounds instead of specific versions.
+So you'll need to generate a full list of all transitive dependencies and pinned versions
+for every dependency.
 
-Typically, you'd have your project dependencies specified in `pyproject.toml` or `requirements.in` and generate the full pinned list of dependencies in `requirements_lock.txt`, which you can manage with the {obj}`compile_pip_requirements`:
+Typically, you'd have your project dependencies specified in `pyproject.toml` or `requirements.in`
+and generate the full pinned list of dependencies in `requirements_lock.txt`, which you can
+manage with {obj}`compile_pip_requirements`:
 
 ```starlark
 load("@rules_python//python:pip.bzl", "compile_pip_requirements")

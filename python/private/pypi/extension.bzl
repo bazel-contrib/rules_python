@@ -372,7 +372,7 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, override = False, env = {}):
+def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
     if platform:
@@ -387,6 +387,7 @@ def _configure(config, *, platform, os_name, arch_name, override = False, env = 
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
+            config_settings = config_settings,
             env = env,
         )
     else:
@@ -413,6 +414,10 @@ def _create_config(defaults):
             arch_name = cpu,
             os_name = "linux",
             platform = "linux_{}".format(cpu),
+            config_settings = [
+                "@platforms//os:linux",
+                "@platforms//cpu:{}".format(cpu),
+            ],
             env = {"platform_version": "0"},
         )
     for cpu in [
@@ -424,17 +429,25 @@ def _create_config(defaults):
             arch_name = cpu,
             # We choose the oldest non-EOL version at the time when we release `rules_python`.
             # See https://endoflife.date/macos
-            env = {"platform_version": "14.0"},
             os_name = "osx",
             platform = "osx_{}".format(cpu),
+            config_settings = [
+                "@platforms//os:osx",
+                "@platforms//cpu:{}".format(cpu),
+            ],
+            env = {"platform_version": "14.0"},
         )
 
     _configure(
         defaults,
         arch_name = "x86_64",
-        env = {"platform_version": "0"},
         os_name = "windows",
         platform = "windows_x86_64",
+        config_settings = [
+            "@platforms//os:windows",
+            "@platforms//cpu:x86_64",
+        ],
+        env = {"platform_version": "0"},
     )
     return struct(**defaults)
 
@@ -500,6 +513,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             _configure(
                 defaults,
                 arch_name = tag.arch_name,
+                config_settings = tag.config_settings,
                 env = tag.env,
                 os_name = tag.os_name,
                 platform = tag.platform,
@@ -679,6 +693,13 @@ You cannot use both the additive_build_content and additive_build_content_file a
             }
             for hub_name, extra_whl_aliases in extra_aliases.items()
         },
+        platform_config_settings = {
+            hub_name: {
+                platform_name: sorted([str(Label(cv)) for cv in p.config_settings])
+                for platform_name, p in config.platforms.items()
+            }
+            for hub_name in hub_whl_map
+        },
         whl_libraries = {
             k: dict(sorted(args.items()))
             for k, args in sorted(whl_libraries.items())
@@ -769,6 +790,7 @@ def _pip_impl(module_ctx):
                 for key, values in whl_map.items()
             },
             packages = mods.exposed_packages.get(hub_name, []),
+            platform_config_settings = mods.platform_config_settings.get(hub_name, {}),
             groups = mods.hub_group_map.get(hub_name),
         )
 
@@ -788,6 +810,13 @@ The CPU architecture name to be used.
 :::{note}
 Either this or {attr}`env` `platform_machine` key should be specified.
 :::
+""",
+    ),
+    "config_settings": attr.label_list(
+        mandatory = True,
+        doc = """\
+The list of labels to `config_setting` targets that need to be matched for the platform to be
+selected.
 """,
     ),
     "os_name": attr.string(
@@ -1116,6 +1145,9 @@ The [environment markers][environment_markers] specification for the explanation
 terms used in this extension.
 
 [environment_markers]: https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
         ),

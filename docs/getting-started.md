@@ -1,14 +1,14 @@
 # Getting started
 
-This doc is a simplified guide to help get started quickly. It provides
+This document is a simplified guide to help you get started quickly. It provides
 a simplified introduction to having a working Python program for both `bzlmod`
 and the older way of using `WORKSPACE`.
 
 It assumes you have a `requirements.txt` file with your PyPI dependencies.
 
-For more details information about configuring `rules_python`, see:
+For more detailed information about configuring `rules_python`, see:
 * [Configuring the runtime](configuring-toolchains)
-* [Configuring third party dependencies (pip/pypi)](./pypi/index)
+* [Configuring third-party dependencies (pip/PyPI)](./pypi/index)
 * [API docs](api/index)
 
 ## Including dependencies
@@ -32,7 +32,7 @@ use_repo(pip, "pypi")
 
 ### Using a WORKSPACE file
 
-Using WORKSPACE is deprecated, but still supported, and a bit more involved than
+Using `WORKSPACE` is deprecated but still supported, and it's a bit more involved than
 using Bzlmod. Here is a simplified setup to download the prebuilt runtimes.
 
 ```starlark
@@ -72,7 +72,7 @@ pip_parse(
 
 ## "Hello World"
 
-Once you've imported the rule set using either Bzlmod or WORKSPACE, you can then
+Once you've imported the rule set using either Bzlmod or `WORKSPACE`, you can then
 load the core rules in your `BUILD` files with the following:
 
 ```starlark

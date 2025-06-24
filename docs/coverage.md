@@ -9,7 +9,7 @@ when configuring toolchains.
 ## Enabling `rules_python` coverage support
 
 Enabling the coverage support bundled with `rules_python` just requires setting an
-argument when registerting toolchains.
+argument when registering toolchains.
 
 For Bzlmod:
 
@@ -32,7 +32,7 @@ python_register_toolchains(
 This will implicitly add the version of `coverage` bundled with
 `rules_python` to the dependencies of `py_test` rules when `bazel coverage` is
 run. If a target already transitively depends on a different version of
-`coverage`, then behavior is undefined -- it is undefined which version comes
+`coverage`, then the behavior is undefined -- it is undefined which version comes
 first in the import path. If you find yourself in this situation, then you'll
 need to manually configure coverage (see below).
 :::
