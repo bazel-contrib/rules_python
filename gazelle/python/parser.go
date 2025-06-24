@@ -112,9 +112,9 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 				continue
 			}
 
-			modules.Add(m)
+			addModuleToTreeSet(modules, m)
 			if res.HasMain {
-				mainModules[res.FileName].Add(m)
+				addModuleToTreeSet(mainModules[res.FileName], m)
 			}
 		}
 
@@ -165,6 +165,15 @@ type Module struct {
 // moduleComparator compares modules by name.
 func moduleComparator(a, b interface{}) int {
 	return godsutils.StringComparator(a.(Module).Name, b.(Module).Name)
+}
+
+// addModuleToTreeSet adds a module to a treeset.Set, ensuring that a TypeCheckingOnly=false module is
+// prefered over a TypeCheckingOnly=true module.
+func addModuleToTreeSet(set *treeset.Set, mod Module) {
+	if mod.TypeCheckingOnly && set.Contains(mod) {
+		return
+	}
+	set.Add(mod)
 }
 
 // annotationKind represents Gazelle annotation kinds.
