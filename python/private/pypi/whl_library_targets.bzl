@@ -168,7 +168,7 @@ def whl_library_targets(
     tags = sorted(tags)
     data = [] + data
 
-    if filesgroups == None:
+    if filegroups == None:
         filegroups = {
             EXTRACTED_WHEEL_FILES: dict(
                 include = ["**"],
