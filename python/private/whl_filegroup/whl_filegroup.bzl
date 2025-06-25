@@ -42,7 +42,14 @@ cc_library(
     includes = ["numpy_includes/numpy/core/include"],
     deps = ["@rules_python//python/cc:current_py_cc_headers"],
 )
+
 ```
+
+:::{seealso}
+
+The `:extracted_whl_files` target, which is a filegroup of all the files
+from the already extracted whl file.
+:::
 """,
     attrs = {
         "pattern": attr.string(default = "", doc = "Only file paths matching this regex pattern will be extracted."),
