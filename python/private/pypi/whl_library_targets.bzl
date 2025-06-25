@@ -172,7 +172,10 @@ def whl_library_targets(
         filegroups = {
             EXTRACTED_WHEEL_FILES: dict(
                 include = ["**"],
-                exclude = [name] + [sdist_filename] if sdist_filename else [],
+                exclude = [
+                    "BUILD.bazel",
+                    name,
+                ] + [sdist_filename] if sdist_filename else [],
             ),
             DIST_INFO_LABEL: dict(
                 include = ["site-packages/*.dist-info/**"],
