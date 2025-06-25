@@ -272,6 +272,15 @@ tasks:
     working_directory: examples/bzlmod
     platform: debian11
     bazel: 7.x
+  integration_test_bzlmod_ubuntu_vendor:
+    <<: *reusable_build_test_all
+    name: "examples/bzlmod: bazel vendor"
+    working_directory: examples/bzlmod
+    platform: ubuntu2004
+    shell_commands:
+    - "bazel vendor --vendor_dir=./vendor //..."
+    - "bazel build --vendor_dir=./vendor //..."
+    - "rm -rf ./vendor"
   integration_test_bzlmod_macos:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod

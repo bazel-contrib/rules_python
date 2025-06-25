@@ -61,7 +61,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (pypi) Fixes an issue where builds using a `bazel vendor` vendor directory
+  would fail if the constraints file contained environment markers. Fixes
+  [#2996](https://github.com/bazel-contrib/rules_python/issues/2996).
 
 {#v0-0-0-added}
 ### Added
