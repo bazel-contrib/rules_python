@@ -249,7 +249,7 @@ bzl_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//python/private:platform_info_bzl",
-        "//python/private:text_utils_bzl",
+        "//python/private:text_util_bzl",
     ],
 )
 
