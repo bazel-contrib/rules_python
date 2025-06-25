@@ -249,6 +249,7 @@ def _whl_library_impl(rctx):
 
     whl_path = None
     if rctx.attr.whl_file:
+        rctx.watch(rctx.attr.whl_file)
         whl_path = rctx.path(rctx.attr.whl_file)
 
         # Simulate the behaviour where the whl is present in the current directory.

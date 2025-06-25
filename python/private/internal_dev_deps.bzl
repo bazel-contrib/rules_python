@@ -14,6 +14,8 @@
 """Module extension for internal dev_dependency=True setup."""
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
+load("//python/private/pypi:whl_library.bzl", "whl_library")
+load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
 load(":runtime_env_repo.bzl", "runtime_env_repo")
 
 def _internal_dev_deps_impl(mctx):
@@ -27,6 +29,17 @@ def _internal_dev_deps_impl(mctx):
         toolchain = "ubuntu1804-bazel-java11",
     )
     runtime_env_repo(name = "rules_python_runtime_env_tc_info")
+
+    whl_from_dir_repo(
+        name = "whl_with_build_files",
+        root = "//tests/whl_with_build_files/testdata:BUILD.bazel",
+        output = "somepkg-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "somepkg_with_build_files",
+        whl_file = "@whl_with_build_files//:somepkg-1.0-any-none-any.whl",
+        requirement = "somepkg",
+    )
 
 internal_dev_deps = module_extension(
     implementation = _internal_dev_deps_impl,

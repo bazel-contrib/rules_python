@@ -1,0 +1,7 @@
+load("//python:py_test.bzl", "py_test")
+
+py_test(
+    name = "verify_files_test",
+    srcs = ["verify_files_test.py"],
+    deps = ["@somepkg_with_build_files//:pkg"],
+)
