@@ -98,6 +98,19 @@ def normalize_pep440(version):
         return str(packaging.version.Version(f"0+{sanitized}"))
 
 
+def arcname_from(name: str, distribution_prefix: str, strip_path_prefixes:list[str] | None = None):
+    # Always use unix path separators.
+    normalized_arcname = name.replace(os.path.sep, "/")
+    # Don't manipulate names filenames in the .distinfo or .data directories.
+    if distribution_prefix and normalized_arcname.startswith(distribution_prefix):
+        return normalized_arcname
+    for prefix in strip_path_prefixes:
+        if normalized_arcname.startswith(prefix):
+            return normalized_arcname[len(prefix) :]
+
+    return normalized_arcname
+
+
 class _WhlFile(zipfile.ZipFile):
     def __init__(
         self,
@@ -125,18 +138,6 @@ class _WhlFile(zipfile.ZipFile):
 
     def add_file(self, package_filename, real_filename):
         """Add given file to the distribution."""
-
-        def arcname_from(name):
-            # Always use unix path separators.
-            normalized_arcname = name.replace(os.path.sep, "/")
-            # Don't manipulate names filenames in the .distinfo or .data directories.
-            if normalized_arcname.startswith(self._distribution_prefix):
-                return normalized_arcname
-            for prefix in self._strip_path_prefixes:
-                if normalized_arcname.startswith(prefix):
-                    return normalized_arcname[len(prefix) :]
-
-            return normalized_arcname
 
         if os.path.isdir(real_filename):
             directory_contents = os.listdir(real_filename)
