@@ -372,7 +372,7 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, constraint_values, env = {}, override = False):
+def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
     if platform:
@@ -387,7 +387,7 @@ def _configure(config, *, platform, os_name, arch_name, constraint_values, env =
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
-            constraint_values = constraint_values,
+            config_settings = config_settings,
             env = env,
         )
     else:
@@ -414,7 +414,7 @@ def _create_config(defaults):
             arch_name = cpu,
             os_name = "linux",
             platform = "linux_{}".format(cpu),
-            constraint_values = [
+            config_settings = [
                 "@platforms//os:linux",
                 "@platforms//cpu:{}".format(cpu),
             ],
@@ -431,7 +431,7 @@ def _create_config(defaults):
             # See https://endoflife.date/macos
             os_name = "osx",
             platform = "osx_{}".format(cpu),
-            constraint_values = [
+            config_settings = [
                 "@platforms//os:osx",
                 "@platforms//cpu:{}".format(cpu),
             ],
@@ -443,7 +443,7 @@ def _create_config(defaults):
         arch_name = "x86_64",
         os_name = "windows",
         platform = "windows_x86_64",
-        constraint_values = [
+        config_settings = [
             "@platforms//os:windows",
             "@platforms//cpu:x86_64",
         ],
@@ -513,7 +513,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             _configure(
                 defaults,
                 arch_name = tag.arch_name,
-                constraint_values = tag.constraint_values,
+                config_settings = tag.config_settings,
                 env = tag.env,
                 os_name = tag.os_name,
                 platform = tag.platform,
@@ -693,9 +693,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
             }
             for hub_name, extra_whl_aliases in extra_aliases.items()
         },
-        platform_constraint_values = {
+        platform_config_settings = {
             hub_name: {
-                platform_name: sorted([str(Label(cv)) for cv in p.constraint_values])
+                platform_name: sorted([str(Label(cv)) for cv in p.config_settings])
                 for platform_name, p in config.platforms.items()
             }
             for hub_name in hub_whl_map
@@ -790,7 +790,7 @@ def _pip_impl(module_ctx):
                 for key, values in whl_map.items()
             },
             packages = mods.exposed_packages.get(hub_name, []),
-            platform_constraint_values = mods.platform_constraint_values.get(hub_name, {}),
+            platform_config_settings = mods.platform_config_settings.get(hub_name, {}),
             groups = mods.hub_group_map.get(hub_name),
         )
 
@@ -812,10 +812,11 @@ Either this or {attr}`env` `platform_machine` key should be specified.
 :::
 """,
     ),
-    "constraint_values": attr.label_list(
+    "config_settings": attr.label_list(
         mandatory = True,
         doc = """\
-The constraint_values to use in select statements.
+The list of labels to `config_setting` targets that need to be matched for the platform to be
+selected.
 """,
     ),
     "os_name": attr.string(
@@ -1144,6 +1145,9 @@ The [environment markers][environment_markers] specification for the explanation
 terms used in this extension.
 
 [environment_markers]: https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
         ),

@@ -8,8 +8,8 @@ For WORKSPACE instructions see [here](./download-workspace).
 :::
 
 To add PyPI dependencies to your `MODULE.bazel` file, use the `pip.parse`
-extension, and call it to create the central external repo and individual wheel
-external repos. Include in the `MODULE.bazel` the toolchain extension as shown
+extension and call it to create the central external repo and individual wheel
+external repos. Include the toolchain extension in the `MODULE.bazel` file as shown
 in the first bzlmod example above.
 
 ```starlark
@@ -24,7 +24,7 @@ pip.parse(
 use_repo(pip, "my_deps")
 ```
 
-For more documentation, see the bzlmod examples under the {gh-path}`examples` folder or the documentation
+For more documentation, see the Bzlmod examples under the {gh-path}`examples` folder or the documentation
 for the {obj}`@rules_python//python/extensions:pip.bzl` extension.
 
 :::note}
@@ -42,7 +42,7 @@ difference.
 
 ## Interpreter selection
 
-The {obj}`pip.parse` `bzlmod` extension by default uses the hermetic python toolchain for the host
+The {obj}`pip.parse` `bzlmod` extension by default uses the hermetic Python toolchain for the host
 platform, but you can customize the interpreter using {attr}`pip.parse.python_interpreter` and
 {attr}`pip.parse.python_interpreter_target`.
 
@@ -58,10 +58,10 @@ name]`.
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
 
-In some cases you may need to use different requirements files for different OS, Arch combinations.
-This is enabled via the `requirements_by_platform` attribute in `pip.parse` extension and the
-{obj}`pip.parse` tag class. The keys of the dictionary are labels to the file and the values are a
-list of comma separated target (os, arch) tuples.
+In some cases, you may need to use different requirements files for different OS and architecture combinations.
+This is enabled via the `requirements_by_platform` attribute in the `pip.parse` extension and the
+{obj}`pip.parse` tag class. The keys of the dictionary are labels to the file, and the values are a
+list of comma-separated target (os, arch) tuples.
 
 For example:
 ```starlark
@@ -77,8 +77,8 @@ For example:
     requirements_lock = "requirements_lock.txt",
 ```
 
-In case of duplicate platforms, `rules_python` will raise an error as there has
-to be unambiguous mapping of the requirement files to the (os, arch) tuples.
+In case of duplicate platforms, `rules_python` will raise an error, as there has
+to be an unambiguous mapping of the requirement files to the (os, arch) tuples.
 
 An alternative way is to use per-OS requirement attributes.
 ```starlark
@@ -98,24 +98,24 @@ the lock file will be evaluated against, consider using the aforementioned
 
 ## Multi-platform support
 
-Historically the {obj}`pip_parse` and {obj}`pip.parse` have been only downloading/building
+Historically, the {obj}`pip_parse` and {obj}`pip.parse` have only been downloading/building
 Python dependencies for the host platform that the `bazel` commands are executed on. Over
-the years people started needing support for building containers and usually that involves
-fetching dependencies for a particular target platform that may be other than the host
+the years, people started needing support for building containers, and usually, that involves
+fetching dependencies for a particular target platform that may be different from the host
 platform.
 
-Multi-platform support of cross-building the wheels can be done in two ways:
+Multi-platform support for cross-building the wheels can be done in two ways:
 1. using {attr}`experimental_index_url` for the {bzl:obj}`pip.parse` bzlmod tag class
-2. using {attr}`pip.parse.download_only` setting.
+2. using the {attr}`pip.parse.download_only` setting.
 
 :::{warning}
-This will not for sdists with C extensions, but pure Python sdists may still work using the first
+This will not work for sdists with C extensions, but pure Python sdists may still work using the first
 approach.
 :::
 
 ### Using `download_only` attribute
 
-Let's say you have 2 requirements files:
+Let's say you have two requirements files:
 ```
 # requirements.linux_x86_64.txt
 --platform=manylinux_2_17_x86_64
@@ -151,9 +151,9 @@ pip.parse(
 )
 ```
 
-With this, the `pip.parse` will create a hub repository that is going to
-support only two platforms - `cp39_osx_aarch64` and `cp39_linux_x86_64` and it
-will only use `wheels` and ignore any sdists that it may find on the PyPI
+With this, `pip.parse` will create a hub repository that is going to
+support only two platforms - `cp39_osx_aarch64` and `cp39_linux_x86_64` - and it
+will only use `wheels` and ignore any sdists that it may find on the PyPI-
 compatible indexes.
 
 :::{warning}
@@ -162,7 +162,7 @@ multiple times.
 :::
 
 :::{note}
-This will only work for wheel-only setups, i.e. all of your dependencies need to have wheels
+This will only work for wheel-only setups, i.e., all of your dependencies need to have wheels
 available on the PyPI index that you use.
 :::
 
@@ -173,9 +173,9 @@ Currently this is disabled by default, but you can turn it on using
 {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` environment variable.
 :::
 
-In order to understand what dependencies to pull for a particular package
+In order to understand what dependencies to pull for a particular package,
 `rules_python` parses the `whl` file [`METADATA`][metadata].
-Packages can express dependencies via `Requires-Dist` and they can add conditions using
+Packages can express dependencies via `Requires-Dist`, and they can add conditions using
 "environment markers", which represent the Python version, OS, etc.
 
 While the PyPI integration provides reasonable defaults to support most
@@ -198,8 +198,8 @@ additional keys, which become available during dependency evaluation.
 ### Bazel downloader and multi-platform wheel hub repository.
 
 :::{warning}
-This is currently still experimental and whilst it has been proven to work in quite a few
-environments, the APIs are still being finalized and there may be changes to the APIs for this
+This is currently still experimental, and whilst it has been proven to work in quite a few
+environments, the APIs are still being finalized, and there may be changes to the APIs for this
 feature without much notice.
 
 The issues that you can subscribe to for updates are:
@@ -207,7 +207,7 @@ The issues that you can subscribe to for updates are:
 * {gh-issue}`1357`
 :::
 
-The {obj}`pip` extension supports pulling information from `PyPI` (or a compatible mirror) and it
+The {obj}`pip` extension supports pulling information from `PyPI` (or a compatible mirror), and it
 will ensure that the [bazel downloader][bazel_downloader] is used for downloading the wheels.
 
 This provides the following benefits:
@@ -222,7 +222,7 @@ To enable the feature specify {attr}`pip.parse.experimental_index_url` as shown 
 the {gh-path}`examples/bzlmod/MODULE.bazel` example.
 
 Similar to [uv](https://docs.astral.sh/uv/configuration/indexes/), one can override the
-index that is used for a single package. By default we first search in the index specified by
+index that is used for a single package. By default, we first search in the index specified by
 {attr}`pip.parse.experimental_index_url`, then we iterate through the
 {attr}`pip.parse.experimental_extra_index_urls` unless there are overrides specified via
 {attr}`pip.parse.experimental_index_url_overrides`.
@@ -235,12 +235,12 @@ Loading: 0 packages loaded
 
 ```
 
-This does not mean that `rules_python` is fetching the wheels eagerly, but it
-rather means that it is calling the PyPI server to get the Simple API response
+This does not mean that `rules_python` is fetching the wheels eagerly; rather,
+it means that it is calling the PyPI server to get the Simple API response
 to get the list of all available source and wheel distributions. Once it has
-got all of the available distributions, it will select the right ones depending
+gotten all of the available distributions, it will select the right ones depending
 on the `sha256` values in your `requirements_lock.txt` file. If `sha256` hashes
-are not present in the requirements file, we will fallback to matching by version
+are not present in the requirements file, we will fall back to matching by version
 specified in the lock file.
 
 Fetching the distribution information from the PyPI allows `rules_python` to
@@ -264,10 +264,10 @@ available flags:
 
 The [Bazel downloader](#bazel-downloader) usage allows for the Bazel
 [Credential Helper][cred-helper-design].
-Your python artifact registry may provide a credential helper for you. 
+Your Python artifact registry may provide a credential helper for you.
 Refer to your index's docs to see if one is provided.
 
-The simplest form of a credential helper is a bash script that accepts an arg and spits out JSON to
+The simplest form of a credential helper is a bash script that accepts an argument and spits out JSON to
 stdout. For a service like Google Artifact Registry that uses ['Basic' HTTP Auth][rfc7617] and does
 not provide a credential helper that conforms to the [spec][cred-helper-spec], the script might
 look like:
@@ -285,7 +285,7 @@ echo '  }'
 echo '}'
 ```
 
-Configure Bazel to use this credential helper for your python index `example.com`:
+Configure Bazel to use this credential helper for your Python index `example.com`:
 
 ```
 # .bazelrc

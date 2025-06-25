@@ -155,14 +155,14 @@ def _major_minor_versions(python_versions):
     # Use a dict as a simple set
     return sorted({_major_minor(v): None for v in python_versions})
 
-def render_multiplatform_pkg_aliases(*, aliases, platform_constraint_values = {}, **kwargs):
+def render_multiplatform_pkg_aliases(*, aliases, platform_config_settings = {}, **kwargs):
     """Render the multi-platform pkg aliases.
 
     Args:
         aliases: dict[str, list(whl_config_setting)] A list of aliases that will be
           transformed from ones having `filename` to ones having `config_setting`.
-        platform_constraint_values: {type}`dict[str, list[str]]` contains all of the
-            target platforms and their appropriate `constraint_values`.
+        platform_config_settings: {type}`dict[str, list[str]]` contains all of the
+            target platforms and their appropriate `target_settings`.
         **kwargs: extra arguments passed to render_pkg_aliases.
 
     Returns:
@@ -189,20 +189,20 @@ def render_multiplatform_pkg_aliases(*, aliases, platform_constraint_values = {}
         muslc_versions = flag_versions.get("muslc_versions", []),
         osx_versions = flag_versions.get("osx_versions", []),
         python_versions = _major_minor_versions(flag_versions.get("python_versions", [])),
-        platform_constraint_values = platform_constraint_values,
+        platform_config_settings = platform_config_settings,
         visibility = ["//:__subpackages__"],
     )
     return contents
 
-def _render_config_settings(platform_constraint_values, **kwargs):
+def _render_config_settings(platform_config_settings, **kwargs):
     return """\
 load("@rules_python//python/private/pypi:config_settings.bzl", "config_settings")
 
 {}""".format(render.call(
         "config_settings",
         name = repr("config_settings"),
-        platform_constraint_values = render.dict(
-            platform_constraint_values,
+        platform_config_settings = render.dict(
+            platform_config_settings,
             value_repr = render.list,
         ),
         **_repr_dict(value_repr = render.list, **kwargs)

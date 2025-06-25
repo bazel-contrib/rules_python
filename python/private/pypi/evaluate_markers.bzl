@@ -78,14 +78,16 @@ def evaluate_markers_py(mrctx, *, requirements, python_interpreter, python_inter
     out_file = mrctx.path("requirements_with_markers.out.json")
     mrctx.file(in_file, json.encode(requirements))
 
+    interpreter = pypi_repo_utils.resolve_python_interpreter(
+        mrctx,
+        python_interpreter = python_interpreter,
+        python_interpreter_target = python_interpreter_target,
+    )
+
     pypi_repo_utils.execute_checked(
         mrctx,
         op = "ResolveRequirementEnvMarkers({})".format(in_file),
-        python = pypi_repo_utils.resolve_python_interpreter(
-            mrctx,
-            python_interpreter = python_interpreter,
-            python_interpreter_target = python_interpreter_target,
-        ),
+        python = interpreter,
         arguments = [
             "-m",
             "python.private.pypi.requirements_parser.resolve_target_platforms",
@@ -94,6 +96,7 @@ def evaluate_markers_py(mrctx, *, requirements, python_interpreter, python_inter
         ],
         srcs = srcs,
         environment = {
+            "PYTHONHOME": str(interpreter.dirname),
             "PYTHONPATH": [
                 Label("@pypi__packaging//:BUILD.bazel"),
                 Label("//:BUILD.bazel"),

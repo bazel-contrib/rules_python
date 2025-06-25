@@ -4,13 +4,13 @@
 (configuring-toolchains)=
 # Configuring Python toolchains and runtimes
 
-This documents how to configure the Python toolchain and runtimes for different
+This document explains how to configure the Python toolchain and runtimes for different
 use cases.
 
 ## Bzlmod MODULE configuration
 
-How to configure `rules_python` in your MODULE.bazel file depends on how and why
-you're using Python. There are 4 basic use cases:
+How to configure `rules_python` in your `MODULE.bazel` file depends on how and why
+you're using Python. There are four basic use cases:
 
 1. A root module that always uses Python. For example, you're building a
    Python application.
@@ -51,7 +51,7 @@ python.toolchain(python_version = "3.12")
 ### Library modules
 
 A library module is a module that can show up in arbitrary locations in the
-bzlmod module graph -- it's unknown where in the breadth-first search order the
+Bzlmod module graph -- it's unknown where in the breadth-first search order the
 module will be relative to other modules. For example, `rules_python` is a
 library module.
 
@@ -84,9 +84,9 @@ used for the Python programs it runs isn't chosen by the module itself. Instead,
 it's up to the root module to pick an appropriate version of Python.
 
 For this case, configuration is simple: just depend on `rules_python` and use
-the normal `//python:py_binary.bzl` et al rules. There is no need to call
-`python.toolchain` -- rules_python ensures _some_ Python version is available,
-but more often the root module will specify some version.
+the normal `//python:py_binary.bzl` et al. rules. There is no need to call
+`python.toolchain` -- `rules_python` ensures _some_ Python version is available,
+but more often, the root module will specify some version.
 
 ```
 # MODULE.bazel
@@ -108,7 +108,7 @@ specific Python version be used with its tools. This has some pros/cons:
 * It has higher build overhead because additional runtimes and libraries need
   to be downloaded, and Bazel has to keep additional configuration state.
 
-To configure this, request the Python versions needed in MODULE.bazel and use
+To configure this, request the Python versions needed in `MODULE.bazel` and use
 the version-aware rules for `py_binary`.
 
 ```
@@ -132,7 +132,7 @@ is most useful for two cases:
 
 1. For submodules to ensure they run with the appropriate Python version
 2. To allow incremental, per-target, upgrading to newer Python versions,
-   typically in a mono-repo situation.
+   typically in a monorepo situation.
 
 To configure a submodule with the version-aware rules, request the particular
 version you need when defining the toolchain:
@@ -147,7 +147,7 @@ python.toolchain(
 use_repo(python)
 ```
 
-Then use the `@rules_python` repo in your BUILD file to explicity pin the Python version when calling the rule:
+Then use the `@rules_python` repo in your `BUILD` file to explicitly pin the Python version when calling the rule:
 
 ```starlark
 # BUILD.bazel
@@ -202,29 +202,29 @@ The `python.toolchain()` call makes its contents available under a repo named
 `python_X_Y`, where X and Y are the major and minor versions. For example,
 `python.toolchain(python_version="3.11")` creates the repo `@python_3_11`.
 Remember to call `use_repo()` to make repos visible to your module:
-`use_repo(python, "python_3_11")`
+`use_repo(python, "python_3_11")`.
 
 
 :::{deprecated} 1.1.0
-The toolchain specific `py_binary` and `py_test` symbols are aliases to the regular rules.
-i.e. Deprecated `load("@python_versions//3.11:defs.bzl", "py_binary")` & `load("@python_versions//3.11:defs.bzl", "py_test")`
+The toolchain-specific `py_binary` and `py_test` symbols are aliases to the regular rules.
+For example, `load("@python_versions//3.11:defs.bzl", "py_binary")` & `load("@python_versions//3.11:defs.bzl", "py_test")` are deprecated.
 
-Usages of them should be changed to load the regular rules directly;
-i.e.  Use `load("@rules_python//python:py_binary.bzl", "py_binary")` & `load("@rules_python//python:py_test.bzl", "py_test")` and then specify the `python_version` when using the rules corresponding to the python version you defined in your toolchain. {ref}`Library modules with version constraints`
+Usages of them should be changed to load the regular rules directly.
+For example, use `load("@rules_python//python:py_binary.bzl", "py_binary")` & `load("@rules_python//python:py_test.bzl", "py_test")` and then specify the `python_version` when using the rules corresponding to the Python version you defined in your toolchain. {ref}`Library modules with version constraints`
 :::
 
 
 #### Toolchain usage in other rules
 
-Python toolchains can be utilized in other bazel rules, such as `genrule()`, by
+Python toolchains can be utilized in other Bazel rules, such as `genrule()`, by
 adding the `toolchains=["@rules_python//python:current_py_toolchain"]`
 attribute. You can obtain the path to the Python interpreter using the
 `$(PYTHON2)` and `$(PYTHON3)` ["Make"
 Variables](https://bazel.build/reference/be/make-variables). See the
 {gh-path}`test_current_py_toolchain <tests/load_from_macro/BUILD.bazel>` target
-for an example. We also make available `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)`
+for an example. We also make available `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)`,
 which are Make Variable equivalents of `$(PYTHON2)` and `$(PYTHON3)` but for runfiles
-locations. These will be helpful if you need to set env vars of binary/test rules
+locations. These will be helpful if you need to set environment variables of binary/test rules
 while using [`--nolegacy_external_runfiles`](https://bazel.build/reference/command-line-reference#flag--legacy_external_runfiles).
 The original make variables still work in exec contexts such as genrules.
 
@@ -246,9 +246,9 @@ existing attributes:
 ### Registering custom runtimes
 
 Because the python-build-standalone project has _thousands_ of prebuilt runtimes
-available, rules_python only includes popular runtimes in its built in
+available, `rules_python` only includes popular runtimes in its built-in
 configurations. If you want to use a runtime that isn't already known to
-rules_python then {obj}`single_version_platform_override()` can be used to do
+`rules_python`, then {obj}`single_version_platform_override()` can be used to do
 so. In short, it allows specifying an arbitrary URL and using custom flags
 to control when a runtime is used.
 
@@ -287,21 +287,21 @@ config_setting(
 ```
 
 Notes:
-- While any URL and archive can be used, it's assumed their content looks how
-  a python-build-standalone archive looks.
-- A "version aware" toolchain is registered, which means the Python version flag
-  must also match (e.g. `--@rules_python//python/config_settings:python_version=3.13.3`
+- While any URL and archive can be used, it's assumed their content looks like
+  a python-build-standalone archive.
+- A "version-aware" toolchain is registered, which means the Python version flag
+  must also match (e.g., `--@rules_python//python/config_settings:python_version=3.13.3`
   must be set -- see `minor_mapping` and `is_default` for controls and docs
   about version matching and selection).
 - The `target_compatible_with` attribute can be used to entirely specify the
-  arg of the same name the toolchain uses.
+  argument of the same name that the toolchain uses.
 - The labels in `target_settings` must be absolute; `@@` refers to the main repo.
 - The `target_settings` are `config_setting` targets, which means you can
   customize how matching occurs.
 
 :::{seealso}
-See {obj}`//python/config_settings` for flags rules_python already defines
-that can be used with `target_settings`. Some particular ones of note are:
+See {obj}`//python/config_settings` for flags `rules_python` already defines
+that can be used with `target_settings`. Some particular ones of note are
 {flag}`--py_linux_libc` and {flag}`--py_freethreaded`, among others.
 :::
 
@@ -312,7 +312,7 @@ Added support for custom platform names, `target_compatible_with`, and
 
 ### Using defined toolchains from WORKSPACE
 
-It is possible to use toolchains defined in `MODULE.bazel` in `WORKSPACE`. For example
+It is possible to use toolchains defined in `MODULE.bazel` in `WORKSPACE`. For example,
 the following `MODULE.bazel` and `WORKSPACE` provides a working {bzl:obj}`pip_parse` setup:
 ```starlark
 # File: WORKSPACE
@@ -343,16 +343,16 @@ python.toolchain(python_version = "3.10")
 use_repo(python, "python_3_10", "python_3_10_host")
 ```
 
-Note, the user has to import the `*_host` repository to use the python interpreter in the
-{bzl:obj}`pip_parse` and `whl_library` repository rules and once that is done
+Note, the user has to import the `*_host` repository to use the Python interpreter in the
+{bzl:obj}`pip_parse` and `whl_library` repository rules, and once that is done,
 users should be able to ensure the setting of the default toolchain even during the
 transition period when some of the code is still defined in `WORKSPACE`.
 
 ## Workspace configuration
 
-To import rules_python in your project, you first need to add it to your
+To import `rules_python` in your project, you first need to add it to your
 `WORKSPACE` file, using the snippet provided in the
-[release you choose](https://github.com/bazel-contrib/rules_python/releases)
+[release you choose](https://github.com/bazel-contrib/rules_python/releases).
 
 To depend on a particular unreleased version, you can do the following:
 
@@ -403,15 +403,15 @@ pip_parse(
 ```
 
 After registration, your Python targets will use the toolchain's interpreter during execution, but a system-installed interpreter
-is still used to 'bootstrap' Python targets (see https://github.com/bazel-contrib/rules_python/issues/691).
+is still used to "bootstrap" Python targets (see https://github.com/bazel-contrib/rules_python/issues/691).
 You may also find some quirks while using this toolchain. Please refer to [python-build-standalone documentation's _Quirks_ section](https://gregoryszorc.com/docs/python-build-standalone/main/quirks.html).
 
 ## Local toolchain
 
 It's possible to use a locally installed Python runtime instead of the regular
 prebuilt, remotely downloaded ones. A local toolchain contains the Python
-runtime metadata (Python version, headers, ABI flags, etc) that the regular
-remotely downloaded runtimes contain, which makes it possible to build e.g. C
+runtime metadata (Python version, headers, ABI flags, etc.) that the regular
+remotely downloaded runtimes contain, which makes it possible to build, e.g., C
 extensions (unlike the autodetecting and runtime environment toolchains).
 
 For simple cases, the {obj}`local_runtime_repo` and
@@ -420,10 +420,10 @@ Python installation and create an appropriate Bazel definition from it. To do
 this, three pieces need to be wired together:
 
 1. Specify a path or command to a Python interpreter (multiple can be defined).
-2. Create toolchains for the runtimes in (1)
-3. Register the toolchains created by (2)
+2. Create toolchains for the runtimes in (1).
+3. Register the toolchains created by (2).
 
-The below is an example that will use `python3` from PATH to find the
+The following is an example that will use `python3` from `PATH` to find the
 interpreter, then introspect its installation to generate a full toolchain.
 
 ```starlark
@@ -474,7 +474,7 @@ Python versions and/or platforms to be configured in a single `MODULE.bazel`.
 Note that `register_toolchains` will insert the local toolchain earlier in the
 toolchain ordering, so it will take precedence over other registered toolchains.
 To better control when the toolchain is used, see [Conditionally using local
-toolchains]
+toolchains].
 
 ### Conditionally using local toolchains
 
@@ -483,22 +483,22 @@ ordering, which means it will usually be used no matter what. This can be
 problematic for CI (where it shouldn't be used), expensive for CI (CI must
 initialize/download the repository to determine its Python version), and
 annoying for iterative development (enabling/disabling it requires modifying
-MODULE.bazel).
+`MODULE.bazel`).
 
 These behaviors can be mitigated, but it requires additional configuration
-to avoid triggering the local toolchain repository to initialize (i.e. run
+to avoid triggering the local toolchain repository to initialize (i.e., run
 local commands and perform downloads).
 
 The two settings to change are
 {obj}`local_runtime_toolchains_repo.target_compatible_with` and
 {obj}`local_runtime_toolchains_repo.target_settings`, which control how Bazel
 decides if a toolchain should match. By default, they point to targets *within*
-the local runtime repository (trigger repo initialization). We have to override
+the local runtime repository (triggering repo initialization). We have to override
 them to *not* reference the local runtime repository at all.
 
 In the example below, we reconfigure the local toolchains so they are only
 activated if the custom flag `--//:py=local` is set and the target platform
-matches the Bazel host platform. The net effect is CI won't use the local
+matches the Bazel host platform. The net effect is that CI won't use the local
 toolchain (nor initialize its repository), and developers can easily
 enable/disable the local toolchain with a command line flag.
 
@@ -545,9 +545,9 @@ information about Python at build time. In particular, this means it is not able
 to build C extensions -- doing so requires knowing, at build time, what Python
 headers to use.
 
-In effect, all it does is generate a small wrapper script that simply calls e.g.
+In effect, all it does is generate a small wrapper script that simply calls, e.g.,
 `/usr/bin/env python3` to run a program. This makes it easy to change what
-Python is used to run a program, but also makes it easy to use a Python version
+Python is used to run a program but also makes it easy to use a Python version
 that isn't compatible with build-time assumptions.
 
 ```
@@ -565,26 +565,26 @@ locally installed Python.
 ### Autodetecting toolchain
 
 The autodetecting toolchain is a deprecated toolchain that is built into Bazel.
-**It's name is a bit misleading: it doesn't autodetect anything**. All it does is
+**Its name is a bit misleading: it doesn't autodetect anything.** All it does is
 use `python3` from the environment a binary runs within. This provides extremely
 limited functionality to the rules (at build time, nothing is knowable about
 the Python runtime).
 
 Bazel itself automatically registers `@bazel_tools//tools/python:autodetecting_toolchain`
-as the lowest priority toolchain. For WORKSPACE builds, if no other toolchain
-is registered, that toolchain will be used. For bzlmod builds, rules_python
+as the lowest priority toolchain. For `WORKSPACE` builds, if no other toolchain
+is registered, that toolchain will be used. For Bzlmod builds, `rules_python`
 automatically registers a higher-priority toolchain; it won't be used unless
 there is a toolchain misconfiguration somewhere.
 
-To aid migration off the Bazel-builtin toolchain, rules_python provides
+To aid migration off the Bazel-builtin toolchain, `rules_python` provides
 {bzl:obj}`@rules_python//python/runtime_env_toolchains:all`. This is an equivalent
-toolchain, but is implemented using rules_python's objects.
+toolchain but is implemented using `rules_python`'s objects.
 
 ## Custom toolchains
 
-While rules_python provides toolchains by default, it is not required to use
+While `rules_python` provides toolchains by default, it is not required to use
 them, and you can define your own toolchains to use instead. This section
-gives an introduction for how to define them yourself.
+gives an introduction to how to define them yourself.
 
 :::{note}
 * Defining your own toolchains is an advanced feature.
@@ -599,7 +599,7 @@ toolchains a "toolchain suite".
 One of the underlying design goals of the toolchains is to support complex and
 bespoke environments. Such environments may use an arbitrary combination of
 {bzl:obj}`RBE`, cross-platform building, multiple Python versions,
-building Python from source, embeding Python (as opposed to building separate
+building Python from source, embedding Python (as opposed to building separate
 interpreters), using prebuilt binaries, or using binaries built from source. To
 that end, many of the attributes they accept, and fields they provide, are
 optional.
@@ -610,7 +610,7 @@ The target toolchain type is {obj}`//python:toolchain_type`, and it
 is for _target configuration_ runtime information, e.g., the Python version
 and interpreter binary that a program will use.
 
-The is typically implemented using {obj}`py_runtime()`, which
+This is typically implemented using {obj}`py_runtime()`, which
 provides the {obj}`PyRuntimeInfo` provider. For historical reasons from the
 Python 2 transition, `py_runtime` is wrapped in {obj}`py_runtime_pair`,
 which provides {obj}`ToolchainInfo` with the field `py3_runtime`, which is an
@@ -625,7 +625,7 @@ set {external:bzl:obj}`toolchain.exec_compatible_with`.
 ### Python C toolchain type
 
 The Python C toolchain type ("py cc") is {obj}`//python/cc:toolchain_type`, and
-it has C/C++ information for the _target configuration_, e.g. the C headers that
+it has C/C++ information for the _target configuration_, e.g., the C headers that
 provide `Python.h`.
 
 This is typically implemented using {obj}`py_cc_toolchain()`, which provides
@@ -642,7 +642,7 @@ set {external:bzl:obj}`toolchain.exec_compatible_with`.
 ### Exec tools toolchain type
 
 The exec tools toolchain type is {obj}`//python:exec_tools_toolchain_type`,
-and it is for supporting tools for _building_ programs, e.g. the binary to
+and it is for supporting tools for _building_ programs, e.g., the binary to
 precompile code at build time.
 
 This toolchain type is intended to hold only _exec configuration_ values --
@@ -661,7 +661,7 @@ target configuration (e.g. Python version), then for one to be chosen based on
 finding one compatible with the available host platforms to run the tool on.
 
 However, what `target_compatible_with`/`target_settings` and
-`exec_compatible_with` values to use depend on details of the tools being used.
+`exec_compatible_with` values to use depends on the details of the tools being used.
 For example:
 * If you had a precompiler that supported any version of Python, then
   putting the Python version in `target_settings` is unnecessary.
@@ -672,9 +672,9 @@ This can work because, when the rules invoke these build tools, they pass along
 all necessary information so that the tool can be entirely independent of the
 target configuration being built for.
 
-Alternatively, if you had a precompiler that only ran on linux, and only
-produced valid output for programs intended to run on linux, then _both_
-`exec_compatible_with` and `target_compatible_with` must be set to linux.
+Alternatively, if you had a precompiler that only ran on Linux and only
+produced valid output for programs intended to run on Linux, then _both_
+`exec_compatible_with` and `target_compatible_with` must be set to Linux.
 
 ### Custom toolchain example
 
@@ -684,9 +684,9 @@ Here, we show an example for a semi-complicated toolchain suite, one that is:
 * For Python version 3.12.0
 * Using an in-build interpreter built from source
 * That only runs on Linux
-* Using a prebuilt precompiler that only runs on Linux, and only produces byte
-  code valid for 3.12
-* With the exec tools interpreter disabled (unnecessary with a prebuild
+* Using a prebuilt precompiler that only runs on Linux and only produces
+  bytecode valid for 3.12
+* With the exec tools interpreter disabled (unnecessary with a prebuilt
   precompiler)
 * Providing C headers and libraries
 
@@ -748,13 +748,13 @@ toolchain(
     name = "runtime_toolchain",
     toolchain = "//toolchain_impl:runtime_pair",
     toolchain_type = "@rules_python//python:toolchain_type",
-    target_compatible_with = ["@platforms/os:linux"]
+    target_compatible_with = ["@platforms/os:linux"],
 )
 toolchain(
     name = "py_cc_toolchain",
     toolchain = "//toolchain_impl:py_cc_toolchain_impl",
     toolchain_type = "@rules_python//python/cc:toolchain_type",
-    target_compatible_with = ["@platforms/os:linux"]
+    target_compatible_with = ["@platforms/os:linux"],
 )
 
 toolchain(
@@ -764,19 +764,19 @@ toolchain(
     target_settings = [
         "@rules_python//python/config_settings:is_python_3.12",
     ],
-    exec_comaptible_with = ["@platforms/os:linux"]
+    exec_compatible_with = ["@platforms/os:linux"],
 )
 
 # -----------------------------------------------
 # File: MODULE.bazel or WORKSPACE.bazel
-# These toolchains will considered before others.
+# These toolchains will be considered before others.
 # -----------------------------------------------
 register_toolchains("//toolchains:all")
 ```
 
-When registering custom toolchains, be aware of the the [toolchain registration
+When registering custom toolchains, be aware of the [toolchain registration
 order](https://bazel.build/extending/toolchains#toolchain-resolution). In brief,
-toolchain order is the BFS-order of the modules; see the bazel docs for a more
+toolchain order is the BFS-order of the modules; see the Bazel docs for a more
 detailed description.
 
 :::{note}
@@ -796,7 +796,7 @@ Currently the following flags are used to influence toolchain selection:
 
 To run the interpreter that Bazel will use, you can use the
 `@rules_python//python/bin:python` target. This is a binary target with
-the executable pointing at the `python3` binary plus its relevent runfiles.
+the executable pointing at the `python3` binary plus its relevant runfiles.
 
 ```console
 $ bazel run @rules_python//python/bin:python
@@ -838,7 +838,7 @@ targets on its own. Please file a feature request if this is desired.
 The `//python/bin:python` target provides access to the underlying interpreter
 without any hermeticity guarantees.
 
-The [`//python/bin:repl` target](repl) provides an environment indentical to
+The [`//python/bin:repl` target](repl) provides an environment identical to
 what `py_binary` provides. That means it handles things like the
 [`PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSAFEPATH)
 environment variable automatically. The `//python/bin:python` target will not.

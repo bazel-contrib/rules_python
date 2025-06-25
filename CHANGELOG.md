@@ -54,17 +54,22 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (gazelle) For package mode, resolve dependencies when imports are relative
+  to the package path. This is enabled via the
+  `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (pypi) Fixes an issue where builds using a `bazel vendor` vendor directory
+  would fail if the constraints file contained environment markers. Fixes
+  [#2996](https://github.com/bazel-contrib/rules_python/issues/2996).
 
 {#v0-0-0-added}
 ### Added
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
-  this feature. You can also configure `constraint_values` using `pip.default`.
+  this feature. You can also configure custom `config_settings` using `pip.default`.
 * (pypi) PyPI dependencies now expose an `:extracted_whl_files` filegroup target
   of all the files extracted from the wheel. This can be used in lieu of
   {obj}`whl_filegroup` to avoid copying/extracting wheel multiple times to

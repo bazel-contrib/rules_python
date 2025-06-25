@@ -64,6 +64,7 @@ bzl_library(
     deps = [
         ":flags_bzl",
         "//python/private:flags_bzl",
+        "@bazel_skylib//lib:selects",
     ],
 )
 
