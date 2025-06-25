@@ -32,7 +32,7 @@ def _internal_dev_deps_impl(mctx):
 
     whl_from_dir_repo(
         name = "whl_with_build_files",
-        root = "//tests/whl_with_build_files/testdata:BUILD.bazel",
+        root = "//tests/whl_with_build_files:testdata/BUILD.bazel",
         output = "somepkg-1.0-any-none-any.whl",
     )
     whl_library(
