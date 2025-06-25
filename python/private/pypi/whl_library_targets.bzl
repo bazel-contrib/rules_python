@@ -124,6 +124,8 @@ def whl_library_targets(
     Args:
         name: {type}`str` The file to match for including it into the `whl`
             filegroup. This may be also parsed to generate extra metadata.
+        sdist_filename: {type}`str | None` If the wheel was built from an sdist,
+            the filename of the sdist.
         dep_template: {type}`str` The dep_template to use for dependency
             interpolation.
         tags: {type}`list[str]` The tags set on the `py_library`.
@@ -170,7 +172,7 @@ def whl_library_targets(
         filegroups = {
             EXTRACTED_WHEEL_FILES: dict(
                 include = ["**"],
-                exclude = [name],
+                exclude = [name] + [sdist_filename] if sdist_filename else [],
             ),
             DIST_INFO_LABEL: dict(
                 include = ["site-packages/*.dist-info/**"],
