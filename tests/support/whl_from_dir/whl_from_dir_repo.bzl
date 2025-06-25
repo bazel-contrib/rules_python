@@ -4,11 +4,9 @@ Used to test wheels. Avoids checking in prebuilt files and their associated
 security risks.
 """
 
-load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
 
 def _whl_from_dir_repo(rctx):
-    manifest = []
-
     root = rctx.path(rctx.attr.root).dirname
     rctx.watch_tree(root)
 
@@ -32,7 +30,21 @@ def _whl_from_dir_repo(rctx):
 whl_from_dir_repo = repository_rule(
     implementation = _whl_from_dir_repo,
     attrs = {
-        "root": attr.label(),
-        "output": attr.string(),
+        "output": attr.string(
+            doc = """
+Output file name to write. Should match the wheel filename format:
+`pkg-version-pyversion-abi-platform.whl`. Typically a value like
+`mypkg-1.0-any-none-any.whl` is whats used for testing.
+
+For the full format, see
+https://packaging.python.org/en/latest/specifications/binary-distribution-format/#file-name-convention
+""",
+        ),
+        "root": attr.label(
+            doc = """
+A file whose directory will be put into the output wheel. All files
+are included verbatim.
+            """,
+        ),
     },
 )
