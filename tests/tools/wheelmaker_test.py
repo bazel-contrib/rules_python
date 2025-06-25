@@ -18,8 +18,15 @@ class ArcNameFromTest(unittest.TestCase):
             ("foo/bar/baz/file.py", "", ["baz", "foo/bar"], "/baz/file.py"),
         ]
         for name, prefix, strip, want in checks:
-            with self.subTest(name=name, distribution_prefix=prefix, strip_path_prefixes=strip, want=want):
-                got = wheelmaker.arcname_from(name=name, distribution_prefix=prefix, strip_path_prefixes=strip)
+            with self.subTest(
+                name=name,
+                distribution_prefix=prefix,
+                strip_path_prefixes=strip,
+                want=want,
+            ):
+                got = wheelmaker.arcname_from(
+                    name=name, distribution_prefix=prefix, strip_path_prefixes=strip
+                )
                 self.assertEqual(got, want)
 
 

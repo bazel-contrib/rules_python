@@ -98,7 +98,9 @@ def normalize_pep440(version):
         return str(packaging.version.Version(f"0+{sanitized}"))
 
 
-def arcname_from(name: str, distribution_prefix: str, strip_path_prefixes:list[str] | None = None):
+def arcname_from(
+    name: str, distribution_prefix: str, strip_path_prefixes: list[str] | None = None
+):
     # Always use unix path separators.
     normalized_arcname = name.replace(os.path.sep, "/")
     # Don't manipulate names filenames in the .distinfo or .data directories.
@@ -148,7 +150,11 @@ class _WhlFile(zipfile.ZipFile):
                 )
             return
 
-        arcname = arcname_from(package_filename)
+        arcname = arcname_from(
+            package_filename,
+            distribution_prefix=self._distribution_prefix,
+            strip_path_prefixes=self._strip_path_prefixes,
+        )
         zinfo = self._zipinfo(arcname)
 
         # Write file to the zip archive while computing the hash and length
@@ -570,7 +576,9 @@ def main() -> None:
                 else:
                     return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
             else:
-                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(" ;")
+                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
+                    " ;"
+                )
 
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):
