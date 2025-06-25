@@ -217,7 +217,15 @@ _other_attrs = {
     ),
     "strip_path_prefixes": attr.string_list(
         default = [],
-        doc = "path prefixes to strip from files added to the generated package",
+        doc = """\
+Path prefixes to strip from files added to the generated package.
+Prefixes are checked **in order** and only the **first match** will be used.
+
+For example:
++ `["foo", "foo/bar/baz"]` will strip `"foo/bar/baz/file.py"` to `"bar/baz/file.py"`
++ `["foo/bar/baz", "foo"]` will strip `"foo/bar/baz/file.py"` to `"file.py"` and
+  `"foo/file2.py"` to `"file2.py"`
+""",
     ),
     "summary": attr.string(
         doc = "A one-line summary of what the distribution does",
