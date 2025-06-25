@@ -247,7 +247,10 @@ bzl_library(
     name = "versions_bzl",
     srcs = ["versions.bzl"],
     visibility = ["//:__subpackages__"],
-    deps = ["//python/private:platform_info_bzl"],
+    deps = [
+        "//python/private:platform_info_bzl",
+        "//python/private:text_utils_bzl",
+    ],
 )
 
 # NOTE: Remember to add bzl_library targets to //tests:bzl_libraries
