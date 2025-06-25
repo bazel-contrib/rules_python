@@ -34,6 +34,16 @@ load(
 load(":namespace_pkgs.bzl", "create_inits")
 load(":pep508_deps.bzl", "deps")
 
+# Files that are special to the Bazel processing of things.
+_BAZEL_REPO_FILE_GLOBS = [
+    "BUILD",
+    "BUILD.bazel",
+    "REPO.bazel",
+    "WORKSPACE",
+    "WORKSPACE",
+    "WORKSPACE.bazel",
+]
+
 def whl_library_targets_from_requires(
         *,
         name,
@@ -172,10 +182,10 @@ def whl_library_targets(
         filegroups = {
             EXTRACTED_WHEEL_FILES: dict(
                 include = ["**"],
-                exclude = [
-                    "BUILD.bazel",
-                    name,
-                ] + [sdist_filename] if sdist_filename else [],
+                exclude = (
+                    _BAZEL_REPO_FILE_GLOBS +
+                    [sdist_filename] if sdist_filename else []
+                ),
             ),
             DIST_INFO_LABEL: dict(
                 include = ["site-packages/*.dist-info/**"],
