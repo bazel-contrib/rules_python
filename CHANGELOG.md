@@ -58,6 +58,10 @@ END_UNRELEASED_TEMPLATE
   to the package path. This is enabled via the
   `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
+* (toolchains): Using [20250612] release of the `python-build-standalone` release.
+* (toolchains): Bumped `3.13` to use `3.13.5` version.
+
+[20250612]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250612
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -71,7 +75,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
-* Nothing removed.
+* (toolchains) Old versions of toolchains have been removed and from now on `rules_python` will only
+  keep the last micro version of each Python version.
 
 {#1-5-0}
 ## [1.5.0] - 2025-06-11
