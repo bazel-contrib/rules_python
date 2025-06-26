@@ -1,7 +1,7 @@
 ""
 
 load("@rules_testing//lib:analysis_test.bzl", "test_suite")
-load("//python/private/pypi:namespace_pkgs.bzl", "get_files")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:namespace_pkgs.bzl", "create_inits", "get_files")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -159,6 +159,45 @@ def test_skips_ignored_directories(env):
     env.expect.that_collection(got).contains_exactly(expected)
 
 _tests.append(test_skips_ignored_directories)
+
+def _test_create_inits(env):
+    srcs = [
+        "nested/root/foo/bar/biz.py",
+        "nested/root/foo/bee/boo.py",
+        "nested/root/foo/buu/__init__.py",
+        "nested/root/foo/buu/bii.py",
+    ]
+    copy_file_calls = []
+    template = Label("//python/private/pypi:namespace_pkg_tmpl.py")
+
+    got = create_inits(
+        srcs = srcs,
+        root = "nested/root",
+        copy_file = lambda **kwargs: copy_file_calls.append(kwargs),
+    )
+    env.expect.that_collection(got).contains_exactly([
+        call["out"]
+        for call in copy_file_calls
+    ])
+    env.expect.that_collection(copy_file_calls).contains_exactly([
+        {
+            "name": "_cp_0_namespace",
+            "out": "nested/root/foo/__init__.py",
+            "src": template,
+        },
+        {
+            "name": "_cp_1_namespace",
+            "out": "nested/root/foo/bar/__init__.py",
+            "src": template,
+        },
+        {
+            "name": "_cp_2_namespace",
+            "out": "nested/root/foo/bee/__init__.py",
+            "src": template,
+        },
+    ])
+
+_tests.append(_test_create_inits)
 
 def namespace_pkgs_test_suite(name):
     test_suite(
