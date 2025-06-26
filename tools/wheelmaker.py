@@ -24,6 +24,7 @@ import re
 import stat
 import sys
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -99,8 +100,17 @@ def normalize_pep440(version):
 
 
 def arcname_from(
-    name: str, distribution_prefix: str, strip_path_prefixes: list[str] | None = None
-):
+    name: str, distribution_prefix: str, strip_path_prefixes: Sequence[str] = ()
+) -> str:
+    """Return the within-archive name for a given file path name.
+
+    Prefixes to strip are checked in order and only the first match will be used.
+
+    Args:
+        name: The file path eg 'mylib/a/b/c/file.py'
+        distribution_prefix: The
+        strip_path_prefixes: Remove these prefixes from names.
+    """
     # Always use unix path separators.
     normalized_arcname = name.replace(os.path.sep, "/")
     # Don't manipulate names filenames in the .distinfo or .data directories.
