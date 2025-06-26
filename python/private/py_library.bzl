@@ -161,8 +161,7 @@ def py_library_impl(ctx, *, semantics):
     imports = []
     venv_symlinks = []
 
-    package, version_str = _get_package_and_version(ctx)
-    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics, package, version_str)
+    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
     py_info, deps_transitive_sources, builtins_py_info = create_py_info(
@@ -241,10 +240,11 @@ def _get_package_and_version(ctx):
         version.normalize(version_str),  # will have no dashes either
     )
 
-def _get_imports_and_venv_symlinks(ctx, semantics, package, version_str):
+def _get_imports_and_venv_symlinks(ctx, semantics):
     imports = depset()
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
+        package, version_str = _get_package_and_version(ctx)
         venv_symlinks = _get_venv_symlinks(ctx, package, version_str)
     else:
         imports = collect_imports(ctx, semantics)
