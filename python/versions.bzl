@@ -487,9 +487,9 @@ EOF
 def _commands_for_version(*, python_version, metadata):
     lines = []
     lines += [
-        "cat <<EOB", # end of block
-        "    \"{python_version}\": {{".format(python_version=python_version),
-        "        \"url\": \"{url}\",".format(url=metadata["url"]),
+        "cat <<EOB",  # end of block
+        "    \"{python_version}\": {{".format(python_version = python_version),
+        "        \"url\": \"{url}\",".format(url = metadata["url"]),
         "        \"sha256\": {",
     ]
 
@@ -505,13 +505,13 @@ def _commands_for_version(*, python_version, metadata):
                         release_url = release_url,
                         release_url_sha256 = release_url + ".sha256",
                     ),
-                )
+                ),
             ]
 
     prefix = metadata["strip_prefix"]
     prefix = render.indent(
         render.dict(prefix) if type(prefix) == type({}) else repr(prefix),
-        indent=" " * 8,
+        indent = " " * 8,
     ).lstrip()
 
     lines += [
