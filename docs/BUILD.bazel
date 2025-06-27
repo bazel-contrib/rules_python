@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@dev_pip//:requirements.bzl", "requirement")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
@@ -188,39 +187,4 @@ lock(
         "--upgrade",
     ],
     visibility = ["//:__subpackages__"],
-)
-
-# Temporary compatibility aliases for some other projects depending on the old
-# bzl_library targets.
-alias(
-    name = "defs",
-    actual = "//python:defs_bzl",
-    deprecation = "Use //python:defs_bzl instead; targets under //docs are internal.",
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "bazel_repo_tools",
-    actual = "//python/private:bazel_tools_bzl",
-    deprecation = "Use @bazel_tools//tools:bzl_srcs instead; targets under //docs are internal.",
-    visibility = ["//visibility:public"],
-)
-
-bzl_library(
-    name = "pip_install_bzl",
-    deprecation = "Use //python:pip_bzl or //python/pip_install:pip_repository_bzl instead; " +
-                  "targets under //docs are internal.",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//python:pip_bzl",
-        "//python/pip_install:pip_repository_bzl",
-    ],
-)
-
-alias(
-    name = "requirements_parser_bzl",
-    actual = "//python/pip_install:pip_repository_bzl",
-    deprecation = "Use //python/pip_install:pip_repository_bzl instead; Both the requirements " +
-                  "parser and targets under //docs are internal",
-    visibility = ["//visibility:public"],
 )
