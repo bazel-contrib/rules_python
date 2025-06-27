@@ -68,6 +68,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.TestFilePattern,
 		pythonconfig.LabelConvention,
 		pythonconfig.LabelNormalization,
+		pythonconfig.GeneratePyiDeps,
 		pythonconfig.ExperimentalAllowRelativeImports,
 	}
 }
@@ -230,6 +231,12 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					pythonconfig.ExperimentalAllowRelativeImports, rel, d.Value)
 			}
 			config.SetExperimentalAllowRelativeImports(v)
+		case pythonconfig.GeneratePyiDeps:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetGeneratePyiDeps(v)
 		}
 	}
 

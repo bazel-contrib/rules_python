@@ -94,6 +94,10 @@ const (
 	// ExperimentalAllowRelativeImports represents the directive that controls
 	// whether relative imports are allowed.
 	ExperimentalAllowRelativeImports = "experimental_allow_relative_imports"
+	// GeneratePyiDeps represents the directive that controls whether to generate
+	// separate pyi_deps attribute or merge type-checking dependencies into deps.
+	// Defaults to false for backward compatibility.
+	GeneratePyiDeps = "python_generate_pyi_deps"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -181,6 +185,7 @@ type Config struct {
 	labelConvention                           string
 	labelNormalization                        LabelNormalizationType
 	experimentalAllowRelativeImports          bool
+	generatePyiDeps                           bool
 }
 
 type LabelNormalizationType int
@@ -217,6 +222,7 @@ func New(
 		labelConvention:                           DefaultLabelConvention,
 		labelNormalization:                        DefaultLabelNormalizationType,
 		experimentalAllowRelativeImports:          false,
+		generatePyiDeps:                           false,
 	}
 }
 
@@ -250,6 +256,7 @@ func (c *Config) NewChild() *Config {
 		labelConvention:                           c.labelConvention,
 		labelNormalization:                        c.labelNormalization,
 		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
+		generatePyiDeps:                           c.generatePyiDeps,
 	}
 }
 
@@ -534,6 +541,18 @@ func (c *Config) SetExperimentalAllowRelativeImports(allowRelativeImports bool) 
 // ExperimentalAllowRelativeImports returns whether relative imports are allowed.
 func (c *Config) ExperimentalAllowRelativeImports() bool {
 	return c.experimentalAllowRelativeImports
+}
+
+// SetGeneratePyiDeps sets whether pyi_deps attribute should be generated separately
+// or type-checking dependencies should be merged into the regular deps attribute.
+func (c *Config) SetGeneratePyiDeps(generatePyiDeps bool) {
+	c.generatePyiDeps = generatePyiDeps
+}
+
+// GeneratePyiDeps returns whether pyi_deps attribute should be generated separately
+// or type-checking dependencies should be merged into the regular deps attribute.
+func (c *Config) GeneratePyiDeps() bool {
+	return c.generatePyiDeps
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.
