@@ -60,6 +60,8 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (toolchains): Using [20250612] release of the `python-build-standalone` release.
 * (toolchains): Bumped `3.13` to use `3.13.5` version.
+* (toolchains): Moved the `print_toolchains_checksums` to
+  `//python/private:print_toolchains_checksums.bzl`.
 
 [20250612]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250612
 
