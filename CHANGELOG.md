@@ -58,12 +58,12 @@ END_UNRELEASED_TEMPLATE
   to the package path. This is enabled via the
   `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
-* (toolchains): Using [20250612] release of the `python-build-standalone` release.
-* (toolchains): Bumped `3.13` to use `3.13.5` version.
+* (toolchains): Using [20250626] release of the `python-build-standalone` release.
+* (toolchains): Bumped `3.13` to use `3.13.5` version and `3.14` to use `3.14.0b3`
 * (toolchains): Moved the `print_toolchains_checksums` to
   `//python/private:print_toolchains_checksums.bzl`.
 
-[20250612]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250612
+[20250626]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250626
 
 {#v0-0-0-fixed}
 ### Fixed
