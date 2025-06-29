@@ -46,6 +46,7 @@ var pyKinds = map[string]rule.KindInfo{
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
+			"pyi_deps": true,
 		},
 	},
 	pyLibraryKind: {
@@ -62,6 +63,7 @@ var pyKinds = map[string]rule.KindInfo{
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
+			"pyi_deps": true,
 		},
 	},
 	pyTestKind: {
@@ -78,6 +80,7 @@ var pyKinds = map[string]rule.KindInfo{
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
+			"pyi_deps": true,
 		},
 	},
 }
