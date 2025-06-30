@@ -325,8 +325,8 @@ def _test_toolchain_ordering(env):
         "3.10": "3.10.18",
         "3.11": "3.11.13",
         "3.12": "3.12.11",
-        "3.13": "3.13.4",
-        "3.14": "3.14.0b2",
+        "3.13": "3.13.5",
+        "3.14": "3.14.0b3",
         "3.8": "3.8.20",
         "3.9": "3.9.23",
     })
@@ -551,7 +551,7 @@ def _test_add_new_version(env):
                 override = [
                     _override(
                         base_url = "",
-                        available_python_versions = ["3.12.4", "3.13.0", "3.13.1", "3.13.99"],
+                        available_python_versions = ["3.12.11", "3.13.0", "3.13.5", "3.13.99"],
                         minor_mapping = {
                             "3.13": "3.13.99",
                         },
@@ -564,9 +564,9 @@ def _test_add_new_version(env):
 
     env.expect.that_str(py.default_python_version).equals("3.13")
     env.expect.that_collection(py.config.default["tool_versions"].keys()).contains_exactly([
-        "3.12.4",
+        "3.12.11",
         "3.13.0",
-        "3.13.1",
+        "3.13.5",
         "3.13.99",
     ])
     env.expect.that_dict(py.config.default["tool_versions"]["3.13.0"]).contains_exactly({
@@ -583,7 +583,7 @@ def _test_add_new_version(env):
         "url": {"aarch64-unknown-linux-gnu": ["something.org", "else.org"]},
     })
     env.expect.that_dict(py.config.minor_mapping).contains_exactly({
-        "3.12": "3.12.4",  # The `minor_mapping` will be overriden only for the missing keys
+        "3.12": "3.12.11",  # The `minor_mapping` will be overriden only for the missing keys
         "3.13": "3.13.99",
     })
     env.expect.that_collection(py.toolchains).contains_exactly([
@@ -622,7 +622,7 @@ def _test_register_all_versions(env):
                 override = [
                     _override(
                         base_url = "",
-                        available_python_versions = ["3.12.4", "3.13.0", "3.13.1", "3.13.99"],
+                        available_python_versions = ["3.12.11", "3.13.0", "3.13.5", "3.13.99"],
                         register_all_versions = True,
                     ),
                 ],
@@ -633,14 +633,14 @@ def _test_register_all_versions(env):
 
     env.expect.that_str(py.default_python_version).equals("3.13")
     env.expect.that_collection(py.config.default["tool_versions"].keys()).contains_exactly([
-        "3.12.4",
+        "3.12.11",
         "3.13.0",
-        "3.13.1",
+        "3.13.5",
         "3.13.99",
     ])
     env.expect.that_dict(py.config.minor_mapping).contains_exactly({
         # The mapping is calculated automatically
-        "3.12": "3.12.4",
+        "3.12": "3.12.11",
         "3.13": "3.13.99",
     })
     env.expect.that_collection(py.toolchains).contains_exactly([
@@ -651,10 +651,10 @@ def _test_register_all_versions(env):
         )
         for name, version in {
             "python_3_12": "3.12",
-            "python_3_12_4": "3.12.4",
+            "python_3_12_11": "3.12.11",
             "python_3_13": "3.13",
             "python_3_13_0": "3.13.0",
-            "python_3_13_1": "3.13.1",
+            "python_3_13_5": "3.13.5",
             "python_3_13_99": "3.13.99",
         }.items()
     ])
@@ -764,10 +764,10 @@ def _test_single_version_override_errors(env):
     for test in [
         struct(
             overrides = [
-                _single_version_override(python_version = "3.12.4", distutils_content = "foo"),
-                _single_version_override(python_version = "3.12.4", distutils_content = "foo"),
+                _single_version_override(python_version = "3.12.11", distutils_content = "foo"),
+                _single_version_override(python_version = "3.12.11", distutils_content = "foo"),
             ],
-            want_error = "Only a single 'python.single_version_override' can be present for '3.12.4'",
+            want_error = "Only a single 'python.single_version_override' can be present for '3.12.11'",
         ),
     ]:
         errors = []
@@ -790,10 +790,10 @@ def _test_single_version_platform_override_errors(env):
     for test in [
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12.4", platform = "foo", coverage_tool = "foo"),
-                _single_version_platform_override(python_version = "3.12.4", platform = "foo", coverage_tool = "foo"),
+                _single_version_platform_override(python_version = "3.8.20", platform = "foo", coverage_tool = "foo"),
+                _single_version_platform_override(python_version = "3.8.20", platform = "foo", coverage_tool = "foo"),
             ],
-            want_error = "Only a single 'python.single_version_platform_override' can be present for '(\"3.12.4\", \"foo\")'",
+            want_error = "Only a single 'python.single_version_platform_override' can be present for '(\"3.8.20\", \"foo\")'",
         ),
         struct(
             overrides = [
