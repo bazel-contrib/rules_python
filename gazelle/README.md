@@ -24,7 +24,7 @@ The following documentation covers using bzlmod.
 
 ## Adding Gazelle to your project
 
-First, you'll need to add Gazelle to your `MODULES.bazel` file.
+First, you'll need to add Gazelle to your `MODULE.bazel` file.
 Get the current version of Gazelle from there releases here:  https://github.com/bazelbuild/bazel-gazelle/releases/.
 
 
