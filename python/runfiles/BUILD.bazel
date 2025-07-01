@@ -22,13 +22,18 @@ filegroup(
     visibility = ["//python:__pkg__"],
 )
 
+filegroup(
+    name = "py_typed",
+    srcs = ["py.typed"],
+)
+
 py_library(
     name = "runfiles",
     srcs = [
         "__init__.py",
         "runfiles.py",
     ],
-    data = ["py.typed"],
+    data = [":py_typed"],
     imports = [
         # Add the repo root so `import python.runfiles.runfiles` works. This makes it agnostic
         # to the --experimental_python_import_all_repositories setting.
@@ -57,5 +62,8 @@ py_wheel(
     # this can be replaced by building with --stamp --embed_label=1.2.3
     version = "{BUILD_EMBED_LABEL}",
     visibility = ["//visibility:public"],
-    deps = [":runfiles"],
+    deps = [
+        ":py_typed",
+        ":runfiles",
+    ],
 )
