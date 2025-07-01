@@ -196,4 +196,5 @@ def pip_compile(
         name = "{}_test".format(name),
         actual = ":{}.test".format(name),
         deprecation = "Use '{}.test' instead. The '*_test' target will be removed in the next major release.".format(name),
+        tags = ["manual"],
     )
