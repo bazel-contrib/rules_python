@@ -46,6 +46,7 @@ var pyKinds = map[string]rule.KindInfo{
 		SubstituteAttrs: map[string]bool{},
 		MergeableAttrs: map[string]bool{
 			"srcs": true,
+			"imports": true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps":     true,
