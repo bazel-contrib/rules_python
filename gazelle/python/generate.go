@@ -490,7 +490,10 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		result.Gen = append(result.Gen, pyTest)
 		result.Imports = append(result.Imports, pyTest.PrivateAttr(config.GazelleImportsKey))
 	}
-
+	if !cfg.CoarseGrainedGeneration() {
+		emptyRules := py.getRulesWithInvalidSrcs(cfg, args)
+		result.Empty = append(result.Empty, emptyRules...)
+	}
 	if !collisionErrors.Empty() {
 		it := collisionErrors.Iterator()
 		for it.Next() {
@@ -500,6 +503,48 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	return result
+}
+
+// getRulesWithInvalidSrcs checks existing Python rules in the BUILD file and return the rules with invalid source files.
+// Invalid source files are files that do not exist or not a target.
+func (py *Python) getRulesWithInvalidSrcs(cfg *pythonconfig.Config, args language.GenerateArgs) (invalidRules []*rule.Rule) {
+	if args.File == nil {
+		return
+	}
+	filesMap := make(map[string]struct{})
+	for _, file := range args.RegularFiles {
+		if cfg.IgnoresFile(filepath.Base(file)) {
+			continue
+		}
+		filesMap[file] = struct{}{}
+	}
+	for _, file := range args.GenFiles {
+		filesMap[file] = struct{}{}
+	}
+
+	isTarget := func(src string) bool {
+		return strings.HasPrefix(src, "@") || strings.HasPrefix(src, "//") || strings.HasPrefix(src, ":")
+	}
+	for _, existingRule := range args.File.Rules {
+		if existingRule.Kind() != pyBinaryKind {
+			continue
+		}
+		var hasValidSrcs bool
+		for _, src := range existingRule.AttrStrings("srcs") {
+			if isTarget(src) {
+				hasValidSrcs = true
+				break
+			}
+			if _, ok := filesMap[src]; ok {
+				hasValidSrcs = true
+				break
+			}
+		}
+		if !hasValidSrcs {
+			invalidRules = append(invalidRules, newTargetBuilder(existingRule.Kind(), existingRule.Name(), args.Config.RepoRoot, args.Rel, nil).build())
+		}
+	}
+	return invalidRules
 }
 
 // isBazelPackage determines if the directory is a Bazel package by probing for

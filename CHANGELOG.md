@@ -106,6 +106,8 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) use "command -v" to find interpreter in `$PATH`
   ([#3150](https://github.com/bazel-contrib/rules_python/pull/3150)).
 * (pypi) `bazel vendor` now works in `bzlmod` ({gh-issue}`3079`).
+* (gazelle) Remove py_binary targets with invalid srcs. This includes files
+  that are not generated or regular files.
 
 {#v0-0-0-added}
 ### Added
