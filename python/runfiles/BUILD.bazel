@@ -24,6 +24,7 @@ filegroup(
 
 filegroup(
     name = "py_typed",
+    # See PEP 561: py.typed is a special file that indicates the code supports type checking
     srcs = ["py.typed"],
 )
 
