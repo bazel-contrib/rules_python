@@ -67,6 +67,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Wheels with BUILD.bazel (or other special Bazel files) no longer
   result in missing files at runtime
   ([#2782](https://github.com/bazel-contrib/rules_python/issues/2782)).
+* (runfiles) The pypi runfiles package now includes `py.typed` to indicate it
+  supports type checking.
 
 {#v0-0-0-added}
 ### Added
