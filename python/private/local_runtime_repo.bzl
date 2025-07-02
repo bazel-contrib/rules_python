@@ -99,7 +99,14 @@ def _local_runtime_repo_impl(rctx):
     interpreter_path = info["base_executable"]
 
     # NOTE: Keep in sync with recursive glob in define_local_runtime_toolchain_impl
-    repo_utils.watch_tree(rctx, rctx.path(info["include"]))
+    include_path = rctx.path(info["include"])
+    if include_path.exists and include_path.is_dir:
+        repo_utils.watch_tree(rctx, include_path)
+    else:
+        # If the path doesn't exist or is not a directory, do not watch it.
+        # This handles the case where the include path specified in Python metadata
+        # is invalid or points to a file.
+        pass
 
     # The cc_library.includes values have to be non-absolute paths, otherwise
     # the toolchain will give an error. Work around this error by making them
