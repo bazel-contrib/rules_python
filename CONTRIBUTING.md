@@ -318,6 +318,16 @@ Not breaking changes:
   * Changing internal details, such as renaming an internal file.
   * Changing a rule to a macro.
 
+## AI-assisted Contributions
+
+Contributions assisted by AI tools are welcome. However, the human author submitting the Pull Request (PR) bears full responsibility for the contributed code. This means:
+
+*   **Understanding the Code:** You must be able to explain what the code does and why it's implemented that way.
+*   **Vetting for Correctness and Functionality:** You are responsible for thoroughly testing and verifying that the code is correct, functional, and meets all project requirements and standards.
+*   **Cogent Discussion:** You must be able to discuss the code, its implications, and any trade-offs made during its development, just as if you had written it entirely yourself.
+
+If the human PR author cannot fulfill these responsibilities, the `rules_python` maintainers will not spend time reviewing or merging the PR. The goal is to ensure that all contributions, regardless of their origin, maintain the quality and integrity of the project and do not place an undue burden on maintainers.
+
 ## FAQ
 
 ### Installation errors when during `git commit`
