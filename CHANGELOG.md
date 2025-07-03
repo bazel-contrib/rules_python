@@ -93,6 +93,7 @@ END_UNRELEASED_TEMPLATE
 
 {#1-5-0-changed}
 ### Changed
+
 * (toolchain) Bundled toolchain version updates:
     * 3.9 now references 3.9.23
     * 3.10 now references 3.10.18
