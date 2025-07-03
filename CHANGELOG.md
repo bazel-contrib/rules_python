@@ -93,7 +93,6 @@ END_UNRELEASED_TEMPLATE
 
 {#1-5-0-changed}
 ### Changed
-
 * (toolchain) Bundled toolchain version updates:
     * 3.9 now references 3.9.23
     * 3.10 now references 3.10.18
@@ -109,7 +108,8 @@ END_UNRELEASED_TEMPLATE
 * (py_wheel) py_wheel always creates zip64-capable wheel zips
 * (providers) (experimental) {obj}`PyInfo.venv_symlinks` replaces
   `PyInfo.site_packages_symlinks`
-* (deps) Updating setuptools to patch CVE-2025-47273.
+* (deps) Updating setuptools to patch CVE-2025-47273. This effectively makes Python 3.9
+  the minimum supported version for using pip_parse.
 
 {#1-5-0-fixed}
 ### Fixed
