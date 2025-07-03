@@ -69,6 +69,9 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Wheels with BUILD.bazel (or other special Bazel files) no longer
   result in missing files at runtime
   ([#2782](https://github.com/bazel-contrib/rules_python/issues/2782)).
+* (toolchains) `local_runtime_repo` now checks if the include directory exists
+  before attempting to watch it, fixing issues on macOS with system Python
+  ({gh-issue}`3043`).
 
 {#v0-0-0-added}
 ### Added
