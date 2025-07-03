@@ -100,12 +100,13 @@ def _local_runtime_repo_impl(rctx):
 
     # NOTE: Keep in sync with recursive glob in define_local_runtime_toolchain_impl
     include_path = rctx.path(info["include"])
+
+    # The reported include path may not exist, and watching a non-existant
+    # path is an error. Silently skip, since includes are only necessary
+    # if C extensions are built.
     if include_path.exists and include_path.is_dir:
         repo_utils.watch_tree(rctx, include_path)
     else:
-        # If the path doesn't exist or is not a directory, do not watch it.
-        # This handles the case where the include path specified in Python metadata
-        # is invalid or points to a file.
         pass
 
     # The cc_library.includes values have to be non-absolute paths, otherwise
