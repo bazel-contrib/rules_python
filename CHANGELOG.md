@@ -60,6 +60,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
+* (deps) Updating Python 3.11.13 toolchain to patch CVE-2025-47273.
 
 {#v0-0-0-fixed}
 ### Fixed
