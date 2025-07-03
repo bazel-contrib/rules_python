@@ -320,13 +320,22 @@ Not breaking changes:
 
 ## AI-assisted Contributions
 
-Contributions assisted by AI tools are welcome. However, the human author submitting the Pull Request (PR) bears full responsibility for the contributed code. This means:
+Contributions assisted by AI tools are allowed. However, the human author
+submitting the pull request is responsible for the contributed code as if they
+had written it entirely themselves. This means:
 
-*   **Understanding the Code:** You must be able to explain what the code does and why it's implemented that way.
-*   **Vetting for Correctness and Functionality:** You are responsible for thoroughly testing and verifying that the code is correct, functional, and meets all project requirements and standards.
-*   **Cogent Discussion:** You must be able to discuss the code, its implications, and any trade-offs made during its development, just as if you had written it entirely yourself.
+*   **Understanding the code:** You must be able to explain what the code does
+    and why it's implemented that way. This includes discussing its
+    implications, and any trade-offs made during its development, just as if you
+    had written it entirely yourself.
+*   **Vetting the correctness and functionality:** You are responsible for
+    thoroughly testing and verifying that the code is correct, functional, and
+    meets all project requirements and standards.
 
-If the human PR author cannot fulfill these responsibilities, the `rules_python` maintainers will not spend time reviewing or merging the PR. The goal is to ensure that all contributions, regardless of their origin, maintain the quality and integrity of the project and do not place an undue burden on maintainers.
+If the human PR author cannot fulfill these responsibilities, the `rules_python`
+maintainers will not spend time reviewing or merging the PR. The goal is to
+ensure that all contributions, regardless of their origin, maintain the quality
+and integrity of the project and do not place an undue burden on maintainers.
 
 ## FAQ
 
