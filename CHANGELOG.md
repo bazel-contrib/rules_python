@@ -82,6 +82,8 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) `local_runtime_repo` now checks if the include directory exists
   before attempting to watch it, fixing issues on macOS with system Python
   ({gh-issue}`3043`).
+* (pypi) The pipstar `defaults` configuration now supports any custom platform
+  name.
 
 {#v0-0-0-added}
 ### Added

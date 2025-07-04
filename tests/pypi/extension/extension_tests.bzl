@@ -1048,7 +1048,9 @@ def _test_pipstar_platforms(env):
                 name = "rules_python",
                 default = [
                     _default(
-                        platform = "{}_{}".format(os, cpu),
+                        platform = "my{}_{}".format(os, cpu),
+                        os_name = os,
+                        arch_name = cpu,
                         config_settings = [
                             "@platforms//os:{}".format(os),
                             "@platforms//cpu:{}".format(cpu),
@@ -1086,24 +1088,20 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.hub_whl_map().contains_exactly({
         "pypi": {
             "optimum": {
-                "pypi_315_optimum_linux_x86_64": [
+                "pypi_315_optimum_mylinux_x86_64": [
                     whl_config_setting(
                         version = "3.15",
                         target_platforms = [
-                            "cp315_linux_x86_64",
+                            "cp315_mylinux_x86_64",
                         ],
-                        config_setting = None,
-                        filename = None,
                     ),
                 ],
-                "pypi_315_optimum_osx_aarch64": [
+                "pypi_315_optimum_myosx_aarch64": [
                     whl_config_setting(
                         version = "3.15",
                         target_platforms = [
-                            "cp315_osx_aarch64",
+                            "cp315_myosx_aarch64",
                         ],
-                        config_setting = None,
-                        filename = None,
                     ),
                 ],
             },
@@ -1111,12 +1109,12 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     })
 
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum_linux_x86_64": {
+        "pypi_315_optimum_mylinux_x86_64": {
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
         },
-        "pypi_315_optimum_osx_aarch64": {
+        "pypi_315_optimum_myosx_aarch64": {
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime]==1.17.1",
