@@ -76,7 +76,11 @@ def _platforms(*, python_version, minor_mapping, config):
 
     for platform, values in config.platforms.items():
         key = "{}_{}".format(abi, platform)
-        platforms[key] = env(key) | values.env
+        platforms[key] = env(struct(
+            abi = abi,
+            os = values.os_name,
+            arch = values.arch_name,
+        )) | values.env
     return platforms
 
 def _create_whl_repos(
@@ -348,7 +352,7 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
     args["filename"] = src.filename
     if not enable_pipstar:
         args["experimental_target_platforms"] = [
-            # Get rid of the version fot the target platforms because we are
+            # Get rid of the version for the target platforms because we are
             # passing the interpreter any way. Ideally we should search of ways
             # how to pass the target platforms through the hub repo.
             p.partition("_")[2]
@@ -382,6 +386,12 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
         for key in env:
             if key not in _SUPPORTED_PEP508_KEYS:
                 fail("Unsupported key in the PEP508 environment: {}".format(key))
+
+        if not os_name:
+            fail("'os_name' is required")
+
+        if not arch_name:
+            fail("'arch_name' is required")
 
         config["platforms"][platform] = struct(
             name = platform.replace("-", "_").lower(),
