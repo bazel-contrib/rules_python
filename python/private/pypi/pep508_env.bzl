@@ -15,8 +15,6 @@
 """This module is for implementing PEP508 environment definition.
 """
 
-load(":pep508_platform.bzl", "platform_from_str")
-
 # See https://stackoverflow.com/a/45125525
 platform_machine_aliases = {
     # These pairs mean the same hardware, but different values may be used
@@ -174,9 +172,6 @@ def env(target_platform, *, extra = None):
     env = create_env()
     if extra != None:
         env["extra"] = extra
-
-    if type(target_platform) == type(""):
-        target_platform = platform_from_str(target_platform, python_version = "")
 
     if target_platform.abi:
         minor_version, _, micro_version = target_platform.abi[3:].partition(".")

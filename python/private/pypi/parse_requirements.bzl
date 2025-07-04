@@ -402,6 +402,10 @@ def _add_dists(*, requirement, index_urls, logger = None):
         ]))
 
     # Filter out the wheels that are incompatible with the target_platforms.
-    whls = select_whls(whls = whls, want_platforms = requirement.target_platforms, logger = logger)
+    whls = select_whls(
+        whls = whls,
+        want_platforms = requirement.target_platforms,
+        logger = logger,
+    )
 
     return whls, sdist
