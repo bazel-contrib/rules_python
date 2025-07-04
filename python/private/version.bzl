@@ -227,6 +227,9 @@ def accept_alnum(parser):
     for i in range(start, len(parser.input) + 1):
         if not accept(parser, _isalnum, _lower) and not accept_placeholder(parser):
             if i - start >= 1:
+                if ctx["norm"].isdigit():
+                    # PEP 440: Integer Normalization
+                    ctx["norm"] = str(int(ctx["norm"]))
                 return parser.accept()
             break
 
@@ -266,44 +269,9 @@ def accept_dot_number_sequence(parser):
             break
     return i - start >= 1
 
-def accept_separator_alnum(parser):
-    """Accept a separator followed by an alphanumeric string.
-
-    Args:
-      parser: The normalizer.
-
-    Returns:
-      whether a separator and an alphanumeric string were accepted.
-    """
-    parser.open_context()
-
-    # PEP 440: Local version segments
-    if (
-        accept(parser, _in([".", "-", "_"]), ".") and
-        (accept_digits(parser) or accept_alnum(parser))
-    ):
-        return parser.accept()
-
-    return parser.discard()
-
-def accept_separator_alnum_sequence(parser):
-    """Accept a sequence of separator+alphanumeric.
-
-    Args:
-      parser: The normalizer.
-
-    Returns:
-      whether a sequence of separator+alphanumerics was accepted.
-    """
-    ctx = parser.context()
-    start = ctx["start"]
-    i = start
-
-    for i in range(start, len(parser.input) + 1):
-        if not accept_separator_alnum(parser):
-            break
-
-    return i - start >= 1
+def accept_local_version_segment(parser):
+    """Accept a local version segment (alphanumeric or numeric)."""
+    return accept_alnum(parser)
 
 def accept_epoch(parser):
     """PEP 440: Version epochs.
@@ -418,8 +386,7 @@ def accept_explicit_postrelease(parser):
     ctx = parser.open_context()
 
     # PEP 440: Post release separators
-    if not accept(parser, _in(["-", "_", "."]), "."):
-        ctx["norm"] += "."
+    accept(parser, _in(["-", "_", "."]), "")
 
     # PEP 440: Post release spelling
     if (
@@ -427,6 +394,8 @@ def accept_explicit_postrelease(parser):
         accept_string(parser, "rev", "post") or
         accept_string(parser, "r", "post")
     ):
+        ctx["norm"] = ".post"
+
         accept(parser, _in(["-", "_", "."]), "")
 
         if not accept_digits(parser):
@@ -465,10 +434,11 @@ def accept_devrelease(parser):
     ctx = parser.open_context()
 
     # PEP 440: Development release separators
-    if not accept(parser, _in(["-", "_", "."]), "."):
-        ctx["norm"] += "."
+    accept(parser, _in(["-", "_", "."]), "")
 
     if accept_string(parser, "dev", "dev"):
+        ctx["norm"] = ".dev"
+
         accept(parser, _in(["-", "_", "."]), "")
 
         if not accept_digits(parser):
@@ -490,8 +460,10 @@ def accept_local(parser):
     """
     parser.open_context()
 
-    if accept(parser, _is("+"), "+") and accept_alnum(parser):
-        accept_separator_alnum_sequence(parser)
+    if accept(parser, _is("+"), "+") and accept_local_version_segment(parser):
+        for _ in range(len(parser.input) - parser.context()["start"]):
+            if not (accept(parser, _in([".", "-", "_"]), ".") and accept_local_version_segment(parser)):
+                break
         return parser.accept("local")
 
     return parser.discard("local")
@@ -624,7 +596,27 @@ def _parse_local(value, fail):
         fail("local release identifier must start with '+', got: {}".format(value))
 
     # If the part is numerical, handle it as a number
-    return tuple([int(part) if part.isdigit() else part for part in value[1:].split(".")])
+    # PEP 440: Local version identifiers
+    # Local version identifiers are not compared, but are used for ordering.
+    # They consist of a series of dot separated segments, where each segment can be
+    # either an alphanumeric string or a number.
+    # When comparing, alphanumeric segments are compared lexicographically, and
+    # numeric segments are compared numerically.
+    # The comparison is case-insensitive.
+    # The comparison is done segment by segment.
+    # If a segment is alphanumeric, it is compared to other alphanumeric segments
+    # lexicographically.
+    # If a segment is numeric, it is compared to other numeric segments numerically.
+    # If a segment is alphanumeric and the other is numeric, the alphanumeric
+    # segment is considered to be greater than the numeric segment.
+    # This means that `1.0+abc.1` is greater than `1.0+123.1`.
+    # This is implemented by returning a tuple of (is_int, value) for each segment.
+    # is_int is True if the segment is an int, False otherwise.
+    # This ensures that (False, "abc") > (True, 123).
+    return tuple([
+        (part.isdigit(), int(part) if part.isdigit() else part.lower())
+        for part in value[1:].replace("-", ".").replace("_", ".").split(".")
+    ])
 
 def _parse_dev(value, fail):
     if not value:
