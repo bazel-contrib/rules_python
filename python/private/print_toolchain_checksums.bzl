@@ -3,6 +3,7 @@
 
 load("//python:versions.bzl", "TOOL_VERSIONS", "get_release_info")
 load("//python/private:text_util.bzl", "render")
+load("//python/private:version.bzl", "version")
 
 def print_toolchains_checksums(name):
     """A macro to print checksums for a particular Python interpreter version.
@@ -10,7 +11,6 @@ def print_toolchains_checksums(name):
     Args:
         name: {type}`str`: the name of the runnable target.
     """
-    all_commands = []
     by_version = {}
 
     for python_version, metadata in TOOL_VERSIONS.items():
@@ -18,7 +18,12 @@ def print_toolchains_checksums(name):
             python_version = python_version,
             metadata = metadata,
         )
-        all_commands.append(by_version[python_version])
+
+    all_commands = sorted(
+        by_version.items(),
+        key = lambda x: version.key(version.parse(x[0], strict = True)),
+    )
+    all_commands = [x[1] for x in all_commands]
 
     template = """\
 cat > "$@" <<'EOF'
@@ -37,10 +42,10 @@ EOF
         srcs = [],
         outs = ["print_toolchains_checksums.sh"],
         cmd = select({
-            "//python/config_settings:is_python_{}".format(version): template.format(
+            "//python/config_settings:is_python_{}".format(version_str): template.format(
                 commands = commands,
             )
-            for version, commands in by_version.items()
+            for version_str, commands in by_version.items()
         } | {
             "//conditions:default": template.format(commands = "\n".join(all_commands)),
         }),
@@ -64,7 +69,7 @@ def _commands_for_version(*, python_version, metadata):
                 "cat <<EOB",
                 "            \"{platform}\": \"$$({get_sha256})\",".format(
                     platform = platform,
-                    get_sha256 = "curl --location --fail {release_url_sha256} 2>/dev/null || curl --location --fail {release_url} 2>/dev/null | shasum -a 256 | awk '{{ print $$1 }}'".format(
+                    get_sha256 = "curl --silent --show-error --location --fail {release_url_sha256}".format(
                         release_url = release_url,
                         release_url_sha256 = release_url + ".sha256",
                     ),

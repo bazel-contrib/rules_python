@@ -32,6 +32,9 @@ DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone
 # the hashes:
 #   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version={major}.{minor}.{patch}
 #
+# To print hashes for all of the specified versions, run:
+#   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version=""
+#
 # Note, to users looking at how to specify their tool versions, coverage_tool version for each
 # interpreter can be specified by:
 #   "3.8.10": {
