@@ -72,11 +72,25 @@ def _platforms(*, python_version, minor_mapping, config):
         version = python_version,
         minor_mapping = minor_mapping,
     )
-    abi = "cp3{}".format(python_version[2:])
 
     for platform, values in config.platforms.items():
+        implementation = values.env["implementation_name"][:2].lower()
+        abi = "{}3{}".format(implementation, python_version[2:])
         key = "{}_{}".format(abi, platform)
-        platforms[key] = env(key) | values.env
+
+        env_ = env(struct(
+            abi = abi,
+            os = values.os_name,
+            arch = values.arch_name,
+        )) | values.env
+        platforms[key] = struct(
+            env = env_,
+            want_abis = [
+                v.format(*python_version.split("."))
+                for v in values.want_abis
+            ],
+            platform_tags = values.platform_tags,
+        )
     return platforms
 
 def _create_whl_repos(
@@ -148,6 +162,8 @@ def _create_whl_repos(
             ))
         python_interpreter_target = available_interpreters[python_name]
 
+    # TODO @aignas 2025-06-29: we should not need the version in the pip_name if
+    # we are using pipstar and we are downloading the wheel using the downloader
     pip_name = "{}_{}".format(
         hub_name,
         version_label(pip_attr.python_version),
@@ -180,11 +196,15 @@ def _create_whl_repos(
     elif config.enable_pipstar:
         evaluate_markers = lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
-            platforms = _platforms(
-                python_version = pip_attr.python_version,
-                minor_mapping = minor_mapping,
-                config = config,
-            ),
+            platforms = {
+                k: p.env
+                # TODO @aignas 2025-07-05: update evaluate_markers_star
+                for k, p in _platforms(
+                    python_version = pip_attr.python_version,
+                    minor_mapping = minor_mapping,
+                    config = config,
+                ).items()
+            },
         )
     else:
         # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
@@ -225,6 +245,11 @@ def _create_whl_repos(
                 minor_mapping = minor_mapping,
             ),
             logger = logger,
+        ),
+        platforms = _platforms(
+            python_version = pip_attr.python_version,
+            minor_mapping = minor_mapping,
+            config = config,
         ),
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
@@ -348,31 +373,23 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
     args["filename"] = src.filename
     if not enable_pipstar:
         args["experimental_target_platforms"] = [
-            # Get rid of the version fot the target platforms because we are
+            # Get rid of the version for the target platforms because we are
             # passing the interpreter any way. Ideally we should search of ways
             # how to pass the target platforms through the hub repo.
             p.partition("_")[2]
             for p in src.target_platforms
         ]
 
-    # Pure python wheels or sdists may need to have a platform here
-    target_platforms = None
-    if is_whl and not src.filename.endswith("-any.whl"):
-        pass
-    elif is_multiple_versions:
-        target_platforms = src.target_platforms
-
     return struct(
         repo_name = whl_repo_name(src.filename, src.sha256),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,
-            filename = src.filename,
-            target_platforms = target_platforms,
+            target_platforms = src.target_platforms,
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False):
+def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, want_abis, platform_tags, override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
     if platform:
@@ -383,12 +400,31 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             if key not in _SUPPORTED_PEP508_KEYS:
                 fail("Unsupported key in the PEP508 environment: {}".format(key))
 
+        if not os_name:
+            fail("'os_name' is required")
+
+        if not arch_name:
+            fail("'arch_name' is required")
+
+        if platform_tags and "any" not in platform_tags:
+            # the lowest priority one needs to be the first one
+            platform_tags = ["any"] + platform_tags
+
         config["platforms"][platform] = struct(
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
             config_settings = config_settings,
-            env = env,
+            want_abis = want_abis or [
+                "cp{0}{1}",
+                "abi3",
+                "none",
+            ],
+            platform_tags = platform_tags,
+            env = {
+                # default to this
+                "implementation_name": "cpython",
+            } | env,
         )
     else:
         config["platforms"].pop(platform)
@@ -414,28 +450,42 @@ def _create_config(defaults):
             arch_name = cpu,
             os_name = "linux",
             platform = "linux_{}".format(cpu),
+            want_abis = [],
             config_settings = [
                 "@platforms//os:linux",
                 "@platforms//cpu:{}".format(cpu),
             ],
-            env = {"platform_version": "0"},
+            platform_tags = [
+                "linux_*_{}".format(cpu),
+                "manylinux_*_{}".format(cpu),
+            ],
+            env = {
+                "platform_version": "0",
+            },
         )
-    for cpu in [
-        "aarch64",
-        "x86_64",
-    ]:
+    for cpu, platform_tag_cpus in {
+        "aarch64": ["universal2", "arm64"],
+        "x86_64": ["universal2", "x86_64"],
+    }.items():
         _configure(
             defaults,
             arch_name = cpu,
-            # We choose the oldest non-EOL version at the time when we release `rules_python`.
-            # See https://endoflife.date/macos
             os_name = "osx",
             platform = "osx_{}".format(cpu),
             config_settings = [
                 "@platforms//os:osx",
                 "@platforms//cpu:{}".format(cpu),
             ],
-            env = {"platform_version": "14.0"},
+            want_abis = [],
+            platform_tags = [
+                "macosx_*_{}".format(suffix)
+                for suffix in platform_tag_cpus
+            ],
+            # We choose the oldest non-EOL version at the time when we release `rules_python`.
+            # See https://endoflife.date/macos
+            env = {
+                "platform_version": "14.0",
+            },
         )
 
     _configure(
@@ -447,7 +497,11 @@ def _create_config(defaults):
             "@platforms//os:windows",
             "@platforms//cpu:x86_64",
         ],
-        env = {"platform_version": "0"},
+        want_abis = [],
+        platform_tags = ["win_amd64"],
+        env = {
+            "platform_version": "0",
+        },
     )
     return struct(**defaults)
 
@@ -517,14 +571,15 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 env = tag.env,
                 os_name = tag.os_name,
                 platform = tag.platform,
+                platform_tags = tag.platform_tags,
+                want_abis = tag.want_abis,
                 override = mod.is_root,
                 # TODO @aignas 2025-05-19: add more attr groups:
                 # * for AUTH - the default `netrc` usage could be configured through a common
                 # attribute.
                 # * for index/downloader config. This includes all of those attributes for
                 # overrides, etc. Index overrides per platform could be also used here.
-                # * for whl selection - selecting preferences of which `platform_tag`s we should use
-                # for what. We could also model the `cp313t` freethreaded as separate platforms.
+                # * for whl selection - We could also model the `cp313t` freethreaded as separate platforms.
             )
 
     config = _create_config(defaults)
@@ -656,7 +711,14 @@ You cannot use both the additive_build_content and additive_build_content_file a
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
             exposed_packages.setdefault(hub_name, {}).update(out.exposed_packages)
-            whl_libraries.update(out.whl_libraries)
+            for whl_name, lib in out.whl_libraries.items():
+                if enable_pipstar:
+                    whl_libraries.setdefault(whl_name, lib)
+                elif whl_name in lib:
+                    fail("'{}' already in created".format(whl_name))
+                else:
+                    # replicate whl_libraries.update(out.whl_libraries)
+                    whl_libraries[whl_name] = lib
 
             # TODO @aignas 2024-04-05: how do we support different requirement
             # cycles for different abis/oses? For now we will need the users to
@@ -819,25 +881,6 @@ The list of labels to `config_setting` targets that need to be matched for the p
 selected.
 """,
     ),
-    "os_name": attr.string(
-        doc = """\
-The OS name to be used.
-
-:::{note}
-Either this or the appropriate `env` keys should be specified.
-:::
-""",
-    ),
-    "platform": attr.string(
-        doc = """\
-A platform identifier which will be used as the unique identifier within the extension evaluation.
-If you are defining custom platforms in your project and don't want things to clash, use extension
-[isolation] feature.
-
-[isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
-""",
-    ),
-} | {
     "env": attr.string_dict(
         doc = """\
 The values to use for environment markers when evaluating an expression.
@@ -863,6 +906,40 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing
+    "os_name": attr.string(
+        doc = """\
+The OS name to be used.
+
+:::{note}
+Either this or the appropriate `env` keys should be specified.
+:::
+""",
+    ),
+    "platform": attr.string(
+        doc = """\
+A platform identifier which will be used as the unique identifier within the extension evaluation.
+If you are defining custom platforms in your project and don't want things to clash, use extension
+[isolation] feature.
+
+[isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
+""",
+    ),
+    "platform_tags": attr.string_list(
+        doc = """\
+A list of `platform_tag` matchers so that we can select the best wheel based on the user
+preference. Per platform we will select a single wheel and the last match from this list will
+take precedence.
+
+The items in this list can contain a single `*` character that is equivalent to `.*` regex match.
+""",
+    ),
+    "want_abis": attr.string_list(
+        doc = """\
+A list of ABIs to select wheels for. The values can be either strings or include template
+parameters like `{0}` which will be replaced with python version parts. e.g. `cp{0}{1}` will
+result in `cp313` given the full python version is `3.13.5`.
+""",
+    ),
 }
 
 _SUPPORTED_PEP508_KEYS = [

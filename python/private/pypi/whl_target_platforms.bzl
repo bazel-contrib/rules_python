@@ -16,6 +16,7 @@
 A starlark implementation of the wheel platform tag parsing to get the target platform.
 """
 
+load("//python/private:version.bzl", "version")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
 # The order of the dictionaries is to keep definitions with their aliases next to each
@@ -46,135 +47,144 @@ _OS_PREFIXES = {
     "win": "windows",
 }  # buildifier: disable=unsorted-dict-items
 
-def select_whls(*, whls, want_platforms = [], logger = None):
-    """Select a subset of wheels suitable for target platforms from a list.
+def _get_priority(*, tag, values):
+    for priority, wp in enumerate(values):
+        # TODO @aignas 2025-06-16: move the matcher validation out of this
+        # TODO @aignas 2025-06-21: test the 'cp*' matching
+        head, sep, tail = wp.partition("*")
+        if "*" in tail:
+            fail("only a single '*' can be present in the matcher")
+
+        for p in tag.split("."):
+            if not sep and p == head:
+                return priority
+            elif sep and p.startswith(head) and p.endswith(tail):
+                return priority
+
+    return None
+
+def select_whl(*, whls, python_version, platforms, want_abis, implementation = "cp", limit = 1, logger = None):
+    """Select a whl that is the most suitable for the given platform.
 
     Args:
-        whls(list[struct]): A list of candidates which have a `filename`
+        whls: {type}`list[struct]` a list of candidates which have a `filename`
             attribute containing the `whl` filename.
-        want_platforms(str): The platforms in "{abi}_{os}_{cpu}" or "{os}_{cpu}" format.
-        logger: A logger for printing diagnostic messages.
+        python_version: {type}`str` the target python version.
+        platforms: {type}`list[str]` the target platform identifiers that may contain
+            a single `*` character.
+        implementation: {type}`str` TODO
+        want_abis: {type}`str` TODO
+        limit: {type}`int` number of wheels to return. Defaults to 1.
+        logger: {type}`struct` the logger instance.
 
     Returns:
-        A filtered list of items from the `whls` arg where `filename` matches
-        the selected criteria. If no match is found, an empty list is returned.
+        {type}`list[struct] | struct | None`, a single struct from the `whls` input
+            argument or `None` if a match is not found. If the `limit` is greater than
+            one, then we will return a list.
     """
-    if not whls:
-        return []
+    py_version = version.parse(python_version, strict = True)
 
-    want_abis = {
-        "abi3": None,
-        "none": None,
-    }
-
-    _want_platforms = {}
-    version_limit = None
-
-    for p in want_platforms:
-        if not p.startswith("cp3"):
-            fail("expected all platforms to start with ABI, but got: {}".format(p))
-
-        abi, _, os_cpu = p.partition("_")
-        abi, _, _ = abi.partition(".")
-        _want_platforms[os_cpu] = None
-
-        # TODO @aignas 2025-04-20: add a test
-        _want_platforms["{}_{}".format(abi, os_cpu)] = None
-
-        version_limit_candidate = int(abi[3:])
-        if not version_limit:
-            version_limit = version_limit_candidate
-        if version_limit and version_limit != version_limit_candidate:
-            fail("Only a single python version is supported for now")
-
-        # For some legacy implementations the wheels may target the `cp3xm` ABI
-        _want_platforms["{}m_{}".format(abi, os_cpu)] = None
-        want_abis[abi] = None
-        want_abis[abi + "m"] = None
-
-        # Also add freethreaded wheels if we find them since we started supporting them
-        _want_platforms["{}t_{}".format(abi, os_cpu)] = None
-        want_abis[abi + "t"] = None
-
-    want_platforms = sorted(_want_platforms)
-
+    # Get the minor version instead
+    # TODO @aignas 2025-06-27: do this more efficiently
+    py_version = version.parse("{0}.{1}".format(*py_version.release), strict = True)
     candidates = {}
+
     for whl in whls:
         parsed = parse_whl_name(whl.filename)
+        suffix = ""
+        if parsed.abi_tag.startswith(implementation):
+            v = parsed.abi_tag[2:]
 
-        if logger:
-            logger.trace(lambda: "Deciding whether to use '{}'".format(whl.filename))
+            min_whl_py_version = version.parse(
+                "{}.{}".format(v[0], v[1:].strip("tm")),
+                strict = False,
+            )
+            if parsed.abi_tag.endswith("t"):
+                suffix = "t"
 
-        supported_implementations = {}
-        whl_version_min = 0
-        for tag in parsed.python_tag.split("."):
-            supported_implementations[tag[:2]] = None
-
-            if tag.startswith("cp3") or tag.startswith("py3"):
-                version = int(tag[len("..3"):] or 0)
-            else:
-                # In this case it should be eithor "cp2" or "py2" and we will default
-                # to `whl_version_min` = 0
+            if not version.is_eq(py_version, min_whl_py_version):
+                if logger:
+                    logger.debug(lambda: "Discarding the wheel ('{}') because the min version supported based on the wheel ABI tag '{}' ({}) is not compatible with the provided target Python version '{}'".format(
+                        whl.filename,
+                        parsed.abi_tag,
+                        min_whl_py_version.string,
+                        py_version.string,
+                    ))
+                continue
+        else:
+            if parsed.python_tag.startswith("py"):
+                pass
+            elif not parsed.python_tag.startswith(implementation):
+                if logger:
+                    logger.debug(lambda: "Discarding the wheel because the implementation '{}' is not compatible with target implementation '{}'".format(
+                        parsed.python_tag,
+                        implementation,
+                    ))
                 continue
 
-            if whl_version_min == 0 or version < whl_version_min:
-                whl_version_min = version
+            if parsed.python_tag == "py2.py3":
+                min_version = "2"
+            else:
+                min_version = parsed.python_tag[2:]
 
-        if not ("cp" in supported_implementations or "py" in supported_implementations):
+            if len(min_version) > 1:
+                min_version = "{}.{}".format(min_version[0], min_version[1:])
+
+            min_whl_py_version = version.parse(min_version, strict = True)
+            if not version.is_ge(py_version, min_whl_py_version):
+                if logger:
+                    logger.debug(lambda: "Discarding the wheel because the min version supported based on the wheel ABI tag '{}' ({}) is not compatible with the provided target Python version '{}'".format(
+                        parsed.abi_tag,
+                        min_whl_py_version.string,
+                        py_version.string,
+                    ))
+                continue
+
+        abi_priority = _get_priority(
+            tag = parsed.abi_tag,
+            values = want_abis,
+        )
+        if abi_priority == None:
             if logger:
-                logger.trace(lambda: "Discarding the whl because the whl does not support CPython, whl supported implementations are: {}".format(supported_implementations))
-            continue
-
-        if want_abis and parsed.abi_tag not in want_abis:
-            # Filter out incompatible ABIs
-            if logger:
-                logger.trace(lambda: "Discarding the whl because the whl abi did not match")
-            continue
-
-        if whl_version_min > version_limit:
-            if logger:
-                logger.trace(lambda: "Discarding the whl because the whl supported python version is too high")
-            continue
-
-        compatible = False
-        if parsed.platform_tag == "any":
-            compatible = True
-        else:
-            for p in whl_target_platforms(parsed.platform_tag, abi_tag = parsed.abi_tag.strip("m") if parsed.abi_tag.startswith("cp") else None):
-                if p.target_platform in want_platforms:
-                    compatible = True
-                    break
-
-        if not compatible:
-            if logger:
-                logger.trace(lambda: "Discarding the whl because the whl does not support the desired platforms: {}".format(want_platforms))
-            continue
-
-        for implementation in supported_implementations:
-            candidates.setdefault(
-                (
+                logger.debug(lambda: "The abi '{}' does not match given list: {}".format(
                     parsed.abi_tag,
+                    want_abis,
+                ))
+            continue
+        platform_priority = _get_priority(
+            tag = parsed.platform_tag,
+            values = platforms,
+        )
+        if platform_priority == None:
+            if logger:
+                logger.debug(lambda: "The platform_tag '{}' does not match given list: {}".format(
                     parsed.platform_tag,
-                ),
-                {},
-            ).setdefault(
-                (
-                    # prefer cp implementation
-                    implementation == "cp",
-                    # prefer higher versions
-                    whl_version_min,
-                    # prefer abi3 over none
-                    parsed.abi_tag != "none",
-                    # prefer cpx abi over abi3
-                    parsed.abi_tag != "abi3",
-                ),
-                [],
-            ).append(whl)
+                    platforms,
+                ))
+            continue
 
-    return [
-        candidates[key][sorted(v)[-1]][-1]
-        for key, v in candidates.items()
-    ]
+        key = (
+            # Ensure that we chose the highest compatible version
+            parsed.python_tag.startswith(implementation),
+            platform_priority,
+            # prefer abi_tags in this order
+            version.key(min_whl_py_version),
+            abi_priority,
+            suffix,
+        )
+        candidates.setdefault(key, whl)
+
+    if not candidates:
+        return None
+
+    sorted_candidates = [i[1] for i in sorted(candidates.items())]
+    if logger:
+        logger.debug(lambda: "Sorted candidates:\n{}".format(
+            "\n".join([c.filename for c in sorted_candidates]),
+        ))
+    results = sorted_candidates[-limit:] if sorted_candidates else None
+
+    return results[-1] if limit == 1 else results
 
 def whl_target_platforms(platform_tag, abi_tag = ""):
     """Parse the wheel abi and platform tags and return (os, cpu) tuples.

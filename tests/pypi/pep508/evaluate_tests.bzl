@@ -16,6 +16,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:pep508_platform.bzl", "platform_from_str")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -262,7 +263,7 @@ def _evaluate_with_aliases(env):
         },
     }.items():  # buildifier: @unsorted-dict-items
         for input, want in tests.items():
-            _check_evaluate(env, input, want, pep508_env(target_platform))
+            _check_evaluate(env, input, want, pep508_env(platform_from_str(target_platform, "")))
 
 _tests.append(_evaluate_with_aliases)
 
