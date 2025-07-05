@@ -1,5 +1,5 @@
-load(":mytest.bzl", "my_test")
 load("@rules_python//python:defs.bzl", "py_library")
+load(":mytest.bzl", "my_test")
 
 # gazelle:map_kind py_test my_test :mytest.bzl
 

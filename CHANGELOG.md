@@ -91,6 +91,8 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) New directive `gazelle:python_generate_pyi_deps`; when `true`,
   dependencies added to satisfy type-only imports (`if TYPE_CHECKING`) and type
   stub packages are added to `pyi_deps` instead of `deps`.
+* (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
+  Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
 
 {#v0-0-0-removed}
 ### Removed

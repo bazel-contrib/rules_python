@@ -88,11 +88,17 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
+	var result language.GenerateResult
+	result.Gen = make([]*rule.Rule, 0)
+
+	pythonProjectRoot := cfg.PythonProjectRoot()
+	visibility := cfg.Visibility()
+
+	generateProtoLibraries(cfg, args, pythonProjectRoot, visibility, &result)
+
 	actualPyBinaryKind := GetActualKindName(pyBinaryKind, args)
 	actualPyLibraryKind := GetActualKindName(pyLibraryKind, args)
 	actualPyTestKind := GetActualKindName(pyTestKind, args)
-
-	pythonProjectRoot := cfg.PythonProjectRoot()
 
 	packageName := filepath.Base(args.Dir)
 
@@ -221,10 +227,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	parser := newPython3Parser(args.Config.RepoRoot, args.Rel, cfg.IgnoresDependency)
-	visibility := cfg.Visibility()
-
-	var result language.GenerateResult
-	result.Gen = make([]*rule.Rule, 0)
 
 	collisionErrors := singlylinkedlist.New()
 
@@ -550,4 +552,54 @@ func ensureNoCollision(file *rule.File, targetName, kind string) error {
 		}
 	}
 	return nil
+}
+
+func generateProtoLibraries(cfg *pythonconfig.Config, args language.GenerateArgs, pythonProjectRoot string, visibility []string, res *language.GenerateResult) {
+	// First, enumerate all the proto_library in this package.
+	var protoRuleNames []string
+	for _, r := range args.OtherGen {
+		if r.Kind() != "proto_library" {
+			continue
+		}
+		protoRuleNames = append(protoRuleNames, r.Name())
+	}
+	sort.Strings(protoRuleNames)
+
+	// Next, enumerate all the pre-existing py_proto_library in this package, so we can delete unnecessary rules later.
+	pyProtoRules := map[string]bool{}
+	if args.File != nil {
+		for _, r := range args.File.Rules {
+			if r.Kind() == "py_proto_library" {
+				pyProtoRules[r.Name()] = false
+			}
+		}
+	}
+
+	emptySiblings := treeset.Set{}
+	if cfg.GenerateProto() {
+		// Generate a py_proto_library for each proto_library.
+		for _, protoRuleName := range protoRuleNames {
+			pyProtoLibraryName := protoRuleName + "_py_pb2"
+			pyProtoLibrary := newTargetBuilder(pyProtoLibraryKind, pyProtoLibraryName, pythonProjectRoot, args.Rel, &emptySiblings).
+				addVisibility(visibility).
+				addResolvedDependency(":" + protoRuleName).
+				generateImportsAttribute().build()
+
+			res.Gen = append(res.Gen, pyProtoLibrary)
+			res.Imports = append(res.Imports, pyProtoLibrary.PrivateAttr(config.GazelleImportsKey))
+			pyProtoRules[pyProtoLibrary.Name()] = true
+
+		}
+	}
+
+	// Finally, emit an empty rule for each pre-existing py_proto_library that we didn't already generate.
+	for ruleName, generated := range pyProtoRules {
+		if generated {
+			continue
+		}
+
+		emptyRule := newTargetBuilder(pyProtoLibraryKind, ruleName, pythonProjectRoot, args.Rel, &emptySiblings).build()
+		res.Empty = append(res.Empty, emptyRule)
+	}
+
 }
