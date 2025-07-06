@@ -70,14 +70,22 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         config_settings = [
             "@platforms//cpu:{}".format(cpu),
             "@platforms//os:linux",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
         ],
         env = {"platform_version": "0"},
+        marker = "python_version ~= \"3.13\"" if freethreaded else "",
         os_name = "linux",
-        platform = "linux_{}".format(cpu),
+        platform = "linux_{}{}".format(cpu, freethreaded),
         platform_tags = [
             "linux_*_{}".format(cpu),
             "manylinux_*_{}".format(cpu),
         ],
+        want_abis = [
+            "cp{0}{1}t",
+            "none",
+        ] if freethreaded else [],
     )
     for cpu in [
         "x86_64",
@@ -89,6 +97,10 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         "ppc",
         "s390x",
     ]
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
 ]
 
 [
@@ -97,16 +109,24 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         config_settings = [
             "@platforms//cpu:{}".format(cpu),
             "@platforms//os:osx",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
         ],
         # We choose the oldest non-EOL version at the time when we release `rules_python`.
         # See https://endoflife.date/macos
         env = {"platform_version": "14.0"},
+        marker = "python_version ~= \"3.13\"" if freethreaded else "",
         os_name = "osx",
-        platform = "osx_{}".format(cpu),
+        platform = "osx_{}{}".format(cpu, freethreaded),
         platform_tags = [
             "macosx_*_{}".format(suffix)
             for suffix in platform_tag_cpus
         ],
+        want_abis = [
+            "cp{0}{1}t",
+            "none",
+        ] if freethreaded else [],
     )
     for cpu, platform_tag_cpus in {
         "aarch64": [
@@ -118,19 +138,38 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             "x86_64",
         ],
     }.items()
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
 ]
 
-pip.default(
-    arch_name = "x86_64",
-    config_settings = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:windows",
-    ],
-    env = {"platform_version": "0"},
-    os_name = "windows",
-    platform = "windows_x86_64",
-    platform_tags = ["win_amd64"],
-)
+[
+    pip.default(
+        arch_name = "x86_64",
+        config_settings = [
+            "@platforms//cpu:x86_64",
+            "@platforms//os:windows",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
+        ],
+        env = {"platform_version": "0"},
+        marker = "python_version ~= \"3.13\"" if freethreaded else "",
+        os_name = "windows",
+        platform = "windows_x86_64{}".format(freethreaded),
+        platform_tags = ["win_amd64"],
+        want_abis = [
+            "cp{0}{1}t",
+            "none",
+        ] if freethreaded else [],
+    )
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
+]
+
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
