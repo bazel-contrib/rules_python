@@ -39,11 +39,11 @@ go_library(
         "@bazel_gazelle//rule:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_bmatcuk_doublestar_v4//:doublestar",
-        "@com_github_dougthor42_go_tree_sitter//:go-tree-sitter",
-        "@com_github_dougthor42_go_tree_sitter//python",
         "@com_github_emirpasic_gods//lists/singlylinkedlist",
         "@com_github_emirpasic_gods//sets/treeset",
         "@com_github_emirpasic_gods//utils",
+        "@com_github_smacker_go_tree_sitter//:go-tree-sitter",
+        "@com_github_smacker_go_tree_sitter//python",
         "@org_golang_x_sync//errgroup",
     ],
 )
