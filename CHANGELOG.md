@@ -94,6 +94,7 @@ END_UNRELEASED_TEMPLATE
 * (toolchain) Add toolchains for aarch64 windows for
     * 3.11.13
     * 3.12.11
+    * 3.13.5
     * 3.14.0b3
 
 {#v0-0-0-removed}
