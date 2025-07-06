@@ -878,6 +878,14 @@ def _generate_platforms():
             os_name = MACOS_NAME,
             arch = "aarch64",
         ),
+        "aarch64-pc-windows-msvc": platform_info(
+            compatible_with = [
+                "@platforms//os:windows",
+                "@platforms//cpu:aarch64",
+            ],
+            os_name = WINDOWS_NAME,
+            arch = "aarch64",
+        ),
         "aarch64-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
@@ -960,14 +968,6 @@ def _generate_platforms():
             os_name = WINDOWS_NAME,
             arch = "x86_64",
         ),
-        "aarch64-pc-windows-msvc": platform_info(
-            compatible_with = [
-                "@platforms//os:windows",
-                "@platforms//cpu:aarch64",
-            ],
-            os_name = WINDOWS_NAME,
-            arch = "aarch64",
-        ),
         "x86_64-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
@@ -1047,13 +1047,13 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
                 FREETHREADED.lstrip("-"),
                 {
                     "aarch64-apple-darwin": "pgo+lto",
+                    "aarch64-pc-windows-msvc": "pgo",
                     "aarch64-unknown-linux-gnu": "lto",
                     "ppc64le-unknown-linux-gnu": "lto",
                     "riscv64-unknown-linux-gnu": "lto",
                     "s390x-unknown-linux-gnu": "lto",
                     "x86_64-apple-darwin": "pgo+lto",
                     "x86_64-pc-windows-msvc": "pgo",
-                    "aarch64-pc-windows-msvc": "pgo",
                     "x86_64-unknown-linux-gnu": "pgo+lto",
                 }[p],
             )
