@@ -425,87 +425,6 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
     else:
         config["platforms"].pop(platform)
 
-def _set_defaults(defaults):
-    """Set defaults that rules_python is operating under.
-
-    Because this code is also tested in unit tests, leaving it in MODULE.bazel would be
-    a little problematic.
-    """
-
-    # NOTE: We have this so that it is easier to maintain unit tests assuming certain
-    # defaults
-    for cpu in [
-        "x86_64",
-        "aarch64",
-        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
-        # `pip.default` extension. i.e. drop the below values - users will have to
-        # define themselves if they need them.
-        "arm",
-        "ppc",
-        "s390x",
-    ]:
-        _configure(
-            defaults,
-            arch_name = cpu,
-            os_name = "linux",
-            platform = "linux_{}".format(cpu),
-            want_abis = [],
-            config_settings = [
-                "@platforms//os:linux",
-                "@platforms//cpu:{}".format(cpu),
-            ],
-            platform_tags = [
-                "linux_*_{}".format(cpu),
-                "manylinux_*_{}".format(cpu),
-            ],
-            env = {
-                "platform_version": "0",
-            },
-        )
-    for cpu, platform_tag_cpus in {
-        "aarch64": ["universal2", "arm64"],
-        "x86_64": ["universal2", "x86_64"],
-    }.items():
-        _configure(
-            defaults,
-            arch_name = cpu,
-            os_name = "osx",
-            platform = "osx_{}".format(cpu),
-            config_settings = [
-                "@platforms//os:osx",
-                "@platforms//cpu:{}".format(cpu),
-            ],
-            want_abis = [],
-            platform_tags = [
-                "macosx_*_{}".format(suffix)
-                for suffix in platform_tag_cpus
-            ],
-            # We choose the oldest non-EOL version at the time when we release `rules_python`.
-            # See https://endoflife.date/macos
-            env = {
-                "platform_version": "14.0",
-            },
-        )
-
-    for cpu, platform_tags in {
-        "x86_64": ["win_amd64"],
-    }.items():
-        _configure(
-            defaults,
-            arch_name = cpu,
-            os_name = "windows",
-            platform = "windows_{}".format(cpu),
-            config_settings = [
-                "@platforms//os:windows",
-                "@platforms//cpu:{}".format(cpu),
-            ],
-            want_abis = [],
-            platform_tags = platform_tags,
-            env = {
-                "platform_version": "0",
-            },
-        )
-
 def parse_modules(
         module_ctx,
         _fail = fail,
@@ -560,7 +479,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
         "enable_pipstar": enable_pipstar,
         "platforms": {},
     }
-    _set_defaults(defaults)
     for mod in module_ctx.modules:
         if not (mod.is_root or mod.name == "rules_python"):
             continue
