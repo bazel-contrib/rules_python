@@ -67,6 +67,10 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.14.0b2
 * (toolchain) Python 3.13 now references 3.13.5
+* (toolchain) Updated the following toolchains to 20250702 to support aarch64 windows
+    * 3.11.13
+    * 3.12.11
+    * 3.14.0b3
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -91,6 +95,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) New directive `gazelle:python_generate_pyi_deps`; when `true`,
   dependencies added to satisfy type-only imports (`if TYPE_CHECKING`) and type
   stub packages are added to `pyi_deps` instead of `deps`.
+* (toolchain) Add toolchains for aarch64 windows
 
 {#v0-0-0-removed}
 ### Removed
