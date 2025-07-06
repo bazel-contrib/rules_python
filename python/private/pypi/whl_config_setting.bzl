@@ -14,7 +14,7 @@
 
 "A small function to create an alias for a whl distribution"
 
-def whl_config_setting(*, version = None, config_setting = None, filename = None, target_platforms = None):
+def whl_config_setting(*, version = None, config_setting = None, target_platforms = None):
     """The bzl_packages value used by by the render_pkg_aliases function.
 
     This contains the minimum amount of information required to generate correct
@@ -27,7 +27,6 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
             is no match found during a select.
         config_setting: {type}`str | Label | None` the config setting that we should use. Defaults
             to "//_config:is_python_{version}".
-        filename: {type}`str | None` the distribution filename to derive the config_setting.
         target_platforms: {type}`list[str] | None` the list of target_platforms for this
             distribution.
 
@@ -51,7 +50,6 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
 
     return struct(
         config_setting = config_setting,
-        filename = filename,
         # Make the struct hashable
         target_platforms = tuple(target_platforms) if target_platforms else None,
         version = version,

@@ -968,7 +968,6 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
                             "cp315_linux_x86_64",
                         ],
                         config_setting = None,
-                        filename = None,
                     ),
                 ],
                 "pypi_315_optimum_osx_aarch64": [
@@ -978,7 +977,6 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
                             "cp315_osx_aarch64",
                         ],
                         config_setting = None,
-                        filename = None,
                     ),
                 ],
             },
