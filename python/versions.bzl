@@ -1133,7 +1133,7 @@ EOF
 
 def _commands_for_version(python_version):
     return "\n".join([
-        "echo \"{python_version}: \\\"{platform}\\\": \\\"$$(curl --location --fail {release_url_sha256} 2>/dev/null || curl --location --fail {release_url} 2>/dev/null | shasum -a 256 | awk '{{ print $$1 }}')\\\",\"".format(
+        "echo \"{python_version}: {platform}: $$(curl --location --fail {release_url_sha256} 2>/dev/null || curl --location --fail {release_url} 2>/dev/null | shasum -a 256 | awk '{{ print $$1 }}')\"".format(
             python_version = python_version,
             platform = platform,
             release_url = release_url,
