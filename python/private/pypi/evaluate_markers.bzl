@@ -43,11 +43,11 @@ def evaluate_markers(*, requirements, platforms):
     for req_string, platform_strings in requirements.items():
         req = requirement(req_string)
         for platform_str in platform_strings:
-            env = platforms.get(platform_str)
-            if not env:
-                fail("Please define platform: '{}'".format(platform_str))
+            plat = platforms.get(platform_str)
+            if not plat:
+                continue
 
-            if evaluate(req.marker, env = env):
+            if evaluate(req.marker, env = plat.env):
                 ret.setdefault(req_string, []).append(platform_str)
 
     return ret
@@ -57,7 +57,7 @@ def evaluate_markers_py(mrctx, *, requirements, python_interpreter, python_inter
 
     Args:
         mrctx: repository_ctx or module_ctx.
-        requirements: list[str] of the requirement file lines to evaluate.
+        requirements: {type}`dict[str, list[str]]` of the requirement file lines to evaluate.
         python_interpreter: str, path to the python_interpreter to use to
             evaluate the env markers in the given requirements files. It will
             be only called if the requirements files have env markers. This

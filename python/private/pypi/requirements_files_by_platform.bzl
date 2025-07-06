@@ -37,7 +37,9 @@ def _default_platforms(*, filter, platforms):
         if not prefix:
             return platforms
 
-        match = [p for p in platforms if p.startswith(prefix)]
+        match = [p for p in platforms if p.startswith(prefix) or (
+            p.startswith("cp") and p.partition("_")[-1].startswith(prefix)
+        )]
     else:
         match = [p for p in platforms if filter in p]
 
@@ -140,7 +142,7 @@ def requirements_files_by_platform(
     if logger:
         logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
 
-    default_platforms = [_platform(p, python_version) for p in platforms]
+    default_platforms = platforms
 
     if platforms_from_args:
         lock_files = [
@@ -252,6 +254,6 @@ def requirements_files_by_platform(
 
     ret = {}
     for plat, file in requirements.items():
-        ret.setdefault(file, []).append(plat)
+        ret.setdefault(file, []).append(_platform(plat, python_version = python_version))
 
     return ret
