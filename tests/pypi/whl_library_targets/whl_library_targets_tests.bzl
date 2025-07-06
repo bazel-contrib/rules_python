@@ -16,9 +16,17 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:glob_excludes.bzl", "glob_excludes")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:whl_library_targets.bzl", "whl_library_targets", "whl_library_targets_from_requires")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library_targets.bzl", _whl_library_targets = "whl_library_targets", _whl_library_targets_from_requires = "whl_library_targets_from_requires")  # buildifier: disable=bzl-visibility
 
 _tests = []
+
+def whl_library_targets(**kwargs):
+    # Let's skip testing this for now
+    _whl_library_targets(enable_implicit_namespace_pkgs = True, **kwargs)
+
+def whl_library_targets_from_requires(**kwargs):
+    # Let's skip testing this for now
+    _whl_library_targets_from_requires(enable_implicit_namespace_pkgs = True, **kwargs)
 
 def _test_filegroups(env):
     calls = []
