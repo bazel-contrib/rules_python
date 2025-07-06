@@ -60,6 +60,62 @@ register_toolchains("@pythons_hub//:all")
 # Install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
 
 pip = use_extension("//python/extensions:pip.bzl", "pip")
+
+# NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility with the
+# current `experimental_index_url` implementation. Whilst we stabilize the API this list may be
+# updated with a mention in the CHANGELOG.
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:linux",
+        ],
+        env = {"platform_version": "0"},
+        os_name = "linux",
+        platform = "linux_{}".format(cpu),
+    )
+    for cpu in [
+        "x86_64",
+        "aarch64",
+        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
+        # `pip.default` extension. i.e. drop the below values - users will have to
+        # define themselves if they need them.
+        "arm",
+        "ppc",
+        "s390x",
+    ]
+]
+
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:osx",
+        ],
+        # We choose the oldest non-EOL version at the time when we release `rules_python`.
+        # See https://endoflife.date/macos
+        env = {"platform_version": "14.0"},
+        os_name = "osx",
+        platform = "osx_{}".format(cpu),
+    )
+    for cpu in [
+        "aarch64",
+        "x86_64",
+    ]
+]
+
+pip.default(
+    arch_name = "x86_64",
+    config_settings = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
+    env = {"platform_version": "0"},
+    os_name = "windows",
+    platform = "windows_x86_64",
+)
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
