@@ -101,6 +101,18 @@ END_UNRELEASED_TEMPLATE
 ### Removed
 * Nothing removed.
 
+{#1-5-1}
+## [1.5.1] - 2025-07-06
+
+[1.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.1
+
+{#v1-5-1-fixed}
+### Fixed
+
+* (pypi) Namespace packages work by default (pkgutil shims are generated
+  by default again)
+  ([#3038](https://github.com/bazel-contrib/rules_python/issues/3038)).
+
 {#1-5-0}
 ## [1.5.0] - 2025-06-11
 

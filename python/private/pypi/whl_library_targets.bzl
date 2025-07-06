@@ -331,7 +331,7 @@ def whl_library_targets(
             allow_empty = True,
         )
 
-        if enable_implicit_namespace_pkgs:
+        if not enable_implicit_namespace_pkgs:
             srcs = srcs + getattr(native, "select", select)({
                 Label("//python/config_settings:is_venvs_site_packages"): [],
                 "//conditions:default": create_inits(
