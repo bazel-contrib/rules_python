@@ -87,7 +87,7 @@ END_UNRELEASED_TEMPLATE
 * Nothing removed.
 
 {#1-5-1}
-## [1.5.1] - 2025-06-XX
+## [1.5.1] - 2025-07-06
 
 [1.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.1
 
