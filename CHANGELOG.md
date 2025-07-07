@@ -67,6 +67,10 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.14.0b3
 * (toolchain) Python 3.13 now references 3.13.5
+* (pypi) From now on the list of default platforms only includes `linux_x86_64`, `linux_aarch64`,
+  `osx_x86_64`, `osx_aarch64` and `windows_x86_64`. If you are on other platforms, you need to
+  use the `pip.default` to configure it yourself. If you are interested in graduating the
+  platform, consider helping set us up CI for them and update the documentation.
 
 {#v0-0-0-fixed}
 ### Fixed

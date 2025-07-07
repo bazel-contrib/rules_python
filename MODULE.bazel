@@ -87,12 +87,6 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
     for cpu in [
         "x86_64",
         "aarch64",
-        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
-        # `pip.default` extension. i.e. drop the below values - users will have to
-        # define themselves if they need them.
-        "arm",
-        "ppc",
-        "s390x",
     ]
 ]
 
@@ -123,29 +117,31 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             "universal2",
             "arm64",
         ],
-        "x86_64": [
-            "universal2",
-            "x86_64",
-        ],
     }.items()
 ]
 
-pip.default(
-    arch_name = "x86_64",
-    config_settings = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:windows",
-    ],
-    env = {"platform_version": "0"},
-    os_name = "windows",
-    platform = "windows_x86_64",
-    whl_abi_tags = [
-        "cp{major}{minor}",
-        "abi3",
-        "none",
-    ],
-    whl_platform_tags = ["win_amd64"],
-)
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:windows",
+        ],
+        env = {"platform_version": "0"},
+        os_name = "windows",
+        platform = "windows_{}".format(cpu),
+        whl_abi_tags = [
+            "cp{major}{minor}",
+            "abi3",
+            "none",
+        ],
+        whl_platform_tags = whl_platform_tags,
+    )
+    for cpu, whl_platform_tags in {
+        "x86_64": ["win_amd64"],
+    }.items()
+]
+
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
