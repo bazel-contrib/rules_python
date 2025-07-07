@@ -266,6 +266,10 @@ def _create_whl_repos(
         logger = logger,
     )
 
+    use_downloader = {
+        normalize_name(s): False
+        for s in pip_attr.simpleapi_skip
+    }
     exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
@@ -313,17 +317,26 @@ def _create_whl_repos(
             if v != default
         })
 
-        for src in whl.srcs:
+        for src in sorted(whl.srcs, key = lambda x: x.filename):
             repo = _whl_repo(
                 src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = pip_attr.netrc,
+                # NOTE @aignas 2025-07-07: we guard against an edge-case where there
+                # are more platforms defined than there are wheels for and users
+                # disallow building from sdist.
+                use_downloader = use_downloader.get(
+                    whl.name,
+                    get_index_urls != None,  # defaults to True if the get_index_urls is defined
+                ),
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = config.enable_pipstar,
             )
+            if repo == None:
+                continue
 
             repo_name = "{}_{}".format(pip_name, repo.repo_name)
             if repo_name in whl_libraries:
@@ -342,7 +355,17 @@ def _create_whl_repos(
         whl_libraries = whl_libraries,
     )
 
-def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, netrc, auth_patterns, python_version, enable_pipstar = False):
+def _whl_repo(
+        *,
+        src,
+        whl_library_args,
+        is_multiple_versions,
+        download_only,
+        netrc,
+        auth_patterns,
+        python_version,
+        use_downloader,
+        enable_pipstar = False):
     args = dict(whl_library_args)
     args["requirement"] = src.requirement_line
     is_whl = src.filename.endswith(".whl")
@@ -355,19 +378,24 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         args["extra_pip_args"] = src.extra_pip_args
 
     if not src.url or (not is_whl and download_only):
-        # Fallback to a pip-installed wheel
-        target_platforms = src.target_platforms if is_multiple_versions else []
-        return struct(
-            repo_name = pypi_repo_name(
-                normalize_name(src.distribution),
-                *target_platforms
-            ),
-            args = args,
-            config_setting = whl_config_setting(
-                version = python_version,
-                target_platforms = target_platforms or None,
-            ),
-        )
+        if download_only and use_downloader:
+            # If the user did not allow using sdists and we are using the downloader
+            # and we are not using simpleapi_skip for this
+            return None
+        else:
+            # Fallback to a pip-installed wheel
+            target_platforms = src.target_platforms if is_multiple_versions else []
+            return struct(
+                repo_name = pypi_repo_name(
+                    normalize_name(src.distribution),
+                    *target_platforms
+                ),
+                args = args,
+                config_setting = whl_config_setting(
+                    version = python_version,
+                    target_platforms = target_platforms or None,
+                ),
+            )
 
     # This is no-op because pip is not used to download the wheel.
     args.pop("download_only", None)
