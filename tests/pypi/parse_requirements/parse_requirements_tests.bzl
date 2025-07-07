@@ -525,22 +525,22 @@ def _test_overlapping_shas_with_index_results(env):
         },
         platforms = {
             "cp39_linux_x86_64": struct(
-                platform_tags = ["any"],
                 env = pep508_env(
                     python_version = "3.9.0",
                     os = "linux",
                     arch = "x86_64",
                 ),
                 whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
             ),
             "cp39_osx_x86_64": struct(
-                platform_tags = ["macosx_*"],
                 env = pep508_env(
                     python_version = "3.9.0",
                     os = "osx",
                     arch = "x86_64",
                 ),
                 whl_abi_tags = ["none"],
+                whl_platform_tags = ["macosx_*"],
             ),
         },
         get_index_urls = lambda _, __: {

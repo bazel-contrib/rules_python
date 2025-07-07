@@ -102,7 +102,7 @@ def _platforms(*, python_version, minor_mapping, config):
                 )
                 for v in values.whl_abi_tags
             ],
-            platform_tags = values.whl_platform_tags,
+            whl_platform_tags = values.whl_platform_tags,
         )
     return platforms
 

@@ -420,6 +420,6 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         python_version = target_platform.env["python_full_version"],
         implementation_name = target_platform.env["implementation_name"],
         whl_abi_tags = target_platform.whl_abi_tags,
-        platforms = target_platform.platform_tags,
+        platforms = target_platform.whl_platform_tags,
         logger = logger,
     ) or sdist
