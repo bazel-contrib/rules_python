@@ -260,6 +260,13 @@ def _evaluate_with_aliases(env):
             "platform_system == 'Darwin' and platform_machine == 'x86_32'": True,
             "platform_system == 'Darwin' and platform_machine == 'x86_64'": False,
         },
+        ("freebsd", "x86_32"): {
+            "platform_system == 'FreeBSD' and platform_machine == 'i386'": True,
+            "platform_system == 'FreeBSD' and platform_machine == 'i686'": True,
+            "platform_system == 'FreeBSD' and platform_machine == 'x86_32'": True,
+            "platform_system == 'FreeBSD' and platform_machine == 'x86_64'": False,
+            "platform_system == 'FreeBSD' and os_name == 'posix'": True,
+        },
     }.items():  # buildifier: @unsorted-dict-items
         for input, want in tests.items():
             _check_evaluate(env, input, want, pep508_env(

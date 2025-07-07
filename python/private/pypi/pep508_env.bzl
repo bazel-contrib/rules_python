@@ -139,7 +139,6 @@ os_name_select_map = {
     _DEFAULT: "posix",
 }
 
-# TODO @aignas 2025-07-07: add a test to ensure that this is tested
 def _get_from_map(m, key):
     if _DEFAULT in m:
         return m.get(key, m[_DEFAULT])
