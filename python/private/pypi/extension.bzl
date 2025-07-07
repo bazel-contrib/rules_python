@@ -31,6 +31,7 @@ load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
+load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -77,8 +78,7 @@ def _platforms(*, python_version, minor_mapping, config):
     )
 
     for platform, values in config.platforms.items():
-        # TODO @aignas 2025-07-07: fix the logic here
-        implementation = values.env["implementation_name"][:2].lower()
+        implementation = python_tag(values.env["implementation_name"])
 
         # TODO @aignas 2025-07-07: move the abi construction somewhere else
         abi = "{impl}{0}{1}.{2}".format(

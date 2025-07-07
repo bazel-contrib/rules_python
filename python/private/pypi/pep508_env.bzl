@@ -67,16 +67,16 @@ platform_machine_select_map = {
 # Platform system returns results from the `uname` call.
 platform_system_select_map = {
     # See https://peps.python.org/pep-0738/#platform
-    "android": "Android",
-    "freebsd": "FreeBSD",
+    "@platforms//os:android": "Android",
+    "@platforms//os:freebsd": "FreeBSD",
     # See https://peps.python.org/pep-0730/#platform
     # NOTE: Per Pep 730, "iPadOS" is also an acceptable value
-    "ios": "iOS",
-    "linux": "Linux",
-    "netbsd": "NetBSD",
-    "openbsd": "OpenBSD",
-    "osx": "Darwin",
-    "windows": "Windows",
+    "@platforms//os:ios": "iOS",
+    "@platforms//os:linux": "Linux",
+    "@platforms//os:netbsd": "NetBSD",
+    "@platforms//os:openbsd": "OpenBSD",
+    "@platforms//os:osx": "Darwin",
+    "@platforms//os:windows": "Windows",
     # The value is empty string if it cannot be determined:
     # https://docs.python.org/3/library/platform.html#platform.machine
     _DEFAULT: "",

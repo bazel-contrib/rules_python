@@ -2,17 +2,7 @@
 
 load("//python/private:version.bzl", "version")
 load(":parse_whl_name.bzl", "parse_whl_name")
-
-# Taken from
-# https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#python-tag
-_PY_TAGS = {
-    # "py": Generic Python (does not require implementation-specific features)
-    "cpython": "cp",
-    "ironpython": "ip",
-    "jython": "jy",
-    "pypy": "pp",
-}
-_PY = "py"
+load(":python_tag.bzl", "PY_TAG_GENERIC", "python_tag")
 
 def _get_priority(*, tag, values, allow_wildcard = True):
     for priority, wp in enumerate(values):
@@ -51,12 +41,12 @@ def select_whl(*, whls, python_version, platforms, want_abis, implementation_nam
     """
     py_version = version.parse(python_version, strict = True)
     candidates = {}
-    implementation = _PY_TAGS.get(implementation_name, implementation_name)
+    implementation = python_tag(implementation_name)
 
     for whl in whls:
         parsed = parse_whl_name(whl.filename)
 
-        if parsed.python_tag.startswith(_PY):
+        if parsed.python_tag.startswith(PY_TAG_GENERIC):
             pass
         elif not parsed.python_tag.startswith(implementation):
             if logger:
