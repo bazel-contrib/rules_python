@@ -62,8 +62,6 @@ bzl_library(
     name = "config_settings_bzl",
     srcs = ["config_settings.bzl"],
     deps = [
-        ":flags_bzl",
-        "//python/private:flags_bzl",
         "@bazel_skylib//lib:selects",
     ],
 )
@@ -120,7 +118,6 @@ bzl_library(
         ":whl_config_setting_bzl",
         ":whl_library_bzl",
         ":whl_repo_name_bzl",
-        ":whl_target_platforms_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:version_bzl",
@@ -209,7 +206,7 @@ bzl_library(
         ":parse_requirements_txt_bzl",
         ":pypi_repo_utils_bzl",
         ":requirements_files_by_platform_bzl",
-        ":whl_target_platforms_bzl",
+        ":select_whl_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:repo_utils_bzl",
     ],
@@ -252,10 +249,6 @@ bzl_library(
 bzl_library(
     name = "pep508_env_bzl",
     srcs = ["pep508_env.bzl"],
-    deps = [
-        ":pep508_platform_bzl",
-        "//python/private:version_bzl",
-    ],
 )
 
 bzl_library(
@@ -326,8 +319,6 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels_bzl",
-        ":parse_whl_name_bzl",
-        ":whl_target_platforms_bzl",
         "//python/private:text_util_bzl",
         "@bazel_skylib//lib:selects",
     ],
@@ -347,9 +338,7 @@ bzl_library(
     srcs = ["render_pkg_aliases.bzl"],
     deps = [
         ":generate_group_library_build_bazel_bzl",
-        ":parse_whl_name_bzl",
         ":whl_config_setting_bzl",
-        ":whl_target_platforms_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:text_util_bzl",
     ],
@@ -360,6 +349,15 @@ bzl_library(
     srcs = ["requirements_files_by_platform.bzl"],
     deps = [
         ":whl_target_platforms_bzl",
+    ],
+)
+
+bzl_library(
+    name = "select_whl_bzl",
+    srcs = ["select_whl.bzl"],
+    deps = [
+        ":parse_whl_name_bzl",
+        "//python/private:version_bzl",
     ],
 )
 
@@ -426,5 +424,4 @@ bzl_library(
 bzl_library(
     name = "whl_target_platforms_bzl",
     srcs = ["whl_target_platforms.bzl"],
-    deps = [":parse_whl_name_bzl"],
 )
