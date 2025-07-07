@@ -108,6 +108,7 @@ def whl_library_targets(
         *,
         name,
         dep_template,
+        sdist_filename = None,
         data_exclude = [],
         srcs_exclude = [],
         tags = [],
@@ -135,10 +136,10 @@ def whl_library_targets(
     Args:
         name: {type}`str` The file to match for including it into the `whl`
             filegroup. This may be also parsed to generate extra metadata.
-        sdist_filename: {type}`str | None` If the wheel was built from an sdist,
-            the filename of the sdist.
         dep_template: {type}`str` The dep_template to use for dependency
             interpolation.
+        sdist_filename: {type}`str | None` If the wheel was built from an sdist,
+            the filename of the sdist.
         tags: {type}`list[str]` The tags set on the `py_library`.
         dependencies: {type}`list[str]` A list of dependencies.
         dependencies_by_platform: {type}`dict[str, list[str]]` A list of
