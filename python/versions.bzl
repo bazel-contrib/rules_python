@@ -32,6 +32,9 @@ DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone
 # the hashes:
 #   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version={major}.{minor}.{patch}
 #
+# To print hashes for all of the specified versions, run:
+#   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version=""
+#
 # Note, to users looking at how to specify their tool versions, coverage_tool version for each
 # interpreter can be specified by:
 #   "3.8.10": {
@@ -187,17 +190,17 @@ TOOL_VERSIONS = {
         "strip_prefix": "python",
     },
     "3.9.23": {
-        "url": "20250610/cpython-{python_version}+20250610-{platform}-{build}.tar.gz",
+        "url": "20250702/cpython-{python_version}+20250702-{platform}-{build}.tar.gz",
         "sha256": {
-            "aarch64-apple-darwin": "f1a60528b6088ee8b8a34ca0e960998f4f664bed300ec0bbfe9d66ccbda74e50",
-            "aarch64-unknown-linux-gnu": "2871cf240bce3c021de829d73da04026febd7a775d1a1a1b37603ec6419fb6c1",
-            "ppc64le-unknown-linux-gnu": "2ba44a8e084a4661dbe50c0f0e3cf0a57227c6f1cff13fc2ae2f4d8ceae699fc",
-            "riscv64-unknown-linux-gnu": "7a735aebfc8b19a8af1f03e28babaf18a46cf8db0a931343dac1269376a1f693",
-            "s390x-unknown-linux-gnu": "27cfc030f782e2683c664e41dcef36051467c98676e133cbef04d4b7155ac4aa",
-            "x86_64-apple-darwin": "debd576badb6fdabb793ec9956512102f5a813c837449b1fe007c0af977db36c",
-            "x86_64-pc-windows-msvc": "28fbf2026929e00a300466220917c7029a69331700badb34b1691f1a99aa38e3",
-            "x86_64-unknown-linux-gnu": "21440e51aee78f3d92faf9375a90713542d8332e83d94c284f8f3d52c58eb5ca",
-            "x86_64-unknown-linux-musl": "7a881405a41cb4edf8c0d7c469c2f4759f601bc6f3c47978424a1ab1d0f1fada",
+            "aarch64-apple-darwin": "f9ce2f9f99a84108d3fde97c37b0cada6379b3f9d1d5ef1c8e940b9eaa811c18",
+            "aarch64-unknown-linux-gnu": "aa830b41391a2b57640636e9c172df8cf560777e0611fd098b2b5471c541a51e",
+            "ppc64le-unknown-linux-gnu": "97132753da44781c3a2fcd24503197844f4cce4ea0dd20290675f4020df377a0",
+            "riscv64-unknown-linux-gnu": "a6560df42a9afe6605cc578572b20cbf798c7fdf7381ef2dda0d3715124408d0",
+            "s390x-unknown-linux-gnu": "936e5e940a13c0189d29e4755ec20f10a70ba378dc9e739dc114d730a91a2ee5",
+            "x86_64-apple-darwin": "a82445abf3797bb699ce9f7371e3a6357ab3ec8fc6d25f36a88291b2cd495980",
+            "x86_64-pc-windows-msvc": "eb32d4fdd3c929ad9601f3fe9f944b038db430003bc5d5623db068da4edf7628",
+            "x86_64-unknown-linux-gnu": "c9bb5cb35f2c9fb05fbe9aec84d555f6d3c0773e07d42e74f92a27e866e15657",
+            "x86_64-unknown-linux-musl": "7d1dbd48c8e558555c4aad0d367831ca257edd625688d1d902d6f72f02c224f9",
         },
         "strip_prefix": "python",
     },
@@ -337,17 +340,17 @@ TOOL_VERSIONS = {
         "strip_prefix": "python",
     },
     "3.10.18": {
-        "url": "20250610/cpython-{python_version}+20250610-{platform}-{build}.tar.gz",
+        "url": "20250702/cpython-{python_version}+20250702-{platform}-{build}.tar.gz",
         "sha256": {
-            "aarch64-apple-darwin": "a6590f71f670c7d121ac4f068dc83e271cf03309b80b1fa5890ee4875b7b691d",
-            "aarch64-unknown-linux-gnu": "b4d7cfb2cb5163da1ae5955ae8b33ac0b356780483d2993099899cf59efaea70",
-            "ppc64le-unknown-linux-gnu": "36aeae5cc61ff07c78b061f1b6aac628998a380ad45fadc82b8764185544fd7f",
-            "riscv64-unknown-linux-gnu": "2f6dd270598b655db5da5d98d1c43e560f6fb46c67a8fd68ff9b11ee9f6d79ff",
-            "s390x-unknown-linux-gnu": "616e56fe69c97a1d0ff13c00f337b2a91c972323c5d9a1828fdfc4d764b440fa",
-            "x86_64-apple-darwin": "4d72c1c1dcd2c4fe80055ef1b24fe4146f2de938aea1e3676faf91476f3f17e8",
-            "x86_64-pc-windows-msvc": "867b6dbcdb71d8ebb709ff54fbca8ad43d05cc21e5c157f39745c4dc44c1f8e2",
-            "x86_64-unknown-linux-gnu": "58f88ed6117078fdbc98976c9bc83b918f1f9c0c2ec21b80a582104f4839861c",
-            "x86_64-unknown-linux-musl": "d782c0569d6d7e21a5ed195ad7b41d0af8456b031e0814714d18cdeaa876f262",
+            "aarch64-apple-darwin": "8f9e5395e3571fbb891a0be6428b4516fbde4064799ce6bda4a3c8f4e7860bd4",
+            "aarch64-unknown-linux-gnu": "b2d09fab0e4340621edb30c769be8b29dddc2776dad820298592eb6aa1970ec1",
+            "ppc64le-unknown-linux-gnu": "eafbbb7edafbda87e2080e5677855373f8b21606050229733a7352822ee4d84e",
+            "riscv64-unknown-linux-gnu": "113eb95dbfe8a24756239007239e18ae59c7fc54e6af46f8353f290225a3f811",
+            "s390x-unknown-linux-gnu": "fcbfa04bc9f9da1af4751fa916e224956c410ee23033b4fddeca9d2c64830362",
+            "x86_64-apple-darwin": "9a890f21ecc9692cffec77901fd7a786a330dd461fa97ecb10359ee21ca2be79",
+            "x86_64-pc-windows-msvc": "59399253bb9f864da6858c0e0e940250ebfdfd2609796dadc201aa487633fe84",
+            "x86_64-unknown-linux-gnu": "4be698bff9f4197fdbb5a82c03d57f4ec5972960492ad045c82ca53a9480342a",
+            "x86_64-unknown-linux-musl": "20b0fcae6ece29c681b5fd8e1b740000b6f8b907e68ba5621d029dfaa234b23b",
         },
         "strip_prefix": "python",
     },
@@ -467,17 +470,18 @@ TOOL_VERSIONS = {
         "strip_prefix": "python",
     },
     "3.11.13": {
-        "url": "20250610/cpython-{python_version}+20250610-{platform}-{build}.tar.gz",
+        "url": "20250702/cpython-{python_version}+20250702-{platform}-{build}.tar.gz",
         "sha256": {
-            "aarch64-apple-darwin": "365037494ba4f53563c22292e49a8e4d0d495bcb6534fca9666bdd1b474abf36",
-            "aarch64-unknown-linux-gnu": "a5954f147e87d9bff3d9733ebb3e74fe997eec5b38eaf5cb4429038228962a16",
-            "ppc64le-unknown-linux-gnu": "9214126866418f290fda88832fa3e244630f918ebc8a4a9ee15ba922e9c98afd",
-            "riscv64-unknown-linux-gnu": "fd99008c3123f50ec2ad407c5c1e17c1a86590daaf88dae8e6f1fd28f099b7c2",
-            "s390x-unknown-linux-gnu": "e27ab1fff8bf9e507677252a03ed524c685a8629b56475e26ab6dd0f88465179",
-            "x86_64-apple-darwin": "b49044115a545e67d73f5265a613a25da7c9523431281aa7b94691f1013355af",
-            "x86_64-pc-windows-msvc": "c0f89e3776211147817d54084fa046e2603571e18ff2ae4a4a8ff84ca4f7defc",
-            "x86_64-unknown-linux-gnu": "d93a7699505ee0ac7dec0f09324ffb19a31cce3066a287bb1fe95285ce3ea0c7",
-            "x86_64-unknown-linux-musl": "499121bb917e5baeeb954f76bdbce36bb63af579ff1530966ae2280e8d812c5b",
+            "aarch64-apple-darwin": "01167ac2c7336ff48a96e8dba30d92f29822a98e5ef27959178498b5a0de61da",
+            "aarch64-unknown-linux-gnu": "42c99f013117255edcbe7a367694941f1ac096fd9e9a7d7c0d18d09551181930",
+            "ppc64le-unknown-linux-gnu": "154ad77f7f552ab5f2ae07446eaccf6651db85db7403388c4439c6e43139d05e",
+            "riscv64-unknown-linux-gnu": "e800cd1651bf2ce0be28541377228258fbe9a9a1fe87633d5fc8c6cb47262525",
+            "s390x-unknown-linux-gnu": "5c6ce40240d92d9a3af4d49364205ce57bd4e73ba5274abcd3f20b85a0a88df9",
+            "x86_64-apple-darwin": "b5955f7a951f8aa8755b35a1b3175968fc2b4bff54b9edffc6225c791305c4e6",
+            "x86_64-pc-windows-msvc": "b68b7314e15f5d479acce2e9385a47f6ed978edc838dbb104175db889b349818",
+            "aarch64-pc-windows-msvc": "ea81e436ac20b894f2070468f3323e69d4cb1a0e4e12bc14bb702a861f7a323d",
+            "x86_64-unknown-linux-gnu": "e04944e70637f9d82022c9a41ae31de306b0d5bbd3fb64b9eb3261b8b5e0b30c",
+            "x86_64-unknown-linux-musl": "69aeea0c21b994874d8481c39b9ba2683cbc7f6ec9cff964e1ea821f5ae4fc31",
         },
         "strip_prefix": "python",
     },
@@ -590,17 +594,18 @@ TOOL_VERSIONS = {
         "strip_prefix": "python",
     },
     "3.12.11": {
-        "url": "20250610/cpython-{python_version}+20250610-{platform}-{build}.tar.gz",
+        "url": "20250702/cpython-{python_version}+20250702-{platform}-{build}.tar.gz",
         "sha256": {
-            "aarch64-apple-darwin": "9c5826a93ddc15e8aa08de1e6e65b3ae0d45ea8eb0c2e9547b80ff4121b870ce",
-            "aarch64-unknown-linux-gnu": "eb33bc5a87443daf2fd218109df811bc4e4ea5ef9aec4fad75aa55da0258b96f",
-            "ppc64le-unknown-linux-gnu": "7b90bc528c5ddf30579dec52926d68fa6d5c90b65e24fc185d5fe283fdf0cbd9",
-            "riscv64-unknown-linux-gnu": "0f3103675102e351762a8fe574eae20335552a246a45a006d2a9ca14ce0952f8",
-            "s390x-unknown-linux-gnu": "a7ff0432208450ccebd5d328f69b84cc7c25b4af54fbab44803ddb11a2da5028",
-            "x86_64-apple-darwin": "199631baa35f3747ddfa2f1e28fc062b97ccd15b94a60c9294d4d129a73c9e53",
-            "x86_64-pc-windows-msvc": "e05fa165841c416d60365ca2216cad570f05ae5d3d027b9ad3beaad0529dd8cc",
-            "x86_64-unknown-linux-gnu": "77ab3efe5c6637fe8da0fdfbff5de1730c3b824874fe1368917886908b4c517b",
-            "x86_64-unknown-linux-musl": "9dd768494c4a34abcec316bc4802e957db98ed283024b527c0c40dfefd08b6fe",
+            "aarch64-apple-darwin": "5f8e9480d0981268961e63729de1c9b037cabfe030949943be293f0d3e3e7703",
+            "aarch64-unknown-linux-gnu": "a63c9d7d712ca33e2fc57d9bf3ebf98c8f574f23b3eeeed44faf3b4b08d8a9b8",
+            "aarch64-pc-windows-msvc": "4d3736640d8916da6d69060e90cad607903e4f1d8dc0f284fd475f04f312712e",
+            "ppc64le-unknown-linux-gnu": "76dc3accfc8515fe7e11b5f1af26734bc7c0a075890a9c85dc1c7b6d0421ebbc",
+            "riscv64-unknown-linux-gnu": "d80dd210da941583c3166ff5a762bfd3f3211ecb2968eee8ec497548ef970682",
+            "s390x-unknown-linux-gnu": "a7d0778ae32c1d882eb3354877c31298010cde2107ecf60b7b75dcabe7ddd8ad",
+            "x86_64-apple-darwin": "f7a7a70fc7199cc37fd04bc1375b4cd7f44fb05128965e72b589fe112029cab8",
+            "x86_64-pc-windows-msvc": "19bdfa7362faf6869c376976e0296b597ce2d70e68ea7b357c6f68c79ad9aa9e",
+            "x86_64-unknown-linux-gnu": "0919f8b5311765b4cf1342371724d7bf2a6eaf51f15f5cb2b9ad5fd0ee54271c",
+            "x86_64-unknown-linux-musl": "64308b6133ae57de6d7c84b9caf6b084d1ccabf4b617c8a88a08fa57da66df16",
         },
         "strip_prefix": "python",
     },
@@ -760,26 +765,28 @@ TOOL_VERSIONS = {
             "x86_64-unknown-linux-gnu-freethreaded": "python/install",
         },
     },
-    "3.14.0b2": {
-        "url": "20250610/cpython-{python_version}+20250610-{platform}-{build}.{ext}",
+    "3.13.5": {
+        "url": "20250702/cpython-{python_version}+20250702-{platform}-{build}.{ext}",
         "sha256": {
-            "aarch64-apple-darwin": "6607351d140e83feb6e11dbde46ab5f99fa9fe039bdbaa12611d26bda0ed9343",
-            "aarch64-unknown-linux-gnu": "cc388d567f7c23921e0bef8dcae959dfab9ee24d10aeeb23688b21eac402817f",
-            "ppc64le-unknown-linux-gnu": "f9379ecc5dc71f9c58adf03d5524176ec36e1b40c788d29c260df54d09ad351c",
-            "riscv64-unknown-linux-gnu": "e6fbe4f7928ec606edee1506752659bf59216fdb208c744d268082ec79b16f42",
-            "s390x-unknown-linux-gnu": "1cf32c1173adc1cb70952bb47c92177a196f9e83b7a874f09599682e92ba0010",
-            "x86_64-apple-darwin": "a6d8196b174409e0ce67829c4e4ee5005c4be20a2efb41116e0521ad1fa1a717",
-            "x86_64-pc-windows-msvc": "0d88ec80c6c3e3ac462368850c19d3930bf2b1a1a5fe89da60c8534d0fac1a01",
-            "x86_64-unknown-linux-gnu": "93b29eea5214d19f0420ef8e459b007e15ea58349d60811122c78241fe51cb92",
-            "x86_64-unknown-linux-musl": "90e90a58ebff3416eb5a3f93ecb59b6eda945e2b706f5c13b0ba85f6b2bee130",
-            "aarch64-apple-darwin-freethreaded": "af0f34aa0dcd02bd3d960a1572a1ed8a17d55b373a22866f05041aaf16f8607d",
-            "aarch64-unknown-linux-gnu-freethreaded": "e76c7ab98e1c0f86a6996d1ec775ba8497bf46aa8ffa8c7b0f2e761f37305329",
-            "ppc64le-unknown-linux-gnu-freethreaded": "df2ae00827406e247f1aaaec76ffc7963b909c81075fc9940eee1ea9f753dd16",
-            "riscv64-unknown-linux-gnu-freethreaded": "09e347cb5f29e0eafd1eba73105ea9d853184b55fbaf4746cebec217430d6db5",
-            "s390x-unknown-linux-gnu-freethreaded": "f911605eee0eb7845a69acaf8bfb2e1811c76e9a5e3980d97fae93135df4b773",
-            "x86_64-apple-darwin-freethreaded": "dd27d519cf2a04917cb566366d6539477791d1b2f1fb42037d9179f469ff55a9",
-            "x86_64-pc-windows-msvc-freethreaded": "da966a17e434094d8f10b719d93c782d82eaf5207f2843cbaa58c3d91a8f0e32",
-            "x86_64-unknown-linux-gnu-freethreaded": "abd60d3a302e9d9c32ec78581fb3a9903079c56ec7a949ce658a7950423f350a",
+            "aarch64-apple-darwin": "66577414e9f4b0caa116a8e15fa50306db91bce13d49278079bb22adaeefb1fa",
+            "aarch64-unknown-linux-gnu": "272a8817921856d7ac47f44c076fb62fbaf5649aa1d97b2d67a3a6adee969ff0",
+            "ppc64le-unknown-linux-gnu": "7bfa9fed4b3a1e37b4879d51d82bce521bd999ec450c91f7787188ce1cafd76c",
+            "riscv64-unknown-linux-gnu": "deebdf17f7c153708b88ef2ae8b643635a02a9e9bdf4f0435e8c6cd15b37b248",
+            "s390x-unknown-linux-gnu": "38c10133adfc9ebe9d2e74f7047ab6763b05c978be2dc772e1deb2978504084f",
+            "x86_64-apple-darwin": "0682afbb238b4762b8f5e383fe19cc52969c780871016c50d4cb7088a536167c",
+            "x86_64-pc-windows-msvc": "f11f915437250657019c71adb81ec523d2932c2c3ea4441b592aa3bdce0e7ef7",
+            "aarch64-pc-windows-msvc": "f2de020035f125a47aee320f722b0ced19862ba1e1412392791cffa9cb174d0c",
+            "aarch64-pc-windows-msvc-freethreaded": "97041594d903d6a1de1e55e9a3e5c613384aa7b900a93096f372732d9953f52a",
+            "x86_64-unknown-linux-gnu": "9f5d5260f333fcb5372ec681851d92ddac79a33362aa85626b6cc96ffe75eeef",
+            "x86_64-unknown-linux-musl": "7856fd505e311d1a4c24e429ac5ef0ff6ca7a2005c3a7eff1fe204524a6f45aa",
+            "aarch64-apple-darwin-freethreaded": "52e582cc89d654c565297b4ff9c3bd4bed5c3e81cad46f41c62485e700faf8bd",
+            "aarch64-unknown-linux-gnu-freethreaded": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "ppc64le-unknown-linux-gnu-freethreaded": "c65c75edb450de830f724afdc774a215c2d3255097e0d670f709d2271fd6fd52",
+            "riscv64-unknown-linux-gnu-freethreaded": "716e6e3fad24fb9931b93005000152dd9da4c3343b88ca54b5c01a7ab879d734",
+            "s390x-unknown-linux-gnu-freethreaded": "27276aee426a51f4165fac49391aedc5a9e301ae217366c77b65826122bb30fc",
+            "x86_64-apple-darwin-freethreaded": "5aed6d5950514004149d514f81a1cd426ac549696a563b8e47d32f7eba3b4be3",
+            "x86_64-pc-windows-msvc-freethreaded": "39e19dcb823a2ed47d9510753a642ba468802f1c5e15771c6c22814f4acada94",
+            "x86_64-unknown-linux-gnu-freethreaded": "f5eb29604c0b7afa2097fca094a06eb7a1f3ca4e194264c34f342739cae78202",
         },
         "strip_prefix": {
             "aarch64-apple-darwin": "python",
@@ -798,6 +805,53 @@ TOOL_VERSIONS = {
             "s390x-unknown-linux-gnu-freethreaded": "python/install",
             "x86_64-apple-darwin-freethreaded": "python/install",
             "x86_64-pc-windows-msvc-freethreaded": "python/install",
+            "aarch64-pc-windows-msvc": "python/install",
+            "aarch64-pc-windows-msvc-freethreaded": "python/install",
+            "x86_64-unknown-linux-gnu-freethreaded": "python/install",
+        },
+    },
+    "3.14.0b3": {
+        "url": "20250702/cpython-{python_version}+20250702-{platform}-{build}.{ext}",
+        "sha256": {
+            "aarch64-apple-darwin": "14af7a0c0a50f82cf75f79f4c02dc31c73c74032930a8337f83f3ae3bee4660f",
+            "aarch64-unknown-linux-gnu": "013e2081c3e7e61932210ede84c9f05a4f6533f807287bab141d8abe77087ffd",
+            "ppc64le-unknown-linux-gnu": "2118b6b9baad4f4283246b281183254620d18d8c95991dc5db810ab07ff41cee",
+            "riscv64-unknown-linux-gnu": "7d11ccad5bff3085d8b3e725179d7e1f93cc8e4fb83391cb49bc4b29cf877153",
+            "s390x-unknown-linux-gnu": "e3c90fb8cfe897ac96bb0b0d5de9f4512646b8ebd5c8b3123d9e31a96a0eac3c",
+            "x86_64-apple-darwin": "8e9d640e5e7c49f8c67dfd2330bdd814f4c5de685abefbe91c639c0e0844c2bd",
+            "x86_64-pc-windows-msvc": "cdab7856e2495ab4ed666354e9391435c8e45512e841ef8452da69a6e96caa96",
+            "aarch64-pc-windows-msvc": "000fbc010e844bcd64330badb295da7b5b08b427357f463afc7e600988f7ecc6",
+            "x86_64-unknown-linux-gnu": "00328c48cc07076a5b083575654761cdb07bc8b3bba864d3a225062722485bac",
+            "x86_64-unknown-linux-musl": "a2fed85bc3d5415d2318a2eeb0cb9e6effb81667870ae568a08756838ad4926e",
+            "aarch64-apple-darwin-freethreaded": "d19213021f5fd039d7021ccb41698cc99ca313064d7c1cc9b5ef8f831abb9961",
+            "aarch64-unknown-linux-gnu-freethreaded": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "ppc64le-unknown-linux-gnu-freethreaded": "1f093e0c3532e27744e3fb73a8c738355910b6bfa195039e4f73b4f48c1bc4fc",
+            "riscv64-unknown-linux-gnu-freethreaded": "73162a5da31cc1e410d456496114f8e5ee7243bc7bbe0e087b1ea50f0fdc6774",
+            "s390x-unknown-linux-gnu-freethreaded": "045017e60f1298111e8ccfec6afbe47abe56f82997258c8754009269a5343736",
+            "x86_64-apple-darwin-freethreaded": "26ec6697bbb38c3fa6275e79e110854b2585914ca503c65916478e7ca8d0491b",
+            "x86_64-pc-windows-msvc-freethreaded": "8de6235b29396e3b25fc3ade166c49506171ec464cda46987ef9641dd9a44071",
+            "aarch64-pc-windows-msvc-freethreaded": "331816d79cd78eaadba5ae6cdd3a243771199d0ca07057e7a452158dd4a7edcc",
+            "x86_64-unknown-linux-gnu-freethreaded": "081f0147d8f4479764d6a3819f67275be3306003366eda9ecb9ee844f2f611be",
+        },
+        "strip_prefix": {
+            "aarch64-apple-darwin": "python",
+            "aarch64-unknown-linux-gnu": "python",
+            "ppc64le-unknown-linux-gnu": "python",
+            "s390x-unknown-linux-gnu": "python",
+            "riscv64-unknown-linux-gnu": "python",
+            "x86_64-apple-darwin": "python",
+            "x86_64-pc-windows-msvc": "python",
+            "aarch64-pc-windows-msvc": "python",
+            "x86_64-unknown-linux-gnu": "python",
+            "x86_64-unknown-linux-musl": "python",
+            "aarch64-apple-darwin-freethreaded": "python/install",
+            "aarch64-unknown-linux-gnu-freethreaded": "python/install",
+            "ppc64le-unknown-linux-gnu-freethreaded": "python/install",
+            "riscv64-unknown-linux-gnu-freethreaded": "python/install",
+            "s390x-unknown-linux-gnu-freethreaded": "python/install",
+            "x86_64-apple-darwin-freethreaded": "python/install",
+            "x86_64-pc-windows-msvc-freethreaded": "python/install",
+            "aarch64-pc-windows-msvc-freethreaded": "python/install",
             "x86_64-unknown-linux-gnu-freethreaded": "python/install",
         },
     },
@@ -810,8 +864,8 @@ MINOR_MAPPING = {
     "3.10": "3.10.18",
     "3.11": "3.11.13",
     "3.12": "3.12.11",
-    "3.13": "3.13.4",
-    "3.14": "3.14.0b2",
+    "3.13": "3.13.5",
+    "3.14": "3.14.0b3",
 }
 
 def _generate_platforms():
@@ -825,6 +879,14 @@ def _generate_platforms():
                 "@platforms//cpu:aarch64",
             ],
             os_name = MACOS_NAME,
+            arch = "aarch64",
+        ),
+        "aarch64-pc-windows-msvc": platform_info(
+            compatible_with = [
+                "@platforms//os:windows",
+                "@platforms//cpu:aarch64",
+            ],
+            os_name = WINDOWS_NAME,
             arch = "aarch64",
         ),
         "aarch64-unknown-linux-gnu": platform_info(
@@ -988,6 +1050,7 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
                 FREETHREADED.lstrip("-"),
                 {
                     "aarch64-apple-darwin": "pgo+lto",
+                    "aarch64-pc-windows-msvc": "pgo",
                     "aarch64-unknown-linux-gnu": "lto",
                     "ppc64le-unknown-linux-gnu": "lto",
                     "riscv64-unknown-linux-gnu": "lto",
@@ -1031,57 +1094,6 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
             patch_strip = None
 
     return (release_filename, rendered_urls, strip_prefix, patches, patch_strip)
-
-def print_toolchains_checksums(name):
-    """A macro to print checksums for a particular Python interpreter version.
-
-    Args:
-        name: {type}`str`: the name of the runnable target.
-    """
-    all_commands = []
-    by_version = {}
-    for python_version in TOOL_VERSIONS.keys():
-        by_version[python_version] = _commands_for_version(python_version)
-        all_commands.append(_commands_for_version(python_version))
-
-    template = """\
-cat > "$@" <<'EOF'
-#!/bin/bash
-
-set -o errexit -o nounset -o pipefail
-
-echo "Fetching hashes..."
-
-{commands}
-EOF
-    """
-
-    native.genrule(
-        name = name,
-        srcs = [],
-        outs = ["print_toolchains_checksums.sh"],
-        cmd = select({
-            "//python/config_settings:is_python_{}".format(version): template.format(
-                commands = commands,
-            )
-            for version, commands in by_version.items()
-        } | {
-            "//conditions:default": template.format(commands = "\n".join(all_commands)),
-        }),
-        executable = True,
-    )
-
-def _commands_for_version(python_version):
-    return "\n".join([
-        "echo \"{python_version}: {platform}: $$(curl --location --fail {release_url_sha256} 2>/dev/null || curl --location --fail {release_url} 2>/dev/null | shasum -a 256 | awk '{{ print $$1 }}')\"".format(
-            python_version = python_version,
-            platform = platform,
-            release_url = release_url,
-            release_url_sha256 = release_url + ".sha256",
-        )
-        for platform in TOOL_VERSIONS[python_version]["sha256"].keys()
-        for release_url in get_release_info(platform, python_version)[1]
-    ])
 
 def gen_python_config_settings(name = ""):
     for platform in PLATFORMS.keys():

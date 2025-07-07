@@ -47,9 +47,10 @@ type ParserOutput struct {
 }
 
 type FileParser struct {
-	code        []byte
-	relFilepath string
-	output      ParserOutput
+	code                 []byte
+	relFilepath          string
+	output               ParserOutput
+	inTypeCheckingBlock  bool
 }
 
 func NewFileParser() *FileParser {
@@ -158,6 +159,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 				continue
 			}
 			m.Filepath = p.relFilepath
+			m.TypeCheckingOnly = p.inTypeCheckingBlock
 			if strings.HasPrefix(m.Name, ".") {
 				continue
 			}
@@ -178,6 +180,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 			m.Filepath = p.relFilepath
 			m.From = from
 			m.Name = fmt.Sprintf("%s.%s", from, m.Name)
+			m.TypeCheckingOnly = p.inTypeCheckingBlock
 			p.output.Modules = append(p.output.Modules, m)
 		}
 	} else {
@@ -202,10 +205,43 @@ func (p *FileParser) SetCodeAndFile(code []byte, relPackagePath, filename string
 	p.output.FileName = filename
 }
 
+// isTypeCheckingBlock returns true if the given node is an `if TYPE_CHECKING:` block.
+func (p *FileParser) isTypeCheckingBlock(node *sitter.Node) bool {
+	if node.Type() != sitterNodeTypeIfStatement || node.ChildCount() < 2 {
+		return false
+	}
+
+	condition := node.Child(1)
+
+	// Handle `if TYPE_CHECKING:`
+	if condition.Type() == sitterNodeTypeIdentifier && condition.Content(p.code) == "TYPE_CHECKING" {
+		return true
+	}
+
+	// Handle `if typing.TYPE_CHECKING:`
+	if condition.Type() == "attribute" && condition.ChildCount() >= 3 {
+		object := condition.Child(0)
+		attr := condition.Child(2)
+		if object.Type() == sitterNodeTypeIdentifier && object.Content(p.code) == "typing" &&
+			attr.Type() == sitterNodeTypeIdentifier && attr.Content(p.code) == "TYPE_CHECKING" {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 	if node == nil {
 		return
 	}
+
+	// Check if this is a TYPE_CHECKING block
+	wasInTypeCheckingBlock := p.inTypeCheckingBlock
+	if p.isTypeCheckingBlock(node) {
+		p.inTypeCheckingBlock = true
+	}
+
 	for i := 0; i < int(node.ChildCount()); i++ {
 		if err := ctx.Err(); err != nil {
 			return
@@ -219,6 +255,9 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 		}
 		p.parse(ctx, child)
 	}
+
+	// Restore the previous state
+	p.inTypeCheckingBlock = wasInTypeCheckingBlock
 }
 
 func (p *FileParser) Parse(ctx context.Context) (*ParserOutput, error) {

@@ -250,6 +250,7 @@ def _whl_library_impl(rctx):
     whl_path = None
     sdist_filename = None
     if rctx.attr.whl_file:
+        rctx.watch(rctx.attr.whl_file)
         whl_path = rctx.path(rctx.attr.whl_file)
 
         # Simulate the behaviour where the whl is present in the current directory.
@@ -476,8 +477,26 @@ def _whl_library_impl(rctx):
             ],
         )
 
-    rctx.file("BUILD.bazel", build_file_contents)
+    # Delete these in case the wheel had them. They generally don't cause
+    # a problem, but let's avoid the chance of that happening.
+    rctx.file("WORKSPACE")
+    rctx.file("WORKSPACE.bazel")
+    rctx.file("MODULE.bazel")
+    rctx.file("REPO.bazel")
 
+    paths = list(rctx.path(".").readdir())
+    for _ in range(10000000):
+        if not paths:
+            break
+        path = paths.pop()
+
+        # BUILD files interfere with globbing and Bazel package boundaries.
+        if path.basename in ("BUILD", "BUILD.bazel"):
+            rctx.delete(path)
+        elif path.is_dir:
+            paths.extend(path.readdir())
+
+    rctx.file("BUILD.bazel", build_file_contents)
     return
 
 def _generate_entry_point_contents(

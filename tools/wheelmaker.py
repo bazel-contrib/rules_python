@@ -24,6 +24,7 @@ import re
 import stat
 import sys
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -98,6 +99,30 @@ def normalize_pep440(version):
         return str(packaging.version.Version(f"0+{sanitized}"))
 
 
+def arcname_from(
+    name: str, distribution_prefix: str, strip_path_prefixes: Sequence[str] = ()
+) -> str:
+    """Return the within-archive name for a given file path name.
+
+    Prefixes to strip are checked in order and only the first match will be used.
+
+    Args:
+        name: The file path eg 'mylib/a/b/c/file.py'
+        distribution_prefix: The
+        strip_path_prefixes: Remove these prefixes from names.
+    """
+    # Always use unix path separators.
+    normalized_arcname = name.replace(os.path.sep, "/")
+    # Don't manipulate names filenames in the .distinfo or .data directories.
+    if distribution_prefix and normalized_arcname.startswith(distribution_prefix):
+        return normalized_arcname
+    for prefix in strip_path_prefixes:
+        if normalized_arcname.startswith(prefix):
+            return normalized_arcname[len(prefix) :]
+
+    return normalized_arcname
+
+
 class _WhlFile(zipfile.ZipFile):
     def __init__(
         self,
@@ -126,18 +151,6 @@ class _WhlFile(zipfile.ZipFile):
     def add_file(self, package_filename, real_filename):
         """Add given file to the distribution."""
 
-        def arcname_from(name):
-            # Always use unix path separators.
-            normalized_arcname = name.replace(os.path.sep, "/")
-            # Don't manipulate names filenames in the .distinfo or .data directories.
-            if normalized_arcname.startswith(self._distribution_prefix):
-                return normalized_arcname
-            for prefix in self._strip_path_prefixes:
-                if normalized_arcname.startswith(prefix):
-                    return normalized_arcname[len(prefix) :]
-
-            return normalized_arcname
-
         if os.path.isdir(real_filename):
             directory_contents = os.listdir(real_filename)
             for file_ in directory_contents:
@@ -147,7 +160,11 @@ class _WhlFile(zipfile.ZipFile):
                 )
             return
 
-        arcname = arcname_from(package_filename)
+        arcname = arcname_from(
+            package_filename,
+            distribution_prefix=self._distribution_prefix,
+            strip_path_prefixes=self._strip_path_prefixes,
+        )
         zinfo = self._zipinfo(arcname)
 
         # Write file to the zip archive while computing the hash and length
@@ -569,7 +586,9 @@ def main() -> None:
                 else:
                     return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
             else:
-                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(" ;")
+                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
+                    " ;"
+                )
 
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):

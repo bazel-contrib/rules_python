@@ -31,7 +31,7 @@ load(
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
-load(":namespace_pkgs.bzl", "create_inits")
+load(":namespace_pkgs.bzl", _create_inits = "create_inits")
 load(":pep508_deps.bzl", "deps")
 
 # Files that are special to the Bazel processing of things.
@@ -128,6 +128,7 @@ def whl_library_targets(
             py_binary = py_binary,
             py_library = py_library,
             env_marker_setting = env_marker_setting,
+            create_inits = _create_inits,
         )):
     """Create all of the whl_library targets.
 
@@ -359,10 +360,10 @@ def whl_library_targets(
             allow_empty = True,
         )
 
-        if enable_implicit_namespace_pkgs:
+        if not enable_implicit_namespace_pkgs:
             srcs = srcs + getattr(native, "select", select)({
                 Label("//python/config_settings:is_venvs_site_packages"): [],
-                "//conditions:default": create_inits(
+                "//conditions:default": rules.create_inits(
                     srcs = srcs + data + pyi_srcs,
                     ignored_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
                     root = "site-packages",

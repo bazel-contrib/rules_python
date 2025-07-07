@@ -76,7 +76,11 @@ def _platforms(*, python_version, minor_mapping, config):
 
     for platform, values in config.platforms.items():
         key = "{}_{}".format(abi, platform)
-        platforms[key] = env(key) | values.env
+        platforms[key] = env(struct(
+            abi = abi,
+            os = values.os_name,
+            arch = values.arch_name,
+        )) | values.env
     return platforms
 
 def _create_whl_repos(
@@ -348,7 +352,7 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
     args["filename"] = src.filename
     if not enable_pipstar:
         args["experimental_target_platforms"] = [
-            # Get rid of the version fot the target platforms because we are
+            # Get rid of the version for the target platforms because we are
             # passing the interpreter any way. Ideally we should search of ways
             # how to pass the target platforms through the hub repo.
             p.partition("_")[2]
@@ -392,64 +396,6 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
         )
     else:
         config["platforms"].pop(platform)
-
-def _create_config(defaults):
-    if defaults["platforms"]:
-        return struct(**defaults)
-
-    # NOTE: We have this so that it is easier to maintain unit tests assuming certain
-    # defaults
-    for cpu in [
-        "x86_64",
-        "aarch64",
-        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
-        # `pip.default` extension. i.e. drop the below values - users will have to
-        # define themselves if they need them.
-        "arm",
-        "ppc",
-        "s390x",
-    ]:
-        _configure(
-            defaults,
-            arch_name = cpu,
-            os_name = "linux",
-            platform = "linux_{}".format(cpu),
-            config_settings = [
-                "@platforms//os:linux",
-                "@platforms//cpu:{}".format(cpu),
-            ],
-            env = {"platform_version": "0"},
-        )
-    for cpu in [
-        "aarch64",
-        "x86_64",
-    ]:
-        _configure(
-            defaults,
-            arch_name = cpu,
-            # We choose the oldest non-EOL version at the time when we release `rules_python`.
-            # See https://endoflife.date/macos
-            os_name = "osx",
-            platform = "osx_{}".format(cpu),
-            config_settings = [
-                "@platforms//os:osx",
-                "@platforms//cpu:{}".format(cpu),
-            ],
-            env = {"platform_version": "14.0"},
-        )
-
-    _configure(
-        defaults,
-        arch_name = "x86_64",
-        os_name = "windows",
-        platform = "windows_x86_64",
-        config_settings = [
-            "@platforms//os:windows",
-            "@platforms//cpu:x86_64",
-        ],
-        env = {"platform_version": "0"},
-    )
-    return struct(**defaults)
 
 def parse_modules(
         module_ctx,
@@ -527,7 +473,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 # for what. We could also model the `cp313t` freethreaded as separate platforms.
             )
 
-    config = _create_config(defaults)
+    config = struct(**defaults)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}

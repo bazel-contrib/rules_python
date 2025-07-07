@@ -85,8 +85,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			if parent != nil && parent.CoarseGrainedGeneration() {
 				return language.GenerateResult{}
 			}
-		} else if !hasEntrypointFile(args.Dir) {
-			return language.GenerateResult{}
 		}
 	}
 
@@ -172,9 +170,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					//   2. The directory has a BUILD or BUILD.bazel files. Then
 					//       it doesn't matter at all what it has since it's a
 					//       separate Bazel package.
-					//   3. (only for package generation) The directory has an
-					//       __init__.py, __main__.py or __test__.py, meaning a
-					//       BUILD file will be generated.
 					if cfg.PerFileGeneration() {
 						return fs.SkipDir
 					}
@@ -184,7 +179,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 						return nil
 					}
 
-					if !cfg.CoarseGrainedGeneration() && hasEntrypointFile(path) {
+					if !cfg.CoarseGrainedGeneration() {
 						return fs.SkipDir
 					}
 
