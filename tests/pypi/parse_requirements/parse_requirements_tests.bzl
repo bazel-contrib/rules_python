@@ -531,7 +531,7 @@ def _test_overlapping_shas_with_index_results(env):
                     os = "linux",
                     arch = "x86_64",
                 ),
-                want_abis = ["none"],
+                whl_abi_tags = ["none"],
             ),
             "cp39_osx_x86_64": struct(
                 platform_tags = ["macosx_*"],
@@ -540,7 +540,7 @@ def _test_overlapping_shas_with_index_results(env):
                     os = "osx",
                     arch = "x86_64",
                 ),
-                want_abis = ["none"],
+                whl_abi_tags = ["none"],
             ),
         },
         get_index_urls = lambda _, __: {

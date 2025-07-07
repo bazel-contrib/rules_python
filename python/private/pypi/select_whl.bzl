@@ -20,7 +20,7 @@ def _get_priority(*, tag, values, allow_wildcard = True):
 
     return None
 
-def select_whl(*, whls, python_version, platforms, want_abis, implementation_name = "cpython", limit = 1, logger = None):
+def select_whl(*, whls, python_version, platforms, whl_abi_tags, implementation_name = "cpython", limit = 1, logger = None):
     """Select a whl that is the most suitable for the given platform.
 
     Args:
@@ -30,7 +30,7 @@ def select_whl(*, whls, python_version, platforms, want_abis, implementation_nam
         platforms: {type}`list[str]` the target platform identifiers that may contain
             a single `*` character.
         implementation_name: {type}`str` the `implementation_name` from the target_platform env.
-        want_abis: {type}`str` the ABIs that the target_platform is compatible with.
+        whl_abi_tags: {type}`str` the ABIs that the target_platform is compatible with.
         limit: {type}`int` number of wheels to return. Defaults to 1.
         logger: {type}`struct` the logger instance.
 
@@ -76,14 +76,14 @@ def select_whl(*, whls, python_version, platforms, want_abis, implementation_nam
 
         abi_priority = _get_priority(
             tag = parsed.abi_tag,
-            values = want_abis,
+            values = whl_abi_tags,
             allow_wildcard = False,
         )
         if abi_priority == None:
             if logger:
                 logger.debug(lambda: "The abi '{}' does not match given list: {}".format(
                     parsed.abi_tag,
-                    want_abis,
+                    whl_abi_tags,
                 ))
             continue
         platform_priority = _get_priority(

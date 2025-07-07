@@ -95,7 +95,7 @@ def _platforms(*, python_version, minor_mapping, config):
                 arch = values.arch_name,
                 python_version = python_version.string,
             ),
-            want_abis = [
+            whl_abi_tags = [
                 v.format(
                     major = python_version.release[0],
                     minor = python_version.release[1],

@@ -106,7 +106,7 @@ def _test_simplest(env):
     got = _select_whl(
         whls = whls,
         platforms = ["any"],
-        want_abis = ["abi3"],
+        whl_abi_tags = ["abi3"],
         python_version = "3.0",
     )
     _match(
@@ -131,7 +131,7 @@ def _test_select_by_supported_py_version(env):
         got = _select_whl(
             whls = whls,
             platforms = ["any"],
-            want_abis = ["abi3"],
+            whl_abi_tags = ["abi3"],
             python_version = "3.{}".format(minor_version),
         )
         _match(env, [got], match)
@@ -153,7 +153,7 @@ def _test_select_by_supported_cp_version(env):
         got = _select_whl(
             whls = whls,
             platforms = ["any"],
-            want_abis = ["abi3"],
+            whl_abi_tags = ["abi3"],
             python_version = "3.{}".format(minor_version),
         )
         _match(env, [got], match)
@@ -175,7 +175,7 @@ def _test_supported_cp_version_manylinux(env):
         got = _select_whl(
             whls = whls,
             platforms = ["manylinux_x86_64"],
-            want_abis = ["none"],
+            whl_abi_tags = ["none"],
             python_version = "3.{}".format(minor_version),
         )
         _match(env, [got], match)
@@ -187,7 +187,7 @@ def _test_ignore_unsupported(env):
     got = _select_whl(
         whls = whls,
         platforms = ["any"],
-        want_abis = ["none"],
+        whl_abi_tags = ["none"],
         python_version = "3.0",
     )
     if got:
@@ -205,7 +205,7 @@ def _test_match_abi_and_not_py_version(env):
     got = _select_whl(
         whls = whls,
         platforms = platforms,
-        want_abis = ["abi3", "cp37m"],
+        whl_abi_tags = ["abi3", "cp37m"],
         python_version = "3.7",
     )
     _match(
@@ -217,7 +217,7 @@ def _test_match_abi_and_not_py_version(env):
     got = _select_whl(
         whls = whls,
         platforms = platforms[::-1],
-        want_abis = ["abi3", "cp37m"],
+        whl_abi_tags = ["abi3", "cp37m"],
         python_version = "3.7",
     )
     _match(
@@ -237,7 +237,7 @@ def _test_select_filename_with_many_tags(env):
             "musllinux_*_i686",
             "manylinux_*_i686",
         ],
-        want_abis = ["none", "abi3", "cp39"],
+        whl_abi_tags = ["none", "abi3", "cp39"],
         python_version = "3.9",
         limit = 5,
     )
@@ -261,7 +261,7 @@ def _test_freethreaded_wheels(env):
             "any",
             "musllinux_*_x86_64",
         ],
-        want_abis = ["none", "abi3", "cp313", "cp313t"],
+        whl_abi_tags = ["none", "abi3", "cp313", "cp313t"],
         python_version = "3.13",
         limit = 8,
     )
