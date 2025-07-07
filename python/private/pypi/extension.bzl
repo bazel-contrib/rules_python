@@ -80,9 +80,15 @@ def _platforms(*, python_version, minor_mapping, config):
     for platform, values in config.platforms.items():
         # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
         # many times.
-        pytag = python_tag(values.env["implementation_name"], python_version.string)
+        key = "{}{}{}.{}_{}".format(
+            python_tag(values.env["implementation_name"]),
+            python_version.release[0],
+            python_version.release[1],
+            python_version.release[2],
+            platform,
+        )
 
-        platforms["{}.{}_{}".format(pytag, python_version.release[2], platform)] = struct(
+        platforms[key] = struct(
             env = env(
                 env = values.env,
                 os = values.os_name,
@@ -795,6 +801,7 @@ _default_attrs = {
     "arch_name": attr.string(
         doc = """\
 The CPU architecture name to be used.
+You can use any cpu name from the `@platforms//cpu:` package.
 
 :::{note}
 Either this or {attr}`env` `platform_machine` key should be specified.
@@ -836,6 +843,7 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
     "os_name": attr.string(
         doc = """\
 The OS name to be used.
+You can use any OS name from the `@platforms//os:` package.
 
 :::{note}
 Either this or the appropriate `env` keys should be specified.
