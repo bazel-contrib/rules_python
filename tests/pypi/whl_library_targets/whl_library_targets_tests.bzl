@@ -28,6 +28,7 @@ def _test_filegroups(env):
     calls = []
 
     def glob(include, *, exclude = [], allow_empty):
+        _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
         return include
 
