@@ -180,11 +180,12 @@ def go_deps():
         sum = "h1:gQz4mCbXsO+nc9n1hCxHcGA3Zx3Eo+UHZoInFGUIXNM=",
         version = "v0.0.0-20190812154241-14fe0d1b01d4",
     )
-    go_repository(
+    http_archive(
         name = "com_github_smacker_go_tree_sitter",
-        importpath = "github.com/smacker/go-tree-sitter",
-        sum = "h1:6C8qej6f1bStuePVkLSFxoU22XBS165D3klxlzRg8F4=",
-        version = "v0.0.0-20240827094217-dd81d9e9be82",
+        build_file = "@rules_python_gazelle_plugin//:internal/smacker_BUILD.bazel",
+        integrity = "sha256-4AkDY4Rh5Auu9Kwzhj5XYSirMLlhmd6ClMWo/r0kmu4=",
+        strip_prefix = "go-tree-sitter-dd81d9e9be82a8cac96ed1d50c7389c5f1997c02",
+        url = "https://github.com/smacker/go-tree-sitter/archive/dd81d9e9be82a8cac96ed1d50c7389c5f1997c02.zip",
     )
     go_repository(
         name = "com_github_stretchr_objx",
