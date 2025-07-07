@@ -109,7 +109,7 @@ def _test_normalize_local(env):
     # Verify a local with a [digit][non-digit] sequence parses ok
     in_str = "0.1.0+brt.9e"
     actual = version.normalize(in_str)
-    env.expect.that_str(actual).equals("xxx")
+    env.expect.that_str(actual).equals(in_str)
 
 _tests.append(_test_normalize_local)
 
