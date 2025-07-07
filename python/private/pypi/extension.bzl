@@ -387,12 +387,6 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             if key not in _SUPPORTED_PEP508_KEYS:
                 fail("Unsupported key in the PEP508 environment: {}".format(key))
 
-        if not os_name:
-            fail("'os_name' is required")
-
-        if not arch_name:
-            fail("'arch_name' is required")
-
         config["platforms"][platform] = struct(
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
