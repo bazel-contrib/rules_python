@@ -78,22 +78,17 @@ def _platforms(*, python_version, minor_mapping, config):
     )
 
     for platform, values in config.platforms.items():
-        implementation = python_tag(values.env["implementation_name"])
+        # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
+        # many times.
+        pytag = python_tag(values.env["implementation_name"], python_version.string)
 
-        # TODO @aignas 2025-07-07: move the abi construction somewhere else
-        abi = "{impl}{0}{1}.{2}".format(
-            impl = implementation,
-            *python_version.release
-        )
-        key = "{}_{}".format(abi, platform)
-
-        env_ = env(struct(
-            abi = abi,
-            os = values.os_name,
-            arch = values.arch_name,
-        )) | values.env
-        platforms[key] = struct(
-            env = env_,
+        platforms["{}.{}_{}".format(pytag, python_version.release[2], platform)] = struct(
+            env = env(
+                env = values.env,
+                os = values.os_name,
+                arch = values.arch_name,
+                python_version = python_version.string,
+            ),
             want_abis = [
                 v.format(
                     major = python_version.release[0],

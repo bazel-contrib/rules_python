@@ -15,6 +15,8 @@
 """This module is for implementing PEP508 environment definition.
 """
 
+load("//python/private:version.bzl", "version")
+
 _DEFAULT = "//conditions:default"
 
 # See https://stackoverflow.com/a/45125525
@@ -144,37 +146,38 @@ def _get_from_map(m, key):
     else:
         return m[key]
 
-def env(target_platform, *, extra = None):
+def env(*, env = None, os, arch, python_version = "", extra = None):
     """Return an env target platform
 
     NOTE: This is for use during the loading phase. For the analysis phase,
     `env_marker_setting()` constructs the env dict.
 
     Args:
-        target_platform: {type}`str` the target platform identifier, e.g.
-            `cp33_linux_aarch64`
+        env: {type}`str` the environment.
+        os: {type}`str` the OS name.
+        arch: {type}`str` the CPU name.
+        python_version: {type}`str` the full python version.
         extra: {type}`str` the extra value to be added into the env.
 
     Returns:
         A dict that can be used as `env` in the marker evaluation.
     """
-    env = create_env()
+    env = env or {}
+    env = env | create_env()
     if extra != None:
         env["extra"] = extra
 
-    if target_platform.abi:
-        # TODO @aignas 2025-07-07: do not parse the version like this here
-        minor_version, _, micro_version = target_platform.abi[3:].partition(".")
-        micro_version = micro_version or "0"
+    if python_version:
+        v = version.parse(python_version)
         env = env | {
-            "implementation_version": "3.{}.{}".format(minor_version, micro_version),
-            "python_full_version": "3.{}.{}".format(minor_version, micro_version),
-            "python_version": "3.{}".format(minor_version),
+            "implementation_version": "{}.{}.{}".format(v.release[0], v.release[1], v.release[2]),
+            "python_full_version": "{}.{}.{}".format(v.release[0], v.release[1], v.release[2]),
+            "python_version": "{}.{}".format(v.release[0], v.release[1]),
         }
 
-    if target_platform.os and target_platform.arch:
-        os = "@platforms//os:{}".format(target_platform.os)
-        arch = "@platforms//cpu:{}".format(target_platform.arch)
+    if os and arch:
+        os = "@platforms//os:{}".format(os)
+        arch = "@platforms//cpu:{}".format(arch)
         env = env | {
             "os_name": _get_from_map(os_name_select_map, os),
             "platform_machine": _get_from_map(platform_machine_select_map, arch),

@@ -16,7 +16,6 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_evaluate.bzl", "evaluate", "tokenize")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:pep508_platform.bzl", "platform_from_str")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -244,18 +243,18 @@ _tests.append(_evaluate_partial_only_extra)
 
 def _evaluate_with_aliases(env):
     # When
-    for target_platform, tests in {
+    for (os, cpu), tests in {
         # buildifier: @unsorted-dict-items
-        "osx_aarch64": {
+        ("osx", "aarch64"): {
             "platform_system == 'Darwin' and platform_machine == 'arm64'": True,
             "platform_system == 'Darwin' and platform_machine == 'aarch64'": True,
             "platform_system == 'Darwin' and platform_machine == 'amd64'": False,
         },
-        "osx_x86_64": {
+        ("osx", "x86_64"): {
             "platform_system == 'Darwin' and platform_machine == 'amd64'": True,
             "platform_system == 'Darwin' and platform_machine == 'x86_64'": True,
         },
-        "osx_x86_32": {
+        ("osx", "x86_32"): {
             "platform_system == 'Darwin' and platform_machine == 'i386'": True,
             "platform_system == 'Darwin' and platform_machine == 'i686'": True,
             "platform_system == 'Darwin' and platform_machine == 'x86_32'": True,
@@ -263,7 +262,10 @@ def _evaluate_with_aliases(env):
         },
     }.items():  # buildifier: @unsorted-dict-items
         for input, want in tests.items():
-            _check_evaluate(env, input, want, pep508_env(platform_from_str(target_platform, "")))
+            _check_evaluate(env, input, want, pep508_env(
+                os = os,
+                arch = cpu,
+            ))
 
 _tests.append(_evaluate_with_aliases)
 
