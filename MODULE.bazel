@@ -175,6 +175,8 @@ internal_dev_deps = use_extension(
 use_repo(
     internal_dev_deps,
     "buildkite_config",
+    "implicit_namespace_ns_sub1",
+    "implicit_namespace_ns_sub2",
     "rules_python_runtime_env_tc_info",
     "somepkg_with_build_files",
     "whl_with_build_files",

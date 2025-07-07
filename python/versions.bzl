@@ -32,6 +32,9 @@ DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone
 # the hashes:
 #   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version={major}.{minor}.{patch}
 #
+# To print hashes for all of the specified versions, run:
+#   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version=""
+#
 # Note, to users looking at how to specify their tool versions, coverage_tool version for each
 # interpreter can be specified by:
 #   "3.8.10": {
@@ -1091,57 +1094,6 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
             patch_strip = None
 
     return (release_filename, rendered_urls, strip_prefix, patches, patch_strip)
-
-def print_toolchains_checksums(name):
-    """A macro to print checksums for a particular Python interpreter version.
-
-    Args:
-        name: {type}`str`: the name of the runnable target.
-    """
-    all_commands = []
-    by_version = {}
-    for python_version in TOOL_VERSIONS.keys():
-        by_version[python_version] = _commands_for_version(python_version)
-        all_commands.append(_commands_for_version(python_version))
-
-    template = """\
-cat > "$@" <<'EOF'
-#!/bin/bash
-
-set -o errexit -o nounset -o pipefail
-
-echo "Fetching hashes..."
-
-{commands}
-EOF
-    """
-
-    native.genrule(
-        name = name,
-        srcs = [],
-        outs = ["print_toolchains_checksums.sh"],
-        cmd = select({
-            "//python/config_settings:is_python_{}".format(version): template.format(
-                commands = commands,
-            )
-            for version, commands in by_version.items()
-        } | {
-            "//conditions:default": template.format(commands = "\n".join(all_commands)),
-        }),
-        executable = True,
-    )
-
-def _commands_for_version(python_version):
-    return "\n".join([
-        "echo \"{python_version}: {platform}: $$(curl --location --fail {release_url_sha256} 2>/dev/null || curl --location --fail {release_url} 2>/dev/null | shasum -a 256 | awk '{{ print $$1 }}')\"".format(
-            python_version = python_version,
-            platform = platform,
-            release_url = release_url,
-            release_url_sha256 = release_url + ".sha256",
-        )
-        for platform in TOOL_VERSIONS[python_version]["sha256"].keys()
-        for release_url in get_release_info(platform, python_version)[1]
-    ])
 
 def gen_python_config_settings(name = ""):
     for platform in PLATFORMS.keys():
