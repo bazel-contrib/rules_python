@@ -297,10 +297,9 @@ def accept_separator_alnum(parser):
     Returns:
       whether a separator and an alphanumeric string were accepted.
     """
-
-    # Input is "0.1.0+brt.9e"
     ctx = parser.open_context()
 
+    # PEP 440: Local version segments
     if not accept(parser, _in([".", "-", "_"]), "."):
         return parser.discard()
 
@@ -312,15 +311,6 @@ def accept_separator_alnum(parser):
         if value.isdigit():
             value = str(int(value))
             ctx["norm"] = ctx["norm"][0] + value
-        return parser.accept()
-
-    return parser.discard()
-
-    # PEP 440: Local version segments
-    if (
-        accept(parser, _in([".", "-", "_"]), ".") and
-        (accept_digits(parser) or accept_alnum(parser))
-    ):
         return parser.accept()
 
     return parser.discard()
