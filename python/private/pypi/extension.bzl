@@ -409,12 +409,6 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             if key not in _SUPPORTED_PEP508_KEYS:
                 fail("Unsupported key in the PEP508 environment: {}".format(key))
 
-        if not os_name:
-            fail("'os_name' is required")
-
-        if not arch_name:
-            fail("'arch_name' is required")
-
         if whl_platform_tags and "any" not in whl_platform_tags:
             # the lowest priority one needs to be the first one
             whl_platform_tags = ["any"] + whl_platform_tags
