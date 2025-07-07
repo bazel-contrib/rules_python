@@ -272,6 +272,7 @@ def _evaluate_with_aliases(env):
             _check_evaluate(env, input, want, pep508_env(
                 os = os,
                 arch = cpu,
+                python_version = "3.2",
             ))
 
 _tests.append(_evaluate_with_aliases)

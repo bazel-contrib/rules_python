@@ -168,10 +168,13 @@ def env(*, env = None, os, arch, python_version = "", extra = None):
 
     if python_version:
         v = version.parse(python_version)
+        major = v.release[0]
+        minor = v.release[1]
+        micro = v.release[2] if len(v.release) > 2 else 0
         env = env | {
-            "implementation_version": "{}.{}.{}".format(v.release[0], v.release[1], v.release[2]),
-            "python_full_version": "{}.{}.{}".format(v.release[0], v.release[1], v.release[2]),
-            "python_version": "{}.{}".format(v.release[0], v.release[1]),
+            "implementation_version": "{}.{}.{}".format(major, minor, micro),
+            "python_full_version": "{}.{}.{}".format(major, minor, micro),
+            "python_version": "{}.{}".format(major, minor),
         }
 
     if os and arch:
