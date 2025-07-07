@@ -74,7 +74,12 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         env = {"platform_version": "0"},
         os_name = "linux",
         platform = "linux_{}".format(cpu),
-        platform_tags = [
+        whl_abi_tags = [
+            "cp{major}{minor}",
+            "abi3",
+            "none",
+        ],
+        whl_platform_tags = [
             "linux_*_{}".format(cpu),
             "manylinux_*_{}".format(cpu),
         ],
@@ -103,7 +108,12 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         env = {"platform_version": "14.0"},
         os_name = "osx",
         platform = "osx_{}".format(cpu),
-        platform_tags = [
+        whl_abi_tags = [
+            "cp{major}{minor}",
+            "abi3",
+            "none",
+        ],
+        whl_platform_tags = [
             "macosx_*_{}".format(suffix)
             for suffix in platform_tag_cpus
         ],
@@ -129,7 +139,12 @@ pip.default(
     env = {"platform_version": "0"},
     os_name = "windows",
     platform = "windows_x86_64",
-    platform_tags = ["win_amd64"],
+    whl_abi_tags = [
+        "cp{major}{minor}",
+        "abi3",
+        "none",
+    ],
+    whl_platform_tags = ["win_amd64"],
 )
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us

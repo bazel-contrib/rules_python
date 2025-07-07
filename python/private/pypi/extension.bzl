@@ -68,14 +68,23 @@ def _whl_mods_impl(whl_mods_dict):
 
 def _platforms(*, python_version, minor_mapping, config):
     platforms = {}
-    python_version = full_version(
-        version = python_version,
-        minor_mapping = minor_mapping,
+    python_version = version.parse(
+        full_version(
+            version = python_version,
+            minor_mapping = minor_mapping,
+        ),
+        strict = True,
     )
 
     for platform, values in config.platforms.items():
+        # TODO @aignas 2025-07-07: fix the logic here
         implementation = values.env["implementation_name"][:2].lower()
-        abi = "{}3{}".format(implementation, python_version[2:])
+
+        # TODO @aignas 2025-07-07: move the abi construction somewhere else
+        abi = "{impl}{0}{1}.{2}".format(
+            impl = implementation,
+            *python_version.release
+        )
         key = "{}_{}".format(abi, platform)
 
         env_ = env(struct(
@@ -86,10 +95,13 @@ def _platforms(*, python_version, minor_mapping, config):
         platforms[key] = struct(
             env = env_,
             want_abis = [
-                v.format(*python_version.split("."))
-                for v in values.want_abis
+                v.format(
+                    major = python_version.release[0],
+                    minor = python_version.release[1],
+                )
+                for v in values.whl_abi_tags
             ],
-            platform_tags = values.platform_tags,
+            platform_tags = values.whl_platform_tags,
         )
     return platforms
 
@@ -385,10 +397,10 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, want_abis, platform_tags, override = False):
+def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, whl_abi_tags, whl_platform_tags, override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
-    if platform and (os_name or arch_name or config_settings or platform_tags or env):
+    if platform and (os_name or arch_name or config_settings or whl_platform_tags or env):
         if not override and config.get("platforms", {}).get(platform):
             return
 
@@ -402,21 +414,21 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
         if not arch_name:
             fail("'arch_name' is required")
 
-        if platform_tags and "any" not in platform_tags:
+        if whl_platform_tags and "any" not in whl_platform_tags:
             # the lowest priority one needs to be the first one
-            platform_tags = ["any"] + platform_tags
+            whl_platform_tags = ["any"] + whl_platform_tags
 
         config["platforms"][platform] = struct(
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
             config_settings = config_settings,
-            want_abis = want_abis or [
-                "cp{0}{1}",
+            whl_abi_tags = whl_abi_tags or [
+                "cp{major}{minor}",
                 "abi3",
                 "none",
             ],
-            platform_tags = platform_tags,
+            whl_platform_tags = whl_platform_tags,
             env = {
                 # default to this
                 "implementation_name": "cpython",
@@ -491,8 +503,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 env = tag.env,
                 os_name = tag.os_name,
                 platform = tag.platform,
-                platform_tags = tag.platform_tags,
-                want_abis = tag.want_abis,
+                whl_abi_tags = tag.whl_abi_tags,
+                whl_platform_tags = tag.whl_platform_tags,
                 override = mod.is_root,
                 # TODO @aignas 2025-05-19: add more attr groups:
                 # * for AUTH - the default `netrc` usage could be configured through a common
@@ -844,20 +856,24 @@ If you are defining custom platforms in your project and don't want things to cl
 [isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
 """,
     ),
-    "platform_tags": attr.string_list(
+    "whl_abi_tags": attr.string_list(
+        doc = """\
+A list of ABIs to select wheels for. The values can be either strings or include template
+parameters like `{0}` which will be replaced with python version parts. e.g. `cp{0}{1}` will
+result in `cp313` given the full python version is `3.13.5`.
+
+See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#abi-tag) for more information.
+""",
+    ),
+    "whl_platform_tags": attr.string_list(
         doc = """\
 A list of `platform_tag` matchers so that we can select the best wheel based on the user
 preference. Per platform we will select a single wheel and the last match from this list will
 take precedence.
 
 The items in this list can contain a single `*` character that is equivalent to `.*` regex match.
-""",
-    ),
-    "want_abis": attr.string_list(
-        doc = """\
-A list of ABIs to select wheels for. The values can be either strings or include template
-parameters like `{0}` which will be replaced with python version parts. e.g. `cp{0}{1}` will
-result in `cp313` given the full python version is `3.13.5`.
+
+See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#platform-tag) for more information.
 """,
     ),
 }
