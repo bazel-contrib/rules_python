@@ -27,9 +27,10 @@ _tests = []
 def _test_filegroups(env):
     calls = []
 
-    def glob(match, *, allow_empty):
+    def glob(include, *, exclude = [], allow_empty):
+        _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
-        return match
+        return include
 
     whl_library_targets(
         name = "",
@@ -41,7 +42,7 @@ def _test_filegroups(env):
         rules = struct(),
     )
 
-    env.expect.that_collection(calls).contains_exactly([
+    env.expect.that_collection(calls, expr = "filegroup calls").contains_exactly([
         {
             "name": "dist_info",
             "srcs": ["site-packages/*.dist-info/**"],
@@ -50,6 +51,11 @@ def _test_filegroups(env):
         {
             "name": "data",
             "srcs": ["data/**"],
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "extracted_whl_files",
+            "srcs": ["**"],
             "visibility": ["//visibility:public"],
         },
         {

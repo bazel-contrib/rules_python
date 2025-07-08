@@ -248,6 +248,7 @@ def _whl_library_impl(rctx):
     environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
 
     whl_path = None
+    sdist_filename = None
     if rctx.attr.whl_file:
         rctx.watch(rctx.attr.whl_file)
         whl_path = rctx.path(rctx.attr.whl_file)
@@ -277,6 +278,8 @@ def _whl_library_impl(rctx):
         if filename.endswith(".whl"):
             whl_path = rctx.path(filename)
         else:
+            sdist_filename = filename
+
             # It is an sdist and we need to tell PyPI to use a file in this directory
             # and, allow getting build dependencies from PYTHONPATH, which we
             # setup in this repository rule, but still download any necessary
@@ -382,6 +385,7 @@ def _whl_library_impl(rctx):
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
+            sdist_filename = sdist_filename,
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
             entry_points = entry_points,
             metadata_name = metadata.name,
@@ -455,6 +459,7 @@ def _whl_library_impl(rctx):
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
+            sdist_filename = sdist_filename,
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
             entry_points = entry_points,
             # TODO @aignas 2025-05-17: maybe have a build flag for this instead
