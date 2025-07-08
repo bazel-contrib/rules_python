@@ -447,9 +447,10 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             arch_name = arch_name,
             config_settings = config_settings,
             whl_abi_tags = whl_abi_tags or [
-                "cp{major}{minor}",
-                "abi3",
+                # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
                 "none",
+                "abi3",
+                "cp{major}{minor}",
             ],
             whl_platform_tags = whl_platform_tags,
             env = {
@@ -884,21 +885,32 @@ If you are defining custom platforms in your project and don't want things to cl
     "whl_abi_tags": attr.string_list(
         doc = """\
 A list of ABIs to select wheels for. The values can be either strings or include template
-parameters like `{0}` which will be replaced with python version parts. e.g. `cp{0}{1}` will
-result in `cp313` given the full python version is `3.13.5`.
+parameters like `{major}` and `{minor}` which will be replaced with python version parts. e.g.
+`cp{major}{minor}` will result in `cp313` given the full python version is `3.13.5`.
 
+:::{note}
+We select a single wheel and the last match will take precedence.
+:::
+
+:::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#abi-tag) for more information.
+:::
 """,
     ),
     "whl_platform_tags": attr.string_list(
         doc = """\
 A list of `platform_tag` matchers so that we can select the best wheel based on the user
-preference. Per platform we will select a single wheel and the last match from this list will
-take precedence.
+preference.
 
 The items in this list can contain a single `*` character that is equivalent to `.*` regex match.
 
+:::{note}
+We select a single wheel and the last match will take precedence.
+:::
+
+:::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#platform-tag) for more information.
+:::
 """,
     ),
 }
