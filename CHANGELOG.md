@@ -67,6 +67,8 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.14.0b3
 * (toolchain) Python 3.13 now references 3.13.5
+* (gazelle) Switched back to smacker/go-tree-sitter, fixing
+  [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 
 {#v0-0-0-fixed}
 ### Fixed
