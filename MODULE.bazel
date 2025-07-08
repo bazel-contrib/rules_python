@@ -245,6 +245,7 @@ dev_pip = use_extension(
     dev_dependency = True,
 )
 dev_pip.parse(
+    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
     parallel_download = False,
@@ -252,12 +253,14 @@ dev_pip.parse(
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
+    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
     python_version = "3.13",
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
+    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "pypiserver",
     python_version = "3.11",
