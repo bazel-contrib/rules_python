@@ -323,9 +323,6 @@ def _create_whl_repos(
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = pip_attr.netrc,
-                # NOTE @aignas 2025-07-07: we guard against an edge-case where there
-                # are more platforms defined than there are wheels for and users
-                # disallow building from sdist.
                 use_downloader = use_downloader.get(
                     whl.name,
                     get_index_urls != None,  # defaults to True if the get_index_urls is defined
@@ -336,6 +333,9 @@ def _create_whl_repos(
                 enable_pipstar = config.enable_pipstar,
             )
             if repo == None:
+                # NOTE @aignas 2025-07-07: we guard against an edge-case where there
+                # are more platforms defined than there are wheels for and users
+                # disallow building from sdist.
                 continue
 
             repo_name = "{}_{}".format(pip_name, repo.repo_name)
