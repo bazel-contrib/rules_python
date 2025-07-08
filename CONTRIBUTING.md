@@ -234,11 +234,13 @@ merged:
 ## Binary artifacts
 
 Checking in binary artifacts is not allowed. This is because they are extremely
-problematic to verify and ensure they're safe
+problematic to verify and ensure they're safe. This is true even in
+test contexts.
 
 Examples include, but aren't limited to: prebuilt binaries, shared libraries,
 zip files, or wheels.
 
+See the dev guide for utilities to help with testing.
 
 (breaking-changes)=
 ## Breaking Changes
