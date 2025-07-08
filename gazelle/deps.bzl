@@ -182,7 +182,7 @@ def go_deps():
     )
     http_archive(
         name = "com_github_smacker_go_tree_sitter",
-        build_file = "@rules_python_gazelle_plugin//:internal/smacker_BUILD.bazel",
+        build_file = Label("//:internal/smacker_BUILD.bazel"),
         integrity = "sha256-4AkDY4Rh5Auu9Kwzhj5XYSirMLlhmd6ClMWo/r0kmu4=",
         strip_prefix = "go-tree-sitter-dd81d9e9be82a8cac96ed1d50c7389c5f1997c02",
         url = "https://github.com/smacker/go-tree-sitter/archive/dd81d9e9be82a8cac96ed1d50c7389c5f1997c02.zip",
