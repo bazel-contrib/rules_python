@@ -88,6 +88,10 @@ END_UNRELEASED_TEMPLATE
   ({gh-issue}`3043`).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* (pypi) The selection of the whls has been changed and should no longer result
+  in ambiguous select matches ({gh-issue}`2759`) and should be much more efficient
+  when running `bazel query` due to fewer repositories being included 
+  ({gh-issue}`2849`).
 
 {#v0-0-0-added}
 ### Added
