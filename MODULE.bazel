@@ -117,6 +117,10 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             "universal2",
             "arm64",
         ],
+        "x86_64": [
+            "universal2",
+            "x86_64",
+        ],
     }.items()
 ]
 
