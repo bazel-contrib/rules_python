@@ -67,6 +67,15 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.14.0b3
 * (toolchain) Python 3.13 now references 3.13.5
+* (deps[gazelle]) Upgrade versions:
+  * `rules_go` 0.41.0 -> 0.55.0.
+  * `gazelle`: WORKSPACE and bzlmod versions now match.
+    * WORKSPACE: 0.31.0 -> 0.40.0
+    * bzlmod: 0.33.0 -> 0.40.0
+  * go: 1.19.4 -> 1.22.0
+  * Note that this might result in a slight reordering of load statements in
+    gazelle-generated `BUILD(.bazel)` files to match the ordering set by
+    buildifier.
 
 {#v0-0-0-fixed}
 ### Fixed
