@@ -75,7 +75,6 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         os_name = "linux",
         platform = "linux_{}".format(cpu),
         whl_abi_tags = [
-            "none",
             "abi3",
             "cp{major}{minor}",
         ],
@@ -103,7 +102,6 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         os_name = "osx",
         platform = "osx_{}".format(cpu),
         whl_abi_tags = [
-            "none",
             "abi3",
             "cp{major}{minor}",
         ],
@@ -135,7 +133,6 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         os_name = "windows",
         platform = "windows_{}".format(cpu),
         whl_abi_tags = [
-            "none",
             "abi3",
             "cp{major}{minor}",
         ],

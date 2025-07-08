@@ -888,6 +888,7 @@ If you are defining custom platforms in your project and don't want things to cl
 A list of ABIs to select wheels for. The values can be either strings or include template
 parameters like `{major}` and `{minor}` which will be replaced with python version parts. e.g.
 `cp{major}{minor}` will result in `cp313` given the full python version is `3.13.5`.
+Will always  include `"none"` even if it is not specified.
 
 :::{note}
 We select a single wheel and the last match will take precedence.
@@ -902,6 +903,7 @@ See official [docs](https://packaging.python.org/en/latest/specifications/platfo
         doc = """\
 A list of `platform_tag` matchers so that we can select the best wheel based on the user
 preference.
+Will always  include `"any"` even if it is not specified.
 
 The items in this list can contain a single `*` character that is equivalent to `.*` regex match.
 
