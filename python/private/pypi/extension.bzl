@@ -429,29 +429,30 @@ def _whl_repo(
 def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, whl_abi_tags, whl_platform_tags, override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
-    if platform and (os_name or arch_name or config_settings or whl_platform_tags or env):
-        if not override and config.get("platforms", {}).get(platform):
+    if platform and (os_name or arch_name or config_settings or whl_abi_tags or whl_platform_tags or env):
+        if not override and config["platforms"].get(platform):
             return
 
         for key in env:
             if key not in _SUPPORTED_PEP508_KEYS:
                 fail("Unsupported key in the PEP508 environment: {}".format(key))
 
+        # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
         if whl_platform_tags and "any" not in whl_platform_tags:
             # the lowest priority one needs to be the first one
             whl_platform_tags = ["any"] + whl_platform_tags
+
+        whl_abi_tags = whl_abi_tags or ["abi3", "cp{major}{minor}"]
+        if whl_abi_tags and "none" not in whl_abi_tags:
+            # the lowest priority one needs to be the first one
+            whl_abi_tags = ["none"] + whl_abi_tags
 
         config["platforms"][platform] = struct(
             name = platform.replace("-", "_").lower(),
             os_name = os_name,
             arch_name = arch_name,
             config_settings = config_settings,
-            whl_abi_tags = whl_abi_tags or [
-                # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
-                "none",
-                "abi3",
-                "cp{major}{minor}",
-            ],
+            whl_abi_tags = whl_abi_tags,
             whl_platform_tags = whl_platform_tags,
             env = {
                 # default to this
