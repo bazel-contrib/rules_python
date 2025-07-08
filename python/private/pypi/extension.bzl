@@ -317,7 +317,7 @@ def _create_whl_repos(
             if v != default
         })
 
-        for src in sorted(whl.srcs, key = lambda x: x.filename):
+        for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
                 whl_library_args = whl_library_args,
