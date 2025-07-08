@@ -780,7 +780,7 @@ TOOL_VERSIONS = {
             "x86_64-unknown-linux-gnu": "9f5d5260f333fcb5372ec681851d92ddac79a33362aa85626b6cc96ffe75eeef",
             "x86_64-unknown-linux-musl": "7856fd505e311d1a4c24e429ac5ef0ff6ca7a2005c3a7eff1fe204524a6f45aa",
             "aarch64-apple-darwin-freethreaded": "52e582cc89d654c565297b4ff9c3bd4bed5c3e81cad46f41c62485e700faf8bd",
-            "aarch64-unknown-linux-gnu-freethreaded": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "aarch64-unknown-linux-gnu-freethreaded": "461832e4fb5ec1d719dc40f6490f9a639414dfa6769158187fa85d4b424b57cd",
             "ppc64le-unknown-linux-gnu-freethreaded": "c65c75edb450de830f724afdc774a215c2d3255097e0d670f709d2271fd6fd52",
             "riscv64-unknown-linux-gnu-freethreaded": "716e6e3fad24fb9931b93005000152dd9da4c3343b88ca54b5c01a7ab879d734",
             "s390x-unknown-linux-gnu-freethreaded": "27276aee426a51f4165fac49391aedc5a9e301ae217366c77b65826122bb30fc",
@@ -796,6 +796,7 @@ TOOL_VERSIONS = {
             "riscv64-unknown-linux-gnu": "python",
             "x86_64-apple-darwin": "python",
             "x86_64-pc-windows-msvc": "python",
+            "aarch64-pc-windows-msvc": "python",
             "x86_64-unknown-linux-gnu": "python",
             "x86_64-unknown-linux-musl": "python",
             "aarch64-apple-darwin-freethreaded": "python/install",
@@ -805,7 +806,6 @@ TOOL_VERSIONS = {
             "s390x-unknown-linux-gnu-freethreaded": "python/install",
             "x86_64-apple-darwin-freethreaded": "python/install",
             "x86_64-pc-windows-msvc-freethreaded": "python/install",
-            "aarch64-pc-windows-msvc": "python/install",
             "aarch64-pc-windows-msvc-freethreaded": "python/install",
             "x86_64-unknown-linux-gnu-freethreaded": "python/install",
         },
@@ -824,7 +824,7 @@ TOOL_VERSIONS = {
             "x86_64-unknown-linux-gnu": "00328c48cc07076a5b083575654761cdb07bc8b3bba864d3a225062722485bac",
             "x86_64-unknown-linux-musl": "a2fed85bc3d5415d2318a2eeb0cb9e6effb81667870ae568a08756838ad4926e",
             "aarch64-apple-darwin-freethreaded": "d19213021f5fd039d7021ccb41698cc99ca313064d7c1cc9b5ef8f831abb9961",
-            "aarch64-unknown-linux-gnu-freethreaded": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "aarch64-unknown-linux-gnu-freethreaded": "b01cc74173515cc3733f0af62b7d574364c1c68daf3ad748bca47e4328770cde",
             "ppc64le-unknown-linux-gnu-freethreaded": "1f093e0c3532e27744e3fb73a8c738355910b6bfa195039e4f73b4f48c1bc4fc",
             "riscv64-unknown-linux-gnu-freethreaded": "73162a5da31cc1e410d456496114f8e5ee7243bc7bbe0e087b1ea50f0fdc6774",
             "s390x-unknown-linux-gnu-freethreaded": "045017e60f1298111e8ccfec6afbe47abe56f82997258c8754009269a5343736",
@@ -1045,13 +1045,15 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
     for u in url:
         p, _, _ = platform.partition(FREETHREADED)
 
+        release_id = int(u.split("/")[-2])
+
         if FREETHREADED.lstrip("-") in platform:
             build = "{}+{}-full".format(
                 FREETHREADED.lstrip("-"),
                 {
                     "aarch64-apple-darwin": "pgo+lto",
                     "aarch64-pc-windows-msvc": "pgo",
-                    "aarch64-unknown-linux-gnu": "lto",
+                    "aarch64-unknown-linux-gnu": "lto" if release_id < 20250702 else "pgo+lto",
                     "ppc64le-unknown-linux-gnu": "lto",
                     "riscv64-unknown-linux-gnu": "lto",
                     "s390x-unknown-linux-gnu": "lto",
@@ -1063,7 +1065,7 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
         else:
             build = INSTALL_ONLY
 
-        if WINDOWS_NAME in platform and int(u.split("/")[0]) < 20250317:
+        if WINDOWS_NAME in platform and release_id < 20250317:
             build = "shared-" + build
 
         release_filename = u.format(
