@@ -1,0 +1,17 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+py_test(
+    name = "remove_invalid_test",
+    srcs = ["__test__.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test_with_deps",
+    srcs = ["test_main.py"],
+    deps = [
+        "//:remove_invalid_test",
+        "@pypi//bar",
+        "@pypi//foo",
+    ],
+)
