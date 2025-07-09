@@ -29,6 +29,10 @@ LINUX_X86_64 = Label("//tests/support:linux_x86_64")
 WINDOWS = Label("//tests/support:windows")
 WINDOWS_X86_64 = Label("//tests/support:windows_x86_64")
 
+# Unspecified Unix platform that are unlikely to be the host platform in CI,
+# but still provide a Python toolchain.
+EXOTIC_UNIX = Label("//tests/support:exotic_unix")
+
 PY_TOOLCHAINS = str(Label("//tests/support/py_toolchains:all"))
 CC_TOOLCHAIN = str(Label("//tests/support/cc_toolchains:all"))
 CROSSTOOL_TOP = Label("//tests/support/cc_toolchains:cc_toolchain_suite")
