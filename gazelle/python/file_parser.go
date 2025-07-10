@@ -144,6 +144,14 @@ func parseImportStatement(node *sitter.Node, code []byte) (Module, bool) {
 	return Module{}, false
 }
 
+// cleanImportString removes backslashes and all whitespace from the string.
+func cleanImportString(s string) string {
+	s = strings.ReplaceAll(s, "\\", "")
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "\n", "")
+	return s
+}
+
 // parseImportStatements parses a node for import statements, returning true if the node is
 // an import statement. It updates FileParser.output.Modules with the `module` that the
 // import represents.
@@ -154,6 +162,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 			if !ok {
 				continue
 			}
+			m.From = cleanImportString(m.From)
 			m.Filepath = p.relFilepath
 			m.TypeCheckingOnly = p.inTypeCheckingBlock
 			if strings.HasPrefix(m.Name, ".") {
@@ -163,6 +172,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 		}
 	} else if node.Type() == sitterNodeTypeImportFromStatement {
 		from := node.Child(1).Content(p.code)
+		from = cleanImportString(from)
 		// If the import is from the current package, we don't need to add it to the modules i.e. from . import Class1.
 		// If the import is from a different relative package i.e. from .package1 import foo, we need to add it to the modules.
 		if from == "." {

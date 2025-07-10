@@ -291,3 +291,32 @@ def example_function():
 		}
 	}
 }
+
+func TestParseImportStatements_MultilineWithBackslashAndWhitespace(t *testing.T) {
+	p := NewFileParser()
+	code := []byte(`from foo.bar.\
+    baz import (
+    Something,
+    AnotherThing
+)
+`)
+	p.SetCodeAndFile(code, "", "test.py")
+	output, err := p.Parse(context.Background())
+	assert.NoError(t, err)
+	// Should parse as: from foo.bar.baz import Something, AnotherThing
+	expected := []Module{
+		{
+			Name:       "foo.bar.baz.Something",
+			LineNumber: 3,
+			Filepath:   "test.py",
+			From:       "foo.bar.baz",
+		},
+		{
+			Name:       "foo.bar.baz.AnotherThing",
+			LineNumber: 4,
+			Filepath:   "test.py",
+			From:       "foo.bar.baz",
+		},
+	}
+	assert.Equal(t, expected, output.Modules)
+}
