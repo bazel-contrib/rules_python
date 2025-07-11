@@ -16,6 +16,10 @@ Additionally, we test that:
   the annotation was not present.
 + last annotation (highest line number) wins.
 + the annotation has no effect on non-test files/targets.
++ the `include_dep` can still inject `:conftest` even when `include_pytest_conftest`
+  is false.
++ `import conftest` will still add the dep even when `include_pytest_conftest` is
+  false.
 
 An annotation without a value is not tested, as that's part of the core
 annotation framework and not specific to this annotation.

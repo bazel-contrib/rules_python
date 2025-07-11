@@ -29,6 +29,18 @@ py_test(
 )
 
 py_test(
+    name = "conftest_imported_test",
+    srcs = ["conftest_imported_test.py"],
+    deps = [":conftest"],
+)
+
+py_test(
+    name = "conftest_included_test",
+    srcs = ["conftest_included_test.py"],
+    deps = [":conftest"],
+)
+
+py_test(
     name = "false_test",
     srcs = ["false_test.py"],
 )
