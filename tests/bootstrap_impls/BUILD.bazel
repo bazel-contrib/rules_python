@@ -124,24 +124,25 @@ py_reconfig_test(
     main = "sys_path_order_test.py",
 )
 
-py_reconfig_test(
-    name = "main_module_test",
+py_library(
+    name = "main_module_lib",
     srcs = ["main_module.py"],
+    imports = ["."],
+)
+
+py_reconfig_test(
+    name = "main_module_script_test",
     bootstrap_impl = "script",
     main_module = "tests.bootstrap_impls.main_module",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
-)
-
-py_library(
-    name = "main_module_system_python_lib",
-    srcs = ["main_module.py"],
+    deps = [":main_module_lib"],
 )
 
 py_reconfig_test(
     name = "main_module_system_python_test",
     bootstrap_impl = "system_python",
     main_module = "tests.bootstrap_impls.main_module",
-    deps = [":main_module_system_python_lib"],
+    deps = [":main_module_lib"],
 )
 
 sh_py_run_test(
