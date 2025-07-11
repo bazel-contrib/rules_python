@@ -13,6 +13,7 @@
 # limitations under the License.
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:defs.bzl", "py_library")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
@@ -127,9 +128,20 @@ py_reconfig_test(
     name = "main_module_test",
     srcs = ["main_module.py"],
     bootstrap_impl = "script",
-    imports = ["."],
     main_module = "tests.bootstrap_impls.main_module",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_library(
+    name = "main_module_system_python_lib",
+    srcs = ["main_module.py"],
+)
+
+py_reconfig_test(
+    name = "main_module_system_python_test",
+    bootstrap_impl = "system_python",
+    main_module = "tests.bootstrap_impls.main_module",
+    deps = [":main_module_system_python_lib"],
 )
 
 sh_py_run_test(
