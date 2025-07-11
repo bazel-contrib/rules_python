@@ -1,6 +1,6 @@
-from ...my_library import (
+from ...my_library import (  # Import path should be package1.my_library.some_function
     some_function,
-)  # Import path should be package1.my_library.some_function
+)
 from ...my_library.foo import (  # Import path should be package1.my_library.foo.some_function
     some_function,
 )
