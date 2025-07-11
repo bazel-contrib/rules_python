@@ -363,8 +363,8 @@ def _test_main_module_bootstrap_system_python(name, config):
     )
 
 def _test_main_module_bootstrap_system_python_impl(env, target):
-    env.expect.that_target(target).failures().contains_predicate(
-        matching.str_matches("mandatory*srcs"),
+    env.expect.that_target(target).default_outputs().contains(
+        "{package}/{test_name}_subject",
     )
 
 _tests.append(_test_main_module_bootstrap_system_python)
