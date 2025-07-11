@@ -66,7 +66,7 @@ def get_windows_path_with_unc_prefix(path):
             break
         except (ValueError, KeyError):
             pass
-    if win32_version and win32_version >= '10.0.14393':
+    if win32_version and win32_version >= "10.0.14393":
         return path
 
     # import sysconfig only now to maintain python 2.6 compatibility

@@ -159,7 +159,9 @@ def main(
         # Further, shutil.copy preserves the source file's mode, and so if
         # our source file is read-only (the default under Perforce Helix),
         # this scratch file will also be read-only, defeating its purpose.
-        with open(resolved_requirements_file, "rb") as fsrc, open(requirements_out, "wb") as fdst:
+        with open(resolved_requirements_file, "rb") as fsrc, open(
+            requirements_out, "wb"
+        ) as fdst:
             shutil.copyfileobj(fsrc, fdst)
 
     update_command = (

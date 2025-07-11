@@ -63,8 +63,7 @@ try:
         readline.parse_and_bind("tab: complete")
     else:
         print(
-            "Could not enable tab completion: "
-            "unable to determine readline backend"
+            "Could not enable tab completion: " "unable to determine readline backend"
         )
 except ImportError:
     print(
