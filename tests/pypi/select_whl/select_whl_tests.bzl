@@ -96,6 +96,55 @@ def _select_whl(whls, debug = False, **kwargs):
 
 _tests = []
 
+def _test_not_select_py2(env):
+    # Check we prefer platform specific wheels
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py2-none-any.whl",
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-py312-none-any.whl",
+        ],
+        platforms = ["any"],
+        whl_abi_tags = ["none"],
+        python_version = "3.13",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        "pkg-0.0.1-py3-none-any.whl",
+        "pkg-0.0.1-py312-none-any.whl",
+    )
+
+_tests.append(_test_not_select_py2)
+
+def _test_select_cp312(env):
+    # Check we prefer platform specific wheels
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py2-none-any.whl",
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-py312-none-any.whl",
+            "pkg-0.0.1-cp39-none-any.whl",
+            "pkg-0.0.1-cp312-none-any.whl",
+            "pkg-0.0.1-cp314-none-any.whl",
+        ],
+        platforms = ["any"],
+        whl_abi_tags = ["none"],
+        python_version = "3.13",
+        limit = 5,
+    )
+    _match(
+        env,
+        got,
+        "pkg-0.0.1-py3-none-any.whl",
+        "pkg-0.0.1-py312-none-any.whl",
+        "pkg-0.0.1-cp39-none-any.whl",
+        "pkg-0.0.1-cp312-none-any.whl",
+    )
+
+_tests.append(_test_select_cp312)
+
 def _test_simplest(env):
     whls = [
         "pkg-0.0.1-py2.py3-abi3-any.whl",
@@ -280,6 +329,23 @@ def _test_freethreaded_wheels(env):
     )
 
 _tests.append(_test_freethreaded_wheels)
+
+def _test_pytags_all_possible(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.py39.py310.py311.py312.py313-none-win_amd64.whl",
+        ],
+        platforms = ["win_amd64"],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+    )
+    _match(
+        env,
+        [got],
+        "pkg-0.0.1-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.py39.py310.py311.py312.py313-none-win_amd64.whl",
+    )
+
+_tests.append(_test_pytags_all_possible)
 
 def select_whl_test_suite(name):
     """Create the test suite.

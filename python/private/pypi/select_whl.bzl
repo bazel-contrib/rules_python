@@ -4,21 +4,55 @@ load("//python/private:version.bzl", "version")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":python_tag.bzl", "PY_TAG_GENERIC", "python_tag")
 
-def _get_priority(*, tag, values, allow_wildcard = True):
+def _get_priority(*, tags, values, allow_wildcard = True):
+    keys = []
     for priority, wp in enumerate(values):
-        head, sep, tail = wp.partition("*")
-        if "*" in tail:
-            fail("only a single '*' can be present in the matcher")
-        if not allow_wildcard and sep:
-            fail("'*' is not allowed in the matcher")
+        for tag in tags.split("."):
+            head, sep, tail = wp.partition("*")
+            if "*" in tail:
+                fail("only a single '*' can be present in the matcher")
+            if not allow_wildcard and sep:
+                fail("'*' is not allowed in the matcher")
 
-        for p in tag.split("."):
-            if not sep and p == head:
-                return priority
-            elif sep and p.startswith(head) and p.endswith(tail):
-                return priority
+            if not sep and tag == head:
+                keys.append(priority)
+            elif sep and tag.startswith(head) and tag.endswith(tail):
+                keys.append(priority)
 
-    return None
+    if not keys:
+        return None
+
+    return max(keys)
+
+def _get_py_priority(*, tags, implementation, py_version):
+    keys = []
+    for tag in tags.split("."):
+        if tag.startswith(PY_TAG_GENERIC):
+            ver_str = tag[len(PY_TAG_GENERIC):]
+        elif tag.startswith(implementation):
+            ver_str = tag[len(implementation):]
+        else:
+            continue
+
+        # Add a 0 at the end in case it is a single digit
+        ver_str = "{}.{}".format(ver_str[0], ver_str[1:] or "0")
+
+        ver = version.parse(ver_str)
+        if not version.is_compatible(py_version, ver):
+            continue
+
+        keys.append((
+            tag.startswith(implementation),
+            version.key(ver),
+            # Prefer shorter py_tags, which will yield more specialized matches,
+            # like preferring py3 over py2.py3
+            -len(tags),
+        ))
+
+    if not keys:
+        return None
+
+    return max(keys)
 
 def select_whl(*, whls, python_version, platforms, whl_abi_tags, implementation_name = "cpython", limit = 1, logger = None):
     """Select a whl that is the most suitable for the given platform.
@@ -56,26 +90,22 @@ def select_whl(*, whls, python_version, platforms, whl_abi_tags, implementation_
                 ))
             continue
 
-        if parsed.python_tag == "py2.py3":
-            min_version = "2"
-        else:
-            min_version = parsed.python_tag[len(implementation):]
-
-        if len(min_version) > 1:
-            min_version = "{}.{}".format(min_version[0], min_version[1:])
-
-        min_whl_py_version = version.parse(min_version, strict = True)
-        if not version.is_ge(py_version, min_whl_py_version):
+        py_priority = _get_py_priority(
+            tags = parsed.python_tag,
+            implementation = implementation,
+            py_version = py_version,
+        )
+        if py_priority == None:
             if logger:
-                logger.debug(lambda: "Discarding the wheel because the min version supported based on the wheel ABI tag '{}' ({}) is not compatible with the provided target Python version '{}'".format(
-                    parsed.abi_tag,
-                    min_whl_py_version.string,
+                logger.debug(lambda: "The py_tag '{}' does not match implementation version: {} {}".format(
+                    parsed.py_tag,
+                    implementation,
                     py_version.string,
                 ))
             continue
 
         abi_priority = _get_priority(
-            tag = parsed.abi_tag,
+            tags = parsed.abi_tag,
             values = whl_abi_tags,
             allow_wildcard = False,
         )
@@ -86,8 +116,9 @@ def select_whl(*, whls, python_version, platforms, whl_abi_tags, implementation_
                     whl_abi_tags,
                 ))
             continue
+
         platform_priority = _get_priority(
-            tag = parsed.platform_tag,
+            tags = parsed.platform_tag,
             values = platforms,
         )
         if platform_priority == None:
@@ -100,10 +131,8 @@ def select_whl(*, whls, python_version, platforms, whl_abi_tags, implementation_
 
         key = (
             # Ensure that we chose the highest compatible version
-            parsed.python_tag.startswith(implementation),
+            py_priority,
             platform_priority,
-            # prefer abi_tags in this order
-            version.key(min_whl_py_version),
             abi_priority,
         )
         candidates.setdefault(key, whl)
