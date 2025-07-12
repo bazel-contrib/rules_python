@@ -122,7 +122,7 @@ the [Breaking Changes](#breaking-changes) section for how to introduce breaking
 changes.
 
 User visible changes, such as features, fixes, or notable refactors, should
-be documneted in CHANGELOG.md and their respective API doc. See [Documenting
+be documented in CHANGELOG.md and their respective API doc. See [Documenting
 changes] for how to do so.
 
 Common `type`s:

@@ -201,6 +201,10 @@ accepting arbitrary Python versions.
             # empty target for other platforms.
             default = "//tools/launcher:launcher",
         ),
+        "_main_module_entrypoint_template": lambda: attrb.Label(
+            allow_single_file = True,
+            default = "//python/private:main_module_entrypoint_template.py",
+        ),
         "_py_interpreter": lambda: attrb.Label(
             # The configuration_field args are validated when called;
             # we use the precense of py_internal to indicate this Bazel
@@ -360,9 +364,8 @@ def _create_executable(
         )
     else:
         stage2_bootstrap = None
-        extra_runfiles = ctx.runfiles()
         zip_main = ctx.actions.declare_file(base_executable_name + ".temp", sibling = executable)
-        _create_stage1_bootstrap(
+        extra_runfiles = _create_stage1_bootstrap(
             ctx,
             output = zip_main,
             main_py = main_py,
@@ -426,7 +429,7 @@ def _create_executable(
         if bootstrap_output != None:
             fail("Should not occur: bootstrap_output should not be used " +
                  "when creating an executable zip")
-        _create_executable_zip_file(
+        more_runfiles = _create_executable_zip_file(
             ctx,
             output = executable,
             zip_file = zip_file,
@@ -434,8 +437,9 @@ def _create_executable(
             runtime_details = runtime_details,
             venv = venv,
         )
+        extra_runfiles = extra_runfiles.merge(more_runfiles)
     elif bootstrap_output:
-        _create_stage1_bootstrap(
+        more_runfiles = _create_stage1_bootstrap(
             ctx,
             output = bootstrap_output,
             stage2_bootstrap = stage2_bootstrap,
@@ -445,6 +449,7 @@ def _create_executable(
             main_py = main_py,
             venv = venv,
         )
+        extra_runfiles = extra_runfiles.merge(more_runfiles)
     else:
         # Otherwise, this should be the Windows case of launcher + zip.
         # Double check this just to make sure.
@@ -796,6 +801,7 @@ def _create_stage1_bootstrap(
         is_for_zip,
         runtime_details,
         venv = None):
+    extra_runfiles = ctx.runfiles()
     runtime = runtime_details.effective_runtime
 
     if venv:
@@ -833,9 +839,10 @@ def _create_stage1_bootstrap(
         )
         template = runtime.bootstrap_template
         subs["%shebang%"] = runtime.stub_shebang
-    elif not ctx.files.srcs:
-        fail("mandatory 'srcs' files have not been provided")
     else:
+        if not ctx.files.srcs and not ctx.attr.main_module:
+            fail("mandatory 'srcs' files have not been provided")
+
         if (ctx.configuration.coverage_enabled and
             runtime and
             runtime.coverage_tool):
@@ -855,6 +862,20 @@ def _create_stage1_bootstrap(
         subs["%coverage_tool%"] = coverage_tool_runfiles_path
         subs["%import_all%"] = ("True" if ctx.fragments.bazel_py.python_import_all_repositories else "False")
         subs["%imports%"] = ":".join(imports.to_list())
+
+        if ctx.attr.main_module:
+            main_module_entrypoint = ctx.actions.declare_file("main_module_entrypoint.py")
+            ctx.actions.expand_template(
+                template = ctx.file._main_module_entrypoint_template,
+                output = main_module_entrypoint,
+                substitutions = {"%main_module%": ctx.attr.main_module},
+            )
+            main_py = main_module_entrypoint
+            extra_runfiles = extra_runfiles.merge(ctx.runfiles([main_module_entrypoint]))
+        elif not main_py:
+            # shouldn't happen
+            fail("Neither main nor main_module was provided")
+
         subs["%main%"] = "{}/{}".format(ctx.workspace_name, main_py.short_path)
 
     ctx.actions.expand_template(
@@ -862,6 +883,8 @@ def _create_stage1_bootstrap(
         output = output,
         substitutions = subs,
     )
+
+    return extra_runfiles
 
 def _create_windows_exe_launcher(
         ctx,
@@ -985,7 +1008,7 @@ def _create_executable_zip_file(
         sibling = output,
     )
     if stage2_bootstrap:
-        _create_stage1_bootstrap(
+        extra_runfiles = _create_stage1_bootstrap(
             ctx,
             output = prelude,
             stage2_bootstrap = stage2_bootstrap,
@@ -994,6 +1017,7 @@ def _create_executable_zip_file(
             venv = venv,
         )
     else:
+        extra_runfiles = ctx.runfiles()
         ctx.actions.write(prelude, "#!/usr/bin/env python3\n")
 
     ctx.actions.run_shell(
@@ -1008,6 +1032,8 @@ def _create_executable_zip_file(
         mnemonic = "PyBuildExecutableZip",
         progress_message = "Build Python zip executable: %{label}",
     )
+
+    return extra_runfiles
 
 def _get_cc_details_for_binary(ctx, extra_deps):
     cc_info = collect_cc_info(ctx, extra_deps = extra_deps)
