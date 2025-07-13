@@ -911,6 +911,16 @@ The items in this list can contain a single `*` character that is equivalent to 
 We select a single wheel and the last match will take precedence.
 :::
 
+:::{note}
+The following tag prefixes should be used instead of the legacy equivalents:
+* `manylinux_2_5` instead of `manylinux1`
+* `manylinux_2_12` instead of `manylinux2010`
+* `manylinux_2_17` instead of `manylinux2014`
+
+When parsing the whl filenames `rules_python` will automatically transform wheel filenames to the
+latest format.
+:::
+
 :::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#platform-tag) for more information.
 :::
