@@ -171,8 +171,8 @@ pip.default(
     },
     os_name = "windows",
     platform = "windows_aarch64",
-    platform_tags = ["win_amd64"],
-    want_abis = [],  # default to all ABIs
+    whl_abi_tags = [],  # default to all ABIs
+    whl_platform_tags = ["win_amd64"],
 )
 
 # To fetch pip dependencies, use pip.parse. We can pass in various options,

@@ -37,6 +37,12 @@ to be perfectly factored and not every common thing a test does needs to be
 factored into a more generally reusable piece. Copying and pasting is fine. It's
 more important for tests to balance understandability and maintainability.
 
+### Test utilities
+
+General code to support testing is in {gh-path}`tests/support`. It has a variety
+of functions, constants, rules etc, to make testing easier. Below are some
+common utilities that are frequently used.
+
 ### sh_py_run_test
 
 The {gh-path}`sh_py_run_test <tests/support/sh_py_run_test.bzl` rule is a helper to
@@ -67,6 +73,12 @@ the rule. To have it support setting a new flag:
 * Modify the transition and add the flag to both the inputs and outputs
   list, then modify the transition's logic to check the attribute and set
   the flag value if the attribute is set.
+
+### whl_from_dir_repo
+
+The `whl_from_dir_repo` repository rule in {gh-path}`tests/support/whl_from_dir`
+takes a directory tree and turns it into a `.whl` file. This can be used to
+create arbitrary whl files to verify functionality.
 
 ### Integration tests
 

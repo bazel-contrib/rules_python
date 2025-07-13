@@ -78,24 +78,18 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         marker = "python_version ~= \"3.13\"" if freethreaded else "",
         os_name = "linux",
         platform = "linux_{}{}".format(cpu, freethreaded),
-        platform_tags = [
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = [
             "linux_*_{}".format(cpu),
             "manylinux_*_{}".format(cpu),
         ],
-        want_abis = [
-            "cp{0}{1}t",
-            "none",
-        ] if freethreaded else [],
     )
     for cpu in [
         "x86_64",
         "aarch64",
-        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
-        # `pip.default` extension. i.e. drop the below values - users will have to
-        # define themselves if they need them.
-        "arm",
-        "ppc",
-        "s390x",
     ]
     for freethreaded in [
         "",
@@ -119,14 +113,14 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         marker = "python_version ~= \"3.13\"" if freethreaded else "",
         os_name = "osx",
         platform = "osx_{}{}".format(cpu, freethreaded),
-        platform_tags = [
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = [
             "macosx_*_{}".format(suffix)
             for suffix in platform_tag_cpus
         ],
-        want_abis = [
-            "cp{0}{1}t",
-            "none",
-        ] if freethreaded else [],
     )
     for cpu, platform_tag_cpus in {
         "aarch64": [
@@ -146,9 +140,9 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
 
 [
     pip.default(
-        arch_name = "x86_64",
+        arch_name = cpu,
         config_settings = [
-            "@platforms//cpu:x86_64",
+            "@platforms//cpu:{}".format(cpu),
             "@platforms//os:windows",
             "//python/config_settings:_is_py_freethreaded_{}".format(
                 "yes" if freethreaded else "no",
@@ -157,13 +151,16 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         env = {"platform_version": "0"},
         marker = "python_version ~= \"3.13\"" if freethreaded else "",
         os_name = "windows",
-        platform = "windows_x86_64{}".format(freethreaded),
-        platform_tags = ["win_amd64"],
-        want_abis = [
-            "cp{0}{1}t",
-            "none",
-        ] if freethreaded else [],
+        platform = "windows_{}{}".format(cpu, freethreaded),
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = whl_platform_tags,
     )
+    for cpu, whl_platform_tags in {
+        "x86_64": ["win_amd64"],
+    }.items()
     for freethreaded in [
         "",
         "_freethreaded",
@@ -214,6 +211,8 @@ internal_dev_deps = use_extension(
 use_repo(
     internal_dev_deps,
     "buildkite_config",
+    "implicit_namespace_ns_sub1",
+    "implicit_namespace_ns_sub2",
     "rules_python_runtime_env_tc_info",
     "somepkg_with_build_files",
     "whl_with_build_files",
@@ -267,6 +266,7 @@ dev_pip = use_extension(
     dev_dependency = True,
 )
 dev_pip.parse(
+    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
     parallel_download = False,
@@ -274,12 +274,14 @@ dev_pip.parse(
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
+    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
     python_version = "3.13",
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
+    download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "pypiserver",
     python_version = "3.11",

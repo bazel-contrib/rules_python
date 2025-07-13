@@ -113,7 +113,6 @@ def go_deps():
         sum = "h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=",
         version = "v1.1.1",
     )
-
     go_repository(
         name = "com_github_emirpasic_gods",
         importpath = "github.com/emirpasic/gods",
@@ -175,18 +174,18 @@ def go_deps():
         sum = "h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=",
         version = "v1.0.0",
     )
-
     go_repository(
         name = "com_github_prometheus_client_model",
         importpath = "github.com/prometheus/client_model",
         sum = "h1:gQz4mCbXsO+nc9n1hCxHcGA3Zx3Eo+UHZoInFGUIXNM=",
         version = "v0.0.0-20190812154241-14fe0d1b01d4",
     )
-    go_repository(
-        name = "com_github_dougthor42_go_tree_sitter",
-        importpath = "github.com/dougthor42/go-tree-sitter",
-        sum = "h1:b9s96BulIARx0konX36sJ5oZhWvAvjQBBntxp1eUukQ=",
-        version = "v0.0.0-20241210060307-2737e1d0de6b",
+    http_archive(
+        name = "com_github_smacker_go_tree_sitter",
+        build_file = Label("//:internal/smacker_BUILD.bazel"),
+        integrity = "sha256-4AkDY4Rh5Auu9Kwzhj5XYSirMLlhmd6ClMWo/r0kmu4=",
+        strip_prefix = "go-tree-sitter-dd81d9e9be82a8cac96ed1d50c7389c5f1997c02",
+        url = "https://github.com/smacker/go-tree-sitter/archive/dd81d9e9be82a8cac96ed1d50c7389c5f1997c02.zip",
     )
     go_repository(
         name = "com_github_stretchr_objx",
