@@ -118,6 +118,29 @@ def _test_not_select_py2(env):
 
 _tests.append(_test_not_select_py2)
 
+def _test_not_select_abi3(env):
+    # Check we prefer platform specific wheels
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-any.whl",
+            # the following should be ignored
+            "pkg-0.0.1-py3-abi3-any.whl",
+            "pkg-0.0.1-py3-abi3-p1.p2.p2.whl",
+        ],
+        platforms = ["any", "p1"],
+        whl_abi_tags = ["none"],
+        python_version = "3.13",
+        limit = 2,
+        debug = True,
+    )
+    _match(
+        env,
+        got,
+        "pkg-0.0.1-py3-none-any.whl",
+    )
+
+_tests.append(_test_not_select_abi3)
+
 def _test_select_cp312(env):
     # Check we prefer platform specific wheels
     got = _select_whl(
@@ -346,6 +369,28 @@ def _test_pytags_all_possible(env):
     )
 
 _tests.append(_test_pytags_all_possible)
+
+def _test_manylinx_musllinux_pref(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-manylinux_2_31_x86_64.musllinux_1_1_x86_64.whl",
+        ],
+        platforms = [
+            "manylinux_*_x86_64",
+            "musllinux_*_x86_64",
+        ],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        # there is only wheel, just select that
+        "pkg-0.0.1-py3-none-manylinux_2_31_x86_64.musllinux_1_1_x86_64.whl",
+    )
+
+_tests.append(_test_manylinx_musllinux_pref)
 
 def select_whl_test_suite(name):
     """Create the test suite.
