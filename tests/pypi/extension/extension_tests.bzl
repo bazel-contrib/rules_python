@@ -65,9 +65,9 @@ def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_roo
                         "@platforms//os:{}".format(os),
                         "@platforms//cpu:{}".format(cpu),
                     ],
-                    platform_tags = platform_tags,
+                    whl_platform_tags = whl_platform_tags,
                 )
-                for (os, cpu), platform_tags in {
+                for (os, cpu), whl_platform_tags in {
                     ("linux", "x86_64"): ["linux_*_x86_64", "manylinux_*_x86_64"],
                     ("linux", "aarch64"): ["linux_*_aarch64", "manylinux_*_aarch64"],
                     ("osx", "aarch64"): ["macosx_*_arm64"],
@@ -99,17 +99,17 @@ def _default(
         config_settings = None,
         os_name = None,
         platform = None,
-        platform_tags = None,
+        whl_platform_tags = None,
         env = None,
-        want_abis = None):
+        whl_abi_tags = None):
     return struct(
         arch_name = arch_name,
         os_name = os_name,
         platform = platform,
-        platform_tags = platform_tags or [],
+        whl_platform_tags = whl_platform_tags or [],
         config_settings = config_settings,
         env = env or {},
-        want_abis = want_abis or [],
+        whl_abi_tags = whl_abi_tags or [],
     )
 
 def _parse(
@@ -407,19 +407,21 @@ def _test_torch_experimental_index_url(env):
                             "@platforms//os:{}".format(os),
                             "@platforms//cpu:{}".format(cpu),
                         ],
-                        platform_tags = platform_tags,
+                        whl_platform_tags = whl_platform_tags,
                     )
-                    for (os, cpu), platform_tags in {
+                    for (os, cpu), whl_platform_tags in {
                         ("linux", "x86_64"): ["linux_*_x86_64", "manylinux_*_x86_64"],
                         ("linux", "aarch64"): ["linux_*_aarch64", "manylinux_*_aarch64"],
                         ("osx", "aarch64"): ["macosx_*_arm64"],
                         ("windows", "x86_64"): ["win_amd64"],
+                        ("windows", "aarch64"): ["win_arm64"],  # this should be ignored
                     }.items()
                 ],
                 parse = [
                     _parse(
                         hub_name = "pypi",
                         python_version = "3.12",
+                        download_only = True,
                         experimental_index_url = "https://torch.index",
                         requirements_lock = "universal.txt",
                     ),

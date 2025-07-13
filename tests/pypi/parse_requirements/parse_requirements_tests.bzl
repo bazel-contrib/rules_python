@@ -17,7 +17,6 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:parse_requirements.bzl", "parse_requirements", "select_requirement")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:pep508_platform.bzl", "platform_from_str")  # buildifier: disable=bzl-visibility
 
 def _mock_ctx():
     testdata = {
@@ -526,14 +525,22 @@ def _test_overlapping_shas_with_index_results(env):
         },
         platforms = {
             "cp39_linux_x86_64": struct(
-                platform_tags = ["any"],
-                env = pep508_env(platform_from_str("cp39_linux_x86_64", "")),
-                want_abis = ["none"],
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
             ),
             "cp39_osx_x86_64": struct(
-                platform_tags = ["macosx_*"],
-                env = pep508_env(platform_from_str("cp39_linux_x86_64", "")),
-                want_abis = ["none"],
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "osx",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["macosx_*"],
             ),
         },
         get_index_urls = lambda _, __: {

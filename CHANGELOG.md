@@ -67,6 +67,12 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.14.0b3
 * (toolchain) Python 3.13 now references 3.13.5
+* (gazelle) Switched back to smacker/go-tree-sitter, fixing
+  [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
+* (pypi) From now on the list of default platforms only includes `linux_x86_64`, `linux_aarch64`,
+  `osx_x86_64`, `osx_aarch64` and `windows_x86_64`. If you are on other platforms, you need to
+  use the `pip.default` to configure it yourself. If you are interested in graduating the
+  platform, consider helping set us up CI for them and update the documentation.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -84,12 +90,20 @@ END_UNRELEASED_TEMPLATE
   ({gh-issue}`3043`).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* (pypi) The selection of the whls has been changed and should no longer result
+  in ambiguous select matches ({gh-issue}`2759`) and should be much more efficient
+  when running `bazel query` due to fewer repositories being included 
+  ({gh-issue}`2849`).
 
 {#v0-0-0-added}
 ### Added
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
   this feature. You can also configure custom `config_settings` using `pip.default`.
+* (pypi) PyPI dependencies now expose an `:extracted_whl_files` filegroup target
+  of all the files extracted from the wheel. This can be used in lieu of
+  {obj}`whl_filegroup` to avoid copying/extracting wheel multiple times to
+  get a subset of their files.
 * (gazelle) New directive `gazelle:python_generate_pyi_deps`; when `true`,
   dependencies added to satisfy type-only imports (`if TYPE_CHECKING`) and type
   stub packages are added to `pyi_deps` instead of `deps`.

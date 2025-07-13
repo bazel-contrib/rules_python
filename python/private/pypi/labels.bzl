@@ -14,6 +14,7 @@
 
 """Constants used by parts of pip_repository for naming libraries and wheels."""
 
+EXTRACTED_WHEEL_FILES = "extracted_whl_files"
 WHEEL_FILE_PUBLIC_LABEL = "whl"
 WHEEL_FILE_IMPL_LABEL = "_whl"
 PY_LIBRARY_PUBLIC_LABEL = "pkg"

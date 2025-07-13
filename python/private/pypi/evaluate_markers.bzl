@@ -45,7 +45,7 @@ def evaluate_markers(*, requirements, platforms):
         for platform_str in platform_strings:
             plat = platforms.get(platform_str)
             if not plat:
-                continue
+                fail("Please define platform: '{}'".format(platform_str))
 
             if evaluate(req.marker, env = plat.env):
                 ret.setdefault(req_string, []).append(platform_str)
