@@ -692,7 +692,7 @@ class RunfilesTest(unittest.TestCase):
             expected = ""
         else:
             expected = "rules_python"
-        r = runfiles.Create({"RUNFILES_DIR": "whatever"})
+        r = runfiles.Create()
         assert r is not None  # mypy doesn't understand the unittest api.
         self.assertEqual(r.CurrentRepository(), expected)
 

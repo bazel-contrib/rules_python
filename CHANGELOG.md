@@ -253,6 +253,10 @@ END_UNRELEASED_TEMPLATE
   package targeting different target platforms.
   ([#2797](https://github.com/bazel-contrib/rules_python/issues/2797)).
 * (py_wheel) Add directories in deterministic order.
+* (runfiles) Fix incorrect Python runfiles path assumption - the existing
+  implementation assumes that it is always four levels below the runfiles
+  directory, leading to incorrect path checks
+  ([#3085](https://github.com/bazel-contrib/rules_python/issues/3085)).
 
 {#v1-6-0-added}
 ### Added
