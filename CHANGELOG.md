@@ -105,6 +105,7 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.13.5
     * 3.14.0b3
+* (rules) {obj}`main_module` now works without needing to set {obj}`--bootstrap_impl=script`
 
 {#v0-0-0-removed}
 ### Removed
