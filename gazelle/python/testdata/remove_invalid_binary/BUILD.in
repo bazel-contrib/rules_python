@@ -1,0 +1,7 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "remove_invalid_binary",
+    srcs = ["__main__.py"],
+    visibility = ["//:__subpackages__"],
+)
