@@ -141,6 +141,7 @@ func testPath(t *testing.T, gazellePath, name string, files []bazel.RunfileEntry
 				if err != nil {
 					return err
 				}
+				t.Logf("%q exists", strings.TrimPrefix(path, testdataDir))
 				return nil
 			})
 		})
