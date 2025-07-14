@@ -19,6 +19,7 @@
 # rules_testing or as config_setting values, which don't support Label in some
 # places.
 
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
 MAC = Label("//tests/support:mac")
@@ -48,3 +49,8 @@ SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
 }) if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"]
+
+SUPPORTS_BZLMOD_UNIXY = select({
+    "@platforms//os:windows": ["@platforms//:incompatible"],
+    "//conditions:default": [],
+}) if BZLMOD_ENABLED else ["@platforms//:incompatible"]

@@ -71,14 +71,15 @@ if [ -e "$self_dir/pyvenv.cfg" ] || [ -e "$self_dir/../pyvenv.cfg" ]; then
   if [ ! -e "$PYTHON_BIN" ]; then
     die "ERROR: Python interpreter does not exist: $PYTHON_BIN"
   fi
-  # PYTHONEXECUTABLE is also used because `exec -a` doesn't fully trick the
-  # pyenv wrappers.
+  # PYTHONEXECUTABLE is also used because switching argv0 doesn't fully trick
+  # the pyenv wrappers.
   # NOTE: The PYTHONEXECUTABLE envvar only works for non-Mac starting in Python 3.11
   export PYTHONEXECUTABLE="$venv_bin"
-  # Python looks at argv[0] to determine sys.executable, so use exec -a
-  # to make it think it's the venv's binary, not the actual one invoked.
-  # NOTE: exec -a isn't strictly posix-compatible, but very widespread
-  exec -a "$venv_bin" "$PYTHON_BIN" "$@"
+  # Python looks at argv[0] to determine sys.executable, so set that to the venv
+  # binary, not the actual one invoked.
+  # NOTE: exec -a would be simpler, but isn't posix-compatible, and dash shell
+  # (Ubuntu/debian default) doesn't support it; see #3009.
+  exec sh -c "$PYTHON_BIN \$@" "$venv_bin" "$@"
 else
   exec "$PYTHON_BIN" "$@"
 fi

@@ -41,10 +41,10 @@ wrappers around the keyword arguments eventually passed to the `rule()`
 function. These builder APIs give access to the _entire_ rule definition and
 allow arbitrary modifications.
 
-This is level of control is powerful, but also volatile. A rule definition
+This level of control is powerful but also volatile. A rule definition
 contains many details that _must_ change as the implementation changes. What
 is more or less likely to change isn't known in advance, but some general
-rules are:
+rules of thumb are:
 
 * Additive behavior to public attributes will be less prone to breaking.
 * Internal attributes that directly support a public attribute are likely
@@ -55,7 +55,7 @@ rules are:
 
 ## Example: validating a source file
 
-In this example, we derive from `py_library` a custom rule that verifies source
+In this example, we derive a custom rule from `py_library` that verifies source
 code contains the word "snakes". It does this by:
 
 * Adding an implicit dependency on a checker program
@@ -111,7 +111,7 @@ has_snakes_library = create_has_snakes_rule()
 
 ## Example: adding transitions
 
-In this example, we derive from `py_binary` to force building for a particular
+In this example, we derive a custom rule from `py_binary` to force building for a particular
 platform. We do this by:
 
 * Adding an additional output to the rule's cfg
@@ -136,8 +136,8 @@ def create_rule():
     r.cfg.add_output("//command_line_option:platforms")
     return r.build()
 
-py_linux_binary = create_linux_binary_rule()
+py_linux_binary = create_rule()
 ```
 
-Users can then use `py_linux_binary` the same as a regular py_binary. It will
+Users can then use `py_linux_binary` the same as a regular `py_binary`. It will
 act as if `--platforms=//my/platforms:linux` was specified when building it.

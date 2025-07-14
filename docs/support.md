@@ -8,7 +8,7 @@ page for information on our development workflow.
 ## Supported rules_python Versions
 
 In general, only the latest version is supported. Backporting changes is
-done on a best effort basis based on severity, risk of regressions, and
+done on a best-effort basis based on severity, risk of regressions, and
 the willingness of volunteers.
 
 If you want or need particular functionality backported, then the best way
@@ -33,24 +33,24 @@ for what versions are the rolling, active, and prior releases.
 
 ## Supported Python versions
 
-As a general rule we test all released non-EOL Python versions. Different
+As a general rule, we test all released non-EOL Python versions. Different
 interpreter versions may work but are not guaranteed. We are interested in
 staying compatible with upcoming unreleased versions, so if you see that things
 stop working, please create tickets or, more preferably, pull requests.
 
 ## Supported Platforms
 
-We only support the platforms that our continuous integration jobs run, which
-is Linux, Mac, and Windows.
+We only support the platforms that our continuous integration jobs run on, which
+are Linux, Mac, and Windows.
 
-In order to better describe different support levels, the below acts as a rough
+In order to better describe different support levels, the following acts as a rough
 guideline for different platform tiers:
-* Tier 0 - The platforms that our CI runs: `linux_x86_64`, `osx_x86_64`, `RBE linux_x86_64`.
-* Tier 1 - The platforms that are similar enough to what the CI runs: `linux_aarch64`, `osx_arm64`.
-  What is more, `windows_x86_64` is in this list as we run tests in CI but
-  developing for Windows is more challenging and features may come later to
+* Tier 0 - The platforms that our CI runs on: `linux_x86_64`, `osx_x86_64`, `RBE linux_x86_64`.
+* Tier 1 - The platforms that are similar enough to what the CI runs on: `linux_aarch64`, `osx_arm64`.
+  What is more, `windows_x86_64` is in this list, as we run tests in CI, but
+  developing for Windows is more challenging, and features may come later to
   this platform.
-* Tier 2 - The rest of the platforms that may have varying level of support, e.g.
+* Tier 2 - The rest of the platforms that may have a varying level of support, e.g.,
   `linux_s390x`, `linux_ppc64le`, `windows_arm64`.
 
 :::{note}
@@ -75,7 +75,7 @@ a series of releases to so users can still incrementally upgrade. See the
 
 ## Experimental Features
 
-An experimental features is functionality that may not be ready for general
+An experimental feature is functionality that may not be ready for general
 use and may change quickly and/or significantly. Such features are denoted in
 their name or API docs as "experimental". They may have breaking changes made at
 any time.

@@ -143,7 +143,7 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
     )
     native.config_setting(
         name = "_is_py_linux_libc_musl",
-        flag_values = {libc: "glibc"},
+        flag_values = {libc: "musl"},
         visibility = _NOT_ACTUALLY_PUBLIC,
     )
     freethreaded = Label("//python/config_settings:py_freethreaded")

@@ -79,6 +79,7 @@ load(
     ":labels.bzl",
     "DATA_LABEL",
     "DIST_INFO_LABEL",
+    "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "WHEEL_FILE_IMPL_LABEL",
@@ -151,6 +152,7 @@ def pkg_aliases(
         WHEEL_FILE_PUBLIC_LABEL: WHEEL_FILE_IMPL_LABEL if group_name else WHEEL_FILE_PUBLIC_LABEL,
         DATA_LABEL: DATA_LABEL,
         DIST_INFO_LABEL: DIST_INFO_LABEL,
+        EXTRACTED_WHEEL_FILES: EXTRACTED_WHEEL_FILES,
     } | {
         x: x
         for x in extra_aliases or []

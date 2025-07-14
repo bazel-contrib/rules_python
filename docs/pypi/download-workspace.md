@@ -3,7 +3,7 @@
 
 # Download (WORKSPACE)
 
-This documentation page covers how to download the PyPI dependencies in the legacy `WORKSPACE` setup.
+This documentation page covers how to download PyPI dependencies in the legacy `WORKSPACE` setup.
 
 To add pip dependencies to your `WORKSPACE`, load the `pip_parse` function and
 call it to create the central external repo and individual wheel external repos.
@@ -27,7 +27,7 @@ install_deps()
 
 ## Interpreter selection
 
-Note that pip parse runs before the Bazel before decides which Python toolchain to use, it cannot
+Note that because `pip_parse` runs before Bazel decides which Python toolchain to use, it cannot
 enforce that the interpreter used to invoke `pip` matches the interpreter used to run `py_binary`
 targets. By default, `pip_parse` uses the system command `"python3"`. To override this, pass in the
 {attr}`pip_parse.python_interpreter` attribute or {attr}`pip_parse.python_interpreter_target`.
@@ -44,9 +44,9 @@ your system `python` interpreter), you can force it to re-execute by running
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
 
-In some cases you may need to use different requirements files for different OS, Arch combinations.
+In some cases, you may need to use different requirements files for different OS and architecture combinations.
 This is enabled via the {attr}`pip_parse.requirements_by_platform` attribute. The keys of the
-dictionary are labels to the file and the values are a list of comma separated target (os, arch)
+dictionary are labels to the file, and the values are a list of comma-separated target (os, arch)
 tuples.
 
 For example:
@@ -63,8 +63,8 @@ For example:
     requirements_lock = "requirements_lock.txt",
 ```
 
-In case of duplicate platforms, `rules_python` will raise an error as there has
-to be unambiguous mapping of the requirement files to the (os, arch) tuples.
+In case of duplicate platforms, `rules_python` will raise an error, as there has
+to be an unambiguous mapping of the requirement files to the (os, arch) tuples.
 
 An alternative way is to use per-OS requirement attributes.
 ```starlark
