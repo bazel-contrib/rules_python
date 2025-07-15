@@ -28,6 +28,7 @@ def print_toolchains_checksums(name):
     template = """\
 cat > "$@" <<'EOF'
 #!/bin/bash
+set -euo pipefail
 
 set -o errexit -o nounset -o pipefail
 
@@ -54,28 +55,9 @@ EOF
 
 def _commands_for_version(*, python_version, metadata):
     lines = []
-    lines += [
-        "cat <<EOB",  # end of block
-        "    \"{python_version}\": {{".format(python_version = python_version),
-        "        \"url\": \"{url}\",".format(url = metadata["url"]),
-        "        \"sha256\": {",
-    ]
-
-    for platform in metadata["sha256"].keys():
-        for release_url in get_release_info(platform, python_version)[1]:
-            # Do lines one by one so that the progress is seen better and use cat for ease of quotation
-            lines += [
-                "EOB",
-                "cat <<EOB",
-                "            \"{platform}\": \"$$({get_sha256})\",".format(
-                    platform = platform,
-                    get_sha256 = "curl --silent --show-error --location --fail {release_url_sha256}".format(
-                        release_url = release_url,
-                        release_url_sha256 = release_url + ".sha256",
-                    ),
-                ),
-            ]
-
+    first_platform = metadata["sha256"].keys()[0]
+    root, _, _ = get_release_info(first_platform, python_version)[1][0].rpartition("/")
+    sha_url = "{}/{}".format(root, "SHA256SUMS")
     prefix = metadata["strip_prefix"]
     prefix = render.indent(
         render.dict(prefix) if type(prefix) == type({}) else repr(prefix),
@@ -83,6 +65,21 @@ def _commands_for_version(*, python_version, metadata):
     ).lstrip()
 
     lines += [
+        "sha256s=$$(curl --silent --show-error --location --fail {})".format(sha_url),
+        "cat <<EOB",
+        "    \"{python_version}\": {{".format(python_version = python_version),
+        "        \"url\": \"{url}\",".format(url = metadata["url"]),
+        "        \"sha256\": {",
+    ] + [
+        "            \"{platform}\": \"$$({get_sha256})\",".format(
+            platform = platform,
+            get_sha256 = "echo \"$$sha256s\" | (grep {} || echo ) | awk '{{print $$1}}'".format(
+                release_url.rpartition("/")[-1],
+            ),
+        )
+        for platform in metadata["sha256"].keys()
+        for release_url in get_release_info(platform, python_version)[1]
+    ] + [
         "        },",
         "        \"strip_prefix\": {strip_prefix},".format(strip_prefix = prefix),
         "    },",

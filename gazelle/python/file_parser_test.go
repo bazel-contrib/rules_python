@@ -291,3 +291,95 @@ def example_function():
 		}
 	}
 }
+
+func TestParseImportStatements_MultilineWithBackslashAndWhitespace(t *testing.T) {
+	t.Parallel()
+	t.Run("multiline from import", func(t *testing.T) {
+		p := NewFileParser()
+		code := []byte(`from foo.bar.\
+    baz import (
+    Something,
+    AnotherThing
+)
+
+from foo\
+	.test import (
+    Foo,
+    Bar
+)
+`)
+		p.SetCodeAndFile(code, "", "test.py")
+		output, err := p.Parse(context.Background())
+		assert.NoError(t, err)
+		// Updated expected to match parser output
+		expected := []Module{
+			{
+				Name:       "foo.bar.baz.Something",
+				LineNumber: 3,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+			{
+				Name:       "foo.bar.baz.AnotherThing",
+				LineNumber: 4,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+			{
+				Name:       "foo.test.Foo",
+				LineNumber: 9,
+				Filepath:   "test.py",
+				From:       "foo.test",
+			},
+			{
+				Name:       "foo.test.Bar",
+				LineNumber: 10,
+				Filepath:   "test.py",
+				From:       "foo.test",
+			},
+		}
+		assert.ElementsMatch(t, expected, output.Modules)
+	})
+	t.Run("multiline import", func(t *testing.T) {
+		p := NewFileParser()
+		code := []byte(`import foo.bar.\
+    baz
+`)
+		p.SetCodeAndFile(code, "", "test.py")
+		output, err := p.Parse(context.Background())
+		assert.NoError(t, err)
+		// Updated expected to match parser output
+		expected := []Module{
+			{
+				Name:       "foo.bar.baz",
+				LineNumber: 1,
+				Filepath:   "test.py",
+				From:       "",
+			},
+		}
+		assert.ElementsMatch(t, expected, output.Modules)
+	})
+	t.Run("windows line endings", func(t *testing.T) {
+		p := NewFileParser()
+		code := []byte("from foo.bar.\r\n baz import (\r\n    Something,\r\n    AnotherThing\r\n)\r\n")
+		p.SetCodeAndFile(code, "", "test.py")
+		output, err := p.Parse(context.Background())
+		assert.NoError(t, err)
+		// Updated expected to match parser output
+		expected := []Module{
+			{
+				Name:       "foo.bar.baz.Something",
+				LineNumber: 3,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+			{
+				Name:       "foo.bar.baz.AnotherThing",
+				LineNumber: 4,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+		}
+		assert.ElementsMatch(t, expected, output.Modules)
+	})
+}

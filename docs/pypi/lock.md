@@ -5,6 +5,8 @@
 
 :::{note}
 Currently `rules_python` only supports `requirements.txt` format.
+
+#{gh-issue}`2787` tracks `pylock.toml` support.
 :::
 
 ## requirements.txt
@@ -37,10 +39,32 @@ This rule generates two targets:
 Once you generate this fully specified list of requirements, you can install the requirements ([bzlmod](./download)/[WORKSPACE](./download-workspace)).
 
 :::{warning}
-If you're specifying dependencies in `pyproject.toml`, make sure to include the `[build-system]` configuration, with pinned dependencies. `compile_pip_requirements` will use the build system specified to read your project's metadata, and you might see non-hermetic behavior if you don't pin the build system.
+If you're specifying dependencies in `pyproject.toml`, make sure to include the
+`[build-system]` configuration, with pinned dependencies.
+`compile_pip_requirements` will use the build system specified to read your
+project's metadata, and you might see non-hermetic behavior if you don't pin the
+build system.
 
-Not specifying `[build-system]` at all will result in using a default `[build-system]` configuration, which uses unpinned versions ([ref](https://peps.python.org/pep-0518/#build-system-table)).
+Not specifying `[build-system]` at all will result in using a default
+`[build-system]` configuration, which uses unpinned versions
+([ref](https://peps.python.org/pep-0518/#build-system-table)).
 :::
+
+
+#### pip compile Dependency groups
+
+pip-compile doesn't yet support pyproject.toml dependency groups. Follow
+[pip-tools #2062](https://github.com/jazzband/pip-tools/issues/2062)
+to see the status of their support.
+
+In the meantime, support can be emulated by passing multiple files to `srcs`:
+
+```starlark
+compile_pip_requirements(
+    srcs = ["pyproject.toml", "requirements-dev.in"]
+    ...
+)
+```
 
 ### uv pip compile (bzlmod only)
 

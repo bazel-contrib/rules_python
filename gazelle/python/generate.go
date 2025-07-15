@@ -226,6 +226,10 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	var result language.GenerateResult
 	result.Gen = make([]*rule.Rule, 0)
 
+	if cfg.GenerateProto() {
+		generateProtoLibraries(args, pythonProjectRoot, visibility, &result)
+	}
+
 	collisionErrors := singlylinkedlist.New()
 
 	appendPyLibrary := func(srcs *treeset.Set, pyLibraryTargetName string) {
@@ -260,7 +264,9 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					addSrc(filename).
 					addModuleDependencies(mainModules[filename]).
 					addResolvedDependencies(annotations.includeDeps).
-					generateImportsAttribute().build()
+					generateImportsAttribute().
+					setAnnotations(*annotations).
+					build()
 				result.Gen = append(result.Gen, pyBinary)
 				result.Imports = append(result.Imports, pyBinary.PrivateAttr(config.GazelleImportsKey))
 			}
@@ -301,6 +307,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addModuleDependencies(allDeps).
 			addResolvedDependencies(annotations.includeDeps).
 			generateImportsAttribute().
+			setAnnotations(*annotations).
 			build()
 
 		if pyLibrary.IsEmpty(py.Kinds()[pyLibrary.Kind()]) {
@@ -353,6 +360,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrc(pyBinaryEntrypointFilename).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			setAnnotations(*annotations).
 			generateImportsAttribute()
 
 		pyBinary := pyBinaryTarget.build()
@@ -383,6 +391,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrc(conftestFilename).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			setAnnotations(*annotations).
 			addVisibility(visibility).
 			setTestonly().
 			generateImportsAttribute()
@@ -414,6 +423,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrcs(srcs).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			setAnnotations(*annotations).
 			generateImportsAttribute()
 	}
 	if (!cfg.PerPackageGenerationRequireTestEntryPoint() || hasPyTestEntryPointFile || hasPyTestEntryPointTarget || cfg.CoarseGrainedGeneration()) && !cfg.PerFileGeneration() {
@@ -466,7 +476,14 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	for _, pyTestTarget := range pyTestTargets {
 		if conftest != nil {
-			pyTestTarget.addModuleDependency(Module{Name: strings.TrimSuffix(conftestFilename, ".py")})
+			conftestModule := Module{Name: strings.TrimSuffix(conftestFilename, ".py")}
+			if pyTestTarget.annotations.includePytestConftest == nil {
+				// unset; default behavior
+				pyTestTarget.addModuleDependency(conftestModule)
+			} else if *pyTestTarget.annotations.includePytestConftest {
+				// set; add if true, do not add if false
+				pyTestTarget.addModuleDependency(conftestModule)
+			}
 		}
 		pyTest := pyTestTarget.build()
 
@@ -550,4 +567,52 @@ func ensureNoCollision(file *rule.File, targetName, kind string) error {
 		}
 	}
 	return nil
+}
+
+func generateProtoLibraries(args language.GenerateArgs, pythonProjectRoot string, visibility []string, res *language.GenerateResult) {
+	// First, enumerate all the proto_library in this package.
+	var protoRuleNames []string
+	for _, r := range args.OtherGen {
+		if r.Kind() != "proto_library" {
+			continue
+		}
+		protoRuleNames = append(protoRuleNames, r.Name())
+	}
+	sort.Strings(protoRuleNames)
+
+	// Next, enumerate all the pre-existing py_proto_library in this package, so we can delete unnecessary rules later.
+	pyProtoRules := map[string]bool{}
+	if args.File != nil {
+		for _, r := range args.File.Rules {
+			if r.Kind() == "py_proto_library" {
+				pyProtoRules[r.Name()] = false
+			}
+		}
+	}
+
+	emptySiblings := treeset.Set{}
+	// Generate a py_proto_library for each proto_library.
+	for _, protoRuleName := range protoRuleNames {
+		pyProtoLibraryName := strings.TrimSuffix(protoRuleName, "_proto") + "_py_pb2"
+		pyProtoLibrary := newTargetBuilder(pyProtoLibraryKind, pyProtoLibraryName, pythonProjectRoot, args.Rel, &emptySiblings).
+			addVisibility(visibility).
+			addResolvedDependency(":" + protoRuleName).
+			generateImportsAttribute().build()
+
+		res.Gen = append(res.Gen, pyProtoLibrary)
+		res.Imports = append(res.Imports, pyProtoLibrary.PrivateAttr(config.GazelleImportsKey))
+		pyProtoRules[pyProtoLibrary.Name()] = true
+
+	}
+
+	// Finally, emit an empty rule for each pre-existing py_proto_library that we didn't already generate.
+	for ruleName, generated := range pyProtoRules {
+		if generated {
+			continue
+		}
+
+		emptyRule := newTargetBuilder(pyProtoLibraryKind, ruleName, pythonProjectRoot, args.Rel, &emptySiblings).build()
+		res.Empty = append(res.Empty, emptyRule)
+	}
+
 }

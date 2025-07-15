@@ -40,7 +40,7 @@ def pip_compile(
         tags = None,
         constraints = [],
         **kwargs):
-    """Generates targets for managing pip dependencies with pip-compile.
+    """Generates targets for managing pip dependencies with pip-compile (piptools).
 
     By default this rules generates a filegroup named "[name]" which can be included in the data
     of some other compile_pip_requirements rule that references these requirements
@@ -65,7 +65,10 @@ def pip_compile(
             * a requirements text file, usually named `requirements.in`
             * A `.toml` file, where the `project.dependencies` list is used as per
               [PEP621](https://peps.python.org/pep-0621/).
-        extra_args: passed to pip-compile.
+        extra_args: passed to pip-compile (aka `piptools`). See the
+            [pip-compile docs](https://pip-tools.readthedocs.io/en/latest/cli/pip-compile)
+            for args and meaning (passing `-h` and/or `--version` can help
+            inform what args are available)
         extra_deps: extra dependencies passed to pip-compile.
         generate_hashes: whether to put hashes in the requirements_txt file.
         py_binary: the py_binary rule to be used.

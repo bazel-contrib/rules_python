@@ -91,20 +91,20 @@ tasks:
     <<: *common_workspace_flags_min_bazel
     <<: *minimum_supported_version
     name: "Gazelle: workspace, minimum supported Bazel version"
-    platform: ubuntu2004
+    platform: ubuntu2204
     build_targets: ["//..."]
     test_targets: ["//..."]
     working_directory: gazelle
   gazelle_extension_workspace:
     <<: *common_workspace_flags
     name: "Gazelle: workspace"
-    platform: ubuntu2004
+    platform: ubuntu2204
     build_targets: ["//..."]
     test_targets: ["//..."]
     working_directory: gazelle
   gazelle_extension:
     name: "Gazelle: default settings"
-    platform: ubuntu2004
+    platform: ubuntu2204
     build_targets: ["//..."]
     test_targets: ["//..."]
     working_directory: gazelle
@@ -114,28 +114,28 @@ tasks:
     <<: *reusable_config
     <<: *common_workspace_flags_min_bazel
     name: "Default: Ubuntu, workspace, minimum Bazel"
-    platform: ubuntu2004
+    platform: ubuntu2204
 
   ubuntu_min_bzlmod:
     <<: *minimum_supported_version
     <<: *reusable_config
     name: "Default: Ubuntu, bzlmod, minimum Bazel"
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: 7.x
   ubuntu:
     <<: *reusable_config
     name: "Default: Ubuntu"
-    platform: ubuntu2004
+    platform: ubuntu2204
   ubuntu_upcoming:
     <<: *reusable_config
     name: "Default: Ubuntu, upcoming Bazel"
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: last_rc
   ubuntu_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags
     name: "Default: Ubuntu, workspace"
-    platform: ubuntu2004
+    platform: ubuntu2204
   mac_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags
@@ -185,7 +185,7 @@ tasks:
     <<: *minimum_supported_version
     <<: *reusable_config
     name: "RBE: Ubuntu, minimum Bazel"
-    platform: rbe_ubuntu2004
+    platform: rbe_ubuntu2204
     build_flags:
       # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
       # which prevents cc toolchain autodetection from working correctly
@@ -203,7 +203,7 @@ tasks:
   rbe:
     <<: *reusable_config
     name: "RBE: Ubuntu"
-    platform: rbe_ubuntu2004
+    platform: rbe_ubuntu2204
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
     bazel: 7.x
@@ -217,13 +217,13 @@ tasks:
     <<: *common_workspace_flags_min_bazel
     name: "examples/build_file_generation: Ubuntu, workspace, minimum Bazel"
     working_directory: examples/build_file_generation
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_build_file_generation_ubuntu_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
     name: "examples/build_file_generation: Ubuntu, workspace"
     working_directory: examples/build_file_generation
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_build_file_generation_debian_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -249,21 +249,21 @@ tasks:
     coverage_targets: ["//:test"]
     name: "examples/bzlmod: Ubuntu, minimum Bazel"
     working_directory: examples/bzlmod
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: 7.x
   integration_test_bzlmod_ubuntu:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod
     name: "examples/bzlmod: Ubuntu"
     working_directory: examples/bzlmod
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: 7.x
   integration_test_bzlmod_ubuntu_upcoming:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod
     name: "examples/bzlmod: Ubuntu, upcoming Bazel"
     working_directory: examples/bzlmod
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: last_rc
   integration_test_bzlmod_debian:
     <<: *reusable_build_test_all
@@ -276,7 +276,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/bzlmod: bazel vendor"
     working_directory: examples/bzlmod
-    platform: ubuntu2004
+    platform: ubuntu2204
     shell_commands:
     - "bazel vendor --vendor_dir=./vendor //..."
     - "bazel build --vendor_dir=./vendor //..."
@@ -316,19 +316,19 @@ tasks:
     <<: *coverage_targets_example_bzlmod_build_file_generation
     name: "examples/bzlmod_build_file_generation: Ubuntu, minimum Bazel"
     working_directory: examples/bzlmod_build_file_generation
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: 7.x
   integration_test_bzlmod_generation_build_files_ubuntu:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod_build_file_generation
     name: "examples/bzlmod_build_file_generation: Ubuntu"
     working_directory: examples/bzlmod_build_file_generation
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_bzlmod_generation_build_files_ubuntu_run:
     <<: *reusable_build_test_all
     name: "examples/bzlmod_build_file_generation: Ubuntu, Gazelle and pip"
     working_directory: examples/bzlmod_build_file_generation
-    platform: ubuntu2004
+    platform: ubuntu2204
     shell_commands:
     - "bazel run //:gazelle_python_manifest.update"
     - "bazel run //:gazelle -- update"
@@ -357,7 +357,7 @@ tasks:
     <<: *coverage_targets_example_multi_python
     name: "examples/multi_python_versions: Ubuntu, workspace"
     working_directory: examples/multi_python_versions
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_multi_python_versions_debian_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -386,19 +386,19 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Ubuntu, workspace, minimum supported Bazel version"
     working_directory: examples/pip_parse
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_pip_parse_ubuntu_min_bzlmod:
     <<: *minimum_supported_version
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Ubuntu, bzlmod, minimum supported Bazel version"
     working_directory: examples/pip_parse
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: 7.x
   integration_test_pip_parse_ubuntu:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Ubuntu"
     working_directory: examples/pip_parse
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_pip_parse_debian:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Debian"
@@ -421,13 +421,13 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/pip_parse_vendored: Ubuntu, workspace, minimum Bazel"
     working_directory: examples/pip_parse_vendored
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_pip_parse_vendored_ubuntu:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
     name: "examples/pip_parse_vendored: Ubuntu"
     working_directory: examples/pip_parse_vendored
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_pip_parse_vendored_debian:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -450,7 +450,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/py_proto_library: Ubuntu, workspace"
     working_directory: examples/py_proto_library
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_py_proto_library_debian_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -475,7 +475,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_repository_annotations: Ubuntu, workspace"
     working_directory: examples/pip_repository_annotations
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_pip_repository_annotations_debian_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -498,7 +498,7 @@ tasks:
   integration_test_bazelinbazel_ubuntu:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Ubuntu"
-    platform: ubuntu2004
+    platform: ubuntu2204
   integration_test_bazelinbazel_debian:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Debian"
@@ -508,7 +508,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: Ubuntu"
     working_directory: tests/integration/compile_pip_requirements
-    platform: ubuntu2004
+    platform: ubuntu2204
     shell_commands:
     # Make a change to the locked requirements and then assert that //:requirements.update does the
     # right thing.
@@ -596,7 +596,7 @@ tasks:
     <<: *common_workspace_flags_min_bazel
     name: "compile_pip_requirements_test_from_external_repo: Ubuntu, workspace, minimum Bazel"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: ubuntu2004
+    platform: ubuntu2204
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."
@@ -604,7 +604,7 @@ tasks:
     <<: *minimum_supported_version
     name: "compile_pip_requirements_test_from_external_repo: Ubuntu, bzlmod, minimum Bazel"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: ubuntu2004
+    platform: ubuntu2204
     bazel: 7.x
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
@@ -612,7 +612,7 @@ tasks:
   integration_compile_pip_requirements_test_from_external_repo_ubuntu:
     name: "compile_pip_requirements_test_from_external_repo: Ubuntu"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: ubuntu2004
+    platform: ubuntu2204
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."
