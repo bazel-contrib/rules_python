@@ -69,6 +69,7 @@ END_UNRELEASED_TEMPLATE
 * (toolchain) Python 3.13 now references 3.13.5
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
+* (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -86,6 +87,7 @@ END_UNRELEASED_TEMPLATE
   ({gh-issue}`3043`).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 
 {#v0-0-0-added}
 ### Added
