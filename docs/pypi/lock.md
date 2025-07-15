@@ -6,7 +6,7 @@
 :::{note}
 Currently `rules_python` only supports `requirements.txt` format.
 
-#{gh-issue}`3088` tracks `pylock.toml` support.
+#{gh-issue}`2787` tracks `pylock.toml` support.
 :::
 
 ## requirements.txt
