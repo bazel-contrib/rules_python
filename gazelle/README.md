@@ -224,6 +224,8 @@ Python-specific directives are as follows:
 | Controls whether Gazelle resolves dependencies for import statements that use paths relative to the current package. Can be "true" or "false".|
 | `# gazelle:python_generate_pyi_deps`                                                                                                                                                                                                                                                            | `false` |
 | Controls whether to generate a separate `pyi_deps` attribute for type-checking dependencies or merge them into the regular `deps` attribute. When `false` (default), type-checking dependencies are merged into `deps` for backward compatibility. When `true`, generates separate `pyi_deps`. Imports in blocks with the format `if typing.TYPE_CHECKING:`/`if TYPE_CHECKING:` and type-only stub packages (eg. boto3-stubs) are recognized as type-checking dependencies. |
+| [`# gazelle:python_generate_proto`](#directive-python_generate_proto)                                                                                                                                                                                                                                                                | `false` |
+| Controls whether to generate a `py_proto_library` for each `proto_library` in the package. By default we load this rule from the `@protobuf` repository; use `gazelle:map_kind` if you need to load this from somewhere else. |
 
 #### Directive: `python_root`:
 
@@ -483,6 +485,41 @@ def py_test(name, main=None, **kwargs):
         **kwargs,
 )
 ```
+
+#### Directive: `python_generate_proto`:
+
+When `# gazelle:python_generate_proto true`, Gazelle will generate one
+`py_proto_library` for each `proto_library`, generating Python clients for
+protobuf in each package. By default this is turned off. Gazelle will also
+generate a load statement for the `py_proto_library` - attempting to detect
+the configured name for the `@protobuf` / `@com_google_protobuf` repo in your
+`MODULE.bazel`, and otherwise falling back to `@com_google_protobuf` for
+compatibility with `WORKSPACE`.
+
+For example, in a package with `# gazelle:python_generate_proto true` and a
+`foo.proto`, if you have both the proto extension and the Python extension
+loaded into Gazelle, you'll get something like:
+
+```starlark
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# gazelle:python_generate_proto true
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_proto_library(
+    name = "foo_py_pb2",
+    visibility = ["//:__subpackages__"],
+    deps = [":foo_proto"],
+)
+```
+
+When `false`, Gazelle will ignore any `py_proto_library`, including previously-generated or hand-created rules.
 
 ### Annotations
 

@@ -5,7 +5,7 @@ py_test(
     srcs = ["test.py"],
     main = "test.py",
     deps = [
-        "//example.com/proto:pricetag_proto_py_pb2",
+        "//example.com/proto:pricetag_py_pb2",
     ],
 )
 
@@ -13,6 +13,6 @@ py_test(
     name = "message_test",
     srcs = ["message_test.py"],
     deps = [
-        "//example.com/another_proto:message_proto_py_pb2",
+        "//example.com/another_proto:message_py_pb2",
     ],
 )

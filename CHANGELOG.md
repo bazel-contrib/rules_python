@@ -106,6 +106,8 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.13.5
     * 3.14.0b4
+* (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
+  Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
 
 {#v0-0-0-removed}
 ### Removed
