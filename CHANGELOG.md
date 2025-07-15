@@ -87,6 +87,7 @@ END_UNRELEASED_TEMPLATE
   ({gh-issue}`3043`).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 
 {#v0-0-0-added}
 ### Added
@@ -110,7 +111,8 @@ END_UNRELEASED_TEMPLATE
   directory as a {obj}`py_test` target to that {obj}`py_test` target's `deps`.
   This behavior is unchanged from previous versions. When `false`, the `:conftest`
   dep is not added to the {obj}`py_test` target.
-
+* (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
+  Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
 
 {#v0-0-0-removed}
 ### Removed
