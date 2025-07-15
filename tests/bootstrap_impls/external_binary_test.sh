@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euxo pipefail
 
 tmpdir="${TEST_TMPDIR}/external_binary"

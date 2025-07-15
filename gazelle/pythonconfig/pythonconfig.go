@@ -98,6 +98,9 @@ const (
 	// separate pyi_deps attribute or merge type-checking dependencies into deps.
 	// Defaults to false for backward compatibility.
 	GeneratePyiDeps = "python_generate_pyi_deps"
+	// GenerateProto represents the directive that controls whether to generate
+	// python_generate_proto targets.
+	GenerateProto = "python_generate_proto"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -186,6 +189,7 @@ type Config struct {
 	labelNormalization                        LabelNormalizationType
 	experimentalAllowRelativeImports          bool
 	generatePyiDeps                           bool
+	generateProto                             bool
 }
 
 type LabelNormalizationType int
@@ -223,6 +227,7 @@ func New(
 		labelNormalization:                        DefaultLabelNormalizationType,
 		experimentalAllowRelativeImports:          false,
 		generatePyiDeps:                           false,
+		generateProto:                             false,
 	}
 }
 
@@ -257,6 +262,7 @@ func (c *Config) NewChild() *Config {
 		labelNormalization:                        c.labelNormalization,
 		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
 		generatePyiDeps:                           c.generatePyiDeps,
+		generateProto:                             c.generateProto,
 	}
 }
 
@@ -553,6 +559,16 @@ func (c *Config) SetGeneratePyiDeps(generatePyiDeps bool) {
 // or type-checking dependencies should be merged into the regular deps attribute.
 func (c *Config) GeneratePyiDeps() bool {
 	return c.generatePyiDeps
+}
+
+// SetGenerateProto sets whether py_proto_library should be generated for proto_library.
+func (c *Config) SetGenerateProto(generateProto bool) {
+	c.generateProto = generateProto
+}
+
+// GenerateProto returns whether py_proto_library should be generated for proto_library.
+func (c *Config) GenerateProto() bool {
+	return c.generateProto
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

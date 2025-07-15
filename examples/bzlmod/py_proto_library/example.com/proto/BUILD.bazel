@@ -2,7 +2,7 @@ load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_python//python:proto.bzl", "py_proto_library")
 
 py_proto_library(
-    name = "pricetag_proto_py_pb2",
+    name = "pricetag_py_pb2",
     visibility = ["//visibility:public"],
     deps = [":pricetag_proto"],
 )

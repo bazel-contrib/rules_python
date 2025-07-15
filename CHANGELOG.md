@@ -60,12 +60,12 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
-* (toolchain) Updated the following toolchains to build 20250702 to patch CVE-2025-47273:
+* (toolchain) Updated the following toolchains to build 20250708 to patch CVE-2025-47273:
     * 3.9.23
     * 3.10.18
     * 3.11.13
     * 3.12.11
-    * 3.14.0b3
+    * 3.14.0b4
 * (toolchain) Python 3.13 now references 3.13.5
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
@@ -73,6 +73,8 @@ END_UNRELEASED_TEMPLATE
   `osx_x86_64`, `osx_aarch64` and `windows_x86_64`. If you are on other platforms, you need to
   use the `pip.default` to configure it yourself. If you are interested in graduating the
   platform, consider helping set us up CI for them and update the documentation.
+* (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
+* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -94,6 +96,7 @@ END_UNRELEASED_TEMPLATE
   in ambiguous select matches ({gh-issue}`2759`) and should be much more efficient
   when running `bazel query` due to fewer repositories being included 
   ({gh-issue}`2849`).
+* Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 
 {#v0-0-0-added}
 ### Added
@@ -111,7 +114,14 @@ END_UNRELEASED_TEMPLATE
     * 3.11.13
     * 3.12.11
     * 3.13.5
-    * 3.14.0b3
+    * 3.14.0b4
+* (gazelle): New annotation `gazelle:include_pytest_conftest`. When not set (the
+  default) or `true`, gazelle will inject any `conftest.py` file found in the same
+  directory as a {obj}`py_test` target to that {obj}`py_test` target's `deps`.
+  This behavior is unchanged from previous versions. When `false`, the `:conftest`
+  dep is not added to the {obj}`py_test` target.
+* (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
+  Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
 
 {#v0-0-0-removed}
 ### Removed

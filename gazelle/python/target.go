@@ -37,6 +37,7 @@ type targetBuilder struct {
 	main              *string
 	imports           []string
 	testonly          bool
+	annotations       *annotations
 }
 
 // newTargetBuilder constructs a new targetBuilder.
@@ -51,6 +52,7 @@ func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingS
 		deps:              treeset.NewWith(moduleComparator),
 		resolvedDeps:      treeset.NewWith(godsutils.StringComparator),
 		visibility:        treeset.NewWith(godsutils.StringComparator),
+		annotations:       new(annotations),
 	}
 }
 
@@ -129,6 +131,13 @@ func (t *targetBuilder) setTestonly() *targetBuilder {
 	t.testonly = true
 	return t
 }
+
+// setAnnotations sets the annotations attribute on the target.
+func (t *targetBuilder) setAnnotations(val annotations) *targetBuilder {
+	t.annotations = &val
+	return t
+}
+
 
 // generateImportsAttribute generates the imports attribute.
 // These are a list of import directories to be added to the PYTHONPATH. In our
