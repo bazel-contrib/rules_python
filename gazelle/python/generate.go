@@ -264,7 +264,9 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					addSrc(filename).
 					addModuleDependencies(mainModules[filename]).
 					addResolvedDependencies(annotations.includeDeps).
-					generateImportsAttribute().build()
+					generateImportsAttribute().
+					setAnnotations(*annotations).
+					build()
 				result.Gen = append(result.Gen, pyBinary)
 				result.Imports = append(result.Imports, pyBinary.PrivateAttr(config.GazelleImportsKey))
 			}
@@ -305,6 +307,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addModuleDependencies(allDeps).
 			addResolvedDependencies(annotations.includeDeps).
 			generateImportsAttribute().
+			setAnnotations(*annotations).
 			build()
 
 		if pyLibrary.IsEmpty(py.Kinds()[pyLibrary.Kind()]) {
@@ -357,6 +360,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrc(pyBinaryEntrypointFilename).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			setAnnotations(*annotations).
 			generateImportsAttribute()
 
 		pyBinary := pyBinaryTarget.build()
@@ -387,6 +391,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrc(conftestFilename).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			setAnnotations(*annotations).
 			addVisibility(visibility).
 			setTestonly().
 			generateImportsAttribute()
@@ -418,6 +423,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrcs(srcs).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			setAnnotations(*annotations).
 			generateImportsAttribute()
 	}
 	if (!cfg.PerPackageGenerationRequireTestEntryPoint() || hasPyTestEntryPointFile || hasPyTestEntryPointTarget || cfg.CoarseGrainedGeneration()) && !cfg.PerFileGeneration() {
@@ -470,7 +476,14 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	for _, pyTestTarget := range pyTestTargets {
 		if conftest != nil {
-			pyTestTarget.addModuleDependency(Module{Name: strings.TrimSuffix(conftestFilename, ".py")})
+			conftestModule := Module{Name: strings.TrimSuffix(conftestFilename, ".py")}
+			if pyTestTarget.annotations.includePytestConftest == nil {
+				// unset; default behavior
+				pyTestTarget.addModuleDependency(conftestModule)
+			} else if *pyTestTarget.annotations.includePytestConftest {
+				// set; add if true, do not add if false
+				pyTestTarget.addModuleDependency(conftestModule)
+			}
 		}
 		pyTest := pyTestTarget.build()
 

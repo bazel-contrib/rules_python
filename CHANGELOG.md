@@ -106,6 +106,11 @@ END_UNRELEASED_TEMPLATE
     * 3.12.11
     * 3.13.5
     * 3.14.0b4
+* (gazelle): New annotation `gazelle:include_pytest_conftest`. When not set (the
+  default) or `true`, gazelle will inject any `conftest.py` file found in the same
+  directory as a {obj}`py_test` target to that {obj}`py_test` target's `deps`.
+  This behavior is unchanged from previous versions. When `false`, the `:conftest`
+  dep is not added to the {obj}`py_test` target.
 * (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
   Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
 

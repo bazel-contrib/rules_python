@@ -550,6 +550,8 @@ The annotations are:
 | Tells Gazelle to ignore import statements. `imports` is a comma-separated list of imports to ignore. | |
 | [`# gazelle:include_dep targets`](#annotation-include_dep)    | N/A               |
 | Tells Gazelle to include a set of dependencies, even if they are not imported in a Python module. `targets` is a comma-separated list of target names to include as dependencies. | |
+| [`# gazelle:include_pytest_conftest bool`](#annotation-include_pytest_conftest)    | N/A               |
+| Whether or not to include a sibling `:conftest` target in the deps of a `py_test` target. Default behaviour is to include `:conftest`. | |
 
 
 #### Annotation: `ignore`
@@ -621,6 +623,89 @@ deps = [
     "@pypi//numpy",
 ]
 ```
+
+#### Annotation: `include_pytest_conftest`
+
+Added in [#3080][gh3080].
+
+[gh3080]: https://github.com/bazel-contrib/rules_python/pull/3080
+
+This annotation accepts any string that can be parsed by go's
+[`strconv.ParseBool`][ParseBool]. If an unparsable string is passed, the
+annotation is ignored.
+
+[ParseBool]: https://pkg.go.dev/strconv#ParseBool
+
+Starting with [`rules_python` 0.14.0][rules-python-0.14.0] (specifically [PR #879][gh879]),
+Gazelle will include a `:conftest` dependency to an `py_test` target that is in
+the same directory as `conftest.py`.
+
+[rules-python-0.14.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.14.0
+[gh879]: https://github.com/bazel-contrib/rules_python/pull/879
+
+This annotation allows users to adjust that behavior. To disable the behavior, set
+the annotation value to "false":
+
+```
+# some_file_test.py
+# gazelle:include_pytest_conftest false
+```
+
+Example:
+
+Given a directory tree like:
+
+```
+.
+├── BUILD.bazel
+├── conftest.py
+└── some_file_test.py
+```
+
+The default Gazelle behavior would create:
+
+```starlark
+py_library(
+    name = "conftest",
+    testonly = True,
+    srcs = ["conftest.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "some_file_test",
+    srcs = ["some_file_test.py"],
+    deps = [":conftest"],
+)
+```
+
+When `# gazelle:include_pytest_conftest false` is found in `some_file_test.py`
+
+```python
+# some_file_test.py
+# gazelle:include_pytest_conftest false
+```
+
+Gazelle will generate:
+
+```starlark
+py_library(
+    name = "conftest",
+    testonly = True,
+    srcs = ["conftest.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "some_file_test",
+    srcs = ["some_file_test.py"],
+)
+```
+
+See [Issue #3076][gh3076] for more information.
+
+[gh3076]: https://github.com/bazel-contrib/rules_python/issues/3076
+
 
 #### Directive: `experimental_allow_relative_imports`
 Enables experimental support for resolving relative imports in
