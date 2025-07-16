@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 if [[ -n "${BUILD_WORKSPACE_DIRECTORY:-}" ]]; then

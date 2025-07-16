@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # A simple wrapper so rules_bazel_integration_test can use the
 # bazel version inherited from the environment.

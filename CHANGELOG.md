@@ -70,6 +70,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
+* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
 
 {#v0-0-0-fixed}
 ### Fixed

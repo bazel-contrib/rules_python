@@ -27,7 +27,7 @@ def print_toolchains_checksums(name):
 
     template = """\
 cat > "$@" <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 set -o errexit -o nounset -o pipefail
