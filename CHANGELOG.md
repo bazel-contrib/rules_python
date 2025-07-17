@@ -116,6 +116,8 @@ END_UNRELEASED_TEMPLATE
   dep is not added to the {obj}`py_test` target.
 * (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
   Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
+* (gazelle) New directive `gazelle:python_proto_naming_convention`; controls
+  naming of `py_proto_library` rules.
 
 {#v0-0-0-removed}
 ### Removed
