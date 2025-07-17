@@ -566,7 +566,9 @@ Tag: cp38-abi3-{os_string}_{arch}
             )
 
     def test_requires_dist_depends_on_extras(self):
-        filename = self._get_path("requires_dist_depends_on_extras-0.0.1-py3-none-any.whl")
+        filename = self._get_path(
+            "requires_dist_depends_on_extras-0.0.1-py3-none-any.whl"
+        )
 
         with zipfile.ZipFile(filename) as zf:
             self.assertAllEntriesHasReproducibleMetadata(zf)
@@ -591,7 +593,9 @@ Tag: cp38-abi3-{os_string}_{arch}
             )
 
     def test_requires_dist_depends_on_extras_file(self):
-        filename = self._get_path("requires_dist_depends_on_extras_using_file-0.0.1-py3-none-any.whl")
+        filename = self._get_path(
+            "requires_dist_depends_on_extras_using_file-0.0.1-py3-none-any.whl"
+        )
 
         with zipfile.ZipFile(filename) as zf:
             self.assertAllEntriesHasReproducibleMetadata(zf)
