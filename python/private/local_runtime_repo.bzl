@@ -126,6 +126,7 @@ def _local_runtime_repo_impl(rctx):
     # In some cases, the same value is returned for multiple keys. Not clear why.
     shared_lib_names = {v: None for v in shared_lib_names}.keys()
     shared_lib_dir = info["LIBDIR"]
+    multiarch = info["MULTIARCH"]
 
     # The specific files are symlinked instead of the whole directory
     # because it can point to a directory that has more than just
@@ -134,6 +135,11 @@ def _local_runtime_repo_impl(rctx):
     rctx.report_progress("Symlinking external Python shared libraries")
     for name in shared_lib_names:
         origin = rctx.path("{}/{}".format(shared_lib_dir, name))
+
+        # If the origin doesn't exist, try the multiarch location, in case
+        # it's an older Python / Debian release.
+        if not origin.exists and multiarch:
+            origin = rctx.path("{}/{}/{}".format(shared_lib_dir, multiarch, name))
 
         # The reported names don't always exist; it depends on the particulars
         # of the runtime installation.
