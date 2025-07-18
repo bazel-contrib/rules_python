@@ -79,7 +79,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             "cp{major}{minor}",
         ],
         whl_platform_tags = [
-            "linux_*_{}".format(cpu),
+            "linux_{}".format(cpu),
             "manylinux_*_{}".format(cpu),
         ],
     )

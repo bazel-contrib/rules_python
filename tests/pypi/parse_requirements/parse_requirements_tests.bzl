@@ -540,7 +540,7 @@ def _test_overlapping_shas_with_index_results(env):
                     arch = "x86_64",
                 ),
                 whl_abi_tags = ["none"],
-                whl_platform_tags = ["macosx_*"],
+                whl_platform_tags = ["macosx_*_x86_64"],
             ),
         },
         get_index_urls = lambda _, __: {

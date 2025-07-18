@@ -8,6 +8,7 @@ _ANDROID = "android"
 _ANY = "any"
 _IOS = "ios"
 _MANYLINUX = "manylinux"
+_MACOSX = "macosx"
 _MUSLLINUX = "musllinux"
 
 def _value_priority(*, tag, values):
@@ -27,10 +28,11 @@ def _platform_tag_priority(*, tag, values):
     # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
 
     if not (
-        tag.startswith(_MANYLINUX) or
-        tag.startswith(_MUSLLINUX) or
         tag.startswith(_ANDROID) or
-        tag.startswith(_IOS)
+        tag.startswith(_IOS) or
+        tag.startswith(_MACOSX) or
+        tag.startswith(_MANYLINUX) or
+        tag.startswith(_MUSLLINUX)
     ):
         res = _value_priority(tag = tag, values = values)
         if res == None:

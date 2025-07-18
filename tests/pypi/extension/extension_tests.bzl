@@ -410,8 +410,8 @@ def _test_torch_experimental_index_url(env):
                         whl_platform_tags = whl_platform_tags,
                     )
                     for (os, cpu), whl_platform_tags in {
-                        ("linux", "x86_64"): ["linux_*_x86_64", "manylinux_*_x86_64"],
-                        ("linux", "aarch64"): ["linux_*_aarch64", "manylinux_*_aarch64"],
+                        ("linux", "x86_64"): ["linux_x86_64", "manylinux_*_x86_64"],
+                        ("linux", "aarch64"): ["linux_aarch64", "manylinux_*_aarch64"],
                         ("osx", "aarch64"): ["macosx_*_arm64"],
                         ("windows", "x86_64"): ["win_amd64"],
                         ("windows", "aarch64"): ["win_arm64"],  # this should be ignored
