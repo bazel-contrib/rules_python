@@ -905,14 +905,21 @@ A list of `platform_tag` matchers so that we can select the best wheel based on 
 preference.
 Will always  include `"any"` even if it is not specified.
 
-The items in this list can contain a single `*` character that is equivalent to `.*` regex match. This is only applicable in place of version specifiers in the platform tags.
+The items in this list can contain a single `*` character that is equivalent to matching the
+latest available version component in the platform_tag. Note, if the wheel platform tag does not
+have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a regular
+character.
 
-We will always select the highest available platform_tag version that exists.
-
-TODO: refine.
+We will always select the highest available `platform_tag` version that is compatible with the
+target platform.
 
 :::{note}
-We select a single wheel and the last match will take precedence.
+We select a single wheel and the last match will take precedence, if the platform_tag that we
+match has a version component (e.g. `android_x_arch`, then the version `x` will be used in the
+matching algorithm).
+
+If the matcher you provide has `*`, then we will match a wheel with the highest available target platform, i.e. if `musllinux_1_1_arch` and `musllinux_1_2_arch` are both present, then we will select `musllinux_1_2_arch`. 
+Otherwise we will select the highest available version that is equal or lower to the specifier, i.e. if `manylinux_2_12` and `manylinux_2_17` wheels are present and the matcher is `manylinux_2_15`, then we will match `manylinux_2_12` but not `manylinux_2_17`.
 :::
 
 :::{note}
