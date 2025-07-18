@@ -4,22 +4,35 @@ load("//python/private:version.bzl", "version")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":python_tag.bzl", "PY_TAG_GENERIC", "python_tag")
 
-def _priority_by_platform(*, tag, values):
-    if tag == "any" and tag in values:
+_ANDROID = "android"
+_ANY = "any"
+_IOS = "ios"
+_MANYLINUX = "manylinux"
+_MUSLLINUX = "musllinux"
+
+def _value_priority(*, tag, values):
+    keys = []
+    for priority, wp in enumerate(values):
+        if tag == wp:
+            keys.append(priority)
+
+    return max(keys) if keys else None
+
+def _platform_tag_priority(*, tag, values):
+    if tag == _ANY and tag in values:
         m = values.index(tag)
         return (m, (0, 0)) if m >= 0 else None
 
-    # TODO: Implement https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
-
-    # TODO @aignas 2025-07-18: add more tests and optimize
+    # Implements matching platform tag
+    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
 
     if not (
-        tag.startswith("manylinux") or
-        tag.startswith("musllinux") or
-        tag.startswith("android") or
-        tag.startswith("ios")
+        tag.startswith(_MANYLINUX) or
+        tag.startswith(_MUSLLINUX) or
+        tag.startswith(_ANDROID) or
+        tag.startswith(_IOS)
     ):
-        res = _priority_by_abi(tag = tag, values = values)
+        res = _value_priority(tag = tag, values = values)
         if res == None:
             return res
 
@@ -27,7 +40,7 @@ def _priority_by_platform(*, tag, values):
 
     plat, _, tail = tag.partition("_")
     major, _, tail = tail.partition("_")
-    if not plat.startswith("android"):
+    if not plat.startswith(_ANDROID):
         minor, _, arch = tail.partition("_")
     else:
         minor = "0"
@@ -45,10 +58,10 @@ def _priority_by_platform(*, tag, values):
 
         want_major, _, tail = tail.partition("_")
         if want_major == "*":
-            want_major = "9"
-            want_minor = "9"
+            want_major = ""
+            want_minor = ""
             want_arch = tail
-        elif plat.startswith("android"):
+        elif plat.startswith(_ANDROID):
             want_minor = "0"
             want_arch = tail
         else:
@@ -57,21 +70,13 @@ def _priority_by_platform(*, tag, values):
         if want_arch != arch:
             continue
 
-        want_version = (int(want_major), int(want_minor))
-        if version <= want_version:
+        want_version = (int(want_major), int(want_minor)) if want_major else None
+        if not want_version or version <= want_version:
             keys.append((priority, version))
 
     return max(keys) if keys else None
 
-def _priority_by_abi(*, tag, values):
-    keys = []
-    for priority, wp in enumerate(values):
-        if tag == wp:
-            keys.append(priority)
-
-    return max(keys) if keys else None
-
-def _priority_by_version(*, tag, implementation, py_version):
+def _python_tag_priority(*, tag, implementation, py_version):
     if tag.startswith(PY_TAG_GENERIC):
         ver_str = tag[len(PY_TAG_GENERIC):]
     elif tag.startswith(implementation):
@@ -114,7 +119,7 @@ def _candidates_by_priority(*, whls, implementation, py_version, whl_abi_tags, p
 
         # See https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#compressed-tag-sets
         for platform in parsed.platform_tag.split("."):
-            platform = _priority_by_platform(tag = platform, values = platforms)
+            platform = _platform_tag_priority(tag = platform, values = platforms)
             if platform == None:
                 if logger:
                     logger.debug(lambda: "The platform_tag in '{}' does not match given list: {}".format(
@@ -124,7 +129,7 @@ def _candidates_by_priority(*, whls, implementation, py_version, whl_abi_tags, p
                 continue
 
             for py in parsed.python_tag.split("."):
-                py = _priority_by_version(
+                py = _python_tag_priority(
                     tag = py,
                     implementation = implementation,
                     py_version = py_version,
@@ -139,7 +144,7 @@ def _candidates_by_priority(*, whls, implementation, py_version, whl_abi_tags, p
                     continue
 
                 for abi in parsed.abi_tag.split("."):
-                    abi = _priority_by_abi(
+                    abi = _value_priority(
                         tag = abi,
                         values = whl_abi_tags,
                     )

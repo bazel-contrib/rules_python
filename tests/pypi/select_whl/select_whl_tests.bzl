@@ -413,6 +413,26 @@ def _test_multiple_musllinux(env):
 
 _tests.append(_test_multiple_musllinux)
 
+def _test_android(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-android_4_x86_64.whl",
+            "pkg-0.0.1-py3-none-android_8_x86_64.whl",
+        ],
+        platforms = ["android_5_x86_64"],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        # select the one with the highest version that is matching
+        "pkg-0.0.1-py3-none-android_4_x86_64.whl",
+    )
+
+_tests.append(_test_android)
+
 def select_whl_test_suite(name):
     """Create the test suite.
 
