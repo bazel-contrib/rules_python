@@ -70,6 +70,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         config_settings = [
             "@platforms//cpu:{}".format(cpu),
             "@platforms//os:linux",
+            "//python/config_settings:_is_py_linux_libc_glibc",
         ],
         env = {"platform_version": "0"},
         os_name = "linux",
