@@ -4,18 +4,69 @@ load("//python/private:version.bzl", "version")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":python_tag.bzl", "PY_TAG_GENERIC", "python_tag")
 
-def _priority_by_values(*, tag, values, allow_wildcard = True):
+def _priority_by_platform(*, tag, values):
+    if tag == "any" and tag in values:
+        m = values.index(tag)
+        return (m, (0, 0)) if m >= 0 else None
+
+    # TODO: Implement https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
+
+    # TODO @aignas 2025-07-18: add more tests and optimize
+
+    if not (
+        tag.startswith("manylinux") or
+        tag.startswith("musllinux") or
+        tag.startswith("android") or
+        tag.startswith("ios")
+    ):
+        res = _priority_by_abi(tag = tag, values = values)
+        if res == None:
+            return res
+
+        return (res, (0, 0))
+
+    plat, _, tail = tag.partition("_")
+    major, _, tail = tail.partition("_")
+    if not plat.startswith("android"):
+        minor, _, arch = tail.partition("_")
+    else:
+        minor = "0"
+        arch = tail
+    version = (int(major), int(minor))
+
     keys = []
     for priority, wp in enumerate(values):
-        head, sep, tail = wp.partition("*")
-        if "*" in tail:
-            fail("only a single '*' can be present in the matcher")
-        if not allow_wildcard and sep:
-            fail("'*' is not allowed in the matcher")
+        want_plat, sep, tail = wp.partition("_")
+        if not sep:
+            continue
 
-        if not sep and tag == head:
-            keys.append(priority)
-        elif sep and tag.startswith(head) and tag.endswith(tail):
+        if want_plat != plat:
+            continue
+
+        want_major, _, tail = tail.partition("_")
+        if want_major == "*":
+            want_major = "9"
+            want_minor = "9"
+            want_arch = tail
+        elif plat.startswith("android"):
+            want_minor = "0"
+            want_arch = tail
+        else:
+            want_minor, _, want_arch = tail.partition("_")
+
+        if want_arch != arch:
+            continue
+
+        want_version = (int(want_major), int(want_minor))
+        if version <= want_version:
+            keys.append((priority, version))
+
+    return max(keys) if keys else None
+
+def _priority_by_abi(*, tag, values):
+    keys = []
+    for priority, wp in enumerate(values):
+        if tag == wp:
             keys.append(priority)
 
     return max(keys) if keys else None
@@ -63,7 +114,7 @@ def _candidates_by_priority(*, whls, implementation, py_version, whl_abi_tags, p
 
         # See https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#compressed-tag-sets
         for platform in parsed.platform_tag.split("."):
-            platform = _priority_by_values(tag = platform, values = platforms)
+            platform = _priority_by_platform(tag = platform, values = platforms)
             if platform == None:
                 if logger:
                     logger.debug(lambda: "The platform_tag in '{}' does not match given list: {}".format(
@@ -88,10 +139,9 @@ def _candidates_by_priority(*, whls, implementation, py_version, whl_abi_tags, p
                     continue
 
                 for abi in parsed.abi_tag.split("."):
-                    abi = _priority_by_values(
+                    abi = _priority_by_abi(
                         tag = abi,
                         values = whl_abi_tags,
-                        allow_wildcard = False,
                     )
                     if abi == None:
                         if logger:

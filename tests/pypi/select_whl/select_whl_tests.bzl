@@ -234,19 +234,19 @@ _tests.append(_test_select_by_supported_cp_version)
 
 def _test_supported_cp_version_manylinux(env):
     whls = [
-        "pkg-0.0.1-py2.py3-none-manylinux_x86_64.whl",
-        "pkg-0.0.1-py3-none-manylinux_x86_64.whl",
-        "pkg-0.0.1-py311-none-manylinux_x86_64.whl",
-        "pkg-0.0.1-cp311-none-manylinux_x86_64.whl",
+        "pkg-0.0.1-py2.py3-none-manylinux_1_1_x86_64.whl",
+        "pkg-0.0.1-py3-none-manylinux_1_1_x86_64.whl",
+        "pkg-0.0.1-py311-none-manylinux_1_1_x86_64.whl",
+        "pkg-0.0.1-cp311-none-manylinux_1_1_x86_64.whl",
     ]
 
     for minor_version, match in {
-        8: "pkg-0.0.1-py3-none-manylinux_x86_64.whl",
-        11: "pkg-0.0.1-cp311-none-manylinux_x86_64.whl",
+        8: "pkg-0.0.1-py3-none-manylinux_1_1_x86_64.whl",
+        11: "pkg-0.0.1-cp311-none-manylinux_1_1_x86_64.whl",
     }.items():
         got = _select_whl(
             whls = whls,
-            platforms = ["manylinux_x86_64"],
+            platforms = ["manylinux_1_1_x86_64"],
             whl_abi_tags = ["none"],
             python_version = "3.{}".format(minor_version),
         )
@@ -386,11 +386,32 @@ def _test_manylinx_musllinux_pref(env):
     _match(
         env,
         got,
-        # there is only wheel, just select that
+        # there is only one wheel, just select that
         "pkg-0.0.1-py3-none-manylinux_2_31_x86_64.musllinux_1_1_x86_64.whl",
     )
 
 _tests.append(_test_manylinx_musllinux_pref)
+
+def _test_multiple_musllinux(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        ],
+        platforms = ["musllinux_*_x86_64"],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        # select the one with the highest version that is matching
+        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+    )
+
+_tests.append(_test_multiple_musllinux)
 
 def select_whl_test_suite(name):
     """Create the test suite.
