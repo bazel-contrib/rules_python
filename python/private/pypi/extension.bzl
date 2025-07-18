@@ -905,7 +905,11 @@ A list of `platform_tag` matchers so that we can select the best wheel based on 
 preference.
 Will always  include `"any"` even if it is not specified.
 
-The items in this list can contain a single `*` character that is equivalent to `.*` regex match.
+The items in this list can contain a single `*` character that is equivalent to `.*` regex match. This is only applicable in place of version specifiers in the platform tags.
+
+We will always select the highest available platform_tag version that exists.
+
+TODO: refine.
 
 :::{note}
 We select a single wheel and the last match will take precedence.
