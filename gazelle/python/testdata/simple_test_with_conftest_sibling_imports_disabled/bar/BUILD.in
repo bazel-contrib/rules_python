@@ -1,3 +1,1 @@
 load("@rules_python//python:defs.bzl", "py_library")
-
-# gazelle:python_resolve_sibling_imports true

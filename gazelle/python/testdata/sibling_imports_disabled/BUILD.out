@@ -1,11 +1,10 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# gazelle:python_resolve_sibling_imports true
+# gazelle:python_resolve_sibling_imports false
 
 py_library(
-    name = "pkg",
+    name = "sibling_imports_disabled",
     srcs = [
-        "__init__.py",
         "a.py",
         "b.py",
     ],
@@ -15,13 +14,4 @@ py_library(
 py_test(
     name = "test_util",
     srcs = ["test_util.py"],
-)
-
-py_test(
-    name = "unit_test",
-    srcs = ["unit_test.py"],
-    deps = [
-        ":pkg",
-        ":test_util",
-    ],
 )
