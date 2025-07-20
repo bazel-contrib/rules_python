@@ -337,6 +337,14 @@ bzl_library(
 )
 
 bzl_library(
+    name = "python_tag_bzl",
+    srcs = ["python_tag.bzl"],
+    deps = [
+        "//python/private:version_bzl",
+    ],
+)
+
+bzl_library(
     name = "render_pkg_aliases_bzl",
     srcs = ["render_pkg_aliases.bzl"],
     deps = [
