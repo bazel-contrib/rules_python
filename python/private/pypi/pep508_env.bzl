@@ -15,6 +15,20 @@
 """This module is for implementing PEP508 environment definition.
 """
 
+load("//python/private:version.bzl", "version")
+
+_DEFAULT = "//conditions:default"
+
+# Here we store the aliases in the platform so that the users can specify any valid target in
+# there.
+_cpu_aliases = {
+    "arm": "aarch32",
+    "arm64": "aarch64",
+}
+_os_aliases = {
+    "macos": "osx",
+}
+
 # See https://stackoverflow.com/a/45125525
 platform_machine_aliases = {
     # These pairs mean the same hardware, but different values may be used
@@ -59,7 +73,7 @@ platform_machine_select_map = {
     "@platforms//cpu:x86_64": "x86_64",
     # The value is empty string if it cannot be determined:
     # https://docs.python.org/3/library/platform.html#platform.machine
-    "//conditions:default": "",
+    _DEFAULT: "",
 }
 
 # Platform system returns results from the `uname` call.
@@ -73,7 +87,7 @@ _platform_system_values = {
     "linux": "Linux",
     "netbsd": "NetBSD",
     "openbsd": "OpenBSD",
-    "osx": "Darwin",
+    "osx": "Darwin",  # NOTE: macos is an alias to osx, we handle it through _os_aliases
     "windows": "Windows",
 }
 
@@ -83,7 +97,7 @@ platform_system_select_map = {
 } | {
     # The value is empty string if it cannot be determined:
     # https://docs.python.org/3/library/platform.html#platform.machine
-    "//conditions:default": "",
+    _DEFAULT: "",
 }
 
 # The copy of SO [answer](https://stackoverflow.com/a/13874620) containing
@@ -123,18 +137,19 @@ _sys_platform_values = {
     "ios": "ios",
     "linux": "linux",
     "openbsd": "openbsd",
-    "osx": "darwin",
+    "osx": "darwin",  # NOTE: macos is an alias to osx, we handle it through _os_aliases
     "wasi": "wasi",
     "windows": "win32",
 }
 
 sys_platform_select_map = {
+    # These values are decided by the sys.platform docs.
     "@platforms//os:{}".format(bazel_os): py_platform
     for bazel_os, py_platform in _sys_platform_values.items()
 } | {
     # For lack of a better option, use empty string. No standard doc/spec
     # about sys_platform value.
-    "//conditions:default": "",
+    _DEFAULT: "",
 }
 
 # The "java" value is documented, but with Jython defunct,
@@ -142,53 +157,58 @@ sys_platform_select_map = {
 # The os.name value is technically a property of the runtime, not the
 # targetted runtime OS, but the distinction shouldn't matter if
 # things are properly configured.
-_os_name_values = {
-    "linux": "posix",
-    "osx": "posix",
-    "windows": "nt",
-}
-
 os_name_select_map = {
-    "@platforms//os:{}".format(bazel_os): py_os
-    for bazel_os, py_os in _os_name_values.items()
-} | {
-    "//conditions:default": "posix",
+    "@platforms//os:windows": "nt",
+    _DEFAULT: "posix",
 }
 
-def env(target_platform, *, extra = None):
+def _set_default(env, env_key, m, key):
+    """Set the default value in the env if it is not already set."""
+    default = m.get(key, m[_DEFAULT])
+    env.setdefault(env_key, default)
+
+def env(*, env = None, os, arch, python_version = "", extra = None):
     """Return an env target platform
 
     NOTE: This is for use during the loading phase. For the analysis phase,
     `env_marker_setting()` constructs the env dict.
 
     Args:
-        target_platform: {type}`str` the target platform identifier, e.g.
-            `cp33_linux_aarch64`
+        env: {type}`str` the environment.
+        os: {type}`str` the OS name.
+        arch: {type}`str` the CPU name.
+        python_version: {type}`str` the full python version.
         extra: {type}`str` the extra value to be added into the env.
 
     Returns:
         A dict that can be used as `env` in the marker evaluation.
     """
-    env = create_env()
+    env = env or {}
+    env = env | create_env()
     if extra != None:
         env["extra"] = extra
 
-    if target_platform.abi:
-        minor_version, _, micro_version = target_platform.abi[3:].partition(".")
-        micro_version = micro_version or "0"
+    if python_version:
+        v = version.parse(python_version)
+        major = v.release[0]
+        minor = v.release[1]
+        micro = v.release[2] if len(v.release) > 2 else 0
         env = env | {
-            "implementation_version": "3.{}.{}".format(minor_version, micro_version),
-            "python_full_version": "3.{}.{}".format(minor_version, micro_version),
-            "python_version": "3.{}".format(minor_version),
+            "implementation_version": "{}.{}.{}".format(major, minor, micro),
+            "python_full_version": "{}.{}.{}".format(major, minor, micro),
+            "python_version": "{}.{}".format(major, minor),
         }
-    if target_platform.os and target_platform.arch:
-        os = target_platform.os
-        env = env | {
-            "os_name": _os_name_values.get(os, ""),
-            "platform_machine": target_platform.arch,
-            "platform_system": _platform_system_values.get(os, ""),
-            "sys_platform": _sys_platform_values.get(os, ""),
-        }
+
+    if os:
+        os = "@platforms//os:{}".format(_os_aliases.get(os, os))
+        _set_default(env, "os_name", os_name_select_map, os)
+        _set_default(env, "platform_system", platform_system_select_map, os)
+        _set_default(env, "sys_platform", sys_platform_select_map, os)
+
+    if arch:
+        arch = "@platforms//cpu:{}".format(_cpu_aliases.get(arch, arch))
+        _set_default(env, "platform_machine", platform_machine_select_map, arch)
+
     set_missing_env_defaults(env)
 
     return env
