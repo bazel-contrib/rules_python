@@ -76,11 +76,12 @@ def _platforms(*, python_version, minor_mapping, config):
 
     for platform, values in config.platforms.items():
         key = "{}_{}".format(abi, platform)
-        platforms[key] = env(struct(
-            abi = abi,
+        platforms[key] = env(
+            env = values.env,
             os = values.os_name,
             arch = values.arch_name,
-        )) | values.env
+            python_version = python_version,
+        )
     return platforms
 
 def _create_whl_repos(
