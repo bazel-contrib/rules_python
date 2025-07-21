@@ -30,6 +30,7 @@ load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
+load(":pep508_evaluate.bzl", "evaluate")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
@@ -80,21 +81,27 @@ def _platforms(*, python_version, minor_mapping, config):
     for platform, values in config.platforms.items():
         # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
         # many times.
-        key = "{}{}{}.{}_{}".format(
+        abi = "{}{}{}.{}".format(
             python_tag(values.env["implementation_name"]),
             python_version.release[0],
             python_version.release[1],
             python_version.release[2],
-            platform,
+        )
+        key = "{}_{}".format(abi, platform)
+
+        env_ = env(
+            env = values.env,
+            os = values.os_name,
+            arch = values.arch_name,
+            python_version = python_version.string,
         )
 
+        if values.marker and not evaluate(values.marker, env = env_):
+            continue
+
         platforms[key] = struct(
-            env = env(
-                env = values.env,
-                os = values.os_name,
-                arch = values.arch_name,
-                python_version = python_version.string,
-            ),
+            env = env_,
+            triple = "{}_{}_{}".format(abi, values.os_name, values.arch_name),
             whl_abi_tags = [
                 v.format(
                     major = python_version.release[0],
@@ -203,17 +210,19 @@ def _create_whl_repos(
         whl_group_mapping = {}
         requirement_cycles = {}
 
+    platforms = _platforms(
+        python_version = pip_attr.python_version,
+        minor_mapping = minor_mapping,
+        config = config,
+    )
+
     if evaluate_markers:
         # This is most likely unit tests
         pass
     elif config.enable_pipstar:
         evaluate_markers = lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
-            platforms = _platforms(
-                python_version = pip_attr.python_version,
-                minor_mapping = minor_mapping,
-                config = config,
-            ),
+            platforms = platforms,
         )
     else:
         # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
@@ -232,7 +241,13 @@ def _create_whl_repos(
         # spin up a Python interpreter.
         evaluate_markers = lambda module_ctx, requirements: evaluate_markers_py(
             module_ctx,
-            requirements = requirements,
+            requirements = {
+                k: {
+                    p: platforms[p].triple
+                    for p in plats
+                }
+                for k, plats in requirements.items()
+            },
             python_interpreter = pip_attr.python_interpreter,
             python_interpreter_target = python_interpreter_target,
             srcs = pip_attr._evaluate_markers_srcs,
@@ -248,18 +263,14 @@ def _create_whl_repos(
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
             extra_pip_args = pip_attr.extra_pip_args,
-            platforms = sorted(config.platforms),  # here we only need keys
+            platforms = sorted(platforms),  # here we only need keys
             python_version = full_version(
                 version = pip_attr.python_version,
                 minor_mapping = minor_mapping,
             ),
             logger = logger,
         ),
-        platforms = _platforms(
-            python_version = pip_attr.python_version,
-            minor_mapping = minor_mapping,
-            config = config,
-        ),
+        platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
         evaluate_markers = evaluate_markers,
@@ -346,6 +357,16 @@ def _create_whl_repos(
                 ))
 
             whl_libraries[repo_name] = repo.args
+            if not config.enable_pipstar and "experimental_target_platforms" in repo.args:
+                whl_libraries[repo_name] |= {
+                    "experimental_target_platforms": sorted({
+                        # TODO @aignas 2025-07-07: this should be solved in a better way
+                        platforms[candidate].triple.partition("_")[-1]: None
+                        for p in repo.args["experimental_target_platforms"]
+                        for candidate in platforms
+                        if candidate.endswith(p)
+                    }),
+                }
             whl_map.setdefault(whl.name, {})[repo.config_setting] = repo_name
 
     return struct(
@@ -434,6 +455,7 @@ def _configure(
         arch_name,
         config_settings,
         env = {},
+        marker,
         whl_abi_tags,
         whl_platform_tags,
         override = False):
@@ -441,7 +463,7 @@ def _configure(
     config.setdefault("platforms", {})
 
     if platform and (
-        os_name or arch_name or config_settings or whl_abi_tags or whl_platform_tags or env
+        os_name or arch_name or config_settings or whl_abi_tags or whl_platform_tags or env or marker
     ):
         if not override and config["platforms"].get(platform):
             return
@@ -455,6 +477,7 @@ def _configure(
             "arch_name": arch_name,
             "config_settings": config_settings,
             "env": env,
+            "marker": marker,
             "name": platform.replace("-", "_").lower(),
             "os_name": os_name,
             "whl_abi_tags": whl_abi_tags,
@@ -470,7 +493,7 @@ def _configure(
     else:
         config["platforms"].pop(platform)
 
-def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, whl_abi_tags = [], whl_platform_tags = []):
+def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = "", whl_abi_tags = [], whl_platform_tags = []):
     # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
     if "any" not in whl_platform_tags:
         # the lowest priority one needs to be the first one
@@ -490,6 +513,7 @@ def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, whl_abi_t
             # defaults for env
             "implementation_name": "cpython",
         } | env,
+        marker = marker,
         whl_abi_tags = whl_abi_tags,
         whl_platform_tags = whl_platform_tags,
     )
@@ -524,6 +548,7 @@ def build_config(
                 config_settings = tag.config_settings,
                 env = tag.env,
                 os_name = tag.os_name,
+                marker = tag.marker,
                 platform = platform,
                 override = mod.is_root,
                 whl_abi_tags = tag.whl_abi_tags,
@@ -533,8 +558,6 @@ def build_config(
                 # attribute.
                 # * for index/downloader config. This includes all of those attributes for
                 # overrides, etc. Index overrides per platform could be also used here.
-                # * for whl selection - selecting preferences of which `platform_tag`s we should use
-                # for what. We could also model the `cp313t` freethreaded as separate platforms.
             )
 
     return struct(
@@ -928,6 +951,12 @@ Supported keys:
 ::::{note}
 This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 ::::
+""",
+    ),
+    "marker": attr.string(
+        doc = """\
+A marker which will be evaluated to disable the target platform for certain python versions. This
+is especially useful when defining freethreaded platform variants.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing
