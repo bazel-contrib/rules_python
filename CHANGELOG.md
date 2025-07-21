@@ -91,6 +91,8 @@ END_UNRELEASED_TEMPLATE
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 * (toolchains) `local_runtime_repo` works with multiarch Debian with Python 3.8
   ([#3099](https://github.com/bazel-contrib/rules_python/issues/3099)).
+* (pypi) Expose pypi packages only common to all Python versions in `all_requirements`
+  ([#2921](https://github.com/bazel-contrib/rules_python/issues/2921)).
 
 {#v0-0-0-added}
 ### Added
