@@ -331,38 +331,26 @@ new-package==0.0.1 --hash=sha256:deadb00f2
         "pypi": {
             "new_package": {
                 "pypi_316_new_package": [
-                    struct(
-                        config_setting = None,
-                        filename = None,
-                        target_platforms = None,
+                    whl_config_setting(
                         version = "3.16",
                     ),
                 ],
             },
             "old_package": {
                 "pypi_315_old_package": [
-                    struct(
-                        config_setting = None,
-                        filename = None,
-                        target_platforms = None,
+                    whl_config_setting(
                         version = "3.15",
                     ),
                 ],
             },
             "simple": {
                 "pypi_315_simple": [
-                    struct(
-                        config_setting = None,
-                        filename = None,
-                        target_platforms = None,
+                    whl_config_setting(
                         version = "3.15",
                     ),
                 ],
                 "pypi_316_simple": [
-                    struct(
-                        config_setting = None,
-                        filename = None,
-                        target_platforms = None,
+                    whl_config_setting(
                         version = "3.16",
                     ),
                 ],
