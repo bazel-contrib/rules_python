@@ -116,11 +116,11 @@ bzl_library(
         ":parse_whl_name_bzl",
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
+        ":python_tag_bzl",
         ":simpleapi_download_bzl",
         ":whl_config_setting_bzl",
         ":whl_library_bzl",
         ":whl_repo_name_bzl",
-        ":whl_target_platforms_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:version_bzl",
@@ -209,7 +209,7 @@ bzl_library(
         ":parse_requirements_txt_bzl",
         ":pypi_repo_utils_bzl",
         ":requirements_files_by_platform_bzl",
-        ":whl_target_platforms_bzl",
+        ":select_whl_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:repo_utils_bzl",
     ],
@@ -438,5 +438,4 @@ bzl_library(
 bzl_library(
     name = "whl_target_platforms_bzl",
     srcs = ["whl_target_platforms.bzl"],
-    deps = [":parse_whl_name_bzl"],
 )
