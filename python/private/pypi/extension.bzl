@@ -31,6 +31,7 @@ load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
+load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -68,19 +69,40 @@ def _whl_mods_impl(whl_mods_dict):
 
 def _platforms(*, python_version, minor_mapping, config):
     platforms = {}
-    python_version = full_version(
-        version = python_version,
-        minor_mapping = minor_mapping,
+    python_version = version.parse(
+        full_version(
+            version = python_version,
+            minor_mapping = minor_mapping,
+        ),
+        strict = True,
     )
-    abi = "cp3{}".format(python_version[2:])
 
     for platform, values in config.platforms.items():
-        key = "{}_{}".format(abi, platform)
-        platforms[key] = env(
-            env = values.env,
-            os = values.os_name,
-            arch = values.arch_name,
-            python_version = python_version,
+        # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
+        # many times.
+        key = "{}{}{}.{}_{}".format(
+            python_tag(values.env["implementation_name"]),
+            python_version.release[0],
+            python_version.release[1],
+            python_version.release[2],
+            platform,
+        )
+
+        platforms[key] = struct(
+            env = env(
+                env = values.env,
+                os = values.os_name,
+                arch = values.arch_name,
+                python_version = python_version.string,
+            ),
+            whl_abi_tags = [
+                v.format(
+                    major = python_version.release[0],
+                    minor = python_version.release[1],
+                )
+                for v in values.whl_abi_tags
+            ],
+            whl_platform_tags = values.whl_platform_tags,
         )
     return platforms
 
@@ -153,6 +175,8 @@ def _create_whl_repos(
             ))
         python_interpreter_target = available_interpreters[python_name]
 
+    # TODO @aignas 2025-06-29: we should not need the version in the pip_name if
+    # we are using pipstar and we are downloading the wheel using the downloader
     pip_name = "{}_{}".format(
         hub_name,
         version_label(pip_attr.python_version),
@@ -231,12 +255,21 @@ def _create_whl_repos(
             ),
             logger = logger,
         ),
+        platforms = _platforms(
+            python_version = pip_attr.python_version,
+            minor_mapping = minor_mapping,
+            config = config,
+        ),
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = get_index_urls,
         evaluate_markers = evaluate_markers,
         logger = logger,
     )
 
+    use_downloader = {
+        normalize_name(s): False
+        for s in pip_attr.simpleapi_skip
+    }
     exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
@@ -290,11 +323,20 @@ def _create_whl_repos(
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = pip_attr.netrc,
+                use_downloader = use_downloader.get(
+                    whl.name,
+                    get_index_urls != None,  # defaults to True if the get_index_urls is defined
+                ),
                 auth_patterns = pip_attr.auth_patterns,
                 python_version = major_minor,
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = config.enable_pipstar,
             )
+            if repo == None:
+                # NOTE @aignas 2025-07-07: we guard against an edge-case where there
+                # are more platforms defined than there are wheels for and users
+                # disallow building from sdist.
+                continue
 
             repo_name = "{}_{}".format(pip_name, repo.repo_name)
             if repo_name in whl_libraries:
@@ -313,7 +355,17 @@ def _create_whl_repos(
         whl_libraries = whl_libraries,
     )
 
-def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, netrc, auth_patterns, python_version, enable_pipstar = False):
+def _whl_repo(
+        *,
+        src,
+        whl_library_args,
+        is_multiple_versions,
+        download_only,
+        netrc,
+        auth_patterns,
+        python_version,
+        use_downloader,
+        enable_pipstar = False):
     args = dict(whl_library_args)
     args["requirement"] = src.requirement_line
     is_whl = src.filename.endswith(".whl")
@@ -326,19 +378,24 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         args["extra_pip_args"] = src.extra_pip_args
 
     if not src.url or (not is_whl and download_only):
-        # Fallback to a pip-installed wheel
-        target_platforms = src.target_platforms if is_multiple_versions else []
-        return struct(
-            repo_name = pypi_repo_name(
-                normalize_name(src.distribution),
-                *target_platforms
-            ),
-            args = args,
-            config_setting = whl_config_setting(
-                version = python_version,
-                target_platforms = target_platforms or None,
-            ),
-        )
+        if download_only and use_downloader:
+            # If the user did not allow using sdists and we are using the downloader
+            # and we are not using simpleapi_skip for this
+            return None
+        else:
+            # Fallback to a pip-installed wheel
+            target_platforms = src.target_platforms if is_multiple_versions else []
+            return struct(
+                repo_name = pypi_repo_name(
+                    normalize_name(src.distribution),
+                    *target_platforms
+                ),
+                args = args,
+                config_setting = whl_config_setting(
+                    version = python_version,
+                    target_platforms = target_platforms or None,
+                ),
+            )
 
     # This is no-op because pip is not used to download the wheel.
     args.pop("download_only", None)
@@ -360,28 +417,33 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
             for p in src.target_platforms
         ]
 
-    # Pure python wheels or sdists may need to have a platform here
-    target_platforms = None
-    if is_whl and not src.filename.endswith("-any.whl"):
-        pass
-    elif is_multiple_versions:
-        target_platforms = src.target_platforms
-
     return struct(
         repo_name = whl_repo_name(src.filename, src.sha256),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,
-            filename = src.filename,
-            target_platforms = target_platforms,
+            target_platforms = src.target_platforms,
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False):
+def _configure(
+        config,
+        *,
+        platform,
+        os_name,
+        arch_name,
+        config_settings,
+        env = {},
+        whl_abi_tags,
+        whl_platform_tags,
+        override = False):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
-    if platform and (os_name or arch_name or config_settings or env):
-        if not override and config.get("platforms", {}).get(platform):
+
+    if platform and (
+        os_name or arch_name or config_settings or whl_abi_tags or whl_platform_tags or env
+    ):
+        if not override and config["platforms"].get(platform):
             return
 
         for key in env:
@@ -395,6 +457,8 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             "env": env,
             "name": platform.replace("-", "_").lower(),
             "os_name": os_name,
+            "whl_abi_tags": whl_abi_tags,
+            "whl_platform_tags": whl_platform_tags,
         }.items():
             if not value:
                 continue
@@ -406,13 +470,28 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
     else:
         config["platforms"].pop(platform)
 
-def _plat(*, name, arch_name, os_name, config_settings = [], env = {}):
+def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, whl_abi_tags = [], whl_platform_tags = []):
+    # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
+    if "any" not in whl_platform_tags:
+        # the lowest priority one needs to be the first one
+        whl_platform_tags = ["any"] + whl_platform_tags
+
+    whl_abi_tags = whl_abi_tags or ["abi3", "cp{major}{minor}"]
+    if "none" not in whl_abi_tags:
+        # the lowest priority one needs to be the first one
+        whl_abi_tags = ["none"] + whl_abi_tags
+
     return struct(
         name = name,
         arch_name = arch_name,
         os_name = os_name,
         config_settings = config_settings,
-        env = env,
+        env = {
+            # defaults for env
+            "implementation_name": "cpython",
+        } | env,
+        whl_abi_tags = whl_abi_tags,
+        whl_platform_tags = whl_platform_tags,
     )
 
 def build_config(
@@ -447,6 +526,8 @@ def build_config(
                 os_name = tag.os_name,
                 platform = platform,
                 override = mod.is_root,
+                whl_abi_tags = tag.whl_abi_tags,
+                whl_platform_tags = tag.whl_platform_tags,
                 # TODO @aignas 2025-05-19: add more attr groups:
                 # * for AUTH - the default `netrc` usage could be configured through a common
                 # attribute.
@@ -642,6 +723,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             extra_aliases.setdefault(hub_name, {})
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
+
             if hub_name not in exposed_packages:
                 exposed_packages[hub_name] = out.exposed_packages
             else:
@@ -652,6 +734,14 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     intersection[pkg] = None
                 exposed_packages[hub_name] = intersection
             whl_libraries.update(out.whl_libraries)
+            for whl_name, lib in out.whl_libraries.items():
+                if enable_pipstar:
+                    whl_libraries.setdefault(whl_name, lib)
+                elif whl_name in lib:
+                    fail("'{}' already in created".format(whl_name))
+                else:
+                    # replicate whl_libraries.update(out.whl_libraries)
+                    whl_libraries[whl_name] = lib
 
             # TODO @aignas 2024-04-05: how do we support different requirement
             # cycles for different abis/oses? For now we will need the users to
@@ -802,6 +892,7 @@ _default_attrs = {
     "arch_name": attr.string(
         doc = """\
 The CPU architecture name to be used.
+You can use any cpu name from the `@platforms//cpu:` package.
 
 :::{note}
 Either this or {attr}`env` `platform_machine` key should be specified.
@@ -815,25 +906,6 @@ The list of labels to `config_setting` targets that need to be matched for the p
 selected.
 """,
     ),
-    "os_name": attr.string(
-        doc = """\
-The OS name to be used.
-
-:::{note}
-Either this or the appropriate `env` keys should be specified.
-:::
-""",
-    ),
-    "platform": attr.string(
-        doc = """\
-A platform identifier which will be used as the unique identifier within the extension evaluation.
-If you are defining custom platforms in your project and don't want things to clash, use extension
-[isolation] feature.
-
-[isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
-""",
-    ),
-} | {
     "env": attr.string_dict(
         doc = """\
 The values to use for environment markers when evaluating an expression.
@@ -859,6 +931,79 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing
+    "os_name": attr.string(
+        doc = """\
+The OS name to be used.
+You can use any OS name from the `@platforms//os:` package.
+
+:::{note}
+Either this or the appropriate `env` keys should be specified.
+:::
+""",
+    ),
+    "platform": attr.string(
+        doc = """\
+A platform identifier which will be used as the unique identifier within the extension evaluation.
+If you are defining custom platforms in your project and don't want things to clash, use extension
+[isolation] feature.
+
+[isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
+""",
+    ),
+    "whl_abi_tags": attr.string_list(
+        doc = """\
+A list of ABIs to select wheels for. The values can be either strings or include template
+parameters like `{major}` and `{minor}` which will be replaced with python version parts. e.g.
+`cp{major}{minor}` will result in `cp313` given the full python version is `3.13.5`.
+Will always  include `"none"` even if it is not specified.
+
+:::{note}
+We select a single wheel and the last match will take precedence.
+:::
+
+:::{seealso}
+See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#abi-tag) for more information.
+:::
+""",
+    ),
+    "whl_platform_tags": attr.string_list(
+        doc = """\
+A list of `platform_tag` matchers so that we can select the best wheel based on the user
+preference.
+Will always  include `"any"` even if it is not specified.
+
+The items in this list can contain a single `*` character that is equivalent to matching the
+latest available version component in the platform_tag. Note, if the wheel platform tag does not
+have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a regular
+character.
+
+We will always select the highest available `platform_tag` version that is compatible with the
+target platform.
+
+:::{note}
+We select a single wheel and the last match will take precedence, if the platform_tag that we
+match has a version component (e.g. `android_x_arch`, then the version `x` will be used in the
+matching algorithm).
+
+If the matcher you provide has `*`, then we will match a wheel with the highest available target platform, i.e. if `musllinux_1_1_arch` and `musllinux_1_2_arch` are both present, then we will select `musllinux_1_2_arch`.
+Otherwise we will select the highest available version that is equal or lower to the specifier, i.e. if `manylinux_2_12` and `manylinux_2_17` wheels are present and the matcher is `manylinux_2_15`, then we will match `manylinux_2_12` but not `manylinux_2_17`.
+:::
+
+:::{note}
+The following tag prefixes should be used instead of the legacy equivalents:
+* `manylinux_2_5` instead of `manylinux1`
+* `manylinux_2_12` instead of `manylinux2010`
+* `manylinux_2_17` instead of `manylinux2014`
+
+When parsing the whl filenames `rules_python` will automatically transform wheel filenames to the
+latest format.
+:::
+
+:::{seealso}
+See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#platform-tag) for more information.
+:::
+""",
+    ),
 }
 
 _SUPPORTED_PEP508_KEYS = [
