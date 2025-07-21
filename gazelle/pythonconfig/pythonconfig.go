@@ -74,6 +74,12 @@ const (
 	// naming convention. See python_library_naming_convention for more info on
 	// the package name interpolation.
 	TestNamingConvention = "python_test_naming_convention"
+	// ProtoNamingConvention represents the directive that controls the
+	// py_proto_library naming convention. It interpolates $proto_name$ with
+	// the proto_library rule name, minus any trailing _proto. E.g. if the
+	// proto_library name is `foo_proto`, setting this to `$proto_name$_my_lib`
+	// would render to `foo_my_lib`.
+	ProtoNamingConvention = "python_proto_naming_convention"
 	// DefaultVisibilty represents the directive that controls what visibility
 	// labels are added to generated python targets.
 	DefaultVisibilty = "python_default_visibility"
@@ -121,6 +127,7 @@ const (
 
 const (
 	packageNameNamingConventionSubstitution     = "$package_name$"
+	protoNameNamingConventionSubstitution       = "$proto_name$"
 	distributionNameLabelConventionSubstitution = "$distribution_name$"
 )
 
@@ -182,6 +189,7 @@ type Config struct {
 	libraryNamingConvention                   string
 	binaryNamingConvention                    string
 	testNamingConvention                      string
+	protoNamingConvention                     string
 	defaultVisibility                         []string
 	visibility                                []string
 	testFilePattern                           []string
@@ -220,6 +228,7 @@ func New(
 		libraryNamingConvention:                   packageNameNamingConventionSubstitution,
 		binaryNamingConvention:                    fmt.Sprintf("%s_bin", packageNameNamingConventionSubstitution),
 		testNamingConvention:                      fmt.Sprintf("%s_test", packageNameNamingConventionSubstitution),
+		protoNamingConvention:                     fmt.Sprintf("%s_py_pb2", protoNameNamingConventionSubstitution),
 		defaultVisibility:                         []string{fmt.Sprintf(DefaultVisibilityFmtString, "")},
 		visibility:                                []string{},
 		testFilePattern:                           strings.Split(DefaultTestFilePatternString, ","),
@@ -255,6 +264,7 @@ func (c *Config) NewChild() *Config {
 		libraryNamingConvention:                   c.libraryNamingConvention,
 		binaryNamingConvention:                    c.binaryNamingConvention,
 		testNamingConvention:                      c.testNamingConvention,
+		protoNamingConvention:                     c.protoNamingConvention,
 		defaultVisibility:                         c.defaultVisibility,
 		visibility:                                c.visibility,
 		testFilePattern:                           c.testFilePattern,
@@ -487,6 +497,17 @@ func (c *Config) SetTestNamingConvention(testNamingConvention string) {
 // substitutions.
 func (c *Config) RenderTestName(packageName string) string {
 	return strings.ReplaceAll(c.testNamingConvention, packageNameNamingConventionSubstitution, packageName)
+}
+
+// SetProtoNamingConvention sets the py_proto_library target naming convention.
+func (c *Config) SetProtoNamingConvention(protoNamingConvention string) {
+	c.protoNamingConvention = protoNamingConvention
+}
+
+// RenderProtoName returns the py_proto_library target name by performing all
+// substitutions.
+func (c *Config) RenderProtoName(protoName string) string {
+	return strings.ReplaceAll(c.protoNamingConvention, protoNameNamingConventionSubstitution, strings.TrimSuffix(protoName, "_proto"))
 }
 
 // AppendVisibility adds additional items to the target's visibility.

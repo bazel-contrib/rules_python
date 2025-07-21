@@ -208,6 +208,8 @@ Python-specific directives are as follows:
 | Controls the `py_binary` naming convention. Follows the same interpolation rules as `python_library_naming_convention`.                                                                                                                                                                         | |
 | `# gazelle:python_test_naming_convention`                                                                                                                                                                                                                                                       | `$package_name$_test` |
 | Controls the `py_test` naming convention. Follows the same interpolation rules as `python_library_naming_convention`.                                                                                                                                                                           | |
+| [`# gazelle:python_proto_naming_convention`](#directive-python_proto_naming_convention)                                                                                                                                                                                                         | `$proto_name$_py_pb2` |
+| Controls the `py_proto_library` naming convention. It interpolates `$proto_name$` with the proto_library rule name, minus any trailing _proto. E.g. if the proto_library name is `foo_proto`, setting this to `$proto_name$_my_lib` would render to `foo_my_lib`.                               | |
 | `# gazelle:resolve py ...`                                                                                                                                                                                                                                                                      | n/a |
 | Instructs the plugin what target to add as a dependency to satisfy a given import statement. The syntax is `# gazelle:resolve py import-string label` where `import-string` is the symbol in the python `import` statement, and `label` is the Bazel label that Gazelle should write in `deps`. | |
 | [`# gazelle:python_default_visibility labels`](#directive-python_default_visibility)                                                                                                                                                                                                            | |
@@ -262,6 +264,31 @@ py_libary(
 
 [python-packaging-user-guide]: https://github.com/pypa/packaging.python.org/blob/4c86169a/source/tutorials/packaging-projects.rst
 
+#### Directive: `python_proto_naming_convention`:
+
+Set this directive to a string pattern to control how the generated `py_proto_library` targets are named. When generating new `py_proto_library` rules, Gazelle will replace `$proto_name$` in the pattern with the name of the `proto_library` rule, stripping out a trailing `_proto`. For example:
+
+```starlark
+# gazelle:python_generate_proto true
+# gazelle:python_proto_naming_convention my_custom_$proto_name$_pattern
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+)
+```
+
+produces the following `py_proto_library` rule:
+```starlark
+py_proto_library(
+    name = "my_custom_foo_pattern",
+    deps = [":foo_proto"],
+)
+```
+
+The default naming convention is `$proto_name$_pb2_py`, so by default in the above example Gazelle would generate `foo_pb2_py`. Any pre-existing rules are left in place and not renamed.
+
+Note that the Python library will always be imported as `foo_pb2` in Python code, regardless of the naming convention. Also note that Gazelle is currently not able to map said imports, e.g. `import foo_pb2`, to fill in `py_proto_library` targets as dependencies of other rules. See [this issue](https://github.com/bazel-contrib/rules_python/issues/1703).
 
 #### Directive: `python_default_visibility`:
 
