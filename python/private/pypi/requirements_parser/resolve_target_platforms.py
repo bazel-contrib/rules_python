@@ -50,8 +50,8 @@ def main():
         hashes = prefix + hashes
 
         req = Requirement(entry)
-        for p in target_platforms:
-            (platform,) = Platform.from_string(p)
+        for p, triple in target_platforms.items():
+            (platform,) = Platform.from_string(triple)
             if not req.marker or req.marker.evaluate(platform.env_markers("")):
                 response.setdefault(requirement_line, []).append(p)
 
