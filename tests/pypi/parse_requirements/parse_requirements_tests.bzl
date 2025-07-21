@@ -16,6 +16,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:parse_requirements.bzl", "parse_requirements", "select_requirement")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 
 def _mock_ctx():
     testdata = {
@@ -522,6 +523,26 @@ def _test_overlapping_shas_with_index_results(env):
             "requirements_linux": ["cp39_linux_x86_64"],
             "requirements_osx": ["cp39_osx_x86_64"],
         },
+        platforms = {
+            "cp39_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
+            ),
+            "cp39_osx_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "osx",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["macosx_*_x86_64"],
+            ),
+        },
         get_index_urls = lambda _, __: {
             "foo": struct(
                 sdists = {
@@ -563,18 +584,8 @@ def _test_overlapping_shas_with_index_results(env):
                     filename = "foo-0.0.1-py3-none-any.whl",
                     requirement_line = "foo==0.0.3",
                     sha256 = "deadbaaf",
-                    target_platforms = ["cp39_linux_x86_64", "cp39_osx_x86_64"],
+                    target_platforms = ["cp39_linux_x86_64"],
                     url = "super2",
-                    yanked = False,
-                ),
-                struct(
-                    distribution = "foo",
-                    extra_pip_args = [],
-                    filename = "foo-0.0.1.tar.gz",
-                    requirement_line = "foo==0.0.3",
-                    sha256 = "5d15t",
-                    target_platforms = ["cp39_linux_x86_64", "cp39_osx_x86_64"],
-                    url = "sdist",
                     yanked = False,
                 ),
                 struct(
