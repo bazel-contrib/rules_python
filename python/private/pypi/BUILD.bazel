@@ -366,6 +366,16 @@ bzl_library(
 )
 
 bzl_library(
+    name = "select_whl_bzl",
+    srcs = ["select_whl.bzl"],
+    deps = [
+        ":parse_whl_name_bzl",
+        ":python_tag_bzl",
+        "//python/private:version_bzl",
+    ],
+)
+
+bzl_library(
     name = "simpleapi_download_bzl",
     srcs = ["simpleapi_download.bzl"],
     deps = [
