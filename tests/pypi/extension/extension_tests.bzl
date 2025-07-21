@@ -58,20 +58,22 @@ def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_roo
             whl_mods = whl_mods,
             default = default or [
                 _default(
-                    platform = "{}_{}".format(os, cpu),
+                    platform = "{}_{}{}".format(os, cpu, freethreaded),
                     os_name = os,
                     arch_name = cpu,
                     config_settings = [
                         "@platforms//os:{}".format(os),
                         "@platforms//cpu:{}".format(cpu),
                     ],
+                    whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
                     whl_platform_tags = whl_platform_tags,
                 )
-                for (os, cpu), whl_platform_tags in {
-                    ("linux", "x86_64"): ["linux_*_x86_64", "manylinux_*_x86_64"],
-                    ("linux", "aarch64"): ["linux_*_aarch64", "manylinux_*_aarch64"],
-                    ("osx", "aarch64"): ["macosx_*_arm64"],
-                    ("windows", "aarch64"): ["win_arm64"],
+                for (os, cpu, freethreaded), whl_platform_tags in {
+                    ("linux", "x86_64", ""): ["linux_x86_64", "manylinux_*_x86_64"],
+                    ("linux", "x86_64", "_freethreaded"): ["linux_x86_64", "manylinux_*_x86_64"],
+                    ("linux", "aarch64", ""): ["linux_aarch64", "manylinux_*_aarch64"],
+                    ("osx", "aarch64", ""): ["macosx_*_arm64"],
+                    ("windows", "aarch64", ""): ["win_arm64"],
                 }.items()
             ],
         ),
@@ -113,6 +115,7 @@ def _default(
         platform = None,
         whl_platform_tags = None,
         env = None,
+        marker = None,
         whl_abi_tags = None):
     return struct(
         arch_name = arch_name,
@@ -121,6 +124,7 @@ def _default(
         whl_platform_tags = whl_platform_tags or [],
         config_settings = config_settings,
         env = env or {},
+        marker = marker or "",
         whl_abi_tags = whl_abi_tags or [],
     )
 
@@ -349,10 +353,11 @@ torch==2.4.1 ; platform_machine != 'x86_64' \
                     version = "3.15",
                 ),
             ],
-            "pypi_315_torch_linux_x86_64": [
+            "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": [
                 whl_config_setting(
                     target_platforms = [
                         "cp315_linux_x86_64",
+                        "cp315_linux_x86_64_freethreaded",
                     ],
                     version = "3.15",
                 ),
@@ -365,7 +370,7 @@ torch==2.4.1 ; platform_machine != 'x86_64' \
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1 --hash=sha256:deadbeef",
         },
-        "pypi_315_torch_linux_x86_64": {
+        "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": {
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1+cpu",
@@ -755,6 +760,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                         target_platforms = (
                             "cp315_linux_aarch64",
                             "cp315_linux_x86_64",
+                            "cp315_linux_x86_64_freethreaded",
                             "cp315_osx_aarch64",
                             "cp315_windows_aarch64",
                         ),
@@ -768,6 +774,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                         target_platforms = (
                             "cp315_linux_aarch64",
                             "cp315_linux_x86_64",
+                            "cp315_linux_x86_64_freethreaded",
                             "cp315_osx_aarch64",
                             "cp315_windows_aarch64",
                         ),
@@ -795,6 +802,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                         target_platforms = (
                             "cp315_linux_aarch64",
                             "cp315_linux_x86_64",
+                            "cp315_linux_x86_64_freethreaded",
                             "cp315_osx_aarch64",
                             "cp315_windows_aarch64",
                         ),
@@ -808,6 +816,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                         target_platforms = (
                             "cp315_linux_aarch64",
                             "cp315_linux_x86_64",
+                            "cp315_linux_x86_64_freethreaded",
                             "cp315_osx_aarch64",
                             "cp315_windows_aarch64",
                         ),
@@ -821,6 +830,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                         target_platforms = (
                             "cp315_linux_aarch64",
                             "cp315_linux_x86_64",
+                            "cp315_linux_x86_64_freethreaded",
                             "cp315_osx_aarch64",
                             "cp315_windows_aarch64",
                         ),
@@ -974,12 +984,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.hub_whl_map().contains_exactly({
         "pypi": {
             "optimum": {
-                "pypi_315_optimum_linux_aarch64_linux_x86_64": [
+                "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded": [
                     whl_config_setting(
                         version = "3.15",
                         target_platforms = [
                             "cp315_linux_aarch64",
                             "cp315_linux_x86_64",
+                            "cp315_linux_x86_64_freethreaded",
                         ],
                         config_setting = None,
                         filename = None,
@@ -1000,7 +1011,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     })
 
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum_linux_aarch64_linux_x86_64": {
+        "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded": {
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
@@ -1026,6 +1037,7 @@ def _test_pipstar_platforms(env):
                         platform = "my{}_{}".format(os, cpu),
                         os_name = os,
                         arch_name = cpu,
+                        marker = "python_version ~= \"3.13\"",
                         config_settings = [
                             "@platforms//os:{}".format(os),
                             "@platforms//cpu:{}".format(cpu),
@@ -1133,6 +1145,7 @@ def _test_build_pipstar_platform(env):
                 "@platforms//cpu:x86_64",
             ],
             env = {"implementation_name": "cpython"},
+            marker = "",
             whl_abi_tags = ["none", "abi3", "cp{major}{minor}"],
             whl_platform_tags = ["any"],
         ),

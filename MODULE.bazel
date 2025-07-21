@@ -70,11 +70,15 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         config_settings = [
             "@platforms//cpu:{}".format(cpu),
             "@platforms//os:linux",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
         ],
         env = {"platform_version": "0"},
+        marker = "python_version >= '3.13'" if freethreaded else "",
         os_name = "linux",
-        platform = "linux_{}".format(cpu),
-        whl_abi_tags = [
+        platform = "linux_{}{}".format(cpu, freethreaded),
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
             "abi3",
             "cp{major}{minor}",
         ],
@@ -87,6 +91,10 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         "x86_64",
         "aarch64",
     ]
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
 ]
 
 [
@@ -95,13 +103,17 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         config_settings = [
             "@platforms//cpu:{}".format(cpu),
             "@platforms//os:osx",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
         ],
         # We choose the oldest non-EOL version at the time when we release `rules_python`.
         # See https://endoflife.date/macos
         env = {"platform_version": "14.0"},
+        marker = "python_version >= '3.13'" if freethreaded else "",
         os_name = "osx",
-        platform = "osx_{}".format(cpu),
-        whl_abi_tags = [
+        platform = "osx_{}{}".format(cpu, freethreaded),
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
             "abi3",
             "cp{major}{minor}",
         ],
@@ -120,6 +132,10 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             "x86_64",
         ],
     }.items()
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
 ]
 
 [
@@ -128,11 +144,15 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         config_settings = [
             "@platforms//cpu:{}".format(cpu),
             "@platforms//os:windows",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
         ],
         env = {"platform_version": "0"},
+        marker = "python_version >= '3.13'" if freethreaded else "",
         os_name = "windows",
-        platform = "windows_{}".format(cpu),
-        whl_abi_tags = [
+        platform = "windows_{}{}".format(cpu, freethreaded),
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
             "abi3",
             "cp{major}{minor}",
         ],
@@ -141,6 +161,10 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
     for cpu, whl_platform_tags in {
         "x86_64": ["win_amd64"],
     }.items()
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
 ]
 
 pip.parse(
