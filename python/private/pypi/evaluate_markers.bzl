@@ -43,11 +43,11 @@ def evaluate_markers(*, requirements, platforms):
     for req_string, platform_strings in requirements.items():
         req = requirement(req_string)
         for platform_str in platform_strings:
-            env = platforms.get(platform_str)
-            if not env:
+            plat = platforms.get(platform_str)
+            if not plat:
                 fail("Please define platform: '{}'".format(platform_str))
 
-            if evaluate(req.marker, env = env):
+            if evaluate(req.marker, env = plat.env):
                 ret.setdefault(req_string, []).append(platform_str)
 
     return ret
