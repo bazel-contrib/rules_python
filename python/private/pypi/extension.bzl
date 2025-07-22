@@ -490,7 +490,7 @@ def _configure(
                 continue
 
             config["platforms"][platform][key] = value
-    else:
+    elif platform:
         config["platforms"].pop(platform)
 
 def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = "", whl_abi_tags = [], whl_platform_tags = []):

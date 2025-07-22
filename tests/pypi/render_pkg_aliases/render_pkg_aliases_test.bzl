@@ -16,10 +16,6 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
-    "//python/private/pypi:pkg_aliases.bzl",
-    "get_filename_config_settings",
-)  # buildifier: disable=bzl-visibility
-load(
     "//python/private/pypi:render_pkg_aliases.bzl",
     "get_whl_flag_versions",
     "render_multiplatform_pkg_aliases",
@@ -70,26 +66,13 @@ def _test_bzlmod_aliases(env):
                 whl_config_setting(
                     # Add one with micro version to mimic construction in the extension
                     version = "3.2.2",
-                    config_setting = "//:my_config_setting",
                 ): "pypi_32_bar_baz",
                 whl_config_setting(
                     version = "3.2",
-                    config_setting = "//:my_config_setting",
                     target_platforms = [
                         "cp32_linux_x86_64",
                     ],
                 ): "pypi_32_bar_baz_linux_x86_64",
-                whl_config_setting(
-                    version = "3.2",
-                    filename = "foo-0.0.0-py3-none-any.whl",
-                ): "filename_repo",
-                whl_config_setting(
-                    version = "3.2.2",
-                    filename = "foo-0.0.0-py3-none-any.whl",
-                    target_platforms = [
-                        "cp32.2_linux_x86_64",
-                    ],
-                ): "filename_repo_linux_x86_64",
             },
         },
         extra_hub_aliases = {"bar_baz": ["foo"]},
@@ -111,21 +94,11 @@ package(default_visibility = ["//visibility:public"])
 pkg_aliases(
     name = "bar_baz",
     actual = {
-        "//:my_config_setting": "pypi_32_bar_baz",
+        "//_config:is_cp322": "pypi_32_bar_baz",
         whl_config_setting(
             target_platforms = ("cp32_linux_x86_64",),
-            config_setting = "//:my_config_setting",
             version = "3.2",
         ): "pypi_32_bar_baz_linux_x86_64",
-        whl_config_setting(
-            filename = "foo-0.0.0-py3-none-any.whl",
-            version = "3.2",
-        ): "filename_repo",
-        whl_config_setting(
-            filename = "foo-0.0.0-py3-none-any.whl",
-            target_platforms = ("cp32_linux_x86_64",),
-            version = "3.2.2",
-        ): "filename_repo_linux_x86_64",
     },
     extra_aliases = ["foo"],
 )"""
@@ -256,251 +229,23 @@ def _test_get_python_versions_with_target_platforms(env):
 
 _tests.append(_test_get_python_versions_with_target_platforms)
 
-def _test_get_python_versions_from_filenames(env):
-    got = get_whl_flag_versions(
-        settings = [
-            whl_config_setting(
-                version = "3.3",
-                filename = "foo-0.0.0-py3-none-" + plat + ".whl",
-            )
-            for plat in [
-                "linux_x86_64",
-                "manylinux_2_17_x86_64",
-                "manylinux_2_14_aarch64.musllinux_1_1_aarch64",
-                "musllinux_1_0_x86_64",
-                "manylinux2014_x86_64.manylinux_2_17_x86_64",
-                "macosx_11_0_arm64",
-                "macosx_10_9_x86_64",
-                "macosx_10_9_universal2",
-                "windows_x86_64",
-            ]
-        ],
-    )
-    want = {
-        "glibc_versions": [(2, 14), (2, 17)],
-        "muslc_versions": [(1, 0), (1, 1)],
-        "osx_versions": [(10, 9), (11, 0)],
-        "python_versions": ["3.3"],
-        "target_platforms": [
-            "linux_aarch64",
-            "linux_x86_64",
-            "osx_aarch64",
-            "osx_x86_64",
-            "windows_x86_64",
-        ],
-    }
-    env.expect.that_dict(got).contains_exactly(want)
-
-_tests.append(_test_get_python_versions_from_filenames)
-
 def _test_get_flag_versions_from_alias_target_platforms(env):
     got = get_whl_flag_versions(
         settings = [
+            whl_config_setting(version = "3.3"),
             whl_config_setting(
                 version = "3.3",
-                filename = "foo-0.0.0-py3-none-" + plat + ".whl",
-            )
-            for plat in [
-                "windows_x86_64",
-            ]
-        ] + [
-            whl_config_setting(
-                version = "3.3",
-                filename = "foo-0.0.0-py3-none-any.whl",
-                target_platforms = [
-                    "cp33_linux_x86_64",
-                ],
+                target_platforms = ["cp33_linux_x86_64"],
             ),
         ],
     )
     want = {
         "python_versions": ["3.3"],
-        "target_platforms": [
-            "linux_x86_64",
-            "windows_x86_64",
-        ],
+        "target_platforms": ["linux_x86_64"],
     }
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_get_flag_versions_from_alias_target_platforms)
-
-def _test_config_settings(
-        env,
-        *,
-        filename,
-        want,
-        python_version,
-        want_versions = {},
-        target_platforms = [],
-        glibc_versions = [],
-        muslc_versions = [],
-        osx_versions = []):
-    got, got_default_version_settings = get_filename_config_settings(
-        filename = filename,
-        target_platforms = target_platforms,
-        glibc_versions = glibc_versions,
-        muslc_versions = muslc_versions,
-        osx_versions = osx_versions,
-        python_version = python_version,
-    )
-    env.expect.that_collection(got).contains_exactly(want)
-    env.expect.that_dict(got_default_version_settings).contains_exactly(want_versions)
-
-def _test_sdist(env):
-    # Do the first test for multiple extensions
-    for ext in [".tar.gz", ".zip"]:
-        _test_config_settings(
-            env,
-            filename = "foo-0.0.1" + ext,
-            python_version = "3.2",
-            want = [":is_cp32_sdist"],
-        )
-
-    ext = ".zip"
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1" + ext,
-        python_version = "3.2",
-        target_platforms = [
-            "linux_aarch64",
-            "linux_x86_64",
-        ],
-        want = [
-            ":is_cp32_sdist_linux_aarch64",
-            ":is_cp32_sdist_linux_x86_64",
-        ],
-    )
-
-_tests.append(_test_sdist)
-
-def _test_py2_py3_none_any(env):
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-py2.py3-none-any.whl",
-        python_version = "3.2",
-        want = [
-            ":is_cp32_py_none_any",
-        ],
-    )
-
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-py2.py3-none-any.whl",
-        python_version = "3.2",
-        target_platforms = [
-            "osx_x86_64",
-        ],
-        want = [":is_cp32_py_none_any_osx_x86_64"],
-    )
-
-_tests.append(_test_py2_py3_none_any)
-
-def _test_py3_none_any(env):
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-py3-none-any.whl",
-        python_version = "3.1",
-        want = [":is_cp31_py3_none_any"],
-    )
-
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-py3-none-any.whl",
-        python_version = "3.1",
-        target_platforms = ["linux_x86_64"],
-        want = [":is_cp31_py3_none_any_linux_x86_64"],
-    )
-
-_tests.append(_test_py3_none_any)
-
-def _test_py3_none_macosx_10_9_universal2(env):
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-py3-none-macosx_10_9_universal2.whl",
-        python_version = "3.1",
-        osx_versions = [
-            (10, 9),
-            (11, 0),
-        ],
-        want = [],
-        want_versions = {
-            ":is_cp31_py3_none_osx_universal2": {
-                (10, 9): ":is_cp31_py3_none_osx_10_9_universal2",
-                (11, 0): ":is_cp31_py3_none_osx_11_0_universal2",
-            },
-        },
-    )
-
-_tests.append(_test_py3_none_macosx_10_9_universal2)
-
-def _test_cp37_abi3_linux_x86_64(env):
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-cp37-abi3-linux_x86_64.whl",
-        python_version = "3.7",
-        want = [":is_cp37_abi3_linux_x86_64"],
-    )
-
-_tests.append(_test_cp37_abi3_linux_x86_64)
-
-def _test_cp37_abi3_windows_x86_64(env):
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-cp37-abi3-windows_x86_64.whl",
-        python_version = "3.7",
-        want = [":is_cp37_abi3_windows_x86_64"],
-    )
-
-_tests.append(_test_cp37_abi3_windows_x86_64)
-
-def _test_cp37_abi3_manylinux_2_17_x86_64(env):
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-        python_version = "3.7",
-        glibc_versions = [
-            (2, 16),
-            (2, 17),
-            (2, 18),
-        ],
-        want = [],
-        want_versions = {
-            ":is_cp37_abi3_manylinux_x86_64": {
-                (2, 17): ":is_cp37_abi3_manylinux_2_17_x86_64",
-                (2, 18): ":is_cp37_abi3_manylinux_2_18_x86_64",
-            },
-        },
-    )
-
-_tests.append(_test_cp37_abi3_manylinux_2_17_x86_64)
-
-def _test_cp37_abi3_manylinux_2_17_musllinux_1_1_aarch64(env):
-    # I've seen such a wheel being built for `uv`
-    _test_config_settings(
-        env,
-        filename = "foo-0.0.1-cp37-cp37-manylinux_2_17_arm64.musllinux_1_1_arm64.whl",
-        python_version = "3.7",
-        glibc_versions = [
-            (2, 16),
-            (2, 17),
-            (2, 18),
-        ],
-        muslc_versions = [
-            (1, 1),
-        ],
-        want = [],
-        want_versions = {
-            ":is_cp37_cp37_manylinux_aarch64": {
-                (2, 17): ":is_cp37_cp37_manylinux_2_17_aarch64",
-                (2, 18): ":is_cp37_cp37_manylinux_2_18_aarch64",
-            },
-            ":is_cp37_cp37_musllinux_aarch64": {
-                (1, 1): ":is_cp37_cp37_musllinux_1_1_aarch64",
-            },
-        },
-    )
-
-_tests.append(_test_cp37_abi3_manylinux_2_17_musllinux_1_1_aarch64)
 
 def render_pkg_aliases_test_suite(name):
     """Create the test suite.
