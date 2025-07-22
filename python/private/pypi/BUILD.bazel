@@ -320,8 +320,6 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels_bzl",
-        ":parse_whl_name_bzl",
-        ":whl_target_platforms_bzl",
         "//python/private:text_util_bzl",
         "@bazel_skylib//lib:selects",
     ],
@@ -349,9 +347,7 @@ bzl_library(
     srcs = ["render_pkg_aliases.bzl"],
     deps = [
         ":generate_group_library_build_bazel_bzl",
-        ":parse_whl_name_bzl",
         ":whl_config_setting_bzl",
-        ":whl_target_platforms_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:text_util_bzl",
     ],
