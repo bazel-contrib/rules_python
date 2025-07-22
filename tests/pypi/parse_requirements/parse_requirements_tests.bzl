@@ -28,6 +28,9 @@ foo==0.0.1 \
         "requirements_direct": """\
 foo[extra] @ https://some-url/package.whl
 """,
+        "requirements_direct_sdist": """
+foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz
+""",
         "requirements_extra_args": """\
 --index-url=example.org
 
@@ -131,22 +134,33 @@ def _test_direct_urls_integration(env):
         ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_direct": ["linux_x86_64"],
+            "requirements_direct_sdist": ["osx_x86_64"],
         },
     )
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
             is_exposed = True,
-            is_multiple_versions = False,
+            is_multiple_versions = True,
             srcs = [
                 struct(
                     distribution = "foo",
                     extra_pip_args = [],
+                    filename = "foo-1.1.tar.gz",
+                    requirement_line = "foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz",
+                    sha256 = "",
+                    target_platforms = ["osx_x86_64"],
+                    url = "https://github.com/org/foo/downloads/foo-1.1.tar.gz",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "package.whl",
                     requirement_line = "foo[extra]",
+                    sha256 = "",
                     target_platforms = ["linux_x86_64"],
                     url = "https://some-url/package.whl",
-                    filename = "package.whl",
-                    sha256 = "",
                     yanked = False,
                 ),
             ],

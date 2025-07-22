@@ -73,7 +73,7 @@ def _test_no_simple_api_sources(env):
             filename = "package.whl",
         ),
         "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f": struct(
-            requirement = "foo[extra]",
+            requirement = "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f",
             requirement_line = "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f",
             marker = "",
             url = "https://example.org/foo-1.0.tar.gz",
