@@ -17,12 +17,11 @@ import sys
 import bar
 import baz
 import foo
+import third_party
 
 # Ensure that even though @gazelle_python_test//other_pip_dep provides "third_party",
 # we can still override "third_party.foo.bar"
 import third_party.foo.bar
-
-import third_party
 from third_party import baz
 
 _ = sys
