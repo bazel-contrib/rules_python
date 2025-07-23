@@ -5,7 +5,9 @@ from pathlib import Path
 
 from python.runfiles import runfiles
 
-STUB_PATH = "%stub_path%"
+# runfiles.py will reject paths which aren't normalized, which can happen when the REPL rules are
+# used from a remote module.
+STUB_PATH = os.path.normpath("%stub_path%")
 
 
 def start_repl():

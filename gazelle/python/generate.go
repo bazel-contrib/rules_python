@@ -227,7 +227,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	result.Gen = make([]*rule.Rule, 0)
 
 	if cfg.GenerateProto() {
-		generateProtoLibraries(args, pythonProjectRoot, visibility, &result)
+		generateProtoLibraries(args, cfg, pythonProjectRoot, visibility, &result)
 	}
 
 	collisionErrors := singlylinkedlist.New()
@@ -569,7 +569,7 @@ func ensureNoCollision(file *rule.File, targetName, kind string) error {
 	return nil
 }
 
-func generateProtoLibraries(args language.GenerateArgs, pythonProjectRoot string, visibility []string, res *language.GenerateResult) {
+func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config, pythonProjectRoot string, visibility []string, res *language.GenerateResult) {
 	// First, enumerate all the proto_library in this package.
 	var protoRuleNames []string
 	for _, r := range args.OtherGen {
@@ -582,10 +582,16 @@ func generateProtoLibraries(args language.GenerateArgs, pythonProjectRoot string
 
 	// Next, enumerate all the pre-existing py_proto_library in this package, so we can delete unnecessary rules later.
 	pyProtoRules := map[string]bool{}
+	pyProtoRulesForProto := map[string]string{}
 	if args.File != nil {
 		for _, r := range args.File.Rules {
 			if r.Kind() == "py_proto_library" {
 				pyProtoRules[r.Name()] = false
+
+				protos := r.AttrStrings("deps")
+				for _, proto := range protos {
+					pyProtoRulesForProto[strings.TrimPrefix(proto, ":")] = r.Name()
+				}
 			}
 		}
 	}
@@ -593,7 +599,12 @@ func generateProtoLibraries(args language.GenerateArgs, pythonProjectRoot string
 	emptySiblings := treeset.Set{}
 	// Generate a py_proto_library for each proto_library.
 	for _, protoRuleName := range protoRuleNames {
-		pyProtoLibraryName := strings.TrimSuffix(protoRuleName, "_proto") + "_py_pb2"
+		pyProtoLibraryName := cfg.RenderProtoName(protoRuleName)
+		if ruleName, ok := pyProtoRulesForProto[protoRuleName]; ok {
+			// There exists a pre-existing py_proto_library for this proto. Keep this name.
+			pyProtoLibraryName = ruleName
+		}
+
 		pyProtoLibrary := newTargetBuilder(pyProtoLibraryKind, pyProtoLibraryName, pythonProjectRoot, args.Rel, &emptySiblings).
 			addVisibility(visibility).
 			addResolvedDependency(":" + protoRuleName).

@@ -601,7 +601,15 @@ You cannot use both the additive_build_content and additive_build_content_file a
             extra_aliases.setdefault(hub_name, {})
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
-            exposed_packages.setdefault(hub_name, {}).update(out.exposed_packages)
+            if hub_name not in exposed_packages:
+                exposed_packages[hub_name] = out.exposed_packages
+            else:
+                intersection = {}
+                for pkg in out.exposed_packages:
+                    if pkg not in exposed_packages[hub_name]:
+                        continue
+                    intersection[pkg] = None
+                exposed_packages[hub_name] = intersection
             whl_libraries.update(out.whl_libraries)
 
             # TODO @aignas 2024-04-05: how do we support different requirement
