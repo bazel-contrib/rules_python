@@ -88,6 +88,10 @@ END_UNRELEASED_TEMPLATE
   ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* (runfiles) Fix incorrect Python runfiles path assumption - the existing
+  implementation assumes that it is always four levels below the runfiles
+  directory, leading to incorrect path checks
+  ([#3085](https://github.com/bazel-contrib/rules_python/issues/3085)).
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 * (toolchains) `local_runtime_repo` works with multiarch Debian with Python 3.8
   ([#3099](https://github.com/bazel-contrib/rules_python/issues/3099)).
