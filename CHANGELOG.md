@@ -70,7 +70,15 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
-* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
+* (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
+* If using the (deprecated) autodetecting/runtime_env toolchain, then the Python
+  version specified at build-time *must* match the Python version used at
+  runtime (the {obj}`--@rules_python//python/config_settings:python_version`
+  flag and the {attr}`python_version` attribute control the build-time version
+  for a target). If they don't match, dependencies won't be importable. (Such a
+  misconfiguration was unlikely to work to begin with; this is called out as an
+  FYI).
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows.
 
 [20250723]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250723
 
