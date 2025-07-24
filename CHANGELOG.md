@@ -70,8 +70,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
-* (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
-* (core) the flag `bootstrap_impl=script` has been switched for UNIX platforms.
+* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
 
 [20250723]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250723
 
