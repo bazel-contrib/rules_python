@@ -1,0 +1,16 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+
+# gazelle:python_generate_proto true
+
+proto_library(
+    name = "test3_uses_naming_convention_bar_proto",
+    srcs = ["bar.proto"],
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "some_test3_uses_naming_convention_bar_value",
+    visibility = ["//:__subpackages__"],
+    deps = [":test3_uses_naming_convention_bar_proto"],
+)

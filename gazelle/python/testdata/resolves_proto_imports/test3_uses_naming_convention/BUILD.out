@@ -1,0 +1,10 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+# gazelle:python_proto_naming_convention some_$proto_name$_value
+
+py_library(
+    name = "test3_uses_naming_convention",
+    srcs = ["baz.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//test3_uses_naming_convention/bar:some_test3_uses_naming_convention_bar_value"],
+)

@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package test3_uses_naming_convention.bar;
+
+message Bar {
+    bool bar = 1;
+}

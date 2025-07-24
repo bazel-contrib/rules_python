@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package test4_generates_imports_for_multiple_proto_srcs.foo;
+
+message Bar {
+    bool bar = 1;
+}

@@ -288,7 +288,7 @@ py_proto_library(
 
 The default naming convention is `$proto_name$_pb2_py`, so by default in the above example Gazelle would generate `foo_pb2_py`. Any pre-existing rules are left in place and not renamed.
 
-Note that the Python library will always be imported as `foo_pb2` in Python code, regardless of the naming convention. Also note that Gazelle is currently not able to map said imports, e.g. `import foo_pb2`, to fill in `py_proto_library` targets as dependencies of other rules. See [this issue](https://github.com/bazel-contrib/rules_python/issues/1703).
+Note that the Python library will always be imported as `foo_pb2` in Python code, regardless of the naming convention.
 
 #### Directive: `python_default_visibility`:
 
