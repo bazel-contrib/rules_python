@@ -54,6 +54,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (deps) Upgraded to `bazel-skylib` version
+  [1.8.1](https://github.com/bazelbuild/bazel-skylib/releases/tag/1.8.1)
+  to remove deprecation warnings.
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
   `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
