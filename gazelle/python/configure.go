@@ -72,6 +72,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.GeneratePyiDeps,
 		pythonconfig.ExperimentalAllowRelativeImports,
 		pythonconfig.GenerateProto,
+		pythonconfig.PythonResolveSiblingImports,
 	}
 }
 
@@ -247,6 +248,12 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetGenerateProto(v)
+		case pythonconfig.PythonResolveSiblingImports:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetResolveSiblingImports(v)
 		}
 	}
 

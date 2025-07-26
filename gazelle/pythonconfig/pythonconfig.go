@@ -107,6 +107,11 @@ const (
 	// GenerateProto represents the directive that controls whether to generate
 	// python_generate_proto targets.
 	GenerateProto = "python_generate_proto"
+	// PythonResolveSiblingImports represents the directive that controls whether
+	// absolute imports can be solved to sibling modules. When enabled, imports
+	// like "import a" can be resolved to sibling modules. When disabled, they
+	// can only be resolved as an absolute import.
+	PythonResolveSiblingImports = "python_resolve_sibling_imports"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -198,6 +203,7 @@ type Config struct {
 	experimentalAllowRelativeImports          bool
 	generatePyiDeps                           bool
 	generateProto                             bool
+	resolveSiblingImports                     bool
 }
 
 type LabelNormalizationType int
@@ -237,6 +243,7 @@ func New(
 		experimentalAllowRelativeImports:          false,
 		generatePyiDeps:                           false,
 		generateProto:                             false,
+		resolveSiblingImports:                     false,
 	}
 }
 
@@ -273,6 +280,7 @@ func (c *Config) NewChild() *Config {
 		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
 		generatePyiDeps:                           c.generatePyiDeps,
 		generateProto:                             c.generateProto,
+		resolveSiblingImports:                     c.resolveSiblingImports,
 	}
 }
 
@@ -590,6 +598,16 @@ func (c *Config) SetGenerateProto(generateProto bool) {
 // GenerateProto returns whether py_proto_library should be generated for proto_library.
 func (c *Config) GenerateProto() bool {
 	return c.generateProto
+}
+
+// SetResolveSiblingImports sets whether absolute imports can be resolved to sibling modules.
+func (c *Config) SetResolveSiblingImports(resolveSiblingImports bool) {
+	c.resolveSiblingImports = resolveSiblingImports
+}
+
+// ResolveSiblingImports returns whether absolute imports can be resolved to sibling modules.
+func (c *Config) ResolveSiblingImports() bool {
+	return c.resolveSiblingImports
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

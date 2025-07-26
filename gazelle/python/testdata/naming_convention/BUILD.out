@@ -3,6 +3,7 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 # gazelle:python_library_naming_convention my_$package_name$_library
 # gazelle:python_binary_naming_convention my_$package_name$_binary
 # gazelle:python_test_naming_convention my_$package_name$_test
+# gazelle:python_resolve_sibling_imports true
 
 py_library(
     name = "my_naming_convention_library",

@@ -1,5 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
+# gazelle:python_resolve_sibling_imports true
+
 py_binary(
     name = "binary",
     srcs = ["binary.py"],

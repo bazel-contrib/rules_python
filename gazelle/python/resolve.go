@@ -164,8 +164,6 @@ func (py *Resolver) Resolve(
 		modules := modulesRaw.(*treeset.Set)
 		it := modules.Iterator()
 		explainDependency := os.Getenv("EXPLAIN_DEPENDENCY")
-		// Resolve relative paths for package generation
-		isPackageGeneration := !cfg.PerFileGeneration() && !cfg.CoarseGrainedGeneration()
 		hasFatalError := false
 	MODULES_LOOP:
 		for it.Next() {
@@ -173,7 +171,7 @@ func (py *Resolver) Resolve(
 			moduleName := mod.Name
 			// Transform relative imports `.` or `..foo.bar` into the package path from root.
 			if strings.HasPrefix(mod.From, ".") {
-				if !cfg.ExperimentalAllowRelativeImports() || !isPackageGeneration {
+				if !cfg.ExperimentalAllowRelativeImports() {
 					continue MODULES_LOOP
 				}
 
@@ -210,9 +208,9 @@ func (py *Resolver) Resolve(
 					baseParts = pkgParts[:len(pkgParts)-(relativeDepth-1)]
 				}
 				// Build absolute module path
-				absParts := append([]string{}, baseParts...)       // base path
-				absParts = append(absParts, fromParts...)          // subpath from 'from'
-				absParts = append(absParts, imported)              // actual imported symbol
+				absParts := append([]string{}, baseParts...) // base path
+				absParts = append(absParts, fromParts...)    // subpath from 'from'
+				absParts = append(absParts, imported)        // actual imported symbol
 
 				moduleName = strings.Join(absParts, ".")
 			}
