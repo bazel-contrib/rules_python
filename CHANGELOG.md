@@ -78,6 +78,10 @@ END_UNRELEASED_TEMPLATE
   platform, consider helping set us up CI for them and update the documentation.
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
 * (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
+* (pypi) From now on `pipstar` is enabled by default for all builds. To disable it, consider
+  setting env variable `RULES_PYTHON_ENABLE_PIPSTAR` to `0`. If there are reasons why you have to
+  keep it disabled, it is a bug and we would like to hear about it, please create a ticket in our
+  github issue tracker.
 
 {#v0-0-0-fixed}
 ### Fixed

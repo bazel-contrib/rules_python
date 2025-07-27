@@ -209,7 +209,11 @@ string_flag(
 
 string_flag(
     name = "pip_whl_osx_version",
-    build_setting_default = "",
+    # We choose the oldest non-EOL version at the time when we release `rules_python`.
+    # See https://endoflife.date/macos
+    #
+    # Keep in sync with MODULE.bazel
+    build_setting_default = "14.0",
     # NOTE: Only public because it is used in pip hub repos.
     visibility = ["//visibility:public"],
 )

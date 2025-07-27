@@ -109,6 +109,8 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         ],
         # We choose the oldest non-EOL version at the time when we release `rules_python`.
         # See https://endoflife.date/macos
+        #
+        # Keep in sync with "pip_whl_osx_version"
         env = {"platform_version": "14.0"},
         marker = "python_version >= '3.13'" if freethreaded else "",
         os_name = "osx",
