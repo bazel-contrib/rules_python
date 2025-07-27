@@ -18,10 +18,11 @@ such as globals available to Bazel versions, or propagating user environment
 settings for rules to later use.
 """
 
+load(":bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 load(":repo_utils.bzl", "repo_utils")
 
 _ENABLE_PIPSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PIPSTAR"
-_ENABLE_PIPSTAR_DEFAULT = "1"
+_ENABLE_PIPSTAR_DEFAULT = "1" if BZLMOD_ENABLED else "0"
 _ENABLE_PYSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PYSTAR"
 _ENABLE_PYSTAR_DEFAULT = "1"
 _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME = "RULES_PYTHON_DEPRECATION_WARNINGS"
