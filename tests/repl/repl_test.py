@@ -38,7 +38,7 @@ class ReplTest(unittest.TestCase):
                 env=env,
             ).strip()
         except subprocess.CalledProcessError as error:
-            raise ValueError(f"Failed to run the REPL:\n{error.stdout}") from error
+            raise RuntimeError(f"Failed to run the REPL:\n{error.stdout}") from error
 
     def test_repl_version(self):
         """Validates that we can successfully execute arbitrary code on the REPL."""
