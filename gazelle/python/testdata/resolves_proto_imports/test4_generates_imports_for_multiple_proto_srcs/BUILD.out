@@ -1,0 +1,8 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "test4_generates_imports_for_multiple_proto_srcs",
+    srcs = ["bar.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//test4_generates_imports_for_multiple_proto_srcs/foo:test4_generates_imports_for_multiple_proto_srcs_foo_py_pb2"],
+)
