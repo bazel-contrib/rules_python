@@ -1,19 +1,10 @@
 # Python Gazelle plugin
 
-[Gazelle](https://github.com/bazelbuild/bazel-gazelle)
-is a build file generator for Bazel projects. It can create new BUILD.bazel files for a project that follows language conventions, and it can update existing build files to include new sources, dependencies, and options.
+:::{note}
+The gazelle plugin docs are being migrated to our primary documentation on
+ReadTheDocs. Please see https://rules-python.readthedocs.io/gazelle/docs/index.html.
+:::
 
-Gazelle may be run by Bazel using the gazelle rule, or it may be installed and run as a command line tool.
-
-This directory contains a plugin for
-[Gazelle](https://github.com/bazelbuild/bazel-gazelle)
-that generates BUILD files content for Python code. When Gazelle is run as a command line tool with this plugin, it embeds a Python interpreter resolved during the plugin build.
-The behavior of the plugin is slightly different with different version of the interpreter as the Python `stdlib` changes with every minor version release.
-Distributors of Gazelle binaries should, therefore, build a Gazelle binary for each OS+CPU architecture+Minor Python version combination they are targeting.
-
-The following instructions are for when you use [bzlmod](https://docs.bazel.build/versions/5.0.0/bzlmod.html).
-Please refer to older documentation that includes instructions on how to use Gazelle
-without using bzlmod as your dependency manager.
 
 ## Example
 
@@ -153,18 +144,6 @@ gazelle(
 That's it, now you can finally run `bazel run //:gazelle` anytime
 you edit Python code, and it should update your `BUILD` files correctly.
 
-## Usage
-
-Gazelle is non-destructive.
-It will try to leave your edits to BUILD files alone, only making updates to `py_*` targets.
-However it will remove dependencies that appear to be unused, so it's a
-good idea to check in your work before running Gazelle so you can easily
-revert any changes it made.
-
-The rules_python extension assumes some conventions about your Python code.
-These are noted below, and might require changes to your existing code.
-
-Note that the `gazelle` program has multiple commands. At present, only the `update` command (the default) does anything for Python code.
 
 ### Directives
 

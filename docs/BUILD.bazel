@@ -56,7 +56,7 @@ sphinx_docs(
             "_*",
             "*.inv*",
         ],
-    ),
+    ) + ["//gazelle/docs"],
     config = "conf.py",
     formats = [
         "html",
