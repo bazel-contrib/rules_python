@@ -99,6 +99,8 @@ END_UNRELEASED_TEMPLATE
   absolute imports (Python 2's behavior without `absolute_import`). Previous
   behavior can be restored using the directive
   `# gazelle:python_resolve_sibling_imports true`
+* (pypi) Show overridden index URL of packages when downloading metadata have failed.
+  ([#2985](https://github.com/bazel-contrib/rules_python/issues/2985)).
 
 {#v0-0-0-added}
 ### Added
