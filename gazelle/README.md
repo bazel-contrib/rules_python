@@ -222,7 +222,7 @@ Python-specific directives are as follows:
 | Defines the format of the distribution name in labels to third-party deps. Useful for using Gazelle plugin with other rules with different repository conventions (e.g. `rules_pycross`). Full label is always prepended with (pip) repository name, e.g. `@pip//numpy`.                        |
 | `# gazelle:python_label_normalization`                                                                                                                                                                                                                                                          | `snake_case` |
 | Controls how distribution names in labels to third-party deps are normalized. Useful for using Gazelle plugin with other rules with different label conventions (e.g. `rules_pycross` uses PEP-503). Can be "snake_case", "none", or "pep503".                                                  |
-| `# gazelle:experimental_allow_relative_imports`          | `false` |
+| `# gazelle:python_experimental_allow_relative_imports`          | `false` |
 | Controls whether Gazelle resolves dependencies for import statements that use paths relative to the current package. Can be "true" or "false".|
 | `# gazelle:python_generate_pyi_deps`                                                                                                                                                                                                                                                            | `false` |
 | Controls whether to generate a separate `pyi_deps` attribute for type-checking dependencies or merge them into the regular `deps` attribute. When `false` (default), type-checking dependencies are merged into `deps` for backward compatibility. When `true`, generates separate `pyi_deps`. Imports in blocks with the format `if typing.TYPE_CHECKING:`/`if TYPE_CHECKING:` and type-only stub packages (eg. boto3-stubs) are recognized as type-checking dependencies. |
@@ -736,7 +736,7 @@ See [Issue #3076][gh3076] for more information.
 [gh3076]: https://github.com/bazel-contrib/rules_python/issues/3076
 
 
-#### Directive: `experimental_allow_relative_imports`
+#### Directive: `python_experimental_allow_relative_imports`
 Enables experimental support for resolving relative imports in
 `python_generation_mode package`.
 

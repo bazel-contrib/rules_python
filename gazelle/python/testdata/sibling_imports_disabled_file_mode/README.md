@@ -10,7 +10,7 @@ disabled. It covers different types of imports in `pkg/unit_test.py`:
   (not the sibling `typing.py`).
 - `from .b import run` / `from .typing import A` - resolves to the sibling
   `pkg/b.py` / `pkg/typing.py` (with
-  `gazelle:experimental_allow_relative_imports` enabled)
+  `gazelle:python_experimental_allow_relative_imports` enabled)
 - `import test_util` - resolves to the root-level `test_util.py` instead of
   the sibling `pkg/test_util.py`
 - `from b import run` - resolves to the root-level `b.py` instead of the

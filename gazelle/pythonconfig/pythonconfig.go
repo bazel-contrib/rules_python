@@ -99,7 +99,7 @@ const (
 	LabelNormalization = "python_label_normalization"
 	// ExperimentalAllowRelativeImports represents the directive that controls
 	// whether relative imports are allowed.
-	ExperimentalAllowRelativeImports = "experimental_allow_relative_imports"
+	ExperimentalAllowRelativeImports = "python_experimental_allow_relative_imports"
 	// GeneratePyiDeps represents the directive that controls whether to generate
 	// separate pyi_deps attribute or merge type-checking dependencies into deps.
 	// Defaults to false for backward compatibility.

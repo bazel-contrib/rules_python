@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 # gazelle:python_generation_mode file
 # gazelle:python_resolve_sibling_imports false
-# gazelle:experimental_allow_relative_imports true
+# gazelle:python_experimental_allow_relative_imports true
 
 py_library(
     name = "a",

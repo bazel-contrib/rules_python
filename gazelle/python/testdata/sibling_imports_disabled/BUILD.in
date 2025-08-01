@@ -1,2 +1,2 @@
 # gazelle:python_resolve_sibling_imports false
-# gazelle:experimental_allow_relative_imports true
+# gazelle:python_experimental_allow_relative_imports true
