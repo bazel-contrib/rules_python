@@ -95,6 +95,10 @@ END_UNRELEASED_TEMPLATE
   ([#2921](https://github.com/bazel-contrib/rules_python/issues/2921)).
 * (repl) Normalize the path for the `REPL` stub to make it possible to use the
   default stub template from outside `rules_python` ({gh-issue}`3101`).
+* (gazelle) Fixes gazelle adding sibling module dependencies to resolve
+  absolute imports (Python 2's behavior without `absolute_import`). Previous
+  behavior can be restored using the directive
+  `# gazelle:python_resolve_sibling_imports true`
 
 {#v0-0-0-added}
 ### Added
