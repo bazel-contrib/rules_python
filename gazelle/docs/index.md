@@ -1,7 +1,7 @@
 # Gazelle Plugin
 
 [Gazelle][gazelle] is a build file generator for Bazel projects. It can
-create new {code}`BUILD` or {code}`BUILD.bazel` files for a project that
+create new `BUILD` or `BUILD.bazel` files for a project that
 follows language conventions and update existing build files to include new
 sources, dependencies, and options.
 
@@ -11,11 +11,11 @@ Bazel may run Gazelle using the Gazelle rule, or Gazelle may be installed and ru
 as a command line tool.
 
 The {gh-path}`gazelle` directory contains a plugin for Gazelle
-that generates {code}`BUILD` files content for Python code. When Gazelle is
+that generates `BUILD` files content for Python code. When Gazelle is
 run as a command line tool with this plugin, it embeds a Python interpreter
 resolved during the plugin build. The behavior of the plugin is slightly
 different with different version of the interpreter as the Python
-{code}`stdlib` changes with every minor version release. Distributors of Gazelle
+`stdlib` changes with every minor version release. Distributors of Gazelle
 binaries should, therefore, build a Gazelle binary for each OS+CPU
 architecture+Minor Python version combination they are targeting.
 
@@ -25,19 +25,19 @@ older documentation that includes instructions on how to use Gazelle
 without using bzlmod as your dependency manager.
 :::
 
-[bzlmod]: https://docs.bazel.build/versions/5.0.0/bzlmod.html
+[bzlmod]: https://bazel.build/external/module
 
-Gazelle is non-destructive. It will try to leave your edits to {code}`BUILD`
-files alone, only making updates to {code}`py_*` targets. However it **will
+Gazelle is non-destructive. It will try to leave your edits to `BUILD`
+files alone, only making updates to `py_*` targets. However it **will
 remove** dependencies that appear to be unused, so it's a good idea to check
 in your work before running Gazelle so you can easily revert any changes it made.
 
-The {code}`rules_python` extension assumes some conventions about your Python code.
+The `rules_python` extension assumes some conventions about your Python code.
 These are noted in the subsequent documents, and might require changes to your
 existing code.
 
-Note that the {code}`gazelle` program has multiple commands. At present, only
-the {code}`update` command (the default) does anything for Python code.
+Note that the `gazelle` program has multiple commands. At present, only
+the `update` command (the default) does anything for Python code.
 
 
 ```{toctree}
