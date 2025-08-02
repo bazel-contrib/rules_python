@@ -56,7 +56,7 @@ END_UNRELEASED_TEMPLATE
 ### Changed
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
-  `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
+  `# gazelle:python_experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
@@ -95,6 +95,12 @@ END_UNRELEASED_TEMPLATE
   ([#2921](https://github.com/bazel-contrib/rules_python/issues/2921)).
 * (repl) Normalize the path for the `REPL` stub to make it possible to use the
   default stub template from outside `rules_python` ({gh-issue}`3101`).
+* (gazelle) Fixes gazelle adding sibling module dependencies to resolve
+  absolute imports (Python 2's behavior without `absolute_import`). Previous
+  behavior can be restored using the directive
+  `# gazelle:python_resolve_sibling_imports true`
+* (pypi) Show overridden index URL of packages when downloading metadata have failed.
+  ([#2985](https://github.com/bazel-contrib/rules_python/issues/2985)).
 
 {#v0-0-0-added}
 ### Added

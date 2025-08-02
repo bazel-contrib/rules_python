@@ -29,13 +29,16 @@ class ReplTest(unittest.TestCase):
 
     def run_code_in_repl(self, lines: Iterable[str], *, env=None) -> str:
         """Runs the lines of code in the REPL and returns the text output."""
-        return subprocess.check_output(
-            [self.repl],
-            text=True,
-            stderr=subprocess.STDOUT,
-            input="\n".join(lines),
-            env=env,
-        ).strip()
+        try:
+            return subprocess.check_output(
+                [self.repl],
+                text=True,
+                stderr=subprocess.STDOUT,
+                input="\n".join(lines),
+                env=env,
+            ).strip()
+        except subprocess.CalledProcessError as error:
+            raise RuntimeError(f"Failed to run the REPL:\n{error.stdout}") from error
 
     def test_repl_version(self):
         """Validates that we can successfully execute arbitrary code on the REPL."""
