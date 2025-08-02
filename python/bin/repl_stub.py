@@ -17,9 +17,14 @@ The logic for PYTHONSTARTUP is handled in python/private/repl_template.py.
 console_locals = globals().copy()
 
 import code
-import readline
 import rlcompleter
 import sys
+
+try:
+    import readline
+except ImportError:
+    pass  # readline is not available on all platforms
+
 
 class DynamicCompleter(rlcompleter.Completer):
     """
@@ -47,18 +52,19 @@ else:
     sys.ps1 = ""
     sys.ps2 = ""
 
-# Set up tab completion.
-completer = DynamicCompleter(console_locals)
-readline.set_completer(completer.complete)
+if "readline" in globals():
+    # Set up tab completion.
+    completer = DynamicCompleter(console_locals)
+    readline.set_completer(completer.complete)
 
-# TODO(jpwoodbu): Use readline.backend instead of readline.__doc__ once we can depend on having
-# Python >=3.13.
-if 'libedit' in readline.__doc__: # type: ignore
-    readline.parse_and_bind("bind ^I rl_complete")
-elif 'GNU readline' in readline.__doc__: # type: ignore
-    readline.parse_and_bind("tab: complete")
-else:
-    print('Could not enable tab completion!')
+    # TODO(jpwoodbu): Use readline.backend instead of readline.__doc__ once we can depend on having
+    # Python >=3.13.
+    if "libedit" in readline.__doc__:  # type: ignore
+        readline.parse_and_bind("bind ^I rl_complete")
+    elif "GNU readline" in readline.__doc__:  # type: ignore
+        readline.parse_and_bind("tab: complete")
+    else:
+        print("Could not enable tab completion!")
 
 # We set the banner to an empty string because the repl_template.py file already prints the banner.
 code.interact(local=console_locals, banner="", exitmsg=exitmsg)
