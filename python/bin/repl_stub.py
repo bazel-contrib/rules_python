@@ -28,5 +28,40 @@ else:
     sys.ps1 = ""
     sys.ps2 = ""
 
+# Set up tab completion.
+try:
+    import readline
+    import rlcompleter
+
+    class DynamicCompleter(rlcompleter.Completer):
+        """
+        A custom completer that dynamically updates its namespace to include new
+        imports made within the interactive session.
+        """
+        def __init__(self, namespace):
+            # Store a reference to the namespace, not a copy, so that changes to the namespace are
+            # reflected.
+            self.namespace = namespace
+
+        def complete(self, text, state):
+            # Update the completer's internal namespace with the current interactive session's locals
+            # and globals.  This is the key to making new imports discoverable.
+            rlcompleter.Completer.__init__(self, self.namespace)
+            return super().complete(text, state)
+
+    completer = DynamicCompleter(console_locals)
+    readline.set_completer(completer.complete)
+
+    # TODO(jpwoodbu): Use readline.backend instead of readline.__doc__ once we can depend on having
+    # Python >=3.13.
+    if "libedit" in readline.__doc__:  # type: ignore
+        readline.parse_and_bind("bind ^I rl_complete")
+    elif "GNU readline" in readline.__doc__:  # type: ignore
+        readline.parse_and_bind("tab: complete")
+    else:
+        print("Could not enable tab completion!")
+except ImportError:
+    print("Could not enable tab completion!")
+
 # We set the banner to an empty string because the repl_template.py file already prints the banner.
 code.interact(local=console_locals, banner="", exitmsg=exitmsg)
