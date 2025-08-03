@@ -288,8 +288,8 @@ def _create_whl_repos(
                 src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
-                netrc = pip_attr.netrc,
-                auth_patterns = pip_attr.auth_patterns,
+                netrc = config.netrc or pip_attr.netrc,
+                auth_patterns = config.auth_patterns or pip_attr.auth_patterns,
                 python_version = major_minor,
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = config.enable_pipstar,
@@ -376,7 +376,7 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False):
+def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False, **kwargs):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
     if platform and (os_name or arch_name or config_settings or env):
@@ -404,6 +404,10 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             config["platforms"][platform][key] = value
     elif platform and override:
         config["platforms"].pop(platform)
+
+    for key, value in kwargs.items():
+        if value and (override or key not in config):
+            config[key] = value
 
 def _plat(*, name, arch_name, os_name, config_settings = [], env = {}):
     return struct(
@@ -444,9 +448,10 @@ def build_config(
                 os_name = tag.os_name,
                 platform = tag.platform,
                 override = mod.is_root,
+                # extra values that we just add
+                auth_patterns = tag.auth_patterns,
+                netrc = tag.netrc,
                 # TODO @aignas 2025-05-19: add more attr groups:
-                # * for AUTH - the default `netrc` usage could be configured through a common
-                # attribute.
                 # * for index/downloader config. This includes all of those attributes for
                 # overrides, etc. Index overrides per platform could be also used here.
                 # * for whl selection - selecting preferences of which `platform_tag`s we should use
@@ -454,6 +459,8 @@ def build_config(
             )
 
     return struct(
+        auth_patterns = defaults.get("auth_patterns", {}),
+        netrc = defaults.get("netrc", None),
         platforms = {
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
@@ -856,7 +863,7 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing
-}
+} | AUTH_ATTRS
 
 _SUPPORTED_PEP508_KEYS = [
     "implementation_name",
