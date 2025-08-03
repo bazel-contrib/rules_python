@@ -104,7 +104,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
-* (repl) Default stub now has tab completion where `readline` support is available, see
+* (repl) Default stub now has tab completion, where `readline` support is available,
+  see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
   ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
