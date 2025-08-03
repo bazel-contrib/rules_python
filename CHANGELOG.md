@@ -128,7 +128,8 @@ END_UNRELEASED_TEMPLATE
   ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
-  this feature. You can also configure custom `config_settings` using `pip.default`.
+  this feature. You can also configure custom `config_settings` using `pip.default`. It
+  can also be used to set the global `netrc` or `auth_patterns` variables.
 * (pypi) PyPI dependencies now expose an `:extracted_whl_files` filegroup target
   of all the files extracted from the wheel. This can be used in lieu of
   {obj}`whl_filegroup` to avoid copying/extracting wheel multiple times to

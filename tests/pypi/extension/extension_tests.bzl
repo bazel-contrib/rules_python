@@ -100,28 +100,34 @@ def _build_config(env, enable_pipstar = 0, **kwargs):
             **kwargs
         ),
         attrs = dict(
-            platforms = subjects.dict,
+            auth_patterns = subjects.dict,
             enable_pipstar = subjects.bool,
+            netrc = subjects.str,
+            platforms = subjects.dict,
         ),
     )
 
 def _default(
         *,
         arch_name = None,
+        auth_patterns = None,
         config_settings = None,
+        env = None,
+        netrc = None,
         os_name = None,
         platform = None,
         whl_platform_tags = None,
-        env = None,
         whl_abi_tags = None):
     return struct(
         arch_name = arch_name,
-        os_name = os_name,
-        platform = platform,
-        whl_platform_tags = whl_platform_tags or [],
+        auth_patterns = auth_patterns or {},
         config_settings = config_settings,
         env = env or {},
+        netrc = netrc,
+        os_name = os_name,
+        platform = platform,
         whl_abi_tags = whl_abi_tags or [],
+        whl_platform_tags = whl_platform_tags or [],
     )
 
 def _parse(
@@ -1224,11 +1230,17 @@ def _test_build_pipstar_platform(env):
                         ],
                     ),
                     _default(platform = "myplat2"),
+                    _default(
+                        netrc = "my_netrc",
+                        auth_patterns = {"foo": "bar"},
+                    ),
                 ],
             ),
         ),
         enable_pipstar = True,
     )
+    config.auth_patterns().contains_exactly({"foo": "bar"})
+    config.netrc().equals("my_netrc")
     config.enable_pipstar().equals(True)
     config.platforms().contains_exactly({
         "myplat": struct(

@@ -322,12 +322,12 @@ def _create_whl_repos(
                 src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
-                netrc = pip_attr.netrc,
+                netrc = config.netrc or pip_attr.netrc,
                 use_downloader = use_downloader.get(
                     whl.name,
                     get_index_urls != None,  # defaults to True if the get_index_urls is defined
                 ),
-                auth_patterns = pip_attr.auth_patterns,
+                auth_patterns = config.auth_patterns or pip_attr.auth_patterns,
                 python_version = major_minor,
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = config.enable_pipstar,
@@ -502,13 +502,20 @@ def build_config(
                 if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags):
                     defaults["platforms"].pop(platform)
 
-            # TODO @aignas 2025-05-19: add more attr groups:
-            # * for AUTH - the default `netrc` usage could be configured through a common
-            # attribute.
-            # * for index/downloader config. This includes all of those attributes for
-            # overrides, etc. Index overrides per platform could be also used here.
+            _configure(
+                defaults,
+                override = mod.is_root,
+                # extra values that we just add
+                auth_patterns = tag.auth_patterns,
+                netrc = tag.netrc,
+                # TODO @aignas 2025-05-19: add more attr groups:
+                # * for index/downloader config. This includes all of those attributes for
+                # overrides, etc. Index overrides per platform could be also used here.
+            )
 
     return struct(
+        auth_patterns = defaults.get("auth_patterns", {}),
+        netrc = defaults.get("netrc", None),
         platforms = {
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
@@ -975,7 +982,7 @@ See official [docs](https://packaging.python.org/en/latest/specifications/platfo
 :::
 """,
     ),
-}
+} | AUTH_ATTRS
 
 _SUPPORTED_PEP508_KEYS = [
     "implementation_name",
