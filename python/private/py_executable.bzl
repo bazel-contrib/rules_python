@@ -796,6 +796,7 @@ def _create_stage1_bootstrap(
         is_for_zip,
         runtime_details,
         venv = None):
+    """Create a legacy bootstrap script that is written in Python."""
     runtime = runtime_details.effective_runtime
 
     if venv:
@@ -805,8 +806,11 @@ def _create_stage1_bootstrap(
 
     python_binary_actual = venv.interpreter_actual_path if venv else ""
 
-    # Runtime may be None on Windows due to the --python_path flag.
-    if runtime and runtime.supports_build_time_venv:
+    # Guard against the following:
+    # * Runtime may be None on Windows due to the --python_path flag.
+    # * Runtime may not have 'supports_build_time_venv' if a really old version is autoloaded
+    #   on bazel 7.6.x.
+    if runtime and getattr(runtime, "supports_build_time_venv", False):
         resolve_python_binary_at_runtime = "0"
     else:
         resolve_python_binary_at_runtime = "1"
