@@ -115,7 +115,9 @@ deps = [
 
 ## `include_pytest_conftest`
 
-Added in {gh-pr}`3080`.
+:::{versionadded} VERSION_NEXT_FEATURE
+{gh-pr}`3080`
+:::
 
 This annotation accepts any string that can be parsed by go's
 [`strconv.ParseBool`][ParseBool]. If an unparsable string is passed, the
