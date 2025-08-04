@@ -1,0 +1,1 @@
+# gazelle:python_proto_naming_convention some_$proto_name$_value

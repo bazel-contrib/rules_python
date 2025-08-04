@@ -131,6 +131,9 @@ END_UNRELEASED_TEMPLATE
   Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
 * (gazelle) New directive `gazelle:python_proto_naming_convention`; controls
   naming of `py_proto_library` rules.
+* (gazelle) Gazelle now resolves dependencies for `py_proto_library`
+  module-level imports, i.e. `import some.package.foo_pb2`. Imports of
+  messages/enums/services inside modules are not yet supported.
 
 {#v0-0-0-removed}
 ### Removed

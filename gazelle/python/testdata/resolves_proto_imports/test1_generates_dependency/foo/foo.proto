@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package test1_generates_dependency.foo;
+
+message Foo {
+    bool bar = 1;
+}

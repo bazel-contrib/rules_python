@@ -42,6 +42,8 @@ const (
 	pyTestEntrypointTargetname  = "__test__"
 	conftestFilename            = "conftest.py"
 	conftestTargetname          = "conftest"
+	protoRelKey                 = "_proto_rel"
+	protoSrcsKey                = "_proto_srcs"
 )
 
 var (
@@ -572,11 +574,16 @@ func ensureNoCollision(file *rule.File, targetName, kind string) error {
 func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config, pythonProjectRoot string, visibility []string, res *language.GenerateResult) {
 	// First, enumerate all the proto_library in this package.
 	var protoRuleNames []string
+	protoRel := map[string]string{}
+	protoSrcs := map[string][]string{}
+
 	for _, r := range args.OtherGen {
 		if r.Kind() != "proto_library" {
 			continue
 		}
 		protoRuleNames = append(protoRuleNames, r.Name())
+		protoRel[r.Name()] = args.Rel
+		protoSrcs[r.Name()] = r.AttrStrings("srcs")
 	}
 	sort.Strings(protoRuleNames)
 
@@ -609,6 +616,9 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 			addVisibility(visibility).
 			addResolvedDependency(":" + protoRuleName).
 			generateImportsAttribute().build()
+
+		pyProtoLibrary.SetPrivateAttr(protoRelKey, protoRel[protoRuleName])
+		pyProtoLibrary.SetPrivateAttr(protoSrcsKey, protoSrcs[protoRuleName])
 
 		res.Gen = append(res.Gen, pyProtoLibrary)
 		res.Imports = append(res.Imports, pyProtoLibrary.PrivateAttr(config.GazelleImportsKey))

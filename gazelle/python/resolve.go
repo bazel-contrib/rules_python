@@ -57,7 +57,18 @@ func (*Resolver) Name() string { return languageName }
 func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	cfgs := c.Exts[languageName].(pythonconfig.Configs)
 	cfg := cfgs[f.Pkg]
+
 	srcs := r.AttrStrings("srcs")
+	if srcs != nil {
+		return importsSrcLibrary(cfg, srcs, f)
+	} else if isProtoLibrary(r) {
+		return importsProtoLibrary(cfg, r)
+	}
+
+	return nil
+}
+
+func importsSrcLibrary(cfg *pythonconfig.Config, srcs []string, f *rule.File) []resolve.ImportSpec {
 	provides := make([]resolve.ImportSpec, 0, len(srcs)+1)
 	for _, src := range srcs {
 		ext := filepath.Ext(src)
@@ -112,6 +123,30 @@ func importSpecFromSrc(pythonProjectRoot, bzlPkg, src string) resolve.ImportSpec
 		Lang: languageName,
 		Imp:  imp,
 	}
+}
+
+func isProtoLibrary(r *rule.Rule) bool {
+	return r.Kind() == pyProtoLibraryKind
+}
+
+func importsProtoLibrary(cfg *pythonconfig.Config, r *rule.Rule) []resolve.ImportSpec {
+	specs := []resolve.ImportSpec{}
+
+	// Determine the root module and emit an import for that,
+	// i.e. for //foo:foo_py_pb2, we'd get foo.foo_pb2
+	protoRelAttr := r.PrivateAttr(protoRelKey)
+	protoSrcsAttr := r.PrivateAttr(protoSrcsKey)
+	if protoRelAttr == nil || protoSrcsAttr == nil {
+		return nil
+	}
+
+	protoRel := protoRelAttr.(string)
+	for _, protoSrc := range protoSrcsAttr.([]string) {
+		generatedPbFileName := strings.TrimSuffix(protoSrc, ".proto") + "_pb2.py"
+		specs = append(specs, importSpecFromSrc(cfg.PythonProjectRoot(), protoRel, generatedPbFileName))
+	}
+
+	return specs
 }
 
 // Embeds returns a list of labels of rules that the given rule embeds. If

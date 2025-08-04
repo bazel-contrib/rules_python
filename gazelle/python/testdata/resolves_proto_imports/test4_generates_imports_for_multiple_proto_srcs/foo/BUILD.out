@@ -1,0 +1,19 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+
+# gazelle:python_generate_proto true
+
+proto_library(
+    name = "test4_generates_imports_for_multiple_proto_srcs_foo_proto",
+    srcs = [
+        "bar.proto",
+        "foo.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "test4_generates_imports_for_multiple_proto_srcs_foo_py_pb2",
+    visibility = ["//:__subpackages__"],
+    deps = [":test4_generates_imports_for_multiple_proto_srcs_foo_proto"],
+)

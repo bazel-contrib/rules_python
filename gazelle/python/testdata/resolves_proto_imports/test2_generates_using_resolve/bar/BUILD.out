@@ -1,0 +1,16 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+
+# gazelle:python_generate_proto true
+
+proto_library(
+    name = "test2_generates_using_resolve_bar_proto",
+    srcs = ["bar.proto"],
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "test2_generates_using_resolve_bar_py_pb2",
+    visibility = ["//:__subpackages__"],
+    deps = [":test2_generates_using_resolve_bar_proto"],
+)
