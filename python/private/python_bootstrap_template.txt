@@ -256,6 +256,10 @@ def RunfilesEnvvar(module_space):
     'RUNFILES_MANIFEST_FILE' and var_value is the path to that directory or
     file, or (None, None) if runfiles couldn't be found.
   """
+  # If running from a zip, there's no manifest file.
+  if IsRunningFromZip():
+    return ('RUNFILES_DIR', module_space)
+
   # If this binary is the data-dependency of another one, the other sets
   # RUNFILES_MANIFEST_FILE or RUNFILES_DIR for our sake.
   runfiles = os.environ.get('RUNFILES_MANIFEST_FILE', None)
@@ -265,10 +269,6 @@ def RunfilesEnvvar(module_space):
   runfiles = os.environ.get('RUNFILES_DIR', None)
   if runfiles:
     return ('RUNFILES_DIR', runfiles)
-
-  # If running from a zip, there's no manifest file.
-  if IsRunningFromZip():
-    return ('RUNFILES_DIR', module_space)
 
   # Look for the runfiles "output" manifest, argv[0] + ".runfiles_manifest"
   runfiles = module_space + '_manifest'
