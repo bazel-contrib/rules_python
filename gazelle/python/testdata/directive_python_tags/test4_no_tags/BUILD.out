@@ -1,0 +1,22 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# Test with no tag directives - targets should have no tags attribute
+
+py_library(
+    name = "test4_no_tags",
+    srcs = ["__init__.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "test4_no_tags_bin",
+    srcs = ["__main__.py"],
+    main = "__main__.py",
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test4_no_tags_test",
+    srcs = ["__test__.py"],
+    main = "__test__.py",
+)

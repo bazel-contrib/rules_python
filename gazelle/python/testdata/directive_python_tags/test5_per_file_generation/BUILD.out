@@ -1,0 +1,64 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# Test per-file generation with different tag directives
+# gazelle:resolve py lib1 lib1_test
+# gazelle:python_generation_mode file
+# gazelle:python_tags manual,integration
+# gazelle:python_library_tags shared
+
+py_library(
+    name = "__init__",
+    srcs = ["__init__.py"],
+    tags = [
+        "integration",
+        "manual",
+        "shared",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
+    name = "lib1",
+    srcs = ["lib1.py"],
+    tags = [
+        "integration",
+        "manual",
+        "shared",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
+    name = "lib2",
+    srcs = ["lib2.py"],
+    tags = [
+        "integration",
+        "manual",
+        "shared",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "test5_per_file_generation_bin",
+    srcs = ["__main__.py"],
+    main = "__main__.py",
+    tags = [
+        "integration",
+        "manual",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "lib1_test",
+    srcs = [
+        "__test__.py",
+        "lib1_test.py",
+    ],
+    main = "__test__.py",
+    tags = [
+        "integration",
+        "manual",
+    ],
+)

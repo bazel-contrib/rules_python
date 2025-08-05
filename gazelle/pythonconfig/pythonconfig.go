@@ -112,6 +112,14 @@ const (
 	// like "import a" can be resolved to sibling modules. When disabled, they
 	// can only be resolved as an absolute import.
 	PythonResolveSiblingImports = "python_resolve_sibling_imports"
+	// Tags represents the directive that adds tags to all generated Python targets.
+	Tags = "python_tags"
+	// LibraryTags represents the directive that adds tags specifically to py_library targets.
+	LibraryTags = "python_library_tags"
+	// BinaryTags represents the directive that adds tags specifically to py_binary targets.
+	BinaryTags = "python_binary_tags"
+	// TestTags represents the directive that adds tags specifically to py_test targets.
+	TestTags = "python_test_tags"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -204,6 +212,10 @@ type Config struct {
 	generatePyiDeps                           bool
 	generateProto                             bool
 	resolveSiblingImports                     bool
+	tags                                      []string
+	libraryTags                               []string
+	binaryTags                                []string
+	testTags                                  []string
 }
 
 type LabelNormalizationType int
@@ -244,6 +256,10 @@ func New(
 		generatePyiDeps:                           false,
 		generateProto:                             false,
 		resolveSiblingImports:                     false,
+		tags:                                      []string{},
+		libraryTags:                               []string{},
+		binaryTags:                                []string{},
+		testTags:                                  []string{},
 	}
 }
 
@@ -281,6 +297,10 @@ func (c *Config) NewChild() *Config {
 		generatePyiDeps:                           c.generatePyiDeps,
 		generateProto:                             c.generateProto,
 		resolveSiblingImports:                     c.resolveSiblingImports,
+		tags:                                      c.tags,
+		libraryTags:                               c.libraryTags,
+		binaryTags:                                c.binaryTags,
+		testTags:                                  c.testTags,
 	}
 }
 
@@ -608,6 +628,46 @@ func (c *Config) SetResolveSiblingImports(resolveSiblingImports bool) {
 // ResolveSiblingImports returns whether absolute imports can be resolved to sibling modules.
 func (c *Config) ResolveSiblingImports() bool {
 	return c.resolveSiblingImports
+}
+
+// SetTags sets the tags to add to all generated Python targets.
+func (c *Config) SetTags(tags []string) {
+	c.tags = tags
+}
+
+// Tags returns the tags to add to all generated Python targets.
+func (c *Config) Tags() []string {
+	return c.tags
+}
+
+// SetLibraryTags sets the tags to add specifically to py_library targets.
+func (c *Config) SetLibraryTags(tags []string) {
+	c.libraryTags = tags
+}
+
+// LibraryTags returns the tags to add specifically to py_library targets.
+func (c *Config) LibraryTags() []string {
+	return c.libraryTags
+}
+
+// SetBinaryTags sets the tags to add specifically to py_binary targets.
+func (c *Config) SetBinaryTags(tags []string) {
+	c.binaryTags = tags
+}
+
+// BinaryTags returns the tags to add specifically to py_binary targets.
+func (c *Config) BinaryTags() []string {
+	return c.binaryTags
+}
+
+// SetTestTags sets the tags to add specifically to py_test targets.
+func (c *Config) SetTestTags(tags []string) {
+	c.testTags = tags
+}
+
+// TestTags returns the tags to add specifically to py_test targets.
+func (c *Config) TestTags() []string {
+	return c.testTags
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

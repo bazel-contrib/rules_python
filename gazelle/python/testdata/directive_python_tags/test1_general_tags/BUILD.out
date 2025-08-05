@@ -1,0 +1,35 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# Test general python_tags directive
+# gazelle:python_tags manual,integration
+
+py_library(
+    name = "test1_general_tags",
+    srcs = ["__init__.py"],
+    tags = [
+        "integration",
+        "manual",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "test1_general_tags_bin",
+    srcs = ["__main__.py"],
+    main = "__main__.py",
+    tags = [
+        "integration",
+        "manual",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test1_general_tags_test",
+    srcs = ["__test__.py"],
+    main = "__test__.py",
+    tags = [
+        "integration",
+        "manual",
+    ],
+)

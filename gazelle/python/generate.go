@@ -66,6 +66,14 @@ func matchesAnyGlob(s string, globs []string) bool {
 	return false
 }
 
+// combineTags combines general tags with specific target-type tags
+func combineTags(generalTags, specificTags []string) []string {
+	combined := make([]string, 0, len(generalTags)+len(specificTags))
+	combined = append(combined, generalTags...)
+	combined = append(combined, specificTags...)
+	return combined
+}
+
 // GenerateRules extracts build metadata from source files in a directory.
 // GenerateRules is called in each directory where an update is requested
 // in depth-first post-order.
@@ -261,6 +269,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				}
 				pyBinary := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 					addVisibility(visibility).
+					addTags(combineTags(cfg.Tags(), cfg.BinaryTags())).
 					addSrc(filename).
 					addModuleDependencies(mainModules[filename]).
 					addResolvedDependencies(annotations.includeDeps).
@@ -303,6 +312,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 		pyLibrary := newTargetBuilder(pyLibraryKind, pyLibraryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 			addVisibility(visibility).
+			addTags(combineTags(cfg.Tags(), cfg.LibraryTags())).
 			addSrcs(srcs).
 			addModuleDependencies(allDeps).
 			addResolvedDependencies(annotations.includeDeps).
@@ -357,6 +367,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		pyBinaryTarget := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 			setMain(pyBinaryEntrypointFilename).
 			addVisibility(visibility).
+			addTags(combineTags(cfg.Tags(), cfg.BinaryTags())).
 			addSrc(pyBinaryEntrypointFilename).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
@@ -393,6 +404,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addResolvedDependencies(annotations.includeDeps).
 			setAnnotations(*annotations).
 			addVisibility(visibility).
+			addTags(combineTags(cfg.Tags(), cfg.LibraryTags())).
 			setTestonly().
 			generateImportsAttribute()
 
@@ -423,6 +435,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addSrcs(srcs).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
+			addTags(combineTags(cfg.Tags(), cfg.TestTags())).
 			setAnnotations(*annotations).
 			generateImportsAttribute()
 	}
