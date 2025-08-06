@@ -35,7 +35,7 @@ define_local_runtime_toolchain_impl(
     minor = "{minor}",
     micro = "{micro}",
     interpreter_path = "{interpreter_path}",
-    library_srcs = {library_srcs},
+    interface_library = "{interface_library}",
     implementation_name = "{implementation_name}",
     os = "{os}",
 )
@@ -48,17 +48,15 @@ def _norm_path(path):
         path = path[:-1]
     return path
 
-def _symlink_libs(rctx, logger, shared_lib_dirs, shared_lib_names):
+def _symlink_libs(rctx, logger, library_targets):
     """Symlinks the shared libraries into the lib/ directory.
 
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
-        shared_lib_dirs: The search directories for shared libraries
-        shared_lib_names: The individual shared libraries to attempt to link in the directories.
-
+        library_targets: A list of library targets to potentially symlink.
     Returns:
-        A list of src libraries linked by the action.
+        A library target suitable for a cc_import rule.
 
     The specific files are symlinked instead of the whole directory because
     shared_lib_dirs contains multiple search paths for the shared libraries,
@@ -66,23 +64,18 @@ def _symlink_libs(rctx, logger, shared_lib_dirs, shared_lib_names):
     any of those directories may include non-python runtime libraries,
     as would be the case if LIBDIR were, for example, /usr/lib.
     """
-    found = []
-    for shared_lib_dir in shared_lib_dirs:
-        for name in shared_lib_names:
-            origin = rctx.path("{}/{}".format(shared_lib_dir, name))
-            if not origin.exists:
-                # The reported names don't always exist; it depends on the particulars
-                # of the runtime installation.
-                continue
-
-            found.append("lib/{}".format(origin.basename))
-            logger.debug("Symlinking {} to lib/{}".format(origin, origin.basename))
-            repo_utils.watch(rctx, origin)
-            rctx.symlink(origin, "lib/{}".format(origin.basename))
-
-        # Libraries will only be linked from the same directory.
-        if found:
-            break
+    found = ""
+    for target in library_targets:
+        origin = rctx.path(target)
+        if not origin.exists:
+            # The reported names don't always exist; it depends on the particulars
+            # of the runtime installation.
+            continue
+        found = "lib/{}".format(origin.basename)
+        logger.debug("Symlinking {} to {}".format(origin, found))
+        repo_utils.watch(rctx, origin)
+        rctx.symlink(origin, found)
+        break
 
     return found
 
@@ -160,41 +153,20 @@ def _local_runtime_repo_impl(rctx):
     # appear as part of this repo.
     rctx.symlink(info["include"], "include")
 
-    shared_lib_names = [
-        info["PY3LIBRARY"],
-        info["LDLIBRARY"],
-        info["INSTSONAME"],
-    ]
+    if repo_utils.get_platforms_os_name == "windows":
+        library_targets = info["static_libraries"]
+    else:
+        library_targets = info["dynamic_libraries"]
 
-    # Not all config fields exist; nor are they necessarily distinct.
-    # Dedup and remove empty values.
-    shared_lib_names = [v for v in shared_lib_names if v]
-    shared_lib_names = {v: None for v in shared_lib_names}.keys()
-
-    shared_lib_dirs = []
-    if info["LIBDIR"]:
-        libdir = _norm_path(info["LIBDIR"])
-        shared_lib_dirs.append(libdir)
-        if info["MULTIARCH"]:
-            shared_lib_dirs.append("{}/{}".format(libdir, info["MULTIARCH"]))
-    if info["PYTHONFRAMEWORKPREFIX"]:
-        shared_lib_dirs.append(info["PYTHONFRAMEWORKPREFIX"])
-
-    # The specific files are symlinked instead of the whole directory
-    # because it can point to a directory that has more than just
-    # the Python runtime shared libraries, e.g. /usr/lib, or a Python
-    # specific directory with pip-installed shared libraries.
     rctx.report_progress("Symlinking external Python shared libraries")
-    library_srcs = _symlink_libs(rctx, logger, shared_lib_dirs, shared_lib_names)
-    if not library_srcs:
-        logger.info("No external python libraries found in {}".format(shared_lib_dirs))
+    interface_library = _symlink_libs(rctx, logger, library_targets)
 
     build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
         major = info["major"],
         minor = info["minor"],
         micro = info["micro"],
         interpreter_path = _norm_path(interpreter_path),
-        library_srcs = repr(library_srcs),
+        interface_library = _norm_path(interface_library),
         implementation_name = info["implementation_name"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
     )
@@ -260,10 +232,15 @@ How to handle errors when trying to automatically determine settings.
 )
 
 def _expand_incompatible_template():
+    if repo_utils.get_platforms_os_name == "windows":
+        missing = "missing.lib"
+    else:
+        missing = "missing.so"
+
     return _TOOLCHAIN_IMPL_TEMPLATE.format(
         interpreter_path = "/incompatible",
         implementation_name = "incompatible",
-        library_srcs = "[]",
+        interface_library = missing,
         major = "0",
         minor = "0",
         micro = "0",
