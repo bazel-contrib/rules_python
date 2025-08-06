@@ -233,9 +233,9 @@ How to handle errors when trying to automatically determine settings.
 
 def _expand_incompatible_template():
     if repo_utils.get_platforms_os_name == "windows":
-        missing = "missing.lib"
+        missing = "incompatible-missing.lib"
     else:
-        missing = "missing.so"
+        missing = "incompatible-missing.so"
 
     return _TOOLCHAIN_IMPL_TEMPLATE.format(
         interpreter_path = "/incompatible",

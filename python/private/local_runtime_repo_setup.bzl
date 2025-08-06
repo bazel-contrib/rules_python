@@ -46,11 +46,12 @@ def define_local_runtime_toolchain_impl(
 
     Args:
         name: `str` Only present to satisfy tooling
-        library_srcs: `str` A list of `libpython` shared libraries formatted as a string, e.g. '[ "lib/python312.lib" ]'
         major: `str` The major Python version, e.g. `3` of `3.9.1`.
         minor: `str` The minor Python version, e.g. `9` of `3.9.1`.
         micro: `str` The micro Python version, e.g. "1" of `3.9.1`.
         interpreter_path: `str` Absolute path to the interpreter.
+        interface_library: `str` A path to a .lib or .so file to link against.
+            e.g. "lib/python312.lib"
         implementation_name: `str` The implementation name, as returned by
             `sys.implementation.name`.
         os: `str` A label to the OS constraint (e.g. `@platforms//os:linux`) for
