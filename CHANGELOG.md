@@ -104,6 +104,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (gazelle) Added Python tags directives: `python_tags`, `python_library_tags`, `python_binary_tags`, and `python_test_tags`. These directives allow adding Bazel tags to generated Python targets for better build control and test categorization. Tags from general and specific directives are combined and sorted alphabetically.
 * (repl) Default stub now has tab completion, where `readline` support is available,
   see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
   ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
