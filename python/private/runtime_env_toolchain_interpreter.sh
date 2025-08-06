@@ -17,16 +17,14 @@ die() {
   exit 1
 }
 
-# We use `which` to locate the Python interpreter command on PATH. `command -v`
-# is another option, but it doesn't check whether the file it finds has the
-# executable bit.
+# We use `command -v` to locate the Python interpreter command on PATH.
 #
 # A tricky situation happens when this wrapper is invoked as part of running a
 # tool, e.g. passing a py_binary target to `ctx.actions.run()`. Bazel will unset
 # the PATH variable. Then the shell will see there's no PATH and initialize its
-# own, sometimes without exporting it. This causes `which` to fail and this
+# own, sometimes without exporting it. This causes `command -v` to fail and this
 # script to think there's no Python interpreter installed. To avoid this we
-# explicitly pass PATH to each `which` invocation. We can't just export PATH
+# explicitly pass PATH to each `command -v` invocation. We can't just export PATH
 # because that would modify the environment seen by the final user Python
 # program.
 #
@@ -37,9 +35,9 @@ die() {
 #     https://github.com/bazelbuild/bazel/issues/8415
 
 # Try the "python3" command name first, then fall back on "python".
-PYTHON_BIN="$(PATH="$PATH" which python3 2> /dev/null)"
+PYTHON_BIN="$(PATH="$PATH" command -v python3 2> /dev/null)"
 if [ -z "${PYTHON_BIN:-}" ]; then
-  PYTHON_BIN="$(PATH="$PATH" which python 2>/dev/null)"
+  PYTHON_BIN="$(PATH="$PATH" command -v python 2>/dev/null)"
 fi
 if [ -z "${PYTHON_BIN:-}" ]; then
   die "Neither 'python3' nor 'python' were found on the target \
