@@ -25,11 +25,11 @@ _PYTHON_VERSION_FLAG = Label("@rules_python//python/config_settings:python_versi
 
 def define_local_runtime_toolchain_impl(
         name,
-        lib_ext,
         major,
         minor,
         micro,
         interpreter_path,
+        library_srcs,
         implementation_name,
         os):
     """Defines a toolchain implementation for a local Python runtime.
@@ -73,14 +73,7 @@ def define_local_runtime_toolchain_impl(
         name = "_libpython",
         # Don't use a recursive glob because the lib/ directory usually contains
         # a subdirectory of the stdlib -- lots of unrelated files
-        srcs = native.glob(
-            [
-                "lib/*{}".format(lib_ext),  # Match libpython*.so
-                "lib/*{}*".format(lib_ext),  # Also match libpython*.so.1.0
-            ],
-            # A Python install may not have shared libraries.
-            allow_empty = True,
-        ),
+        srcs = library_srcs,
         hdrs = [":_python_headers"],
     )
 

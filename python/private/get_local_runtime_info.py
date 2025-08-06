@@ -50,9 +50,17 @@ config_vars = [
     # The libpythonX.so file. Usually?
     # It might be a static archive (a.) file instead.
     "PY3LIBRARY",
-    # The platform-specific filename suffix for library files.
-    # Includes the dot, e.g. `.so`
-    "SHLIB_SUFFIX",
+    # On MacOS, the LDLIBRARY may be a relative path rooted under /Library/Frameworks,
+    # such as "Python.framework/Versions/3.12/Python", not a file under the LIBDIR directory.
+    "PYTHONFRAMEWORKPREFIX",
 ]
 data.update(zip(config_vars, sysconfig.get_config_vars(*config_vars)))
+
+# On windows, the SHLIB_SUFFIX is .lib, and the toolchain needs to link with pythonXY.lib.
+# See: https://docs.python.org/3/extending/windows.html
+if sys.platform == "win32":
+  data["LDLIBRARY"] = "python{}{}.lib".format(
+      sys.version_info.major, sys.version_info.minor
+  )
+
 print(json.dumps(data))
