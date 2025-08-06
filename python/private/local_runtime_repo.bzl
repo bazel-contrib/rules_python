@@ -263,7 +263,7 @@ def _expand_incompatible_template():
     return _TOOLCHAIN_IMPL_TEMPLATE.format(
         interpreter_path = "/incompatible",
         implementation_name = "incompatible",
-        lib_ext = "incompatible",
+        library_srcs = "[]"
         major = "0",
         minor = "0",
         micro = "0",
