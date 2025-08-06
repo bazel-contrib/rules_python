@@ -156,7 +156,7 @@ you edit Python code, and it should update your `BUILD` files correctly.
 ### Libraries
 
 Python source files are those ending in `.py` that are not matched as a test
-file via the `# gazelle:python_test_file_pattern` directive. By default,
+file via the {term}`# gazelle:python_test_file_pattern value` directive. By default,
 python source files are all `*.py` files except for `*_test.py` and
 `test_*.py`.
 
@@ -179,7 +179,7 @@ dependencies are added to the `deps` attribute of the target.
 
 A {bzl:obj}`py_test` target is added to the `BUILD(.bazel)` file when gazelle
 encounters a file named `__test__.py` or when files matching the
-`# gazelle:python_test_file_pattern` directive are found.
+{term}`# gazelle:python_test_file_pattern value` directive are found.
 
 For example, if we had a folder that is a package named "foo" we could have a
 Python file named `foo_test.py` and gazelle would create a {bzl:obj}`py_test`
@@ -198,7 +198,7 @@ py_test(
 ```
 
 You can control the naming convention for test targets using the
-`# gazelle:python_test_naming_convention` directive.
+{term}`# gazelle:python_test_naming_convention value` directive.
 
 
 ### Binaries
@@ -217,7 +217,7 @@ if __name == "__main__":
 Gazelle will create a {bzl:obj}`py_binary` target for every module with such
 a line, with the target name the same as the module name.
 
-If the `# gazelle:python_generation_mode` directive is set to `file`, then
+If the {term}`# gazelle:python_generation_mode value` directive is set to `file`, then
 instead of one {bzl:obj}`py_binary` target per module, Gazelle will create
 one {bzl:obj}`py_binary` target for each file with such a line, and the name
 of the target will match the name of the script.
