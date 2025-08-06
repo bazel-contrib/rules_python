@@ -50,8 +50,9 @@ config_vars = [
     # The libpythonX.so file. Usually?
     # It might be a static archive (a.) file instead.
     "PY3LIBRARY",
-    # On MacOS, the LDLIBRARY may be a relative path rooted under /Library/Frameworks,
-    # such as "Python.framework/Versions/3.12/Python", not a file under the LIBDIR directory.
+    # On MacOS, the LDLIBRARY may be a relative path under /Library/Frameworks,
+    # such as "Python.framework/Versions/3.12/Python", not a file under the
+    # LIBDIR directory.
     "PYTHONFRAMEWORKPREFIX",
 ]
 data.update(zip(config_vars, sysconfig.get_config_vars(*config_vars)))

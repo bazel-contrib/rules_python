@@ -45,7 +45,7 @@ def define_local_runtime_toolchain_impl(
 
     Args:
         name: `str` Only present to satisfy tooling
-        lib_ext: `str` The file extension for the `libpython` shared libraries
+        library_srcs: `str` A list of `libpython` shared libraries formatted as a string, e.g. '[ "lib/python312.lib" ]'
         major: `str` The major Python version, e.g. `3` of `3.9.1`.
         minor: `str` The minor Python version, e.g. `9` of `3.9.1`.
         micro: `str` The micro Python version, e.g. "1" of `3.9.1`.
