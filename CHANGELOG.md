@@ -60,13 +60,13 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
-* (toolchain) Updated the following toolchains to build [20250723] to patch CVE-2025-47273:
+* (toolchain) Updated the following toolchains to build [20250807] to patch CVE-2025-47273:
     * 3.9.23
     * 3.10.18
     * 3.11.13
     * 3.12.11
     * 3.14.0rc1
-* (toolchain) Python 3.13 now references 3.13.5
+* (toolchain) Python 3.13 now references 3.13.6
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
@@ -75,7 +75,7 @@ END_UNRELEASED_TEMPLATE
   {gh-path}`gazelle/docs` and are now available on the primary documentation site
   at https://rules-python.readthedocs.io/en/latest/gazelle/docs/index.html
 
-[20250723]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250723
+[20250807]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250807
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -128,7 +128,7 @@ END_UNRELEASED_TEMPLATE
 * (toolchain) Add toolchains for aarch64 windows for
     * 3.11.13
     * 3.12.11
-    * 3.13.5
+    * 3.13.6
     * 3.14.0rc1
 * (gazelle): New annotation `gazelle:include_pytest_conftest`. When not set (the
   default) or `true`, gazelle will inject any `conftest.py` file found in the same
