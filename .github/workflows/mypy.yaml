@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   ci:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       # Checkout the code
       - uses: actions/checkout@v4

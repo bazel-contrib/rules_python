@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@dev_pip//:requirements.bzl", "requirement")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
@@ -56,7 +55,7 @@ sphinx_docs(
             "_*",
             "*.inv*",
         ],
-    ),
+    ) + ["//gazelle/docs"],
     config = "conf.py",
     formats = [
         "html",
@@ -87,6 +86,7 @@ sphinx_stardocs(
     name = "bzl_api_docs",
     srcs = [
         "//python:defs_bzl",
+        "//python:features_bzl",
         "//python:packaging_bzl",
         "//python:pip_bzl",
         "//python:py_binary_bzl",
@@ -100,22 +100,29 @@ sphinx_stardocs(
         "//python:py_test_bzl",
         "//python:repositories_bzl",
         "//python/api:api_bzl",
+        "//python/api:attr_builders_bzl",
         "//python/api:executables_bzl",
         "//python/api:libraries_bzl",
+        "//python/api:rule_builders_bzl",
         "//python/cc:py_cc_toolchain_bzl",
         "//python/cc:py_cc_toolchain_info_bzl",
         "//python/entry_points:py_console_script_binary_bzl",
+        "//python/local_toolchains:repos_bzl",
         "//python/private:attr_builders_bzl",
         "//python/private:builders_util_bzl",
         "//python/private:py_binary_rule_bzl",
         "//python/private:py_cc_toolchain_rule_bzl",
+        "//python/private:py_info_bzl",
         "//python/private:py_library_rule_bzl",
         "//python/private:py_runtime_rule_bzl",
         "//python/private:py_test_rule_bzl",
         "//python/private:rule_builders_bzl",
         "//python/private/api:py_common_api_bzl",
         "//python/private/pypi:config_settings_bzl",
+        "//python/private/pypi:env_marker_info_bzl",
         "//python/private/pypi:pkg_aliases_bzl",
+        "//python/private/pypi:whl_config_setting_bzl",
+        "//python/private/pypi:whl_library_bzl",
         "//python/uv:lock_bzl",
         "//python/uv:uv_bzl",
         "//python/uv:uv_toolchain_bzl",
@@ -174,41 +181,10 @@ lock(
     name = "requirements",
     srcs = ["pyproject.toml"],
     out = "requirements.txt",
-    upgrade = True,
-    visibility = ["//private:__pkg__"],
-)
-
-# Temporary compatibility aliases for some other projects depending on the old
-# bzl_library targets.
-alias(
-    name = "defs",
-    actual = "//python:defs_bzl",
-    deprecation = "Use //python:defs_bzl instead; targets under //docs are internal.",
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "bazel_repo_tools",
-    actual = "//python/private:bazel_tools_bzl",
-    deprecation = "Use @bazel_tools//tools:bzl_srcs instead; targets under //docs are internal.",
-    visibility = ["//visibility:public"],
-)
-
-bzl_library(
-    name = "pip_install_bzl",
-    deprecation = "Use //python:pip_bzl or //python/pip_install:pip_repository_bzl instead; " +
-                  "targets under //docs are internal.",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//python:pip_bzl",
-        "//python/pip_install:pip_repository_bzl",
+    args = [
+        "--emit-index-url",
+        "--universal",
+        "--upgrade",
     ],
-)
-
-alias(
-    name = "requirements_parser_bzl",
-    actual = "//python/pip_install:pip_repository_bzl",
-    deprecation = "Use //python/pip_install:pip_repository_bzl instead; Both the requirements " +
-                  "parser and targets under //docs are internal",
-    visibility = ["//visibility:public"],
+    visibility = ["//:__subpackages__"],
 )

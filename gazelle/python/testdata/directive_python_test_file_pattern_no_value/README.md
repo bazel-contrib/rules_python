@@ -5,4 +5,4 @@ fails with a nice message if the directive has no value.
 
 See discussion in [PR #1819 (comment)][comment].
 
-[comment]: https://github.com/bazelbuild/rules_python/pull/1819#discussion_r1536906287
+[comment]: https://github.com/bazel-contrib/rules_python/pull/1819#discussion_r1536906287

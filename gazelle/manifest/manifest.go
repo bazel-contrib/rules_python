@@ -70,6 +70,9 @@ func (f *File) VerifyIntegrity(manifestGeneratorHashFile, requirements io.Reader
 		return false, fmt.Errorf("failed to verify integrity: %w", err)
 	}
 	valid := (f.Integrity == fmt.Sprintf("%x", integrityBytes))
+	if (!valid) {
+		fmt.Printf("WARN: Integrity hash was %v but expected %x\n", f.Integrity, integrityBytes)
+	}
 	return valid, nil
 }
 

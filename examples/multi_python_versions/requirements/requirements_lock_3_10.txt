@@ -4,7 +4,7 @@
 #
 #    bazel run //requirements:requirements_3_10.update
 #
-websockets==11.0.3 \
+websockets==11.0.3 ; python_full_version > "3.9.1" \
     --hash=sha256:01f5567d9cf6f502d655151645d4e8b72b453413d3819d2b6f1185abc23e82dd \
     --hash=sha256:03aae4edc0b1c68498f41a6772d80ac7c1e33c06c6ffa2ac1c27a07653e79d6f \
     --hash=sha256:0ac56b661e60edd453585f4bd68eb6a29ae25b5184fd5ba51e97652580458998 \

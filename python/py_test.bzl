@@ -38,9 +38,9 @@ def py_test(**attrs):
       **attrs: Rule attributes forwarded onto {rule}`py_test`.
     """
     if attrs.get("python_version") == "PY2":
-        fail("Python 2 is no longer supported: https://github.com/bazelbuild/rules_python/issues/886")
+        fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
     if attrs.get("srcs_version") in ("PY2", "PY2ONLY"):
-        fail("Python 2 is no longer supported: https://github.com/bazelbuild/rules_python/issues/886")
+        fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
     # buildifier: disable=native-python
     _py_test_impl(**add_migration_tag(attrs))

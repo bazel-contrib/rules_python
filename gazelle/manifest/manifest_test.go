@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bazelbuild/rules_python/gazelle/manifest"
+	"github.com/bazel-contrib/rules_python/gazelle/manifest"
 )
 
 var modulesMapping = manifest.ModulesMapping{

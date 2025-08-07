@@ -15,7 +15,8 @@
 ""
 
 load("//python:versions.bzl", "PLATFORMS", "TOOL_VERSIONS")
-load("//tests/support:sh_py_run_test.bzl", "py_reconfig_test")
+load("//python/private:version.bzl", "version")  # buildifier: disable=bzl-visibility
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
 def define_toolchain_tests(name):
     """Define the toolchain tests.
@@ -38,13 +39,20 @@ def define_toolchain_tests(name):
             is_platform = "_is_{}".format(platform_key)
             target_compatible_with[is_platform] = []
 
+        parsed = version.parse(python_version, strict = True)
+        expect_python_version = "{0}.{1}.{2}".format(*parsed.release)
+        if parsed.pre:
+            expect_python_version = "{0}{1}{2}".format(
+                expect_python_version,
+                *parsed.pre
+            )
         py_reconfig_test(
             name = "python_{}_test".format(python_version),
             srcs = ["python_toolchain_test.py"],
             main = "python_toolchain_test.py",
             python_version = python_version,
             env = {
-                "EXPECT_PYTHON_VERSION": python_version,
+                "EXPECT_PYTHON_VERSION": expect_python_version,
             },
             deps = ["//python/runfiles"],
             data = ["//tests/support:current_build_settings"],

@@ -23,11 +23,6 @@ load(":py_info.bzl", "PyInfo")
 load(":py_internal.bzl", "py_internal")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
-load(
-    ":semantics.bzl",
-    "DEPS_ATTR_ALLOW_RULES",
-    "SRCS_ATTR_ALLOW_FILES",
-)
 
 _PackageSpecificationInfo = getattr(py_internal, "PackageSpecificationInfo", None)
 
@@ -161,12 +156,6 @@ def copy_common_test_kwargs(kwargs):
         if key in kwargs
     }
 
-CC_TOOLCHAIN = {
-    # NOTE: The `cc_helper.find_cpp_toolchain()` function expects the attribute
-    # name to be this name.
-    "_cc_toolchain": attr.label(default = "@bazel_tools//tools/cpp:current_cc_toolchain"),
-}
-
 # The common "data" attribute definition.
 DATA_ATTRS = {
     # NOTE: The "flags" attribute is deprecated, but there isn't an alternative
@@ -250,9 +239,6 @@ PY_SRCS_ATTRS = dicts.add(
                 [PyInfo],
                 [CcInfo],
             ] + _MaybeBuiltinPyInfo,
-            # TODO(b/228692666): Google-specific; remove these allowances once
-            # the depot is cleaned up.
-            allow_rules = DEPS_ATTR_ALLOW_RULES,
             doc = """
 List of additional libraries to be linked in to the target.
 See comments about
@@ -262,6 +248,17 @@ These are typically `py_library` rules.
 
 Targets that only provide data files used at runtime belong in the `data`
 attribute.
+
+:::{note}
+The order of this list can matter because it affects the order that information
+from dependencies is merged in, which can be relevant depending on the ordering
+mode of depsets that are merged.
+
+* {obj}`PyInfo.venv_symlinks` uses default ordering.
+
+See {obj}`PyInfo` for more information about the ordering of its depsets and
+how its fields are merged.
+:::
 """,
         ),
         "precompile": lambda: attrb.String(
@@ -359,8 +356,7 @@ as part of a runnable program (packaging rules may include them, however).
             allow_files = True,
         ),
         "srcs": lambda: attrb.LabelList(
-            # Google builds change the set of allowed files.
-            allow_files = SRCS_ATTR_ALLOW_FILES,
+            allow_files = [".py", ".py3"],
             # Necessary for --compile_one_dependency to work.
             flags = ["DIRECT_COMPILE_TIME_INPUT"],
             doc = """
@@ -395,14 +391,14 @@ COVERAGE_ATTRS = {
     "_collect_cc_coverage": lambda: attrb.Label(
         default = "@bazel_tools//tools/test:collect_cc_coverage",
         executable = True,
-        cfg = "exec",
+        cfg = config.exec(exec_group = "test"),
     ),
     # Magic attribute to make coverage work. There's no
     # docs about this; see TestActionBuilder.java
     "_lcov_merger": lambda: attrb.Label(
         default = configuration_field(fragment = "coverage", name = "output_generator"),
         executable = True,
-        cfg = "exec",
+        cfg = config.exec(exec_group = "test"),
     ),
 }
 

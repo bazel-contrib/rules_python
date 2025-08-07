@@ -17,7 +17,7 @@ console_script generator from entry_points.txt contents.
 
 For Python versions earlier than 3.11 and for earlier bazel versions than 7.0 we need to workaround the issue of
 sys.path[0] breaking out of the runfiles tree see the following for more context:
-* https://github.com/bazelbuild/rules_python/issues/382
+* https://github.com/bazel-contrib/rules_python/issues/382
 * https://github.com/bazelbuild/bazel/pull/15701
 
 In affected bazel and Python versions we see in programs such as `flake8`, `pylint` or `pytest` errors because the
@@ -44,7 +44,7 @@ import textwrap
 _ENTRY_POINTS_TXT = "entry_points.txt"
 
 _TEMPLATE = """\
-import sys
+{shebang}import sys
 
 # See @rules_python//python/private:py_console_script_gen.py for explanation
 if getattr(sys.flags, "safe_path", False):
@@ -87,6 +87,7 @@ def run(
     out: pathlib.Path,
     console_script: str,
     console_script_guess: str,
+    shebang: str,
 ):
     """Run the generator
 
@@ -94,6 +95,8 @@ def run(
         entry_points: The entry_points.txt file to be parsed.
         out: The output file.
         console_script: The console_script entry in the entry_points.txt file.
+        console_script_guess: The string used for guessing the console_script if it is not provided.
+        shebang: The shebang to use for the entry point python file. Defaults to empty string (no shebang).
     """
     config = EntryPointsParser()
     config.read(entry_points)
@@ -130,12 +133,13 @@ def run(
     module, _, entry_point = entry_point.rpartition(":")
     attr, _, _ = entry_point.partition(".")
     # TODO: handle 'extras' in entry_point generation
-    # See https://github.com/bazelbuild/rules_python/issues/1383
+    # See https://github.com/bazel-contrib/rules_python/issues/1383
     # See https://packaging.python.org/en/latest/specifications/entry-points/
 
     with open(out, "w") as f:
         f.write(
             _TEMPLATE.format(
+                shebang=f"{shebang}\n" if shebang else "",
                 module=module,
                 attr=attr,
                 entry_point=entry_point,
@@ -153,6 +157,10 @@ def main():
         "--console-script-guess",
         required=True,
         help="The string used for guessing the console_script if it is not provided.",
+    )
+    parser.add_argument(
+        "--shebang",
+        help="The shebang to use for the entry point python file.",
     )
     parser.add_argument(
         "entry_points",
@@ -173,6 +181,7 @@ def main():
         out=args.out,
         console_script=args.console_script,
         console_script_guess=args.console_script_guess,
+        shebang=args.shebang,
     )
 
 

@@ -8,7 +8,7 @@ exports_files([
 go_library(
     name = "manifest",
     srcs = ["manifest.go"],
-    importpath = "github.com/bazelbuild/rules_python/gazelle/manifest",
+    importpath = "github.com/bazel-contrib/rules_python/gazelle/manifest",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_emirpasic_gods//sets/treeset",

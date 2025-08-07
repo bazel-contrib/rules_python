@@ -21,12 +21,21 @@ use_repo(
     go_deps,
     "com_github_bazelbuild_buildtools",
     "com_github_bmatcuk_doublestar_v4",
-    "com_github_dougthor42_go_tree_sitter",
     "com_github_emirpasic_gods",
     "com_github_ghodss_yaml",
     "com_github_stretchr_testify",
     "in_gopkg_yaml_v2",
     "org_golang_x_sync",
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "com_github_smacker_go_tree_sitter",
+    build_file = "//:internal/smacker_BUILD.bazel",
+    integrity = "sha256-4AkDY4Rh5Auu9Kwzhj5XYSirMLlhmd6ClMWo/r0kmu4=",
+    strip_prefix = "go-tree-sitter-dd81d9e9be82a8cac96ed1d50c7389c5f1997c02",
+    url = "https://github.com/smacker/go-tree-sitter/archive/dd81d9e9be82a8cac96ed1d50c7389c5f1997c02.zip",
 )
 
 python_stdlib_list = use_extension("//python:extensions.bzl", "python_stdlib_list")

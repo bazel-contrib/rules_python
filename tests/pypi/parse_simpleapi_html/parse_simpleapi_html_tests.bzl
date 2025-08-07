@@ -52,13 +52,14 @@ def _test_sdist(env):
                     'data-requires-python="&gt;=3.7"',
                 ],
                 filename = "foo-0.0.1.tar.gz",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
                 sha256 = "deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
                 yanked = False,
+                version = "0.0.1",
             ),
         ),
         (
@@ -68,12 +69,13 @@ def _test_sdist(env):
                     'data-requires-python=">=3.7"',
                 ],
                 filename = "foo-0.0.1.tar.gz",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
                 sha256 = "deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
+                version = "0.0.1",
                 yanked = False,
             ),
         ),
@@ -84,6 +86,7 @@ def _test_sdist(env):
         got = parse_simpleapi_html(url = input.url, content = html)
         env.expect.that_collection(got.sdists).has_size(1)
         env.expect.that_collection(got.whls).has_size(0)
+        env.expect.that_collection(got.sha256s_by_version).has_size(1)
         if not got:
             fail("expected at least one element, but did not get anything from:\n{}".format(html))
 
@@ -94,12 +97,14 @@ def _test_sdist(env):
                 sha256 = subjects.str,
                 url = subjects.str,
                 yanked = subjects.bool,
+                version = subjects.str,
             ),
         )
         actual.filename().equals(want.filename)
         actual.sha256().equals(want.sha256)
         actual.url().equals(want.url)
         actual.yanked().equals(want.yanked)
+        actual.version().equals(want.version)
 
 _tests.append(_test_sdist)
 
@@ -115,7 +120,7 @@ def _test_whls(env):
                     'data-core-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -123,6 +128,7 @@ def _test_whls(env):
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
                 sha256 = "deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+                version = "0.0.2",
                 yanked = False,
             ),
         ),
@@ -135,7 +141,7 @@ def _test_whls(env):
                     'data-core-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -143,6 +149,7 @@ def _test_whls(env):
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
                 sha256 = "deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+                version = "0.0.2",
                 yanked = False,
             ),
         ),
@@ -154,13 +161,14 @@ def _test_whls(env):
                     'data-core-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
                 sha256 = "deadbeef",
+                version = "0.0.2",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 yanked = False,
             ),
@@ -173,13 +181,14 @@ def _test_whls(env):
                     'data-dist-info-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
                 sha256 = "deadbeef",
+                version = "0.0.2",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 yanked = False,
             ),
@@ -191,7 +200,7 @@ def _test_whls(env):
                     'data-requires-python="&gt;=3.7"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "ignored",
+                url = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -199,6 +208,7 @@ def _test_whls(env):
                 metadata_url = "",
                 sha256 = "deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+                version = "0.0.2",
                 yanked = False,
             ),
         ),
@@ -217,6 +227,7 @@ def _test_whls(env):
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/python-wheels/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
                 sha256 = "deadbeef",
+                version = "0.0.2",
                 url = "https://example.org/python-wheels/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 yanked = False,
             ),
@@ -235,6 +246,7 @@ def _test_whls(env):
                 metadata_url = "",
                 sha256 = "deadbeef",
                 url = "https://download.pytorch.org/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
+                version = "2.0.0",
                 yanked = False,
             ),
         ),
@@ -252,6 +264,7 @@ def _test_whls(env):
                 metadata_url = "",
                 sha256 = "notdeadbeef",
                 url = "http://download.pytorch.org/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
+                version = "2.0.0",
                 yanked = False,
             ),
         ),
@@ -267,6 +280,7 @@ def _test_whls(env):
                 filename = "mypy_extensions-1.0.0-py3-none-any.whl",
                 metadata_sha256 = "",
                 metadata_url = "",
+                version = "1.0.0",
                 sha256 = "deadbeef",
                 url = "https://example.org/simple/mypy_extensions/1.0.0/mypy_extensions-1.0.0-py3-none-any.whl",
                 yanked = False,
@@ -285,7 +299,27 @@ def _test_whls(env):
                 metadata_sha256 = "",
                 metadata_url = "",
                 sha256 = "deadbeef",
+                version = "1.0.0",
                 url = "https://example.org/simple/mypy_extensions/unknown://example.com/mypy_extensions-1.0.0-py3-none-any.whl",
+                yanked = False,
+            ),
+        ),
+        (
+            struct(
+                attrs = [
+                    'href="/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl#sha256=deadbeef"',
+                ],
+                filename = "torch-2.6.0+cpu-cp39-cp39-manylinux_2_28_aarch64.whl",
+                url = "https://example.org/",
+            ),
+            struct(
+                filename = "torch-2.6.0+cpu-cp39-cp39-manylinux_2_28_aarch64.whl",
+                metadata_sha256 = "",
+                metadata_url = "",
+                sha256 = "deadbeef",
+                version = "2.6.0+cpu",
+                # A URL with % could occur if directly written in requirements.
+                url = "https://example.org/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl",
                 yanked = False,
             ),
         ),
@@ -308,6 +342,7 @@ def _test_whls(env):
                 sha256 = subjects.str,
                 url = subjects.str,
                 yanked = subjects.bool,
+                version = subjects.str,
             ),
         )
         actual.filename().equals(want.filename)
@@ -316,6 +351,7 @@ def _test_whls(env):
         actual.sha256().equals(want.sha256)
         actual.url().equals(want.url)
         actual.yanked().equals(want.yanked)
+        actual.version().equals(want.version)
 
 _tests.append(_test_whls)
 

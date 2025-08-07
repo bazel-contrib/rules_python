@@ -68,7 +68,8 @@ def _test_bzlmod_aliases(env):
         aliases = {
             "bar-baz": {
                 whl_config_setting(
-                    version = "3.2",
+                    # Add one with micro version to mimic construction in the extension
+                    version = "3.2.2",
                     config_setting = "//:my_config_setting",
                 ): "pypi_32_bar_baz",
                 whl_config_setting(
@@ -83,15 +84,21 @@ def _test_bzlmod_aliases(env):
                     filename = "foo-0.0.0-py3-none-any.whl",
                 ): "filename_repo",
                 whl_config_setting(
-                    version = "3.2",
+                    version = "3.2.2",
                     filename = "foo-0.0.0-py3-none-any.whl",
                     target_platforms = [
-                        "cp32_linux_x86_64",
+                        "cp32.2_linux_x86_64",
                     ],
                 ): "filename_repo_linux_x86_64",
             },
         },
         extra_hub_aliases = {"bar_baz": ["foo"]},
+        platform_config_settings = {
+            "linux_x86_64": [
+                "@platforms//os:linux",
+                "@platforms//cpu:x86_64",
+            ],
+        },
     )
 
     want_key = "bar_baz/BUILD.bazel"
@@ -117,7 +124,7 @@ pkg_aliases(
         whl_config_setting(
             filename = "foo-0.0.0-py3-none-any.whl",
             target_platforms = ("cp32_linux_x86_64",),
-            version = "3.2",
+            version = "3.2.2",
         ): "filename_repo_linux_x86_64",
     },
     extra_aliases = ["foo"],
@@ -129,8 +136,13 @@ load("@rules_python//python/private/pypi:config_settings.bzl", "config_settings"
 
 config_settings(
     name = "config_settings",
+    platform_config_settings = {
+        "linux_x86_64": [
+            "@platforms//os:linux",
+            "@platforms//cpu:x86_64",
+        ],
+    },
     python_versions = ["3.2"],
-    target_platforms = ["linux_x86_64"],
     visibility = ["//:__subpackages__"],
 )""",
     )

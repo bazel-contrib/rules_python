@@ -48,14 +48,14 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
         help="Platforms to target dependencies. Can be used multiple times.",
     )
     parser.add_argument(
+        "--enable-pipstar",
+        action="store_true",
+        help="Disable certain code paths if we expect to process the whl in Starlark.",
+    )
+    parser.add_argument(
         "--pip_data_exclude",
         action="store",
         help="Additional data exclusion parameters to add to the pip packages BUILD file.",
-    )
-    parser.add_argument(
-        "--enable_implicit_namespace_pkgs",
-        action="store_true",
-        help="Disables conversion of implicit namespace packages into pkg-util style packages.",
     )
     parser.add_argument(
         "--environment",

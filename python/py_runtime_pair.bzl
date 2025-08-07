@@ -85,7 +85,7 @@ def py_runtime_pair(name, py2_runtime = None, py3_runtime = None, **attrs):
         **attrs: Extra attrs passed onto the native rule
     """
     if attrs.get("py2_runtime"):
-        fail("PYthon 2 is no longer supported: see https://github.com/bazelbuild/rules_python/issues/886")
+        fail("PYthon 2 is no longer supported: see https://github.com/bazel-contrib/rules_python/issues/886")
     _py_runtime_pair(
         name = name,
         py2_runtime = py2_runtime,

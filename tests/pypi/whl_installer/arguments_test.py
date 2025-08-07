@@ -36,7 +36,6 @@ class ArgumentsTestCase(unittest.TestCase):
         self.assertIn("requirement", args_dict)
         self.assertIn("extra_pip_args", args_dict)
         self.assertEqual(args_dict["pip_data_exclude"], [])
-        self.assertEqual(args_dict["enable_implicit_namespace_pkgs"], False)
         self.assertEqual(args_dict["extra_pip_args"], extra_pip_args)
 
     def test_deserialize_structured_args(self) -> None:

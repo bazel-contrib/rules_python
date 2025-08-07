@@ -37,6 +37,6 @@ def py_runtime(**attrs):
       **attrs: Rule attributes forwarded onto {rule}`py_runtime`.
     """
     if attrs.get("python_version") == "PY2":
-        fail("Python 2 is no longer supported: see https://github.com/bazelbuild/rules_python/issues/886")
+        fail("Python 2 is no longer supported: see https://github.com/bazel-contrib/rules_python/issues/886")
 
     _py_runtime_impl(**add_migration_tag(attrs))

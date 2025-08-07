@@ -87,10 +87,12 @@ redirects = {
     "api/sphinxdocs/sphinx": "/api/sphinxdocs/sphinxdocs/sphinx.html",
     "api/sphinxdocs/sphinx_stardoc": "/api/sphinxdocs/sphinxdocs/sphinx_stardoc.html",
     "api/sphinxdocs/readthedocs": "/api/sphinxdocs/sphinxdocs/readthedocs.html",
-    "api/sphinxdocs/index": "/api/sphinxdocs/sphinxdocs/index.html",
+    "api/sphinxdocs/index": "sphinxdocs/index.html",
     "api/sphinxdocs/private/sphinx_docs_library": "/api/sphinxdocs/sphinxdocs/private/sphinx_docs_library.html",
     "api/sphinxdocs/sphinx_docs_library": "/api/sphinxdocs/sphinxdocs/sphinx_docs_library.html",
     "api/sphinxdocs/inventories/index": "/api/sphinxdocs/sphinxdocs/inventories/index.html",
+    "pip.html": "pypi/index.html",
+    "pypi-dependencies.html": "pypi/index.html",
 }
 
 # Adapted from the template code:
@@ -104,7 +106,7 @@ if os.environ.get("READTHEDOCS") == "True":
         # Insert after the main extension
         extensions.insert(1, "readthedocs_ext.external_version_warning")
         readthedocs_vcs_url = (
-            "http://github.com/bazelbuild/rules_python/pull/{}".format(
+            "http://github.com/bazel-contrib/rules_python/pull/{}".format(
                 os.environ.get("READTHEDOCS_VERSION", "")
             )
         )
@@ -125,6 +127,12 @@ templates_path = ["_templates"]
 primary_domain = None  # The default is 'py', which we don't make much use of
 nitpicky = True
 
+nitpick_ignore_regex = [
+    # External xrefs aren't setup: ignore missing xref warnings
+    # External xrefs to sphinx isn't setup: ignore missing xref warnings
+    ("py:.*", "(sphinx|docutils|ast|enum|collections|typing_extensions).*"),
+]
+
 # --- Intersphinx configuration
 
 intersphinx_mapping = {
@@ -133,7 +141,9 @@ intersphinx_mapping = {
 
 # --- Extlinks configuration
 extlinks = {
-    "gh-path": (f"https://github.com/bazelbuild/rules_python/tree/main/%s", "%s"),
+    "gh-issue": (f"https://github.com/bazel-contrib/rules_python/issues/%s", "#%s issue"),
+    "gh-path": (f"https://github.com/bazel-contrib/rules_python/tree/main/%s", "%s"),
+    "gh-pr": (f"https://github.com/bazel-contrib/rules_python/pulls/%s", "#%s PR"),
 }
 
 # --- MyST configuration

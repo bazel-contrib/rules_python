@@ -37,7 +37,7 @@ def create_py_test_rule_builder():
     :::{include} /_includes/volatile_api.md
     :::
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.3.0
     :::
 
     Returns:

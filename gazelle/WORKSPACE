@@ -42,6 +42,8 @@ load("//:internal_dev_deps.bzl", "internal_dev_deps")
 
 internal_dev_deps()
 
+register_toolchains("@rules_python//python/runtime_env_toolchains:all")
+
 load("//:deps.bzl", _py_gazelle_deps = "gazelle_deps")
 
 # gazelle:repository_macro deps.bzl%go_deps

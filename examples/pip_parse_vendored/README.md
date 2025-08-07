@@ -1,7 +1,7 @@
 # pip_parse vendored
 
 This example is like pip_parse, however we avoid loading from the generated file.
-See https://github.com/bazelbuild/rules_python/issues/608
+See https://github.com/bazel-contrib/rules_python/issues/608
 and https://blog.aspect.dev/avoid-eager-fetches.
 
 The requirements now form a triple:

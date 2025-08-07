@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	sitter "github.com/dougthor42/go-tree-sitter"
-	"github.com/dougthor42/go-tree-sitter/python"
+	sitter "github.com/smacker/go-tree-sitter"
+	"github.com/smacker/go-tree-sitter/python"
 )
 
 const (
@@ -41,15 +41,16 @@ const (
 
 type ParserOutput struct {
 	FileName string
-	Modules  []module
-	Comments []comment
+	Modules  []Module
+	Comments []Comment
 	HasMain  bool
 }
 
 type FileParser struct {
-	code        []byte
-	relFilepath string
-	output      ParserOutput
+	code                 []byte
+	relFilepath          string
+	output               ParserOutput
+	inTypeCheckingBlock  bool
 }
 
 func NewFileParser() *FileParser {
@@ -115,10 +116,6 @@ func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
 				a, b = b, a
 			}
 			if a.Type() == sitterNodeTypeIdentifier && a.Content(p.code) == "__name__" &&
-				// at github.com/dougthor42/go-tree-sitter@latest (after v0.0.0-20240422154435-0628b34cbf9c we used)
-				// "__main__" is the second child of b. But now, it isn't.
-				// we cannot use the latest go-tree-sitter because of the top level reference in scanner.c.
-				// https://github.com/dougthor42/go-tree-sitter/blob/04d6b33fe138a98075210f5b770482ded024dc0f/python/scanner.c#L1
 				b.Type() == sitterNodeTypeString && string(p.code[b.StartByte()+1:b.EndByte()-1]) == "__main__" {
 				return true
 			}
@@ -127,24 +124,34 @@ func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
 	return false
 }
 
-// parseImportStatement parses a node for an import statement, returning a `module` and a boolean
+// parseImportStatement parses a node for an import statement, returning a `Module` and a boolean
 // representing if the parse was OK or not.
-func parseImportStatement(node *sitter.Node, code []byte) (module, bool) {
+func parseImportStatement(node *sitter.Node, code []byte) (Module, bool) {
 	switch node.Type() {
 	case sitterNodeTypeDottedName:
-		return module{
+		return Module{
 			Name:       node.Content(code),
 			LineNumber: node.StartPoint().Row + 1,
 		}, true
 	case sitterNodeTypeAliasedImport:
 		return parseImportStatement(node.Child(0), code)
 	case sitterNodeTypeWildcardImport:
-		return module{
+		return Module{
 			Name:       "*",
 			LineNumber: node.StartPoint().Row + 1,
 		}, true
 	}
-	return module{}, false
+	return Module{}, false
+}
+
+// cleanImportString removes backslashes and all whitespace from the string.
+func cleanImportString(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "")
+	s = strings.ReplaceAll(s, "\\", "")
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "\n", "")
+	s = strings.ReplaceAll(s, "\t", "")
+	return s
 }
 
 // parseImportStatements parses a node for import statements, returning true if the node is
@@ -157,7 +164,10 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 			if !ok {
 				continue
 			}
+			m.From = cleanImportString(m.From)
+			m.Name = cleanImportString(m.Name)
 			m.Filepath = p.relFilepath
+			m.TypeCheckingOnly = p.inTypeCheckingBlock
 			if strings.HasPrefix(m.Name, ".") {
 				continue
 			}
@@ -165,7 +175,10 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 		}
 	} else if node.Type() == sitterNodeTypeImportFromStatement {
 		from := node.Child(1).Content(p.code)
-		if strings.HasPrefix(from, ".") {
+		from = cleanImportString(from)
+		// If the import is from the current package, we don't need to add it to the modules i.e. from . import Class1.
+		// If the import is from a different relative package i.e. from .package1 import foo, we need to add it to the modules.
+		if from == "." {
 			return true
 		}
 		for j := 3; j < int(node.ChildCount()); j++ {
@@ -175,7 +188,9 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 			}
 			m.Filepath = p.relFilepath
 			m.From = from
+			m.Name = cleanImportString(m.Name)
 			m.Name = fmt.Sprintf("%s.%s", from, m.Name)
+			m.TypeCheckingOnly = p.inTypeCheckingBlock
 			p.output.Modules = append(p.output.Modules, m)
 		}
 	} else {
@@ -188,7 +203,7 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 // It updates FileParser.output.Comments with the parsed comment.
 func (p *FileParser) parseComments(node *sitter.Node) bool {
 	if node.Type() == sitterNodeTypeComment {
-		p.output.Comments = append(p.output.Comments, comment(node.Content(p.code)))
+		p.output.Comments = append(p.output.Comments, Comment(node.Content(p.code)))
 		return true
 	}
 	return false
@@ -200,10 +215,43 @@ func (p *FileParser) SetCodeAndFile(code []byte, relPackagePath, filename string
 	p.output.FileName = filename
 }
 
+// isTypeCheckingBlock returns true if the given node is an `if TYPE_CHECKING:` block.
+func (p *FileParser) isTypeCheckingBlock(node *sitter.Node) bool {
+	if node.Type() != sitterNodeTypeIfStatement || node.ChildCount() < 2 {
+		return false
+	}
+
+	condition := node.Child(1)
+
+	// Handle `if TYPE_CHECKING:`
+	if condition.Type() == sitterNodeTypeIdentifier && condition.Content(p.code) == "TYPE_CHECKING" {
+		return true
+	}
+
+	// Handle `if typing.TYPE_CHECKING:`
+	if condition.Type() == "attribute" && condition.ChildCount() >= 3 {
+		object := condition.Child(0)
+		attr := condition.Child(2)
+		if object.Type() == sitterNodeTypeIdentifier && object.Content(p.code) == "typing" &&
+			attr.Type() == sitterNodeTypeIdentifier && attr.Content(p.code) == "TYPE_CHECKING" {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 	if node == nil {
 		return
 	}
+
+	// Check if this is a TYPE_CHECKING block
+	wasInTypeCheckingBlock := p.inTypeCheckingBlock
+	if p.isTypeCheckingBlock(node) {
+		p.inTypeCheckingBlock = true
+	}
+
 	for i := 0; i < int(node.ChildCount()); i++ {
 		if err := ctx.Err(); err != nil {
 			return
@@ -217,6 +265,9 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 		}
 		p.parse(ctx, child)
 	}
+
+	// Restore the previous state
+	p.inTypeCheckingBlock = wasInTypeCheckingBlock
 }
 
 func (p *FileParser) Parse(ctx context.Context) (*ParserOutput, error) {

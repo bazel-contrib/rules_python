@@ -30,7 +30,7 @@ the [GitHub `gh` tool](https://github.com/cli/cli)
 (More advanced users may prefer the GitHub UI and raw `git` commands).
 
 ```shell
-gh repo fork bazelbuild/rules_python --clone --remote
+gh repo fork bazel-contrib/rules_python --clone --remote
 ```
 
 Next, make sure you have a new enough version of Python installed that supports the
@@ -68,7 +68,7 @@ to the actual rules_python project and begin the code review process.
 ## Developer guide
 
 For more more details, guidance, and tips for working with the code base,
-see [DEVELOPING.md](DEVELOPING.md)
+see [docs/devguide.md](./devguide)
 
 ## Formatting
 
@@ -173,6 +173,55 @@ The `legacy_foo` arg was removed
 :::
 ```
 
+## Style and idioms
+
+For the most part, we just accept whatever the code formatters do, so there
+isn't much style to enforce.
+
+Some miscellanous style, idioms, and conventions we have are:
+
+### Markdown/Sphinx Style
+
+* Use colons for prose sections of text, e.g. `:::{note}`, not backticks.
+* Use backticks for code blocks.
+* Max line length: 100.
+
+### BUILD/bzl Style
+
+* When a macro generates public targets, use a dot (`.`) to separate the
+  user-provided name from the generted name. e.g. `foo(name="x")` generates
+  `x.test`. The `.` is our convention to communicate that it's a generated
+  target, and thus one should look for `name="x"` when searching for the
+  definition.
+* The different build phases shouldn't load code that defines objects that
+  aren't valid for their phase. e.g.
+  * The bzlmod phase shouldn't load code defining regular rules or providers.
+  * The repository phase shouldn't load code defining module extensions, regular
+    rules, or providers.
+  * The loading phase shouldn't load code defining module extensions or
+    repository rules.
+  * Loading utility libraries or generic code is OK, but should strive to load
+    code that is usable for its phase. e.g. loading-phase code shouldn't
+    load utility code that is predominately only usable to the bzlmod phase.
+* Providers should be in their own files. This allows implementing a custom rule
+  that implements the provider without loading a specific implementation.
+* One rule per file is preferred, but not required. The goal is that defining an
+  e.g. library shouldn't incur loading all the code for binaries, tests,
+  packaging, etc; things that may be niche or uncommonly used.
+* Separate files should be used to expose public APIs. This ensures our public
+  API is well defined and prevents accidentally exposing a package-private
+  symbol as a public symbol.
+
+  :::{note}
+  The public API file's docstring becomes part of the user-facing docs. That
+  file's docstring must be used for module-level API documentation.
+  :::
+* Repository rules should have name ending in `_repo`. This helps distinguish
+  them from regular rules.
+* Each bzlmod extension, the "X" of `use_repo("//foo:foo.bzl", "X")` should be
+  in its own file. The path given in the `use_repo()` expression is the identity
+  Bazel uses and cannot be changed.
+
 ## Generated files
 
 Some checked-in files are generated and need to be updated when a new PR is
@@ -185,11 +234,13 @@ merged:
 ## Binary artifacts
 
 Checking in binary artifacts is not allowed. This is because they are extremely
-problematic to verify and ensure they're safe
+problematic to verify and ensure they're safe. This is true even in
+test contexts.
 
 Examples include, but aren't limited to: prebuilt binaries, shared libraries,
 zip files, or wheels.
 
+See the dev guide for utilities to help with testing.
 
 (breaking-changes)=
 ## Breaking Changes
@@ -268,6 +319,25 @@ Not breaking changes:
   * Upgrading dependencies
   * Changing internal details, such as renaming an internal file.
   * Changing a rule to a macro.
+
+## AI-assisted Contributions
+
+Contributions assisted by AI tools are allowed. However, the human author
+submitting the pull request is responsible for the contributed code as if they
+had written it entirely themselves. This means:
+
+*   **Understanding the code:** You must be able to explain what the code does
+    and why it's implemented that way. This includes discussing its
+    implications, and any trade-offs made during its development, just as if you
+    had written it entirely yourself.
+*   **Vetting the correctness and functionality:** You are responsible for
+    thoroughly testing and verifying that the code is correct, functional, and
+    meets all project requirements and standards.
+
+If the human PR author cannot fulfill these responsibilities, the `rules_python`
+maintainers will not spend time reviewing or merging the PR. The goal is to
+ensure that all contributions, regardless of their origin, maintain the quality
+and integrity of the project and do not place an undue burden on maintainers.
 
 ## FAQ
 

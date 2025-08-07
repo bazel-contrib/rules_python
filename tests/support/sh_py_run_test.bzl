@@ -32,22 +32,24 @@ def _perform_transition_impl(input_settings, attr, base_impl):
 
     settings[VISIBLE_FOR_TESTING] = True
     settings["//command_line_option:build_python_zip"] = attr.build_python_zip
-    if attr.bootstrap_impl:
-        settings["//python/config_settings:bootstrap_impl"] = attr.bootstrap_impl
-    if attr.extra_toolchains:
-        settings["//command_line_option:extra_toolchains"] = attr.extra_toolchains
-    if attr.python_src:
-        settings["//python/bin:python_src"] = attr.python_src
-    if attr.venvs_use_declare_symlink:
-        settings["//python/config_settings:venvs_use_declare_symlink"] = attr.venvs_use_declare_symlink
+
+    for attr_name, setting_label in _RECONFIG_ATTR_SETTING_MAP.items():
+        if getattr(attr, attr_name):
+            settings[setting_label] = getattr(attr, attr_name)
     return settings
 
-_RECONFIG_INPUTS = [
-    "//python/config_settings:bootstrap_impl",
-    "//python/bin:python_src",
-    "//command_line_option:extra_toolchains",
-    "//python/config_settings:venvs_use_declare_symlink",
-]
+# Attributes that, if non-falsey (`if attr.<name>`), will copy their
+# value into the output settings
+_RECONFIG_ATTR_SETTING_MAP = {
+    "bootstrap_impl": "//python/config_settings:bootstrap_impl",
+    "custom_runtime": "//tests/support:custom_runtime",
+    "extra_toolchains": "//command_line_option:extra_toolchains",
+    "python_src": "//python/bin:python_src",
+    "venvs_site_packages": "//python/config_settings:venvs_site_packages",
+    "venvs_use_declare_symlink": "//python/config_settings:venvs_use_declare_symlink",
+}
+
+_RECONFIG_INPUTS = _RECONFIG_ATTR_SETTING_MAP.values()
 _RECONFIG_OUTPUTS = _RECONFIG_INPUTS + [
     "//command_line_option:build_python_zip",
     VISIBLE_FOR_TESTING,
@@ -57,6 +59,7 @@ _RECONFIG_INHERITED_OUTPUTS = [v for v in _RECONFIG_OUTPUTS if v in _RECONFIG_IN
 _RECONFIG_ATTRS = {
     "bootstrap_impl": attrb.String(),
     "build_python_zip": attrb.String(default = "auto"),
+    "custom_runtime": attrb.String(),
     "extra_toolchains": attrb.StringList(
         doc = """
 Value for the --extra_toolchains flag.
@@ -67,6 +70,7 @@ toolchain.
 """,
     ),
     "python_src": attrb.Label(),
+    "venvs_site_packages": attrb.String(),
     "venvs_use_declare_symlink": attrb.String(),
 }
 
@@ -131,6 +135,7 @@ def _current_build_settings_impl(ctx):
     ctx.actions.write(
         output = info,
         content = json.encode({
+            "bootstrap_impl": ctx.attr._bootstrap_impl_flag[config_common.FeatureFlagInfo].value,
             "interpreter": {
                 "short_path": runtime.interpreter.short_path if runtime.interpreter else None,
             },
@@ -149,6 +154,11 @@ Writes information about the current build config to JSON for testing.
 This is so tests can verify information about the build config used for them.
 """,
     implementation = _current_build_settings_impl,
+    attrs = {
+        "_bootstrap_impl_flag": attr.label(
+            default = "//python/config_settings:bootstrap_impl",
+        ),
+    },
     toolchains = [
         TARGET_TOOLCHAIN_TYPE,
     ],

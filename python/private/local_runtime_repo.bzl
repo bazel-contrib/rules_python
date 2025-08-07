@@ -84,8 +84,30 @@ def _local_runtime_repo_impl(rctx):
     info = json.decode(exec_result.stdout)
     logger.info(lambda: _format_get_info_result(info))
 
+    # We use base_executable because we want the path within a Python
+    # installation directory ("PYTHONHOME"). The problems with sys.executable
+    # are:
+    # * If we're in an activated venv, then we don't want the venv's
+    #   `bin/python3` path to be used -- it isn't an actual Python installation.
+    # * If sys.executable is a wrapper (e.g. pyenv), then (1) it may not be
+    #   located within an actual Python installation directory, and (2) it
+    #   can interfer with Python recognizing when it's within a venv.
+    #
+    # In some cases, it may be a symlink (usually e.g. `python3->python3.12`),
+    # but we don't realpath() it to respect what it has decided is the
+    # appropriate path.
+    interpreter_path = info["base_executable"]
+
     # NOTE: Keep in sync with recursive glob in define_local_runtime_toolchain_impl
-    repo_utils.watch_tree(rctx, rctx.path(info["include"]))
+    include_path = rctx.path(info["include"])
+
+    # The reported include path may not exist, and watching a non-existant
+    # path is an error. Silently skip, since includes are only necessary
+    # if C extensions are built.
+    if include_path.exists and include_path.is_dir:
+        repo_utils.watch_tree(rctx, include_path)
+    else:
+        pass
 
     # The cc_library.includes values have to be non-absolute paths, otherwise
     # the toolchain will give an error. Work around this error by making them
@@ -104,6 +126,7 @@ def _local_runtime_repo_impl(rctx):
     # In some cases, the same value is returned for multiple keys. Not clear why.
     shared_lib_names = {v: None for v in shared_lib_names}.keys()
     shared_lib_dir = info["LIBDIR"]
+    multiarch = info["MULTIARCH"]
 
     # The specific files are symlinked instead of the whole directory
     # because it can point to a directory that has more than just
@@ -112,6 +135,11 @@ def _local_runtime_repo_impl(rctx):
     rctx.report_progress("Symlinking external Python shared libraries")
     for name in shared_lib_names:
         origin = rctx.path("{}/{}".format(shared_lib_dir, name))
+
+        # If the origin doesn't exist, try the multiarch location, in case
+        # it's an older Python / Debian release.
+        if not origin.exists and multiarch:
+            origin = rctx.path("{}/{}/{}".format(shared_lib_dir, multiarch, name))
 
         # The reported names don't always exist; it depends on the particulars
         # of the runtime installation.

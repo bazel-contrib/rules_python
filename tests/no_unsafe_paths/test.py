@@ -32,7 +32,7 @@ class NoUnsafePathsTest(unittest.TestCase):
 
         # < Python 3.11 behaviour
         if (major, minor) < (3, 11):
-            # Because of https://github.com/bazelbuild/rules_python/blob/0.39.0/python/private/stage2_bootstrap_template.py#L415-L436
+            # Because of https://github.com/bazel-contrib/rules_python/blob/0.39.0/python/private/stage2_bootstrap_template.py#L415-L436
             self.assertEqual(os.path.dirname(sys.argv[0]), sys.path[0])
             self.assertEqual(os.path.basename(sys.path[1]), archive)
         # >= Python 3.11 behaviour
@@ -40,5 +40,5 @@ class NoUnsafePathsTest(unittest.TestCase):
             self.assertEqual(os.path.basename(sys.path[0]), archive)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -14,28 +14,57 @@
 """Module extension for internal dev_dependency=True setup."""
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+load("//python/private/pypi:whl_library.bzl", "whl_library")
+load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
+load(":runtime_env_repo.bzl", "runtime_env_repo")
 
 def _internal_dev_deps_impl(mctx):
     _ = mctx  # @unused
-
-    # This wheel is purely here to validate the wheel extraction code. It's not
-    # intended for anything else.
-    http_file(
-        name = "wheel_for_testing",
-        downloaded_file_path = "numpy-1.25.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
-        sha256 = "0d60fbae8e0019865fc4784745814cff1c421df5afee233db6d88ab4f14655a2",
-        urls = [
-            "https://files.pythonhosted.org/packages/50/67/3e966d99a07d60a21a21d7ec016e9e4c2642a86fea251ec68677daf71d4d/numpy-1.25.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
-        ],
-    )
 
     # Creates a default toolchain config for RBE.
     # Use this as is if you are using the rbe_ubuntu16_04 container,
     # otherwise refer to RBE docs.
     rbe_preconfig(
         name = "buildkite_config",
-        toolchain = "ubuntu1804-bazel-java11",
+        toolchain = "ubuntu2204",
+    )
+    runtime_env_repo(name = "rules_python_runtime_env_tc_info")
+
+    # Setup for //tests/whl_with_build_files
+    whl_from_dir_repo(
+        name = "whl_with_build_files",
+        root = "//tests/whl_with_build_files:testdata/BUILD.bazel",
+        output = "somepkg-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "somepkg_with_build_files",
+        whl_file = "@whl_with_build_files//:somepkg-1.0-any-none-any.whl",
+        requirement = "somepkg",
+    )
+
+    # Setup for //tests/implicit_namespace_packages
+    whl_from_dir_repo(
+        name = "implicit_namespace_ns_sub1_whl",
+        root = "//tests/implicit_namespace_packages:testdata/ns-sub1/BUILD.bazel",
+        output = "ns_sub1-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "implicit_namespace_ns_sub1",
+        whl_file = "@implicit_namespace_ns_sub1_whl//:ns_sub1-1.0-any-none-any.whl",
+        requirement = "ns-sub1",
+        enable_implicit_namespace_pkgs = False,
+    )
+
+    whl_from_dir_repo(
+        name = "implicit_namespace_ns_sub2_whl",
+        root = "//tests/implicit_namespace_packages:testdata/ns-sub2/BUILD.bazel",
+        output = "ns_sub2-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "implicit_namespace_ns_sub2",
+        whl_file = "@implicit_namespace_ns_sub2_whl//:ns_sub2-1.0-any-none-any.whl",
+        requirement = "ns-sub2",
+        enable_implicit_namespace_pkgs = False,
     )
 
 internal_dev_deps = module_extension(

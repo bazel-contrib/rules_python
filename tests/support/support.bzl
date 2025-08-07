@@ -19,6 +19,7 @@
 # rules_testing or as config_setting values, which don't support Label in some
 # places.
 
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
 MAC = Label("//tests/support:mac")
@@ -35,7 +36,9 @@ CROSSTOOL_TOP = Label("//tests/support/cc_toolchains:cc_toolchain_suite")
 # str() around Label() is necessary because rules_testing's config_settings
 # doesn't accept yet Label objects.
 ADD_SRCS_TO_RUNFILES = str(Label("//python/config_settings:add_srcs_to_runfiles"))
+BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl"))
 EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain"))
+PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config"))
 PRECOMPILE = str(Label("//python/config_settings:precompile"))
 PRECOMPILE_SOURCE_RETENTION = str(Label("//python/config_settings:precompile_source_retention"))
 PYC_COLLECTION = str(Label("//python/config_settings:pyc_collection"))
@@ -46,3 +49,8 @@ SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
 }) if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"]
+
+SUPPORTS_BZLMOD_UNIXY = select({
+    "@platforms//os:windows": ["@platforms//:incompatible"],
+    "//conditions:default": [],
+}) if BZLMOD_ENABLED else ["@platforms//:incompatible"]

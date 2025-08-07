@@ -33,7 +33,7 @@ jobs:
           # This special value tells pypi that the user identity is supplied within the token
           TWINE_USERNAME: __token__
           # Note, the PYPI_API_TOKEN is for the rules-python pypi user, added by @rickylev on
-          # https://github.com/bazelbuild/rules_python/settings/secrets/actions
+          # https://github.com/bazel-contrib/rules_python/settings/secrets/actions
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: bazel run --stamp --embed_label=${{ github.ref_name }} //python/runfiles:wheel.publish
       - name: Release

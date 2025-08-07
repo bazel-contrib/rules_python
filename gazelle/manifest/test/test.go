@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/rules_go/go/runfiles"
-	"github.com/bazelbuild/rules_python/gazelle/manifest"
+	"github.com/bazel-contrib/rules_python/gazelle/manifest"
 )
 
 func TestGazelleManifestIsUpdated(t *testing.T) {

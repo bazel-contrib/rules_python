@@ -1,9 +1,9 @@
 {
-    "homepage": "https://github.com/bazelbuild/rules_python",
+    "homepage": "https://github.com/bazel-contrib/rules_python",
     "maintainers": [
         {
             "name": "Richard Levasseur",
-            "email": "rlevasseur@google.com",
+            "email": "richardlev@gmail.com",
             "github": "rickeylev"
         },
         {
@@ -13,7 +13,8 @@
         }
     ],
     "repository": [
-        "github:bazelbuild/rules_python"
+        "github:bazelbuild/rules_python",
+        "github:bazel-contrib/rules_python"
     ],
     "versions": [],
     "yanked_versions": {}

@@ -1,9 +1,9 @@
 {
-  "homepage": "https://github.com/bazelbuild/rules_python",
+  "homepage": "https://github.com/bazel-contrib/rules_python",
   "maintainers": [
     {
       "name": "Richard Levasseur",
-      "email": "rlevasseur@google.com",
+      "email": "richardlev@gmail.com",
       "github": "rickeylev"
     },
     {

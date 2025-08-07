@@ -30,6 +30,16 @@ PackageSpecificationInfo = getattr(py_internal, "PackageSpecificationInfo", None
 # Extensions without the dot
 _PYTHON_SOURCE_EXTENSIONS = ["py"]
 
+# Extensions that mean a file is relevant to Python
+PYTHON_FILE_EXTENSIONS = [
+    "dll",  # Python C modules, Windows specific
+    "dylib",  # Python C modules, Mac specific
+    "py",
+    "pyc",
+    "pyi",
+    "so",  # Python C modules, usually Linux
+]
+
 def create_binary_semantics_struct(
         *,
         create_executable,
@@ -321,7 +331,7 @@ def collect_runfiles(ctx, files = depset()):
         #   If the target is a File, then add that file to the runfiles.
         #   Otherwise, add the target's **data runfiles** to the runfiles.
         #
-        # Note that, contray to best practice, the default outputs of the
+        # Note that, contrary to best practice, the default outputs of the
         # targets in `data` are *not* added, nor are the default runfiles.
         #
         # This ends up being important for several reasons, some of which are
@@ -367,7 +377,8 @@ def create_py_info(
         required_pyc_files,
         implicit_pyc_files,
         implicit_pyc_source_files,
-        imports):
+        imports,
+        venv_symlinks = []):
     """Create PyInfo provider.
 
     Args:
@@ -385,13 +396,16 @@ def create_py_info(
         implicit_pyc_files: {type}`depset[File]` Implicitly generated pyc files
             that a binary can choose to include.
         imports: depset of strings; the import path values to propagate.
+        venv_symlinks: {type}`list[VenvSymlinkEntry]` instances for
+            symlinks to create in the consuming binary's venv.
 
     Returns:
         A tuple of the PyInfo instance and a depset of the
         transitive sources collected from dependencies (the latter is only
         necessary for deprecated extra actions support).
     """
-    py_info = PyInfoBuilder()
+    py_info = PyInfoBuilder.new()
+    py_info.venv_symlinks.add(venv_symlinks)
     py_info.direct_original_sources.add(original_sources)
     py_info.direct_pyc_files.add(required_pyc_files)
     py_info.direct_pyi_files.add(ctx.files.pyi_srcs)
@@ -411,7 +425,7 @@ def create_py_info(
         else:
             # TODO(b/228692666): Remove this once non-PyInfo targets are no
             # longer supported in `deps`.
-            files = target.files.to_list()
+            files = target[DefaultInfo].files.to_list()
             for f in files:
                 if f.extension == "py":
                     py_info.transitive_sources.add(f)
@@ -435,7 +449,7 @@ def create_py_info(
                 info = _get_py_info(target)
                 py_info.merge_uses_shared_libraries(info.uses_shared_libraries)
             else:
-                files = target.files.to_list()
+                files = target[DefaultInfo].files.to_list()
                 for f in files:
                     py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
                     if py_info.get_uses_shared_libraries():

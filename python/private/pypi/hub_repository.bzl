@@ -34,6 +34,7 @@ def _impl(rctx):
         },
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
+        platform_config_settings = rctx.attr.platform_config_settings,
     )
     for path, contents in aliases.items():
         rctx.file(path, contents)
@@ -45,7 +46,14 @@ def _impl(rctx):
     macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
 
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
-    rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
+    rctx.template(
+        "config.bzl",
+        rctx.attr._config_template,
+        substitutions = {
+            "%%WHL_MAP%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
+        },
+    )
+    rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
             for p in bzl_packages
@@ -76,6 +84,10 @@ hub_repository = repository_rule(
 The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys.
 """,
         ),
+        "platform_config_settings": attr.string_list_dict(
+            doc = "The constraint values for each platform name. The values are string canonical string Label representations",
+            mandatory = False,
+        ),
         "repo_name": attr.string(
             mandatory = True,
             doc = "The apparent name of the repo. This is needed because in bzlmod, the name attribute becomes the canonical name.",
@@ -87,7 +99,10 @@ The wheel map where values are json.encoded strings of the whl_map constructed
 in the pip.parse tag class.
 """,
         ),
-        "_template": attr.label(
+        "_config_template": attr.label(
+            default = ":config.bzl.tmpl.bzlmod",
+        ),
+        "_requirements_bzl_template": attr.label(
             default = ":requirements.bzl.tmpl.bzlmod",
         ),
     },

@@ -128,7 +128,7 @@ def patch_whl(rctx, *, python_interpreter, whl_path, patches, **kwargs):
         warning_msg = """WARNING: the resultant RECORD file of the patch wheel is different
 
     If you are patching on Windows, you may see this warning because of
-    a known issue (bazelbuild/rules_python#1639) with file endings.
+    a known issue (bazel-contrib/rules_python#1639) with file endings.
 
     If you would like to silence the warning, you can apply the patch that is stored in
       {record_patch}. The contents of the file are below:

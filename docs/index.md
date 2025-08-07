@@ -1,6 +1,6 @@
 # Python Rules for Bazel
 
-`rules_python` is the home for 4 major components with varying maturity levels.
+`rules_python` is the home for four major components with varying maturity levels.
 
 :::{topic} Core rules
 
@@ -9,11 +9,11 @@ The core Python rules -- `py_library`, `py_binary`, `py_test`,
 support in Bazel.
 
 When using Bazel 6 (or earlier), the core rules are bundled into the Bazel binary, and the symbols
-in this repository are simple aliases. On Bazel 7 and above `rules_python` uses
-a separate Starlark implementation,
+in this repository are simple aliases. On Bazel 7 and above, `rules_python` uses
+a separate Starlark implementation;
 see {ref}`Migrating from the Bundled Rules` below.
 
-Once rules_python 1.0 is released, they will follow
+This repository follows
 [semantic versioning](https://semver.org) and the breaking change policy
 outlined in the [support](support) page.
 
@@ -21,12 +21,12 @@ outlined in the [support](support) page.
 
 :::{topic} PyPI integration
 
-Package installation rules for integrating with PyPI and other SimpleAPI
+Package installation rules for integrating with PyPI and other Simple API-
 compatible indexes.
 
 These rules work and can be used in production, but the cross-platform building
 that supports pulling PyPI dependencies for a target platform that is different
-from the host platform is still in beta and the APIs that are subject to potential
+from the host platform is still in beta, and the APIs that are subject to potential
 change are marked as `experimental`.
 
 :::
@@ -36,9 +36,9 @@ change are marked as `experimental`.
 `sphinxdocs` rules allow users to generate documentation using Sphinx powered by Bazel, with additional functionality for documenting
 Starlark and Bazel code.
 
-The functionality is exposed because other projects find it useful, but 
-it is available as is and **the semantic versioning and
-compatibility policy used by `rules_python` does not apply**. 
+The functionality is exposed because other projects find it useful, but
+it is available "as is", and **the semantic versioning and
+compatibility policy used by `rules_python` does not apply**.
 
 :::
 
@@ -47,7 +47,7 @@ compatibility policy used by `rules_python` does not apply**.
 `gazelle` plugin for generating `BUILD.bazel` files based on Python source
 code.
 
-This is available as is and the semantic versioning used by `rules_python` does
+This is available "as is", and the semantic versioning used by `rules_python` does
 not apply.
 
 :::
@@ -78,7 +78,7 @@ appropriate `load()` statements and rewrite uses of `native.py_*`.
 buildifier --lint=fix --warnings=native-py <files>
 ```
 
-Currently, the `WORKSPACE` file needs to be updated manually as per 
+Currently, the `WORKSPACE` file needs to be updated manually as per
 [Getting started](getting-started).
 
 Note that Starlark-defined bundled symbols underneath
@@ -87,7 +87,7 @@ by buildifier.
 
 ## Migrating to bzlmod
 
-See {gh-path}`Bzlmod support <BZLMOD_SUPPORT.md>` for any behaviour differences between
+See {gh-path}`Bzlmod support <BZLMOD_SUPPORT.md>` for any behavioral differences between
 `bzlmod` and `WORKSPACE`.
 
 
@@ -95,14 +95,15 @@ See {gh-path}`Bzlmod support <BZLMOD_SUPPORT.md>` for any behaviour differences 
 :hidden:
 self
 getting-started
-pypi-dependencies
+pypi/index
 Toolchains <toolchains>
-pip
 coverage
 precompiling
-gazelle
+gazelle/docs/index
+REPL <repl>
 Extending <extending>
 Contributing <contributing>
+devguide
 support
 Changelog <changelog>
 api/index

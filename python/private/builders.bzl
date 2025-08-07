@@ -15,12 +15,19 @@
 
 load("@bazel_skylib//lib:types.bzl", "types")
 
-def _DepsetBuilder():
-    """Create a builder for a depset."""
+def _DepsetBuilder(order = None):
+    """Create a builder for a depset.
+
+    Args:
+        order: {type}`str | None` The order to initialize the depset to, if any.
+
+    Returns:
+        {type}`DepsetBuilder`
+    """
 
     # buildifier: disable=uninitialized
     self = struct(
-        _order = [None],
+        _order = [order],
         add = lambda *a, **k: _DepsetBuilder_add(self, *a, **k),
         build = lambda *a, **k: _DepsetBuilder_build(self, *a, **k),
         direct = [],

@@ -15,6 +15,7 @@
 """Dependencies that are needed for development and testing of rules_python itself."""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", _http_archive = "http_archive", _http_file = "http_file")
+load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//python/private:internal_config_repo.bzl", "internal_config_repo")  # buildifier: disable=bzl-visibility
 
@@ -42,6 +43,16 @@ def rules_python_internal_deps():
     """
     internal_config_repo(name = "rules_python_internal")
 
+    local_repository(
+        name = "other",
+        path = "tests/modules/other",
+    )
+
+    local_repository(
+        name = "another_module",
+        path = "tests/modules/another_module",
+    )
+
     http_archive(
         name = "bazel_skylib",
         sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
@@ -62,10 +73,10 @@ def rules_python_internal_deps():
     http_archive(
         name = "rules_pkg",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
-            "https://github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/1.0.1/rules_pkg-1.0.1.tar.gz",
+            "https://github.com/bazelbuild/rules_pkg/releases/download/1.0.1/rules_pkg-1.0.1.tar.gz",
         ],
-        sha256 = "8a298e832762eda1830597d64fe7db58178aa84cd5926d76d5b744d6558941c2",
+        sha256 = "d20c951960ed77cb7b341c2a59488534e494d5ad1d30c4818c736d57772a9fef",
     )
 
     http_archive(

@@ -18,4 +18,4 @@ correctly:
     they interact with sub-packages.
 
 
-[gh-1682]: https://github.com/bazelbuild/rules_python/issues/1682
+[gh-1682]: https://github.com/bazel-contrib/rules_python/issues/1682

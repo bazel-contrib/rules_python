@@ -18,7 +18,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,8 +26,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bmatcuk/doublestar/v4"
 
-	"github.com/bazelbuild/rules_python/gazelle/manifest"
-	"github.com/bazelbuild/rules_python/gazelle/pythonconfig"
+	"github.com/bazel-contrib/rules_python/gazelle/pythonconfig"
 )
 
 // Configurer satisfies the config.Configurer interface. It's the
@@ -65,11 +63,16 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.LibraryNamingConvention,
 		pythonconfig.BinaryNamingConvention,
 		pythonconfig.TestNamingConvention,
+		pythonconfig.ProtoNamingConvention,
 		pythonconfig.DefaultVisibilty,
 		pythonconfig.Visibility,
 		pythonconfig.TestFilePattern,
 		pythonconfig.LabelConvention,
 		pythonconfig.LabelNormalization,
+		pythonconfig.GeneratePyiDeps,
+		pythonconfig.ExperimentalAllowRelativeImports,
+		pythonconfig.GenerateProto,
+		pythonconfig.PythonResolveSiblingImports,
 	}
 }
 
@@ -178,6 +181,8 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			config.SetBinaryNamingConvention(strings.TrimSpace(d.Value))
 		case pythonconfig.TestNamingConvention:
 			config.SetTestNamingConvention(strings.TrimSpace(d.Value))
+		case pythonconfig.ProtoNamingConvention:
+			config.SetProtoNamingConvention(strings.TrimSpace(d.Value))
 		case pythonconfig.DefaultVisibilty:
 			switch directiveArg := strings.TrimSpace(d.Value); directiveArg {
 			case "NONE":
@@ -224,29 +229,34 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			default:
 				config.SetLabelNormalization(pythonconfig.DefaultLabelNormalizationType)
 			}
+		case pythonconfig.ExperimentalAllowRelativeImports:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Printf("invalid value for gazelle:%s in %q: %q",
+					pythonconfig.ExperimentalAllowRelativeImports, rel, d.Value)
+			}
+			config.SetExperimentalAllowRelativeImports(v)
+		case pythonconfig.GeneratePyiDeps:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetGeneratePyiDeps(v)
+		case pythonconfig.GenerateProto:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetGenerateProto(v)
+		case pythonconfig.PythonResolveSiblingImports:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetResolveSiblingImports(v)
 		}
 	}
 
 	gazelleManifestPath := filepath.Join(c.RepoRoot, rel, gazelleManifestFilename)
-	gazelleManifest, err := py.loadGazelleManifest(gazelleManifestPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if gazelleManifest != nil {
-		config.SetGazelleManifest(gazelleManifest)
-	}
-}
-
-func (py *Configurer) loadGazelleManifest(gazelleManifestPath string) (*manifest.Manifest, error) {
-	if _, err := os.Stat(gazelleManifestPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to load Gazelle manifest at %q: %w", gazelleManifestPath, err)
-	}
-	manifestFile := new(manifest.File)
-	if err := manifestFile.Decode(gazelleManifestPath); err != nil {
-		return nil, fmt.Errorf("failed to load Gazelle manifest at %q: %w", gazelleManifestPath, err)
-	}
-	return manifestFile.Manifest, nil
+	config.SetGazelleManifestPath(gazelleManifestPath)
 }

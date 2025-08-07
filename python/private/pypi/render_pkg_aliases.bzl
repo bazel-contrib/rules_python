@@ -143,12 +143,26 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
     return files
 
-def render_multiplatform_pkg_aliases(*, aliases, **kwargs):
+def _major_minor(python_version):
+    major, _, tail = python_version.partition(".")
+    minor, _, _ = tail.partition(".")
+    return "{}.{}".format(major, minor)
+
+def _major_minor_versions(python_versions):
+    if not python_versions:
+        return []
+
+    # Use a dict as a simple set
+    return sorted({_major_minor(v): None for v in python_versions})
+
+def render_multiplatform_pkg_aliases(*, aliases, platform_config_settings = {}, **kwargs):
     """Render the multi-platform pkg aliases.
 
     Args:
         aliases: dict[str, list(whl_config_setting)] A list of aliases that will be
           transformed from ones having `filename` to ones having `config_setting`.
+        platform_config_settings: {type}`dict[str, list[str]]` contains all of the
+            target platforms and their appropriate `target_settings`.
         **kwargs: extra arguments passed to render_pkg_aliases.
 
     Returns:
@@ -174,19 +188,23 @@ def render_multiplatform_pkg_aliases(*, aliases, **kwargs):
         glibc_versions = flag_versions.get("glibc_versions", []),
         muslc_versions = flag_versions.get("muslc_versions", []),
         osx_versions = flag_versions.get("osx_versions", []),
-        python_versions = flag_versions.get("python_versions", []),
-        target_platforms = flag_versions.get("target_platforms", []),
+        python_versions = _major_minor_versions(flag_versions.get("python_versions", [])),
+        platform_config_settings = platform_config_settings,
         visibility = ["//:__subpackages__"],
     )
     return contents
 
-def _render_config_settings(**kwargs):
+def _render_config_settings(platform_config_settings, **kwargs):
     return """\
 load("@rules_python//python/private/pypi:config_settings.bzl", "config_settings")
 
 {}""".format(render.call(
         "config_settings",
         name = repr("config_settings"),
+        platform_config_settings = render.dict(
+            platform_config_settings,
+            value_repr = render.list,
+        ),
         **_repr_dict(value_repr = render.list, **kwargs)
     ))
 

@@ -79,6 +79,7 @@ load(
     ":labels.bzl",
     "DATA_LABEL",
     "DIST_INFO_LABEL",
+    "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "WHEEL_FILE_IMPL_LABEL",
@@ -151,6 +152,7 @@ def pkg_aliases(
         WHEEL_FILE_PUBLIC_LABEL: WHEEL_FILE_IMPL_LABEL if group_name else WHEEL_FILE_PUBLIC_LABEL,
         DATA_LABEL: DATA_LABEL,
         DIST_INFO_LABEL: DIST_INFO_LABEL,
+        EXTRACTED_WHEEL_FILES: EXTRACTED_WHEEL_FILES,
     } | {
         x: x
         for x in extra_aliases or []
@@ -237,9 +239,10 @@ def multiplatform_whl_aliases(
     Exposed only for unit tests.
 
     Args:
-        aliases: {type}`str | dict[whl_config_setting | str, str]`: The aliases
+        aliases: {type}`str | dict[struct | str, str]`: The aliases
             to process. Any aliases that have the filename set will be
-            converted to a dict of config settings to repo names.
+            converted to a dict of config settings to repo names. The
+            struct is created by {func}`whl_config_setting`.
         glibc_versions: {type}`list[tuple[int, int]]` list of versions that can be
             used in this hub repo.
         muslc_versions: {type}`list[tuple[int, int]]` list of versions that can be
@@ -370,6 +373,9 @@ def get_filename_config_settings(
             py = "py3_"
 
         abi = parsed.abi_tag
+
+        # TODO @aignas 2025-04-20: test
+        abi, _, _ = abi.partition(".")
 
         if parsed.platform_tag == "any":
             prefixes = ["{}{}_any".format(py, abi)]

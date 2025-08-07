@@ -26,6 +26,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "attr_builders_bzl",
+    srcs = ["attr_builders.bzl"],
+    deps = ["//python/private:attr_builders_bzl"],
+)
+
+bzl_library(
     name = "executables_bzl",
     srcs = ["executables.bzl"],
     visibility = ["//visibility:public"],
@@ -43,6 +49,12 @@ bzl_library(
     deps = [
         "//python/private:py_library_bzl",
     ],
+)
+
+bzl_library(
+    name = "rule_builders_bzl",
+    srcs = ["rule_builders.bzl"],
+    deps = ["//python/private:rule_builders_bzl"],
 )
 
 filegroup(

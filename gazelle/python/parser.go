@@ -18,6 +18,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log"
+	"strconv"
 	"strings"
 
 	"github.com/emirpasic/gods/sets/treeset"
@@ -112,9 +114,9 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 				continue
 			}
 
-			modules.Add(m)
+			addModuleToTreeSet(modules, m)
 			if res.HasMain {
-				mainModules[res.FileName].Add(m)
+				addModuleToTreeSet(mainModules[res.FileName], m)
 			}
 		}
 
@@ -123,6 +125,7 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 			allAnnotations.ignore[k] = v
 		}
 		allAnnotations.includeDeps = append(allAnnotations.includeDeps, annotations.includeDeps...)
+		allAnnotations.includePytestConftest = annotations.includePytestConftest
 	}
 
 	allAnnotations.includeDeps = removeDupesFromStringTreeSetSlice(allAnnotations.includeDeps)
@@ -145,9 +148,9 @@ func removeDupesFromStringTreeSetSlice(array []string) []string {
 	return dedupe
 }
 
-// module represents a fully-qualified, dot-separated, Python module as seen on
+// Module represents a fully-qualified, dot-separated, Python module as seen on
 // the import statement, alongside the line number where it happened.
-type module struct {
+type Module struct {
 	// The fully-qualified, dot-separated, Python module name as seen on import
 	// statements.
 	Name string `json:"name"`
@@ -158,11 +161,22 @@ type module struct {
 	// If this was a from import, e.g. from foo import bar, From indicates the module
 	// from which it is imported.
 	From string `json:"from"`
+	// Whether this import is type-checking only (inside if TYPE_CHECKING block).
+	TypeCheckingOnly bool `json:"type_checking_only"`
 }
 
 // moduleComparator compares modules by name.
 func moduleComparator(a, b interface{}) int {
-	return godsutils.StringComparator(a.(module).Name, b.(module).Name)
+	return godsutils.StringComparator(a.(Module).Name, b.(Module).Name)
+}
+
+// addModuleToTreeSet adds a module to a treeset.Set, ensuring that a TypeCheckingOnly=false module is
+// prefered over a TypeCheckingOnly=true module.
+func addModuleToTreeSet(set *treeset.Set, mod Module) {
+	if mod.TypeCheckingOnly && set.Contains(mod) {
+		return
+	}
+	set.Add(mod)
 }
 
 // annotationKind represents Gazelle annotation kinds.
@@ -172,16 +186,20 @@ const (
 	// The Gazelle annotation prefix.
 	annotationPrefix string = "gazelle:"
 	// The ignore annotation kind. E.g. '# gazelle:ignore <module_name>'.
-	annotationKindIgnore     annotationKind = "ignore"
-	annotationKindIncludeDep annotationKind = "include_dep"
+	annotationKindIgnore annotationKind = "ignore"
+	// Force a particular target to be added to `deps`. Multiple invocations are
+	// accumulated and the value can be comma separated.
+	// Eg: '# gazelle:include_dep //foo/bar:baz,@repo//:target
+	annotationKindIncludeDep            annotationKind = "include_dep"
+	annotationKindIncludePytestConftest annotationKind = "include_pytest_conftest"
 )
 
-// comment represents a Python comment.
-type comment string
+// Comment represents a Python comment.
+type Comment string
 
 // asAnnotation returns an annotation object if the comment has the
 // annotationPrefix.
-func (c *comment) asAnnotation() (*annotation, error) {
+func (c *Comment) asAnnotation() (*annotation, error) {
 	uncomment := strings.TrimLeft(string(*c), "# ")
 	if !strings.HasPrefix(uncomment, annotationPrefix) {
 		return nil, nil
@@ -211,13 +229,18 @@ type annotations struct {
 	ignore map[string]struct{}
 	// Labels that Gazelle should include as deps of the generated target.
 	includeDeps []string
+	// Whether the conftest.py file, found in the same directory as the current
+	// python test file, should be added to the py_test target's `deps` attribute.
+	// A *bool is used so that we can handle the "not set" state.
+	includePytestConftest *bool
 }
 
 // annotationsFromComments returns all the annotations parsed out of the
 // comments of a Python module.
-func annotationsFromComments(comments []comment) (*annotations, error) {
+func annotationsFromComments(comments []Comment) (*annotations, error) {
 	ignore := make(map[string]struct{})
 	includeDeps := []string{}
+	var includePytestConftest *bool
 	for _, comment := range comments {
 		annotation, err := comment.asAnnotation()
 		if err != nil {
@@ -244,11 +267,21 @@ func annotationsFromComments(comments []comment) (*annotations, error) {
 					includeDeps = append(includeDeps, t)
 				}
 			}
+			if annotation.kind == annotationKindIncludePytestConftest {
+				val := annotation.value
+				parsedVal, err := strconv.ParseBool(val)
+				if err != nil {
+					log.Printf("WARNING: unable to cast %q to bool in %q. Ignoring annotation", val, comment)
+					continue
+				}
+				includePytestConftest = &parsedVal
+			}
 		}
 	}
 	return &annotations{
-		ignore:      ignore,
-		includeDeps: includeDeps,
+		ignore:                ignore,
+		includeDeps:           includeDeps,
+		includePytestConftest: includePytestConftest,
 	}, nil
 }
 

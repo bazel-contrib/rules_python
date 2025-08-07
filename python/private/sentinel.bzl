@@ -25,6 +25,10 @@ SentinelInfo = provider(
 
 def _sentinel_impl(ctx):
     _ = ctx  # @unused
-    return [SentinelInfo()]
+    return [
+        SentinelInfo(),
+        # Also output ToolchainInfo to allow it to be used for noop toolchains
+        platform_common.ToolchainInfo(),
+    ]
 
 sentinel = rule(implementation = _sentinel_impl)

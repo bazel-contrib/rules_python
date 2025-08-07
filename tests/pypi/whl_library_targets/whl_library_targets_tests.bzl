@@ -16,16 +16,21 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:glob_excludes.bzl", "glob_excludes")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:whl_library_targets.bzl",
+    "whl_library_targets",
+    "whl_library_targets_from_requires",
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 
 def _test_filegroups(env):
     calls = []
 
-    def glob(match, *, allow_empty):
+    def glob(include, *, exclude = [], allow_empty):
+        _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
-        return match
+        return include
 
     whl_library_targets(
         name = "",
@@ -37,7 +42,7 @@ def _test_filegroups(env):
         rules = struct(),
     )
 
-    env.expect.that_collection(calls).contains_exactly([
+    env.expect.that_collection(calls, expr = "filegroup calls").contains_exactly([
         {
             "name": "dist_info",
             "srcs": ["site-packages/*.dist-info/**"],
@@ -46,6 +51,11 @@ def _test_filegroups(env):
         {
             "name": "data",
             "srcs": ["data/**"],
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "extracted_whl_files",
+            "srcs": ["**"],
             "visibility": ["//visibility:public"],
         },
         {
@@ -68,9 +78,8 @@ def _test_platforms(env):
             "@//python/config_settings:is_python_3.9": ["py39_dep"],
             "@platforms//cpu:aarch64": ["arm_dep"],
             "@platforms//os:windows": ["win_dep"],
+            "cp310.11_linux_ppc64le": ["full_version_dep"],
             "cp310_linux_ppc64le": ["py310_linux_ppc64le_dep"],
-            "cp39_anyos_aarch64": ["py39_arm_dep"],
-            "cp39_linux_anyarch": ["py39_linux_dep"],
             "linux_x86_64": ["linux_intel_dep"],
         },
         filegroups = {},
@@ -82,39 +91,34 @@ def _test_platforms(env):
 
     env.expect.that_collection(calls).contains_exactly([
         {
-            "name": "is_python_3.10_linux_ppc64le",
-            "flag_values": {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.10",
-            },
+            "name": "is_python_3.10.11_linux_ppc64le",
+            "visibility": ["//visibility:private"],
             "constraint_values": [
                 "@platforms//cpu:ppc64le",
                 "@platforms//os:linux",
             ],
-            "visibility": ["//visibility:private"],
+            "flag_values": {
+                Label("//python/config_settings:python_version"): "3.10.11",
+            },
         },
         {
-            "name": "is_python_3.9_anyos_aarch64",
-            "flag_values": {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.9",
-            },
-            "constraint_values": ["@platforms//cpu:aarch64"],
+            "name": "is_python_3.10_linux_ppc64le",
             "visibility": ["//visibility:private"],
-        },
-        {
-            "name": "is_python_3.9_linux_anyarch",
+            "constraint_values": [
+                "@platforms//cpu:ppc64le",
+                "@platforms//os:linux",
+            ],
             "flag_values": {
-                "@rules_python//python/config_settings:python_version_major_minor": "3.9",
+                Label("//python/config_settings:python_version"): "3.10",
             },
-            "constraint_values": ["@platforms//os:linux"],
-            "visibility": ["//visibility:private"],
         },
         {
             "name": "is_linux_x86_64",
+            "visibility": ["//visibility:private"],
             "constraint_values": [
                 "@platforms//cpu:x86_64",
                 "@platforms//os:linux",
             ],
-            "visibility": ["//visibility:private"],
         },
     ])  # buildifier: @unsorted-dict-items
 
@@ -183,9 +187,118 @@ def _test_entrypoints(env):
 
 _tests.append(_test_entrypoints)
 
+def _test_whl_and_library_deps_from_requires(env):
+    filegroup_calls = []
+    py_library_calls = []
+    env_marker_setting_calls = []
+
+    mock_glob = _mock_glob()
+
+    mock_glob.results.append(["site-packages/foo/SRCS.py"])
+    mock_glob.results.append(["site-packages/foo/DATA.txt"])
+    mock_glob.results.append(["site-packages/foo/PYI.pyi"])
+
+    whl_library_targets_from_requires(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        metadata_version = "0",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "foo",  # this self-edge will be ignored
+            "bar",
+            "bar-baz; python_version < \"8.2\"",
+            "booo",  # this is effectively excluded due to the list below
+        ],
+        include = ["foo", "bar", "bar_baz"],
+        data_exclude = [],
+        # Overrides for testing
+        filegroups = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            config_setting = lambda **_: None,
+            glob = mock_glob.glob,
+            select = _select,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            create_inits = lambda *args, **kwargs: ["_create_inits_target"],
+        ),
+    )
+
+    env.expect.that_collection(filegroup_calls).contains_exactly([
+        {
+            "name": "whl",
+            "srcs": ["foo-0-py3-none-any.whl"],
+            "data": ["@pypi//bar:whl"] + _select({
+                ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
+                "//conditions:default": [],
+            }),
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(py_library_calls).has_size(1)
+    if len(py_library_calls) != 1:
+        return
+    py_library_call = py_library_calls[0]
+
+    env.expect.that_dict(py_library_call).contains_exactly({
+        "name": "pkg",
+        "srcs": ["site-packages/foo/SRCS.py"] + _select({
+            Label("//python/config_settings:is_venvs_site_packages"): [],
+            "//conditions:default": ["_create_inits_target"],
+        }),
+        "pyi_srcs": ["site-packages/foo/PYI.pyi"],
+        "data": ["site-packages/foo/DATA.txt"],
+        "imports": ["site-packages"],
+        "deps": ["@pypi//bar:pkg"] + _select({
+            ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
+            "//conditions:default": [],
+        }),
+        "tags": ["pypi_name=Foo", "pypi_version=0"],
+        "visibility": ["//visibility:public"],
+        "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+    })  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(mock_glob.calls).contains_exactly([
+        # srcs call
+        _glob_call(
+            ["site-packages/**/*.py"],
+            exclude = [],
+            allow_empty = True,
+        ),
+        # data call
+        _glob_call(
+            ["site-packages/**/*"],
+            exclude = [
+                "**/*.py",
+                "**/*.pyc",
+                "**/*.pyc.*",
+                "**/*.dist-info/RECORD",
+            ] + glob_excludes.version_dependent_exclusions(),
+        ),
+        # pyi call
+        _glob_call(["site-packages/**/*.pyi"], allow_empty = True),
+    ])
+
+    env.expect.that_collection(env_marker_setting_calls).contains_exactly([
+        {
+            "name": "include_bar_baz",
+            "expression": "python_version < \"8.2\"",
+            "visibility": ["//visibility:private"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+_tests.append(_test_whl_and_library_deps_from_requires)
+
 def _test_whl_and_library_deps(env):
     filegroup_calls = []
     py_library_calls = []
+    mock_glob = _mock_glob()
+    mock_glob.results.append(["site-packages/foo/SRCS.py"])
+    mock_glob.results.append(["site-packages/foo/DATA.txt"])
+    mock_glob.results.append(["site-packages/foo/PYI.pyi"])
 
     whl_library_targets(
         name = "foo.whl",
@@ -207,11 +320,12 @@ def _test_whl_and_library_deps(env):
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             config_setting = lambda **_: None,
-            glob = _glob,
+            glob = mock_glob.glob,
             select = _select,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            create_inits = lambda **kwargs: ["_create_inits_target"],
         ),
     )
 
@@ -237,50 +351,49 @@ def _test_whl_and_library_deps(env):
             "visibility": ["//visibility:public"],
         },
     ])  # buildifier: @unsorted-dict-items
-    env.expect.that_collection(py_library_calls).contains_exactly([
-        {
-            "name": "pkg",
-            "srcs": _glob(
-                ["site-packages/**/*.py"],
-                exclude = [],
-                allow_empty = True,
-            ),
-            "pyi_srcs": _glob(["site-packages/**/*.pyi"], allow_empty = True),
-            "data": [] + _glob(
-                ["site-packages/**/*"],
-                exclude = [
-                    "**/*.py",
-                    "**/*.pyc",
-                    "**/*.pyc.*",
-                    "**/*.dist-info/RECORD",
-                ] + glob_excludes.version_dependent_exclusions(),
-            ),
-            "imports": ["site-packages"],
-            "deps": [
-                "@pypi_bar_baz//:pkg",
-                "@pypi_foo//:pkg",
-            ] + _select(
-                {
-                    Label("//python/config_settings:is_python_3.9"): ["@pypi_py39_dep//:pkg"],
-                    "@platforms//cpu:aarch64": ["@pypi_arm_dep//:pkg"],
-                    "@platforms//os:windows": ["@pypi_win_dep//:pkg"],
-                    ":is_python_3.10_linux_ppc64le": ["@pypi_py310_linux_ppc64le_dep//:pkg"],
-                    ":is_python_3.9_anyos_aarch64": ["@pypi_py39_arm_dep//:pkg"],
-                    ":is_python_3.9_linux_anyarch": ["@pypi_py39_linux_dep//:pkg"],
-                    ":is_linux_x86_64": ["@pypi_linux_intel_dep//:pkg"],
-                    "//conditions:default": [],
-                },
-            ),
-            "tags": ["tag1", "tag2"],
-            "visibility": ["//visibility:public"],
-        },
-    ])  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(py_library_calls).has_size(1)
+    if len(py_library_calls) != 1:
+        return
+    env.expect.that_dict(py_library_calls[0]).contains_exactly({
+        "name": "pkg",
+        "srcs": ["site-packages/foo/SRCS.py"] + _select({
+            Label("//python/config_settings:is_venvs_site_packages"): [],
+            "//conditions:default": ["_create_inits_target"],
+        }),
+        "pyi_srcs": ["site-packages/foo/PYI.pyi"],
+        "data": ["site-packages/foo/DATA.txt"],
+        "imports": ["site-packages"],
+        "deps": [
+            "@pypi_bar_baz//:pkg",
+            "@pypi_foo//:pkg",
+        ] + _select(
+            {
+                Label("//python/config_settings:is_python_3.9"): ["@pypi_py39_dep//:pkg"],
+                "@platforms//cpu:aarch64": ["@pypi_arm_dep//:pkg"],
+                "@platforms//os:windows": ["@pypi_win_dep//:pkg"],
+                ":is_python_3.10_linux_ppc64le": ["@pypi_py310_linux_ppc64le_dep//:pkg"],
+                ":is_python_3.9_anyos_aarch64": ["@pypi_py39_arm_dep//:pkg"],
+                ":is_python_3.9_linux_anyarch": ["@pypi_py39_linux_dep//:pkg"],
+                ":is_linux_x86_64": ["@pypi_linux_intel_dep//:pkg"],
+                "//conditions:default": [],
+            },
+        ),
+        "tags": ["tag1", "tag2"],
+        "visibility": ["//visibility:public"],
+        "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+    })  # buildifier: @unsorted-dict-items
 
 _tests.append(_test_whl_and_library_deps)
 
 def _test_group(env):
     alias_calls = []
     py_library_calls = []
+
+    mock_glob = _mock_glob()
+    mock_glob.results.append(["site-packages/foo/srcs.py"])
+    mock_glob.results.append(["site-packages/foo/data.txt"])
+    mock_glob.results.append(["site-packages/foo/pyi.pyi"])
 
     whl_library_targets(
         name = "foo.whl",
@@ -300,12 +413,13 @@ def _test_group(env):
         filegroups = {},
         native = struct(
             config_setting = lambda **_: None,
-            glob = _glob,
+            glob = mock_glob.glob,
             alias = lambda **kwargs: alias_calls.append(kwargs),
             select = _select,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            create_inits = lambda **kwargs: ["_create_inits_target"],
         ),
     )
 
@@ -313,38 +427,69 @@ def _test_group(env):
         {"name": "pkg", "actual": "@pypi__groups//:qux_pkg", "visibility": ["//visibility:public"]},
         {"name": "whl", "actual": "@pypi__groups//:qux_whl", "visibility": ["//visibility:public"]},
     ])  # buildifier: @unsorted-dict-items
-    env.expect.that_collection(py_library_calls).contains_exactly([
-        {
-            "name": "_pkg",
-            "srcs": _glob(["site-packages/**/*.py"], exclude = [], allow_empty = True),
-            "pyi_srcs": _glob(["site-packages/**/*.pyi"], allow_empty = True),
-            "data": [] + _glob(
-                ["site-packages/**/*"],
-                exclude = [
-                    "**/*.py",
-                    "**/*.pyc",
-                    "**/*.pyc.*",
-                    "**/*.dist-info/RECORD",
-                ] + glob_excludes.version_dependent_exclusions(),
-            ),
-            "imports": ["site-packages"],
-            "deps": ["@pypi_bar_baz//:pkg"] + _select({
-                "@platforms//os:linux": ["@pypi_box//:pkg"],
-                ":is_linux_x86_64": ["@pypi_box//:pkg", "@pypi_box_amd64//:pkg"],
-                "//conditions:default": [],
-            }),
-            "tags": [],
-            "visibility": ["@pypi__groups//:__pkg__"],
-        },
-    ])  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(py_library_calls).has_size(1)
+    if len(py_library_calls) != 1:
+        return
+
+    py_library_call = py_library_calls[0]
+    env.expect.where(case = "verify py library call").that_dict(
+        py_library_call,
+    ).contains_exactly({
+        "name": "_pkg",
+        "srcs": ["site-packages/foo/srcs.py"] + _select({
+            Label("//python/config_settings:is_venvs_site_packages"): [],
+            "//conditions:default": ["_create_inits_target"],
+        }),
+        "pyi_srcs": ["site-packages/foo/pyi.pyi"],
+        "data": ["site-packages/foo/data.txt"],
+        "imports": ["site-packages"],
+        "deps": ["@pypi_bar_baz//:pkg"] + _select({
+            "@platforms//os:linux": ["@pypi_box//:pkg"],
+            ":is_linux_x86_64": ["@pypi_box//:pkg", "@pypi_box_amd64//:pkg"],
+            "//conditions:default": [],
+        }),
+        "tags": [],
+        "visibility": ["@pypi__groups//:__pkg__"],
+        "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+    })  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(mock_glob.calls, expr = "glob calls").contains_exactly([
+        _glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
+        _glob_call(["site-packages/**/*"], exclude = [
+            "**/*.py",
+            "**/*.pyc",
+            "**/*.pyc.*",
+            "**/*.dist-info/RECORD",
+        ]),
+        _glob_call(["site-packages/**/*.pyi"], allow_empty = True),
+    ])
 
 _tests.append(_test_group)
 
-def _glob(*args, **kwargs):
-    return [struct(
+def _glob_call(*args, **kwargs):
+    return struct(
         glob = args,
         kwargs = kwargs,
-    )]
+    )
+
+def _mock_glob():
+    # buildifier: disable=uninitialized
+    def glob(*args, **kwargs):
+        mock.calls.append(_glob_call(*args, **kwargs))
+        if not mock.results:
+            fail("Mock glob missing for invocation: args={} kwargs={}".format(
+                args,
+                kwargs,
+            ))
+        return mock.results.pop(0)
+
+    mock = struct(
+        calls = [],
+        results = [],
+        glob = glob,
+    )
+    return mock
 
 def _select(*args, **kwargs):
     """We need to have this mock select because we still need to support bazel 6."""

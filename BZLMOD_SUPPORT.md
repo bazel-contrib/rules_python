@@ -11,7 +11,7 @@ In general `bzlmod` has more features than `WORKSPACE` and users are encouraged 
 
 ## Configuration
 
-The releases page will give you the latest version number, and a basic example.  The release page is located [here](/bazelbuild/rules_python/releases).
+The releases page will give you the latest version number, and a basic example.  The release page is located [here](/bazel-contrib/rules_python/releases).
 
 ## What is bzlmod?
 
@@ -53,7 +53,7 @@ better supported.
 the toolchains rules_python registers**.
 
 NOTE: Regardless of your toolchain, due to
-[#691](https://github.com/bazelbuild/rules_python/issues/691), `rules_python`
+[#691](https://github.com/bazel-contrib/rules_python/issues/691), `rules_python`
 still relies on a local Python being available to bootstrap the program before
 handing over execution to the toolchain Python.
 

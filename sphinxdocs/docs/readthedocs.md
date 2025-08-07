@@ -119,7 +119,7 @@ if os.environ.get("READTHEDOCS") == "True":
         # Insert after the main extension
         extensions.insert(1, "readthedocs_ext.external_version_warning")
         readthedocs_vcs_url = (
-            "http://github.com/bazelbuild/rules_python/pull/{}".format(
+            "http://github.com/bazel-contrib/rules_python/pull/{}".format(
                 os.environ.get("READTHEDOCS_VERSION", "")
             )
         )

@@ -19,7 +19,7 @@ from tests.integration import runner
 
 
 class CustomCommandsTest(runner.TestCase):
-    # Regression test for https://github.com/bazelbuild/rules_python/issues/1840
+    # Regression test for https://github.com/bazel-contrib/rules_python/issues/1840
     def test_run_build_python_zip_false(self):
         result = self.run_bazel("run", "--build_python_zip=false", "//:bin")
         self.assert_result_matches(result, "bazel-out")

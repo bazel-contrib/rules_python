@@ -20,9 +20,10 @@ load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
 load(":glob_excludes.bzl", "glob_excludes")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
-load(":semver.bzl", "semver")
+load(":version.bzl", "version")
 
-_IS_FREETHREADED = Label("//python/config_settings:is_py_freethreaded")
+_IS_FREETHREADED_YES = Label("//python/config_settings:_is_py_freethreaded_yes")
+_IS_FREETHREADED_NO = Label("//python/config_settings:_is_py_freethreaded_no")
 
 def define_hermetic_runtime_toolchain_impl(
         *,
@@ -53,8 +54,11 @@ def define_hermetic_runtime_toolchain_impl(
             use.
     """
     _ = name  # @unused
-    version_info = semver(python_version)
-    version_dict = version_info.to_dict()
+    version_info = version.parse(python_version)
+    version_dict = {
+        "major": version_info.release[0],
+        "minor": version_info.release[1],
+    }
     native.filegroup(
         name = "files",
         srcs = native.glob(
@@ -84,16 +88,16 @@ def define_hermetic_runtime_toolchain_impl(
     cc_import(
         name = "interface",
         interface_library = select({
-            _IS_FREETHREADED: "libs/python{major}{minor}t.lib".format(**version_dict),
-            "//conditions:default": "libs/python{major}{minor}.lib".format(**version_dict),
+            _IS_FREETHREADED_YES: "libs/python{major}{minor}t.lib".format(**version_dict),
+            _IS_FREETHREADED_NO: "libs/python{major}{minor}.lib".format(**version_dict),
         }),
         system_provided = True,
     )
     cc_import(
         name = "abi3_interface",
         interface_library = select({
-            _IS_FREETHREADED: "libs/python3t.lib",
-            "//conditions:default": "libs/python3.lib",
+            _IS_FREETHREADED_YES: "libs/python3t.lib",
+            _IS_FREETHREADED_NO: "libs/python3.lib",
         }),
         system_provided = True,
     )
@@ -112,10 +116,10 @@ def define_hermetic_runtime_toolchain_impl(
         includes = [
             "include",
         ] + select({
-            _IS_FREETHREADED: [
+            _IS_FREETHREADED_YES: [
                 "include/python{major}.{minor}t".format(**version_dict),
             ],
-            "//conditions:default": [
+            _IS_FREETHREADED_NO: [
                 "include/python{major}.{minor}".format(**version_dict),
                 "include/python{major}.{minor}m".format(**version_dict),
             ],
@@ -192,15 +196,25 @@ def define_hermetic_runtime_toolchain_impl(
         values = {"collect_code_coverage": "true"},
         visibility = ["//visibility:private"],
     )
+    if not version_info.pre:
+        releaselevel = "final"
+    else:
+        releaselevel = {
+            "a": "alpha",
+            "b": "beta",
+            "rc": "candidate",
+        }.get(version_info.pre[0])
 
     py_runtime(
         name = "py3_runtime",
         files = [":files"],
         interpreter = python_bin,
         interpreter_version_info = {
-            "major": str(version_info.major),
-            "micro": str(version_info.patch),
-            "minor": str(version_info.minor),
+            "major": str(version_info.release[0]),
+            "micro": str(version_info.release[2]),
+            "minor": str(version_info.release[1]),
+            "releaselevel": releaselevel,
+            "serial": str(version_info.pre[1]) if version_info.pre else "0",
         },
         coverage_tool = select({
             # Convert empty string to None
@@ -211,8 +225,8 @@ def define_hermetic_runtime_toolchain_impl(
         implementation_name = "cpython",
         # See https://peps.python.org/pep-3147/ for pyc tag infix format
         pyc_tag = select({
-            _IS_FREETHREADED: "cpython-{major}{minor}t".format(**version_dict),
-            "//conditions:default": "cpython-{major}{minor}".format(**version_dict),
+            _IS_FREETHREADED_YES: "cpython-{major}{minor}t".format(**version_dict),
+            _IS_FREETHREADED_NO: "cpython-{major}{minor}".format(**version_dict),
         }),
     )
 

@@ -103,6 +103,7 @@ def sphinx_docs(
         strip_prefix = "",
         extra_opts = [],
         tools = [],
+        allow_persistent_workers = True,
         **kwargs):
     """Generate docs using Sphinx.
 
@@ -142,6 +143,9 @@ def sphinx_docs(
         tools: {type}`list[label]` Additional tools that are used by Sphinx and its plugins.
             This just makes the tools available during Sphinx execution. To locate
             them, use {obj}`extra_opts` and `$(location)`.
+        allow_persistent_workers: {type}`bool` (experimental) If true, allow
+            using persistent workers for running Sphinx, if Bazel decides to do so.
+            This can improve incremental building of docs.
         **kwargs: {type}`dict` Common attributes to pass onto rules.
     """
     add_tag(kwargs, "@rules_python//sphinxdocs:sphinx_docs")
@@ -165,6 +169,7 @@ def sphinx_docs(
         source_tree = internal_name + "/_sources",
         extra_opts = extra_opts,
         tools = tools,
+        allow_persistent_workers = allow_persistent_workers,
         **kwargs
     )
 
@@ -209,6 +214,7 @@ def _sphinx_docs_impl(ctx):
             source_path = source_dir_path,
             output_prefix = paths.join(ctx.label.name, "_build"),
             inputs = inputs,
+            allow_persistent_workers = ctx.attr.allow_persistent_workers,
         )
         outputs[format] = output_dir
         per_format_args[format] = args_env
@@ -229,6 +235,10 @@ def _sphinx_docs_impl(ctx):
 _sphinx_docs = rule(
     implementation = _sphinx_docs_impl,
     attrs = {
+        "allow_persistent_workers": attr.bool(
+            doc = "(experimental) Whether to invoke Sphinx as a persistent worker.",
+            default = False,
+        ),
         "extra_opts": attr.string_list(
             doc = "Additional options to pass onto Sphinx. These are added after " +
                   "other options, but before the source/output args.",
@@ -254,16 +264,27 @@ _sphinx_docs = rule(
     },
 )
 
-def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
+def _run_sphinx(ctx, format, source_path, inputs, output_prefix, allow_persistent_workers):
     output_dir = ctx.actions.declare_directory(paths.join(output_prefix, format))
 
     run_args = []  # Copy of the args to forward along to debug runner
     args = ctx.actions.args()  # Args passed to the action
 
+    # An args file is required for persistent workers, but we don't know if
+    # the action will use worker mode or not (settings we can't see may
+    # force non-worker mode). For consistency, always use a params file.
+    args.use_param_file("@%s", use_always = True)
+    args.set_param_file_format("multiline")
+
+    # NOTE: sphinx_build.py relies on the first two args being the srcdir and
+    # outputdir, in that order.
+    args.add(source_path)
+    args.add(output_dir.path)
+
     args.add("--show-traceback")  # Full tracebacks on error
     run_args.append("--show-traceback")
-    args.add("--builder", format)
-    run_args.extend(("--builder", format))
+    args.add(format, format = "--builder=%s")
+    run_args.append("--builder={}".format(format))
 
     if ctx.attr._quiet_flag[BuildSettingInfo].value:
         # Not added to run_args because run_args is for debugging
@@ -271,11 +292,17 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
 
     # Build in parallel, if possible
     # Don't add to run_args: parallel building breaks interactive debugging
-    args.add("--jobs", "auto")
-    args.add("--fresh-env")  # Don't try to use cache files. Bazel can't make use of them.
-    run_args.append("--fresh-env")
-    args.add("--write-all")  # Write all files; don't try to detect "changed" files
-    run_args.append("--write-all")
+    args.add("--jobs=auto")
+
+    # Put the doctree dir outside of the output directory.
+    # This allows it to be reused between invocations when possible; Bazel
+    # clears the output directory every action invocation.
+    # * For workers, they can fully re-use it.
+    # * For non-workers, it can be reused when sandboxing is disabled via
+    #   the `no-sandbox` tag or execution requirement.
+    #
+    # We also use a non-dot prefixed name so it shows up more visibly.
+    args.add(paths.join(output_dir.path + "_doctrees"), format = "--doctree-dir=%s")
 
     for opt in ctx.attr.extra_opts:
         expanded = ctx.expand_location(opt)
@@ -287,9 +314,6 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
     for define in extra_defines:
         run_args.extend(("--define", define))
 
-    args.add(source_path)
-    args.add(output_dir.path)
-
     env = dict([
         v.split("=", 1)
         for v in ctx.attr._extra_env_flag[_FlagInfo].value
@@ -298,6 +322,14 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
     tools = []
     for tool in ctx.attr.tools:
         tools.append(tool[DefaultInfo].files_to_run)
+
+    # NOTE: Command line flags or RBE capabilities may override the execution
+    # requirements and disable workers. Thus, we can't assume that these
+    # exec requirements will actually be respected.
+    execution_requirements = {}
+    if allow_persistent_workers:
+        execution_requirements["supports-workers"] = "1"
+        execution_requirements["requires-worker-protocol"] = "json"
 
     ctx.actions.run(
         executable = ctx.executable.sphinx,
@@ -308,6 +340,7 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix):
         mnemonic = "SphinxBuildDocs",
         progress_message = "Sphinx building {} for %{{label}}".format(format),
         env = env,
+        execution_requirements = execution_requirements,
     )
     return output_dir, struct(args = run_args, env = env)
 
@@ -353,7 +386,7 @@ def _sphinx_source_tree_impl(ctx):
         _relocate(orig_file)
 
     for src_target, dest in ctx.attr.renamed_srcs.items():
-        src_files = src_target.files.to_list()
+        src_files = src_target[DefaultInfo].files.to_list()
         if len(src_files) != 1:
             fail("A single file must be specified to be renamed. Target {} " +
                  "generate {} files: {}".format(

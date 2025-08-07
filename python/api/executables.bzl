@@ -16,7 +16,7 @@
 {#python-apis-executables-bzl}
 Loading-phase APIs specific to executables (binaries/tests).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.3.0
 :::
 """
 

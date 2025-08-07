@@ -60,6 +60,62 @@ register_toolchains("@pythons_hub//:all")
 # Install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
 
 pip = use_extension("//python/extensions:pip.bzl", "pip")
+
+# NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility with the
+# current `experimental_index_url` implementation. Whilst we stabilize the API this list may be
+# updated with a mention in the CHANGELOG.
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:linux",
+        ],
+        env = {"platform_version": "0"},
+        os_name = "linux",
+        platform = "linux_{}".format(cpu),
+    )
+    for cpu in [
+        "x86_64",
+        "aarch64",
+        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
+        # `pip.default` extension. i.e. drop the below values - users will have to
+        # define themselves if they need them.
+        "arm",
+        "ppc",
+        "s390x",
+    ]
+]
+
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:osx",
+        ],
+        # We choose the oldest non-EOL version at the time when we release `rules_python`.
+        # See https://endoflife.date/macos
+        env = {"platform_version": "14.0"},
+        os_name = "osx",
+        platform = "osx_{}".format(cpu),
+    )
+    for cpu in [
+        "aarch64",
+        "x86_64",
+    ]
+]
+
+pip.default(
+    arch_name = "x86_64",
+    config_settings = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
+    env = {"platform_version": "0"},
+    os_name = "windows",
+    platform = "windows_x86_64",
+)
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
@@ -85,6 +141,8 @@ bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.0.1", dev_dependency = True)
+bazel_dep(name = "other", version = "0", dev_dependency = True)
+bazel_dep(name = "another_module", version = "0", dev_dependency = True)
 
 # Extra gazelle plugin deps so that WORKSPACE.bzlmod can continue including it for e2e tests.
 # We use `WORKSPACE.bzlmod` because it is impossible to have dev-only local overrides.
@@ -97,13 +155,31 @@ internal_dev_deps = use_extension(
     "internal_dev_deps",
     dev_dependency = True,
 )
-use_repo(internal_dev_deps, "buildkite_config", "wheel_for_testing")
+use_repo(
+    internal_dev_deps,
+    "buildkite_config",
+    "implicit_namespace_ns_sub1",
+    "implicit_namespace_ns_sub2",
+    "rules_python_runtime_env_tc_info",
+    "somepkg_with_build_files",
+    "whl_with_build_files",
+)
 
 # Add gazelle plugin so that we can run the gazelle example as an e2e integration
 # test and include the distribution files.
 local_path_override(
     module_name = "rules_python_gazelle_plugin",
     path = "gazelle",
+)
+
+local_path_override(
+    module_name = "other",
+    path = "tests/modules/other",
+)
+
+local_path_override(
+    module_name = "another_module",
+    path = "tests/modules/another_module",
 )
 
 dev_python = use_extension(
@@ -115,6 +191,22 @@ dev_python.override(
     register_all_versions = True,
 )
 
+# For testing an arbitrary runtime triggered by a custom flag.
+# See //tests/toolchains:custom_platform_toolchain_test
+dev_python.single_version_platform_override(
+    platform = "linux-x86-install-only-stripped",
+    python_version = "3.13.1",
+    sha256 = "56817aa976e4886bec1677699c136cb01c1cdfe0495104c0d8ef546541864bbb",
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_settings = [
+        "@@//tests/support:is_custom_runtime_linux-x86-install-only-stripped",
+    ],
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20250115/cpython-3.13.1+20250115-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
+)
+
 dev_pip = use_extension(
     "//python/extensions:pip.bzl",
     "pip",
@@ -124,6 +216,7 @@ dev_pip.parse(
     download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
+    parallel_download = False,
     python_version = "3.11",
     requirements_lock = "//docs:requirements.txt",
 )
@@ -131,7 +224,7 @@ dev_pip.parse(
     download_only = True,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "dev_pip",
-    python_version = "3.13.0",
+    python_version = "3.13",
     requirements_lock = "//docs:requirements.txt",
 )
 dev_pip.parse(
@@ -220,6 +313,13 @@ uv.default(
         "@platforms//cpu:s390x",
     ],
     platform = "s390x-unknown-linux-gnu",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:riscv64",
+    ],
+    platform = "riscv64-unknown-linux-gnu",
 )
 uv.default(
     compatible_with = [

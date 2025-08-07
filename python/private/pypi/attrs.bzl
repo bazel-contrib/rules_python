@@ -20,7 +20,7 @@ ATTRS = {
         doc = """
 If true, add the lib dir of the bundled interpreter to the library search path via `LDFLAGS`.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.3.0
 :::
 """,
     ),
@@ -123,6 +123,9 @@ Warning:
     "experimental_target_platforms": attr.string_list(
         default = [],
         doc = """\
+*NOTE*: This will be removed in the next major version, so please consider migrating
+to `bzlmod` and rely on {attr}`pip.parse.requirements_by_platform` for this feature.
+
 A list of platforms that we will generate the conditional dependency graph for
 cross platform wheels by parsing the wheel metadata. This will generate the
 correct dependencies for packages like `sphinx` or `pylint`, which include
@@ -156,6 +159,13 @@ Extra aliases to make for specific wheels in the hub repo. This is useful when
 paired with the {attr}`whl_modifications`.
 
 :::{versionadded} 0.38.0
+
+For `pip.parse` with bzlmod
+:::
+
+:::{versionadded} 1.0.0
+
+For `pip_parse` with workspace.
 :::
 """,
         mandatory = False,
@@ -207,7 +217,7 @@ If True, suppress printing stdout and stderr output to the terminal.
 If you would like to get more diagnostic output, set
 {envvar}`RULES_PYTHON_REPO_DEBUG=1 <RULES_PYTHON_REPO_DEBUG>`
 or
-{envvar}`RULES_PYTHON_REPO_DEBUG_VERBOSITY=<INFO|DEBUG|TRACE> <RULES_PYTHON_REPO_DEBUG_VERBOSITY>`
+{envvar}`RULES_PYTHON_REPO_DEBUG_VERBOSITY=INFO|DEBUG|TRACE <RULES_PYTHON_REPO_DEBUG_VERBOSITY>`
 """,
     ),
     # 600 is documented as default here: https://docs.bazel.build/versions/master/skylark/lib/repository_ctx.html#execute

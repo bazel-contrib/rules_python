@@ -27,7 +27,7 @@ func TestParseImportStatements(t *testing.T) {
 		name     string
 		code     string
 		filepath string
-		result   []module
+		result   []Module
 	}{
 		{
 			name:     "not has import",
@@ -39,7 +39,7 @@ func TestParseImportStatements(t *testing.T) {
 			name:     "has import",
 			code:     "import unittest\nimport os.path\nfrom foo.bar import abc.xyz",
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "unittest",
 					LineNumber: 1,
@@ -66,7 +66,7 @@ func TestParseImportStatements(t *testing.T) {
 	import unittest
 `,
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "unittest",
 					LineNumber: 2,
@@ -79,7 +79,7 @@ func TestParseImportStatements(t *testing.T) {
 			name:     "invalid syntax",
 			code:     "import os\nimport",
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "os",
 					LineNumber: 1,
@@ -92,7 +92,7 @@ func TestParseImportStatements(t *testing.T) {
 			name:     "import as",
 			code:     "import os as b\nfrom foo import bar as c# 123",
 			filepath: "abc.py",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "os",
 					LineNumber: 1,
@@ -111,7 +111,7 @@ func TestParseImportStatements(t *testing.T) {
 		{
 			name: "complex import",
 			code: "from unittest import *\nfrom foo import (bar as c, baz, qux as d)\nfrom . import abc",
-			result: []module{
+			result: []Module{
 				{
 					Name:       "unittest.*",
 					LineNumber: 1,
@@ -152,7 +152,7 @@ func TestParseComments(t *testing.T) {
 	units := []struct {
 		name   string
 		code   string
-		result []comment
+		result []Comment
 	}{
 		{
 			name:   "not has comment",
@@ -162,17 +162,17 @@ func TestParseComments(t *testing.T) {
 		{
 			name:   "has comment",
 			code:   "# a = 1\n# b = 2",
-			result: []comment{"# a = 1", "# b = 2"},
+			result: []Comment{"# a = 1", "# b = 2"},
 		},
 		{
 			name:   "has comment in if",
 			code:   "if True:\n  # a = 1\n  # b = 2",
-			result: []comment{"# a = 1", "# b = 2"},
+			result: []Comment{"# a = 1", "# b = 2"},
 		},
 		{
 			name:   "has comment inline",
 			code:   "import os# 123\nfrom pathlib import Path as b#456",
-			result: []comment{"# 123", "#456"},
+			result: []Comment{"# 123", "#456"},
 		},
 	}
 	for _, u := range units {
@@ -248,9 +248,138 @@ func TestParseFull(t *testing.T) {
 	output, err := p.Parse(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, ParserOutput{
-		Modules:  []module{{Name: "bar.abc", LineNumber: 1, Filepath: "foo/a.py", From: "bar"}},
+		Modules:  []Module{{Name: "bar.abc", LineNumber: 1, Filepath: "foo/a.py", From: "bar"}},
 		Comments: nil,
 		HasMain:  false,
 		FileName: "a.py",
 	}, *output)
+}
+
+func TestTypeCheckingImports(t *testing.T) {
+	code := `
+import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import boto3
+    from rest_framework import serializers
+
+def example_function():
+    _ = sys.version_info
+`
+	p := NewFileParser()
+	p.SetCodeAndFile([]byte(code), "", "test.py")
+
+	result, err := p.Parse(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	// Check that we found the expected modules
+	expectedModules := map[string]bool{
+		"sys": false,
+		"typing.TYPE_CHECKING": false,
+		"boto3": true,
+		"rest_framework.serializers": true,
+	}
+
+	for _, mod := range result.Modules {
+		if expected, exists := expectedModules[mod.Name]; exists {
+			if mod.TypeCheckingOnly != expected {
+				t.Errorf("Module %s: expected TypeCheckingOnly=%v, got %v", mod.Name, expected, mod.TypeCheckingOnly)
+			}
+		}
+	}
+}
+
+func TestParseImportStatements_MultilineWithBackslashAndWhitespace(t *testing.T) {
+	t.Parallel()
+	t.Run("multiline from import", func(t *testing.T) {
+		p := NewFileParser()
+		code := []byte(`from foo.bar.\
+    baz import (
+    Something,
+    AnotherThing
+)
+
+from foo\
+	.test import (
+    Foo,
+    Bar
+)
+`)
+		p.SetCodeAndFile(code, "", "test.py")
+		output, err := p.Parse(context.Background())
+		assert.NoError(t, err)
+		// Updated expected to match parser output
+		expected := []Module{
+			{
+				Name:       "foo.bar.baz.Something",
+				LineNumber: 3,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+			{
+				Name:       "foo.bar.baz.AnotherThing",
+				LineNumber: 4,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+			{
+				Name:       "foo.test.Foo",
+				LineNumber: 9,
+				Filepath:   "test.py",
+				From:       "foo.test",
+			},
+			{
+				Name:       "foo.test.Bar",
+				LineNumber: 10,
+				Filepath:   "test.py",
+				From:       "foo.test",
+			},
+		}
+		assert.ElementsMatch(t, expected, output.Modules)
+	})
+	t.Run("multiline import", func(t *testing.T) {
+		p := NewFileParser()
+		code := []byte(`import foo.bar.\
+    baz
+`)
+		p.SetCodeAndFile(code, "", "test.py")
+		output, err := p.Parse(context.Background())
+		assert.NoError(t, err)
+		// Updated expected to match parser output
+		expected := []Module{
+			{
+				Name:       "foo.bar.baz",
+				LineNumber: 1,
+				Filepath:   "test.py",
+				From:       "",
+			},
+		}
+		assert.ElementsMatch(t, expected, output.Modules)
+	})
+	t.Run("windows line endings", func(t *testing.T) {
+		p := NewFileParser()
+		code := []byte("from foo.bar.\r\n baz import (\r\n    Something,\r\n    AnotherThing\r\n)\r\n")
+		p.SetCodeAndFile(code, "", "test.py")
+		output, err := p.Parse(context.Background())
+		assert.NoError(t, err)
+		// Updated expected to match parser output
+		expected := []Module{
+			{
+				Name:       "foo.bar.baz.Something",
+				LineNumber: 3,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+			{
+				Name:       "foo.bar.baz.AnotherThing",
+				LineNumber: 4,
+				Filepath:   "test.py",
+				From:       "foo.bar.baz",
+			},
+		}
+		assert.ElementsMatch(t, expected, output.Modules)
+	})
 }

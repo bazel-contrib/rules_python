@@ -83,6 +83,7 @@ def simpleapi_download(
 
     found_on_index = {}
     warn_overrides = False
+    ctx.report_progress("Fetch package lists from PyPI index")
     for i, index_url in enumerate(index_urls):
         if i != 0:
             # Warn the user about a potential fix for the overrides
@@ -127,10 +128,25 @@ def simpleapi_download(
 
     failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
     if failed_sources:
-        _fail("Failed to download metadata for {} for from urls: {}".format(
-            failed_sources,
-            index_urls,
-        ))
+        pkg_index_urls = {
+            pkg: index_url_overrides.get(
+                normalize_name(pkg),
+                index_urls,
+            )
+            for pkg in failed_sources
+        }
+
+        _fail(
+            """
+Failed to download metadata of the following packages from urls:
+{pkg_index_urls}
+
+If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={failed_sources}' to your 'pip.parse' call.
+""".format(
+                pkg_index_urls = render.dict(pkg_index_urls),
+                failed_sources = render.list(failed_sources),
+            ),
+        )
         return None
 
     if warn_overrides:
@@ -140,10 +156,11 @@ def simpleapi_download(
             if found_on_index[pkg] != attr.index_url
         }
 
-        # buildifier: disable=print
-        print("You can use the following `index_url_overrides` to avoid the 404 warnings:\n{}".format(
-            render.dict(index_url_overrides),
-        ))
+        if index_url_overrides:
+            # buildifier: disable=print
+            print("You can use the following `index_url_overrides` to avoid the 404 warnings:\n{}".format(
+                render.dict(index_url_overrides),
+            ))
 
     return contents
 

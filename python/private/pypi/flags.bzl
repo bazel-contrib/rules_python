@@ -20,6 +20,15 @@ unnecessary files when all that are needed are flag definitions.
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo", "string_flag")
 load("//python/private:enum.bzl", "enum")
+load(":env_marker_info.bzl", "EnvMarkerInfo")
+load(
+    ":pep508_env.bzl",
+    "create_env",
+    "os_name_select_map",
+    "platform_machine_select_map",
+    "platform_system_select_map",
+    "sys_platform_select_map",
+)
 
 # Determines if we should use whls for third party
 #
@@ -82,6 +91,10 @@ def define_pypi_internal_flags(name):
         visibility = ["//visibility:public"],
     )
 
+    _default_env_marker_config(
+        name = "_pip_env_marker_default_config",
+    )
+
 def _allow_wheels_flag_impl(ctx):
     input = ctx.attr._setting[BuildSettingInfo].value
     value = "yes" if input in ["auto", "only"] else "no"
@@ -97,3 +110,58 @@ This rule allows us to greatly reduce the number of config setting targets at no
 if we are duplicating some of the functionality of the `native.config_setting`.
 """,
 )
+
+def _default_env_marker_config(**kwargs):
+    _env_marker_config(
+        os_name = select(os_name_select_map),
+        sys_platform = select(sys_platform_select_map),
+        platform_machine = select(platform_machine_select_map),
+        platform_system = select(platform_system_select_map),
+        platform_release = select({
+            "@platforms//os:osx": "USE_OSX_VERSION_FLAG",
+            "//conditions:default": "",
+        }),
+        **kwargs
+    )
+
+def _env_marker_config_impl(ctx):
+    env = create_env()
+    env["os_name"] = ctx.attr.os_name
+    env["sys_platform"] = ctx.attr.sys_platform
+    env["platform_machine"] = ctx.attr.platform_machine
+
+    # NOTE: Platform release for Android will be Android version:
+    # https://peps.python.org/pep-0738/#platform
+    # Similar for iOS:
+    # https://peps.python.org/pep-0730/#platform
+    platform_release = ctx.attr.platform_release
+    if platform_release == "USE_OSX_VERSION_FLAG":
+        platform_release = _get_flag(ctx.attr._pip_whl_osx_version_flag)
+    env["platform_release"] = platform_release
+    env["platform_system"] = ctx.attr.platform_system
+
+    # NOTE: We intentionally do not call set_missing_env_defaults() here because
+    # `env_marker_setting()` computes missing values using the toolchain.
+    return [EnvMarkerInfo(env = env)]
+
+_env_marker_config = rule(
+    implementation = _env_marker_config_impl,
+    attrs = {
+        "os_name": attr.string(),
+        "platform_machine": attr.string(),
+        "platform_release": attr.string(),
+        "platform_system": attr.string(),
+        "sys_platform": attr.string(),
+        "_pip_whl_osx_version_flag": attr.label(
+            default = "//python/config_settings:pip_whl_osx_version",
+            providers = [[BuildSettingInfo], [config_common.FeatureFlagInfo]],
+        ),
+    },
+)
+
+def _get_flag(t):
+    if config_common.FeatureFlagInfo in t:
+        return t[config_common.FeatureFlagInfo].value
+    if BuildSettingInfo in t:
+        return t[BuildSettingInfo].value
+    fail("Should not occur: {} does not have necessary providers")

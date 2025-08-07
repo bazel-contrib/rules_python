@@ -101,6 +101,11 @@ def py_wheel(
 
     Currently only pure-python wheels are supported.
 
+    :::{versionchanged} 1.4.0
+    From now on, an empty `requires_file` is treated as if it were omitted, resulting in a valid
+    `METADATA` file.
+    :::
+
     Examples:
 
     ```python
@@ -139,7 +144,7 @@ def py_wheel(
     To publish the wheel to PyPI, the twine package is required and it is installed
     by default on `bzlmod` setups. On legacy `WORKSPACE`, `rules_python`
     doesn't provide `twine` itself
-    (see https://github.com/bazelbuild/rules_python/issues/1016), but
+    (see https://github.com/bazel-contrib/rules_python/issues/1016), but
     you can install it with `pip_parse`, just like we do any other dependencies.
 
     Once you've installed twine, you can pass its label to the `twine`

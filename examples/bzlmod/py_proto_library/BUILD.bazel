@@ -6,7 +6,7 @@ py_test(
     srcs = ["test.py"],
     main = "test.py",
     deps = [
-        "//py_proto_library/example.com/proto:pricetag_proto_py_pb2",
+        "//py_proto_library/example.com/proto:pricetag_py_pb2",
     ],
 )
 
@@ -14,11 +14,11 @@ py_test(
     name = "message_test",
     srcs = ["message_test.py"],
     deps = [
-        "//py_proto_library/example.com/another_proto:message_proto_py_pb2",
+        "//py_proto_library/example.com/another_proto:message_py_pb2",
     ],
 )
 
-# Regression test for https://github.com/bazelbuild/rules_python/issues/2515
+# Regression test for https://github.com/bazel-contrib/rules_python/issues/2515
 #
 # This test fails before protobuf 30.0 release
 # when ran with --legacy_external_runfiles=False (default in Bazel 8.0.0).

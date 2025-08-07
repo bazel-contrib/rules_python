@@ -12,4 +12,4 @@ for example
 from google.cloud import aiplatform, storage
 ```
 
-See https://github.com/bazelbuild/rules_python/issues/709 and https://github.com/sramirezmartin/gazelle-toy-example.
+See https://github.com/bazel-contrib/rules_python/issues/709 and https://github.com/sramirezmartin/gazelle-toy-example.

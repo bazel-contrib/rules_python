@@ -16,14 +16,16 @@ package pythonconfig
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"path"
 	"regexp"
 	"strings"
 
 	"github.com/emirpasic/gods/lists/singlylinkedlist"
 
+	"github.com/bazel-contrib/rules_python/gazelle/manifest"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/rules_python/gazelle/manifest"
 )
 
 // Directives
@@ -72,6 +74,12 @@ const (
 	// naming convention. See python_library_naming_convention for more info on
 	// the package name interpolation.
 	TestNamingConvention = "python_test_naming_convention"
+	// ProtoNamingConvention represents the directive that controls the
+	// py_proto_library naming convention. It interpolates $proto_name$ with
+	// the proto_library rule name, minus any trailing _proto. E.g. if the
+	// proto_library name is `foo_proto`, setting this to `$proto_name$_my_lib`
+	// would render to `foo_my_lib`.
+	ProtoNamingConvention = "python_proto_naming_convention"
 	// DefaultVisibilty represents the directive that controls what visibility
 	// labels are added to generated python targets.
 	DefaultVisibilty = "python_default_visibility"
@@ -89,6 +97,21 @@ const (
 	// names of labels to third-party dependencies are normalized. Supported values
 	// are 'none', 'pep503' and 'snake_case' (default). See LabelNormalizationType.
 	LabelNormalization = "python_label_normalization"
+	// ExperimentalAllowRelativeImports represents the directive that controls
+	// whether relative imports are allowed.
+	ExperimentalAllowRelativeImports = "python_experimental_allow_relative_imports"
+	// GeneratePyiDeps represents the directive that controls whether to generate
+	// separate pyi_deps attribute or merge type-checking dependencies into deps.
+	// Defaults to false for backward compatibility.
+	GeneratePyiDeps = "python_generate_pyi_deps"
+	// GenerateProto represents the directive that controls whether to generate
+	// python_generate_proto targets.
+	GenerateProto = "python_generate_proto"
+	// PythonResolveSiblingImports represents the directive that controls whether
+	// absolute imports can be solved to sibling modules. When enabled, imports
+	// like "import a" can be resolved to sibling modules. When disabled, they
+	// can only be resolved as an absolute import.
+	PythonResolveSiblingImports = "python_resolve_sibling_imports"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -109,6 +132,7 @@ const (
 
 const (
 	packageNameNamingConventionSubstitution     = "$package_name$"
+	protoNameNamingConventionSubstitution       = "$proto_name$"
 	distributionNameLabelConventionSubstitution = "$distribution_name$"
 )
 
@@ -125,31 +149,39 @@ const (
 
 // defaultIgnoreFiles is the list of default values used in the
 // python_ignore_files option.
-var defaultIgnoreFiles = map[string]struct{}{
-}
+var defaultIgnoreFiles = map[string]struct{}{}
 
 // Configs is an extension of map[string]*Config. It provides finding methods
 // on top of the mapping.
 type Configs map[string]*Config
 
 // ParentForPackage returns the parent Config for the given Bazel package.
-func (c *Configs) ParentForPackage(pkg string) *Config {
-	dir := path.Dir(pkg)
-	if dir == "." {
-		dir = ""
+func (c Configs) ParentForPackage(pkg string) *Config {
+	for {
+		dir := path.Dir(pkg)
+		if dir == "." {
+			dir = ""
+		}
+		parent := (map[string]*Config)(c)[dir]
+		if parent != nil {
+			return parent
+		}
+		if dir == "" {
+			return nil
+		}
+		pkg = dir
 	}
-	parent := (map[string]*Config)(*c)[dir]
-	return parent
 }
 
 // Config represents a config extension for a specific Bazel package.
 type Config struct {
 	parent *Config
 
-	extensionEnabled  bool
-	repoRoot          string
-	pythonProjectRoot string
-	gazelleManifest   *manifest.Manifest
+	extensionEnabled    bool
+	repoRoot            string
+	pythonProjectRoot   string
+	gazelleManifestPath string
+	gazelleManifest     *manifest.Manifest
 
 	excludedPatterns                          *singlylinkedlist.List
 	ignoreFiles                               map[string]struct{}
@@ -162,11 +194,16 @@ type Config struct {
 	libraryNamingConvention                   string
 	binaryNamingConvention                    string
 	testNamingConvention                      string
+	protoNamingConvention                     string
 	defaultVisibility                         []string
 	visibility                                []string
 	testFilePattern                           []string
 	labelConvention                           string
 	labelNormalization                        LabelNormalizationType
+	experimentalAllowRelativeImports          bool
+	generatePyiDeps                           bool
+	generateProto                             bool
+	resolveSiblingImports                     bool
 }
 
 type LabelNormalizationType int
@@ -197,11 +234,16 @@ func New(
 		libraryNamingConvention:                   packageNameNamingConventionSubstitution,
 		binaryNamingConvention:                    fmt.Sprintf("%s_bin", packageNameNamingConventionSubstitution),
 		testNamingConvention:                      fmt.Sprintf("%s_test", packageNameNamingConventionSubstitution),
+		protoNamingConvention:                     fmt.Sprintf("%s_py_pb2", protoNameNamingConventionSubstitution),
 		defaultVisibility:                         []string{fmt.Sprintf(DefaultVisibilityFmtString, "")},
 		visibility:                                []string{},
 		testFilePattern:                           strings.Split(DefaultTestFilePatternString, ","),
 		labelConvention:                           DefaultLabelConvention,
 		labelNormalization:                        DefaultLabelNormalizationType,
+		experimentalAllowRelativeImports:          false,
+		generatePyiDeps:                           false,
+		generateProto:                             false,
+		resolveSiblingImports:                     false,
 	}
 }
 
@@ -229,11 +271,16 @@ func (c *Config) NewChild() *Config {
 		libraryNamingConvention:                   c.libraryNamingConvention,
 		binaryNamingConvention:                    c.binaryNamingConvention,
 		testNamingConvention:                      c.testNamingConvention,
+		protoNamingConvention:                     c.protoNamingConvention,
 		defaultVisibility:                         c.defaultVisibility,
 		visibility:                                c.visibility,
 		testFilePattern:                           c.testFilePattern,
 		labelConvention:                           c.labelConvention,
 		labelNormalization:                        c.labelNormalization,
+		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
+		generatePyiDeps:                           c.generatePyiDeps,
+		generateProto:                             c.generateProto,
+		resolveSiblingImports:                     c.resolveSiblingImports,
 	}
 }
 
@@ -274,11 +321,26 @@ func (c *Config) SetGazelleManifest(gazelleManifest *manifest.Manifest) {
 	c.gazelleManifest = gazelleManifest
 }
 
+// SetGazelleManifestPath sets the path to the gazelle_python.yaml file
+// for the current configuration.
+func (c *Config) SetGazelleManifestPath(gazelleManifestPath string) {
+	c.gazelleManifestPath = gazelleManifestPath
+}
+
 // FindThirdPartyDependency scans the gazelle manifests for the current config
 // and the parent configs up to the root finding if it can resolve the module
 // name.
 func (c *Config) FindThirdPartyDependency(modName string) (string, string, bool) {
 	for currentCfg := c; currentCfg != nil; currentCfg = currentCfg.parent {
+		// Attempt to load the manifest if needed.
+		if currentCfg.gazelleManifestPath != "" && currentCfg.gazelleManifest == nil {
+			currentCfgManifest, err := loadGazelleManifest(currentCfg.gazelleManifestPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			currentCfg.SetGazelleManifest(currentCfgManifest)
+		}
+
 		if currentCfg.gazelleManifest != nil {
 			gazelleManifest := currentCfg.gazelleManifest
 			if distributionName, ok := gazelleManifest.ModulesMapping[modName]; ok {
@@ -445,6 +507,17 @@ func (c *Config) RenderTestName(packageName string) string {
 	return strings.ReplaceAll(c.testNamingConvention, packageNameNamingConventionSubstitution, packageName)
 }
 
+// SetProtoNamingConvention sets the py_proto_library target naming convention.
+func (c *Config) SetProtoNamingConvention(protoNamingConvention string) {
+	c.protoNamingConvention = protoNamingConvention
+}
+
+// RenderProtoName returns the py_proto_library target name by performing all
+// substitutions.
+func (c *Config) RenderProtoName(protoName string) string {
+	return strings.ReplaceAll(c.protoNamingConvention, protoNameNamingConventionSubstitution, strings.TrimSuffix(protoName, "_proto"))
+}
+
 // AppendVisibility adds additional items to the target's visibility.
 func (c *Config) AppendVisibility(visibility string) {
 	c.visibility = append(c.visibility, visibility)
@@ -495,6 +568,48 @@ func (c *Config) LabelNormalization() LabelNormalizationType {
 	return c.labelNormalization
 }
 
+// SetExperimentalAllowRelativeImports sets whether relative imports are allowed.
+func (c *Config) SetExperimentalAllowRelativeImports(allowRelativeImports bool) {
+	c.experimentalAllowRelativeImports = allowRelativeImports
+}
+
+// ExperimentalAllowRelativeImports returns whether relative imports are allowed.
+func (c *Config) ExperimentalAllowRelativeImports() bool {
+	return c.experimentalAllowRelativeImports
+}
+
+// SetGeneratePyiDeps sets whether pyi_deps attribute should be generated separately
+// or type-checking dependencies should be merged into the regular deps attribute.
+func (c *Config) SetGeneratePyiDeps(generatePyiDeps bool) {
+	c.generatePyiDeps = generatePyiDeps
+}
+
+// GeneratePyiDeps returns whether pyi_deps attribute should be generated separately
+// or type-checking dependencies should be merged into the regular deps attribute.
+func (c *Config) GeneratePyiDeps() bool {
+	return c.generatePyiDeps
+}
+
+// SetGenerateProto sets whether py_proto_library should be generated for proto_library.
+func (c *Config) SetGenerateProto(generateProto bool) {
+	c.generateProto = generateProto
+}
+
+// GenerateProto returns whether py_proto_library should be generated for proto_library.
+func (c *Config) GenerateProto() bool {
+	return c.generateProto
+}
+
+// SetResolveSiblingImports sets whether absolute imports can be resolved to sibling modules.
+func (c *Config) SetResolveSiblingImports(resolveSiblingImports bool) {
+	c.resolveSiblingImports = resolveSiblingImports
+}
+
+// ResolveSiblingImports returns whether absolute imports can be resolved to sibling modules.
+func (c *Config) ResolveSiblingImports() bool {
+	return c.resolveSiblingImports
+}
+
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.
 func (c *Config) FormatThirdPartyDependency(repositoryName string, distributionName string) label.Label {
 	conventionalDistributionName := strings.ReplaceAll(c.labelConvention, distributionNameLabelConventionSubstitution, distributionName)
@@ -518,4 +633,18 @@ func (c *Config) FormatThirdPartyDependency(repositoryName string, distributionN
 	}
 
 	return label.New(repositoryName, normConventionalDistributionName, normConventionalDistributionName)
+}
+
+func loadGazelleManifest(gazelleManifestPath string) (*manifest.Manifest, error) {
+	if _, err := os.Stat(gazelleManifestPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to load Gazelle manifest at %q: %w", gazelleManifestPath, err)
+	}
+	manifestFile := new(manifest.File)
+	if err := manifestFile.Decode(gazelleManifestPath); err != nil {
+		return nil, fmt.Errorf("failed to load Gazelle manifest at %q: %w", gazelleManifestPath, err)
+	}
+	return manifestFile.Manifest, nil
 }

@@ -19,7 +19,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":attributes.bzl", "NATIVE_RULES_ALLOWLIST_ATTRS")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
-load(":py_runtime_info.bzl", "DEFAULT_BOOTSTRAP_TEMPLATE", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
+load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
 load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
@@ -130,6 +130,7 @@ def _py_runtime_impl(ctx):
         zip_main_template = ctx.file.zip_main_template,
         abi_flags = abi_flags,
         site_init_template = ctx.file.site_init_template,
+        supports_build_time_venv = ctx.attr.supports_build_time_venv,
     ))
 
     if not IS_BAZEL_7_OR_HIGHER:
@@ -201,7 +202,7 @@ If not set, then it will be set based on flags.
             ),
             "bootstrap_template": attr.label(
                 allow_single_file = True,
-                default = DEFAULT_BOOTSTRAP_TEMPLATE,
+                default = Label("//python/private:bootstrap_template"),
                 doc = """
 The bootstrap script template file to use. Should have %python_binary%,
 %workspace_name%, %main%, and %imports%.
@@ -269,7 +270,7 @@ can be either of:
 
   NOTE: the runfiles of the target may not yet be properly respected/propagated
   to consumers of the toolchain/interpreter, see
-  bazelbuild/rules_python/issues/1612
+  bazel-contrib/rules_python/issues/1612
 
 For a platform runtime (i.e. `interpreter_path` being set) this attribute must
 not be set.
@@ -352,6 +353,17 @@ motivation.
 
 Does not apply to Windows.
 """,
+            ),
+            "supports_build_time_venv": attr.bool(
+                doc = """
+Whether this runtime supports virtualenvs created at build time.
+
+See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
+
+:::{versionadded} 1.5.0
+:::
+""",
+                default = True,
             ),
             "zip_main_template": attr.label(
                 default = "//python/private:zip_main_template",

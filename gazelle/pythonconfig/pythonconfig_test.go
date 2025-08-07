@@ -248,3 +248,35 @@ func TestFormatThirdPartyDependency(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigsMap(t *testing.T) {
+	t.Run("only root", func(t *testing.T) {
+		configs := Configs{"": New("root/dir", "")}
+
+		if configs.ParentForPackage("") == nil {
+			t.Fatal("expected non-nil for root config")
+		}
+
+		if configs.ParentForPackage("a/b/c") != configs[""] {
+			t.Fatal("expected root for subpackage")
+		}
+	})
+
+	t.Run("sparse child configs", func(t *testing.T) {
+		configs := Configs{"": New("root/dir", "")}
+		configs["a"] = configs[""].NewChild()
+		configs["a/b/c"] = configs["a"].NewChild()
+
+		if configs.ParentForPackage("a/b/c/d") != configs["a/b/c"] {
+			t.Fatal("child should match direct parent")
+		}
+
+		if configs.ParentForPackage("a/b/c/d/e") != configs["a/b/c"] {
+			t.Fatal("grandchild should match first parant")
+		}
+
+		if configs.ParentForPackage("other/root/path") != configs[""] {
+			t.Fatal("non-configured subpackage should match root")
+		}
+	})
+}

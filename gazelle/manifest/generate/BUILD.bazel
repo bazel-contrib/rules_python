@@ -4,7 +4,7 @@ load("//manifest:defs.bzl", "sources_hash")
 go_library(
     name = "generate_lib",
     srcs = ["generate.go"],
-    importpath = "github.com/bazelbuild/rules_python/gazelle/manifest/generate",
+    importpath = "github.com/bazel-contrib/rules_python/gazelle/manifest/generate",
     visibility = ["//visibility:public"],
     deps = ["//manifest"],
 )

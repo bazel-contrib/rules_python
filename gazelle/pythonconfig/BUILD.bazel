@@ -6,7 +6,7 @@ go_library(
         "pythonconfig.go",
         "types.go",
     ],
-    importpath = "github.com/bazelbuild/rules_python/gazelle/pythonconfig",
+    importpath = "github.com/bazel-contrib/rules_python/gazelle/pythonconfig",
     visibility = ["//visibility:public"],
     deps = [
         "//manifest",

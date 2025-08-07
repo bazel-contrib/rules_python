@@ -24,7 +24,7 @@ def _uv_toolchain_impl(ctx):
     uv = ctx.attr.uv
 
     default_info = DefaultInfo(
-        files = uv.files,
+        files = uv[DefaultInfo].files,
         runfiles = uv[DefaultInfo].default_runfiles,
     )
     uv_toolchain_info = UvToolchainInfo(
@@ -53,7 +53,7 @@ uv_toolchain = rule(
             mandatory = True,
             allow_single_file = True,
             executable = True,
-            cfg = "target",
+            cfg = "exec",
         ),
         "version": attr.string(mandatory = True, doc = "Version of the uv binary."),
     },

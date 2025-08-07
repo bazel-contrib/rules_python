@@ -26,7 +26,17 @@ import uuid
 # We just put them in one place so its easy to tell which are used.
 
 # Runfiles-relative path to the main Python source file.
-MAIN = "%main%"
+# Empty if MAIN_MODULE is used
+MAIN_PATH = "%main%"
+
+# Module name to execute. Empty if MAIN is used.
+MAIN_MODULE = "%main_module%"
+
+# venv-relative path to the expected location of the binary's site-packages
+# directory.
+# Only set when the toolchain doesn't support the build-time venv. Empty
+# string otherwise.
+VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 
 # ===== Template substitutions end =====
 
@@ -48,7 +58,15 @@ def get_windows_path_with_unc_prefix(path):
     # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
     import platform
 
-    if platform.win32_ver()[1] >= "10.0.14393":
+    win32_version = None
+    # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
+    for _ in range(3):
+        try:
+            win32_version = platform.win32_ver()[1]
+            break
+        except (ValueError, KeyError):
+            pass
+    if win32_version and win32_version >= '10.0.14393':
         return path
 
     # import sysconfig only now to maintain python 2.6 compatibility
@@ -249,7 +267,7 @@ def unresolve_symlinks(output_filename):
         os.unlink(unfixed_file)
 
 
-def _run_py(main_filename, *, args, cwd=None):
+def _run_py_path(main_filename, *, args, cwd=None):
     # type: (str, str, list[str], dict[str, str]) -> ...
     """Executes the given Python file using the various environment settings."""
 
@@ -267,6 +285,11 @@ def _run_py(main_filename, *, args, cwd=None):
     finally:
         os.chdir(orig_cwd)
         sys.argv = orig_argv
+
+
+def _run_py_module(module_name):
+    # Match `python -m` behavior, so modify sys.argv and the run name
+    runpy.run_module(module_name, alter_sys=True, run_name="__main__")
 
 
 @contextlib.contextmanager
@@ -356,64 +379,95 @@ def main():
     print_verbose("initial environ:", mapping=os.environ)
     print_verbose("initial sys.path:", values=sys.path)
 
-    main_rel_path = MAIN
-    if is_windows():
-        main_rel_path = main_rel_path.replace("/", os.sep)
+    if VENV_SITE_PACKAGES:
+        site_packages = os.path.join(sys.prefix, VENV_SITE_PACKAGES)
+        if site_packages not in sys.path and os.path.exists(site_packages):
+            # NOTE: if this happens, it likely means we're running with a different
+            # Python version than was built with. Things may or may not work.
+            # Such a situation is likely due to the runtime_env toolchain, or some
+            # toolchain configuration. In any case, this better matches how the
+            # previous bootstrap=system_python bootstrap worked (using PYTHONPATH,
+            # which isn't version-specific).
+            print_verbose(
+                f"sys.path missing expected site-packages: adding {site_packages}"
+            )
+            import site
 
-    module_space = find_runfiles_root(main_rel_path)
-    print_verbose("runfiles root:", module_space)
+            site.addsitedir(site_packages)
 
-    # Recreate the "add main's dir to sys.path[0]" behavior to match the
-    # system-python bootstrap / typical Python behavior.
-    #
-    # Without safe path enabled, when `python foo/bar.py` is run, python will
-    # resolve the foo/bar.py symlink to its real path, then add the directory
-    # of that path to sys.path. But, the resolved directory for the symlink
-    # depends on if the file is generated or not.
-    #
-    # When foo/bar.py is a source file, then it's a symlink pointing
-    # back to the client source directory. This means anything from that source
-    # directory becomes importable, i.e. most code is importable.
-    #
-    # When foo/bar.py is a generated file, then it's a symlink pointing to
-    # somewhere under bazel-out/.../bin, i.e. where generated files are. This
-    # means only other generated files are importable (not source files).
-    #
-    # To replicate this behavior, we add main's directory within the runfiles
-    # when safe path isn't enabled.
-    if not getattr(sys.flags, "safe_path", False):
-        prepend_path_entries = [
-            os.path.join(module_space, os.path.dirname(main_rel_path))
-        ]
+    main_rel_path = None
+    # todo: things happen to work because find_runfiles_root
+    # ends up using stage2_bootstrap, and ends up computing the proper
+    # runfiles root
+    if MAIN_PATH:
+        main_rel_path = MAIN_PATH
+        if is_windows():
+            main_rel_path = main_rel_path.replace("/", os.sep)
+
+        runfiles_root = find_runfiles_root(main_rel_path)
     else:
-        prepend_path_entries = []
+        runfiles_root = find_runfiles_root("")
 
-    runfiles_envkey, runfiles_envvalue = runfiles_envvar(module_space)
+    print_verbose("runfiles root:", runfiles_root)
+
+    runfiles_envkey, runfiles_envvalue = runfiles_envvar(runfiles_root)
     if runfiles_envkey:
         os.environ[runfiles_envkey] = runfiles_envvalue
 
-    main_filename = os.path.join(module_space, main_rel_path)
-    main_filename = get_windows_path_with_unc_prefix(main_filename)
-    assert os.path.exists(main_filename), (
-        "Cannot exec() %r: file not found." % main_filename
-    )
-    assert os.access(main_filename, os.R_OK), (
-        "Cannot exec() %r: file not readable." % main_filename
-    )
+    if MAIN_PATH:
+        # Recreate the "add main's dir to sys.path[0]" behavior to match the
+        # system-python bootstrap / typical Python behavior.
+        #
+        # Without safe path enabled, when `python foo/bar.py` is run, python will
+        # resolve the foo/bar.py symlink to its real path, then add the directory
+        # of that path to sys.path. But, the resolved directory for the symlink
+        # depends on if the file is generated or not.
+        #
+        # When foo/bar.py is a source file, then it's a symlink pointing
+        # back to the client source directory. This means anything from that source
+        # directory becomes importable, i.e. most code is importable.
+        #
+        # When foo/bar.py is a generated file, then it's a symlink pointing to
+        # somewhere under bazel-out/.../bin, i.e. where generated files are. This
+        # means only other generated files are importable (not source files).
+        #
+        # To replicate this behavior, we add main's directory within the runfiles
+        # when safe path isn't enabled.
+        if not getattr(sys.flags, "safe_path", False):
+            prepend_path_entries = [
+                os.path.join(runfiles_root, os.path.dirname(main_rel_path))
+            ]
+        else:
+            prepend_path_entries = []
 
-    sys.stdout.flush()
+        main_filename = os.path.join(runfiles_root, main_rel_path)
+        main_filename = get_windows_path_with_unc_prefix(main_filename)
+        assert os.path.exists(main_filename), (
+            "Cannot exec() %r: file not found." % main_filename
+        )
+        assert os.access(main_filename, os.R_OK), (
+            "Cannot exec() %r: file not readable." % main_filename
+        )
 
-    sys.path[0:0] = prepend_path_entries
+        sys.stdout.flush()
+
+        sys.path[0:0] = prepend_path_entries
+    else:
+        main_filename = None
 
     if os.environ.get("COVERAGE_DIR"):
         import _bazel_site_init
+
         coverage_enabled = _bazel_site_init.COVERAGE_SETUP
     else:
         coverage_enabled = False
 
     with _maybe_collect_coverage(enable=coverage_enabled):
-        # The first arg is this bootstrap, so drop that for the re-invocation.
-        _run_py(main_filename, args=sys.argv[1:])
+        if MAIN_PATH:
+            # The first arg is this bootstrap, so drop that for the re-invocation.
+            _run_py_path(main_filename, args=sys.argv[1:])
+        else:
+            _run_py_module(MAIN_MODULE)
         sys.exit(0)
 
 

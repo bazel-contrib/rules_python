@@ -23,13 +23,6 @@ py_binary(
 )
 
 py_binary(
-    name = "version_3_8",
-    srcs = ["version.py"],
-    main = "version.py",
-    python_version = "3.8",
-)
-
-py_binary(
     name = "version_3_9",
     srcs = ["version.py"],
     main = "version.py",
@@ -54,14 +47,6 @@ py_test(
     name = "my_lib_default_test",
     srcs = ["my_lib_test.py"],
     main = "my_lib_test.py",
-    deps = ["//libs/my_lib"],
-)
-
-py_test(
-    name = "my_lib_3_8_test",
-    srcs = ["my_lib_test.py"],
-    main = "my_lib_test.py",
-    python_version = "3.8",
     deps = ["//libs/my_lib"],
 )
 
@@ -100,14 +85,6 @@ py_test(
     name = "version_default_test",
     srcs = ["version_default_test.py"],
     env = {"VERSION_CHECK": "3.9"},  # The default defined in the WORKSPACE.
-)
-
-py_test(
-    name = "version_3_8_test",
-    srcs = ["version_test.py"],
-    env = {"VERSION_CHECK": "3.8"},
-    main = "version_test.py",
-    python_version = "3.8",
 )
 
 py_test(
@@ -166,16 +143,6 @@ sh_test(
     env = {
         "VERSION_CHECK": "3.9",  # The default defined in the WORKSPACE.
         "VERSION_PY_BINARY": "$(rootpaths :version_default)",
-    },
-)
-
-sh_test(
-    name = "version_test_binary_3_8",
-    srcs = ["version_test.sh"],
-    data = [":version_3_8"],
-    env = {
-        "VERSION_CHECK": "3.8",
-        "VERSION_PY_BINARY": "$(rootpaths :version_3_8)",
     },
 )
 

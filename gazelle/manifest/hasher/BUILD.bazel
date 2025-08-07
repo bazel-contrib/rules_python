@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "hasher_lib",
     srcs = ["main.go"],
-    importpath = "github.com/bazelbuild/rules_python/gazelle/manifest/hasher",
+    importpath = "github.com/bazel-contrib/rules_python/gazelle/manifest/hasher",
     visibility = ["//visibility:private"],
 )
 

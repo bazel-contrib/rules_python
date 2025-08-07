@@ -16,7 +16,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_setting")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
-load("//python:versions.bzl", "print_toolchains_checksums")
+load(":print_toolchain_checksums.bzl", "print_toolchains_checksums")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":sentinel.bzl", "sentinel")
 load(":stamp.bzl", "stamp_build_setting")
@@ -72,7 +72,6 @@ bzl_library(
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//rules:common_settings",
     ],
 )
@@ -87,6 +86,7 @@ bzl_library(
     name = "runtime_env_toolchain_bzl",
     srcs = ["runtime_env_toolchain.bzl"],
     deps = [
+        ":config_settings_bzl",
         ":py_exec_tools_toolchain_bzl",
         ":toolchain_types_bzl",
         "//python:py_runtime_bzl",
@@ -131,7 +131,6 @@ bzl_library(
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:paths",
     ],
 )
@@ -140,7 +139,7 @@ bzl_library(
     name = "config_settings_bzl",
     srcs = ["config_settings.bzl"],
     deps = [
-        ":semver_bzl",
+        ":version_bzl",
         "@bazel_skylib//lib:selects",
         "@bazel_skylib//rules:common_settings",
     ],
@@ -208,6 +207,24 @@ bzl_library(
 )
 
 bzl_library(
+    name = "local_runtime_repo_bzl",
+    srcs = ["local_runtime_repo.bzl"],
+    deps = [
+        ":enum_bzl",
+        ":repo_utils.bzl",
+    ],
+)
+
+bzl_library(
+    name = "local_runtime_toolchains_repo_bzl",
+    srcs = ["local_runtime_toolchains_repo.bzl"],
+    deps = [
+        ":repo_utils.bzl",
+        ":text_util_bzl",
+    ],
+)
+
+bzl_library(
     name = "normalize_name_bzl",
     srcs = ["normalize_name.bzl"],
 )
@@ -225,16 +242,22 @@ bzl_library(
 )
 
 bzl_library(
+    name = "platform_info_bzl",
+    srcs = ["platform_info.bzl"],
+)
+
+bzl_library(
     name = "python_bzl",
     srcs = ["python.bzl"],
     deps = [
         ":full_version_bzl",
+        ":platform_info_bzl",
         ":python_register_toolchains_bzl",
         ":pythons_hub_bzl",
         ":repo_utils_bzl",
-        ":semver_bzl",
         ":toolchains_repo_bzl",
         ":util_bzl",
+        ":version_bzl",
         "@bazel_features//:features",
     ],
 )
@@ -302,7 +325,6 @@ bzl_library(
         ":attributes_bzl",
         ":py_executable_bzl",
         ":rule_builders_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:dicts",
     ],
 )
@@ -361,6 +383,7 @@ bzl_library(
     name = "py_exec_tools_toolchain_bzl",
     srcs = ["py_exec_tools_toolchain.bzl"],
     deps = [
+        ":common_bzl",
         ":py_exec_tools_info_bzl",
         ":sentinel_bzl",
         ":toolchain_types_bzl",
@@ -427,11 +450,13 @@ bzl_library(
         ":attributes_bzl",
         ":common_bzl",
         ":flags_bzl",
+        ":normalize_name_bzl",
         ":precompile_bzl",
         ":py_cc_link_params_info_bzl",
         ":py_internal_bzl",
         ":rule_builders_bzl",
         ":toolchain_types_bzl",
+        ":version_bzl",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//rules:common_settings",
     ],
@@ -536,7 +561,6 @@ bzl_library(
         ":common_bzl",
         ":py_executable_bzl",
         ":rule_builders_bzl",
-        ":semantics_bzl",
         "@bazel_skylib//lib:dicts",
     ],
 )
@@ -595,11 +619,6 @@ bzl_library(
 )
 
 bzl_library(
-    name = "semver_bzl",
-    srcs = ["semver.bzl"],
-)
-
-bzl_library(
     name = "sentinel_bzl",
     srcs = ["sentinel.bzl"],
 )
@@ -643,6 +662,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "version_bzl",
+    srcs = ["version.bzl"],
+)
+
+bzl_library(
     name = "version_label_bzl",
     srcs = ["version_label.bzl"],
 )
@@ -676,11 +700,6 @@ bzl_library(
     ],
 )
 
-bzl_library(
-    name = "semantics_bzl",
-    srcs = ["semantics.bzl"],
-)
-
 # Needed to define bzl_library targets for docgen. (We don't define the
 # bzl_library target here because it'd give our users a transitive dependency
 # on Skylib.)
@@ -690,7 +709,7 @@ exports_files(
         "repack_whl.py",
         "py_package.bzl",
         "py_wheel.bzl",
-        "py_wheel_normalize_pep440.bzl",
+        "version.bzl",
         "reexports.bzl",
         "stamp.bzl",
         "util.bzl",
@@ -804,6 +823,10 @@ current_interpreter_executable(
     # Not actually public. Only public because it's an implicit dependency of
     # py_exec_tools_toolchain.
     visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "empty",
 )
 
 sentinel(

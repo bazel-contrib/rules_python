@@ -10,7 +10,8 @@
 A target to directly run a Python interpreter.
 
 By default, it uses the Python version that toolchain resolution matches
-(typically the one marked `is_default=True` in `MODULE.bazel`).
+(typically the one set with `python.defaults(python_version = ...)` in
+`MODULE.bazel`).
 
 This runs a Python interpreter in a similar manner as when running `python3`
 on the command line. It can be invoked using `bazel run`. Remember that in
@@ -30,7 +31,7 @@ bazel run @rules_python//python/bin:python \
 The {flag}`--python_src` flag for using the intepreter a binary/test uses.
 ::::
 
-::::{versionadded} VERSION_NEXT_FEATURE
+::::{versionadded} 1.3.0
 ::::
 :::
 
