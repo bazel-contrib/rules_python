@@ -166,7 +166,7 @@ def _local_runtime_repo_impl(rctx):
         minor = info["minor"],
         micro = info["micro"],
         interpreter_path = _norm_path(interpreter_path),
-        interface_library = _norm_path(interface_library),
+        interface_library = interface_library,
         implementation_name = info["implementation_name"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
     )
@@ -232,15 +232,10 @@ How to handle errors when trying to automatically determine settings.
 )
 
 def _expand_incompatible_template():
-    if repo_utils.get_platforms_os_name == "windows":
-        missing = "incompatible-missing.lib"
-    else:
-        missing = "incompatible-missing.so"
-
     return _TOOLCHAIN_IMPL_TEMPLATE.format(
         interpreter_path = "/incompatible",
         implementation_name = "incompatible",
-        interface_library = missing,
+        interface_library = "",
         major = "0",
         minor = "0",
         micro = "0",
