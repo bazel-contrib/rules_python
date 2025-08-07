@@ -77,8 +77,7 @@ def _search_library_names(get_config):
     # on the system - some systems like version suffix, others don't.""
     #
     # A typical INSTSONAME is 'libpython3.8.so.1.0' on Linux, or
-    # 'Python.framework/Versions/3.9/Python' on MacOS. Due to the possible
-    # version suffix we have to find the suffix within the filename.
+    # 'Python.framework/Versions/3.9/Python' on MacOS.
     #
     # A typical LDLIBRARY is 'libpythonX.Y.so' on Linux, or 'pythonXY.dll' on
     # Windows.
