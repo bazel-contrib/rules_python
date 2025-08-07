@@ -99,7 +99,7 @@ pypi/index
 Toolchains <toolchains>
 coverage
 precompiling
-gazelle
+gazelle/docs/index
 REPL <repl>
 Extending <extending>
 Contributing <contributing>

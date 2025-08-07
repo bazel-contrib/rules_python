@@ -56,7 +56,7 @@ END_UNRELEASED_TEMPLATE
 ### Changed
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
-  `# gazelle:experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
+  `# gazelle:python_experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
@@ -91,9 +91,24 @@ END_UNRELEASED_TEMPLATE
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 * (toolchains) `local_runtime_repo` works with multiarch Debian with Python 3.8
   ([#3099](https://github.com/bazel-contrib/rules_python/issues/3099)).
+* (pypi) Expose pypi packages only common to all Python versions in `all_requirements`
+  ([#2921](https://github.com/bazel-contrib/rules_python/issues/2921)).
+* (repl) Normalize the path for the `REPL` stub to make it possible to use the
+  default stub template from outside `rules_python` ({gh-issue}`3101`).
+* (gazelle) Fixes gazelle adding sibling module dependencies to resolve
+  absolute imports (Python 2's behavior without `absolute_import`). Previous
+  behavior can be restored using the directive
+  `# gazelle:python_resolve_sibling_imports true`
+* (pypi) Show overridden index URL of packages when downloading metadata have failed.
+  ([#2985](https://github.com/bazel-contrib/rules_python/issues/2985)).
+* (toolchains) use "command -v" to find interpreter in `$PATH`
+  ([#3150](https://github.com/bazel-contrib/rules_python/pull/3150)).
 
 {#v0-0-0-added}
 ### Added
+* (repl) Default stub now has tab completion, where `readline` support is available,
+  see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
+  ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
   this feature. You can also configure custom `config_settings` using `pip.default`.
@@ -116,6 +131,8 @@ END_UNRELEASED_TEMPLATE
   dep is not added to the {obj}`py_test` target.
 * (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
   Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
+* (gazelle) New directive `gazelle:python_proto_naming_convention`; controls
+  naming of `py_proto_library` rules.
 
 {#v0-0-0-removed}
 ### Removed

@@ -87,6 +87,11 @@ def _test_fail(env):
                 output = "",
                 success = False,
             )
+        if "bar" in url:
+            return struct(
+                output = "",
+                success = False,
+            )
         else:
             return struct(
                 output = "data from {}".format(url),
@@ -99,7 +104,9 @@ def _test_fail(env):
             report_progress = lambda _: None,
         ),
         attr = struct(
-            index_url_overrides = {},
+            index_url_overrides = {
+                "foo": "invalid",
+            },
             index_url = "main",
             extra_index_urls = ["extra"],
             sources = ["foo", "bar", "baz"],
@@ -112,16 +119,25 @@ def _test_fail(env):
     )
 
     env.expect.that_collection(fails).contains_exactly([
-        """\
-Failed to download metadata for ["foo"] for from urls: ["main", "extra"].
-If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=["foo"]' to your 'pip.parse' call.\
+        """
+Failed to download metadata of the following packages from urls:
+{
+    "foo": "invalid",
+    "bar": ["main", "extra"],
+}
+
+If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=[
+    "foo",
+    "bar",
+]' to your 'pip.parse' call.
 """,
     ])
     env.expect.that_collection(calls).contains_exactly([
-        "extra/foo/",
+        "invalid/foo/",
         "main/bar/",
         "main/baz/",
-        "main/foo/",
+        "invalid/foo/",
+        "extra/bar/",
     ])
 
 _tests.append(_test_fail)

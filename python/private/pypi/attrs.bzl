@@ -159,6 +159,13 @@ Extra aliases to make for specific wheels in the hub repo. This is useful when
 paired with the {attr}`whl_modifications`.
 
 :::{versionadded} 0.38.0
+
+For `pip.parse` with bzlmod
+:::
+
+:::{versionadded} 1.0.0
+
+For `pip_parse` with workspace.
 :::
 """,
         mandatory = False,

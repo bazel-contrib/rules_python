@@ -1,2 +1,2 @@
 # gazelle:python_generation_mode package
-# gazelle:experimental_allow_relative_imports true
+# gazelle:python_experimental_allow_relative_imports true
