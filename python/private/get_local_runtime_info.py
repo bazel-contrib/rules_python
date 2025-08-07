@@ -94,32 +94,32 @@ def _search_library_names(get_config):
         )
     ]
 
-    if _IS_WINDOWS:
-        so_prefix = ""
-    else:
-        so_prefix = "lib"
-
-    # Get/override the SHLIB_SUFFIX, which is typically ".so" on Linux and
-    # ".dylib" on macOS.
-    so_suffix = get_config("SHLIB_SUFFIX")
+    # Set the prefix and suffix to construct the library name used for linking.
     if _IS_DARWIN:
         # SHLIB_SUFFIX may be ".so"; always override on darwin to be ".dynlib"
-        so_suffix = ".dylib"
+        suffix = ".dylib"
+        prefix = "lib"
     elif _IS_WINDOWS:
-        # While the suffix is ".dll", the compiler needs to link with the ".lib" file.
-        so_suffix = ".lib"
-    elif not so_suffix:
-        so_suffix = ".so"
+        # SHLIB_SUFFIX on windows is ".dll"; however the compiler needs to
+        # link with the ".lib".
+        suffix = ".lib"
+        prefix = ""
+    else:
+        suffix = get_config("SHLIB_SUFFIX")
+        prefix = "lib"
+        if not suffix:
+            suffix = ".so"
 
     version = get_config("VERSION")
-    abiflags = get_config("ABIFLAGS") or get_config("abiflags") or ""
-
     # On Windows, extensions should link with the pythonXY.lib files.
     # See: https://docs.python.org/3/extending/windows.html
     # So ensure that the pythonXY.lib files are included in the search.
+    lib_names.append(f"{prefix}python{version}{suffix}")
+
+    # If there are ABIFLAGS, also add them to the python version lib search.
+    abiflags = get_config("ABIFLAGS") or get_config("abiflags") or ""
     if abiflags:
-        lib_names.append(f"{so_prefix}python{version}{abiflags}{so_suffix}")
-    lib_names.append(f"{so_prefix}python{version}{so_suffix}")
+        lib_names.append(f"{prefix}python{version}{abiflags}{suffix}")
 
     # Dedup and remove empty values, keeping the order.
     lib_names = [v for v in lib_names if v]
