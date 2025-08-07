@@ -103,6 +103,7 @@ END_UNRELEASED_TEMPLATE
   ([#2985](https://github.com/bazel-contrib/rules_python/issues/2985)).
 * (toolchains) use "command -v" to find interpreter in `$PATH`
   ([#3150](https://github.com/bazel-contrib/rules_python/pull/3150)).
+* (pypi) `bazel vendor` now works in `bzlmod` ({gh-issue}`3079`).
 
 {#v0-0-0-added}
 ### Added
