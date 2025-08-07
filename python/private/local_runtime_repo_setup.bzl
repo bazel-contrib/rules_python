@@ -61,9 +61,9 @@ def define_local_runtime_toolchain_impl(
     major_minor_micro = "{}.{}".format(major_minor, micro)
 
     # To build Python C/C++ extension on Windows, we need to link to python import library pythonXY.lib
-    # See https://docs.python.org/3/extending/windows.html 
-    # However not all python installations include shared or static libraries to link with (manylinux)
-    # So only create the import library when interface_library is present.
+    # See https://docs.python.org/3/extending/windows.html
+    # However not all python installations (such as manylinux) include shared or static libraries,
+    # so only create the import library when interface_library is set.
     _libpython_deps = []
     if interface_library:
         cc_import(
