@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-
 def main():
     print(42)
 
