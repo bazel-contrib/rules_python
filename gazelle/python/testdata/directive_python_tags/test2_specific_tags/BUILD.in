@@ -1,0 +1,4 @@
+# Test specific target type tags
+# gazelle:python_library_tags reusable,shared
+# gazelle:python_binary_tags deploy,production  
+# gazelle:python_test_tags unit,fast

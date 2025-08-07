@@ -1,0 +1,4 @@
+# Test edge cases: multiple directives, empty values, whitespace handling
+# gazelle:python_tags manual, spaced
+# gazelle:python_library_tags
+# gazelle:python_test_tags unit, fast,reliable

@@ -1,0 +1,40 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# Test edge cases: multiple directives, empty values, whitespace handling
+# gazelle:python_tags manual, spaced
+# gazelle:python_library_tags
+# gazelle:python_test_tags unit, fast,reliable
+
+py_library(
+    name = "test6_edge_cases",
+    srcs = ["__init__.py"],
+    tags = [
+        "manual",
+        "spaced",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "test6_edge_cases_bin",
+    srcs = ["__main__.py"],
+    main = "__main__.py",
+    tags = [
+        "manual",
+        "spaced",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test6_edge_cases_test",
+    srcs = ["__test__.py"],
+    main = "__test__.py",
+    tags = [
+        "fast",
+        "manual",
+        "reliable",
+        "spaced",
+        "unit",
+    ],
+)

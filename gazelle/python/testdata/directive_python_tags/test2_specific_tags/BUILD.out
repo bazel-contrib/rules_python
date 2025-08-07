@@ -1,0 +1,37 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# Test specific target type tags
+# gazelle:python_library_tags reusable,shared
+# gazelle:python_binary_tags deploy,production
+# gazelle:python_test_tags unit,fast
+
+py_library(
+    name = "test2_specific_tags",
+    srcs = ["__init__.py"],
+    tags = [
+        "reusable",
+        "shared",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "test2_specific_tags_bin",
+    srcs = ["__main__.py"],
+    main = "__main__.py",
+    tags = [
+        "deploy",
+        "production",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test2_specific_tags_test",
+    srcs = ["__test__.py"],
+    main = "__test__.py",
+    tags = [
+        "fast",
+        "unit",
+    ],
+)

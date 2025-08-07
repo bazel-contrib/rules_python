@@ -16,6 +16,7 @@ package python
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -37,6 +38,7 @@ type targetBuilder struct {
 	main                  *string
 	imports               []string
 	testonly              bool
+	tags                  *treeset.Set
 	annotations           *annotations
 	resolveSiblingImports bool
 }
@@ -53,6 +55,7 @@ func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingS
 		deps:                  treeset.NewWith(moduleComparator),
 		resolvedDeps:          treeset.NewWith(godsutils.StringComparator),
 		visibility:            treeset.NewWith(godsutils.StringComparator),
+		tags:                  treeset.NewWith(godsutils.StringComparator),
 		annotations:           new(annotations),
 		resolveSiblingImports: resolveSiblingImports,
 	}
@@ -122,6 +125,16 @@ func (t *targetBuilder) addVisibility(visibility []string) *targetBuilder {
 	return t
 }
 
+// addTags adds tags to the target.
+func (t *targetBuilder) addTags(tags []string) *targetBuilder {
+	for _, tag := range tags {
+		if strings.TrimSpace(tag) != "" {
+			t.tags.Add(strings.TrimSpace(tag))
+		}
+	}
+	return t
+}
+
 // setMain sets the main file to the target.
 func (t *targetBuilder) setMain(main string) *targetBuilder {
 	t.main = &main
@@ -167,6 +180,9 @@ func (t *targetBuilder) build() *rule.Rule {
 	}
 	if !t.visibility.Empty() {
 		r.SetAttr("visibility", t.visibility.Values())
+	}
+	if !t.tags.Empty() {
+		r.SetAttr("tags", t.tags.Values())
 	}
 	if t.main != nil {
 		r.SetAttr("main", *t.main)

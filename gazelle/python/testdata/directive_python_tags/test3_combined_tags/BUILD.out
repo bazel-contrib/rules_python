@@ -1,0 +1,41 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# Test combining general and specific tags
+# gazelle:python_tags manual,integration
+# gazelle:python_library_tags reusable
+# gazelle:python_binary_tags production
+# gazelle:python_test_tags fast
+
+py_library(
+    name = "test3_combined_tags",
+    srcs = ["__init__.py"],
+    tags = [
+        "integration",
+        "manual",
+        "reusable",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "test3_combined_tags_bin",
+    srcs = ["__main__.py"],
+    main = "__main__.py",
+    tags = [
+        "integration",
+        "manual",
+        "production",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test3_combined_tags_test",
+    srcs = ["__test__.py"],
+    main = "__test__.py",
+    tags = [
+        "fast",
+        "integration",
+        "manual",
+    ],
+)

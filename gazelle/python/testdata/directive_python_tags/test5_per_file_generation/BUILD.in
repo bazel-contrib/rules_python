@@ -1,0 +1,5 @@
+# Test per-file generation with different tag directives
+# gazelle:resolve py lib1 lib1_test
+# gazelle:python_generation_mode file
+# gazelle:python_tags manual,integration
+# gazelle:python_library_tags shared
