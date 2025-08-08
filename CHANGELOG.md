@@ -70,7 +70,10 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
-* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
+* (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
+* (gazelle:docs) The Gazelle docs have been migrated from {gh-path}`gazelle/README.md` to
+  {gh-path}`gazelle/docs` and are now available on the primary documentation site
+  at https://rules-python.readthedocs.io/gazelle/docs/index.html.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -108,8 +111,8 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-added}
 ### Added
 * (repl) Default stub now has tab completion, where `readline` support is available,
-  see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
-  ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
+  see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
+  ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
   this feature. You can also configure custom `config_settings` using `pip.default`.
