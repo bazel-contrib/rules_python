@@ -46,8 +46,8 @@ def _search_directories(get_config):
     # https://git.launchpad.net/ubuntu/+source/python3.12/tree/debian/changelog#n842
     multiarch = get_config("MULTIARCH")
     if multiarch:
-        for x in ["LIBPL", "LIBDIR"]:
-            config_value = get_config(x)
+        for config_var_name in ["LIBPL", "LIBDIR"]:
+            config_value = get_config(config_var_name)
             if config_value and not config_value.endswith(multiarch):
                 lib_dirs.append(os.path.join(config_value, multiarch))
 
@@ -156,7 +156,8 @@ def _get_python_library_info():
 
     # When no libraries are found it's likely that the python interpreter is not
     # configured to use shared or static libraries (minilinux).  If this seems
-    # suspicious try running `uv tool run find_libpython --list-all -v`
+    # suspicious try running `uv tool run find_libpython --list-all -v` or
+    # `python-config --libs`.
     return {
         "dynamic_libraries": list(dynamic_libraries.keys()),
         "static_libraries": list(static_libraries.keys()),
