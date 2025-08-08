@@ -45,4 +45,5 @@ the `update` command (the default) does anything for Python code.
 installation_and_usage
 directives
 annotations
+development
 ```

@@ -101,6 +101,9 @@ END_UNRELEASED_TEMPLATE
   `# gazelle:python_resolve_sibling_imports true`
 * (pypi) Show overridden index URL of packages when downloading metadata have failed.
   ([#2985](https://github.com/bazel-contrib/rules_python/issues/2985)).
+* (toolchains) use "command -v" to find interpreter in `$PATH`
+  ([#3150](https://github.com/bazel-contrib/rules_python/pull/3150)).
+* (pypi) `bazel vendor` now works in `bzlmod` ({gh-issue}`3079`).
 * (toolchains) `local_runtime_repo` Improvements in handling variations across python installations
   for Linux, Windows and Mac. See ([#3148](https://github.com/bazel-contrib/rules_python/pull/3148)).
 * (toolchains) `local_runtime_repo` now works on Windows

@@ -109,7 +109,11 @@ def _get_toolchain_unix_cflags(rctx, python_interpreter, logger = None):
     stdout = pypi_repo_utils.execute_checked_stdout(
         rctx,
         op = "GetPythonVersionForUnixCflags",
-        python = python_interpreter,
+        # python_interpreter by default points to a symlink, however when using bazel in vendor mode,
+        # and the vendored directory moves around, the execution of python fails, as it's getting confused
+        # where it's running from. More to the fact that we are executing it in isolated mode "-I", which
+        # results in PYTHONHOME being ignored. The solution is to run python from it's real directory.
+        python = python_interpreter.realpath,
         arguments = [
             # Run the interpreter in isolated mode, this options implies -E, -P and -s.
             # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
@@ -198,6 +202,37 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
 
     return args
 
+def _get_python_home(rctx, python_interpreter, logger = None):
+    """Get the PYTHONHOME directory from the selected python interpretter
+
+    Args:
+        rctx (repository_ctx): The repository context.
+        python_interpreter (path): The resolved python interpreter.
+        logger: Optional logger to use for operations.
+    Returns:
+        String of PYTHONHOME directory.
+    """
+
+    return pypi_repo_utils.execute_checked_stdout(
+        rctx,
+        op = "GetPythonHome",
+        # python_interpreter by default points to a symlink, however when using bazel in vendor mode,
+        # and the vendored directory moves around, the execution of python fails, as it's getting confused
+        # where it's running from. More to the fact that we are executing it in isolated mode "-I", which
+        # results in PYTHONHOME being ignored. The solution is to run python from it's real directory.
+        python = python_interpreter.realpath,
+        arguments = [
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
+            "-c",
+            "import sys; print(f'{sys.prefix}', end='')",
+        ],
+        srcs = [],
+        logger = logger,
+    )
+
 def _create_repository_execution_environment(rctx, python_interpreter, logger = None):
     """Create a environment dictionary for processes we spawn with rctx.execute.
 
@@ -210,6 +245,7 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
     """
 
     env = {
+        "PYTHONHOME": _get_python_home(rctx, python_interpreter, logger),
         "PYTHONPATH": pypi_repo_utils.construct_pythonpath(
             rctx,
             entries = rctx.attr._python_path_entries,
