@@ -60,17 +60,27 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
-* (toolchain) Updated the following toolchains to build 20250708 to patch CVE-2025-47273:
+* (toolchain) Updated the following toolchains to build [20250723] to patch CVE-2025-47273:
     * 3.9.23
     * 3.10.18
     * 3.11.13
     * 3.12.11
-    * 3.14.0b4
+    * 3.14.0rc1
 * (toolchain) Python 3.13 now references 3.13.5
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
-* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
+* (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
+* If using the (deprecated) autodetecting/runtime_env toolchain, then the Python
+  version specified at build-time *must* match the Python version used at
+  runtime (the {obj}`--@rules_python//python/config_settings:python_version`
+  flag and the {attr}`python_version` attribute control the build-time version
+  for a target). If they don't match, dependencies won't be importable. (Such a
+  misconfiguration was unlikely to work to begin with; this is called out as an
+  FYI).
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows.
+
+[20250723]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250723
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -124,7 +134,7 @@ END_UNRELEASED_TEMPLATE
     * 3.11.13
     * 3.12.11
     * 3.13.5
-    * 3.14.0b4
+    * 3.14.0rc1
 * (gazelle): New annotation `gazelle:include_pytest_conftest`. When not set (the
   default) or `true`, gazelle will inject any `conftest.py` file found in the same
   directory as a {obj}`py_test` target to that {obj}`py_test` target's `deps`.
