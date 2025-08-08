@@ -73,7 +73,7 @@ END_UNRELEASED_TEMPLATE
 * (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
 * (gazelle:docs) The Gazelle docs have been migrated from {gh-path}`gazelle/README.md` to
   {gh-path}`gazelle/docs` and are now available on the primary documentation site
-  at https://rules-python.readthedocs.io/gazelle/docs/index.html.
+  at https://rules-python.readthedocs.io/en/latest/gazelle/docs/index.html
 
 {#v0-0-0-fixed}
 ### Fixed
