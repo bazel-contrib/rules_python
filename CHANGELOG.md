@@ -103,6 +103,12 @@ END_UNRELEASED_TEMPLATE
   ([#2985](https://github.com/bazel-contrib/rules_python/issues/2985)).
 * (toolchains) `local_runtime_repo` Improvements in handling variations across python installations
   for Linux, Windows and Mac. See ([#3148](https://github.com/bazel-contrib/rules_python/pull/3148)).
+* (toolchains) `local_runtime_repo` now works on Windows
+  ([#3055](https://github.com/bazel-contrib/rules_python/issues/3055)).
+* (toolchains) `local_runtime_repo` supports more types of Python
+  installations (Mac frameworks, missing dynamic libraries, and other
+  esoteric cases, see
+  [#3148](https://github.com/bazel-contrib/rules_python/pull/3148) for details).
 
 {#v0-0-0-added}
 ### Added
