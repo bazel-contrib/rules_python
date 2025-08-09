@@ -239,6 +239,7 @@ def define_hermetic_runtime_toolchain_impl(
     py_cc_toolchain(
         name = "py_cc_toolchain",
         headers = ":python_headers",
+        # TODO #3155: add libctl, libtk
         libs = ":libpython",
         python_version = python_version,
     )
