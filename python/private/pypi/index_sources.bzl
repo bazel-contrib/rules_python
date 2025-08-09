@@ -93,12 +93,12 @@ def index_sources(line):
                 is_known_ext = True
                 break
 
-        if is_known_ext:
+        requirement = requirement_line
+        if filename.endswith(".whl"):
             requirement = maybe_requirement.strip()
-        else:
+        elif not is_known_ext:
             # could not detect filename from the URL
             filename = ""
-            requirement = requirement_line
 
     return struct(
         requirement = requirement,

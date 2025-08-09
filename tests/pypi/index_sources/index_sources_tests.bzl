@@ -73,7 +73,10 @@ def _test_no_simple_api_sources(env):
             filename = "package.whl",
         ),
         "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f": struct(
-            requirement = "foo[extra]",
+            # NOTE @aignas 2025-08-03: we need to ensure that sdists continue working
+            # when we are using pip to install them even if the experimental_index_url
+            # code path is used.
+            requirement = "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f",
             requirement_line = "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f",
             marker = "",
             url = "https://example.org/foo-1.0.tar.gz",
