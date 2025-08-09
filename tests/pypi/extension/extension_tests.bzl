@@ -16,7 +16,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
-load("//python/private/pypi:extension.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 
@@ -92,22 +92,40 @@ def _parse_modules(env, enable_pipstar = 0, **kwargs):
         ),
     )
 
+def _build_config(env, enable_pipstar = 0, **kwargs):
+    return env.expect.that_struct(
+        build_config(
+            enable_pipstar = enable_pipstar,
+            **kwargs
+        ),
+        attrs = dict(
+            auth_patterns = subjects.dict,
+            enable_pipstar = subjects.bool,
+            netrc = subjects.str,
+            platforms = subjects.dict,
+        ),
+    )
+
 def _default(
         arch_name = None,
+        auth_patterns = None,
         config_settings = None,
+        env = None,
+        netrc = None,
         os_name = None,
         platform = None,
-        env = None,
         whl_limit = None,
         whl_platforms = None):
     return struct(
         arch_name = arch_name,
-        os_name = os_name,
-        platform = platform,
+        auth_patterns = auth_patterns or {},
         config_settings = config_settings,
         env = env or {},
-        whl_platforms = whl_platforms,
+        netrc = netrc,
+        os_name = os_name,
+        platform = platform,
         whl_limit = whl_limit,
+        whl_platforms = whl_platforms,
     )
 
 def _parse(
@@ -1205,6 +1223,50 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_pipstar_platforms)
+
+def _test_build_pipstar_platform(env):
+    config = _build_config(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                default = [
+                    _default(
+                        platform = "myplat",
+                        os_name = "linux",
+                        arch_name = "x86_64",
+                        config_settings = [
+                            "@platforms//os:linux",
+                            "@platforms//cpu:x86_64",
+                        ],
+                    ),
+                    _default(),
+                    _default(
+                        netrc = "my_netrc",
+                        auth_patterns = {"foo": "bar"},
+                    ),
+                ],
+            ),
+        ),
+        enable_pipstar = True,
+    )
+    config.auth_patterns().contains_exactly({"foo": "bar"})
+    config.netrc().equals("my_netrc")
+    config.enable_pipstar().equals(True)
+    config.platforms().contains_exactly({
+        "myplat": struct(
+            name = "myplat",
+            os_name = "linux",
+            arch_name = "x86_64",
+            config_settings = [
+                "@platforms//os:linux",
+                "@platforms//cpu:x86_64",
+            ],
+            env = {},
+        ),
+    })
+
+_tests.append(_test_build_pipstar_platform)
 
 def extension_test_suite(name):
     """Create the test suite.

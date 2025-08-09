@@ -288,8 +288,8 @@ def _create_whl_repos(
                 src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
-                netrc = pip_attr.netrc,
-                auth_patterns = pip_attr.auth_patterns,
+                netrc = config.netrc or pip_attr.netrc,
+                auth_patterns = config.auth_patterns or pip_attr.auth_patterns,
                 python_version = major_minor,
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = config.enable_pipstar,
@@ -376,10 +376,10 @@ def _whl_repo(*, src, whl_library_args, is_multiple_versions, download_only, net
         ),
     )
 
-def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False):
+def _configure(config, *, platform, os_name, arch_name, config_settings, env = {}, override = False, **kwargs):
     """Set the value in the config if the value is provided"""
     config.setdefault("platforms", {})
-    if platform:
+    if platform and (os_name or arch_name or config_settings or env):
         if not override and config.get("platforms", {}).get(platform):
             return
 
@@ -387,15 +387,86 @@ def _configure(config, *, platform, os_name, arch_name, config_settings, env = {
             if key not in _SUPPORTED_PEP508_KEYS:
                 fail("Unsupported key in the PEP508 environment: {}".format(key))
 
-        config["platforms"][platform] = struct(
-            name = platform.replace("-", "_").lower(),
-            os_name = os_name,
-            arch_name = arch_name,
-            config_settings = config_settings,
-            env = env,
-        )
-    else:
+        config["platforms"].setdefault(platform, {})
+        for key, value in {
+            "arch_name": arch_name,
+            "config_settings": config_settings,
+            "env": env,
+            "name": platform.replace("-", "_").lower(),
+            "os_name": os_name,
+        }.items():
+            if not value:
+                continue
+
+            if not override and config.get(key):
+                continue
+
+            config["platforms"][platform][key] = value
+    elif platform and override:
         config["platforms"].pop(platform)
+
+    for key, value in kwargs.items():
+        if value and (override or key not in config):
+            config[key] = value
+
+def _plat(*, name, arch_name, os_name, config_settings = [], env = {}):
+    return struct(
+        name = name,
+        arch_name = arch_name,
+        os_name = os_name,
+        config_settings = config_settings,
+        env = env,
+    )
+
+def build_config(
+        *,
+        module_ctx,
+        enable_pipstar):
+    """Parse 'configure' and 'default' extension tags
+
+    Args:
+        module_ctx: {type}`module_ctx` module context.
+        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
+            evaluation of the extension.
+
+    Returns:
+        A struct with the configuration.
+    """
+    defaults = {
+        "platforms": {},
+    }
+    for mod in module_ctx.modules:
+        if not (mod.is_root or mod.name == "rules_python"):
+            continue
+
+        for tag in mod.tags.default:
+            _configure(
+                defaults,
+                arch_name = tag.arch_name,
+                config_settings = tag.config_settings,
+                env = tag.env,
+                os_name = tag.os_name,
+                platform = tag.platform,
+                override = mod.is_root,
+                # extra values that we just add
+                auth_patterns = tag.auth_patterns,
+                netrc = tag.netrc,
+                # TODO @aignas 2025-05-19: add more attr groups:
+                # * for index/downloader config. This includes all of those attributes for
+                # overrides, etc. Index overrides per platform could be also used here.
+                # * for whl selection - selecting preferences of which `platform_tag`s we should use
+                # for what. We could also model the `cp313t` freethreaded as separate platforms.
+            )
+
+    return struct(
+        auth_patterns = defaults.get("auth_patterns", {}),
+        netrc = defaults.get("netrc", None),
+        platforms = {
+            name: _plat(**values)
+            for name, values in defaults["platforms"].items()
+        },
+        enable_pipstar = enable_pipstar,
+    )
 
 def parse_modules(
         module_ctx,
@@ -447,33 +518,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    defaults = {
-        "enable_pipstar": enable_pipstar,
-        "platforms": {},
-    }
-    for mod in module_ctx.modules:
-        if not (mod.is_root or mod.name == "rules_python"):
-            continue
-
-        for tag in mod.tags.default:
-            _configure(
-                defaults,
-                arch_name = tag.arch_name,
-                config_settings = tag.config_settings,
-                env = tag.env,
-                os_name = tag.os_name,
-                platform = tag.platform,
-                override = mod.is_root,
-                # TODO @aignas 2025-05-19: add more attr groups:
-                # * for AUTH - the default `netrc` usage could be configured through a common
-                # attribute.
-                # * for index/downloader config. This includes all of those attributes for
-                # overrides, etc. Index overrides per platform could be also used here.
-                # * for whl selection - selecting preferences of which `platform_tag`s we should use
-                # for what. We could also model the `cp313t` freethreaded as separate platforms.
-            )
-
-    config = struct(**defaults)
+    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -658,6 +703,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             k: dict(sorted(args.items()))
             for k, args in sorted(whl_libraries.items())
         },
+        config = config,
     )
 
 def _pip_impl(module_ctx):
@@ -817,7 +863,7 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing
-}
+} | AUTH_ATTRS
 
 _SUPPORTED_PEP508_KEYS = [
     "implementation_name",
