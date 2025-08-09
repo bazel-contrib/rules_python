@@ -14,7 +14,7 @@
 
 "A small function to create an alias for a whl distribution"
 
-def whl_config_setting(*, version = None, config_setting = None, filename = None, target_platforms = None):
+def whl_config_setting(*, version = None, target_platforms = None):
     """The bzl_packages value used by by the render_pkg_aliases function.
 
     This contains the minimum amount of information required to generate correct
@@ -25,15 +25,17 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
             whl alias is for. If not set, then non-version aware aliases will be
             constructed. This is mainly used for better error messages when there
             is no match found during a select.
-        config_setting: {type}`str | Label | None` the config setting that we should use. Defaults
-            to "//_config:is_python_{version}".
-        filename: {type}`str | None` the distribution filename to derive the config_setting.
         target_platforms: {type}`list[str] | None` the list of target_platforms for this
             distribution.
 
     Returns:
         a struct with the validated and parsed values.
     """
+
+    # FIXME @aignas 2025-07-26: There is still a potential that there will be ambigous match
+    # if the user is trying to have different packages for 3.X.Y and 3.X.Z versions of python
+    # in the same hub repository. Consider just removing this processing as I am not sure it
+    # has much value.
     if target_platforms:
         target_platforms_input = target_platforms
         target_platforms = []
@@ -50,8 +52,6 @@ def whl_config_setting(*, version = None, config_setting = None, filename = None
             target_platforms.append("{}_{}".format(abi, tail))
 
     return struct(
-        config_setting = config_setting,
-        filename = filename,
         # Make the struct hashable
         target_platforms = tuple(target_platforms) if target_platforms else None,
         version = version,
