@@ -31,27 +31,69 @@ load("@rules_python//python/private:local_runtime_repo_setup.bzl", "define_local
 
 define_local_runtime_toolchain_impl(
     name = "local_runtime",
-    lib_ext = "{lib_ext}",
     major = "{major}",
     minor = "{minor}",
     micro = "{micro}",
     interpreter_path = "{interpreter_path}",
+    interface_library = "{interface_library}",
     implementation_name = "{implementation_name}",
     os = "{os}",
 )
 """
 
+def _norm_path(path):
+    """Returns a path using '/' separators and no trailing slash."""
+    path = path.replace("\\", "/")
+    if path[-1] == "/":
+        path = path[:-1]
+    return path
+
+def _symlink_libs(rctx, logger, library_targets):
+    """Symlinks the shared libraries into the lib/ directory.
+
+    Args:
+        rctx: A repository_ctx object
+        logger: A repo_utils.logger object
+        library_targets: A list of library targets to potentially symlink.
+    Returns:
+        A library target suitable for a cc_import rule.
+
+    The specific files are symlinked instead of the whole directory because
+    shared_lib_dirs contains multiple search paths for the shared libraries,
+    and the python files may be missing from any of those directories, and
+    any of those directories may include non-python runtime libraries,
+    as would be the case if LIBDIR were, for example, /usr/lib.
+    """
+    found = ""
+    for target in library_targets:
+        origin = rctx.path(target)
+        if not origin.exists:
+            # The reported names don't always exist; it depends on the particulars
+            # of the runtime installation.
+            continue
+        found = "lib/{}".format(origin.basename)
+        logger.debug("Symlinking {} to {}".format(origin, found))
+        repo_utils.watch(rctx, origin)
+        rctx.symlink(origin, found)
+        break
+
+    return found
+
 def _local_runtime_repo_impl(rctx):
     logger = repo_utils.logger(rctx)
     on_failure = rctx.attr.on_failure
 
+    def _emit_log(msg):
+        if on_failure == "fail":
+            logger.fail(msg)
+        elif on_failure == "warn":
+            logger.warn(msg)
+        else:
+            logger.debug(msg)
+
     result = _resolve_interpreter_path(rctx)
     if not result.resolved_path:
-        if on_failure == "fail":
-            fail("interpreter not found: {}".format(result.describe_failure()))
-
-        if on_failure == "warn":
-            logger.warn(lambda: "interpreter not found: {}".format(result.describe_failure()))
+        _emit_log(lambda: "interpreter not found: {}".format(result.describe_failure()))
 
         # else, on_failure must be skip
         rctx.file("BUILD.bazel", _expand_incompatible_template())
@@ -72,10 +114,7 @@ def _local_runtime_repo_impl(rctx):
         logger = logger,
     )
     if exec_result.return_code != 0:
-        if on_failure == "fail":
-            fail("GetPythonInfo failed: {}".format(exec_result.describe_failure()))
-        if on_failure == "warn":
-            logger.warn(lambda: "GetPythonInfo failed: {}".format(exec_result.describe_failure()))
+        _emit_log(lambda: "GetPythonInfo failed: {}".format(exec_result.describe_failure()))
 
         # else, on_failure must be skip
         rctx.file("BUILD.bazel", _expand_incompatible_template())
@@ -114,51 +153,29 @@ def _local_runtime_repo_impl(rctx):
     # appear as part of this repo.
     rctx.symlink(info["include"], "include")
 
-    shared_lib_names = [
-        info["PY3LIBRARY"],
-        info["LDLIBRARY"],
-        info["INSTSONAME"],
-    ]
+    if repo_utils.get_platforms_os_name == "windows":
+        library_targets = info["static_libraries"]
+    else:
+        library_targets = info["dynamic_libraries"]
 
-    # In some cases, the value may be empty. Not clear why.
-    shared_lib_names = [v for v in shared_lib_names if v]
-
-    # In some cases, the same value is returned for multiple keys. Not clear why.
-    shared_lib_names = {v: None for v in shared_lib_names}.keys()
-    shared_lib_dir = info["LIBDIR"]
-    multiarch = info["MULTIARCH"]
-
-    # The specific files are symlinked instead of the whole directory
-    # because it can point to a directory that has more than just
-    # the Python runtime shared libraries, e.g. /usr/lib, or a Python
-    # specific directory with pip-installed shared libraries.
     rctx.report_progress("Symlinking external Python shared libraries")
-    for name in shared_lib_names:
-        origin = rctx.path("{}/{}".format(shared_lib_dir, name))
+    interface_library = _symlink_libs(rctx, logger, library_targets)
 
-        # If the origin doesn't exist, try the multiarch location, in case
-        # it's an older Python / Debian release.
-        if not origin.exists and multiarch:
-            origin = rctx.path("{}/{}/{}".format(shared_lib_dir, multiarch, name))
-
-        # The reported names don't always exist; it depends on the particulars
-        # of the runtime installation.
-        if origin.exists:
-            repo_utils.watch(rctx, origin)
-            rctx.symlink(origin, "lib/" + name)
+    build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
+        major = info["major"],
+        minor = info["minor"],
+        micro = info["micro"],
+        interpreter_path = _norm_path(interpreter_path),
+        interface_library = interface_library,
+        implementation_name = info["implementation_name"],
+        os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
+    )
+    logger.debug("BUILD.bazel\n{}".format(build_bazel))
 
     rctx.file("WORKSPACE", "")
     rctx.file("MODULE.bazel", "")
     rctx.file("REPO.bazel", "")
-    rctx.file("BUILD.bazel", _TOOLCHAIN_IMPL_TEMPLATE.format(
-        major = info["major"],
-        minor = info["minor"],
-        micro = info["micro"],
-        interpreter_path = interpreter_path,
-        lib_ext = info["SHLIB_SUFFIX"],
-        implementation_name = info["implementation_name"],
-        os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
-    ))
+    rctx.file("BUILD.bazel", build_bazel)
 
 local_runtime_repo = repository_rule(
     implementation = _local_runtime_repo_impl,
@@ -218,7 +235,7 @@ def _expand_incompatible_template():
     return _TOOLCHAIN_IMPL_TEMPLATE.format(
         interpreter_path = "/incompatible",
         implementation_name = "incompatible",
-        lib_ext = "incompatible",
+        interface_library = "",
         major = "0",
         minor = "0",
         micro = "0",
