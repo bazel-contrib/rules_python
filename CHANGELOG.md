@@ -60,7 +60,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
-* (toolchain) Updated the following toolchains to build [20250807] to patch CVE-2025-47273:
+* (toolchain) Updated the following toolchains to build [20250808] to patch CVE-2025-47273:
     * 3.9.23
     * 3.10.18
     * 3.11.13
@@ -75,7 +75,7 @@ END_UNRELEASED_TEMPLATE
   {gh-path}`gazelle/docs` and are now available on the primary documentation site
   at https://rules-python.readthedocs.io/en/latest/gazelle/docs/index.html
 
-[20250807]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250807
+[20250808]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250808
 
 {#v0-0-0-fixed}
 ### Fixed
