@@ -130,7 +130,8 @@ def _get_python_library_info():
     """Returns a dictionary with the static and dynamic python libraries."""
     config_vars = sysconfig.get_config_vars()
 
-    # VERSION is X.Y in Linux/macOS and XY in Windows.
+    # VERSION is X.Y in Linux/macOS and XY in Windows.  This is used to
+    # construct library paths such as python3.12, so ensure it exists.
     if not config_vars.get("VERSION"):
         if sys.platform == "win32":
             config_vars["VERSION"] = f"{sys.version_info.major}{sys.version_info.minor}"
