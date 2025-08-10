@@ -31,6 +31,7 @@ def define_local_runtime_toolchain_impl(
         micro,
         interpreter_path,
         interface_library,
+        shared_library,
         implementation_name,
         os):
     """Defines a toolchain implementation for a local Python runtime.
@@ -50,8 +51,10 @@ def define_local_runtime_toolchain_impl(
         minor: `str` The minor Python version, e.g. `9` of `3.9.1`.
         micro: `str` The micro Python version, e.g. "1" of `3.9.1`.
         interpreter_path: `str` Absolute path to the interpreter.
-        interface_library: `str` A path to a .lib or .so file to link against.
+        interface_library: `str` Path to the interface library.
             e.g. "lib/python312.lib"
+        shared_library: `str` Path to the dynamic library.
+            e.g. "lib/python312.dll" or "lib/python312.so"
         implementation_name: `str` The implementation name, as returned by
             `sys.implementation.name`.
         os: `str` A label to the OS constraint (e.g. `@platforms//os:linux`) for
@@ -64,14 +67,14 @@ def define_local_runtime_toolchain_impl(
     # See https://docs.python.org/3/extending/windows.html
     # However not all python installations (such as manylinux) include shared or static libraries,
     # so only create the import library when interface_library is set.
-    _libpython_deps = []
+    import_deps = []
     if interface_library:
         cc_import(
-            name = "_python_import_lib",
+            name = "_python_interface_library",
             interface_library = interface_library,
             system_provided = 1,
         )
-        _libpython_deps.append(":_python_import_lib")
+        import_deps = [":_python_interface_library"]
 
     cc_library(
         name = "_python_headers",
@@ -81,13 +84,15 @@ def define_local_runtime_toolchain_impl(
             # A Python install may not have C headers
             allow_empty = True,
         ),
+        deps = import_deps,
         includes = ["include"],
     )
 
     cc_library(
         name = "_libpython",
         hdrs = [":_python_headers"],
-        deps = _libpython_deps,
+        srcs = [shared_library] if shared_library else [],
+        deps = import_deps,
     )
 
     py_runtime(

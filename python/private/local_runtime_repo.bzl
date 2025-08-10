@@ -35,7 +35,8 @@ define_local_runtime_toolchain_impl(
     minor = "{minor}",
     micro = "{micro}",
     interpreter_path = "{interpreter_path}",
-    interface_library = "{interface_library}",
+    interface_library = {interface_library},
+    shared_library = {shared_library},
     implementation_name = "{implementation_name}",
     os = "{os}",
 )
@@ -48,36 +49,36 @@ def _norm_path(path):
         path = path[:-1]
     return path
 
-def _symlink_libs(rctx, logger, library_targets):
+def _symlink_first_library(rctx, logger, libraries, is_shared = False):
     """Symlinks the shared libraries into the lib/ directory.
 
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
-        library_targets: A list of library targets to potentially symlink.
+        libraries: A list of static library paths to potentially symlink.
+        is_shared: Indicates whether the library is expected to be a shared library.
     Returns:
-        A library target suitable for a cc_import rule.
-
-    The specific files are symlinked instead of the whole directory because
-    shared_lib_dirs contains multiple search paths for the shared libraries,
-    and the python files may be missing from any of those directories, and
-    any of those directories may include non-python runtime libraries,
-    as would be the case if LIBDIR were, for example, /usr/lib.
+        A single library path linked by the action.
     """
-    found = ""
-    for target in library_targets:
+    linked = None
+    for target in libraries:
         origin = rctx.path(target)
         if not origin.exists:
             # The reported names don't always exist; it depends on the particulars
             # of the runtime installation.
             continue
-        found = "lib/{}".format(origin.basename)
-        logger.debug("Symlinking {} to {}".format(origin, found))
+        if is_shared and repo_utils.get_platforms_os_name(rctx) == "osx" and not origin.basename.endswith(".dylib"):
+            # cc_import.shared_library has Permitted file types: .so, .dll or .dylib
+            linked = "lib/{}.dylib".format(origin.basename)
+        else:
+            linked = "lib/{}".format(origin.basename)
+
+        logger.debug("Symlinking {} to {}".format(origin, linked))
         repo_utils.watch(rctx, origin)
-        rctx.symlink(origin, found)
+        rctx.symlink(origin, linked)
         break
 
-    return found
+    return linked
 
 def _local_runtime_repo_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -153,20 +154,20 @@ def _local_runtime_repo_impl(rctx):
     # appear as part of this repo.
     rctx.symlink(info["include"], "include")
 
-    if repo_utils.get_platforms_os_name == "windows":
-        library_targets = info["static_libraries"]
-    else:
-        library_targets = info["dynamic_libraries"]
-
     rctx.report_progress("Symlinking external Python shared libraries")
-    interface_library = _symlink_libs(rctx, logger, library_targets)
+    interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"])
+    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"], True)
+
+    if not interface_library and not shared_library:
+        logger.warn("No external python libraries found.")
 
     build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
         major = info["major"],
         minor = info["minor"],
         micro = info["micro"],
-        interpreter_path = _norm_path(interpreter_path),
-        interface_library = interface_library,
+        interpreter_path = interpreter_path,
+        interface_library = repr(interface_library),
+        shared_library = repr(shared_library),
         implementation_name = info["implementation_name"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
     )
@@ -235,7 +236,8 @@ def _expand_incompatible_template():
     return _TOOLCHAIN_IMPL_TEMPLATE.format(
         interpreter_path = "/incompatible",
         implementation_name = "incompatible",
-        interface_library = "",
+        interface_library = "None",
+        shared_library = "None",
         major = "0",
         minor = "0",
         micro = "0",

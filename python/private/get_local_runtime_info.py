@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Returns information about the local Python runtime as JSON."""
+
 import json
 import os
 import sys
@@ -36,7 +38,9 @@ def _search_directories(get_config):
     # On MacOS, the LDLIBRARY may be a relative path under /Library/Frameworks,
     # such as "Python.framework/Versions/3.12/Python", not a file under the
     # LIBDIR/LIBPL directory, so include PYTHONFRAMEWORKPREFIX.
-    lib_dirs = [get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")]
+    lib_dirs = [
+        get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")
+    ]
 
     # On Debian, with multiarch enabled, prior to Python 3.10, `LIBDIR` didn't
     # tell the location of the libs, just the base directory. The `MULTIARCH`
@@ -86,8 +90,8 @@ def _search_library_names(get_config):
     lib_names = [
         get_config(x)
         for x in (
-            "INSTSONAME",
             "LDLIBRARY",
+            "INSTSONAME",
             "PY3LIBRARY",
             "LIBRARY",
             "DLLLIBRARY",
@@ -100,9 +104,7 @@ def _search_library_names(get_config):
         suffix = ".dylib"
         prefix = "lib"
     elif _IS_WINDOWS:
-        # SHLIB_SUFFIX on windows is ".dll"; however the compiler needs to
-        # link with the ".lib".
-        suffix = ".lib"
+        suffix = ".dll"
         prefix = ""
     else:
         suffix = get_config("SHLIB_SUFFIX")
@@ -111,6 +113,7 @@ def _search_library_names(get_config):
             suffix = ".so"
 
     version = get_config("VERSION")
+
     # On Windows, extensions should link with the pythonXY.lib files.
     # See: https://docs.python.org/3/extending/windows.html
     # So ensure that the pythonXY.lib files are included in the search.
@@ -133,7 +136,9 @@ def _get_python_library_info():
     # VERSION is X.Y in Linux/macOS and XY in Windows.
     if not config_vars.get("VERSION"):
         if sys.platform == "win32":
-            config_vars["VERSION"] = f"{sys.version_info.major}{sys.version_info.minor}"
+            config_vars["VERSION"] = (
+                f"{sys.version_info.major}{sys.version_info.minor}"
+            )
         else:
             config_vars["VERSION"] = (
                 f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -142,17 +147,31 @@ def _get_python_library_info():
     search_directories = _search_directories(config_vars.get)
     search_libnames = _search_library_names(config_vars.get)
 
+    def _add_if_exists(target, path):
+        if os.path.exists(path) or os.path.isdir(path):
+            target[path] = None
+
+    interface_libraries = {}
     dynamic_libraries = {}
     static_libraries = {}
     for root_dir in search_directories:
         for libname in search_libnames:
             composed_path = os.path.join(root_dir, libname)
-            if not os.path.exists(composed_path) or os.path.isdir(composed_path):
+            if libname.endswith(".a"):
+                _add_if_exists(static_libraries, composed_path)
                 continue
-            if composed_path.endswith(".lib") or composed_path.endswith(".a"):
-                static_libraries[composed_path] = None
-            else:
-                dynamic_libraries[composed_path] = None
+            _add_if_exists(dynamic_libraries, composed_path)
+
+            # On Windows, extensions should link with the pythonXY.lib interface
+            # libraries. See: https://docs.python.org/3/extending/windows.html
+            if libname.endswith(".so"):
+                _add_if_exists(
+                    interface_libraries, os.path.join(root_dir, libname[:-2] + "ifso")
+                )
+            elif libname.endswith(".dll"):
+                _add_if_exists(
+                    interface_libraries, os.path.join(root_dir, libname[:-3] + "lib")
+                )
 
     # When no libraries are found it's likely that the python interpreter is not
     # configured to use shared or static libraries (minilinux).  If this seems
@@ -161,6 +180,7 @@ def _get_python_library_info():
     return {
         "dynamic_libraries": list(dynamic_libraries.keys()),
         "static_libraries": list(static_libraries.keys()),
+        "interface_libraries": list(interface_libraries.keys()),
     }
 
 
