@@ -49,14 +49,13 @@ def _norm_path(path):
         path = path[:-1]
     return path
 
-def _symlink_first_library(rctx, logger, libraries, is_shared = False):
+def _symlink_first_library(rctx, logger, libraries):
     """Symlinks the shared libraries into the lib/ directory.
 
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
         libraries: A list of static library paths to potentially symlink.
-        is_shared: Indicates whether the library is expected to be a shared library.
     Returns:
         A single library path linked by the action.
     """
@@ -67,12 +66,7 @@ def _symlink_first_library(rctx, logger, libraries, is_shared = False):
             # The reported names don't always exist; it depends on the particulars
             # of the runtime installation.
             continue
-        if is_shared and repo_utils.get_platforms_os_name(rctx) == "osx" and not origin.basename.endswith(".dylib"):
-            # cc_import.shared_library has Permitted file types: .so, .dll or .dylib
-            linked = "lib/{}.dylib".format(origin.basename)
-        else:
-            linked = "lib/{}".format(origin.basename)
-
+        linked = "lib/{}".format(origin.basename)
         logger.debug("Symlinking {} to {}".format(origin, linked))
         repo_utils.watch(rctx, origin)
         rctx.symlink(origin, linked)
@@ -156,7 +150,7 @@ def _local_runtime_repo_impl(rctx):
 
     rctx.report_progress("Symlinking external Python shared libraries")
     interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"])
-    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"], True)
+    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"])
 
     if not interface_library and not shared_library:
         logger.warn("No external python libraries found.")
@@ -165,7 +159,7 @@ def _local_runtime_repo_impl(rctx):
         major = info["major"],
         minor = info["minor"],
         micro = info["micro"],
-        interpreter_path = interpreter_path,
+        interpreter_path = _norm_path(interpreter_path),
         interface_library = repr(interface_library),
         shared_library = repr(shared_library),
         implementation_name = info["implementation_name"],

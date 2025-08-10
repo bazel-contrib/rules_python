@@ -38,9 +38,7 @@ def _search_directories(get_config):
     # On MacOS, the LDLIBRARY may be a relative path under /Library/Frameworks,
     # such as "Python.framework/Versions/3.12/Python", not a file under the
     # LIBDIR/LIBPL directory, so include PYTHONFRAMEWORKPREFIX.
-    lib_dirs = [
-        get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")
-    ]
+    lib_dirs = [get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")]
 
     # On Debian, with multiarch enabled, prior to Python 3.10, `LIBDIR` didn't
     # tell the location of the libs, just the base directory. The `MULTIARCH`
@@ -50,8 +48,8 @@ def _search_directories(get_config):
     # https://git.launchpad.net/ubuntu/+source/python3.12/tree/debian/changelog#n842
     multiarch = get_config("MULTIARCH")
     if multiarch:
-        for config_var_name in ["LIBPL", "LIBDIR"]:
-            config_value = get_config(config_var_name)
+        for x in ("LIBPL", "LIBDIR"):
+            config_value = get_config(x)
             if config_value and not config_value.endswith(multiarch):
                 lib_dirs.append(os.path.join(config_value, multiarch))
 
@@ -84,7 +82,7 @@ def _search_library_names(get_config):
     # 'Python.framework/Versions/3.9/Python' on MacOS.
     #
     # A typical LDLIBRARY is 'libpythonX.Y.so' on Linux, or 'pythonXY.dll' on
-    # Windows.
+    # Windows, or 'Python.framework/Versions/3.9/Python' on MacOS.
     #
     # A typical LIBRARY is 'libpythonX.Y.a' on Linux.
     lib_names = [
@@ -99,8 +97,9 @@ def _search_library_names(get_config):
     ]
 
     # Set the prefix and suffix to construct the library name used for linking.
+    # The suffix and version are set here to the default values for the OS,
+    # since they are used below to construct "default" library names.
     if _IS_DARWIN:
-        # SHLIB_SUFFIX may be ".so"; always override on darwin to be ".dynlib"
         suffix = ".dylib"
         prefix = "lib"
     elif _IS_WINDOWS:
@@ -114,9 +113,7 @@ def _search_library_names(get_config):
 
     version = get_config("VERSION")
 
-    # On Windows, extensions should link with the pythonXY.lib files.
-    # See: https://docs.python.org/3/extending/windows.html
-    # So ensure that the pythonXY.lib files are included in the search.
+    # Ensure that the pythonXY.dll files are included in the search.
     lib_names.append(f"{prefix}python{version}{suffix}")
 
     # If there are ABIFLAGS, also add them to the python version lib search.
@@ -136,9 +133,7 @@ def _get_python_library_info():
     # VERSION is X.Y in Linux/macOS and XY in Windows.
     if not config_vars.get("VERSION"):
         if sys.platform == "win32":
-            config_vars["VERSION"] = (
-                f"{sys.version_info.major}{sys.version_info.minor}"
-            )
+            config_vars["VERSION"] = f"{sys.version_info.major}{sys.version_info.minor}"
         else:
             config_vars["VERSION"] = (
                 f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -160,23 +155,30 @@ def _get_python_library_info():
             if libname.endswith(".a"):
                 _add_if_exists(static_libraries, composed_path)
                 continue
-            _add_if_exists(dynamic_libraries, composed_path)
 
-            # On Windows, extensions should link with the pythonXY.lib interface
-            # libraries. See: https://docs.python.org/3/extending/windows.html
-            if libname.endswith(".so"):
-                _add_if_exists(
-                    interface_libraries, os.path.join(root_dir, libname[:-2] + "ifso")
-                )
-            elif libname.endswith(".dll"):
+            _add_if_exists(dynamic_libraries, composed_path)
+            if libname.endswith(".dll"):
+                # On windows a .lib file may be an "import library" or a static library.
+                # The file could be inspected to determine which it is; typically python
+                # is used as a shared library.
+                #
+                # On Windows, extensions should link with the pythonXY.lib interface
+                # libraries.
+                #
+                # See: https://docs.python.org/3/extending/windows.html
+                # https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation
                 _add_if_exists(
                     interface_libraries, os.path.join(root_dir, libname[:-3] + "lib")
+                )
+            elif libname.endswith(".so"):
+                # It's possible, though unlikely, that interface stubs (.ifso) exist.
+                _add_if_exists(
+                    interface_libraries, os.path.join(root_dir, libname[:-2] + "ifso")
                 )
 
     # When no libraries are found it's likely that the python interpreter is not
     # configured to use shared or static libraries (minilinux).  If this seems
-    # suspicious try running `uv tool run find_libpython --list-all -v` or
-    # `python-config --libs`.
+    # suspicious try running `uv tool run find_libpython --list-all -v`
     return {
         "dynamic_libraries": list(dynamic_libraries.keys()),
         "static_libraries": list(static_libraries.keys()),
