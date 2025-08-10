@@ -31,13 +31,14 @@ load("//python/private:repo_utils.bzl", "repo_utils")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_requirement.bzl", "requirement")
-load(":whl_target_platforms.bzl", "select_whls")
+load(":select_whl.bzl", "select_whl")
 
 def parse_requirements(
         ctx,
         *,
         requirements_by_platform = {},
         extra_pip_args = [],
+        platforms = {},
         get_index_urls = None,
         evaluate_markers = None,
         extract_url_srcs = True,
@@ -46,6 +47,7 @@ def parse_requirements(
 
     Args:
         ctx: A context that has .read function that would read contents from a label.
+        platforms: The target platform descriptions.
         requirements_by_platform (label_keyed_string_dict): a way to have
             different package versions (or different packages) for different
             os, arch combinations.
@@ -88,7 +90,7 @@ def parse_requirements(
     requirements = {}
     for file, plats in requirements_by_platform.items():
         if logger:
-            logger.debug(lambda: "Using {} for {}".format(file, plats))
+            logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
 
         # Parse the requirements file directly in starlark to get the information
@@ -161,7 +163,7 @@ def parse_requirements(
     # VCS package references.
     env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
     if logger:
-        logger.debug(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
+        logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
             reqs_with_env_markers,
             env_marker_target_platforms,
         ))
@@ -196,6 +198,7 @@ def parse_requirements(
                 name = name,
                 reqs = reqs,
                 index_urls = index_urls,
+                platforms = platforms,
                 env_marker_target_platforms = env_marker_target_platforms,
                 extract_url_srcs = extract_url_srcs,
                 logger = logger,
@@ -203,7 +206,7 @@ def parse_requirements(
         )
         ret.append(item)
         if not item.is_exposed and logger:
-            logger.debug(lambda: "Package '{}' will not be exposed because it is only present on a subset of platforms: {} out of {}".format(
+            logger.trace(lambda: "Package '{}' will not be exposed because it is only present on a subset of platforms: {} out of {}".format(
                 name,
                 sorted(requirement_target_platforms),
                 sorted(requirements),
@@ -219,38 +222,43 @@ def _package_srcs(
         name,
         reqs,
         index_urls,
+        platforms,
         logger,
         env_marker_target_platforms,
         extract_url_srcs):
     """A function to return sources for a particular package."""
     srcs = {}
     for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
-        whls, sdist = _add_dists(
-            requirement = r,
-            index_urls = index_urls.get(name),
-            logger = logger,
-        )
-
         target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
-        target_platforms = sorted(target_platforms)
-
-        all_dists = [] + whls
-        if sdist:
-            all_dists.append(sdist)
-
-        if extract_url_srcs and all_dists:
-            req_line = r.srcs.requirement
-        else:
-            all_dists = [struct(
-                url = "",
-                filename = "",
-                sha256 = "",
-                yanked = False,
-            )]
-            req_line = r.srcs.requirement_line
-
         extra_pip_args = tuple(r.extra_pip_args)
-        for dist in all_dists:
+
+        for target_platform in target_platforms:
+            if platforms and target_platform not in platforms:
+                fail("The target platform '{}' could not be found in {}".format(
+                    target_platform,
+                    platforms.keys(),
+                ))
+
+            dist = _add_dists(
+                requirement = r,
+                target_platform = platforms.get(target_platform),
+                index_urls = index_urls.get(name),
+                logger = logger,
+            )
+            if logger:
+                logger.debug(lambda: "The whl dist is: {}".format(dist.filename if dist else dist))
+
+            if extract_url_srcs and dist:
+                req_line = r.srcs.requirement
+            else:
+                dist = struct(
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                )
+                req_line = r.srcs.requirement_line
+
             key = (
                 dist.filename,
                 req_line,
@@ -269,9 +277,9 @@ def _package_srcs(
                     yanked = dist.yanked,
                 ),
             )
-            for p in target_platforms:
-                if p not in entry.target_platforms:
-                    entry.target_platforms.append(p)
+
+            if target_platform not in entry.target_platforms:
+                entry.target_platforms.append(target_platform)
 
     return srcs.values()
 
@@ -325,7 +333,7 @@ def host_platform(ctx):
         repo_utils.get_platforms_cpu_name(ctx),
     )
 
-def _add_dists(*, requirement, index_urls, logger = None):
+def _add_dists(*, requirement, index_urls, target_platform, logger = None):
     """Populate dists based on the information from the PyPI index.
 
     This function will modify the given requirements_by_platform data structure.
@@ -333,6 +341,7 @@ def _add_dists(*, requirement, index_urls, logger = None):
     Args:
         requirement: The result of parse_requirements function.
         index_urls: The result of simpleapi_download.
+        target_platform: The target_platform information.
         logger: A logger for printing diagnostic info.
     """
 
@@ -342,7 +351,7 @@ def _add_dists(*, requirement, index_urls, logger = None):
                 logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
                     requirement.srcs.url,
                 ))
-            return [], None
+            return None
 
         # Handle direct URLs in requirements
         dist = struct(
@@ -353,12 +362,12 @@ def _add_dists(*, requirement, index_urls, logger = None):
         )
 
         if dist.filename.endswith(".whl"):
-            return [dist], None
+            return dist
         else:
-            return [], dist
+            return dist
 
     if not index_urls:
-        return [], None
+        return None
 
     whls = []
     sdist = None
@@ -401,11 +410,16 @@ def _add_dists(*, requirement, index_urls, logger = None):
             for reason, dists in yanked.items()
         ]))
 
-    # Filter out the wheels that are incompatible with the target_platforms.
-    whls = select_whls(
-        whls = whls,
-        want_platforms = requirement.target_platforms,
-        logger = logger,
-    )
+    if not target_platform:
+        # The pipstar platforms are undefined here, so we cannot do any matching
+        return sdist
 
-    return whls, sdist
+    # Select a single wheel that can work on the target_platform
+    return select_whl(
+        whls = whls,
+        python_version = target_platform.env["python_full_version"],
+        implementation_name = target_platform.env["implementation_name"],
+        whl_abi_tags = target_platform.whl_abi_tags,
+        whl_platform_tags = target_platform.whl_platform_tags,
+        logger = logger,
+    ) or sdist
