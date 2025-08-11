@@ -66,7 +66,10 @@ def _symlink_first_library(rctx, logger, libraries):
             # The reported names don't always exist; it depends on the particulars
             # of the runtime installation.
             continue
-        linked = "lib/{}".format(origin.basename)
+        if target.endswith("/Python"):
+            linked = "lib/{}.dylib".format(origin.basename)
+        else:
+            linked = "lib/{}".format(origin.basename)
         logger.debug("Symlinking {} to {}".format(origin, linked))
         repo_utils.watch(rctx, origin)
         rctx.symlink(origin, linked)

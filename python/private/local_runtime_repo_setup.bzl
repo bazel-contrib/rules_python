@@ -92,7 +92,7 @@ def define_local_runtime_toolchain_impl(
         name = "_libpython",
         hdrs = [":_python_headers"],
         srcs = libraries,
-        deps = import_deps,
+        deps = [],
     )
 
     py_runtime(
