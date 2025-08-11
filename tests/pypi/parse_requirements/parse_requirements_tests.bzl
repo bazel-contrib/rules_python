@@ -17,6 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:parse_requirements.bzl", "parse_requirements", "select_requirement")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
 
 def _mock_ctx():
     testdata = {
@@ -65,6 +66,12 @@ foo[extra]==0.0.1 --hash=sha256:deadbeef
         "requirements_marker": """\
 foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadbeef
+""",
+        "requirements_multi_version": """\
+foo==0.0.1; python_full_version < '3.10.0' \
+    --hash=sha256:deadbeef
+foo==0.0.2; python_full_version >= '3.10.0' \
+    --hash=sha256:deadb11f
 """,
         "requirements_optional_hash": """
 foo==0.0.4 @ https://example.org/foo-0.0.4.whl
@@ -587,10 +594,9 @@ def _test_overlapping_shas_with_index_results(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
-            name = "foo",
             is_exposed = True,
-            # TODO @aignas 2025-05-25: how do we rename this?
             is_multiple_versions = True,
+            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",
@@ -617,6 +623,99 @@ def _test_overlapping_shas_with_index_results(env):
     ])
 
 _tests.append(_test_overlapping_shas_with_index_results)
+
+def _test_get_index_urls_different_versions(env):
+    got = parse_requirements(
+        ctx = _mock_ctx(),
+        requirements_by_platform = {
+            "requirements_multi_version": [
+                "cp39_linux_x86_64",
+                "cp310_linux_x86_64",
+            ],
+        },
+        platforms = {
+            "cp310_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
+            ),
+            "cp39_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
+            ),
+        },
+        get_index_urls = lambda _, __: {
+            "foo": struct(
+                sdists = {},
+                whls = {
+                    "deadb11f": struct(
+                        url = "super2",
+                        sha256 = "deadb11f",
+                        filename = "foo-0.0.2-py3-none-any.whl",
+                        yanked = False,
+                    ),
+                    "deadbaaf": struct(
+                        url = "super2",
+                        sha256 = "deadbaaf",
+                        filename = "foo-0.0.1-py3-none-any.whl",
+                        yanked = False,
+                    ),
+                },
+            ),
+        },
+        evaluate_markers = lambda _, requirements: evaluate_markers(
+            requirements = requirements,
+            platforms = {
+                "cp39_linux_x86_64": struct(
+                    env = {"python_full_version": "3.9.0"},
+                ),
+                "cp310_linux_x86_64": struct(
+                    env = {"python_full_version": "3.10.0"},
+                ),
+            },
+        )
+    )
+
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            is_exposed = True,
+            is_multiple_versions = True,
+            name = "foo",
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "",
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadbeef",
+                    sha256 = "",
+                    target_platforms = ["cp39_linux_x86_64"],
+                    url = "",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "foo-0.0.2-py3-none-any.whl",
+                    requirement_line = "foo==0.0.2",
+                    sha256 = "deadb11f",
+                    target_platforms = ["cp310_linux_x86_64"],
+                    url = "super2",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_get_index_urls_different_versions)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.
