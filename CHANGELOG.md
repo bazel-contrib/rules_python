@@ -88,9 +88,6 @@ END_UNRELEASED_TEMPLATE
 * (runfiles) The pypi runfiles package now includes `py.typed` to indicate it
   supports type checking
   ([#2503](https://github.com/bazel-contrib/rules_python/issues/2503)).
-* (toolchains) `local_runtime_repo` now checks if the include directory exists
-  before attempting to watch it, fixing issues on macOS with system Python
-  ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
@@ -143,6 +140,16 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-removed}
 ### Removed
 * Nothing removed.
+
+{#1-5-3}
+## [1.5.3] - 2025-08-11
+
+[1.5.3]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.3
+
+### Fixed
+* (toolchains) `local_runtime_repo` now checks if the include directory exists
+  before attempting to watch it, fixing issues on macOS with system Python
+  ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 
 {#1-5-2}
 ## [1.5.2] - 2025-08-11
