@@ -44,7 +44,13 @@ def _in(reference):
     return lambda token: token in reference
 
 def _ctx(start):
-    return {"norm": "", "start": start}
+    """Creates a context, which is state for parsing (or sub-parsing)."""
+    return {
+        # The result value from parsing
+        "norm": "",
+        # Where in the parser's input string this context starts.
+        "start": start,
+    }
 
 def _open_context(self):
     """Open an new parsing ctx.
@@ -60,7 +66,16 @@ def _open_context(self):
     return self.contexts[-1]
 
 def _accept(self, key = None):
-    """Close the current ctx successfully and merge the results."""
+    """Close the current ctx successfully and merge the results.
+
+    Args:
+        self: {type}`Parser}
+        key: {type}`str | None` the key to store the result in
+            the most recent context. If not set, the key is "norm".
+
+    Returns:
+        {type}`bool` always True
+    """
     finished = self.contexts.pop()
     self.contexts[-1]["norm"] += finished["norm"]
     if key:
@@ -79,7 +94,14 @@ def _discard(self, key = None):
     return False
 
 def _new(input):
-    """Create a new normalizer"""
+    """Create a new parser
+
+    Args:
+        input: {type}`str` input to parse
+
+    Returns:
+        {type}`Parser` a struct for a parser object.
+    """
     self = struct(
         input = input,
         contexts = [_ctx(0)],
@@ -167,7 +189,7 @@ def accept_placeholder(parser):
     return parser.accept()
 
 def accept_digits(parser):
-    """Accept multiple digits (or placeholders).
+    """Accept multiple digits (or placeholders), up to a non-digit/placeholder.
 
     Args:
       parser: The normalizer.
@@ -275,13 +297,20 @@ def accept_separator_alnum(parser):
     Returns:
       whether a separator and an alphanumeric string were accepted.
     """
-    parser.open_context()
+    ctx = parser.open_context()
 
     # PEP 440: Local version segments
-    if (
-        accept(parser, _in([".", "-", "_"]), ".") and
-        (accept_digits(parser) or accept_alnum(parser))
-    ):
+    if not accept(parser, _in([".", "-", "_"]), "."):
+        return parser.discard()
+
+    if accept_alnum(parser):
+        # First character is separator; skip it.
+        value = ctx["norm"][1:]
+
+        # PEP 440: Integer Normalization
+        if value.isdigit():
+            value = str(int(value))
+            ctx["norm"] = ctx["norm"][0] + value
         return parser.accept()
 
     return parser.discard()

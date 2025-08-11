@@ -109,7 +109,11 @@ def _get_toolchain_unix_cflags(rctx, python_interpreter, logger = None):
     stdout = pypi_repo_utils.execute_checked_stdout(
         rctx,
         op = "GetPythonVersionForUnixCflags",
-        python = python_interpreter,
+        # python_interpreter by default points to a symlink, however when using bazel in vendor mode,
+        # and the vendored directory moves around, the execution of python fails, as it's getting confused
+        # where it's running from. More to the fact that we are executing it in isolated mode "-I", which
+        # results in PYTHONHOME being ignored. The solution is to run python from it's real directory.
+        python = python_interpreter.realpath,
         arguments = [
             # Run the interpreter in isolated mode, this options implies -E, -P and -s.
             # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
@@ -198,6 +202,37 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
 
     return args
 
+def _get_python_home(rctx, python_interpreter, logger = None):
+    """Get the PYTHONHOME directory from the selected python interpretter
+
+    Args:
+        rctx (repository_ctx): The repository context.
+        python_interpreter (path): The resolved python interpreter.
+        logger: Optional logger to use for operations.
+    Returns:
+        String of PYTHONHOME directory.
+    """
+
+    return pypi_repo_utils.execute_checked_stdout(
+        rctx,
+        op = "GetPythonHome",
+        # python_interpreter by default points to a symlink, however when using bazel in vendor mode,
+        # and the vendored directory moves around, the execution of python fails, as it's getting confused
+        # where it's running from. More to the fact that we are executing it in isolated mode "-I", which
+        # results in PYTHONHOME being ignored. The solution is to run python from it's real directory.
+        python = python_interpreter.realpath,
+        arguments = [
+            # Run the interpreter in isolated mode, this options implies -E, -P and -s.
+            # Ensures environment variables are ignored that are set in userspace, such as PYTHONPATH,
+            # which may interfere with this invocation.
+            "-I",
+            "-c",
+            "import sys; print(f'{sys.prefix}', end='')",
+        ],
+        srcs = [],
+        logger = logger,
+    )
+
 def _create_repository_execution_environment(rctx, python_interpreter, logger = None):
     """Create a environment dictionary for processes we spawn with rctx.execute.
 
@@ -210,6 +245,7 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
     """
 
     env = {
+        "PYTHONHOME": _get_python_home(rctx, python_interpreter, logger),
         "PYTHONPATH": pypi_repo_utils.construct_pythonpath(
             rctx,
             entries = rctx.attr._python_path_entries,
@@ -248,6 +284,7 @@ def _whl_library_impl(rctx):
     environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
 
     whl_path = None
+    sdist_filename = None
     if rctx.attr.whl_file:
         rctx.watch(rctx.attr.whl_file)
         whl_path = rctx.path(rctx.attr.whl_file)
@@ -277,6 +314,8 @@ def _whl_library_impl(rctx):
         if filename.endswith(".whl"):
             whl_path = rctx.path(filename)
         else:
+            sdist_filename = filename
+
             # It is an sdist and we need to tell PyPI to use a file in this directory
             # and, allow getting build dependencies from PYTHONPATH, which we
             # setup in this repository rule, but still download any necessary
@@ -382,6 +421,7 @@ def _whl_library_impl(rctx):
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
+            sdist_filename = sdist_filename,
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
             entry_points = entry_points,
             metadata_name = metadata.name,
@@ -455,6 +495,7 @@ def _whl_library_impl(rctx):
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
+            sdist_filename = sdist_filename,
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
             entry_points = entry_points,
             # TODO @aignas 2025-05-17: maybe have a build flag for this instead

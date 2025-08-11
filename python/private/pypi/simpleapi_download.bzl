@@ -128,16 +128,24 @@ def simpleapi_download(
 
     failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
     if failed_sources:
+        pkg_index_urls = {
+            pkg: index_url_overrides.get(
+                normalize_name(pkg),
+                index_urls,
+            )
+            for pkg in failed_sources
+        }
+
         _fail(
-            "\n".join([
-                "Failed to download metadata for {} for from urls: {}.".format(
-                    failed_sources,
-                    index_urls,
-                ),
-                "If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={}' to your 'pip.parse' call.".format(
-                    render.list(failed_sources),
-                ),
-            ]),
+            """
+Failed to download metadata of the following packages from urls:
+{pkg_index_urls}
+
+If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={failed_sources}' to your 'pip.parse' call.
+""".format(
+                pkg_index_urls = render.dict(pkg_index_urls),
+                failed_sources = render.list(failed_sources),
+            ),
         )
         return None
 

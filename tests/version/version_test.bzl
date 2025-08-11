@@ -105,6 +105,14 @@ def _test_normalization(env):
 
 _tests.append(_test_normalization)
 
+def _test_normalize_local(env):
+    # Verify a local with a [digit][non-digit] sequence parses ok
+    in_str = "0.1.0+brt.9e"
+    actual = version.normalize(in_str)
+    env.expect.that_str(actual).equals(in_str)
+
+_tests.append(_test_normalize_local)
+
 def _test_ordering(env):
     want = [
         # Taken from https://peps.python.org/pep-0440/#summary-of-permitted-suffixes-and-relative-ordering

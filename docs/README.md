@@ -28,6 +28,20 @@ changes and re-run the build process, and you can simply refresh your browser to
 see the changes. Using ibazel is not required; you can manually run the
 equivalent bazel command if desired.
 
+An alternative to `ibazel` is using `inotify` on Linux systems:
+
+```
+inotifywait --event modify --monitor . --recursive --includei '^.*\.md$' |
+while read -r dir events filename; do bazel build //docs:docs; done;
+```
+
+And lastly, a poor-man's `ibazel` and `inotify` is simply `watch` with
+a reasonable interval like 10s:
+
+```
+watch --interval 10 bazel build //docs:docs
+```
+
 ### Installing ibazel
 
 The `ibazel` tool can be used to automatically rebuild the docs as you

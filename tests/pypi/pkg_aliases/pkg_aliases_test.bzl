@@ -43,6 +43,7 @@ def _test_legacy_aliases(env):
         "whl": "@repo//:whl",
         "data": "@repo//:data",
         "dist_info": "@repo//:dist_info",
+        "extracted_whl_files": "@repo//:extracted_whl_files",
         "my_special": "@repo//:my_special",
     }
 
@@ -241,6 +242,10 @@ def _test_group_aliases(env):
         {
             "name": "dist_info",
             "actual": "@repo//:dist_info",
+        },
+        {
+            "name": "extracted_whl_files",
+            "actual": "@repo//:extracted_whl_files",
         },
         {
             "name": "pkg",

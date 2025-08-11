@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 # gazelle:python_generation_mode package
-# gazelle:experimental_allow_relative_imports true
+# gazelle:python_experimental_allow_relative_imports true
 
 py_binary(
     name = "relative_imports_package_mode_bin",
