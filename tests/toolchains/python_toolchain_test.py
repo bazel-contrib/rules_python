@@ -27,18 +27,14 @@ class PythonToolchainTest(unittest.TestCase):
         )
         self.assertIn(expected, settings["toolchain_label"], msg)
 
-        if sys.version_info.releaselevel == "final":
-            actual = "{v.major}.{v.minor}.{v.micro}".format(v=sys.version_info)
-        elif sys.version_info.releaselevel in ["beta"]:
-            actual = (
-                "{v.major}.{v.minor}.{v.micro}{v.releaselevel[0]}{v.serial}".format(
-                    v=sys.version_info
-                )
+        actual = "{v.major}.{v.minor}.{v.micro}".format(v=sys.version_info)
+        if sys.version_info.releaselevel != "final":
+            release_prefix = (
+                "rc"
+                if sys.version_info.releaselevel == "candidate"
+                else sys.version_info.releaselevel[0]
             )
-        else:
-            raise NotImplementedError(
-                "Unsupported release level, please update the test"
-            )
+            actual = f"{actual}{release_prefix}{sys.version_info.serial}"
         self.assertEqual(actual, expect_version)
 
 
