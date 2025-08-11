@@ -31,7 +31,7 @@ def define_local_runtime_toolchain_impl(
         micro,
         interpreter_path,
         interface_library,
-        shared_library,
+        libraries,
         implementation_name,
         os):
     """Defines a toolchain implementation for a local Python runtime.
@@ -53,8 +53,8 @@ def define_local_runtime_toolchain_impl(
         interpreter_path: `str` Absolute path to the interpreter.
         interface_library: `str` Path to the interface library.
             e.g. "lib/python312.lib"
-        shared_library: `str` Path to the dynamic library.
-            e.g. "lib/python312.dll" or "lib/python312.so"
+        libraries: `list[str]` Path[s] to the python libraries.
+            e.g. ["lib/python312.dll"] or ["lib/python312.so"]
         implementation_name: `str` The implementation name, as returned by
             `sys.implementation.name`.
         os: `str` A label to the OS constraint (e.g. `@platforms//os:linux`) for
@@ -91,7 +91,7 @@ def define_local_runtime_toolchain_impl(
     cc_library(
         name = "_libpython",
         hdrs = [":_python_headers"],
-        srcs = [shared_library] if shared_library else [],
+        srcs = libraries,
         deps = import_deps,
     )
 

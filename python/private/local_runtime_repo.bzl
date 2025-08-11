@@ -36,7 +36,7 @@ define_local_runtime_toolchain_impl(
     micro = "{micro}",
     interpreter_path = "{interpreter_path}",
     interface_library = {interface_library},
-    shared_library = {shared_library},
+    libraries = {libraries},
     implementation_name = "{implementation_name}",
     os = "{os}",
 )
@@ -151,8 +151,14 @@ def _local_runtime_repo_impl(rctx):
     rctx.report_progress("Symlinking external Python shared libraries")
     interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"])
     shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"])
+    static_library = _symlink_first_library(rctx, logger, info["static_libraries"])
 
-    if not interface_library and not shared_library:
+    libraries = []
+    if shared_library:
+        libraries.append(shared_library)
+    elif static_library:
+        libraries.append(static_library)
+    if not libraries:
         logger.warn("No external python libraries found.")
 
     build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
@@ -161,7 +167,7 @@ def _local_runtime_repo_impl(rctx):
         micro = info["micro"],
         interpreter_path = _norm_path(interpreter_path),
         interface_library = repr(interface_library),
-        shared_library = repr(shared_library),
+        libraries = repr(libraries),
         implementation_name = info["implementation_name"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
     )
@@ -231,7 +237,7 @@ def _expand_incompatible_template():
         interpreter_path = "/incompatible",
         implementation_name = "incompatible",
         interface_library = "None",
-        shared_library = "None",
+        libraries = "[]",
         major = "0",
         minor = "0",
         micro = "0",
