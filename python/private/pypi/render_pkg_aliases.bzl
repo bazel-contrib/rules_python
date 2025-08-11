@@ -22,8 +22,6 @@ load(
     ":generate_group_library_build_bazel.bzl",
     "generate_group_library_build_bazel",
 )  # buildifier: disable=bzl-visibility
-load(":parse_whl_name.bzl", "parse_whl_name")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 NO_MATCH_ERROR_MESSAGE_TEMPLATE = """\
 No matching wheel for current configuration's Python version.
@@ -48,19 +46,17 @@ def _repr_dict(*, value_repr = repr, **kwargs):
     return {k: value_repr(v) for k, v in kwargs.items() if v}
 
 def _repr_config_setting(alias):
-    if alias.filename or alias.target_platforms:
+    if alias.target_platforms:
         return render.call(
             "whl_config_setting",
             **_repr_dict(
-                filename = alias.filename,
                 target_platforms = alias.target_platforms,
-                config_setting = alias.config_setting,
                 version = alias.version,
             )
         )
     else:
         return repr(
-            alias.config_setting or "//_config:is_cp{}".format(alias.version.replace(".", "")),
+            "//_config:is_cp{}".format(alias.version.replace(".", "")),
         )
 
 def _repr_actual(aliases):
@@ -179,15 +175,9 @@ def render_multiplatform_pkg_aliases(*, aliases, platform_config_settings = {}, 
 
     contents = render_pkg_aliases(
         aliases = aliases,
-        glibc_versions = flag_versions.get("glibc_versions", []),
-        muslc_versions = flag_versions.get("muslc_versions", []),
-        osx_versions = flag_versions.get("osx_versions", []),
         **kwargs
     )
     contents["_config/BUILD.bazel"] = _render_config_settings(
-        glibc_versions = flag_versions.get("glibc_versions", []),
-        muslc_versions = flag_versions.get("muslc_versions", []),
-        osx_versions = flag_versions.get("osx_versions", []),
         python_versions = _major_minor_versions(flag_versions.get("python_versions", [])),
         platform_config_settings = platform_config_settings,
         visibility = ["//:__subpackages__"],
@@ -219,54 +209,21 @@ def get_whl_flag_versions(settings):
           * python_versions
     """
     python_versions = {}
-    glibc_versions = {}
     target_platforms = {}
-    muslc_versions = {}
-    osx_versions = {}
 
     for setting in settings:
-        if not setting.version and not setting.filename:
+        if not setting.version:
             continue
 
         if setting.version:
             python_versions[setting.version] = None
 
-        if setting.filename and setting.filename.endswith(".whl") and not setting.filename.endswith("-any.whl"):
-            parsed = parse_whl_name(setting.filename)
-        else:
-            for plat in setting.target_platforms or []:
-                target_platforms[_non_versioned_platform(plat)] = None
-            continue
-
-        for platform_tag in parsed.platform_tag.split("."):
-            parsed = whl_target_platforms(platform_tag)
-
-            for p in parsed:
-                target_platforms[p.target_platform] = None
-
-            if platform_tag.startswith("win") or platform_tag.startswith("linux"):
-                continue
-
-            head, _, tail = platform_tag.partition("_")
-            major, _, tail = tail.partition("_")
-            minor, _, tail = tail.partition("_")
-            if tail:
-                version = (int(major), int(minor))
-                if "many" in head:
-                    glibc_versions[version] = None
-                elif "musl" in head:
-                    muslc_versions[version] = None
-                elif "mac" in head:
-                    osx_versions[version] = None
-                else:
-                    fail(platform_tag)
+        for plat in setting.target_platforms or []:
+            target_platforms[_non_versioned_platform(plat)] = None
 
     return {
         k: sorted(v)
         for k, v in {
-            "glibc_versions": glibc_versions,
-            "muslc_versions": muslc_versions,
-            "osx_versions": osx_versions,
             "python_versions": python_versions,
             "target_platforms": target_platforms,
         }.items()
