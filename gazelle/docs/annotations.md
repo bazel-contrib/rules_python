@@ -21,23 +21,26 @@ def bar():  # gazelle:annotation_name value
 
 The annotations are:
 
-* [`# gazelle:ignore imports`](#ignore)
+{.glossary}
+[`# gazelle:ignore imports`](#ignore)
+: Tells Gazelle to ignore import statements. `imports` is a comma-separated
+  list of imports to ignore.
   * Default: n/a
   * Allowed Values: A comma-separated string of python package names
-  * Tells Gazelle to ignore import statements. `imports` is a comma-separated
-    list of imports to ignore.
-* [`# gazelle:include_dep targets`](#include-dep)
+
+[`# gazelle:include_dep targets`](#include-dep)
+: Tells Gazelle to include a set of dependencies, even if they are not imported
+  in a Python module. `targets` is a comma-separated list of target names
+  to include as dependencies.
   * Default: n/a
-  * Allowed Values: A string
-  * Tells Gazelle to include a set of dependencies, even if they are not imported
-    in a Python module. `targets` is a comma-separated list of target names
-    to include as dependencies.
-* [`# gazelle:include_pytest_conftest bool`](#include-pytest-conftest)
+  * Allowed Values: A comma-separated string of targets
+
+[`# gazelle:include_pytest_conftest bool`](#include-pytest-conftest)
+: Whether or not to include a sibling `:conftest` target in the `deps`
+  of a {bzl:obj}`py_test` target. The default behaviour is to include `:conftest`
+  (i.e.: `# gazelle:include_pytest_conftest true`).
   * Default: n/a
   * Allowed Values: `true`, `false`
-  * Whether or not to include a sibling `:conftest` target in the `deps`
-    of a {bzl:obj}`py_test` target. The default behaviour is to include `:conftest`
-    (i.e.: `# gazelle:include_pytest_conftest true`).
 
 
 ## `ignore`

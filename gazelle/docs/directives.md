@@ -15,136 +15,159 @@ the Python-specific directives in use can be found in the
 
 The Python-specific directives are:
 
-* [`# gazelle:python_extension`](#python-extension)
+{.glossary}
+[`# gazelle:python_extension value`](#python-extension)
+: Controls whether the Python extension is enabled or not. Sub-packages
+  inherit this value.
   * Default: `enabled`
   * Allowed Values: `enabled`, `disabled`
-  * Controls whether the Python extension is enabled or not. Sub-packages
-    inherit this value.
-* [`# gazelle:python_root`](#python-root)
+
+[`# gazelle:python_root`](#python-root)
+: Sets a Bazel package as a Python root. This is used on monorepos with
+  multiple Python projects that don't share the top-level of the workspace
+  as the root.
   * Default: n/a
   * Allowed Values: None. This direcive does not consume values.
-  * Sets a Bazel package as a Python root. This is used on monorepos with
-    multiple Python projects that don't share the top-level of the workspace
-    as the root.
-* [`# gazelle:python_manifest_file_name`](#python-manifest-file-name)
+
+[`# gazelle:python_manifest_file_name value`](#python-manifest-file-name)
+: Overrides the default manifest file name.
   * Default: `gazelle_python.yaml`
   * Allowed Values: A string
-  * Overrides the default manifest file name.
-* [`# gazelle:python_ignore_files`](#python-ignore-files)
+
+[`# gazelle:python_ignore_files value`](#python-ignore-files)
+: Controls the files which are ignored from the generated targets.
   * Default: n/a
-  * Allowed Values: WIP
-  * Controls the files which are ignored from the generated targets.
-* [`# gazelle:python_ignore_dependencies`](#python-ignore-dependencies)
+  * Allowed Values: A comma-separated list of strings.
+
+[`# gazelle:python_ignore_dependencies value`](#python-ignore-dependencies)
+: Controls the ignored dependencies from the generated targets.
   * Default: n/a
-  * Allowed Values: WIP
-  * Controls the ignored dependencies from the generated targets.
-* [`# gazelle:python_validate_import_statements`](#python-validate-import-statements)
+  * Allowed Values: A comma-separated list of strings.
+
+[`# gazelle:python_validate_import_statements bool`](#python-validate-import-statements)
+: Controls whether the Python import statements should be validated.
   * Default: `true`
   * Allowed Values: `true`, `false`
-  * Controls whether the Python import statements should be validated.
-* [`# gazelle:python_generation_mode`](#python-generation-mode)
+
+[`# gazelle:python_generation_mode value`](#python-generation-mode)
+: Controls the target generation mode.
   * Default: `package`
   * Allowed Values: `file`, `package`, `project`
-  * Controls the target generation mode.
-* [`# gazelle:python_generation_mode_per_file_include_init`](#python-generation-mode-per-file-include-init)
+
+[`# gazelle:python_generation_mode_per_file_include_init bool`](#python-generation-mode-per-file-include-init)
+: Controls whether `__init__.py` files are included as srcs in each
+  generated target when target generation mode is "file".
   * Default: `false`
   * Allowed Values: `true`, `false`
-  * Controls whether `__init__.py` files are included as srcs in each
-    generated target when target generation mode is "file".
-* [`# gazelle:python_generation_mode_per_package_require_test_entry_point`](python-generation-mode-per-package-require-test-entry-point)
+
+[`# gazelle:python_generation_mode_per_package_require_test_entry_point bool`](python-generation-mode-per-package-require-test-entry-point)
+: Controls whether a file called `__test__.py` or a target called
+  `__test__` is required to generate one test target per package in
+  package mode.
   * Default: `true`
   * Allowed Values: `true`, `false`
-  * Controls whether a file called `__test__.py` or a target called
-    `__test__` is required to generate one test target per package in
-    package mode.
-* [`# gazelle:python_library_naming_convention`](#python-library-naming-convention)
+
+[`# gazelle:python_library_naming_convention value`](#python-library-naming-convention)
+: Controls the {bzl:obj}`py_library` naming convention. It interpolates
+  `$package_name$` with the Bazel package name. E.g. if the Bazel package
+  name is `foo`, setting this to `$package_name$_my_lib` would result in a
+  generated target named `foo_my_lib`.
   * Default: `$package_name$`
   * Allowed Values: A string containing `"$package_name$"`
-  * Controls the {bzl:obj}`py_library` naming convention. It interpolates
-    `$package_name$` with the Bazel package name. E.g. if the Bazel package
-    name is `foo`, setting this to `$package_name$_my_lib` would result in a
-    generated target named `foo_my_lib`.
-* [`# gazelle:python_binary_naming_convention`](#python-binary-naming-convention)
+
+[`# gazelle:python_binary_naming_convention value`](#python-binary-naming-convention)
+: Controls the {bzl:obj}`py_binary` naming convention. Follows the same interpolation
+  rules as `python_library_naming_convention`.
   * Default: `$package_name$_bin`
   * Allowed Values: A string containing `"$package_name$"`
-  * Controls the {bzl:obj}`py_binary` naming convention. Follows the same interpolation
-    rules as `python_library_naming_convention`.
-* [`# gazelle:python_test_naming_convention`](#python-test-naming-convention)
+
+[`# gazelle:python_test_naming_convention value`](#python-test-naming-convention)
+: Controls the {bzl:obj}`py_test` naming convention. Follows the same interpolation
+  rules as `python_library_naming_convention`.
   * Default: `$package_name$_test`
   * Allowed Values: A string containing `"$package_name$"`
-  * Controls the {bzl:obj}`py_test` naming convention. Follows the same interpolation
-    rules as `python_library_naming_convention`.
-* [`# gazelle:python_proto_naming_convention`](#python-proto-naming-convention)
+
+[`# gazelle:python_proto_naming_convention value`](#python-proto-naming-convention)
+: Controls the {bzl:obj}`py_proto_library` naming convention. It interpolates
+  `$proto_name$` with the {bzl:obj}`proto_library` rule name, minus any trailing
+  `_proto`. E.g. if the {bzl:obj}`proto_library` name is `foo_proto`, setting this
+  to `$proto_name$_my_lib` would render to `foo_my_lib`.
   * Default: `$proto_name$_py_pb2`
   * Allowed Values: A string containing `"$proto_name$"`
-  * Controls the {bzl:obj}`py_proto_library` naming convention. It interpolates
-    `$proto_name$` with the {bzl:obj}`proto_library` rule name, minus any trailing
-    `_proto`. E.g. if the {bzl:obj}`proto_library` name is `foo_proto`, setting this
-    to `$proto_name$_my_lib` would render to `foo_my_lib`.
-* [`# gazelle:resolve py ...`](#resolve-py)
+
+[`# gazelle:resolve py import-lang import-string label`](#resolve-py)
+: Instructs the plugin what target to add as a dependency to satisfy a given
+  import statement. The syntax is `# gazelle:resolve py import-string label`
+  where `import-string` is the symbol in the python `import` statement,
+  and `label` is the Bazel label that Gazelle should write in `deps`.
   * Default: n/a
   * Allowed Values: See the [bazel-gazelle docs][gazelle-directives]
-  * Instructs the plugin what target to add as a dependency to satisfy a given
-    import statement. The syntax is `# gazelle:resolve py import-string label`
-    where `import-string` is the symbol in the python `import` statement,
-    and `label` is the Bazel label that Gazelle should write in `deps`.
-* [`# gazelle:python_default_visibility labels`](python-default-visibility)
+
+[`# gazelle:python_default_visibility labels`](python-default-visibility)
+: Instructs gazelle to use these visibility labels on all python targets.
+  `labels` is a comma-separated list of labels (without spaces).
   * Default: `//$python_root$:__subpackages__`
   * Allowed Values: A string
-  * Instructs gazelle to use these visibility labels on all python targets.
-    `labels` is a comma-separated list of labels (without spaces).
-* [`# gazelle:python_visibility label`](python-visibility)
+
+[`# gazelle:python_visibility label`](python-visibility)
+: Appends additional visibility labels to each generated target. This r
+  directive can be set multiple times.
   * Default: n/a
   * Allowed Values: A string
-  * Appends additional visibility labels to each generated target. This r
-    directive can be set multiple times.
-* [`# gazelle:python_test_file_pattern`](python-test-file-pattern)
+
+[`# gazelle:python_test_file_pattern value`](python-test-file-pattern)
+: Filenames matching these comma-separated {command}`glob`s will be mapped to
+  {bzl:obj}`py_test` targets.
   * Default: `*_test.py,test_*.py`
   * Allowed Values: A glob string
-  * Filenames matching these comma-separated {command}`glob`s will be mapped to
-    {bzl:obj}`py_test` targets.
-* [`# gazelle:python_label_convention`](#python-label-convention)
+
+[`# gazelle:python_label_convention value`](#python-label-convention)
+: Defines the format of the distribution name in labels to third-party deps.
+  Useful for using Gazelle plugin with other rules with different repository
+  conventions (e.g. `rules_pycross`). Full label is always prepended with
+  the `pip` repository name, e.g. `@pip//numpy` if your
+  `MODULE.bazel` has `use_repo(pip, "pip")` or `@pypi//numpy`
+  if your `MODULE.bazel` has `use_repo(pip, "pypi")`.
   * Default: `$distribution_name$`
   * Allowed Values: A string
-  * Defines the format of the distribution name in labels to third-party deps.
-    Useful for using Gazelle plugin with other rules with different repository
-    conventions (e.g. `rules_pycross`). Full label is always prepended with
-    the `pip` repository name, e.g. `@pip//numpy` if your
-    `MODULE.bazel` has `use_repo(pip, "pip")` or `@pypi//numpy`
-    if your `MODULE.bazel` has `use_repo(pip, "pypi")`.
-* [`# gazelle:python_label_normalization`](#python-label-normalization)
+
+[`# gazelle:python_label_normalization value`](#python-label-normalization)
+: Controls how distribution names in labels to third-party deps are
+  normalized. Useful for using Gazelle plugin with other rules with different
+  label conventions (e.g. `rules_pycross` uses PEP-503).
   * Default: `snake_case`
   * Allowed Values: `snake_case`, `none`, `pep503`
-  * Controls how distribution names in labels to third-party deps are
-    normalized. Useful for using Gazelle plugin with other rules with different
-    label conventions (e.g. `rules_pycross` uses PEP-503).
-* [`# gazelle:python_experimental_allow_relative_imports`](#python-experimental-allow-relative-imports)
+
+[`# gazelle:python_experimental_allow_relative_imports bool`](#python-experimental-allow-relative-imports)
+: Controls whether Gazelle resolves dependencies for import statements that
+  use paths relative to the current package.
   * Default: `false`
   * Allowed Values: `true`, `false`
-  * Controls whether Gazelle resolves dependencies for import statements that
-    use paths relative to the current package.
-* [`# gazelle:python_generate_pyi_deps`](#python-generate-pyi-deps)
+
+[`# gazelle:python_generate_pyi_deps bool`](#python-generate-pyi-deps)
+: Controls whether to generate a separate `pyi_deps` attribute for
+  type-checking dependencies or merge them into the regular `deps`
+  attribute. When `false` (default), type-checking dependencies are
+  merged into `deps` for backward compatibility. When `true`, generates
+  separate `pyi_deps`. Imports in blocks with the format
+  `if typing.TYPE_CHECKING:` or `if TYPE_CHECKING:` and type-only stub
+  packages (eg. boto3-stubs) are recognized as type-checking dependencies.
   * Default: `false`
   * Allowed Values: `true`, `false`
-  * Controls whether to generate a separate `pyi_deps` attribute for
-    type-checking dependencies or merge them into the regular `deps`
-    attribute. When `false` (default), type-checking dependencies are
-    merged into `deps` for backward compatibility. When `true`, generates
-    separate `pyi_deps`. Imports in blocks with the format
-    `if typing.TYPE_CHECKING:` or `if TYPE_CHECKING:` and type-only stub
-    packages (eg. boto3-stubs) are recognized as type-checking dependencies.
-* [`# gazelle:python_generate_proto`](#python-generate-proto)
+
+[`# gazelle:python_generate_proto bool`](#python-generate-proto)
+: Controls whether to generate a {bzl:obj}`py_proto_library` for each
+  {bzl:obj}`proto_library` in the package. By default we load this rule from the
+  `@protobuf` repository; use `gazelle:map_kind` if you need to load this
+  from somewhere else.
   * Default: `false`
   * Allowed Values: `true`, `false`
-  * Controls whether to generate a {bzl:obj}`py_proto_library` for each
-    {bzl:obj}`proto_library` in the package. By default we load this rule from the
-    `@protobuf` repository; use `gazelle:map_kind` if you need to load this
-    from somewhere else.
-* [`# gazelle:python_resolve_sibling_imports`](#python-resolve-sibling-imports)
+
+[`# gazelle:python_resolve_sibling_imports bool`](#python-resolve-sibling-imports)
+: Allows absolute imports to be resolved to sibling modules (Python 2's
+  behavior without `absolute_import`).
   * Default: `false`
   * Allowed Values: `true`, `false`
-  * Allows absolute imports to be resolved to sibling modules (Python 2's
-    behavior without `absolute_import`).
 
 
 ## `python_extension`

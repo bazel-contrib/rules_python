@@ -54,23 +54,31 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (deps) (bzlmod) Upgraded to `bazel-skylib` version
+  [1.8.1](https://github.com/bazelbuild/bazel-skylib/releases/tag/1.8.1)
+  to remove deprecation warnings.
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
   `# gazelle:python_experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
 * (gazelle) Types for exposed members of `python.ParserOutput` are now all public.
 * (gazelle) Removed the requirement for `__init__.py`, `__main__.py`, or `__test__.py` files to be
   present in a directory to generate a `BUILD.bazel` file.
-* (toolchain) Updated the following toolchains to build 20250708 to patch CVE-2025-47273:
+* (toolchain) Updated the following toolchains to build [20250808] to patch CVE-2025-47273:
     * 3.9.23
     * 3.10.18
     * 3.11.13
     * 3.12.11
-    * 3.14.0b4
-* (toolchain) Python 3.13 now references 3.13.5
+    * 3.14.0rc1
+* (toolchain) Python 3.13 now references 3.13.6
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
-* (core) #!/usr/bin/env bash is now used as a shebang in the stage1 bootstrap template.
+* (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
+* (gazelle:docs) The Gazelle docs have been migrated from {gh-path}`gazelle/README.md` to
+  {gh-path}`gazelle/docs` and are now available on the primary documentation site
+  at https://rules-python.readthedocs.io/en/latest/gazelle/docs/index.html
+
+[20250808]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250808
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -112,12 +120,16 @@ END_UNRELEASED_TEMPLATE
   installations (Mac frameworks, missing dynamic libraries, and other
   esoteric cases, see
   [#3148](https://github.com/bazel-contrib/rules_python/pull/3148) for details).
+* (pypi) Correctly pull `sdist` distributions using `pip`
+  ([#3131](https://github.com/bazel-contrib/rules_python/pull/3131)).
+* (core) builds work again on `7.x` `WORKSPACE` configurations
+  ([#3119](https://github.com/bazel-contrib/rules_python/issues/3119)).
 
 {#v0-0-0-added}
 ### Added
 * (repl) Default stub now has tab completion, where `readline` support is available,
-  see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
-  ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)). 
+  see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
+  ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
   this feature. You can also configure custom `config_settings` using `pip.default`.
@@ -131,8 +143,8 @@ END_UNRELEASED_TEMPLATE
 * (toolchain) Add toolchains for aarch64 windows for
     * 3.11.13
     * 3.12.11
-    * 3.13.5
-    * 3.14.0b4
+    * 3.13.6
+    * 3.14.0rc1
 * (gazelle): New annotation `gazelle:include_pytest_conftest`. When not set (the
   default) or `true`, gazelle will inject any `conftest.py` file found in the same
   directory as a {obj}`py_test` target to that {obj}`py_test` target's `deps`.
