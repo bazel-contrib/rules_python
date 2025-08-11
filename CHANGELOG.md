@@ -54,6 +54,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (deps) (bzlmod) Upgraded to `bazel-skylib` version
+  [1.8.1](https://github.com/bazelbuild/bazel-skylib/releases/tag/1.8.1)
+  to remove deprecation warnings.
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
   `# gazelle:python_experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
@@ -111,6 +114,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) `bazel vendor` now works in `bzlmod` ({gh-issue}`3079`).
 * (pypi) Correctly pull `sdist` distributions using `pip`
   ([#3131](https://github.com/bazel-contrib/rules_python/pull/3131)).
+* (core) builds work again on `7.x` `WORKSPACE` configurations
+  ([#3119](https://github.com/bazel-contrib/rules_python/issues/3119)).
 
 {#v0-0-0-added}
 ### Added

@@ -252,6 +252,9 @@ bzl_library(
 bzl_library(
     name = "pep508_env_bzl",
     srcs = ["pep508_env.bzl"],
+    deps = [
+        "//python/private:version_bzl",
+    ],
 )
 
 bzl_library(
@@ -261,11 +264,6 @@ bzl_library(
         "//python/private:enum_bzl",
         "//python/private:version_bzl",
     ],
-)
-
-bzl_library(
-    name = "pep508_platform_bzl",
-    srcs = ["pep508_platform.bzl"],
 )
 
 bzl_library(
