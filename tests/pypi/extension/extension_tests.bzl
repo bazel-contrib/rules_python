@@ -934,7 +934,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "direct_sdist_without_sha",
+            "requirement": "direct_sdist_without_sha @ some-archive/any-name.tar.gz",
             "sha256": "",
             "urls": ["some-archive/any-name.tar.gz"],
         },
