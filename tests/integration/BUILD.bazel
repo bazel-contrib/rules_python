@@ -96,6 +96,17 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
+    name = "local_toolchains_workspace_test",
+    bazel_versions = [
+        version
+        for version in bazel_binaries.versions.all
+        if not version.startswith("6.")
+    ],
+    bzlmod = False,
+    workspace_path = "local_toolchains",
+)
+
+rules_python_integration_test(
     name = "pip_parse_test",
 )
 
