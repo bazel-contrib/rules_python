@@ -20,7 +20,7 @@ other C/C++ rules via the `CcInfo` provider.
 
 Here's an example of a rule that creates the `-lpython<version>` flag:
 
-```text
+```starlark
 # python_libs.bzl
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "cc_common")
 
@@ -47,7 +47,7 @@ python_libs = rule(
 In your `BUILD.bazel` file, define a target using this rule and add it to the
 `deps` of your `cc_binary` or `cc_library`.
 
-```text
+```starlark
 # BUILD.bazel
 load(":python_libs.bzl", "python_libs")
 

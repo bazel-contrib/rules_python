@@ -13,7 +13,7 @@ the version string.
 
 Create a file named `my_rule.bzl`:
 
-```text
+```starlark
 # my_rule.bzl
 def _my_rule_impl(ctx):
     toolchain = ctx.toolchains["@rules_python//python:toolchain_type"]
@@ -39,7 +39,7 @@ my_rule = rule(
 
 In your `BUILD.bazel` file, you can use the rule like this:
 
-```text
+```starlark
 # BUILD.bazel
 load(":my_rule.bzl", "my_rule")
 
@@ -51,7 +51,7 @@ my_rule(
 When you build this target, it will generate a file named
 `show_python_version.txt` containing the Python version (e.g., `3.9`).
 
-```text
+```starlark
 bazel build :show_python_version
 cat bazel-bin/show_python_version.txt
 ```
