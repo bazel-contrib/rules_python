@@ -42,7 +42,7 @@ whl_mods = use_extension("@rules_python//python/extensions:pip.bzl", "whl_mods")
 
 # Define a specific modification for a wheel
 whl_mods(
-    name = "numpy_mods",
+    hub_name = "pypi_mods",
     whl_name = "numpy-1.0.0-py3-none-any.whl", # The exact wheel filename
     additive_build_content = """
 load("@//:pypi_extra_targets.bzl", "numpy_hdrs")
@@ -54,11 +54,8 @@ pip.parse(
     hub_name = "pypi",
     wheel_name = "numpy",
     requirements_lock = "//:requirements.txt",
-    build_file_content = {
-        "numpy": 'load("//:pypi_extra_targets.bzl", "numpy_hdrs")\n\nnumpy_hdrs()',
-    },
     whl_modifications = {
-        "@numpy_mods//:numpy.json": "numpy",
+        "@pypi_mods//:numpy.json": "numpy",
     },
     extra_hub_aliases = {
         "numpy": ["headers"],
