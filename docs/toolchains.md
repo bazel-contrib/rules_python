@@ -432,13 +432,11 @@ interpreter, then introspect its installation to generate a full toolchain.
 local_runtime_repo = use_repo_rule(
     "@rules_python//python/local_toolchains:repos.bzl",
     "local_runtime_repo",
-    dev_dependency = True,
 )
 
 local_runtime_toolchains_repo = use_repo_rule(
     "@rules_python//python/local_toolchains:repos.bzl",
     "local_runtime_toolchains_repo",
-    dev_dependency = True,
 )
 
 # Step 1: Define the Python runtime
@@ -446,6 +444,7 @@ local_runtime_repo(
     name = "local_python3",
     interpreter_path = "python3",
     on_failure = "fail",
+    dev_dependency = True
 )
 
 # Step 2: Create toolchains for the runtimes
@@ -454,6 +453,7 @@ local_runtime_toolchains_repo(
     runtimes = ["local_python3"],
     # TIP: The `target_settings` arg can be used to activate them based on
     # command line flags; see docs below.
+    dev_dependency = True
 )
 
 # Step 3: Register the toolchains

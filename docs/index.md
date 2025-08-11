@@ -102,6 +102,7 @@ precompiling
 gazelle/docs/index
 REPL <repl>
 Extending <extending>
+How-to Guides <howto/index>
 Contributing <contributing>
 devguide
 support
