@@ -503,6 +503,14 @@ tasks:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Debian"
     platform: debian11
+  integration_test_bazelinbazel_macos:
+    <<: *common_bazelinbazel_config
+    name: "tests/integration bazel-in-bazel: macOS"
+    platform: macos
+  integration_test_bazelinbazel_windows:
+    <<: *common_bazelinbazel_config
+    name: "tests/integration bazel-in-bazel: Windows"
+    platform: windows
 
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
