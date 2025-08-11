@@ -109,18 +109,12 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) use "command -v" to find interpreter in `$PATH`
   ([#3150](https://github.com/bazel-contrib/rules_python/pull/3150)).
 * (pypi) `bazel vendor` now works in `bzlmod` ({gh-issue}`3079`).
-* (toolchains) `local_runtime_repo` Improvements in handling variations across python installations
-  for Linux, Windows and Mac. See ([#3148](https://github.com/bazel-contrib/rules_python/pull/3148)).
 * (toolchains) `local_runtime_repo` now works on Windows
   ([#3055](https://github.com/bazel-contrib/rules_python/issues/3055)).
 * (toolchains) `local_runtime_repo` supports more types of Python
   installations (Mac frameworks, missing dynamic libraries, and other
   esoteric cases, see
   [#3148](https://github.com/bazel-contrib/rules_python/pull/3148) for details).
-* (pypi) Correctly pull `sdist` distributions using `pip`
-  ([#3131](https://github.com/bazel-contrib/rules_python/pull/3131)).
-* (core) builds work again on `7.x` `WORKSPACE` configurations
-  ([#3119](https://github.com/bazel-contrib/rules_python/issues/3119)).
 
 {#v0-0-0-added}
 ### Added
