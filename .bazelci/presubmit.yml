@@ -56,6 +56,8 @@ buildifier:
     - "--noenable_bzlmod"
     - "--enable_workspace"
     - "--build_tag_filters=-integration-test"
+    # Reproduce what we found in https://github.com/bazelbuild/bazel/pull/26587#issuecomment-3175514081
+    - "--incompatible_strict_action_env"
   bazel: 7.x
 .common_bazelinbazel_config: &common_bazelinbazel_config
     build_flags:
