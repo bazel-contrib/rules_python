@@ -1,4 +1,7 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_library")
 
 def py_extension(
         name = None,
@@ -34,8 +37,8 @@ def py_extension(
     linker_script_name = name + ".lds"
     linker_script_name_rule = name + "_lds"
     shared_objects_name = name + "__shared_objects"
-    # buildifier: disable=native-cc
-    native.cc_library(
+
+    cc_library(
         name = cc_library_name,
         srcs = srcs,
         hdrs = hdrs,
@@ -92,8 +95,8 @@ def py_extension(
                 "@platforms//os:macos": [],
                 "//conditions:default": [linker_script_name],
             })
-        # buildifier: disable=native-cc
-        native.cc_binary(
+
+        cc_binary(
             name = cc_binary_name,
             linkshared = True,
             #linkstatic = True,
@@ -123,8 +126,7 @@ def py_extension(
         }),
         testonly = testonly,
     )
-
-    native.py_library(
+    py_library(
         name = name,
         data = [":" + shared_objects_name],
         imports = imports,

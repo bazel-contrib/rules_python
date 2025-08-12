@@ -1,8 +1,6 @@
-
-import echo_ext
-
 import unittest
 
+import echo_ext
 
 
 class ExtensionTest(unittest.TestCase):

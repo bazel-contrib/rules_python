@@ -40,11 +40,11 @@ string_flag(
 # Build rules to generate a python extension.
 py_extension(
     name = "echo_ext",
+    testonly = True,
     srcs = ["echo_ext.cc"],
     deps = [
         "@rules_python//python/cc:current_py_cc_headers",
     ],
-    testonly = True,
 )
 
 py_test(
