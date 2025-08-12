@@ -9,7 +9,7 @@ static PyMethodDef echo_methods[] = {
 
 extern "C" {
 
-PyMODINIT_FUNC PyInit_echo(void) {
+PyMODINIT_FUNC PyInit_echo_ext(void) {
   static struct PyModuleDef echo_module_def = {
     // Module definition
     PyModuleDef_HEAD_INIT, "echo_ext", "'echo_ext' module", -1, echo_methods

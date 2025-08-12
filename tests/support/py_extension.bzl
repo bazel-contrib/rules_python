@@ -1,32 +1,59 @@
+# Copyright 2025 The Bazel Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Macro to build a python C/C++ extension."""
+
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_python//python:defs.bzl", "py_library")
 
 def py_extension(
+        *,
         name = None,
         srcs = None,
         hdrs = None,
-        data = None,
-        local_defines = None,
+        deps = None,
         visibility = None,
         linkopts = None,
-        deps = None,
         testonly = False,
-        imports = None):
+        imports = None,
+        **kwargs):
     """Creates a Python module implemented in C++.
 
+    A Python extension has 3 essential parts:
+      1.  The cc_library target for the extension, which is `name_cc`
+      2.  The shared object / pyd package for the extension, `name.pyd`/`name.so`
+      3.  The py_library target for the extension, which is `name`
+
     Python modules can depend on a py_extension. Other py_extensions can depend
-    on a generated C++ library named with "_cc" suffix.
+    on the generated C++ library named with "_cc" suffix.
 
     Args:
-      name: Name for this target.
-      srcs: C++ source files.
-      hdrs: C++ header files, for other py_extensions which depend on this.
-      data: Files needed at runtime. This may include Python libraries.
+      name: `str`. Name for this target.  This is typically the module name.
+      srcs: `list`. C++ source files.
+      hdrs: `list`. C++ header files, for other py_extensions which depend on this.
+      deps: `list`. Other C++ libraries that this library depends upon.
       visibility: Controls which rules can depend on this.
-      deps: Other C++ libraries that this library depends upon.
+      linkopts: `list`. Linking options for the shared library.
+      testonly: `bool`. Indicates that the rule is a test only.
+      imports: `list`. Additional imports for the py_library rule.
+      **kwargs:  Additional options for the cc_library rule.
     """
+    if not name:
+        fail('py_extension requires a name')
+
     if not linkopts:
         linkopts = []
 
@@ -42,12 +69,11 @@ def py_extension(
         name = cc_library_name,
         srcs = srcs,
         hdrs = hdrs,
-        data = data,
-        local_defines = local_defines,
-        visibility = visibility,
         deps = deps,
+        visibility = visibility,
         testonly = testonly,
         alwayslink = True,
+        **kwargs,
     )
 
     # On Unix, restrict symbol visibility.
