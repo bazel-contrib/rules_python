@@ -15,9 +15,12 @@
 """Macro to build a python C/C++ extension.
 
 There are variants of py_extension in many other projects, such as:
-https://github.com/protocolbuffers/protobuf/tree/main/python/py_extension.bzl
-https://github.com/google/riegeli/blob/master/python/riegeli/py_extension.bzl
-https://github.com/pybind/pybind11_bazel/blob/master/build_defs.bzl
+* https://github.com/protocolbuffers/protobuf/tree/main/python/py_extension.bzl
+* https://github.com/google/riegeli/blob/master/python/riegeli/py_extension.bzl
+* https://github.com/pybind/pybind11_bazel/blob/master/build_defs.bzl
+
+The issue for a generic verion is:
+* https://github.com/bazel-contrib/rules_python/issues/824
 """
 
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
@@ -30,6 +33,7 @@ def py_extension(
         deps = None,
         linkopts = None,
         imports = None,
+        visibility = None,
         **kwargs):
     """Creates a Python module implemented in C++.
 
@@ -44,18 +48,21 @@ def py_extension(
       deps: `list`. Required. C++ libraries to link into the module.
       linkopts: `list`. Linking options for the shared library.
       imports: `list`. Additional imports for the py_library rule.
+      visibility: `str`. Visibility for target.
       **kwargs:  Additional options for the cc_library rule.
     """
     if not name:
         fail("py_extension requires a name")
     if not deps:
         fail("py_extension requires a non-empty deps attribute")
+    if "linkshared" in kwargs:
+        fail("py_extension attribute linkshared not allowed")
 
     if not linkopts:
         linkopts = []
 
     testonly = kwargs.get("testonly")
-    visibility = kwargs.get("visibility")
+    tags = kwargs.pop("tags", [])
 
     cc_binary_so_name = name + ".so"
     cc_binary_dll_name = name + ".dll"
@@ -116,9 +123,9 @@ def py_extension(
             #linkstatic = True,
             visibility = ["//visibility:private"],
             deps = cur_deps,
-            tags = ["manual"],
-            testonly = testonly,
+            tags = tags + ["manual"],
             linkopts = cur_linkopts,
+            **kwargs
         )
 
     copy_file(
@@ -133,9 +140,7 @@ def py_extension(
     native.filegroup(
         name = shared_objects_name,
         data = select({
-            "@platforms//os:windows": [
-                ":" + cc_binary_pyd_name,
-            ],
+            "@platforms//os:windows": [":" + cc_binary_pyd_name],
             "//conditions:default": [":" + cc_binary_so_name],
         }),
         testonly = testonly,
@@ -144,6 +149,7 @@ def py_extension(
         name = name,
         data = [":" + shared_objects_name],
         imports = imports,
+        tags = tags,
         testonly = testonly,
         visibility = visibility,
     )

@@ -43,10 +43,6 @@ cc_library(
     name = "echo_ext_cc",
     testonly = True,
     srcs = ["echo_ext.cc"],
-    copts = select({
-        "@rules_cc//cc/compiler:msvc-cl": [],
-        "//conditions:default": ["-fvisibility=hidden"],
-    }),
     deps = [
         "@rules_python//python/cc:current_py_cc_headers",
     ],
@@ -56,6 +52,10 @@ cc_library(
 py_extension(
     name = "echo_ext",
     testonly = True,
+    copts = select({
+        "@rules_cc//cc/compiler:msvc-cl": [],
+        "//conditions:default": ["-fvisibility=hidden"],
+    }),
     deps = [":echo_ext_cc"],
 )
 
