@@ -161,7 +161,7 @@ def _local_runtime_repo_impl(rctx):
         libraries.append(shared_library)
     elif static_library:
         libraries.append(static_library)
-    if not libraries:
+    else:
         logger.warn("No external python libraries found.")
 
     build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
