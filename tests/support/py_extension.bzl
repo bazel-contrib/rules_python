@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Macro to build a python C/C++ extension."""
+"""Macro to build a python C/C++ extension.
+
+There are variants of py_extension in many other projects, such as:
+https://github.com/protocolbuffers/protobuf/tree/main/python/py_extension.bzl
+https://github.com/google/riegeli/blob/master/python/riegeli/py_extension.bzl
+https://github.com/pybind/pybind11_bazel/blob/master/build_defs.bzl
+"""
 
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
@@ -21,13 +27,11 @@ load("@rules_python//python:defs.bzl", "py_library")
 
 def py_extension(
         *,
-        name = None,
+        name,
         srcs = None,
         hdrs = None,
         deps = None,
-        visibility = None,
         linkopts = None,
-        testonly = False,
         imports = None,
         **kwargs):
     """Creates a Python module implemented in C++.
@@ -45,17 +49,18 @@ def py_extension(
       srcs: `list`. C++ source files.
       hdrs: `list`. C++ header files, for other py_extensions which depend on this.
       deps: `list`. Other C++ libraries that this library depends upon.
-      visibility: Controls which rules can depend on this.
       linkopts: `list`. Linking options for the shared library.
-      testonly: `bool`. Indicates that the rule is a test only.
       imports: `list`. Additional imports for the py_library rule.
       **kwargs:  Additional options for the cc_library rule.
     """
     if not name:
-        fail('py_extension requires a name')
+        fail("py_extension requires a name")
 
     if not linkopts:
         linkopts = []
+
+    testonly = kwargs.get("testonly")
+    visibility = kwargs.get("visibility")
 
     cc_library_name = name + "_cc"
     cc_binary_so_name = name + ".so"
@@ -70,10 +75,8 @@ def py_extension(
         srcs = srcs,
         hdrs = hdrs,
         deps = deps,
-        visibility = visibility,
-        testonly = testonly,
         alwayslink = True,
-        **kwargs,
+        **kwargs
     )
 
     # On Unix, restrict symbol visibility.
@@ -116,6 +119,9 @@ def py_extension(
                     "-Wl,--version-script",
                     "-Wl,$(location :" + linker_script_name + ")",
                 ],
+            }) + select({
+                "@rules_cc//cc/compiler:msvc-cl": [],
+                "//conditions:default": ["-fvisibility=hidden"],
             })
             cur_deps = cur_deps + select({
                 "@platforms//os:macos": [],
