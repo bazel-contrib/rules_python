@@ -50,5 +50,5 @@ py_extension(
 py_test(
     name = "echo_test",
     srcs = ["echo_test.py"],
-    deps = [":echo"],
+    deps = [":echo_ext"],
 )
