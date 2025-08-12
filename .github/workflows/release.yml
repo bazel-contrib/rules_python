@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Create release archive and notes
         run: .github/workflows/create_archive_and_notes.sh
       - name: Publish wheel dist
