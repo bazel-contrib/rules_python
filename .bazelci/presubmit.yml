@@ -57,6 +57,7 @@ buildifier:
     - "--enable_workspace"
     - "--build_tag_filters=-integration-test"
   bazel: 7.x
+# NOTE: The Mac and Windows bazelinbazel jobs override parts of this config.
 .common_bazelinbazel_config: &common_bazelinbazel_config
     build_flags:
       - "--build_tag_filters=integration-test"
@@ -503,14 +504,24 @@ tasks:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Debian"
     platform: debian11
+  # The bazelinbazel tests were disabled on Mac to save CI jobs slots, and
+  # have bitrotted a bit. For now, just run a subset of what we're most
+  # interested in.
   integration_test_bazelinbazel_macos:
     <<: *common_bazelinbazel_config
-    name: "tests/integration bazel-in-bazel: macOS"
+    name: "tests/integration bazel-in-bazel: macOS (subset)"
     platform: macos
+    build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+  # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
+  # have bitrotted a bit. For now, just run a subset of what we're most
+  # interested in.
   integration_test_bazelinbazel_windows:
     <<: *common_bazelinbazel_config
-    name: "tests/integration bazel-in-bazel: Windows"
+    name: "tests/integration bazel-in-bazel: Windows (subset)"
     platform: windows
+    build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
 
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
