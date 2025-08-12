@@ -38,7 +38,7 @@ def py_extension(
     """Creates a Python module implemented in C++.
 
     A Python extension has 2 essential parts:
-=     1.  An internal shared object / pyd package for the extension, `name.pyd`/`name.so`
+      1.  An internal shared object / pyd package for the extension, `name.pyd`/`name.so`
       2.  The py_library target for the extension.`
 
     Python modules can depend on a py_extension.
@@ -120,7 +120,6 @@ def py_extension(
         cc_binary(
             name = cc_binary_name,
             linkshared = True,
-            #linkstatic = True,
             visibility = ["//visibility:private"],
             deps = cur_deps,
             tags = tags + ["manual"],
