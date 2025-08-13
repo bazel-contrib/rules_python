@@ -35,9 +35,11 @@ def _platform_tag_priority(*, tag, values):
 
         return (res, (0, 0))
 
-    plat, _, tail = tag.partition("_")
+    # Only android, ios, macosx, manylinux or musllinux platforms should be considered
+
+    os, _, tail = tag.partition("_")
     major, _, tail = tail.partition("_")
-    if not plat.startswith(_ANDROID):
+    if not os.startswith(_ANDROID):
         minor, _, arch = tail.partition("_")
     else:
         minor = "0"
@@ -46,27 +48,37 @@ def _platform_tag_priority(*, tag, values):
 
     keys = []
     for priority, wp in enumerate(values):
-        want_plat, sep, tail = wp.partition("_")
+        want_os, sep, tail = wp.partition("_")
         if not sep:
+            # if there is no `_` separator, then it means that we have something like `win32` or
+            # similar wheels that we are considering, this means that it should be discarded because
+            # we are dealing only with platforms that have `_`.
             continue
 
-        if want_plat != plat:
+        if want_os != os:
+            # os should always match exactly for us to match and assign a priority
             continue
 
         want_major, _, tail = tail.partition("_")
         if want_major == "*":
+            # the expected match is any version
             want_major = ""
             want_minor = ""
             want_arch = tail
-        elif plat.startswith(_ANDROID):
+        elif os.startswith(_ANDROID):
+            # we set it to `0` above, so setting the `want_minor` her to `0` will make things
+            # consistent.
             want_minor = "0"
             want_arch = tail
         else:
+            # here we parse the values from the given platform
             want_minor, _, want_arch = tail.partition("_")
 
         if want_arch != arch:
+            # the arch should match exactly
             continue
 
+        # if want_major is defined, then we know that we don't have a `*` in the matcher.
         want_version = (int(want_major), int(want_minor)) if want_major else None
         if not want_version or version <= want_version:
             keys.append((priority, version))
