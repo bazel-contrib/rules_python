@@ -149,7 +149,7 @@ def _local_runtime_repo_impl(rctx):
     # The cc_library.includes values have to be non-absolute paths, otherwise
     # the toolchain will give an error. Work around this error by making them
     # appear as part of this repo.
-    rctx.symlink(info["include"], "include")
+    rctx.symlink(include_path, "include")
 
     rctx.report_progress("Symlinking external Python shared libraries")
     interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"])
@@ -174,7 +174,7 @@ def _local_runtime_repo_impl(rctx):
         implementation_name = info["implementation_name"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
     )
-    logger.debug("BUILD.bazel\n{}".format(build_bazel))
+    logger.debug(lambda: "BUILD.bazel\n{}".format(build_bazel))
 
     rctx.file("WORKSPACE", "")
     rctx.file("MODULE.bazel", "")
