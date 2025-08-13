@@ -131,11 +131,10 @@ def _candidates_by_priority(
         for platform in parsed.platform_tag.split("."):
             platform = _platform_tag_priority(tag = platform, values = whl_platform_tags)
             if platform == None:
-                if logger:
-                    logger.debug(lambda: "The platform_tag in '{}' does not match given list: {}".format(
-                        whl.filename,
-                        whl_platform_tags,
-                    ))
+                logger.debug(lambda: "The platform_tag in '{}' does not match given list: {}".format(
+                    whl.filename,
+                    whl_platform_tags,
+                ))
                 continue
 
             for py in parsed.python_tag.split("."):
@@ -145,12 +144,11 @@ def _candidates_by_priority(
                     py_version = py_version,
                 )
                 if py == None:
-                    if logger:
-                        logger.debug(lambda: "The python_tag in '{}' does not match implementation or version: {} {}".format(
-                            whl.filename,
-                            implementation,
-                            py_version.string,
-                        ))
+                    logger.debug(lambda: "The python_tag in '{}' does not match implementation or version: {} {}".format(
+                        whl.filename,
+                        implementation,
+                        py_version.string,
+                    ))
                     continue
 
                 for abi in parsed.abi_tag.split("."):
@@ -159,11 +157,10 @@ def _candidates_by_priority(
                         values = whl_abi_tags,
                     )
                     if abi == None:
-                        if logger:
-                            logger.debug(lambda: "The abi_tag in '{}' does not match given list: {}".format(
-                                whl.filename,
-                                whl_abi_tags,
-                            ))
+                        logger.debug(lambda: "The abi_tag in '{}' does not match given list: {}".format(
+                            whl.filename,
+                            whl_abi_tags,
+                        ))
                         continue
 
                     # 1. Prefer platform wheels
@@ -175,10 +172,9 @@ def _candidates_by_priority(
                         priority = candidate
 
         if priority == None:
-            if logger:
-                logger.debug(lambda: "The whl '{}' is incompatible".format(
-                    whl.filename,
-                ))
+            logger.debug(lambda: "The whl '{}' is incompatible".format(
+                whl.filename,
+            ))
             continue
 
         ret[priority] = whl
@@ -193,7 +189,7 @@ def select_whl(
         whl_abi_tags,
         implementation_name = "cpython",
         limit = 1,
-        logger = None):
+        logger):
     """Select a whl that is the most suitable for the given platform.
 
     Args:
@@ -234,9 +230,8 @@ def select_whl(
         return None
 
     res = [i[1] for i in sorted(candidates.items())]
-    if logger:
-        logger.debug(lambda: "Sorted candidates:\n{}".format(
-            "\n".join([c.filename for c in res]),
-        ))
+    logger.debug(lambda: "Sorted candidates:\n{}".format(
+        "\n".join([c.filename for c in res]),
+    ))
 
     return res[-1] if limit == 1 else res[-limit:]
