@@ -436,11 +436,11 @@ def _RunForCoverage(python_program, main_filename, args, env,
   unique_id = uuid.uuid4()
   rcfile_name = os.path.join(os.environ['COVERAGE_DIR'], ".coveragerc_{}".format(unique_id))
   with open(rcfile_name, "w") as rcfile:
-    rcfile.write(f'''[run]
+    rcfile.write('''[run]
 relative_files = True
 source =
 \t{source}
-''')
+'''.format(source=source))
   PrintVerboseCoverage('Coverage entrypoint:', coverage_entrypoint)
   # First run the target Python file via coveragepy to create a .coverage
   # database file, from which we can later export lcov.

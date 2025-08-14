@@ -35,6 +35,10 @@ my_rule = rule(
 )
 ```
 
+The `info` variable above is a {obj}`PyRuntimeInfo` object, which contains
+information about the Python runtime. It contains more than just the version;
+see the {obj}`PyRuntimeInfo` docs for its API documentation.
+
 ## Using the rule
 
 In your `BUILD.bazel` file, you can use the rule like this:
