@@ -20,18 +20,20 @@ class LocalToolchainTest(unittest.TestCase):
         # things like pyenv: they install a shim that re-execs python.
         # The shim is e.g. /home/user/.pyenv/shims/python3, which then
         # runs e.g. /usr/bin/python3
-        with tempfile.NamedTemporaryFile(suffix="_info.py", mode="w+") as f:
-            f.write(
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "info.py")
+            with open(file_path, 'w') as f:
+                f.write(
                 """
 import sys
 print(sys.executable)
 print(sys._base_executable)
 """
-            )
-            f.flush()
+                )
+                f.flush()
             output_lines = (
                 subprocess.check_output(
-                    [shell_path, f.name],
+                    [shell_path, file_path],
                     text=True,
                 )
                 .strip()
