@@ -48,6 +48,17 @@ END_UNRELEASED_TEMPLATE
 -->
 
 
+{#1-4-2}
+## [1.4.2] - 2025-08-13
+
+[1.4.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.2
+
+### Fixed
+* (toolchains) `local_runtime_repo` now checks if the include directory exists
+  before attempting to watch it, fixing issues on macOS with system Python
+  ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
+
+
 {#1-4-1}
 ## [1.4.1] - 2025-05-08
 
