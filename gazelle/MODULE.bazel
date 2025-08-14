@@ -6,8 +6,8 @@ module(
 
 bazel_dep(name = "bazel_skylib", version = "1.6.1")
 bazel_dep(name = "rules_python", version = "0.18.0")
-bazel_dep(name = "rules_go", version = "0.41.0", repo_name = "io_bazel_rules_go")
-bazel_dep(name = "gazelle", version = "0.33.0", repo_name = "bazel_gazelle")
+bazel_dep(name = "rules_go", version = "0.55.1", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "gazelle", version = "0.36.0", repo_name = "bazel_gazelle")
 bazel_dep(name = "rules_cc", version = "0.0.16")
 
 local_path_override(
@@ -23,19 +23,10 @@ use_repo(
     "com_github_bmatcuk_doublestar_v4",
     "com_github_emirpasic_gods",
     "com_github_ghodss_yaml",
+    "com_github_smacker_go_tree_sitter",
     "com_github_stretchr_testify",
     "in_gopkg_yaml_v2",
     "org_golang_x_sync",
-)
-
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "com_github_smacker_go_tree_sitter",
-    build_file = "//:internal/smacker_BUILD.bazel",
-    integrity = "sha256-4AkDY4Rh5Auu9Kwzhj5XYSirMLlhmd6ClMWo/r0kmu4=",
-    strip_prefix = "go-tree-sitter-dd81d9e9be82a8cac96ed1d50c7389c5f1997c02",
-    url = "https://github.com/smacker/go-tree-sitter/archive/dd81d9e9be82a8cac96ed1d50c7389c5f1997c02.zip",
 )
 
 python_stdlib_list = use_extension("//python:extensions.bzl", "python_stdlib_list")
