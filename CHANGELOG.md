@@ -54,6 +54,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (gazelle) update minimum gazelle version to 0.36.0
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
   `# gazelle:python_experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
