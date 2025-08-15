@@ -197,7 +197,12 @@ def _get_base_executable():
         if sys._base_executable:  # pylint: disable=protected-access
             return sys._base_executable  # pylint: disable=protected-access
     except AttributeError:
+        # Bug reports indicate sys._base_executable  doesn't exist in some cases,
+        # but it's not clear why.
+        # See https://github.com/bazel-contrib/rules_python/issues/3172
         pass
+    # The normal sys.executable is the next-best guess if sys._base_executable
+    # is missing.
     return sys.executable
 
 
