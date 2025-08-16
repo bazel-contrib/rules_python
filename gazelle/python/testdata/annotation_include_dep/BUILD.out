@@ -1,6 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 # gazelle:python_generation_mode file
+# gazelle:python_resolve_sibling_imports true
 
 py_library(
     name = "__init__",

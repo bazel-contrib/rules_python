@@ -18,6 +18,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log"
+	"strconv"
 	"strings"
 
 	"github.com/emirpasic/gods/sets/treeset"
@@ -123,6 +125,7 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 			allAnnotations.ignore[k] = v
 		}
 		allAnnotations.includeDeps = append(allAnnotations.includeDeps, annotations.includeDeps...)
+		allAnnotations.includePytestConftest = annotations.includePytestConftest
 	}
 
 	allAnnotations.includeDeps = removeDupesFromStringTreeSetSlice(allAnnotations.includeDeps)
@@ -183,8 +186,12 @@ const (
 	// The Gazelle annotation prefix.
 	annotationPrefix string = "gazelle:"
 	// The ignore annotation kind. E.g. '# gazelle:ignore <module_name>'.
-	annotationKindIgnore     annotationKind = "ignore"
-	annotationKindIncludeDep annotationKind = "include_dep"
+	annotationKindIgnore annotationKind = "ignore"
+	// Force a particular target to be added to `deps`. Multiple invocations are
+	// accumulated and the value can be comma separated.
+	// Eg: '# gazelle:include_dep //foo/bar:baz,@repo//:target
+	annotationKindIncludeDep            annotationKind = "include_dep"
+	annotationKindIncludePytestConftest annotationKind = "include_pytest_conftest"
 )
 
 // Comment represents a Python comment.
@@ -222,6 +229,10 @@ type annotations struct {
 	ignore map[string]struct{}
 	// Labels that Gazelle should include as deps of the generated target.
 	includeDeps []string
+	// Whether the conftest.py file, found in the same directory as the current
+	// python test file, should be added to the py_test target's `deps` attribute.
+	// A *bool is used so that we can handle the "not set" state.
+	includePytestConftest *bool
 }
 
 // annotationsFromComments returns all the annotations parsed out of the
@@ -229,6 +240,7 @@ type annotations struct {
 func annotationsFromComments(comments []Comment) (*annotations, error) {
 	ignore := make(map[string]struct{})
 	includeDeps := []string{}
+	var includePytestConftest *bool
 	for _, comment := range comments {
 		annotation, err := comment.asAnnotation()
 		if err != nil {
@@ -255,11 +267,21 @@ func annotationsFromComments(comments []Comment) (*annotations, error) {
 					includeDeps = append(includeDeps, t)
 				}
 			}
+			if annotation.kind == annotationKindIncludePytestConftest {
+				val := annotation.value
+				parsedVal, err := strconv.ParseBool(val)
+				if err != nil {
+					log.Printf("WARNING: unable to cast %q to bool in %q. Ignoring annotation", val, comment)
+					continue
+				}
+				includePytestConftest = &parsedVal
+			}
 		}
 	}
 	return &annotations{
-		ignore:      ignore,
-		includeDeps: includeDeps,
+		ignore:                ignore,
+		includeDeps:           includeDeps,
+		includePytestConftest: includePytestConftest,
 	}, nil
 }
 

@@ -16,7 +16,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
-load("//python/private/pypi:extension.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 
@@ -89,6 +89,18 @@ def _parse_modules(env, enable_pipstar = 0, **kwargs):
             hub_whl_map = subjects.dict,
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
+        ),
+    )
+
+def _build_config(env, enable_pipstar = 0, **kwargs):
+    return env.expect.that_struct(
+        build_config(
+            enable_pipstar = enable_pipstar,
+            **kwargs
+        ),
+        attrs = dict(
+            platforms = subjects.dict,
+            enable_pipstar = subjects.bool,
         ),
     )
 
@@ -284,6 +296,104 @@ def _test_simple_multiple_requirements(env):
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_simple_multiple_requirements)
+
+def _test_simple_multiple_python_versions(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        requirements_lock = "requirements_3_15.txt",
+                    ),
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.16",
+                        requirements_lock = "requirements_3_16.txt",
+                    ),
+                ],
+            ),
+            read = lambda x: {
+                "requirements_3_15.txt": """
+simple==0.0.1 --hash=sha256:deadbeef
+old-package==0.0.1 --hash=sha256:deadbaaf
+""",
+                "requirements_3_16.txt": """
+simple==0.0.2 --hash=sha256:deadb00f
+new-package==0.0.1 --hash=sha256:deadb00f2
+""",
+            }[x],
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+            "python_3_16_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {
+            "3.15": "3.15.19",
+            "3.16": "3.16.9",
+        },
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+    pypi.hub_group_map().contains_exactly({"pypi": {}})
+    pypi.hub_whl_map().contains_exactly({
+        "pypi": {
+            "new_package": {
+                "pypi_316_new_package": [
+                    whl_config_setting(
+                        version = "3.16",
+                    ),
+                ],
+            },
+            "old_package": {
+                "pypi_315_old_package": [
+                    whl_config_setting(
+                        version = "3.15",
+                    ),
+                ],
+            },
+            "simple": {
+                "pypi_315_simple": [
+                    whl_config_setting(
+                        version = "3.15",
+                    ),
+                ],
+                "pypi_316_simple": [
+                    whl_config_setting(
+                        version = "3.16",
+                    ),
+                ],
+            },
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_old_package": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "old-package==0.0.1 --hash=sha256:deadbaaf",
+        },
+        "pypi_315_simple": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+        "pypi_316_new_package": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "new-package==0.0.1 --hash=sha256:deadb00f2",
+        },
+        "pypi_316_simple": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
+        },
+    })
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_simple_multiple_python_versions)
 
 def _test_simple_with_markers(env):
     pypi = _parse_modules(
@@ -836,7 +946,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "direct_sdist_without_sha",
+            "requirement": "direct_sdist_without_sha @ some-archive/any-name.tar.gz",
             "sha256": "",
             "urls": ["some-archive/any-name.tar.gz"],
         },
@@ -1107,6 +1217,54 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_pipstar_platforms)
+
+def _test_build_pipstar_platform(env):
+    config = _build_config(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                default = [
+                    _default(
+                        platform = "myplat",
+                        os_name = "linux",
+                        arch_name = "x86_64",
+                        config_settings = [
+                            "@platforms//os:linux",
+                            "@platforms//cpu:x86_64",
+                        ],
+                    ),
+                    _default(),
+                    _default(
+                        platform = "myplat2",
+                        os_name = "linux",
+                        arch_name = "x86_64",
+                        config_settings = [
+                            "@platforms//os:linux",
+                            "@platforms//cpu:x86_64",
+                        ],
+                    ),
+                    _default(platform = "myplat2"),
+                ],
+            ),
+        ),
+        enable_pipstar = True,
+    )
+    config.enable_pipstar().equals(True)
+    config.platforms().contains_exactly({
+        "myplat": struct(
+            name = "myplat",
+            os_name = "linux",
+            arch_name = "x86_64",
+            config_settings = [
+                "@platforms//os:linux",
+                "@platforms//cpu:x86_64",
+            ],
+            env = {},
+        ),
+    })
+
+_tests.append(_test_build_pipstar_platform)
 
 def extension_test_suite(name):
     """Create the test suite.

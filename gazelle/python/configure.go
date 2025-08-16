@@ -63,6 +63,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.LibraryNamingConvention,
 		pythonconfig.BinaryNamingConvention,
 		pythonconfig.TestNamingConvention,
+		pythonconfig.ProtoNamingConvention,
 		pythonconfig.DefaultVisibilty,
 		pythonconfig.Visibility,
 		pythonconfig.TestFilePattern,
@@ -70,6 +71,8 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.LabelNormalization,
 		pythonconfig.GeneratePyiDeps,
 		pythonconfig.ExperimentalAllowRelativeImports,
+		pythonconfig.GenerateProto,
+		pythonconfig.PythonResolveSiblingImports,
 	}
 }
 
@@ -178,6 +181,8 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			config.SetBinaryNamingConvention(strings.TrimSpace(d.Value))
 		case pythonconfig.TestNamingConvention:
 			config.SetTestNamingConvention(strings.TrimSpace(d.Value))
+		case pythonconfig.ProtoNamingConvention:
+			config.SetProtoNamingConvention(strings.TrimSpace(d.Value))
 		case pythonconfig.DefaultVisibilty:
 			switch directiveArg := strings.TrimSpace(d.Value); directiveArg {
 			case "NONE":
@@ -237,6 +242,18 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetGeneratePyiDeps(v)
+		case pythonconfig.GenerateProto:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetGenerateProto(v)
+		case pythonconfig.PythonResolveSiblingImports:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetResolveSiblingImports(v)
 		}
 	}
 

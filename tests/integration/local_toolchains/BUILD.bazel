@@ -13,7 +13,9 @@
 # limitations under the License.
 
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+load(":py_extension.bzl", "py_extension")
 
 py_test(
     name = "test",
@@ -34,4 +36,31 @@ config_setting(
 string_flag(
     name = "py",
     build_setting_default = "",
+)
+
+# Build rules to generate a python extension.
+cc_library(
+    name = "echo_ext_cc",
+    testonly = True,
+    srcs = ["echo_ext.cc"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+    alwayslink = True,
+)
+
+py_extension(
+    name = "echo_ext",
+    testonly = True,
+    copts = select({
+        "@rules_cc//cc/compiler:msvc-cl": [],
+        "//conditions:default": ["-fvisibility=hidden"],
+    }),
+    deps = [":echo_ext_cc"],
+)
+
+py_test(
+    name = "echo_test",
+    srcs = ["echo_test.py"],
+    deps = [":echo_ext"],
 )
