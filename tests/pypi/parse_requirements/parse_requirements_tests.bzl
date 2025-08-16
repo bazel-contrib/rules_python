@@ -15,9 +15,10 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:parse_requirements.bzl", "parse_requirements", "select_requirement")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
+load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:parse_requirements.bzl", "select_requirement", _parse_requirements = "parse_requirements")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 
 def _mock_ctx():
     testdata = {
@@ -104,9 +105,22 @@ bar==0.0.1 --hash=sha256:deadb00f
 
 _tests = []
 
+def parse_requirements(debug = False, **kwargs):
+    return _parse_requirements(
+        ctx = _mock_ctx(),
+        logger = repo_utils.logger(struct(
+            os = struct(
+                environ = {
+                    REPO_DEBUG_ENV_VAR: "1",
+                    REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
+                },
+            ),
+        ), "unit-test"),
+        **kwargs
+    )
+
 def _test_simple(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_lock": ["linux_x86_64", "windows_x86_64"],
         },
@@ -139,7 +153,6 @@ _tests.append(_test_simple)
 def _test_direct_urls_integration(env):
     """Check that we are using the filename from index_sources."""
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_direct": ["linux_x86_64"],
             "requirements_direct_sdist": ["osx_x86_64"],
@@ -179,7 +192,6 @@ _tests.append(_test_direct_urls_integration)
 
 def _test_extra_pip_args(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_extra_args": ["linux_x86_64"],
         },
@@ -211,7 +223,6 @@ _tests.append(_test_extra_pip_args)
 
 def _test_dupe_requirements(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_lock_dupe": ["linux_x86_64"],
         },
@@ -240,7 +251,6 @@ _tests.append(_test_dupe_requirements)
 
 def _test_multi_os(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_linux": ["linux_x86_64"],
             "requirements_windows": ["windows_x86_64"],
@@ -304,7 +314,6 @@ _tests.append(_test_multi_os)
 
 def _test_multi_os_legacy(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_linux_download_only": ["cp39_linux_x86_64"],
             "requirements_osx_download_only": ["cp39_osx_aarch64"],
@@ -385,7 +394,6 @@ def _test_env_marker_resolution(env):
         return ret
 
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_marker": ["cp311_linux_super_exotic", "cp311_windows_x86_64"],
         },
@@ -432,7 +440,6 @@ _tests.append(_test_env_marker_resolution)
 
 def _test_different_package_version(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_different_package_version": ["linux_x86_64"],
         },
@@ -471,7 +478,6 @@ _tests.append(_test_different_package_version)
 
 def _test_optional_hash(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_optional_hash": ["linux_x86_64"],
         },
@@ -510,7 +516,6 @@ _tests.append(_test_optional_hash)
 
 def _test_git_sources(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_git": ["linux_x86_64"],
         },
@@ -539,7 +544,6 @@ _tests.append(_test_git_sources)
 
 def _test_overlapping_shas_with_index_results(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_linux": ["cp39_linux_x86_64"],
             "requirements_osx": ["cp39_osx_x86_64"],
@@ -626,7 +630,6 @@ _tests.append(_test_overlapping_shas_with_index_results)
 
 def _test_get_index_urls_different_versions(env):
     got = parse_requirements(
-        ctx = _mock_ctx(),
         requirements_by_platform = {
             "requirements_multi_version": [
                 "cp39_linux_x86_64",
@@ -675,14 +678,14 @@ def _test_get_index_urls_different_versions(env):
         evaluate_markers = lambda _, requirements: evaluate_markers(
             requirements = requirements,
             platforms = {
-                "cp39_linux_x86_64": struct(
-                    env = {"python_full_version": "3.9.0"},
-                ),
                 "cp310_linux_x86_64": struct(
                     env = {"python_full_version": "3.10.0"},
                 ),
+                "cp39_linux_x86_64": struct(
+                    env = {"python_full_version": "3.9.0"},
+                ),
             },
-        )
+        ),
     )
 
     env.expect.that_collection(got).contains_exactly([
