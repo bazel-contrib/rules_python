@@ -14,6 +14,22 @@ the willingness of volunteers.
 If you want or need particular functionality backported, then the best way
 is to open a PR to demonstrate the feasibility of the backport.
 
+### Backports and Patch Releases
+
+Backports and patch releases are provided on a best-effort basis. Only fixes are
+backported. Features are not backported.
+
+Backports can be done to older releases, but only if newer releases also have
+the fix backported. For example, if the current release is 1.5, in order to
+patch 1.4, version 1.5 must be patched first.
+
+Backports can be requested by [creating an issue with the patch release
+template][patch-release-issue] or by sending a pull request performing the backport.
+See the dev guide for [how to create a backport PR][backport-pr].
+
+[patch-release-issue]: https://github.com/bazelbuild/rules_python/issues/new?template=patch_release_request.md
+[backport-pr]: devguide.html#creating-backport-prs
+
 ## Supported Bazel Versions
 
 The supported Bazel versions are:
