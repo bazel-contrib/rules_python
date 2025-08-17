@@ -42,7 +42,7 @@ def parse_requirements(
         get_index_urls = None,
         evaluate_markers = None,
         extract_url_srcs = True,
-        logger = None):
+        logger):
     """Get the requirements with platforms that the requirements apply to.
 
     Args:
@@ -63,7 +63,7 @@ def parse_requirements(
             requirements line.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
-        logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
+        logger: repo_utils.logger, a simple struct to log diagnostic messages.
 
     Returns:
         {type}`dict[str, list[struct]]` where the key is the distribution name and the struct
