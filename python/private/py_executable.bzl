@@ -1578,7 +1578,11 @@ def _create_shared_native_deps_dso(
         feature_configuration,
         requested_features,
         cc_toolchain):
-    linkstamps = py_internal.linking_context_linkstamps(cc_info.linking_context)
+    linkstamps = [
+        py_internal.linkstamp_file(linkstamp)
+        for linker_input in cc_info.linking_context.linker_inputs.to_list()
+        for linkstamp in linker_input.linkstamps
+    ]
 
     partially_disabled_thin_lto = (
         cc_common.is_enabled(
@@ -1602,10 +1606,7 @@ def _create_shared_native_deps_dso(
             for input in cc_info.linking_context.linker_inputs.to_list()
             for flag in input.user_link_flags
         ],
-        linkstamps = [
-            py_internal.linkstamp_file(linkstamp)
-            for linkstamp in linkstamps.to_list()
-        ],
+        linkstamps = linkstamps,
         build_info_artifacts = _get_build_info(ctx, cc_toolchain) if linkstamps else [],
         features = requested_features,
         is_test_target_partially_disabled_thin_lto = is_test and partially_disabled_thin_lto,
