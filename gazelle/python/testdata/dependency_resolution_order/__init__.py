@@ -20,10 +20,10 @@ import foo
 
 # Ensure that even though @gazelle_python_test//other_pip_dep provides "third_party",
 # we can still override "third_party.foo.bar"
-import third_party.foo.bar
+import third_party.foo.bar  # isort:skip
 
-import third_party
-from third_party import baz
+import third_party  # isort:skip
+from third_party import baz  # isort:skip
 
 _ = sys
 _ = bar
