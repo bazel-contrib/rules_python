@@ -120,6 +120,9 @@ END_UNRELEASED_TEMPLATE
   installations (Mac frameworks, missing dynamic libraries, and other
   esoteric cases, see
   [#3148](https://github.com/bazel-contrib/rules_python/pull/3148) for details).
+* (pypi) Support `requirements.txt` files that use different versions of the same
+  package targeting different target platforms.
+  ([#2797](https://github.com/bazel-contrib/rules_python/issues/2797)).
 
 {#v0-0-0-added}
 ### Added

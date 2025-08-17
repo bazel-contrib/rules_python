@@ -639,7 +639,7 @@ def _test_get_index_urls_different_versions(env):
         platforms = {
             "cp310_linux_x86_64": struct(
                 env = pep508_env(
-                    python_version = "3.9.0",
+                    python_version = "3.10.0",
                     os = "linux",
                     arch = "x86_64",
                 ),
@@ -686,6 +686,7 @@ def _test_get_index_urls_different_versions(env):
                 ),
             },
         ),
+        debug = True,
     )
 
     env.expect.that_collection(got).contains_exactly([
@@ -719,6 +720,70 @@ def _test_get_index_urls_different_versions(env):
     ])
 
 _tests.append(_test_get_index_urls_different_versions)
+
+def _test_get_index_urls_single_py_version(env):
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_multi_version": [
+                "cp310_linux_x86_64",
+            ],
+        },
+        platforms = {
+            "cp310_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.10.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
+            ),
+        },
+        get_index_urls = lambda _, __: {
+            "foo": struct(
+                sdists = {},
+                whls = {
+                    "deadb11f": struct(
+                        url = "super2",
+                        sha256 = "deadb11f",
+                        filename = "foo-0.0.2-py3-none-any.whl",
+                        yanked = False,
+                    ),
+                },
+            ),
+        },
+        evaluate_markers = lambda _, requirements: evaluate_markers(
+            requirements = requirements,
+            platforms = {
+                "cp310_linux_x86_64": struct(
+                    env = {"python_full_version": "3.10.0"},
+                ),
+            },
+        ),
+        debug = True,
+    )
+
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            is_exposed = True,
+            is_multiple_versions = True,
+            name = "foo",
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "foo-0.0.2-py3-none-any.whl",
+                    requirement_line = "foo==0.0.2",
+                    sha256 = "deadb11f",
+                    target_platforms = ["cp310_linux_x86_64"],
+                    url = "super2",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_get_index_urls_single_py_version)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.

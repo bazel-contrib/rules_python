@@ -186,5 +186,6 @@ lock(
         "--universal",
         "--upgrade",
     ],
+    python_version = "3.9",  # select the lowest version
     visibility = ["//:__subpackages__"],
 )

@@ -241,21 +241,25 @@ dev_pip = use_extension(
     "pip",
     dev_dependency = True,
 )
-dev_pip.parse(
-    download_only = True,
-    experimental_index_url = "https://pypi.org/simple",
-    hub_name = "dev_pip",
-    parallel_download = False,
-    python_version = "3.11",
-    requirements_lock = "//docs:requirements.txt",
-)
-dev_pip.parse(
-    download_only = True,
-    experimental_index_url = "https://pypi.org/simple",
-    hub_name = "dev_pip",
-    python_version = "3.13",
-    requirements_lock = "//docs:requirements.txt",
-)
+
+[
+    dev_pip.parse(
+        download_only = True,
+        experimental_index_url = "https://pypi.org/simple",
+        hub_name = "dev_pip",
+        parallel_download = False,
+        python_version = python_version,
+        requirements_lock = "//docs:requirements.txt",
+    )
+    for python_version in [
+        "3.9",
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+    ]
+]
+
 dev_pip.parse(
     download_only = True,
     experimental_index_url = "https://pypi.org/simple",
