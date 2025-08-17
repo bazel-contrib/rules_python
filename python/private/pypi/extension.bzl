@@ -96,7 +96,7 @@ def _platforms(*, python_version, minor_mapping, config):
             python_version = python_version.string,
         )
 
-        if values.marker and not evaluate(values.marker, env = env_):
+        if values.marker_expression and not evaluate(values.marker_expression, env = env_):
             continue
 
         platforms[key] = struct(
@@ -447,7 +447,7 @@ def _whl_repo(
         ),
     )
 
-def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = "", whl_abi_tags = [], whl_platform_tags = []):
+def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker_expression = "", whl_abi_tags = [], whl_platform_tags = []):
     # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
     if "any" not in whl_platform_tags:
         # the lowest priority one needs to be the first one
@@ -467,7 +467,7 @@ def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = 
             # defaults for env
             "implementation_name": "cpython",
         } | env,
-        marker = marker,
+        marker_expression = marker_expression,
         whl_abi_tags = whl_abi_tags,
         whl_platform_tags = whl_platform_tags,
     )
@@ -515,14 +515,14 @@ def build_config(
                     config_settings = tag.config_settings,
                     env = tag.env,
                     os_name = tag.os_name,
-                    marker = tag.marker,
+                    marker_expression = tag.marker_expression,
                     name = platform.replace("-", "_").lower(),
                     whl_abi_tags = tag.whl_abi_tags,
                     whl_platform_tags = tag.whl_platform_tags,
                     override = mod.is_root,
                 )
 
-                if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker):
+                if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker_expression):
                     defaults["platforms"].pop(platform)
 
             # TODO @aignas 2025-05-19: add more attr groups:
@@ -924,10 +924,16 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 ::::
 """,
     ),
-    "marker": attr.string(
+    "marker_expression": attr.string(
         doc = """\
-A marker which will be evaluated to disable the target platform for certain python versions. This
-is especially useful when defining freethreaded platform variants.
+An environment marker expression that is used to enable/disable platforms for specific python
+versions, operating systems or CPU architectures.
+
+The expression is evaluated during the `bzlmod` extension evaluation and if it resolves to true,
+then the platform will be available, otherwise, it will not be available.
+
+This is especially useful for setting up freethreaded platform variants only for particular Python
+versions for which the interpreter builds are available.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing

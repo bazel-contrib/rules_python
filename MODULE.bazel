@@ -75,7 +75,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             ),
         ],
         env = {"platform_version": "0"},
-        marker = "python_version >= '3.13'" if freethreaded else "",
+        marker_expression = "python_version >= '3.13'" if freethreaded else "",
         os_name = "linux",
         platform = "linux_{}{}".format(cpu, freethreaded),
         whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
@@ -110,7 +110,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         # We choose the oldest non-EOL version at the time when we release `rules_python`.
         # See https://endoflife.date/macos
         env = {"platform_version": "14.0"},
-        marker = "python_version >= '3.13'" if freethreaded else "",
+        marker_expression = "python_version >= '3.13'" if freethreaded else "",
         os_name = "osx",
         platform = "osx_{}{}".format(cpu, freethreaded),
         whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
@@ -149,7 +149,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             ),
         ],
         env = {"platform_version": "0"},
-        marker = "python_version >= '3.13'" if freethreaded else "",
+        marker_expression = "python_version >= '3.13'" if freethreaded else "",
         os_name = "windows",
         platform = "windows_{}{}".format(cpu, freethreaded),
         whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [

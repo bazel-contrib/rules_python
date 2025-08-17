@@ -115,7 +115,7 @@ def _default(
         platform = None,
         whl_platform_tags = None,
         env = None,
-        marker = None,
+        marker_expression = None,
         whl_abi_tags = None):
     return struct(
         arch_name = arch_name,
@@ -124,7 +124,7 @@ def _default(
         whl_platform_tags = whl_platform_tags or [],
         config_settings = config_settings,
         env = env or {},
-        marker = marker or "",
+        marker_expression = marker_expression or "",
         whl_abi_tags = whl_abi_tags or [],
     )
 
@@ -1135,7 +1135,7 @@ def _test_pipstar_platforms(env):
                         platform = "my{}_{}".format(os, cpu),
                         os_name = os,
                         arch_name = cpu,
-                        marker = "python_version ~= \"3.13\"",
+                        marker_expression = "python_version ~= \"3.13\"",
                         config_settings = [
                             "@platforms//os:{}".format(os),
                             "@platforms//cpu:{}".format(cpu),
@@ -1252,7 +1252,7 @@ def _test_build_pipstar_platform(env):
                 "@platforms//cpu:x86_64",
             ],
             env = {"implementation_name": "cpython"},
-            marker = "",
+            marker_expression = "",
             whl_abi_tags = ["none", "abi3", "cp{major}{minor}"],
             whl_platform_tags = ["any"],
         ),
