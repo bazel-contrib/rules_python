@@ -947,11 +947,13 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 An environment marker expression that is used to enable/disable platforms for specific python
 versions, operating systems or CPU architectures.
 
-The expression is evaluated during the `bzlmod` extension evaluation and if it resolves to true,
-then the platform will be available, otherwise, it will not be available.
+If specified, the expression is evaluated during the `bzlmod` extension evaluation phase and if it
+evaluates to `True`, then the platform will be used to construct the hub repositories, otherwise, it
+will be skipped.
 
 This is especially useful for setting up freethreaded platform variants only for particular Python
-versions for which the interpreter builds are available.
+versions for which the interpreter builds are available. However, this could be also used for other
+things, such as setting up platforms for different `libc` variants.
 """,
     ),
     # The values for PEP508 env marker evaluation during the lock file parsing
