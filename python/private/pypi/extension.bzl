@@ -355,8 +355,8 @@ def _create_whl_repos(
                     repo_name,
                     whl.name,
                 ))
-
             whl_libraries[repo_name] = repo.args
+
             if not config.enable_pipstar and "experimental_target_platforms" in repo.args:
                 whl_libraries[repo_name] |= {
                     "experimental_target_platforms": sorted({
@@ -367,7 +367,18 @@ def _create_whl_repos(
                         if candidate.endswith(p)
                     }),
                 }
-            whl_map.setdefault(whl.name, {})[repo.config_setting] = repo_name
+
+            mapping = whl_map.setdefault(whl.name, {})
+            if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
+                fail(
+                    "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
+                        mapping[repo.config_setting],
+                        repo.config_setting,
+                        repo_name,
+                    ),
+                )
+            else:
+                mapping[repo.config_setting] = repo_name
 
     return struct(
         whl_map = whl_map,

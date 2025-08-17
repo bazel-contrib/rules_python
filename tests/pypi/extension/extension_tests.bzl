@@ -599,25 +599,25 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         "torch": {
             "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": [
                 whl_config_setting(
-                    target_platforms = ["cp312_linux_x86_64"],
+                    target_platforms = ("cp312_linux_x86_64",),
                     version = "3.12",
                 ),
             ],
             "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": [
                 whl_config_setting(
-                    target_platforms = ["cp312_linux_aarch64"],
+                    target_platforms = ("cp312_linux_aarch64",),
                     version = "3.12",
                 ),
             ],
             "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": [
                 whl_config_setting(
-                    target_platforms = ["cp312_windows_x86_64"],
+                    target_platforms = ("cp312_windows_x86_64",),
                     version = "3.12",
                 ),
             ],
             "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": [
                 whl_config_setting(
-                    target_platforms = ["cp312_osx_aarch64"],
+                    target_platforms = ("cp312_osx_aarch64",),
                     version = "3.12",
                 ),
             ],
@@ -1096,8 +1096,6 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
                             "cp315_linux_x86_64",
                             "cp315_linux_x86_64_freethreaded",
                         ],
-                        config_setting = None,
-                        filename = None,
                     ),
                 ],
                 "pypi_315_optimum_osx_aarch64": [
@@ -1106,8 +1104,6 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
                         target_platforms = [
                             "cp315_osx_aarch64",
                         ],
-                        config_setting = None,
-                        filename = None,
                     ),
                 ],
             },
@@ -1138,7 +1134,7 @@ def _test_pipstar_platforms(env):
                 name = "rules_python",
                 default = [
                     _default(
-                        platform = "my{}_{}".format(os, cpu),
+                        platform = "my{}{}".format(os, cpu),
                         os_name = os,
                         arch_name = cpu,
                         marker_expression = "python_version ~= \"3.13\"",
@@ -1179,19 +1175,19 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.hub_whl_map().contains_exactly({
         "pypi": {
             "optimum": {
-                "pypi_315_optimum_mylinux_x86_64": [
+                "pypi_315_optimum_mylinuxx86_64": [
                     whl_config_setting(
                         version = "3.15",
                         target_platforms = [
-                            "cp315_mylinux_x86_64",
+                            "cp315_mylinuxx86_64",
                         ],
                     ),
                 ],
-                "pypi_315_optimum_myosx_aarch64": [
+                "pypi_315_optimum_myosxaarch64": [
                     whl_config_setting(
                         version = "3.15",
                         target_platforms = [
-                            "cp315_myosx_aarch64",
+                            "cp315_myosxaarch64",
                         ],
                     ),
                 ],
@@ -1200,12 +1196,12 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     })
 
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum_mylinux_x86_64": {
+        "pypi_315_optimum_mylinuxx86_64": {
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
         },
-        "pypi_315_optimum_myosx_aarch64": {
+        "pypi_315_optimum_myosxaarch64": {
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime]==1.17.1",

@@ -42,7 +42,7 @@ def parse_requirements(
         get_index_urls = None,
         evaluate_markers = None,
         extract_url_srcs = True,
-        logger = None):
+        logger):
     """Get the requirements with platforms that the requirements apply to.
 
     Args:
@@ -63,7 +63,7 @@ def parse_requirements(
             requirements line.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
-        logger: repo_utils.logger or None, a simple struct to log diagnostic messages.
+        logger: repo_utils.logger, a simple struct to log diagnostic messages.
 
     Returns:
         {type}`dict[str, list[struct]]` where the key is the distribution name and the struct
@@ -89,8 +89,7 @@ def parse_requirements(
     options = {}
     requirements = {}
     for file, plats in requirements_by_platform.items():
-        if logger:
-            logger.trace(lambda: "Using {} for {}".format(file, plats))
+        logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
 
         # Parse the requirements file directly in starlark to get the information
@@ -162,11 +161,10 @@ def parse_requirements(
     # URL of the files to download things from. This should be important for
     # VCS package references.
     env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
-    if logger:
-        logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
-            reqs_with_env_markers,
-            env_marker_target_platforms,
-        ))
+    logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
+        reqs_with_env_markers,
+        env_marker_target_platforms,
+    ))
 
     index_urls = {}
     if get_index_urls:
@@ -212,8 +210,7 @@ def parse_requirements(
                 sorted(requirements),
             ))
 
-    if logger:
-        logger.debug(lambda: "Will configure whl repos: {}".format([w.name for w in ret]))
+    logger.debug(lambda: "Will configure whl repos: {}".format([w.name for w in ret]))
 
     return ret
 
@@ -229,7 +226,10 @@ def _package_srcs(
     """A function to return sources for a particular package."""
     srcs = {}
     for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
-        target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
+        if ";" in r.requirement_line:
+            target_platforms = env_marker_target_platforms.get(r.requirement_line, [])
+        else:
+            target_platforms = r.target_platforms
         extra_pip_args = tuple(r.extra_pip_args)
 
         for target_platform in target_platforms:
@@ -245,8 +245,7 @@ def _package_srcs(
                 index_urls = index_urls.get(name),
                 logger = logger,
             )
-            if logger:
-                logger.debug(lambda: "The whl dist is: {}".format(dist.filename if dist else dist))
+            logger.debug(lambda: "The whl dist is: {}".format(dist.filename if dist else dist))
 
             if extract_url_srcs and dist:
                 req_line = r.srcs.requirement
@@ -347,10 +346,9 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
 
     if requirement.srcs.url:
         if not requirement.srcs.filename:
-            if logger:
-                logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
-                    requirement.srcs.url,
-                ))
+            logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
+                requirement.srcs.url,
+            ))
             return None
 
         # Handle direct URLs in requirements
@@ -377,8 +375,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
     if not shas_to_use:
         version = requirement.srcs.version
         shas_to_use = index_urls.sha256s_by_version.get(version, [])
-        if logger:
-            logger.warn(lambda: "requirement file has been generated without hashes, will use all hashes for the given version {} that could find on the index:\n    {}".format(version, shas_to_use))
+        logger.warn(lambda: "requirement file has been generated without hashes, will use all hashes for the given version {} that could find on the index:\n    {}".format(version, shas_to_use))
 
     for sha256 in shas_to_use:
         # For now if the artifact is marked as yanked we just ignore it.
@@ -395,8 +392,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             sdist = maybe_sdist
             continue
 
-        if logger:
-            logger.warn(lambda: "Could not find a whl or an sdist with sha256={}".format(sha256))
+        logger.warn(lambda: "Could not find a whl or an sdist with sha256={}".format(sha256))
 
     yanked = {}
     for dist in whls + [sdist]:
