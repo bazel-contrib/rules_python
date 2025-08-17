@@ -72,6 +72,10 @@ END_UNRELEASED_TEMPLATE
 * (toolchain) Python 3.13 now references 3.13.6
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
+* (pypi) From now on the list of default platforms only includes `linux_x86_64`, `linux_aarch64`,
+  `osx_x86_64`, `osx_aarch64` and `windows_x86_64`. If you are on other platforms, you need to
+  use the `pip.default` to configure it yourself. If you are interested in graduating the
+  platform, consider helping set us up CI for them and update the documentation.
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
 * (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
 * (gazelle:docs) The Gazelle docs have been migrated from {gh-path}`gazelle/README.md` to
@@ -93,6 +97,10 @@ END_UNRELEASED_TEMPLATE
   ([#2503](https://github.com/bazel-contrib/rules_python/issues/2503)).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* (pypi) The selection of the whls has been changed and should no longer result
+  in ambiguous select matches ({gh-issue}`2759`) and should be much more efficient
+  when running `bazel query` due to fewer repositories being included 
+  ({gh-issue}`2849`).
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 * (toolchains) `local_runtime_repo` works with multiarch Debian with Python 3.8
   ([#3099](https://github.com/bazel-contrib/rules_python/issues/3099)).
@@ -123,7 +131,8 @@ END_UNRELEASED_TEMPLATE
   ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
-  this feature. You can also configure custom `config_settings` using `pip.default`.
+  this feature. You can also configure custom `config_settings` using `pip.default`. It
+  can also be used to set the global `netrc` or `auth_patterns` variables.
 * (pypi) PyPI dependencies now expose an `:extracted_whl_files` filegroup target
   of all the files extracted from the wheel. This can be used in lieu of
   {obj}`whl_filegroup` to avoid copying/extracting wheel multiple times to

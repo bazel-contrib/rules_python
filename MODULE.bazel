@@ -74,16 +74,18 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         env = {"platform_version": "0"},
         os_name = "linux",
         platform = "linux_{}".format(cpu),
+        whl_abi_tags = [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = [
+            "linux_{}".format(cpu),
+            "manylinux_*_{}".format(cpu),
+        ],
     )
     for cpu in [
         "x86_64",
         "aarch64",
-        # TODO @aignas 2025-05-19: only leave tier 0-1 cpus when stabilizing the
-        # `pip.default` extension. i.e. drop the below values - users will have to
-        # define themselves if they need them.
-        "arm",
-        "ppc",
-        "s390x",
     ]
 ]
 
@@ -99,26 +101,53 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         env = {"platform_version": "14.0"},
         os_name = "osx",
         platform = "osx_{}".format(cpu),
+        whl_abi_tags = [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = [
+            "macosx_*_{}".format(suffix)
+            for suffix in platform_tag_cpus
+        ],
     )
-    for cpu in [
-        "aarch64",
-        "x86_64",
-    ]
+    for cpu, platform_tag_cpus in {
+        "aarch64": [
+            "universal2",
+            "arm64",
+        ],
+        "x86_64": [
+            "universal2",
+            "x86_64",
+        ],
+    }.items()
 ]
 
-pip.default(
-    arch_name = "x86_64",
-    config_settings = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:windows",
-    ],
-    env = {"platform_version": "0"},
-    os_name = "windows",
-    platform = "windows_x86_64",
-)
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:windows",
+        ],
+        env = {"platform_version": "0"},
+        os_name = "windows",
+        platform = "windows_{}".format(cpu),
+        whl_abi_tags = [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = whl_platform_tags,
+    )
+    for cpu, whl_platform_tags in {
+        "x86_64": ["win_amd64"],
+    }.items()
+]
+
 pip.parse(
     # NOTE @aignas 2024-10-26: We have an integration test that depends on us
     # being able to build sdists for this hub, so explicitly set this to False.
+    #
+    # how do we test sdists? Maybe just worth adding a single sdist somewhere?
     download_only = False,
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "rules_python_publish_deps",

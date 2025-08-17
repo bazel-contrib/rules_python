@@ -86,6 +86,16 @@ load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
 modules_mapping(
     name = "modules_map",
     wheels = all_whl_requirements,
+
+    # include_stub_packages: bool (default: False)
+    # If set to True, this flag automatically includes any corresponding type stub packages
+    # for the third-party libraries that are present and used. For example, if you have
+    # `boto3` as a dependency, and this flag is enabled, the corresponding `boto3-stubs`
+    # package will be automatically included in the BUILD file.
+    # Enabling this feature helps ensure that type hints and stubs are readily available
+    # for tools like type checkers and IDEs, improving the development experience and
+    # reducing manual overhead in managing separate stub packages.
+    include_stub_packages = True,
 )
 
 # Gazelle python extension needs a manifest file mapping from
@@ -110,16 +120,6 @@ gazelle_python_manifest(
     # the integrity field is not added to the manifest which can help avoid
     # merge conflicts in large repos.
     requirements = "//:requirements_lock.txt",
-
-    # include_stub_packages: bool (default: False)
-    # If set to True, this flag automatically includes any corresponding type stub packages
-    # for the third-party libraries that are present and used. For example, if you have
-    # `boto3` as a dependency, and this flag is enabled, the corresponding `boto3-stubs`
-    # package will be automatically included in the BUILD file.
-    # Enabling this feature helps ensure that type hints and stubs are readily available
-    # for tools like type checkers and IDEs, improving the development experience and
-    # reducing manual overhead in managing separate stub packages.
-    include_stub_packages = True
 )
 ```
 
@@ -134,9 +134,9 @@ gazelle_binary(
     name = "gazelle_multilang",
     languages = [
         # List of language plugins.
-        # If you want to generate py_proto_library targets PR #3057), then
+        # If you want to generate py_proto_library targets (PR #3057), then
         # the proto language plugin _must_ come before the rules_python plugin.
-        #"@bazel_gazelle//lanugage/proto",
+        #"@bazel_gazelle//language/proto",
         "@rules_python_gazelle_plugin//python",
     ],
 )
