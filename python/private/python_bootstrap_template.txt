@@ -457,6 +457,7 @@ source =
     env=env,
     cwd=workspace
   )
+  PrintVerboseCoverage('Return code of coverage run:', ret_code)
   output_filename = os.path.join(os.environ['COVERAGE_DIR'], 'pylcov.dat')
 
   PrintVerboseCoverage('Converting coveragepy database to lcov:', output_filename)
@@ -470,10 +471,12 @@ source =
     kparams['stdout'] = sys.stderr
     kparams['stderr'] = sys.stderr
 
-  ret_code = subprocess.call(
+  lcov_ret_code = subprocess.call(
     params,
     **kparams
-  ) or ret_code
+  )
+  PrintVerboseCoverage('Return code of coverage lcov:', lcov_ret_code)
+  ret_code = lcov_ret_code or ret_code
 
   try:
     os.unlink(rcfile_name)
