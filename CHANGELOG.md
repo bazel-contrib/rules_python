@@ -86,6 +86,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
+  environments, fixing issues where a `py_binary` calls another `py_binary`
+  ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
 * (pypi) Fixes an issue where builds using a `bazel vendor` vendor directory
   would fail if the constraints file contained environment markers. Fixes
   [#2996](https://github.com/bazel-contrib/rules_python/issues/2996).

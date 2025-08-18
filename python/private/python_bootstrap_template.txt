@@ -516,7 +516,6 @@ def Main():
   if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
     new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = module_space
 
-  print(f"===== module space: {module_space}")
   python_imports = '%imports%'
   python_path_entries = CreatePythonPathEntries(python_imports, module_space)
   python_path_entries += GetRepositoriesImports(module_space, %import_all%)
@@ -539,7 +538,6 @@ def Main():
   new_env['PYTHONPATH'] = python_path
   runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(module_space)
   if runfiles_envkey:
-    print(f"===== setting {runfiles_envkey} = {runfiles_envvalue}")
     new_env[runfiles_envkey] = runfiles_envvalue
 
   # Don't prepend a potentially unsafe path to sys.path
