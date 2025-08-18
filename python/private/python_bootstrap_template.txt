@@ -438,6 +438,7 @@ def _RunForCoverage(python_program, main_filename, args, env,
   with open(rcfile_name, "w") as rcfile:
     rcfile.write('''[run]
 relative_files = True
+disable_warnings = module-not-imported, no-data-collected
 source =
 \t{source}
 '''.format(source=source))

@@ -321,6 +321,7 @@ def _maybe_collect_coverage(enable):
         rcfile.write(
             f"""[run]
 relative_files = True
+disable_warnings = module-not-imported, no-data-collected
 source =
 \t{source}
 """
