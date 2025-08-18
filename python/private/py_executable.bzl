@@ -670,6 +670,7 @@ def _create_stage2_bootstrap(
             "%venv_rel_site_packages%": venv.venv_site_packages,
             "%venv_root%": venv.venv_root,
             "%workspace_name%": ctx.workspace_name,
+            "%coverage_instrumented%": str(int(ctx.configuration.coverage_enabled and ctx.coverage_instrumented())),
         },
         is_executable = True,
     )
