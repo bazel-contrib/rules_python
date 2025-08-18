@@ -126,6 +126,7 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Support `requirements.txt` files that use different versions of the same
   package targeting different target platforms.
   ([#2797](https://github.com/bazel-contrib/rules_python/issues/2797)).
+* (py_wheel) Add directories in deterministic order.
 
 {#v0-0-0-added}
 ### Added
