@@ -152,7 +152,7 @@ class _WhlFile(zipfile.ZipFile):
         """Add given file to the distribution."""
 
         if os.path.isdir(real_filename):
-            directory_contents = os.listdir(real_filename)
+            directory_contents = sorted(os.listdir(real_filename))
             for file_ in directory_contents:
                 self.add_file(
                     "{}/{}".format(package_filename, file_),
