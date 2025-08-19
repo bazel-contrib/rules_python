@@ -73,6 +73,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.ExperimentalAllowRelativeImports,
 		pythonconfig.GenerateProto,
 		pythonconfig.PythonResolveSiblingImports,
+		pythonconfig.PythonIgnoreTarget,
 	}
 }
 
@@ -254,6 +255,8 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetResolveSiblingImports(v)
+		case pythonconfig.PythonIgnoreTarget:
+			config.AddIgnoreTarget(strings.TrimSpace(d.Value))
 		}
 	}
 

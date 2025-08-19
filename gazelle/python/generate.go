@@ -132,11 +132,21 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 	}
+	// filter out targets that are ignored
+	otherFileRules := make([]*rule.Rule, 0)
+	if args.File != nil {
+		for _, target := range args.File.Rules {
+			if cfg.IgnoreTarget(target.Name()) {
+				continue
+			}
+			otherFileRules = append(otherFileRules, target)
+		}
+	}
 
 	// If a __test__.py file was not found on disk, search for targets that are
 	// named __test__.
 	if !hasPyTestEntryPointFile && args.File != nil {
-		for _, rule := range args.File.Rules {
+		for _, rule := range otherFileRules {
 			if rule.Name() == pyTestEntrypointTargetname {
 				hasPyTestEntryPointTarget = true
 				break
@@ -279,7 +289,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				return
 			}
 			generateEmptyLibrary := false
-			for _, r := range args.File.Rules {
+			for _, r := range otherFileRules {
 				if r.Kind() == actualPyLibraryKind && r.Name() == pyLibraryTargetName {
 					generateEmptyLibrary = true
 				}
@@ -585,6 +595,9 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 	pyProtoRulesForProto := map[string]string{}
 	if args.File != nil {
 		for _, r := range args.File.Rules {
+			if cfg.IgnoreTarget(r.Name()) {
+				continue
+			}
 			if r.Kind() == "py_proto_library" {
 				pyProtoRules[r.Name()] = false
 
