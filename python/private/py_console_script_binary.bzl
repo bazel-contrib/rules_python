@@ -79,7 +79,7 @@ def py_console_script_binary(
         fail("passing 'srcs' attribute to py_console_script_binary is unsupported")
 
     py_console_script_gen(
-        name =  name + "_gen",
+        name = name + "_gen",
         entry_points_txt = entry_points_txt or _dist_info(pkg),
         out = main,
         console_script = script,
