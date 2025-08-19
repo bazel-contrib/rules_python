@@ -133,7 +133,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 	// filter out targets that are ignored
-	otherFileRules := make([]*rule.Rule, 0)
+	var otherFileRules []*rule.Rule
 	if args.File != nil {
 		for _, target := range args.File.Rules {
 			if cfg.IgnoreTarget(target.Name()) {

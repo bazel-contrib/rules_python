@@ -112,6 +112,8 @@ const (
 	// like "import a" can be resolved to sibling modules. When disabled, they
 	// can only be resolved as an absolute import.
 	PythonResolveSiblingImports = "python_resolve_sibling_imports"
+	// PythonIgnoreTarget represents the directive that controls whether to ignore the specific target.
+	PythonIgnoreTarget = "python_ignore_target"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -204,6 +206,7 @@ type Config struct {
 	generatePyiDeps                           bool
 	generateProto                             bool
 	resolveSiblingImports                     bool
+	ignoredTargets                            map[string]struct{}
 }
 
 type LabelNormalizationType int
@@ -244,6 +247,7 @@ func New(
 		generatePyiDeps:                           false,
 		generateProto:                             false,
 		resolveSiblingImports:                     false,
+		ignoredTargets:                            make(map[string]struct{}),
 	}
 }
 
@@ -281,6 +285,7 @@ func (c *Config) NewChild() *Config {
 		generatePyiDeps:                           c.generatePyiDeps,
 		generateProto:                             c.generateProto,
 		resolveSiblingImports:                     c.resolveSiblingImports,
+		ignoredTargets:                            make(map[string]struct{}),
 	}
 }
 
@@ -608,6 +613,17 @@ func (c *Config) SetResolveSiblingImports(resolveSiblingImports bool) {
 // ResolveSiblingImports returns whether absolute imports can be resolved to sibling modules.
 func (c *Config) ResolveSiblingImports() bool {
 	return c.resolveSiblingImports
+}
+
+// SetIgnoreTarget sets the target to be ignored.
+func (c *Config) AddIgnoreTarget(target string) {
+	c.ignoredTargets[target] = struct{}{}
+}
+
+// IgnoreTarget returns whether the target should be ignored.
+func (c *Config) IgnoreTarget(target string) bool {
+	_, ignores := c.ignoredTargets[target]
+	return ignores
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.
