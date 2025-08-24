@@ -6,4 +6,7 @@ py_binary(
     name = "release",
     srcs = ["release.py"],
     main = "release.py",
+    deps = [
+        "@dev_pip//packaging",
+    ],
 )

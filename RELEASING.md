@@ -12,12 +12,14 @@ These are the steps for a regularly scheduled release from HEAD.
 
 ### Steps
 
-1. [Determine the next semantic version number](#determining-semantic-version).
 1. Update the changelog and replace the version placeholders by running the
-   release tool:
+   release tool. The next version number will by automatically determined
+   based on the presence of `VERSION_NEXT_*` placeholders and git tags.
+
    ```shell
-   bazel run //tools/private/release -- X.Y.Z
+   bazel run //tools/private/release
    ```
+
 1. Send these changes for review and get them merged.
 1. Create a branch for the new release, named `release/X.Y`
    ```
@@ -50,7 +52,8 @@ Release automation will create a GitHub release and BCR pull request.
 API changes and new features bump the minor, and those with only bug fixes and
 other minor changes bump the patch digit.
 
-To find if there were any features added or incompatible changes made, review
+The release tool will automatically determine the next version number. To find
+if there were any features added or incompatible changes made, review
 [CHANGELOG.md](CHANGELOG.md) and the commit history. This can be done using
 github by going to the url:
 `https://github.com/bazel-contrib/rules_python/compare/<VERSION>...main`.
