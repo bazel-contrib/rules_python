@@ -55,9 +55,11 @@ class ReleaserTest(unittest.TestCase):
     def setUp(self):
         self.tmpdir = pathlib.Path(tempfile.mkdtemp())
         self.original_cwd = os.getcwd()
-        os.chdir(self.tmpdir)
-        self.addCleanup(os.chdir, self.original_cwd)
         self.addCleanup(shutil.rmtree, self.tmpdir)
+
+        os.chdir(self.tmpdir)
+        # NOTE: On windows, this must be done before files are deleted.
+        self.addCleanup(os.chdir, self.original_cwd)
 
     def test_update_changelog(self):
         changelog = f"""
