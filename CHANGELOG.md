@@ -587,7 +587,7 @@ END_UNRELEASED_TEMPLATE
   To select the free-threaded interpreter in the repo phase, please use
   the documented [env](environment-variables) variables.
   Fixes [#2386](https://github.com/bazel-contrib/rules_python/issues/2386).
-* (toolchains) Use the latest astrahl-sh toolchain release [20241206] for Python versions:
+* (toolchains) Use the latest astral-sh toolchain release [20241206] for Python versions:
     * 3.9.21
     * 3.10.16
     * 3.11.11
@@ -642,7 +642,7 @@ Other changes:
 * (binaries/tests) For {obj}`--bootstrap_impl=script`, a binary-specific (but
   otherwise empty) virtual env is used to customize `sys.path` initialization.
 * (deps) bazel_skylib 1.7.0 (workspace; bzlmod already specifying that version)
-* (deps) bazel_features 1.21.0; necessary for compatiblity with Bazel 8 rc3
+* (deps) bazel_features 1.21.0; necessary for compatibility with Bazel 8 rc3
 * (deps) stardoc 0.7.2 to support Bazel 8.
 
 {#v1-0-0-fixed}
@@ -1252,7 +1252,7 @@ Other changes:
   `@rules_python//python/config_settings:precompile=enabled` to enable it
   by default. A subsequent release will enable it by default. See the
   [Precompiling docs][precompile-docs] and API reference docs for more
-  information on precompiling. Note this requires Bazel 7+ and the Pystar rule
+  information on precompiling. Note this requires Bazel 7+ and the pistar rule
   implementation enabled.
   ([#1761](https://github.com/bazel-contrib/rules_python/issues/1761))
 * (rules) Attributes and flags to control precompile behavior: `precompile`,
@@ -1445,7 +1445,7 @@ Other changes:
   Windows host environments without symlink support.
 
 * (PyRuntimeInfo) Switch back to builtin PyRuntimeInfo for Bazel 6.4 and when
-  pystar is disabled. This fixes an error about `target ... does not have ...
+  pistar is disabled. This fixes an error about `target ... does not have ...
   PyRuntimeInfo`.
   ([#1732](https://github.com/bazel-contrib/rules_python/issues/1732))
 
@@ -1550,7 +1550,7 @@ Other changes:
 
 * **BREAKING** Support for Bazel 5 has been officially dropped. This release
   was only partially tested with Bazel 5 and may or may not work with Bazel 5.
-  Subequent versions will no longer be tested under Bazel 5.
+  Subsequent versions will no longer be tested under Bazel 5.
 
 * (runfiles) `rules_python.python.runfiles` now directly implements type hints
   and drops support for python2 as a result.
