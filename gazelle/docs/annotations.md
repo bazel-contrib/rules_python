@@ -118,7 +118,7 @@ deps = [
 
 ## `include_pytest_conftest`
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.6.0
 {gh-pr}`3080`
 :::
 

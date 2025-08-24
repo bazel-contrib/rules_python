@@ -47,12 +47,12 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
-{#v0-0-0}
-## Unreleased
+{#1-6-0}
+## [1.6.0] - 2025-08-23
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[1.6.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.0
 
-{#v0-0-0-changed}
+{#1-6-0-changed}
 ### Changed
 * (gazelle) update minimum gazelle version to 0.36.0 - may cause BUILD file changes
 * (gazelle) update minimum rules_go version to 0.55.1
@@ -84,7 +84,7 @@ END_UNRELEASED_TEMPLATE
 
 [20250808]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250808
 
-{#v0-0-0-fixed}
+{#1-6-0-fixed}
 ### Fixed
 * (toolchains) `local_runtime_repo` now respects changes to the `DEVELOPER_DIR` and `XCODE_VERSION`
   repo env vars, fixing stale cache issues on macOS with system (i.e. Xcode-supplied) Python
@@ -131,7 +131,7 @@ END_UNRELEASED_TEMPLATE
   ([#2797](https://github.com/bazel-contrib/rules_python/issues/2797)).
 * (py_wheel) Add directories in deterministic order.
 
-{#v0-0-0-added}
+{#1-6-0-added}
 ### Added
 * (repl) Default stub now has tab completion, where `readline` support is available,
   see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
@@ -162,7 +162,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) New directive `gazelle:python_proto_naming_convention`; controls
   naming of `py_proto_library` rules.
 
-{#v0-0-0-removed}
+{#1-6-0-removed}
 ### Removed
 * Nothing removed.
 

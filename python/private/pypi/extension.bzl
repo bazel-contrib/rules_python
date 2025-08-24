@@ -1314,7 +1314,7 @@ terms used in this extension.
 [environment_markers]: https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.6.0
 :::
 """,
         ),
