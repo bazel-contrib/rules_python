@@ -1252,7 +1252,7 @@ Other changes:
   `@rules_python//python/config_settings:precompile=enabled` to enable it
   by default. A subsequent release will enable it by default. See the
   [Precompiling docs][precompile-docs] and API reference docs for more
-  information on precompiling. Note this requires Bazel 7+ and the pistar rule
+  information on precompiling. Note this requires Bazel 7+ and the pystar rule
   implementation enabled.
   ([#1761](https://github.com/bazel-contrib/rules_python/issues/1761))
 * (rules) Attributes and flags to control precompile behavior: `precompile`,
@@ -1445,7 +1445,7 @@ Other changes:
   Windows host environments without symlink support.
 
 * (PyRuntimeInfo) Switch back to builtin PyRuntimeInfo for Bazel 6.4 and when
-  pistar is disabled. This fixes an error about `target ... does not have ...
+  pystar is disabled. This fixes an error about `target ... does not have ...
   PyRuntimeInfo`.
   ([#1732](https://github.com/bazel-contrib/rules_python/issues/1732))
 
