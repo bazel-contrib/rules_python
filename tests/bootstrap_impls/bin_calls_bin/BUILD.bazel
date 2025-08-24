@@ -1,6 +1,6 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
-load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
+load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BOOTSTRAP_SCRIPT")
 
 # =====
 # bootstrap_impl=system_python testing
@@ -39,6 +39,10 @@ sh_test(
         "verify.sh",
         ":outer_calls_inner_system_python",
     ],
+    # The way verify_system_python.sh loads verify.sh doesn't work
+    # with Windows for some annoying reason. Just skip windows for now;
+    # the logic being test isn't OS-specific, so this should be fine.
+    target_compatible_with = NOT_WINDOWS,
 )
 
 # =====
