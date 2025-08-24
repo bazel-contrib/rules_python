@@ -121,7 +121,7 @@ we prepare for releases.
 
 The steps to create a backport PR are:
 
-1.  Create an issue for the patch release; use the [patch relase
+1.  Create an issue for the patch release; use the [patch release
     template][patch-release-issue].
 2.  Create a fork of `rules_python`.
 3.  Checkout the `release/X.Y` branch.

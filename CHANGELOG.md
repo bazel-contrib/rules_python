@@ -89,6 +89,9 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
   environments, fixing issues where a `py_binary` calls another `py_binary`
   ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
+* (toolchains) `local_runtime_repo` now respects changes to the `DEVELOPER_DIR` and `XCODE_VERSION`
+  repo env vars, fixing stale cache issues on macOS with system (i.e. Xcode-supplied) Python
+  ([#3123](https://github.com/bazel-contrib/rules_python/issues/3123)).
 * (pypi) Fixes an issue where builds using a `bazel vendor` vendor directory
   would fail if the constraints file contained environment markers. Fixes
   [#2996](https://github.com/bazel-contrib/rules_python/issues/2996).
