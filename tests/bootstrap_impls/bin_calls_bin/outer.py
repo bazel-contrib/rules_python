@@ -1,6 +1,6 @@
+import os
 import subprocess
 import sys
-import os
 
 if __name__ == "__main__":
     module_space = os.environ.get("RULES_PYTHON_TESTING_MODULE_SPACE")
