@@ -47,16 +47,33 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
+  environments, fixing issues where a `py_binary` calls another `py_binary`
+  ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
 {#1-6-0}
 ## [1.6.0] - 2025-08-23
 
 [1.6.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.0
-
-{#v0-0-0-fixed}
-## Fixed
-* (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
-  environments, fixing issues where a `py_binary` calls another `py_binary`
-  ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
 
 {#1-6-0-changed}
 ### Changed
@@ -108,7 +125,7 @@ END_UNRELEASED_TEMPLATE
   name.
 * (pypi) The selection of the whls has been changed and should no longer result
   in ambiguous select matches ({gh-issue}`2759`) and should be much more efficient
-  when running `bazel query` due to fewer repositories being included 
+  when running `bazel query` due to fewer repositories being included
   ({gh-issue}`2849`).
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 * (toolchains) `local_runtime_repo` works with multiarch Debian with Python 3.8
