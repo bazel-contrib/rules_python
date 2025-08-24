@@ -52,6 +52,12 @@ END_UNRELEASED_TEMPLATE
 
 [1.6.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.0
 
+{#v0-0-0-fixed}
+## Fixed
+* (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
+  environments, fixing issues where a `py_binary` calls another `py_binary`
+  ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
+
 {#1-6-0-changed}
 ### Changed
 * (gazelle) update minimum gazelle version to 0.36.0 - may cause BUILD file changes
@@ -86,9 +92,6 @@ END_UNRELEASED_TEMPLATE
 
 {#1-6-0-fixed}
 ### Fixed
-* (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
-  environments, fixing issues where a `py_binary` calls another `py_binary`
-  ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
 * (toolchains) `local_runtime_repo` now respects changes to the `DEVELOPER_DIR` and `XCODE_VERSION`
   repo env vars, fixing stale cache issues on macOS with system (i.e. Xcode-supplied) Python
   ([#3123](https://github.com/bazel-contrib/rules_python/issues/3123)).
