@@ -1252,7 +1252,7 @@ Other changes:
   `@rules_python//python/config_settings:precompile=enabled` to enable it
   by default. A subsequent release will enable it by default. See the
   [Precompiling docs][precompile-docs] and API reference docs for more
-  information on precompiling. Note this requires Bazel 7+ and the pystar rule
+  information on precompiling. Note this requires Bazel 7+ and the Pystar rule
   implementation enabled.
   ([#1761](https://github.com/bazel-contrib/rules_python/issues/1761))
 * (rules) Attributes and flags to control precompile behavior: `precompile`,
