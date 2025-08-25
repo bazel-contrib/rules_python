@@ -70,12 +70,12 @@ END_UNRELEASED_TEMPLATE
 ### Removed
 * Nothing removed.
 
-{#1-6-0}
+{#v1-6-0}
 ## [1.6.0] - 2025-08-23
 
 [1.6.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.0
 
-{#1-6-0-changed}
+{#v1-6-0-changed}
 ### Changed
 * (gazelle) update minimum gazelle version to 0.36.0 - may cause BUILD file changes
 * (gazelle) update minimum rules_go version to 0.55.1
@@ -107,7 +107,7 @@ END_UNRELEASED_TEMPLATE
 
 [20250808]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250808
 
-{#1-6-0-fixed}
+{#v1-6-0-fixed}
 ### Fixed
 * (toolchains) `local_runtime_repo` now respects changes to the `DEVELOPER_DIR` and `XCODE_VERSION`
   repo env vars, fixing stale cache issues on macOS with system (i.e. Xcode-supplied) Python
@@ -154,7 +154,7 @@ END_UNRELEASED_TEMPLATE
   ([#2797](https://github.com/bazel-contrib/rules_python/issues/2797)).
 * (py_wheel) Add directories in deterministic order.
 
-{#1-6-0-added}
+{#v1-6-0-added}
 ### Added
 * (repl) Default stub now has tab completion, where `readline` support is available,
   see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
@@ -185,11 +185,11 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) New directive `gazelle:python_proto_naming_convention`; controls
   naming of `py_proto_library` rules.
 
-{#1-6-0-removed}
+{#v1-6-0-removed}
 ### Removed
 * Nothing removed.
 
-{#1-5-3}
+{#v1-5-3}
 ## [1.5.3] - 2025-08-11
 
 [1.5.3]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.3
@@ -199,7 +199,7 @@ END_UNRELEASED_TEMPLATE
   before attempting to watch it, fixing issues on macOS with system Python
   ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 
-{#1-5-2}
+{#v1-5-2}
 ## [1.5.2] - 2025-08-11
 
 [1.5.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.2
@@ -217,7 +217,7 @@ END_UNRELEASED_TEMPLATE
 * (core) builds work again on `7.x` `WORKSPACE` configurations
   ([#3119](https://github.com/bazel-contrib/rules_python/issues/3119)).
 
-{#1-5-1}
+{#v1-5-1}
 ## [1.5.1] - 2025-07-06
 
 [1.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.1
@@ -229,12 +229,12 @@ END_UNRELEASED_TEMPLATE
   by default again)
   ([#3038](https://github.com/bazel-contrib/rules_python/issues/3038)).
 
-{#1-5-0}
+{#v1-5-0}
 ## [1.5.0] - 2025-06-11
 
 [1.5.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.0
 
-{#1-5-0-changed}
+{#v1-5-0-changed}
 ### Changed
 
 * (toolchain) Bundled toolchain version updates:
@@ -255,7 +255,7 @@ END_UNRELEASED_TEMPLATE
 * (deps) Updated setuptools to 78.1.1 to patch CVE-2025-47273. This effectively makes
   Python 3.9 the minimum supported version for using `pip_parse`.
 
-{#1-5-0-fixed}
+{#v1-5-0-fixed}
 ### Fixed
 
 * (rules) PyInfo provider is now advertised by py_test, py_binary, and py_library;
@@ -284,7 +284,7 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) The hermetic toolchains now correctly statically advertise the
   `releaselevel` and `serial` for pre-release hermetic toolchains ({gh-issue}`2837`).
 
-{#1-5-0-added}
+{#v1-5-0-added}
 ### Added
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
@@ -307,11 +307,11 @@ END_UNRELEASED_TEMPLATE
   security patches.
 * (toolchains): 3.14.0b2 has been added as a preview.
 
-{#1-5-0-removed}
+{#v1-5-0-removed}
 ### Removed
 * Nothing removed.
 
-{#1-4-2}
+{#v1-4-2}
 ## [1.4.2] - 2025-08-13
 
 [1.4.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.2
@@ -321,23 +321,23 @@ END_UNRELEASED_TEMPLATE
   before attempting to watch it, fixing issues on macOS with system Python
   ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 
-{#1-4-1}
+{#v1-4-1}
 ## [1.4.1] - 2025-05-08
 
 [1.4.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.1
 
-{#1-4-1-fixed}
+{#v1-4-1-fixed}
 ### Fixed
 * (pypi) Fix a typo not allowing users to benefit from using the downloader when the hashes in the
   requirements file are not present. Fixes
   [#2863](https://github.com/bazel-contrib/rules_python/issues/2863).
 
-{#1-4-0}
+{#v1-4-0}
 ## [1.4.0] - 2025-04-19
 
 [1.4.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.0
 
-{#1-4-0-changed}
+{#v1-4-0-changed}
 ### Changed
 * (toolchain) The `exec` configuration toolchain now has the forwarded
   `exec_interpreter` now also forwards the `ToolchainInfo` provider. This is
@@ -368,7 +368,7 @@ END_UNRELEASED_TEMPLATE
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
-{#1-4-0-fixed}
+{#v1-4-0-fixed}
 ### Fixed
 * (pypi) Platform specific extras are now correctly handled when using
   universal lock files with environment markers. Fixes [#2690](https://github.com/bazel-contrib/rules_python/pull/2690).
@@ -394,7 +394,7 @@ END_UNRELEASED_TEMPLATE
   {obj}`compile_pip_requirements` rule.
   See [#2819](https://github.com/bazel-contrib/rules_python/pull/2819).
 
-{#1-4-0-added}
+{#v1-4-0-added}
 ### Added
 * (pypi) From now on `sha256` values in the `requirements.txt` is no longer
   mandatory when enabling {attr}`pip.parse.experimental_index_url` feature.
@@ -425,7 +425,7 @@ END_UNRELEASED_TEMPLATE
   locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
 
 
-{#1-4-0-removed}
+{#v1-4-0-removed}
 ### Removed
 * Nothing removed.
 
