@@ -516,6 +516,9 @@ def Main():
     module_space = FindModuleSpace(main_rel_path)
     delete_module_space = False
 
+  if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
+    new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = module_space
+
   python_imports = '%imports%'
   python_path_entries = CreatePythonPathEntries(python_imports, module_space)
   python_path_entries += GetRepositoriesImports(module_space, %import_all%)
