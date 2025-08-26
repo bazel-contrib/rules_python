@@ -94,6 +94,16 @@ gazelle_binary(
     visibility = ["//visibility:public"],
 )
 
+# Only used by testing
+gazelle_binary(
+    name = "_gazelle_binary_with_proto",
+    languages = [
+        "@bazel_gazelle//language/proto",
+        ":python",
+    ],
+    visibility = ["//visibility:private"],
+)
+
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),
