@@ -435,7 +435,6 @@ def create_py_info(
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
             py_info.merge(_get_py_info(target))
 
-    deps_transitive_sources = py_info.transitive_sources.build()
     py_info.transitive_sources.add(required_py_files)
 
     # We only look at data to calculate uses_shared_libraries, if it's already
@@ -457,7 +456,7 @@ def create_py_info(
             if py_info.get_uses_shared_libraries():
                 break
 
-    return py_info.build(), deps_transitive_sources, py_info.build_builtin_py_info()
+    return py_info.build(), py_info.build_builtin_py_info()
 
 def _get_py_info(target):
     return target[PyInfo] if PyInfo in target or BuiltinPyInfo == None else target[BuiltinPyInfo]

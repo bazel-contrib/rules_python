@@ -1838,7 +1838,7 @@ def _create_providers(
             PyCcLinkParamsInfo(cc_info = cc_info),
         )
 
-    py_info, deps_transitive_sources, builtin_py_info = create_py_info(
+    py_info, builtin_py_info = create_py_info(
         ctx,
         original_sources = original_sources,
         required_py_files = required_py_files,

@@ -55,8 +55,6 @@ load(
 )
 load(":version.bzl", "version")
 
-_py_builtins = py_internal
-
 LIBRARY_ATTRS = dicts.add(
     COMMON_ATTRS,
     PY_SRCS_ATTRS,
@@ -164,7 +162,7 @@ def py_library_impl(ctx, *, semantics):
     imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
-    py_info, deps_transitive_sources, builtins_py_info = create_py_info(
+    py_info, builtins_py_info = create_py_info(
         ctx,
         original_sources = direct_sources,
         required_py_files = required_py_files,
