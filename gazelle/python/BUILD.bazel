@@ -70,8 +70,8 @@ gazelle_test(
     name = "python_test",
     srcs = ["python_test.go"],
     data = [
-        ":gazelle_binary",
         ":_gazelle_binary_with_proto",
+        ":gazelle_binary",
     ],
     test_dirs = glob(
         # Use this so that we don't need to manually maintain the list.
