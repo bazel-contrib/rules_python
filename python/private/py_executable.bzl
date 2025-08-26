@@ -1848,14 +1848,6 @@ def _create_providers(
         imports = imports,
     )
 
-    # TODO(b/253059598): Remove support for extra actions; https://github.com/bazelbuild/bazel/issues/16455
-    listeners_enabled = _py_builtins.are_action_listeners_enabled(ctx)
-    if listeners_enabled:
-        _py_builtins.add_py_extra_pseudo_action(
-            ctx = ctx,
-            dependency_transitive_python_sources = deps_transitive_sources,
-        )
-
     providers.append(py_info)
     if builtin_py_info:
         providers.append(builtin_py_info)

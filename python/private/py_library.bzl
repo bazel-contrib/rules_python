@@ -175,14 +175,6 @@ def py_library_impl(ctx, *, semantics):
         venv_symlinks = venv_symlinks,
     )
 
-    # TODO(b/253059598): Remove support for extra actions; https://github.com/bazelbuild/bazel/issues/16455
-    listeners_enabled = _py_builtins.are_action_listeners_enabled(ctx)
-    if listeners_enabled:
-        _py_builtins.add_py_extra_pseudo_action(
-            ctx = ctx,
-            dependency_transitive_python_sources = deps_transitive_sources,
-        )
-
     providers = [
         DefaultInfo(files = default_outputs, runfiles = runfiles),
         py_info,
