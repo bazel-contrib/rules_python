@@ -61,6 +61,10 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
   environments, fixing issues where a `py_binary` calls another `py_binary`
   ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
+* (pypi) Now the `site-packages` will also have the `__init__.py` file generated
+  for `namespace` packages to correctly support cases where one package may be a Python
+  file and the other package may be a proper directory module.
+  Fixes ([#3038](https://github.com/bazel-contrib/rules_python/issues/3038)).
 
 {#v0-0-0-added}
 ### Added
@@ -228,7 +232,7 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 
 * (pypi) Namespace packages work by default (pkgutil shims are generated
-  by default again)
+  by default again).
   ([#3038](https://github.com/bazel-contrib/rules_python/issues/3038)).
 
 {#v1-5-0}

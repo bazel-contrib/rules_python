@@ -32,6 +32,7 @@ def test_find_correct_namespace_packages(env):
 
     got = get_files(srcs = srcs, root = "nested/root")
     expected = [
+        "nested/root",
         "nested/root/foo",
         "nested/root/foo/bar",
         "nested/root/foo/bee",
@@ -148,6 +149,7 @@ def test_skips_ignored_directories(env):
     ]
 
     expected = [
+        "root",
         "root/foo",
         "root/foo/bar",
     ]
@@ -182,16 +184,21 @@ def _test_create_inits(env):
     env.expect.that_collection(copy_file_calls).contains_exactly([
         {
             "name": "_cp_0_namespace",
-            "out": "nested/root/foo/__init__.py",
+            "out": "nested/root/__init__.py",
             "src": template,
         },
         {
             "name": "_cp_1_namespace",
-            "out": "nested/root/foo/bar/__init__.py",
+            "out": "nested/root/foo/__init__.py",
             "src": template,
         },
         {
             "name": "_cp_2_namespace",
+            "out": "nested/root/foo/bar/__init__.py",
+            "src": template,
+        },
+        {
+            "name": "_cp_3_namespace",
             "out": "nested/root/foo/bee/__init__.py",
             "src": template,
         },

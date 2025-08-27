@@ -33,7 +33,9 @@ def get_files(*, srcs, ignored_dirnames = [], root = None):
     ignored = {i: None for i in ignored_dirnames}
 
     if root:
-        _add_all(root, ignored)
+        dirname, _, filename = root.partition("/")
+        if filename:
+            _add_all(dirname, ignored)
 
     for file in srcs:
         dirname, _, filename = file.rpartition("/")
