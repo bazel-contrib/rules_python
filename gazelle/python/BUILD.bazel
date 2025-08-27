@@ -70,6 +70,7 @@ gazelle_test(
     name = "python_test",
     srcs = ["python_test.go"],
     data = [
+        ":_gazelle_binary_with_proto",
         ":gazelle_binary",
     ],
     test_dirs = glob(
@@ -90,11 +91,18 @@ gazelle_test(
 
 gazelle_binary(
     name = "gazelle_binary",
+    languages = [":python"],
+    visibility = ["//visibility:public"],
+)
+
+# Only used by testing
+gazelle_binary(
+    name = "_gazelle_binary_with_proto",
     languages = [
         "@bazel_gazelle//language/proto",
         ":python",
     ],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
