@@ -636,6 +636,30 @@ the configured name for the `@protobuf` / `@com_google_protobuf` repo in your
 `MODULE.bazel`, and otherwise falling back to `@com_google_protobuf` for
 compatibility with `WORKSPACE`.
 
+:::{note}
+In order to use this, you must manually configure Gazelle to target multiple
+languages. Place this in your root `BUILD.bazel` file:
+
+```
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+
+gazelle_binary(
+    name = "gazelle_multilang",
+    languages = [
+        "@bazel_gazelle//language/proto",
+        # The python gazelle plugin must be listed _after_ the proto language.
+        "@rules_python_gazelle_plugin//python",
+    ],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = "//:gazelle_multilang",
+)
+```
+:::
+
+
 For example, in a package with `# gazelle:python_generate_proto true` and a
 `foo.proto`, if you have both the proto extension and the Python extension
 loaded into Gazelle, you'll get something like:
