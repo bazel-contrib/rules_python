@@ -28,9 +28,10 @@ The next step is to create tags to trigger release workflow, **however**
 we start by using release candidate tags (`X.Y.Z-rcN`) before tagging the
 final release (`X.Y.Z`).
 
-1. Create release candidate tag and push. Increment `N` for each rc.
+1. Create release candidate tag and push. The first RC uses `N=0`. Increment
+   `N` for each RC.
    ```
-   git tag X.Y.0-rcN upstream/release/X.Y && git push upstream --tags
+   git tag X.Y.0-rcN upstream/release/X.Y && git push upstream tag X.Y.0-rcN
    ```
 2. Announce the RC release: see [Announcing Releases]
 3. Wait a week for feedback.
@@ -38,8 +39,8 @@ final release (`X.Y.Z`).
      release branch.
    * Repeat the RC tagging step, incrementing `N`.
 4. Finally, tag the final release tag:
-   ```
-   git tag X.Y.0 upstream/release/X.Y && git push upstream --tags
+   ```shell
+   git tag X.Y.0 upstream/release/X.Y && git push upstream tag X.Y.0
    ```
 
 Release automation will create a GitHub release and BCR pull request.
