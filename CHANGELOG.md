@@ -54,6 +54,32 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
+  environments, fixing issues where a `py_binary` calls another `py_binary`
+  ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v1-6-0}
+## [1.6.0] - 2025-08-23
+
+[1.6.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.0
+
+{#v1-6-0-changed}
+### Changed
+* (gazelle) update minimum gazelle version to 0.36.0 - may cause BUILD file changes
+* (gazelle) update minimum rules_go version to 0.55.1
+* (gazelle) remove custom go-tree-sitter module BUILD file
 * (gazelle) For package mode, resolve dependencies when imports are relative
   to the package path. This is enabled via the
   `# gazelle:python_experimental_allow_relative_imports` true directive ({gh-issue}`2203`).
@@ -69,6 +95,10 @@ END_UNRELEASED_TEMPLATE
 * (toolchain) Python 3.13 now references 3.13.6
 * (gazelle) Switched back to smacker/go-tree-sitter, fixing
   [#2630](https://github.com/bazel-contrib/rules_python/issues/2630)
+* (pypi) From now on the list of default platforms only includes `linux_x86_64`, `linux_aarch64`,
+  `osx_x86_64`, `osx_aarch64` and `windows_x86_64`. If you are on other platforms, you need to
+  use the `pip.default` to configure it yourself. If you are interested in graduating the
+  platform, consider helping set us up CI for them and update the documentation.
 * (ci) We are now testing on Ubuntu 22.04 for RBE and non-RBE configurations.
 * (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
 * (gazelle:docs) The Gazelle docs have been migrated from {gh-path}`gazelle/README.md` to
@@ -77,8 +107,11 @@ END_UNRELEASED_TEMPLATE
 
 [20250808]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250808
 
-{#v0-0-0-fixed}
+{#v1-6-0-fixed}
 ### Fixed
+* (toolchains) `local_runtime_repo` now respects changes to the `DEVELOPER_DIR` and `XCODE_VERSION`
+  repo env vars, fixing stale cache issues on macOS with system (i.e. Xcode-supplied) Python
+  ([#3123](https://github.com/bazel-contrib/rules_python/issues/3123)).
 * (pypi) Fixes an issue where builds using a `bazel vendor` vendor directory
   would fail if the constraints file contained environment markers. Fixes
   [#2996](https://github.com/bazel-contrib/rules_python/issues/2996).
@@ -90,6 +123,10 @@ END_UNRELEASED_TEMPLATE
   ([#2503](https://github.com/bazel-contrib/rules_python/issues/2503)).
 * (pypi) The pipstar `defaults` configuration now supports any custom platform
   name.
+* (pypi) The selection of the whls has been changed and should no longer result
+  in ambiguous select matches ({gh-issue}`2759`) and should be much more efficient
+  when running `bazel query` due to fewer repositories being included
+  ({gh-issue}`2849`).
 * Multi-line python imports (e.g. with escaped newlines) are now correctly processed by Gazelle.
 * (toolchains) `local_runtime_repo` works with multiarch Debian with Python 3.8
   ([#3099](https://github.com/bazel-contrib/rules_python/issues/3099)).
@@ -112,15 +149,20 @@ END_UNRELEASED_TEMPLATE
   installations (Mac frameworks, missing dynamic libraries, and other
   esoteric cases, see
   [#3148](https://github.com/bazel-contrib/rules_python/pull/3148) for details).
+* (pypi) Support `requirements.txt` files that use different versions of the same
+  package targeting different target platforms.
+  ([#2797](https://github.com/bazel-contrib/rules_python/issues/2797)).
+* (py_wheel) Add directories in deterministic order.
 
-{#v0-0-0-added}
+{#v1-6-0-added}
 ### Added
 * (repl) Default stub now has tab completion, where `readline` support is available,
   see ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
   ([#3114](https://github.com/bazel-contrib/rules_python/pull/3114)).
 * (pypi) To configure the environment for `requirements.txt` evaluation, use the newly added
   developer preview of the `pip.default` tag class. Only `rules_python` and root modules can use
-  this feature. You can also configure custom `config_settings` using `pip.default`.
+  this feature. You can also configure custom `config_settings` using `pip.default`. It
+  can also be used to set the global `netrc` or `auth_patterns` variables.
 * (pypi) PyPI dependencies now expose an `:extracted_whl_files` filegroup target
   of all the files extracted from the wheel. This can be used in lieu of
   {obj}`whl_filegroup` to avoid copying/extracting wheel multiple times to
@@ -140,14 +182,16 @@ END_UNRELEASED_TEMPLATE
   dep is not added to the {obj}`py_test` target.
 * (gazelle) New directive `gazelle:python_generate_proto`; when `true`,
   Gazelle generates `py_proto_library` rules for `proto_library`. `false` by default.
+    * Note: Users must manually configure their Gazelle target to support the
+      proto language.
 * (gazelle) New directive `gazelle:python_proto_naming_convention`; controls
   naming of `py_proto_library` rules.
 
-{#v0-0-0-removed}
+{#v1-6-0-removed}
 ### Removed
 * Nothing removed.
 
-{#1-5-3}
+{#v1-5-3}
 ## [1.5.3] - 2025-08-11
 
 [1.5.3]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.3
@@ -157,7 +201,7 @@ END_UNRELEASED_TEMPLATE
   before attempting to watch it, fixing issues on macOS with system Python
   ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 
-{#1-5-2}
+{#v1-5-2}
 ## [1.5.2] - 2025-08-11
 
 [1.5.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.2
@@ -175,7 +219,7 @@ END_UNRELEASED_TEMPLATE
 * (core) builds work again on `7.x` `WORKSPACE` configurations
   ([#3119](https://github.com/bazel-contrib/rules_python/issues/3119)).
 
-{#1-5-1}
+{#v1-5-1}
 ## [1.5.1] - 2025-07-06
 
 [1.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.1
@@ -187,12 +231,12 @@ END_UNRELEASED_TEMPLATE
   by default again)
   ([#3038](https://github.com/bazel-contrib/rules_python/issues/3038)).
 
-{#1-5-0}
+{#v1-5-0}
 ## [1.5.0] - 2025-06-11
 
 [1.5.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.0
 
-{#1-5-0-changed}
+{#v1-5-0-changed}
 ### Changed
 
 * (toolchain) Bundled toolchain version updates:
@@ -213,7 +257,7 @@ END_UNRELEASED_TEMPLATE
 * (deps) Updated setuptools to 78.1.1 to patch CVE-2025-47273. This effectively makes
   Python 3.9 the minimum supported version for using `pip_parse`.
 
-{#1-5-0-fixed}
+{#v1-5-0-fixed}
 ### Fixed
 
 * (rules) PyInfo provider is now advertised by py_test, py_binary, and py_library;
@@ -242,7 +286,7 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) The hermetic toolchains now correctly statically advertise the
   `releaselevel` and `serial` for pre-release hermetic toolchains ({gh-issue}`2837`).
 
-{#1-5-0-added}
+{#v1-5-0-added}
 ### Added
 * Repo utilities `execute_unchecked`, `execute_checked`, and `execute_checked_stdout` now
   support `log_stdout` and `log_stderr` keyword arg booleans. When these are `True`
@@ -265,11 +309,11 @@ END_UNRELEASED_TEMPLATE
   security patches.
 * (toolchains): 3.14.0b2 has been added as a preview.
 
-{#1-5-0-removed}
+{#v1-5-0-removed}
 ### Removed
 * Nothing removed.
 
-{#1-4-2}
+{#v1-4-2}
 ## [1.4.2] - 2025-08-13
 
 [1.4.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.2
@@ -279,23 +323,23 @@ END_UNRELEASED_TEMPLATE
   before attempting to watch it, fixing issues on macOS with system Python
   ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
 
-{#1-4-1}
+{#v1-4-1}
 ## [1.4.1] - 2025-05-08
 
 [1.4.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.1
 
-{#1-4-1-fixed}
+{#v1-4-1-fixed}
 ### Fixed
 * (pypi) Fix a typo not allowing users to benefit from using the downloader when the hashes in the
   requirements file are not present. Fixes
   [#2863](https://github.com/bazel-contrib/rules_python/issues/2863).
 
-{#1-4-0}
+{#v1-4-0}
 ## [1.4.0] - 2025-04-19
 
 [1.4.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.4.0
 
-{#1-4-0-changed}
+{#v1-4-0-changed}
 ### Changed
 * (toolchain) The `exec` configuration toolchain now has the forwarded
   `exec_interpreter` now also forwards the `ToolchainInfo` provider. This is
@@ -326,7 +370,7 @@ END_UNRELEASED_TEMPLATE
 
 [20250317]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250317
 
-{#1-4-0-fixed}
+{#v1-4-0-fixed}
 ### Fixed
 * (pypi) Platform specific extras are now correctly handled when using
   universal lock files with environment markers. Fixes [#2690](https://github.com/bazel-contrib/rules_python/pull/2690).
@@ -352,7 +396,7 @@ END_UNRELEASED_TEMPLATE
   {obj}`compile_pip_requirements` rule.
   See [#2819](https://github.com/bazel-contrib/rules_python/pull/2819).
 
-{#1-4-0-added}
+{#v1-4-0-added}
 ### Added
 * (pypi) From now on `sha256` values in the `requirements.txt` is no longer
   mandatory when enabling {attr}`pip.parse.experimental_index_url` feature.
@@ -383,7 +427,7 @@ END_UNRELEASED_TEMPLATE
   locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
 
 
-{#1-4-0-removed}
+{#v1-4-0-removed}
 ### Removed
 * Nothing removed.
 
@@ -568,7 +612,7 @@ END_UNRELEASED_TEMPLATE
   To select the free-threaded interpreter in the repo phase, please use
   the documented [env](environment-variables) variables.
   Fixes [#2386](https://github.com/bazel-contrib/rules_python/issues/2386).
-* (toolchains) Use the latest astrahl-sh toolchain release [20241206] for Python versions:
+* (toolchains) Use the latest astral-sh toolchain release [20241206] for Python versions:
     * 3.9.21
     * 3.10.16
     * 3.11.11
@@ -623,7 +667,7 @@ Other changes:
 * (binaries/tests) For {obj}`--bootstrap_impl=script`, a binary-specific (but
   otherwise empty) virtual env is used to customize `sys.path` initialization.
 * (deps) bazel_skylib 1.7.0 (workspace; bzlmod already specifying that version)
-* (deps) bazel_features 1.21.0; necessary for compatiblity with Bazel 8 rc3
+* (deps) bazel_features 1.21.0; necessary for compatibility with Bazel 8 rc3
 * (deps) stardoc 0.7.2 to support Bazel 8.
 
 {#v1-0-0-fixed}
@@ -1531,7 +1575,7 @@ Other changes:
 
 * **BREAKING** Support for Bazel 5 has been officially dropped. This release
   was only partially tested with Bazel 5 and may or may not work with Bazel 5.
-  Subequent versions will no longer be tested under Bazel 5.
+  Subsequent versions will no longer be tested under Bazel 5.
 
 * (runfiles) `rules_python.python.runfiles` now directly implements type hints
   and drops support for python2 as a result.

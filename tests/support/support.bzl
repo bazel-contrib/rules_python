@@ -54,3 +54,8 @@ SUPPORTS_BZLMOD_UNIXY = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
 }) if BZLMOD_ENABLED else ["@platforms//:incompatible"]
+
+NOT_WINDOWS = select({
+    "@platforms//os:windows": ["@platforms//:incompatible"],
+    "//conditions:default": [],
+})

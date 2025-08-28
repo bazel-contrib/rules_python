@@ -142,10 +142,6 @@ def whl_config_settings_to_json(repo_mapping):
 
 def _whl_config_setting_dict(a):
     ret = {}
-    if a.config_setting:
-        ret["config_setting"] = a.config_setting
-    if a.filename:
-        ret["filename"] = a.filename
     if a.target_platforms:
         ret["target_platforms"] = a.target_platforms
     if a.version:

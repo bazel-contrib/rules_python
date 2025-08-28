@@ -61,14 +61,20 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
 
 else
   function find_runfiles_root() {
+    local maybe_root=""
     if [[ -n "${RUNFILES_DIR:-}" ]]; then
-      echo "$RUNFILES_DIR"
-      return 0
+      maybe_root="$RUNFILES_DIR"
     elif [[ "${RUNFILES_MANIFEST_FILE:-}" = *".runfiles_manifest" ]]; then
-      echo "${RUNFILES_MANIFEST_FILE%%.runfiles_manifest}.runfiles"
-      return 0
+      maybe_root="${RUNFILES_MANIFEST_FILE%%.runfiles_manifest}.runfiles"
     elif [[ "${RUNFILES_MANIFEST_FILE:-}" = *".runfiles/MANIFEST" ]]; then
-      echo "${RUNFILES_MANIFEST_FILE%%.runfiles/MANIFEST}.runfiles"
+      maybe_root="${RUNFILES_MANIFEST_FILE%%.runfiles/MANIFEST}.runfiles"
+    fi
+
+    # The RUNFILES_DIR et al variables may misreport the runfiles directory
+    # if an outer binary invokes this binary when it isn't a data dependency.
+    # e.g. a genrule calls `bazel-bin/outer --inner=bazel-bin/inner`
+    if [[ -n "$maybe_root" && -e "$maybe_root/$STAGE2_BOOTSTRAP" ]]; then
+      echo "$maybe_root"
       return 0
     fi
 
@@ -99,6 +105,9 @@ else
   RUNFILES_DIR=$(find_runfiles_root $0)
 fi
 
+if [[ -n "$RULES_PYTHON_TESTING_TELL_MODULE_SPACE" ]]; then
+  export RULES_PYTHON_TESTING_MODULE_SPACE="$RUNFILES_DIR"
+fi
 
 function find_python_interpreter() {
   runfiles_root="$1"

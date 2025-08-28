@@ -232,7 +232,7 @@ How to handle errors when trying to automatically determine settings.
         ),
         "_rule_name": attr.string(default = "local_runtime_repo"),
     },
-    environ = ["PATH", REPO_DEBUG_ENV_VAR],
+    environ = ["PATH", REPO_DEBUG_ENV_VAR, "DEVELOPER_DIR", "XCODE_VERSION"],
 )
 
 def _expand_incompatible_template():

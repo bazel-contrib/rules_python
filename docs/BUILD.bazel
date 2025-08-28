@@ -186,5 +186,8 @@ lock(
         "--universal",
         "--upgrade",
     ],
+    # NOTE @aignas 2025-08-17: here we select the lowest actively supported version so that the
+    # requirements file is generated to be compatible with Python version 3.9 or greater.
+    python_version = "3.9",
     visibility = ["//:__subpackages__"],
 )

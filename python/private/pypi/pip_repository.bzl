@@ -16,7 +16,7 @@
 
 load("@bazel_skylib//lib:sets.bzl", "sets")
 load("//python/private:normalize_name.bzl", "normalize_name")
-load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR")
+load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:text_util.bzl", "render")
 load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
@@ -71,6 +71,7 @@ exports_files(["requirements.bzl"])
 """
 
 def _pip_repository_impl(rctx):
+    logger = repo_utils.logger(rctx)
     requirements_by_platform = parse_requirements(
         rctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -94,12 +95,18 @@ def _pip_repository_impl(rctx):
         extra_pip_args = rctx.attr.extra_pip_args,
         evaluate_markers = lambda rctx, requirements: evaluate_markers_py(
             rctx,
-            requirements = requirements,
+            requirements = {
+                # NOTE @aignas 2025-07-07: because we don't distinguish between
+                # freethreaded and non-freethreaded, it is a 1:1 mapping.
+                req: {p: p for p in plats}
+                for req, plats in requirements.items()
+            },
             python_interpreter = rctx.attr.python_interpreter,
             python_interpreter_target = rctx.attr.python_interpreter_target,
             srcs = rctx.attr._evaluate_markers_srcs,
         ),
         extract_url_srcs = False,
+        logger = logger,
     )
     selected_requirements = {}
     options = None
