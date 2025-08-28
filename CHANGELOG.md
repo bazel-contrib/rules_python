@@ -28,6 +28,10 @@ BEGIN_UNRELEASED_TEMPLATE
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
+{#v0-0-0-removed}
+### Removed
+
+* Nothing removed.
 {#v0-0-0-changed}
 ### Changed
 * Nothing changed.
@@ -40,9 +44,6 @@ BEGIN_UNRELEASED_TEMPLATE
 ### Added
 * Nothing added.
 
-{#v0-0-0-removed}
-### Removed
-* Nothing removed.
 
 END_UNRELEASED_TEMPLATE
 -->
@@ -51,6 +52,12 @@ END_UNRELEASED_TEMPLATE
 ## Unreleased
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* (core rules) Support for Bazel's long deprecated "extra actions" has been
+  removed
+  ([#3215](https://github.com/bazel-contrib/rules_python/issues/3215)).
 
 {#v0-0-0-changed}
 ### Changed
@@ -66,9 +73,6 @@ END_UNRELEASED_TEMPLATE
 ### Added
 * Nothing added.
 
-{#v0-0-0-removed}
-### Removed
-* Nothing removed.
 
 {#v1-6-0}
 ## [1.6.0] - 2025-08-23
