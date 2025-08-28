@@ -38,7 +38,7 @@ import (
 const (
 	extensionDir      = "python" + string(os.PathSeparator)
 	testDataPath      = extensionDir + "testdata" + string(os.PathSeparator)
-	gazelleBinaryName = "gazelle_binary"
+	gazelleBinaryName = "_gazelle_binary_with_proto"
 )
 
 func TestGazelleBinary(t *testing.T) {
