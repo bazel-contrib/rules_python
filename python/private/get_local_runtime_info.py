@@ -16,13 +16,27 @@ import json
 import sys
 import sysconfig
 
+def _get_base_executable():
+    """Returns the base executable path."""
+    try:
+        if sys._base_executable:  # pylint: disable=protected-access
+            return sys._base_executable  # pylint: disable=protected-access
+    except AttributeError:
+        # Bug reports indicate sys._base_executable  doesn't exist in some cases,
+        # but it's not clear why.
+        # See https://github.com/bazel-contrib/rules_python/issues/3172
+        pass
+    # The normal sys.executable is the next-best guess if sys._base_executable
+    # is missing.
+    return sys.executable
+
 data = {
     "major": sys.version_info.major,
     "minor": sys.version_info.minor,
     "micro": sys.version_info.micro,
     "include": sysconfig.get_path("include"),
     "implementation_name": sys.implementation.name,
-    "base_executable": sys._base_executable,
+    "base_executable": _get_base_executable(),
 }
 
 config_vars = [
