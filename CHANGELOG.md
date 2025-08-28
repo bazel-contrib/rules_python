@@ -191,6 +191,17 @@ END_UNRELEASED_TEMPLATE
 ### Removed
 * Nothing removed.
 
+{#v1-5-4}
+## [1.5.4] - 2025-08-27
+
+[1.5.4]: https://github.com/bazel-contrib/rules_python/releases/tag/1.5.4
+
+{#v1-5-4-fixed}
+### Fixed
+* (toolchains) `local_runtime_repo` now checks if the include directory exists
+  before attempting to watch it, fixing issues on macOS with system Python
+  ([#3043](https://github.com/bazel-contrib/rules_python/issues/3043)).
+
 {#v1-5-3}
 ## [1.5.3] - 2025-08-11
 
