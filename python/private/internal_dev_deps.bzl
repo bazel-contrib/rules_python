@@ -40,6 +40,7 @@ def _internal_dev_deps_impl(mctx):
         name = "somepkg_with_build_files",
         whl_file = "@whl_with_build_files//:somepkg-1.0-any-none-any.whl",
         requirement = "somepkg",
+        dep_template = "@rules_python//tests/support:support.bzl",
     )
 
     # Setup for //tests/implicit_namespace_packages
@@ -53,6 +54,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@implicit_namespace_ns_sub1_whl//:ns_sub1-1.0-any-none-any.whl",
         requirement = "ns-sub1",
         enable_implicit_namespace_pkgs = False,
+        dep_template = "@rules_python//tests/support:support.bzl",
     )
 
     whl_from_dir_repo(
@@ -65,6 +67,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@implicit_namespace_ns_sub2_whl//:ns_sub2-1.0-any-none-any.whl",
         requirement = "ns-sub2",
         enable_implicit_namespace_pkgs = False,
+        dep_template = "@rules_python//tests/support:support.bzl",
     )
 
 internal_dev_deps = module_extension(

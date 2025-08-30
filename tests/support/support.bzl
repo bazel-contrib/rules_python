@@ -22,6 +22,9 @@
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
+# this is used in integration tests with `whl_library`
+whl_map = []
+
 MAC = Label("//tests/support:mac")
 MAC_X86_64 = Label("//tests/support:mac_x86_64")
 LINUX = Label("//tests/support:linux")
