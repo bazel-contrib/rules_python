@@ -4,6 +4,7 @@ import pathlib
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.private.release import release as releaser
 
@@ -168,6 +169,45 @@ blabla
             releaser.create_parser().parse_args(["0.28"])
         with self.assertRaises(SystemExit):
             releaser.create_parser().parse_args(["a.b.c"])
+
+
+class GetLatestVersionTest(unittest.TestCase):
+    @patch("tools.private.release.release._get_git_tags")
+    def test_get_latest_version_success(self, mock_get_tags):
+        mock_get_tags.return_value = ["0.1.0", "1.0.0", "0.2.0"]
+        self.assertEqual(releaser.get_latest_version(), "1.0.0")
+
+    @patch("tools.private.release.release._get_git_tags")
+    def test_get_latest_version_rc_is_latest(self, mock_get_tags):
+        mock_get_tags.return_value = ["0.1.0", "1.0.0", "1.1.0rc0"]
+        with self.assertRaisesRegex(
+            ValueError, "The latest version is a pre-release version: 1.1.0rc0"
+        ):
+            releaser.get_latest_version()
+
+    @patch("tools.private.release.release._get_git_tags")
+    def test_get_latest_version_no_tags(self, mock_get_tags):
+        mock_get_tags.return_value = []
+        with self.assertRaisesRegex(
+            RuntimeError, "No git tags found matching X.Y.Z or X.Y.ZrcN format."
+        ):
+            releaser.get_latest_version()
+
+    @patch("tools.private.release.release._get_git_tags")
+    def test_get_latest_version_no_matching_tags(self, mock_get_tags):
+        mock_get_tags.return_value = ["v1.0", "latest"]
+        with self.assertRaisesRegex(
+            RuntimeError, "No git tags found matching X.Y.Z or X.Y.ZrcN format."
+        ):
+            releaser.get_latest_version()
+
+    @patch("tools.private.release.release._get_git_tags")
+    def test_get_latest_version_only_rc_tags(self, mock_get_tags):
+        mock_get_tags.return_value = ["1.0.0rc0", "1.1.0rc0"]
+        with self.assertRaisesRegex(
+            ValueError, "The latest version is a pre-release version: 1.1.0rc0"
+        ):
+            releaser.get_latest_version()
 
 
 if __name__ == "__main__":
