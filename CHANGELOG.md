@@ -61,7 +61,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (pypi) `pipstar` flag has been flipped to be enabled by default for bzlmod
+  ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
 
 {#v0-0-0-fixed}
 ### Fixed
