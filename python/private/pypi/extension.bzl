@@ -420,7 +420,8 @@ def _whl_repo(
             return struct(
                 repo_name = pypi_repo_name(
                     normalize_name(src.distribution),
-                    *target_platforms
+                    target_platforms = target_platforms,
+                    extras = src.extras,
                 ),
                 args = args,
                 config_setting = whl_config_setting(
@@ -450,7 +451,7 @@ def _whl_repo(
         ]
 
     return struct(
-        repo_name = whl_repo_name(src.filename, src.sha256),
+        repo_name = whl_repo_name(src.filename, src.sha256, src.extras),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,
