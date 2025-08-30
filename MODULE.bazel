@@ -159,6 +159,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
         whl_platform_tags = whl_platform_tags,
     )
     for cpu, whl_platform_tags in {
+        "aarch64": ["win_arm64"],
         "x86_64": ["win_amd64"],
     }.items()
     for freethreaded in [
