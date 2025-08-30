@@ -71,7 +71,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* (pypi) Support for `pipstar` environment marker and `experimental_index_url` handling for
+  Windows ARM64
+  ([#2276](https://github.com/bazel-contrib/rules_python/issues/2276)).
 
 
 {#v1-6-0}
