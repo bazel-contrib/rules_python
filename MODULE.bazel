@@ -34,6 +34,20 @@ use_repo(
     "rules_python_internal",
 )
 
+rules_python_config = use_extension(
+    "//python/extensions:config.bzl",
+    "rules_python_config",
+    dev_dependency = True,
+)
+use_repo(rules_python_config, "rules_python_config")
+rules_python_config.add_transition_setting(
+    # Intentionally add a setting already present for testing
+    setting = "//python/config_settings:python_version",
+)
+rules_python_config.add_transition_setting(
+    setting = "//tests/multi_pypi:external_deps_name",
+)
+
 # We need to do another use_extension call to expose the "pythons_hub"
 # repo.
 python = use_extension("//python/extensions:python.bzl", "python")
@@ -291,7 +305,17 @@ dev_pip.parse(
     python_version = "3.11",
     requirements_lock = "//examples/wheel:requirements_server.txt",
 )
-use_repo(dev_pip, "dev_pip", "pypiserver")
+dev_pip.parse(
+    hub_name = "pypi_alpha",
+    python_version = "3.11",
+    requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
+)
+dev_pip.parse(
+    hub_name = "pypi_beta",
+    python_version = "3.11",
+    requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
+)
+use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver")
 
 # Bazel integration test setup below
 

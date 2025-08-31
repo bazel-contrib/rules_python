@@ -29,6 +29,7 @@ load(
     "PrecompileAttr",
     "PycCollectionAttr",
     "REQUIRED_EXEC_GROUP_BUILDERS",
+    "apply_config_settings_attr",
 )
 load(":builders.bzl", "builders")
 load(":cc_helper.bzl", "cc_helper")
@@ -65,6 +66,7 @@ load(
     "TARGET_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
+load(":transition_labels.bzl", "TRANSITION_LABELS")
 
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
@@ -1902,10 +1904,10 @@ def _create_run_environment_info(ctx, inherited_environment):
         inherited_environment = inherited_environment,
     )
 
-def _transition_executable_impl(input_settings, attr):
-    settings = {
-        _PYTHON_VERSION_FLAG: input_settings[_PYTHON_VERSION_FLAG],
-    }
+def _transition_executable_impl(settings, attr):
+    settings = dict(settings)
+    apply_config_settings_attr(settings, attr)
+
     if attr.python_version and attr.python_version not in ("PY2", "PY3"):
         settings[_PYTHON_VERSION_FLAG] = attr.python_version
     return settings
@@ -1958,8 +1960,8 @@ def create_executable_rule_builder(implementation, **kwargs):
         ],
         cfg = dict(
             implementation = _transition_executable_impl,
-            inputs = [_PYTHON_VERSION_FLAG],
-            outputs = [_PYTHON_VERSION_FLAG],
+            inputs = TRANSITION_LABELS + [_PYTHON_VERSION_FLAG],
+            outputs = TRANSITION_LABELS + [_PYTHON_VERSION_FLAG],
         ),
         **kwargs
     )

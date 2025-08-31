@@ -405,8 +405,58 @@ COVERAGE_ATTRS = {
 # Attributes specific to Python executable-equivalent rules. Such rules may not
 # accept Python sources (e.g. some packaged-version of a py_test/py_binary), but
 # still accept Python source-agnostic settings.
+CONFIG_SETTINGS_ATTR = {
+    "config_settings": lambda: attrb.LabelKeyedStringDict(
+        doc = """
+Config settings to change for this target.
+
+The keys are labels for settings, and the values are strings for the new value
+to use. Pass `Label` objects or canonical label strings for the keys to ensure
+they resolve as expected (canonical labels start with `@@` and can be
+obtained by calling `str(Label(...))`).
+
+Most `@rules_python//python/config_setting` settings can be used here, which
+allows, for example, making only a certain `py_binary` use
+{obj}`--boostrap_impl=script`.
+
+Additional or custom config settings can be registered using the
+{obj}`add_transition_setting` API. This allows, for example, forcing a
+particular CPU, or defining a custom setting that `select()` uses elsewhere
+to pick between `pip.parse` hubs. See the [How to guide on multiple
+versions of a library] for a more concrete example.
+
+:::{note}
+These values are transitioned on, so will affect the analysis graph and the
+associated memory overhead. The more unique configurations in your overall
+build, the more memory and (often unnecessary) re-analysis and re-building
+can occur. See
+https://bazel.build/extending/config#memory-performance-considerations for
+more information about risks and considerations.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+    ),
+}
+
+def apply_config_settings_attr(settings, attr):
+    """Applies the config_settings attribute to the settings.
+
+    Args:
+        settings: The settings dict to modify in-place.
+        attr: The rule attributes struct.
+
+    Returns:
+        {type}`dict[str, object]` the input `settings` value.
+    """
+    for key, value in attr.config_settings.items():
+        settings[str(key)] = value
+    return settings
+
 AGNOSTIC_EXECUTABLE_ATTRS = dicts.add(
     DATA_ATTRS,
+    CONFIG_SETTINGS_ATTR,
     {
         "env": lambda: attrb.StringDict(
             doc = """\

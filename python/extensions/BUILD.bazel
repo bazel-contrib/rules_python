@@ -39,3 +39,12 @@ bzl_library(
         "//python/private:python_bzl",
     ],
 )
+
+bzl_library(
+    name = "config_bzl",
+    srcs = ["config.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//python/private:rules_python_config_repo_bzl",
+    ],
+)

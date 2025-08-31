@@ -25,6 +25,8 @@ build_test(
         "//python/cc:py_cc_toolchain_bzl",
         "//python/cc:py_cc_toolchain_info_bzl",
         "//python/entry_points:py_console_script_binary_bzl",
+        "//tests/interpreter",
+        "//tests/label_transition",
     ],
 )
 

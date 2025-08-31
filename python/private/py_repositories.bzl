@@ -20,19 +20,29 @@ load("//python:versions.bzl", "MINOR_MAPPING", "TOOL_VERSIONS")
 load("//python/private/pypi:deps.bzl", "pypi_deps")
 load(":internal_config_repo.bzl", "internal_config_repo")
 load(":pythons_hub.bzl", "hub_repo")
+load(":rules_python_config_repo.bzl", "rules_python_config_repo")
 
 def http_archive(**kwargs):
     maybe(_http_archive, **kwargs)
 
-def py_repositories():
+def py_repositories(transition_settings = []):
     """Runtime dependencies that users must install.
 
     This function should be loaded and called in the user's `WORKSPACE`.
     With `bzlmod` enabled, this function is not needed since `MODULE.bazel` handles transitive deps.
+
+    Args:
+        transition_settings: A list of labels that terminal rules transition on
+            by default.
     """
     maybe(
         internal_config_repo,
         name = "rules_python_internal",
+    )
+    maybe(
+        rules_python_config_repo,
+        name = "rules_python_config",
+        transition_settings = transition_settings,
     )
     maybe(
         hub_repo,
