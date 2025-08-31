@@ -45,7 +45,6 @@ load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
-load(":py_internal.bzl", "py_internal")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
 load(
@@ -54,8 +53,6 @@ load(
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
 load(":version.bzl", "version")
-
-_py_builtins = py_internal
 
 LIBRARY_ATTRS = dicts.add(
     COMMON_ATTRS,
@@ -164,7 +161,7 @@ def py_library_impl(ctx, *, semantics):
     imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
 
     cc_info = semantics.get_cc_info_for_library(ctx)
-    py_info, deps_transitive_sources, builtins_py_info = create_py_info(
+    py_info, builtins_py_info = create_py_info(
         ctx,
         original_sources = direct_sources,
         required_py_files = required_py_files,
@@ -174,14 +171,6 @@ def py_library_impl(ctx, *, semantics):
         imports = imports,
         venv_symlinks = venv_symlinks,
     )
-
-    # TODO(b/253059598): Remove support for extra actions; https://github.com/bazelbuild/bazel/issues/16455
-    listeners_enabled = _py_builtins.are_action_listeners_enabled(ctx)
-    if listeners_enabled:
-        _py_builtins.add_py_extra_pseudo_action(
-            ctx = ctx,
-            dependency_transitive_python_sources = deps_transitive_sources,
-        )
 
     providers = [
         DefaultInfo(files = default_outputs, runfiles = runfiles),
