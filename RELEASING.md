@@ -45,6 +45,25 @@ final release (`X.Y.Z`).
 
 Release automation will create a GitHub release and BCR pull request.
 
+### Manually triggering the release workflow
+
+The release workflow can be manually triggered using the GitHub CLI (`gh`).
+This is useful for re-running a release or for creating a release from a
+specific commit.
+
+To trigger the workflow, use the `gh workflow run` command:
+
+```shell
+gh workflow run release.yml --ref <TAG>
+```
+
+By default, the workflow will publish the wheel to PyPI. To skip this step,
+you can set the `publish_to_pypi` input to `false`:
+
+```shell
+gh workflow run release.yml --ref <TAG> -f publish_to_pypi=false
+```
+
 ### Determining Semantic Version
 
 **rules_python** uses [semantic version](https://semver.org), so releases with
