@@ -19,6 +19,13 @@ on:
   push:
     tags:
       - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      publish_to_pypi:
+        description: 'Publish to PyPI'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -29,6 +36,7 @@ jobs:
       - name: Create release archive and notes
         run: .github/workflows/create_archive_and_notes.sh
       - name: Publish wheel dist
+        if: github.event_name == 'push' || github.event.inputs.publish_to_pypi
         env:
           # This special value tells pypi that the user identity is supplied within the token
           TWINE_USERNAME: __token__
