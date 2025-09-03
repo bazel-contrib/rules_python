@@ -519,10 +519,13 @@ def _py_wheel_impl(ctx):
                     filename,
                 ),
             )
+
+        final_filename = filename + target_files[0].basename if filename.endswith("/") else filename
+
         other_inputs.extend(target_files)
         args.add(
             "--data_files",
-            filename + ";" + target_files[0].path,
+            final_filename + ";" + target_files[0].path,
         )
 
     ctx.actions.run(
