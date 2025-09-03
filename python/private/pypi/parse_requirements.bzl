@@ -133,6 +133,7 @@ def parse_requirements(
         extra_pip_args = options[target_platform]
 
         for distribution, requirement_line in reqs_:
+            req = requirement(requirement_line)
             for_whl = requirements_by_platform.setdefault(
                 normalize_name(distribution),
                 {},
@@ -146,6 +147,7 @@ def parse_requirements(
                 struct(
                     distribution = distribution,
                     srcs = index_sources(requirement_line),
+                    extras = req.extras,
                     requirement_line = requirement_line,
                     target_platforms = [],
                     extra_pip_args = extra_pip_args,
@@ -269,6 +271,7 @@ def _package_srcs(
                     distribution = name,
                     extra_pip_args = r.extra_pip_args,
                     requirement_line = req_line,
+                    extras = r.extras,
                     target_platforms = [],
                     filename = dist.filename,
                     sha256 = dist.sha256,

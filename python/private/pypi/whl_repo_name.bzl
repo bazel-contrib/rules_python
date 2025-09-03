@@ -18,12 +18,14 @@
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
-def whl_repo_name(filename, sha256):
+def whl_repo_name(filename, sha256, extras=[]):
     """Return a valid whl_library repo name given a distribution filename.
 
     Args:
         filename: {type}`str` the filename of the distribution.
         sha256: {type}`str` the sha256 of the distribution.
+        extras: {type}`list[str]` the extras for the requirement.
+          TODO(hartikainen): Note sure if this is the right place for extras.
 
     Returns:
         a string that can be used in {obj}`whl_library`.
@@ -34,6 +36,7 @@ def whl_repo_name(filename, sha256):
         # Then the filename is basically foo-3.2.1.<ext>
         name, _, tail = filename.rpartition("-")
         parts.append(normalize_name(name))
+        parts.extend(sorted([e for e in extras if e]))
         if sha256:
             parts.append("sdist")
             version = ""
@@ -53,6 +56,7 @@ def whl_repo_name(filename, sha256):
         parts.append(python_tag)
         parts.append(abi_tag)
         parts.append(platform_tag)
+        parts.extend(sorted([e for e in extras if e]))
 
     if sha256:
         parts.append(sha256[:8])
@@ -61,19 +65,21 @@ def whl_repo_name(filename, sha256):
 
     return "_".join(parts)
 
-def pypi_repo_name(whl_name, *target_platforms):
+def pypi_repo_name(whl_name, target_platforms=[], extras=[]):
     """Return a valid whl_library given a requirement line.
 
     Args:
         whl_name: {type}`str` the whl_name to use.
-        *target_platforms: {type}`list[str]` the target platforms to use in the name.
+        target_platforms: {type}`list[str]` the target platforms to use in the name.
+        extras: {type}`list[str]` the extras for the requirement.
+          TODO(hartikainen): Note sure if this is the right place for extras.
+
 
     Returns:
         {type}`str` that can be used in {obj}`whl_library`.
     """
-    parts = [
-        normalize_name(whl_name),
-    ]
+    parts = [normalize_name(whl_name)]
+    parts.extend(sorted([e for e in extras if e]))
     parts.extend([p.partition("_")[-1] for p in target_platforms])
 
     return "_".join(parts)
