@@ -61,7 +61,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (deps) bumped rules_cc dependency to `0.1.5`.
 
 {#v0-0-0-fixed}
 ### Fixed
