@@ -101,6 +101,11 @@ def _add(self, *, pip_attr):
     self.group_map.clear()
     self.group_map.update(pip_attr.experimental_requirement_cycles)
 
+    for whl_name, aliases in pip_attr.extra_hub_aliases.items():
+        self.extra_aliases.setdefault(whl_name, {}).update(
+            {alias: True for alias in aliases},
+        )
+
 def _set_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
         if pip_attr.experimental_extra_index_urls:

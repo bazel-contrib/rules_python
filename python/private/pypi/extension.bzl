@@ -207,10 +207,6 @@ def _create_whl_repos(
 
     return struct(
         exposed_packages = exposed_packages,
-        extra_aliases = {
-            whl_name: {alias: True for alias in aliases}
-            for whl_name, aliases in pip_attr.extra_hub_aliases.items()
-        },
     )
 
 def _whl_repo(
@@ -524,10 +520,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
             )
 
-            extra_aliases.setdefault(hub_name, {})
-            for whl_name, aliases in out.extra_aliases.items():
-                extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
-
             if hub_name not in exposed_packages:
                 exposed_packages[hub_name] = out.exposed_packages
             else:
@@ -553,6 +545,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 whl_libraries[whl_name] = lib
 
         hub_group_map[hub.name] = hub.group_map
+        extra_aliases[hub.name] = hub.extra_aliases
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the
