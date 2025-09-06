@@ -50,7 +50,7 @@ def hub_builder(
     self = struct(
         name = name,
         module_name = module_name,
-        python_versions = {},
+        _platforms = {},
         config = config,
         whl_map = {},
         exposed_packages = {},
@@ -64,21 +64,14 @@ def hub_builder(
         _simpleapi_download_fn = simpleapi_download_fn,
         _simpleapi_cache = simpleapi_cache,
         _get_index_urls = {},
-        _pip_attrs = {},
         _use_downloader = {},
         # keep sorted
-        add = lambda *a, **k: _add(self, *a, **k),
-        detect_interpreter = lambda *a, **k: _detect_interpreter(self, *a, **k),
         get_index_urls = lambda version: self._get_index_urls.get(version),
-        platforms = lambda version: self.python_versions[version],
-        add_whl_library = lambda *a, **k: _add_whl_library(self, *a, **k),
         use_downloader = lambda python_version, whl_name: self._use_downloader.get(python_version, {}).get(
             normalize_name(whl_name),
-            python_version in self._get_index_urls,
+            self.get_index_urls(python_version) != None,
         ),
-        evaluate_markers = lambda *a, **k: _evaluate_markers(self, *a, **k),
         build = lambda: _build(self),
-        create_whl_repos = lambda *a, **k: _create_whl_repos(self, *a, **k),
         pip_parse = lambda *a, **k: _pip_parse(self, *a, **k),
     )
 
@@ -101,39 +94,6 @@ def _build(self):
         exposed_packages = sorted(self.exposed_packages),
         whl_libraries = self.whl_libraries,
     )
-
-def _add(self, *, pip_attr):
-    python_version = pip_attr.python_version
-    if python_version in self.python_versions:
-        fail((
-            "Duplicate pip python version '{version}' for hub " +
-            "'{hub}' in module '{module}': the Python versions " +
-            "used for a hub must be unique"
-        ).format(
-            hub = self.name,
-            module = self.module_name,
-            version = python_version,
-        ))
-
-    self.python_versions[python_version] = _platforms(
-        python_version = python_version,
-        minor_mapping = self._minor_mapping,
-        config = self.config,
-    )
-    _set_index_urls(self, pip_attr)
-    self._pip_attrs[python_version] = pip_attr
-
-    # TODO @aignas 2024-04-05: how do we support different requirement
-    # cycles for different abis/oses? For now we will need the users to
-    # assume the same groups across all versions/platforms until we start
-    # using an alternative cycle resolution strategy.
-    self.group_map.clear()
-    self.group_map.update(pip_attr.experimental_requirement_cycles)
-
-    for whl_name, aliases in pip_attr.extra_hub_aliases.items():
-        self.extra_aliases.setdefault(whl_name, {}).update(
-            {alias: True for alias in aliases},
-        )
 
 def _set_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
@@ -254,7 +214,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # disallow building from sdist.
         return
 
-    platforms = self.python_versions[python_version]
+    platforms = self._platforms[python_version]
 
     # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
     # we are using pipstar and we are downloading the wheel using the downloader
@@ -297,10 +257,10 @@ def _evaluate_markers(self, pip_attr):
     if self.config.enable_pipstar:
         return lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
-            platforms = self.python_versions[pip_attr.python_version],
+            platforms = self._platforms[pip_attr.python_version],
         )
 
-    interpreter = self.detect_interpreter(pip_attr)
+    interpreter = _detect_interpreter(self, pip_attr)
 
     # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
     # in the PATH or if specified as a label. We will configure the env
@@ -320,7 +280,7 @@ def _evaluate_markers(self, pip_attr):
         module_ctx,
         requirements = {
             k: {
-                p: self.python_versions[pip_attr.python_version][p].triple
+                p: self._platforms[pip_attr.python_version][p].triple
                 for p in plats
             }
             for k, plats in requirements.items()
@@ -346,7 +306,7 @@ def _create_whl_repos(
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
     """
     logger = self._logger
-    platforms = self.platforms(pip_attr.python_version)
+    platforms = self._platforms[pip_attr.python_version]
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -366,7 +326,7 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self.get_index_urls(pip_attr.python_version),
-        evaluate_markers = self.evaluate_markers(pip_attr),
+        evaluate_markers = _evaluate_markers(self, pip_attr),
         logger = logger,
     )
 
@@ -390,7 +350,7 @@ def _create_whl_repos(
         whl_group_mapping = {}
         requirement_cycles = {}
 
-    interpreter = self.detect_interpreter(pip_attr)
+    interpreter = _detect_interpreter(self, pip_attr)
     exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
@@ -450,7 +410,8 @@ def _create_whl_repos(
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = self.config.enable_pipstar,
             )
-            self.add_whl_library(
+            _add_whl_library(
+                self,
                 python_version = pip_attr.python_version,
                 whl = whl,
                 repo = repo,
@@ -539,9 +500,38 @@ def _whl_repo(
     )
 
 def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
-    self.add(pip_attr = pip_attr)
+    python_version = pip_attr.python_version
+    if python_version in self._platforms:
+        fail((
+            "Duplicate pip python version '{version}' for hub " +
+            "'{hub}' in module '{module}': the Python versions " +
+            "used for a hub must be unique"
+        ).format(
+            hub = self.name,
+            module = self.module_name,
+            version = python_version,
+        ))
 
-    self.create_whl_repos(
+    self._platforms[python_version] = _platforms(
+        python_version = python_version,
+        minor_mapping = self._minor_mapping,
+        config = self.config,
+    )
+    _set_index_urls(self, pip_attr)
+
+    # TODO @aignas 2024-04-05: how do we support different requirement
+    # cycles for different abis/oses? For now we will need the users to
+    # assume the same groups across all versions/platforms until we start
+    # using an alternative cycle resolution strategy.
+    self.group_map.clear()
+    self.group_map.update(pip_attr.experimental_requirement_cycles)
+
+    for whl_name, aliases in pip_attr.extra_hub_aliases.items():
+        self.extra_aliases.setdefault(whl_name, {}).update(
+            {alias: True for alias in aliases},
+        )
+    _create_whl_repos(
+        self,
         module_ctx,
         pip_attr = pip_attr,
         whl_overrides = whl_overrides,
