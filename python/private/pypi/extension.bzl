@@ -538,12 +538,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     intersection[pkg] = None
                 exposed_packages[hub_name] = intersection
 
-            # TODO @aignas 2024-04-05: how do we support different requirement
-            # cycles for different abis/oses? For now we will need the users to
-            # assume the same groups across all versions/platforms until we start
-            # using an alternative cycle resolution strategy.
-            hub_group_map[hub_name] = pip_attr.experimental_requirement_cycles
-
     for hub in pip_hub_map.values():
         hub_whl_map.setdefault(hub.name, {})
         for key, settings in hub.whl_map.items():
@@ -557,6 +551,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 # replicate whl_libraries.update(out.whl_libraries)
                 whl_libraries[whl_name] = lib
+
+        hub_group_map[hub.name] = hub.group_map
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the

@@ -47,6 +47,7 @@ def hub_builder(
         exposed_packages = {},
         extra_aliases = {},
         whl_libraries = {},
+        group_map = {},
         _evaluate_markers_fn = evaluate_markers_fn,
         _logger = logger,
         _minor_mapping = minor_mapping,
@@ -92,6 +93,13 @@ def _add(self, *, pip_attr):
     )
     _set_index_urls(self, pip_attr)
     self._pip_attrs[python_version] = pip_attr
+
+    # TODO @aignas 2024-04-05: how do we support different requirement
+    # cycles for different abis/oses? For now we will need the users to
+    # assume the same groups across all versions/platforms until we start
+    # using an alternative cycle resolution strategy.
+    self.group_map.clear()
+    self.group_map.update(pip_attr.experimental_requirement_cycles)
 
 def _set_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
