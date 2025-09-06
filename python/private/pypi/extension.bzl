@@ -102,7 +102,6 @@ def _create_whl_repos(
     interpreter = hub.detect_interpreter(pip_attr)
 
     # containers to aggregate outputs from this function
-    whl_map = {}
     extra_aliases = {
         whl_name: {alias: True for alias in aliases}
         for whl_name, aliases in pip_attr.extra_hub_aliases.items()
@@ -290,7 +289,7 @@ def _create_whl_repos(
                     }),
                 }
 
-            mapping = whl_map.setdefault(whl.name, {})
+            mapping = hub.whl_map.setdefault(whl.name, {})
             if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
                 fail(
                     "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
@@ -303,7 +302,6 @@ def _create_whl_repos(
                 mapping[repo.config_setting] = repo_name
 
     return struct(
-        whl_map = whl_map,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         whl_libraries = whl_libraries,
@@ -620,10 +618,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 **kwargs
             )
 
-            hub_whl_map.setdefault(hub_name, {})
-            for key, settings in out.whl_map.items():
-                for setting, repo in settings.items():
-                    hub_whl_map[hub_name].setdefault(key, {}).setdefault(repo, []).append(setting)
             extra_aliases.setdefault(hub_name, {})
             for whl_name, aliases in out.extra_aliases.items():
                 extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
@@ -652,6 +646,12 @@ You cannot use both the additive_build_content and additive_build_content_file a
             # assume the same groups across all versions/platforms until we start
             # using an alternative cycle resolution strategy.
             hub_group_map[hub_name] = pip_attr.experimental_requirement_cycles
+
+    for hub in pip_hub_map.values():
+        hub_whl_map.setdefault(hub.name, {})
+        for key, settings in hub.whl_map.items():
+            for setting, repo in settings.items():
+                hub_whl_map[hub.name].setdefault(key, {}).setdefault(repo, []).append(setting)
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the
