@@ -35,6 +35,18 @@ def hub_builder(
         simpleapi_download_fn: TODO
         simpleapi_cache: TODO
         logger: TODO
+
+    TODO
+    Returns a {type}`struct` with the following attributes:
+        whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
+            normalized package name and the values are the instances of the
+            {bzl:obj}`whl_config_setting` return values.
+        exposed_packages: {type}`dict[str, Any]` this is just a way to
+            represent a set of string values.
+        whl_libraries: {type}`dict[str, dict[str, Any]]` the keys are the
+            aparent repository names for the hub repo and the values are the
+            arguments that will be passed to {bzl:obj}`whl_library` repository
+            rule.
     """
 
     # buildifier: disable=uninitialized
@@ -92,6 +104,17 @@ def _add(self, *, pip_attr):
     )
     _set_index_urls(self, pip_attr)
     self._pip_attrs[python_version] = pip_attr
+
+    self.extra_aliases.update({
+        whl_name: {alias: True for alias in aliases}
+        for whl_name, aliases in pip_attr.extra_hub_aliases.items()
+    })
+
+    # TODO @aignas 2024-04-05: how do we support different requirement
+    # cycles for different abis/oses? For now we will need the users to
+    # assume the same groups across all versions/platforms until we start
+    # using an alternative cycle resolution strategy.
+    self.group_map = pip_attr.experimental_requirement_cycles
 
 def _set_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
