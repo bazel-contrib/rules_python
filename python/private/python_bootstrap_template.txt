@@ -98,7 +98,7 @@ def GetWindowsPathWithUNCPrefix(path):
 def HasWindowsExecutableExtension(path):
   return path.endswith('.exe') or path.endswith('.com') or path.endswith('.bat')
 
-if IsWindows() and not HasWindowsExecutableExtension(PYTHON_BINARY):
+if PYTHON_BINARY and IsWindows() and not HasWindowsExecutableExtension(PYTHON_BINARY):
   PYTHON_BINARY = PYTHON_BINARY + '.exe'
 
 def SearchPath(name):
