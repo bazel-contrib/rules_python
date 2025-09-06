@@ -115,7 +115,7 @@ def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
         minor_mapping = self._minor_mapping,
         config = self._config,
     )
-    _set_index_urls(self, pip_attr)
+    _set_get_index_urls(self, pip_attr)
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
     _create_whl_repos(
@@ -199,7 +199,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
 
 ### end of setters, below we have various functions to implement the public methods
 
-def _set_index_urls(self, pip_attr):
+def _set_get_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
         if pip_attr.experimental_extra_index_urls:
             fail("'experimental_extra_index_urls' is a no-op unless 'experimental_index_url' is set")
