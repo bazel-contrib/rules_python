@@ -19,27 +19,16 @@ load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
-load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load("//python/private:version.bzl", "version")
-load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
-load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
-load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
-load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_library.bzl", "whl_library")
-load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
-
-def _major_minor_version(version_str):
-    ver = version.parse(version_str)
-    return "{}.{}".format(ver.release[0], ver.release[1])
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -65,216 +54,6 @@ def _whl_mods_impl(whl_mods_dict):
             name = hub_name,
             whl_mods = whl_mods,
         )
-
-def _create_whl_repos(
-        module_ctx,
-        *,
-        pip_attr,
-        whl_overrides,
-        hub,
-        minor_mapping = MINOR_MAPPING):
-    """create all of the whl repositories
-
-    Args:
-        module_ctx: {type}`module_ctx`.
-        pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
-        whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
-        hub: TODO.
-        minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
-            python version used to parse package METADATA files.
-    """
-    logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
-    interpreter = hub.detect_interpreter(pip_attr)
-
-    whl_modifications = {}
-    if pip_attr.whl_modifications != None:
-        for mod, whl_name in pip_attr.whl_modifications.items():
-            whl_modifications[normalize_name(whl_name)] = mod
-
-    platforms = hub.platforms(pip_attr.python_version)
-    requirements_by_platform = parse_requirements(
-        module_ctx,
-        requirements_by_platform = requirements_files_by_platform(
-            requirements_by_platform = pip_attr.requirements_by_platform,
-            requirements_linux = pip_attr.requirements_linux,
-            requirements_lock = pip_attr.requirements_lock,
-            requirements_osx = pip_attr.requirements_darwin,
-            requirements_windows = pip_attr.requirements_windows,
-            extra_pip_args = pip_attr.extra_pip_args,
-            platforms = sorted(platforms),  # here we only need keys
-            python_version = full_version(
-                version = pip_attr.python_version,
-                minor_mapping = minor_mapping,
-            ),
-            logger = logger,
-        ),
-        platforms = platforms,
-        extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = hub.get_index_urls(pip_attr.python_version),
-        evaluate_markers = hub.evaluate_markers(pip_attr),
-        logger = logger,
-    )
-
-    if pip_attr.experimental_requirement_cycles:
-        requirement_cycles = {
-            name: [normalize_name(whl_name) for whl_name in whls]
-            for name, whls in pip_attr.experimental_requirement_cycles.items()
-        }
-
-        whl_group_mapping = {
-            whl_name: group_name
-            for group_name, group_whls in requirement_cycles.items()
-            for whl_name in group_whls
-        }
-    else:
-        whl_group_mapping = {}
-        requirement_cycles = {}
-    exposed_packages = {}
-    for whl in requirements_by_platform:
-        if whl.is_exposed:
-            exposed_packages[whl.name] = None
-
-        group_name = whl_group_mapping.get(whl.name)
-        group_deps = requirement_cycles.get(group_name, [])
-
-        # Construct args separately so that the lock file can be smaller and does not include unused
-        # attrs.
-        whl_library_args = dict(
-            dep_template = "@{}//{{name}}:{{target}}".format(hub.name),
-        )
-        maybe_args = dict(
-            # The following values are safe to omit if they have false like values
-            add_libdir_to_library_search_path = pip_attr.add_libdir_to_library_search_path,
-            annotation = whl_modifications.get(whl.name),
-            download_only = pip_attr.download_only,
-            enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
-            environment = pip_attr.environment,
-            envsubst = pip_attr.envsubst,
-            group_deps = group_deps,
-            group_name = group_name,
-            pip_data_exclude = pip_attr.pip_data_exclude,
-            python_interpreter = interpreter.path,
-            python_interpreter_target = interpreter.target,
-            whl_patches = {
-                p: json.encode(args)
-                for p, args in whl_overrides.get(whl.name, {}).items()
-            },
-        )
-        if not hub.config.enable_pipstar:
-            maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
-
-        whl_library_args.update({k: v for k, v in maybe_args.items() if v})
-        maybe_args_with_default = dict(
-            # The following values have defaults next to them
-            isolated = (use_isolated(module_ctx, pip_attr), True),
-            quiet = (pip_attr.quiet, True),
-            timeout = (pip_attr.timeout, 600),
-        )
-        whl_library_args.update({
-            k: v
-            for k, (v, default) in maybe_args_with_default.items()
-            if v != default
-        })
-
-        for src in whl.srcs:
-            repo = _whl_repo(
-                src = src,
-                whl_library_args = whl_library_args,
-                download_only = pip_attr.download_only,
-                netrc = hub.config.netrc or pip_attr.netrc,
-                use_downloader = hub.use_downloader(pip_attr.python_version, whl.name),
-                auth_patterns = hub.config.auth_patterns or pip_attr.auth_patterns,
-                python_version = _major_minor_version(pip_attr.python_version),
-                is_multiple_versions = whl.is_multiple_versions,
-                enable_pipstar = hub.config.enable_pipstar,
-            )
-            hub.add_whl_library(
-                python_version = pip_attr.python_version,
-                whl = whl,
-                repo = repo,
-            )
-
-    if hub.exposed_packages:
-        intersection = {}
-        for pkg in exposed_packages:
-            if pkg not in hub.exposed_packages:
-                continue
-            intersection[pkg] = None
-        hub.exposed_packages.clear()
-        exposed_packages = intersection
-
-    hub.exposed_packages.update(exposed_packages)
-
-def _whl_repo(
-        *,
-        src,
-        whl_library_args,
-        is_multiple_versions,
-        download_only,
-        netrc,
-        auth_patterns,
-        python_version,
-        use_downloader,
-        enable_pipstar = False):
-    args = dict(whl_library_args)
-    args["requirement"] = src.requirement_line
-    is_whl = src.filename.endswith(".whl")
-
-    if src.extra_pip_args and not is_whl:
-        # pip is not used to download wheels and the python
-        # `whl_library` helpers are only extracting things, however
-        # for sdists, they will be built by `pip`, so we still
-        # need to pass the extra args there, so only pop this for whls
-        args["extra_pip_args"] = src.extra_pip_args
-
-    if not src.url or (not is_whl and download_only):
-        if download_only and use_downloader:
-            # If the user did not allow using sdists and we are using the downloader
-            # and we are not using simpleapi_skip for this
-            return None
-        else:
-            # Fallback to a pip-installed wheel
-            target_platforms = src.target_platforms if is_multiple_versions else []
-            return struct(
-                repo_name = pypi_repo_name(
-                    normalize_name(src.distribution),
-                    *target_platforms
-                ),
-                args = args,
-                config_setting = whl_config_setting(
-                    version = python_version,
-                    target_platforms = target_platforms or None,
-                ),
-            )
-
-    # This is no-op because pip is not used to download the wheel.
-    args.pop("download_only", None)
-
-    if netrc:
-        args["netrc"] = netrc
-    if auth_patterns:
-        args["auth_patterns"] = auth_patterns
-
-    args["urls"] = [src.url]
-    args["sha256"] = src.sha256
-    args["filename"] = src.filename
-    if not enable_pipstar:
-        args["experimental_target_platforms"] = [
-            # Get rid of the version for the target platforms because we are
-            # passing the interpreter any way. Ideally we should search of ways
-            # how to pass the target platforms through the hub repo.
-            p.partition("_")[2]
-            for p in src.target_platforms
-        ]
-
-    return struct(
-        repo_name = whl_repo_name(src.filename, src.sha256),
-        args = args,
-        config_setting = whl_config_setting(
-            version = python_version,
-            target_platforms = src.target_platforms,
-        ),
-    )
 
 def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = "", whl_abi_tags = [], whl_platform_tags = []):
     # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
@@ -482,6 +261,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     config = config,
                     simpleapi_download_fn = simpleapi_download,
                     simpleapi_cache = simpleapi_cache,
+                    # TODO @aignas 2025-09-06: do not use kwargs
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
                     evaluate_markers_fn = kwargs.get("evaluate_markers", None),
                     available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
@@ -508,12 +288,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.add(pip_attr = pip_attr)
 
             # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
-            _create_whl_repos(
+            builder.create_whl_repos(
                 module_ctx,
-                hub = builder,
                 pip_attr = pip_attr,
                 whl_overrides = whl_overrides,
-                minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
             )
 
     for hub in pip_hub_map.values():
