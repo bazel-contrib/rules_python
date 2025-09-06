@@ -3,6 +3,7 @@
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
+load("//python/private:version_label.bzl", "version_label")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":python_tag.bzl", "python_tag")
@@ -50,6 +51,7 @@ def hub_builder(
         get_index_urls = lambda *a, **k: _get_index_urls(self, *a, **k),
         detect_interpreter = lambda *a, **k: _detect_interpreter(self, *a, **k),
         platforms = lambda version: self.python_versions[version],
+        add_whl_library = lambda *a, **k: _add_whl_library(self, *a, **k),
     )
 
     # buildifier: enable=uninitialized
@@ -175,3 +177,46 @@ def _platforms(*, python_version, minor_mapping, config):
             whl_platform_tags = values.whl_platform_tags,
         )
     return platforms
+
+def _add_whl_library(self, *, python_version, whl, repo):
+    if repo == None:
+        # NOTE @aignas 2025-07-07: we guard against an edge-case where there
+        # are more platforms defined than there are wheels for and users
+        # disallow building from sdist.
+        return
+
+    platforms = self.python_versions[python_version]
+
+    # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
+    # we are using pipstar and we are downloading the wheel using the downloader
+    repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
+
+    if repo_name in self.whl_libraries:
+        fail("attempting to create a duplicate library {} for {}".format(
+            repo_name,
+            whl.name,
+        ))
+    self.whl_libraries[repo_name] = repo.args
+
+    if not self.config.enable_pipstar and "experimental_target_platforms" in repo.args:
+        self.whl_libraries[repo_name] |= {
+            "experimental_target_platforms": sorted({
+                # TODO @aignas 2025-07-07: this should be solved in a better way
+                platforms[candidate].triple.partition("_")[-1]: None
+                for p in repo.args["experimental_target_platforms"]
+                for candidate in platforms
+                if candidate.endswith(p)
+            }),
+        }
+
+    mapping = self.whl_map.setdefault(whl.name, {})
+    if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
+        fail(
+            "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
+                mapping[repo.config_setting],
+                repo.config_setting,
+                repo_name,
+            ),
+        )
+    else:
+        mapping[repo.config_setting] = repo_name

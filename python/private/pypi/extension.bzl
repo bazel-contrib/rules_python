@@ -23,7 +23,6 @@ load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version.bzl", "version")
-load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS", evaluate_markers_star = "evaluate_markers")
 load(":hub_builder.bzl", "hub_builder")
@@ -106,14 +105,6 @@ def _create_whl_repos(
         whl_name: {alias: True for alias in aliases}
         for whl_name, aliases in pip_attr.extra_hub_aliases.items()
     }
-    whl_libraries = {}
-
-    # TODO @aignas 2025-06-29: we should not need the version in the pip_name if
-    # we are using pipstar and we are downloading the wheel using the downloader
-    pip_name = "{}_{}".format(
-        hub.name,
-        version_label(pip_attr.python_version),
-    )
 
     whl_modifications = {}
     if pip_attr.whl_modifications != None:
@@ -264,47 +255,15 @@ def _create_whl_repos(
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = hub.config.enable_pipstar,
             )
-            if repo == None:
-                # NOTE @aignas 2025-07-07: we guard against an edge-case where there
-                # are more platforms defined than there are wheels for and users
-                # disallow building from sdist.
-                continue
-
-            repo_name = "{}_{}".format(pip_name, repo.repo_name)
-            if repo_name in whl_libraries:
-                fail("attempting to create a duplicate library {} for {}".format(
-                    repo_name,
-                    whl.name,
-                ))
-            whl_libraries[repo_name] = repo.args
-
-            if not hub.config.enable_pipstar and "experimental_target_platforms" in repo.args:
-                whl_libraries[repo_name] |= {
-                    "experimental_target_platforms": sorted({
-                        # TODO @aignas 2025-07-07: this should be solved in a better way
-                        platforms[candidate].triple.partition("_")[-1]: None
-                        for p in repo.args["experimental_target_platforms"]
-                        for candidate in platforms
-                        if candidate.endswith(p)
-                    }),
-                }
-
-            mapping = hub.whl_map.setdefault(whl.name, {})
-            if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
-                fail(
-                    "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
-                        mapping[repo.config_setting],
-                        repo.config_setting,
-                        repo_name,
-                    ),
-                )
-            else:
-                mapping[repo.config_setting] = repo_name
+            hub.add_whl_library(
+                python_version = pip_attr.python_version,
+                whl = whl,
+                repo = repo,
+            )
 
     return struct(
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
-        whl_libraries = whl_libraries,
     )
 
 def _whl_repo(
@@ -631,15 +590,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                         continue
                     intersection[pkg] = None
                 exposed_packages[hub_name] = intersection
-            whl_libraries.update(out.whl_libraries)
-            for whl_name, lib in out.whl_libraries.items():
-                if enable_pipstar:
-                    whl_libraries.setdefault(whl_name, lib)
-                elif whl_name in lib:
-                    fail("'{}' already in created".format(whl_name))
-                else:
-                    # replicate whl_libraries.update(out.whl_libraries)
-                    whl_libraries[whl_name] = lib
 
             # TODO @aignas 2024-04-05: how do we support different requirement
             # cycles for different abis/oses? For now we will need the users to
@@ -652,6 +602,14 @@ You cannot use both the additive_build_content and additive_build_content_file a
         for key, settings in hub.whl_map.items():
             for setting, repo in settings.items():
                 hub_whl_map[hub.name].setdefault(key, {}).setdefault(repo, []).append(setting)
+
+        whl_libraries.update(hub.whl_libraries)
+        for whl_name, lib in hub.whl_libraries.items():
+            if whl_name in lib:
+                fail("'{}' already in created".format(whl_name))
+            else:
+                # replicate whl_libraries.update(out.whl_libraries)
+                whl_libraries[whl_name] = lib
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the
