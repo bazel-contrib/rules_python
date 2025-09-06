@@ -6,20 +6,37 @@ def hub_builder(
         *,
         name,
         module_name,
+        minor_mapping,
+        available_interpreters,
         simpleapi_download_fn,
         simpleapi_cache = {}):
-    """Return a hub builder instance"""
+    """Return a hub builder instance
+
+    Args:
+        name: TODO
+        module_name: TODO
+        minor_mapping: TODO
+        available_interpreters: {type}`dict[str, Label]` The dictionary of available
+            interpreters that have been registered using the `python` bzlmod extension.
+            The keys are in the form `python_{snake_case_version}_host`. This is to be
+            used during the `repository_rule` and must be always compatible with the host.
+        simpleapi_download_fn: TODO
+        simpleapi_cache: TODO
+    """
 
     # buildifier: disable=uninitialized
     self = struct(
         name = name,
         module_name = module_name,
         python_versions = [],
+        _minor_mapping = minor_mapping,
+        _available_interpreters = available_interpreters,
         _simpleapi_download_fn = simpleapi_download_fn,
         _simpleapi_cache = simpleapi_cache,
         # keep sorted
-        add = lambda *args, **kwargs: _add(self, *args, **kwargs),
-        get_index_urls = lambda *args, **kwargs: _get_index_urls(self, *args, **kwargs),
+        add = lambda *a, **k: _add(self, *a, **k),
+        get_index_urls = lambda *a, **k: _get_index_urls(self, *a, **k),
+        detect_interpreter = lambda *a, **k: _detect_interpreter(self, *a, **k),
     )
 
     # buildifier: enable=uninitialized
@@ -71,3 +88,28 @@ def _get_index_urls(self, pip_attr):
         fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
 
     return get_index_urls
+
+def _detect_interpreter(self, pip_attr):
+    python_interpreter_target = pip_attr.python_interpreter_target
+    if python_interpreter_target == None and not pip_attr.python_interpreter:
+        python_name = "python_{}_host".format(
+            pip_attr.python_version.replace(".", "_"),
+        )
+        if python_name not in self._available_interpreters:
+            fail((
+                "Unable to find interpreter for pip hub '{hub_name}' for " +
+                "python_version={version}: Make sure a corresponding " +
+                '`python.toolchain(python_version="{version}")` call exists.' +
+                "Expected to find {python_name} among registered versions:\n  {labels}"
+            ).format(
+                hub_name = self.name,
+                version = pip_attr.python_version,
+                python_name = python_name,
+                labels = "  \n".join(self._available_interpreters),
+            ))
+        python_interpreter_target = self._available_interpreters[python_name]
+
+    return struct(
+        target = python_interpreter_target,
+        path = pip_attr.python_interpreter,
+    )

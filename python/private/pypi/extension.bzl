@@ -120,22 +120,17 @@ def _create_whl_repos(
         pip_attr,
         whl_overrides,
         config,
-        available_interpreters = INTERPRETER_LABELS,
+        hub,
         minor_mapping = MINOR_MAPPING,
-        evaluate_markers = None,
-        get_index_urls = None):
+        evaluate_markers = None):
     """create all of the whl repositories
 
     Args:
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
+        hub: TODO.
         config: The platform configuration.
-        get_index_urls: A function used to get the index URLs
-        available_interpreters: {type}`dict[str, Label]` The dictionary of available
-            interpreters that have been registered using the `python` bzlmod extension.
-            The keys are in the form `python_{snake_case_version}_host`. This is to be
-            used during the `repository_rule` and must be always compatible with the host.
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
         evaluate_markers: the function used to evaluate the markers.
@@ -152,7 +147,8 @@ def _create_whl_repos(
             rule.
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
-    python_interpreter_target = pip_attr.python_interpreter_target
+    get_index_urls = hub.get_index_urls(pip_attr)
+    interpreter = hub.detect_interpreter(pip_attr)
 
     # containers to aggregate outputs from this function
     whl_map = {}
@@ -162,31 +158,10 @@ def _create_whl_repos(
     }
     whl_libraries = {}
 
-    # if we do not have the python_interpreter set in the attributes
-    # we programmatically find it.
-    hub_name = pip_attr.hub_name
-    if python_interpreter_target == None and not pip_attr.python_interpreter:
-        python_name = "python_{}_host".format(
-            pip_attr.python_version.replace(".", "_"),
-        )
-        if python_name not in available_interpreters:
-            fail((
-                "Unable to find interpreter for pip hub '{hub_name}' for " +
-                "python_version={version}: Make sure a corresponding " +
-                '`python.toolchain(python_version="{version}")` call exists.' +
-                "Expected to find {python_name} among registered versions:\n  {labels}"
-            ).format(
-                hub_name = hub_name,
-                version = pip_attr.python_version,
-                python_name = python_name,
-                labels = "  \n".join(available_interpreters),
-            ))
-        python_interpreter_target = available_interpreters[python_name]
-
     # TODO @aignas 2025-06-29: we should not need the version in the pip_name if
     # we are using pipstar and we are downloading the wheel using the downloader
     pip_name = "{}_{}".format(
-        hub_name,
+        hub.name,
         version_label(pip_attr.python_version),
     )
     major_minor = _major_minor_version(pip_attr.python_version)
@@ -249,8 +224,8 @@ def _create_whl_repos(
                 }
                 for k, plats in requirements.items()
             },
-            python_interpreter = pip_attr.python_interpreter,
-            python_interpreter_target = python_interpreter_target,
+            python_interpreter = interpreter.path,
+            python_interpreter_target = interpreter.target,
             srcs = pip_attr._evaluate_markers_srcs,
             logger = logger,
         )
@@ -293,7 +268,7 @@ def _create_whl_repos(
         # Construct args separately so that the lock file can be smaller and does not include unused
         # attrs.
         whl_library_args = dict(
-            dep_template = "@{}//{{name}}:{{target}}".format(hub_name),
+            dep_template = "@{}//{{name}}:{{target}}".format(hub.name),
         )
         maybe_args = dict(
             # The following values are safe to omit if they have false like values
@@ -306,8 +281,8 @@ def _create_whl_repos(
             group_deps = group_deps,
             group_name = group_name,
             pip_data_exclude = pip_attr.pip_data_exclude,
-            python_interpreter = pip_attr.python_interpreter,
-            python_interpreter_target = python_interpreter_target,
+            python_interpreter = interpreter.path,
+            python_interpreter_target = interpreter.target,
             whl_patches = {
                 p: json.encode(args)
                 for p, args in whl_overrides.get(whl.name, {}).items()
@@ -664,6 +639,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     module_name = mod.name,
                     simpleapi_download_fn = simpleapi_download,
                     simpleapi_cache = simpleapi_cache,
+                    minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
+                    available_interpreters = kwargs.pop("available_interpreters", INTERPRETER_LABELS),
                 )
                 pip_hub_map[pip_attr.hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
@@ -690,8 +667,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
             # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
             out = _create_whl_repos(
                 module_ctx,
+                hub = builder,
                 pip_attr = pip_attr,
-                get_index_urls = builder.get_index_urls(pip_attr),
                 whl_overrides = whl_overrides,
                 config = config,
                 **kwargs
