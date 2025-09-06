@@ -59,7 +59,6 @@ def hub_builder(
         exposed_packages = {},
         extra_aliases = {},
         whl_libraries = {},
-        group_map = {},
         _evaluate_markers_fn = evaluate_markers_fn,
         _logger = logger,
         _minor_mapping = minor_mapping,
@@ -80,20 +79,10 @@ def hub_builder(
             python_version in self._get_index_urls,
         ),
         evaluate_markers = lambda *a, **k: _evaluate_markers(self, *a, **k),
-        build = lambda: _build(self),
     )
 
     # buildifier: enable=uninitialized
     return self
-
-def _build(self):
-    return struct(
-        whl_map = self.whl_map,
-        exposed_packages = self.exposed_packages,
-        extra_aliases = self.extra_aliases,
-        whl_libraries = self.whl_libraries,
-        group_map = self.group_map,
-    )
 
 def _add(self, *, pip_attr):
     python_version = pip_attr.python_version
@@ -125,8 +114,7 @@ def _add(self, *, pip_attr):
     # cycles for different abis/oses? For now we will need the users to
     # assume the same groups across all versions/platforms until we start
     # using an alternative cycle resolution strategy.
-    self.group_map.clear()
-    self.group_map.update(pip_attr.experimental_requirement_cycles)
+    self.group_map = pip_attr.experimental_requirement_cycles
 
 def _set_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
