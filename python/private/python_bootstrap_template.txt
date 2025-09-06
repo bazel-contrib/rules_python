@@ -113,7 +113,11 @@ def SearchPath(name):
 
 def FindPythonBinary(module_space):
   """Finds the real Python binary if it's not a normal absolute path."""
-  return FindBinary(module_space, PYTHON_BINARY)
+  if PYTHON_BINARY:
+    return FindBinary(module_space, PYTHON_BINARY)
+  else:
+    return FindBinary(module_space, PYTHON_BINARY_ACTUAL)
+
 
 def print_verbose(*args, mapping=None, values=None):
     if os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"):
@@ -300,6 +304,14 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
     delete_module_space: (bool), True if the module space should be deleted
         after a successful (exit code zero) program run, False if not.
   """
+  argv = [python_program]
+  argv.extend(INTERPRETER_ARGS)
+  additional_interpreter_args = os.environ.pop("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
+  if additional_interpreter_args:
+    import shlex
+    argv.extend(shlex.split(additional_interpreter_args))
+  argv.append(main_filename)
+  argv.extend(args)
   # We want to use os.execv instead of subprocess.call, which causes
   # problems with signal passing (making it difficult to kill
   # Bazel). However, these conditions force us to run via
@@ -315,10 +327,10 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
   #   happens for targets built in the host config.
   #
   if not (IsWindows() or workspace or delete_module_space):
-    _RunExecv(python_program, interpreter_args, main_filename, args, env)
+    _RunExecv(python_program, argv, env)
 
   ret_code = subprocess.call(
-    [python_program, main_filename] + args,
+    argv,
     env=env,
     cwd=workspace
   )
@@ -330,13 +342,13 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
     shutil.rmtree(os.path.dirname(module_space), True)
   sys.exit(ret_code)
 
-def _RunExecv(python_program, main_filename, args, env):
-  # type: (str, str, list[str], dict[str, str]) -> ...
+def _RunExecv(python_program, argv, env):
+  # type: (str, list[str], dict[str, str]) -> ...
   """Executes the given Python file using the various environment settings."""
   os.environ.update(env)
   print_verbose("RunExecv: environ:", mapping=os.environ)
-  argv = [python_program, main_filename] + args
-  print_verbose("RunExecv: argv:", python_program, argv)
+  print_verbose("RunExecv: python:", python_program)
+  print_verbose("RunExecv: argv:", values=argv)
   os.execv(python_program, argv)
 
 def Main():
@@ -382,7 +394,7 @@ def Main():
 
   program = python_program = FindPythonBinary(module_space)
   if python_program is None:
-    raise AssertionError('Could not find python binary: ' + PYTHON_BINARY)
+    raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY))
 
   # Some older Python versions on macOS (namely Python 3.7) may unintentionally
   # leave this environment variable set after starting the interpreter, which

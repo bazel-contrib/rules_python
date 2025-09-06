@@ -465,7 +465,7 @@ def _create_executable(
 
     # The interpreter is added this late in the process so that it isn't
     # added to the zipped files.
-    if venv:
+    if venv and venv.interpreter:
         extra_runfiles = extra_runfiles.merge(ctx.runfiles([venv.interpreter]))
     return create_executable_result_struct(
         extra_files_to_build = depset(extra_files_to_build),
@@ -642,6 +642,11 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     if pyvenv_cfg:
         files_without_interpreter.append(pyvenv_cfg)
 
+    venv_root = pth.short_path
+    for _ in range(site_packages.count("/") + 1):
+        venv_root = paths.dirname(venv_root)
+    venv_root = runfiles_root_path(ctx, venv_root)
+
     return struct(
         # File or None; the `bin/python3` executable in the venv.
         # None if a full venv isn't created.
@@ -653,6 +658,8 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         files_without_interpreter = files_without_interpreter,
         # string; venv-relative path to the site-packages directory.
         venv_site_packages = venv_site_packages,
+        # string; runfiles-root relative path to venv root.
+        venv_root = venv_root,
     )
 
 def _create_venv_symlinks(ctx, venv_dir_map):
@@ -765,7 +772,7 @@ def _create_stage2_bootstrap(
         main_py,
         imports,
         runtime_details,
-        venv = None):
+        venv):
     output = ctx.actions.declare_file(
         # Prepend with underscore to prevent pytest from trying to
         # process the bootstrap for files starting with `test_`
@@ -781,13 +788,6 @@ def _create_stage2_bootstrap(
     else:
         main_py_path = ""
 
-    # The stage2 bootstrap uses the venv site-packages location to fix up issues
-    # that occur when the toolchain doesn't support the build-time venv.
-    if venv and not runtime.supports_build_time_venv:
-        venv_rel_site_packages = venv.venv_site_packages
-    else:
-        venv_rel_site_packages = ""
-
     ctx.actions.expand_template(
         template = template,
         output = output,
@@ -798,7 +798,8 @@ def _create_stage2_bootstrap(
             "%main%": main_py_path,
             "%main_module%": ctx.attr.main_module,
             "%target%": str(ctx.label),
-            "%venv_rel_site_packages%": venv_rel_site_packages,
+            "%venv_rel_site_packages%": venv.venv_site_packages,
+            "%venv_root%": venv.venv_root,
             "%workspace_name%": ctx.workspace_name,
         },
         is_executable = True,
@@ -819,7 +820,10 @@ def _create_stage1_bootstrap(
     runtime = runtime_details.effective_runtime
 
     if venv:
-        python_binary_path = runfiles_root_path(ctx, venv.interpreter.short_path)
+        if venv.interpreter:
+            python_binary_path = runfiles_root_path(ctx, venv.interpreter.short_path)
+        else:
+            python_binary_path = ""
     else:
         python_binary_path = runtime_details.executable_interpreter_path
 
