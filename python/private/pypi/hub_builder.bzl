@@ -79,6 +79,7 @@ def hub_builder(
         evaluate_markers = lambda *a, **k: _evaluate_markers(self, *a, **k),
         build = lambda: _build(self),
         create_whl_repos = lambda *a, **k: _create_whl_repos(self, *a, **k),
+        pip_parse = lambda *a, **k: _pip_parse(self, *a, **k),
     )
 
     # buildifier: enable=uninitialized
@@ -532,4 +533,13 @@ def _whl_repo(
             version = python_version,
             target_platforms = src.target_platforms,
         ),
+    )
+
+def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
+    self.add(pip_attr = pip_attr)
+
+    self.create_whl_repos(
+        module_ctx,
+        pip_attr = pip_attr,
+        whl_overrides = whl_overrides,
     )

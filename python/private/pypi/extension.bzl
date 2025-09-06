@@ -285,10 +285,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 builder = pip_hub_map[pip_attr.hub_name]
 
-            builder.add(pip_attr = pip_attr)
-
-            # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
-            builder.create_whl_repos(
+            builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
                 whl_overrides = whl_overrides,
