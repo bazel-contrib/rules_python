@@ -26,6 +26,7 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS", evaluate_markers_star = "evaluate_markers")
+load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -658,10 +659,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
         for pip_attr in mod.tags.parse:
             hub_name = pip_attr.hub_name
             if hub_name not in pip_hub_map:
-                pip_hub_map[pip_attr.hub_name] = struct(
+                builder = hub_builder(
+                    name = hub_name,
                     module_name = mod.name,
-                    python_versions = [pip_attr.python_version],
                 )
+                pip_hub_map[pip_attr.hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
                 # We cannot have two hubs with the same name in different
                 # modules.
@@ -687,7 +689,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     version = pip_attr.python_version,
                 ))
             else:
-                pip_hub_map[pip_attr.hub_name].python_versions.append(pip_attr.python_version)
+                builder = pip_hub_map[pip_attr.hub_name]
+
+            builder.add(
+                python_version = pip_attr.python_version,
+            )
 
             get_index_urls = None
             if pip_attr.experimental_index_url:

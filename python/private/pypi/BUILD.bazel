@@ -111,6 +111,7 @@ bzl_library(
     deps = [
         ":attrs_bzl",
         ":evaluate_markers_bzl",
+        ":hub_builder_bzl",
         ":hub_repository_bzl",
         ":parse_requirements_bzl",
         ":parse_whl_name_bzl",
@@ -164,6 +165,14 @@ bzl_library(
     srcs = ["group_library.bzl"],
     deps = [
         ":generate_group_library_build_bazel_bzl",
+    ],
+)
+
+bzl_library(
+    name = "hub_builder_bzl",
+    srcs = ["hub_builder.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
     ],
 )
 
