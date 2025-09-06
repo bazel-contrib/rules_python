@@ -645,11 +645,6 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     if pyvenv_cfg:
         files_without_interpreter.append(pyvenv_cfg)
 
-    venv_root = pth.short_path
-    for _ in range(site_packages.count("/") + 1):
-        venv_root = paths.dirname(venv_root)
-    venv_root = runfiles_root_path(ctx, venv_root)
-
     return struct(
         # File or None; the `bin/python3` executable in the venv.
         # None if a full venv isn't created.
@@ -662,7 +657,13 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         # string; venv-relative path to the site-packages directory.
         venv_site_packages = venv_site_packages,
         # string; runfiles-root relative path to venv root.
-        venv_root = venv_root,
+        venv_root = runfiles_root_path(
+            ctx,
+            paths.join(
+                py_internal.get_label_repo_runfiles_path(ctx.label),
+                venv,
+            ),
+        ),
     )
 
 def _create_venv_symlinks(ctx, venv_dir_map):
