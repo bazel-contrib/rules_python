@@ -97,34 +97,12 @@ def _create_whl_repos(
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
     interpreter = hub.detect_interpreter(pip_attr)
 
-    # containers to aggregate outputs from this function
-    extra_aliases = {
-        whl_name: {alias: True for alias in aliases}
-        for whl_name, aliases in pip_attr.extra_hub_aliases.items()
-    }
-
     whl_modifications = {}
     if pip_attr.whl_modifications != None:
         for mod, whl_name in pip_attr.whl_modifications.items():
             whl_modifications[normalize_name(whl_name)] = mod
 
-    if pip_attr.experimental_requirement_cycles:
-        requirement_cycles = {
-            name: [normalize_name(whl_name) for whl_name in whls]
-            for name, whls in pip_attr.experimental_requirement_cycles.items()
-        }
-
-        whl_group_mapping = {
-            whl_name: group_name
-            for group_name, group_whls in requirement_cycles.items()
-            for whl_name in group_whls
-        }
-    else:
-        whl_group_mapping = {}
-        requirement_cycles = {}
-
     platforms = hub.platforms(pip_attr.python_version)
-
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -148,6 +126,20 @@ def _create_whl_repos(
         logger = logger,
     )
 
+    if pip_attr.experimental_requirement_cycles:
+        requirement_cycles = {
+            name: [normalize_name(whl_name) for whl_name in whls]
+            for name, whls in pip_attr.experimental_requirement_cycles.items()
+        }
+
+        whl_group_mapping = {
+            whl_name: group_name
+            for group_name, group_whls in requirement_cycles.items()
+            for whl_name in group_whls
+        }
+    else:
+        whl_group_mapping = {}
+        requirement_cycles = {}
     exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
@@ -215,7 +207,10 @@ def _create_whl_repos(
 
     return struct(
         exposed_packages = exposed_packages,
-        extra_aliases = extra_aliases,
+        extra_aliases = {
+            whl_name: {alias: True for alias in aliases}
+            for whl_name, aliases in pip_attr.extra_hub_aliases.items()
+        },
     )
 
 def _whl_repo(
