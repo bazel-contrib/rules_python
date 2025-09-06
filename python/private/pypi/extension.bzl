@@ -82,17 +82,6 @@ def _create_whl_repos(
         hub: TODO.
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
-
-    Returns a {type}`struct` with the following attributes:
-        whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
-            normalized package name and the values are the instances of the
-            {bzl:obj}`whl_config_setting` return values.
-        exposed_packages: {type}`dict[str, Any]` this is just a way to
-            represent a set of string values.
-        whl_libraries: {type}`dict[str, dict[str, Any]]` the keys are the
-            aparent repository names for the hub repo and the values are the
-            arguments that will be passed to {bzl:obj}`whl_library` repository
-            rule.
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
     interpreter = hub.detect_interpreter(pip_attr)
@@ -205,9 +194,16 @@ def _create_whl_repos(
                 repo = repo,
             )
 
-    return struct(
-        exposed_packages = exposed_packages,
-    )
+    if hub.exposed_packages:
+        intersection = {}
+        for pkg in exposed_packages:
+            if pkg not in hub.exposed_packages:
+                continue
+            intersection[pkg] = None
+        hub.exposed_packages.clear()
+        exposed_packages = intersection
+
+    hub.exposed_packages.update(exposed_packages)
 
 def _whl_repo(
         *,
@@ -512,23 +508,13 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.add(pip_attr = pip_attr)
 
             # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
-            out = _create_whl_repos(
+            _create_whl_repos(
                 module_ctx,
                 hub = builder,
                 pip_attr = pip_attr,
                 whl_overrides = whl_overrides,
                 minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
             )
-
-            if hub_name not in exposed_packages:
-                exposed_packages[hub_name] = out.exposed_packages
-            else:
-                intersection = {}
-                for pkg in out.exposed_packages:
-                    if pkg not in exposed_packages[hub_name]:
-                        continue
-                    intersection[pkg] = None
-                exposed_packages[hub_name] = intersection
 
     for hub in pip_hub_map.values():
         hub_whl_map.setdefault(hub.name, {})
@@ -546,6 +532,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
         hub_group_map[hub.name] = hub.group_map
         extra_aliases[hub.name] = hub.extra_aliases
+        exposed_packages[hub.name] = hub.exposed_packages
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the
