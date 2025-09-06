@@ -66,7 +66,9 @@ END_UNRELEASED_TEMPLATE
   longer used to add import paths. The sys.path order has changed from
   `[app paths, stdlib, runtime site-packages]` to `[stdlib, app paths, runtime
   site-packages]`.
-
+* (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
+  changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
+  paths, runtime site-packages]`.
 
 {#v0-0-0-fixed}
 ### Fixed
