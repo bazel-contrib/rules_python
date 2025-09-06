@@ -66,7 +66,7 @@ def _whl_mods_impl(whl_mods_dict):
             whl_mods = whl_mods,
         )
 
-def _add_whl_repos(
+def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
@@ -82,6 +82,17 @@ def _add_whl_repos(
         hub: TODO.
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
+
+    Returns a {type}`struct` with the following attributes:
+        whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
+            normalized package name and the values are the instances of the
+            {bzl:obj}`whl_config_setting` return values.
+        exposed_packages: {type}`dict[str, Any]` this is just a way to
+            represent a set of string values.
+        whl_libraries: {type}`dict[str, dict[str, Any]]` the keys are the
+            aparent repository names for the hub repo and the values are the
+            arguments that will be passed to {bzl:obj}`whl_library` repository
+            rule.
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
     interpreter = hub.detect_interpreter(pip_attr)
@@ -115,7 +126,6 @@ def _add_whl_repos(
         logger = logger,
     )
 
-    exposed_packages = {}
     if pip_attr.experimental_requirement_cycles:
         requirement_cycles = {
             name: [normalize_name(whl_name) for whl_name in whls]
@@ -130,6 +140,7 @@ def _add_whl_repos(
     else:
         whl_group_mapping = {}
         requirement_cycles = {}
+    exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
             exposed_packages[whl.name] = None
@@ -194,17 +205,13 @@ def _add_whl_repos(
                 repo = repo,
             )
 
-    if not hub.exposed_packages:
-        hub.exposed_packages.update(exposed_packages)
-    else:
-        intersection = {}
-        for pkg in exposed_packages:
-            if pkg not in hub.exposed_packages:
-                continue
-            intersection[pkg] = None
-
-        hub.exposed_packages.clear()
-        hub.exposed_packages.update(intersection)
+    return struct(
+        exposed_packages = exposed_packages,
+        extra_aliases = {
+            whl_name: {alias: True for alias in aliases}
+            for whl_name, aliases in pip_attr.extra_hub_aliases.items()
+        },
+    )
 
 def _whl_repo(
         *,
@@ -509,7 +516,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.add(pip_attr = pip_attr)
 
             # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
-            _add_whl_repos(
+            out = _create_whl_repos(
                 module_ctx,
                 hub = builder,
                 pip_attr = pip_attr,
@@ -517,14 +524,31 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
             )
 
+            extra_aliases.setdefault(hub_name, {})
+            for whl_name, aliases in out.extra_aliases.items():
+                extra_aliases[hub_name].setdefault(whl_name, {}).update(aliases)
+
+            if hub_name not in exposed_packages:
+                exposed_packages[hub_name] = out.exposed_packages
+            else:
+                intersection = {}
+                for pkg in out.exposed_packages:
+                    if pkg not in exposed_packages[hub_name]:
+                        continue
+                    intersection[pkg] = None
+                exposed_packages[hub_name] = intersection
+
+            # TODO @aignas 2024-04-05: how do we support different requirement
+            # cycles for different abis/oses? For now we will need the users to
+            # assume the same groups across all versions/platforms until we start
+            # using an alternative cycle resolution strategy.
+            hub_group_map[hub_name] = pip_attr.experimental_requirement_cycles
+
     for hub in pip_hub_map.values():
         hub_whl_map.setdefault(hub.name, {})
         for key, settings in hub.whl_map.items():
             for setting, repo in settings.items():
                 hub_whl_map[hub.name].setdefault(key, {}).setdefault(repo, []).append(setting)
-
-        for whl_name, aliases in hub.extra_aliases.items():
-            extra_aliases[hub.name].setdefault(whl_name, {}).update(aliases)
 
         whl_libraries.update(hub.whl_libraries)
         for whl_name, lib in hub.whl_libraries.items():
@@ -533,9 +557,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 # replicate whl_libraries.update(out.whl_libraries)
                 whl_libraries[whl_name] = lib
-
-        hub_group_map[hub.name] = hub.group_map
-        exposed_packages[hub.name] = hub.exposed_packages
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the
