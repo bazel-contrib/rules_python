@@ -250,6 +250,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     name = hub_name,
                     module_name = mod.name,
                     config = config,
+                    whl_overrides = whl_overrides,
                     simpleapi_download_fn = simpleapi_download,
                     simpleapi_cache = simpleapi_cache,
                     # TODO @aignas 2025-09-06: do not use kwargs
@@ -279,7 +280,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
-                whl_overrides = whl_overrides,
             )
 
     # Keeps track of all the hub's whl repos across the different versions.

@@ -23,6 +23,7 @@ def hub_builder(
         name,
         module_name,
         config,
+        whl_overrides,
         minor_mapping,
         available_interpreters,
         simpleapi_download_fn,
@@ -35,6 +36,7 @@ def hub_builder(
         name: {type}`str`, the name of the hub.
         module_name: {type}`str`, the module name that has created the hub.
         config: The platform configuration.
+        whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
         minor_mapping: {type}`dict[str, str]` the mapping between minor and full versions.
         evaluate_markers_fn: the override function used to evaluate the markers.
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
@@ -69,6 +71,7 @@ def hub_builder(
         _simpleapi_cache = simpleapi_cache,
         # instance constants
         _config = config,
+        _whl_overrides = whl_overrides,
         _evaluate_markers_fn = evaluate_markers_fn,
         _logger = logger,
         _minor_mapping = minor_mapping,
@@ -98,7 +101,7 @@ def _build(self):
         whl_libraries = self._whl_libraries,
     )
 
-def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
+def _pip_parse(self, module_ctx, pip_attr):
     python_version = pip_attr.python_version
     if python_version in self._platforms:
         fail((
@@ -123,7 +126,6 @@ def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
         self,
         module_ctx,
         pip_attr = pip_attr,
-        whl_overrides = whl_overrides,
     )
 
 ### end of PUBLIC methods
@@ -368,15 +370,13 @@ def _create_whl_repos(
         self,
         module_ctx,
         *,
-        pip_attr,
-        whl_overrides):
+        pip_attr):
     """create all of the whl repositories
 
     Args:
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
-        whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
@@ -403,58 +403,25 @@ def _create_whl_repos(
         logger = logger,
     )
 
+    _add_exposed_packages(self, {
+        whl.name: None
+        for whl in requirements_by_platform
+        if whl.is_exposed
+    })
+
     whl_modifications = {}
     if pip_attr.whl_modifications != None:
         for mod, whl_name in pip_attr.whl_modifications.items():
             whl_modifications[normalize_name(whl_name)] = mod
 
-    interpreter = _detect_interpreter(self, pip_attr)
-    exposed_packages = {}
     for whl in requirements_by_platform:
-        if whl.is_exposed:
-            exposed_packages[whl.name] = None
-
-        group_name = self._group_name_by_whl.get(whl.name)
-        group_deps = self._group_map.get(group_name, [])
-
-        # Construct args separately so that the lock file can be smaller and does not include unused
-        # attrs.
-        whl_library_args = dict(
-            dep_template = "@{}//{{name}}:{{target}}".format(self.name),
+        whl_library_args = _whl_library_args(
+            self,
+            module_ctx,
+            pip_attr = pip_attr,
+            whl = whl,
+            whl_modifications = whl_modifications,
         )
-        maybe_args = dict(
-            # The following values are safe to omit if they have false like values
-            add_libdir_to_library_search_path = pip_attr.add_libdir_to_library_search_path,
-            annotation = whl_modifications.get(whl.name),
-            download_only = pip_attr.download_only,
-            enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
-            environment = pip_attr.environment,
-            envsubst = pip_attr.envsubst,
-            group_deps = group_deps,
-            group_name = group_name,
-            pip_data_exclude = pip_attr.pip_data_exclude,
-            python_interpreter = interpreter.path,
-            python_interpreter_target = interpreter.target,
-            whl_patches = {
-                p: json.encode(args)
-                for p, args in whl_overrides.get(whl.name, {}).items()
-            },
-        )
-        if not self._config.enable_pipstar:
-            maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
-
-        whl_library_args.update({k: v for k, v in maybe_args.items() if v})
-        maybe_args_with_default = dict(
-            # The following values have defaults next to them
-            isolated = (use_isolated(module_ctx, pip_attr), True),
-            quiet = (pip_attr.quiet, True),
-            timeout = (pip_attr.timeout, 600),
-        )
-        whl_library_args.update({
-            k: v
-            for k, (v, default) in maybe_args_with_default.items()
-            if v != default
-        })
 
         for src in whl.srcs:
             repo = _whl_repo(
@@ -475,7 +442,50 @@ def _create_whl_repos(
                 repo = repo,
             )
 
-    _add_exposed_packages(self, exposed_packages)
+def _whl_library_args(self, module_ctx, *, pip_attr, whl, whl_modifications):
+    interpreter = _detect_interpreter(self, pip_attr)
+    group_name = self._group_name_by_whl.get(whl.name)
+    group_deps = self._group_map.get(group_name, [])
+
+    # Construct args separately so that the lock file can be smaller and does not include unused
+    # attrs.
+    whl_library_args = dict(
+        dep_template = "@{}//{{name}}:{{target}}".format(self.name),
+    )
+    maybe_args = dict(
+        # The following values are safe to omit if they have false like values
+        add_libdir_to_library_search_path = pip_attr.add_libdir_to_library_search_path,
+        annotation = whl_modifications.get(whl.name),
+        download_only = pip_attr.download_only,
+        enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
+        environment = pip_attr.environment,
+        envsubst = pip_attr.envsubst,
+        group_deps = group_deps,
+        group_name = group_name,
+        pip_data_exclude = pip_attr.pip_data_exclude,
+        python_interpreter = interpreter.path,
+        python_interpreter_target = interpreter.target,
+        whl_patches = {
+            p: json.encode(args)
+            for p, args in self._whl_overrides.get(whl.name, {}).items()
+        },
+    )
+    if not self._config.enable_pipstar:
+        maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
+
+    whl_library_args.update({k: v for k, v in maybe_args.items() if v})
+    maybe_args_with_default = dict(
+        # The following values have defaults next to them
+        isolated = (use_isolated(module_ctx, pip_attr), True),
+        quiet = (pip_attr.quiet, True),
+        timeout = (pip_attr.timeout, 600),
+    )
+    whl_library_args.update({
+        k: v
+        for k, (v, default) in maybe_args_with_default.items()
+        if v != default
+    })
+    return whl_library_args
 
 def _whl_repo(
         *,
