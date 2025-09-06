@@ -414,15 +414,17 @@ def _create_whl_repos(
         for mod, whl_name in pip_attr.whl_modifications.items():
             whl_modifications[normalize_name(whl_name)] = mod
 
+    common_args = _common_args(
+        self,
+        module_ctx,
+        pip_attr = pip_attr,
+    )
     for whl in requirements_by_platform:
-        whl_library_args = _whl_library_args(
+        whl_library_args = common_args | _whl_library_args(
             self,
-            module_ctx,
-            pip_attr = pip_attr,
             whl = whl,
             whl_modifications = whl_modifications,
         )
-
         for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
@@ -442,10 +444,8 @@ def _create_whl_repos(
                 repo = repo,
             )
 
-def _whl_library_args(self, module_ctx, *, pip_attr, whl, whl_modifications):
+def _common_args(self, module_ctx, *, pip_attr):
     interpreter = _detect_interpreter(self, pip_attr)
-    group_name = self._group_name_by_whl.get(whl.name)
-    group_deps = self._group_map.get(group_name, [])
 
     # Construct args separately so that the lock file can be smaller and does not include unused
     # attrs.
@@ -455,20 +455,13 @@ def _whl_library_args(self, module_ctx, *, pip_attr, whl, whl_modifications):
     maybe_args = dict(
         # The following values are safe to omit if they have false like values
         add_libdir_to_library_search_path = pip_attr.add_libdir_to_library_search_path,
-        annotation = whl_modifications.get(whl.name),
         download_only = pip_attr.download_only,
         enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
         environment = pip_attr.environment,
         envsubst = pip_attr.envsubst,
-        group_deps = group_deps,
-        group_name = group_name,
         pip_data_exclude = pip_attr.pip_data_exclude,
         python_interpreter = interpreter.path,
         python_interpreter_target = interpreter.target,
-        whl_patches = {
-            p: json.encode(args)
-            for p, args in self._whl_overrides.get(whl.name, {}).items()
-        },
     )
     if not self._config.enable_pipstar:
         maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
@@ -485,6 +478,29 @@ def _whl_library_args(self, module_ctx, *, pip_attr, whl, whl_modifications):
         for k, (v, default) in maybe_args_with_default.items()
         if v != default
     })
+    return whl_library_args
+
+def _whl_library_args(self, *, whl, whl_modifications):
+    group_name = self._group_name_by_whl.get(whl.name)
+    group_deps = self._group_map.get(group_name, [])
+
+    # Construct args separately so that the lock file can be smaller and does not include unused
+    # attrs.
+    whl_library_args = dict(
+        dep_template = "@{}//{{name}}:{{target}}".format(self.name),
+    )
+    maybe_args = dict(
+        # The following values are safe to omit if they have false like values
+        annotation = whl_modifications.get(whl.name),
+        group_deps = group_deps,
+        group_name = group_name,
+        whl_patches = {
+            p: json.encode(args)
+            for p, args in self._whl_overrides.get(whl.name, {}).items()
+        },
+    )
+
+    whl_library_args.update({k: v for k, v in maybe_args.items() if v})
     return whl_library_args
 
 def _whl_repo(
