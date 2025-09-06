@@ -31,9 +31,7 @@ load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
-load(":pep508_evaluate.bzl", "evaluate")
 load(":pip_repository_attrs.bzl", "ATTRS")
-load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -69,57 +67,11 @@ def _whl_mods_impl(whl_mods_dict):
             whl_mods = whl_mods,
         )
 
-def _platforms(*, python_version, minor_mapping, config):
-    platforms = {}
-    python_version = version.parse(
-        full_version(
-            version = python_version,
-            minor_mapping = minor_mapping,
-        ),
-        strict = True,
-    )
-
-    for platform, values in config.platforms.items():
-        # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
-        # many times.
-        abi = "{}{}{}.{}".format(
-            python_tag(values.env["implementation_name"]),
-            python_version.release[0],
-            python_version.release[1],
-            python_version.release[2],
-        )
-        key = "{}_{}".format(abi, platform)
-
-        env_ = env(
-            env = values.env,
-            os = values.os_name,
-            arch = values.arch_name,
-            python_version = python_version.string,
-        )
-
-        if values.marker and not evaluate(values.marker, env = env_):
-            continue
-
-        platforms[key] = struct(
-            env = env_,
-            triple = "{}_{}_{}".format(abi, values.os_name, values.arch_name),
-            whl_abi_tags = [
-                v.format(
-                    major = python_version.release[0],
-                    minor = python_version.release[1],
-                )
-                for v in values.whl_abi_tags
-            ],
-            whl_platform_tags = values.whl_platform_tags,
-        )
-    return platforms
-
 def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
         whl_overrides,
-        config,
         hub,
         minor_mapping = MINOR_MAPPING,
         evaluate_markers = None):
@@ -130,7 +82,6 @@ def _create_whl_repos(
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
         hub: TODO.
-        config: The platform configuration.
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
         evaluate_markers: the function used to evaluate the markers.
@@ -185,16 +136,12 @@ def _create_whl_repos(
         whl_group_mapping = {}
         requirement_cycles = {}
 
-    platforms = _platforms(
-        python_version = pip_attr.python_version,
-        minor_mapping = minor_mapping,
-        config = config,
-    )
+    platforms = hub.platforms(pip_attr.python_version)
 
     if evaluate_markers:
         # This is most likely unit tests
         pass
-    elif config.enable_pipstar:
+    elif hub.config.enable_pipstar:
         evaluate_markers = lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
             platforms = platforms,
@@ -287,7 +234,7 @@ def _create_whl_repos(
                 for p, args in whl_overrides.get(whl.name, {}).items()
             },
         )
-        if not config.enable_pipstar:
+        if not hub.config.enable_pipstar:
             maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
@@ -308,15 +255,15 @@ def _create_whl_repos(
                 src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
-                netrc = config.netrc or pip_attr.netrc,
+                netrc = hub.config.netrc or pip_attr.netrc,
                 use_downloader = use_downloader.get(
                     whl.name,
                     get_index_urls != None,  # defaults to True if the get_index_urls is defined
                 ),
-                auth_patterns = config.auth_patterns or pip_attr.auth_patterns,
+                auth_patterns = hub.config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
-                enable_pipstar = config.enable_pipstar,
+                enable_pipstar = hub.config.enable_pipstar,
             )
             if repo == None:
                 # NOTE @aignas 2025-07-07: we guard against an edge-case where there
@@ -332,7 +279,7 @@ def _create_whl_repos(
                 ))
             whl_libraries[repo_name] = repo.args
 
-            if not config.enable_pipstar and "experimental_target_platforms" in repo.args:
+            if not hub.config.enable_pipstar and "experimental_target_platforms" in repo.args:
                 whl_libraries[repo_name] |= {
                     "experimental_target_platforms": sorted({
                         # TODO @aignas 2025-07-07: this should be solved in a better way
@@ -636,6 +583,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 builder = hub_builder(
                     name = hub_name,
                     module_name = mod.name,
+                    config = config,
                     simpleapi_download_fn = simpleapi_download,
                     simpleapi_cache = simpleapi_cache,
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
@@ -669,9 +617,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 hub = builder,
                 pip_attr = pip_attr,
                 whl_overrides = whl_overrides,
-                config = config,
                 **kwargs
             )
+
             hub_whl_map.setdefault(hub_name, {})
             for key, settings in out.whl_map.items():
                 for setting, repo in settings.items():
