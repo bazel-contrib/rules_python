@@ -46,10 +46,11 @@ def hub_builder(
         _available_interpreters = available_interpreters,
         _simpleapi_download_fn = simpleapi_download_fn,
         _simpleapi_cache = simpleapi_cache,
+        _get_index_urls = {},
         # keep sorted
         add = lambda *a, **k: _add(self, *a, **k),
-        get_index_urls = lambda *a, **k: _get_index_urls(self, *a, **k),
         detect_interpreter = lambda *a, **k: _detect_interpreter(self, *a, **k),
+        get_index_urls = lambda version: self._get_index_urls[version],
         platforms = lambda version: self.python_versions[version],
         add_whl_library = lambda *a, **k: _add_whl_library(self, *a, **k),
     )
@@ -57,7 +58,8 @@ def hub_builder(
     # buildifier: enable=uninitialized
     return self
 
-def _add(self, *, python_version):
+def _add(self, *, pip_attr):
+    python_version = pip_attr.python_version
     if python_version in self.python_versions:
         fail((
             "Duplicate pip python version '{version}' for hub " +
@@ -74,39 +76,40 @@ def _add(self, *, python_version):
         minor_mapping = self._minor_mapping,
         config = self.config,
     )
+    self._get_index_urls[python_version] = _get_index_urls(self, pip_attr)
 
 def _get_index_urls(self, pip_attr):
-    get_index_urls = None
-    if pip_attr.experimental_index_url:
-        skip_sources = [
-            normalize_name(s)
-            for s in pip_attr.simpleapi_skip
-        ]
-        get_index_urls = lambda ctx, distributions: self._simpleapi_download_fn(
-            ctx,
-            attr = struct(
-                index_url = pip_attr.experimental_index_url,
-                extra_index_urls = pip_attr.experimental_extra_index_urls or [],
-                index_url_overrides = pip_attr.experimental_index_url_overrides or {},
-                sources = [
-                    d
-                    for d in distributions
-                    if normalize_name(d) not in skip_sources
-                ],
-                envsubst = pip_attr.envsubst,
-                # Auth related info
-                netrc = pip_attr.netrc,
-                auth_patterns = pip_attr.auth_patterns,
-            ),
-            cache = self._simpleapi_cache,
-            parallel_download = pip_attr.parallel_download,
-        )
-    elif pip_attr.experimental_extra_index_urls:
-        fail("'experimental_extra_index_urls' is a no-op unless 'experimental_index_url' is set")
-    elif pip_attr.experimental_index_url_overrides:
-        fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
+    if not pip_attr.experimental_index_url:
+        if pip_attr.experimental_extra_index_urls:
+            fail("'experimental_extra_index_urls' is a no-op unless 'experimental_index_url' is set")
+        elif pip_attr.experimental_index_url_overrides:
+            fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
 
-    return get_index_urls
+        return None
+
+    skip_sources = [
+        normalize_name(s)
+        for s in pip_attr.simpleapi_skip
+    ]
+    return lambda ctx, distributions: self._simpleapi_download_fn(
+        ctx,
+        attr = struct(
+            index_url = pip_attr.experimental_index_url,
+            extra_index_urls = pip_attr.experimental_extra_index_urls or [],
+            index_url_overrides = pip_attr.experimental_index_url_overrides or {},
+            sources = [
+                d
+                for d in distributions
+                if normalize_name(d) not in skip_sources
+            ],
+            envsubst = pip_attr.envsubst,
+            # Auth related info
+            netrc = pip_attr.netrc,
+            auth_patterns = pip_attr.auth_patterns,
+        ),
+        cache = self._simpleapi_cache,
+        parallel_download = pip_attr.parallel_download,
+    )
 
 def _detect_interpreter(self, pip_attr):
     python_interpreter_target = pip_attr.python_interpreter_target

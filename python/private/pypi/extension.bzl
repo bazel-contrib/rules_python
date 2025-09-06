@@ -97,7 +97,7 @@ def _create_whl_repos(
             rule.
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
-    get_index_urls = hub.get_index_urls(pip_attr)
+    get_index_urls = hub.get_index_urls(pip_attr.python_version)
     interpreter = hub.detect_interpreter(pip_attr)
 
     # containers to aggregate outputs from this function
@@ -564,9 +564,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 builder = pip_hub_map[pip_attr.hub_name]
 
-            builder.add(
-                python_version = pip_attr.python_version,
-            )
+            builder.add(pip_attr = pip_attr)
 
             # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
             out = _create_whl_repos(
