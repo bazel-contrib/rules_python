@@ -61,17 +61,31 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (deps) bumped rules_cc dependency to `0.1.5`.
+* (bootstrap) For {obj}`--bootstrap_impl=system_python`, `PYTHONPATH` is no
+  longer used to add import paths. The sys.path order has changed from
+  `[app paths, stdlib, runtime site-packages]` to `[stdlib, app paths, runtime
+  site-packages]`.
+* (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
+  changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
+  paths, runtime site-packages]`.
 
 {#v0-0-0-fixed}
 ### Fixed
 * (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
   environments, fixing issues where a `py_binary` calls another `py_binary`
   ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
+* (bootstrap) For Windows, having many dependencies no longer results in max
+  length errors due to too long environment variables.
+* (bootstrap) {obj}`--bootstrap_impl=script` now supports the `-S` interpreter
+  setting.
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* (bootstrap) {obj}`--bootstrap_impl=system_python` now supports the
+  {obj}`main_module` attribute.
+* (bootstrap) {obj}`--bootstrap_impl=system_python` now supports the
+  {any}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` attribute.
 
 
 {#v1-6-0}

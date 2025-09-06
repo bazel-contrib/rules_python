@@ -73,25 +73,15 @@ class SysPathOrderTest(unittest.TestCase):
                 + f"for sys.path:\n{sys_path_str}"
             )
 
-        if os.environ["BOOTSTRAP"] == "script":
-            self.assertTrue(
-                last_stdlib < first_user < first_runtime_site,
-                "Expected overall order to be (stdlib, user imports, runtime site) "
-                + f"with {last_stdlib=} < {first_user=} < {first_runtime_site=}\n"
-                + f"for sys.prefix={sys.prefix}\n"
-                + f"for sys.exec_prefix={sys.exec_prefix}\n"
-                + f"for sys.base_prefix={sys.base_prefix}\n"
-                + f"for sys.path:\n{sys_path_str}",
-            )
-        else:
-            self.assertTrue(
-                first_user < last_stdlib < first_runtime_site,
-                f"Expected {first_user=} < {last_stdlib=} < {first_runtime_site=}\n"
-                + f"for sys.prefix={sys.prefix}\n"
-                + f"for sys.exec_prefix={sys.exec_prefix}\n"
-                + f"for sys.base_prefix={sys.base_prefix}\n"
-                + f"for sys.path:\n{sys_path_str}",
-            )
+        self.assertTrue(
+            last_stdlib < first_user < first_runtime_site,
+            "Expected overall order to be (stdlib, user imports, runtime site) "
+            + f"with {last_stdlib=} < {first_user=} < {first_runtime_site=}\n"
+            + f"for sys.prefix={sys.prefix}\n"
+            + f"for sys.exec_prefix={sys.exec_prefix}\n"
+            + f"for sys.base_prefix={sys.base_prefix}\n"
+            + f"for sys.path:\n{sys_path_str}",
+        )
 
 
 if __name__ == "__main__":
