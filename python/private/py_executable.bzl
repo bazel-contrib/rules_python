@@ -140,6 +140,9 @@ This is mutually exclusive with {obj}`main`.
 
 :::{versionadded} 1.3.0
 :::
+:::{versionchanged} VERSION_NEXT_FEATURE
+Support added for {obj}`--bootstrap_impl=system_python`.
+:::
 """,
         ),
         "pyc_collection": lambda: attrb.String(
