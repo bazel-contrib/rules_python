@@ -164,7 +164,6 @@ def _create_whl_repos(
         hub.name,
         version_label(pip_attr.python_version),
     )
-    major_minor = _major_minor_version(pip_attr.python_version)
 
     whl_modifications = {}
     if pip_attr.whl_modifications != None:
@@ -315,7 +314,7 @@ def _create_whl_repos(
                     get_index_urls != None,  # defaults to True if the get_index_urls is defined
                 ),
                 auth_patterns = config.auth_patterns or pip_attr.auth_patterns,
-                python_version = major_minor,
+                python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
                 enable_pipstar = config.enable_pipstar,
             )
