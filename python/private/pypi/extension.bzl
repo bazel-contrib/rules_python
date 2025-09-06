@@ -168,7 +168,7 @@ def parse_modules(
         enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
             evaluation of the extension.
         _fail: {type}`function` the failure function, mainly for testing.
-        **kwargs: Extra arguments passed to the layers below.
+        **kwargs: Extra arguments passed to the hub_builder.
 
     Returns:
         A struct with the following attributes:
@@ -242,15 +242,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
     pip_hub_map = {}
     simpleapi_cache = {}
 
-    # Keeps track of all the hub's whl repos across the different versions.
-    # dict[hub, dict[whl, dict[version, str pip]]]
-    # Where hub, whl, and pip are the repo names
-    hub_whl_map = {}
-    hub_group_map = {}
-    exposed_packages = {}
-    extra_aliases = {}
-    whl_libraries = {}
-
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
             hub_name = pip_attr.hub_name
@@ -291,6 +282,14 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 whl_overrides = whl_overrides,
             )
 
+    # Keeps track of all the hub's whl repos across the different versions.
+    # dict[hub, dict[whl, dict[version, str pip]]]
+    # Where hub, whl, and pip are the repo names
+    hub_whl_map = {}
+    hub_group_map = {}
+    exposed_packages = {}
+    extra_aliases = {}
+    whl_libraries = {}
     for hub in pip_hub_map.values():
         out = hub.build()
 
@@ -298,43 +297,21 @@ You cannot use both the additive_build_content and additive_build_content_file a
             if whl_name in whl_libraries:
                 fail("'{}' already in created".format(whl_name))
             else:
-                # replicate whl_libraries.update(out.whl_libraries)
                 whl_libraries[whl_name] = lib
 
-        hub_whl_map[hub.name] = out.whl_map
-        hub_group_map[hub.name] = out.group_map
-        extra_aliases[hub.name] = out.extra_aliases
         exposed_packages[hub.name] = out.exposed_packages
+        extra_aliases[hub.name] = out.extra_aliases
+        hub_group_map[hub.name] = out.group_map
+        hub_whl_map[hub.name] = out.whl_map
 
     return struct(
-        # We sort so that the lock-file remains the same no matter the order of how the
-        # args are manipulated in the code going before.
-        whl_mods = dict(sorted(whl_mods.items())),
-        hub_whl_map = {
-            hub_name: {
-                whl_name: dict(settings)
-                for whl_name, settings in sorted(whl_map.items())
-            }
-            for hub_name, whl_map in sorted(hub_whl_map.items())
-        },
-        hub_group_map = {
-            hub_name: {
-                key: sorted(values)
-                for key, values in sorted(group_map.items())
-            }
-            for hub_name, group_map in sorted(hub_group_map.items())
-        },
-        exposed_packages = {
-            k: sorted(v)
-            for k, v in sorted(exposed_packages.items())
-        },
-        extra_aliases = {
-            hub_name: {
-                whl_name: sorted(aliases)
-                for whl_name, aliases in extra_whl_aliases.items()
-            }
-            for hub_name, extra_whl_aliases in extra_aliases.items()
-        },
+        config = config,
+        exposed_packages = exposed_packages,
+        extra_aliases = extra_aliases,
+        hub_group_map = hub_group_map,
+        hub_whl_map = hub_whl_map,
+        whl_libraries = whl_libraries,
+        whl_mods = whl_mods,
         platform_config_settings = {
             hub_name: {
                 platform_name: sorted([str(Label(cv)) for cv in p.config_settings])
@@ -342,11 +319,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             }
             for hub_name in hub_whl_map
         },
-        whl_libraries = {
-            k: dict(sorted(args.items()))
-            for k, args in sorted(whl_libraries.items())
-        },
-        config = config,
     )
 
 def _pip_impl(module_ctx):

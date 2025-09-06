@@ -94,8 +94,11 @@ def _build(self):
     return struct(
         whl_map = whl_map,
         group_map = self.group_map,
-        extra_aliases = self.extra_aliases,
-        exposed_packages = self.exposed_packages,
+        extra_aliases = {
+            whl: sorted(aliases)
+            for whl, aliases in self.extra_aliases.items()
+        },
+        exposed_packages = sorted(self.exposed_packages),
         whl_libraries = self.whl_libraries,
     )
 
