@@ -24,7 +24,7 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version.bzl", "version")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS", evaluate_markers_star = "evaluate_markers")
+load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_requirements.bzl", "parse_requirements")
@@ -72,8 +72,7 @@ def _create_whl_repos(
         pip_attr,
         whl_overrides,
         hub,
-        minor_mapping = MINOR_MAPPING,
-        evaluate_markers = None):
+        minor_mapping = MINOR_MAPPING):
     """create all of the whl repositories
 
     Args:
@@ -83,7 +82,6 @@ def _create_whl_repos(
         hub: TODO.
         minor_mapping: {type}`dict[str, str]` The dictionary needed to resolve the full
             python version used to parse package METADATA files.
-        evaluate_markers: the function used to evaluate the markers.
 
     Returns a {type}`struct` with the following attributes:
         whl_map: {type}`dict[str, list[struct]]` the output is keyed by the
@@ -127,44 +125,6 @@ def _create_whl_repos(
 
     platforms = hub.platforms(pip_attr.python_version)
 
-    if evaluate_markers:
-        # This is most likely unit tests
-        pass
-    elif hub.config.enable_pipstar:
-        evaluate_markers = lambda _, requirements: evaluate_markers_star(
-            requirements = requirements,
-            platforms = platforms,
-        )
-    else:
-        # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
-        # in the PATH or if specified as a label. We will configure the env
-        # markers when evaluating the requirement lines based on the output
-        # from the `requirements_files_by_platform` which should have something
-        # similar to:
-        # {
-        #    "//:requirements.txt": ["cp311_linux_x86_64", ...]
-        # }
-        #
-        # We know the target python versions that we need to evaluate the
-        # markers for and thus we don't need to use multiple python interpreter
-        # instances to perform this manipulation. This function should be executed
-        # only once by the underlying code to minimize the overhead needed to
-        # spin up a Python interpreter.
-        evaluate_markers = lambda module_ctx, requirements: evaluate_markers_py(
-            module_ctx,
-            requirements = {
-                k: {
-                    p: platforms[p].triple
-                    for p in plats
-                }
-                for k, plats in requirements.items()
-            },
-            python_interpreter = interpreter.path,
-            python_interpreter_target = interpreter.target,
-            srcs = pip_attr._evaluate_markers_srcs,
-            logger = logger,
-        )
-
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -184,7 +144,7 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = hub.get_index_urls(pip_attr.python_version),
-        evaluate_markers = evaluate_markers,
+        evaluate_markers = hub.evaluate_markers(pip_attr),
         logger = logger,
     )
 
@@ -536,7 +496,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     simpleapi_download_fn = simpleapi_download,
                     simpleapi_cache = simpleapi_cache,
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
-                    available_interpreters = kwargs.pop("available_interpreters", INTERPRETER_LABELS),
+                    evaluate_markers_fn = kwargs.get("evaluate_markers", None),
+                    available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
+                    logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name),
                 )
                 pip_hub_map[pip_attr.hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
@@ -564,7 +526,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 hub = builder,
                 pip_attr = pip_attr,
                 whl_overrides = whl_overrides,
-                **kwargs
+                minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
             )
 
             extra_aliases.setdefault(hub_name, {})

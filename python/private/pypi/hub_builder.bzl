@@ -4,6 +4,7 @@ load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
+load(":evaluate_markers.bzl", "evaluate_markers_py", evaluate_markers_star = "evaluate_markers")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":python_tag.bzl", "python_tag")
@@ -16,6 +17,8 @@ def hub_builder(
         minor_mapping,
         available_interpreters,
         simpleapi_download_fn,
+        evaluate_markers_fn,
+        logger,
         simpleapi_cache = {}):
     """Return a hub builder instance
 
@@ -24,12 +27,14 @@ def hub_builder(
         module_name: TODO
         config: The platform configuration.
         minor_mapping: TODO
+        evaluate_markers_fn: the function used to evaluate the markers.
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
             used during the `repository_rule` and must be always compatible with the host.
         simpleapi_download_fn: TODO
         simpleapi_cache: TODO
+        logger: TODO
     """
 
     # buildifier: disable=uninitialized
@@ -42,6 +47,8 @@ def hub_builder(
         exposed_packages = {},
         extra_aliases = {},
         whl_libraries = {},
+        _evaluate_markers_fn = evaluate_markers_fn,
+        _logger = logger,
         _minor_mapping = minor_mapping,
         _available_interpreters = available_interpreters,
         _simpleapi_download_fn = simpleapi_download_fn,
@@ -59,6 +66,7 @@ def hub_builder(
             normalize_name(whl_name),
             python_version in self._get_index_urls,
         ),
+        evaluate_markers = lambda *a, **k: _evaluate_markers(self, *a, **k),
     )
 
     # buildifier: enable=uninitialized
@@ -239,3 +247,44 @@ def _add_whl_library(self, *, python_version, whl, repo):
         )
     else:
         mapping[repo.config_setting] = repo_name
+
+def _evaluate_markers(self, pip_attr):
+    if self._evaluate_markers_fn:
+        return self._evaluate_markers_fn
+
+    if self.config.enable_pipstar:
+        return lambda _, requirements: evaluate_markers_star(
+            requirements = requirements,
+            platforms = self.python_versions[pip_attr.python_version],
+        )
+
+    interpreter = self.detect_interpreter(pip_attr)
+
+    # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
+    # in the PATH or if specified as a label. We will configure the env
+    # markers when evaluating the requirement lines based on the output
+    # from the `requirements_files_by_platform` which should have something
+    # similar to:
+    # {
+    #    "//:requirements.txt": ["cp311_linux_x86_64", ...]
+    # }
+    #
+    # We know the target python versions that we need to evaluate the
+    # markers for and thus we don't need to use multiple python interpreter
+    # instances to perform this manipulation. This function should be executed
+    # only once by the underlying code to minimize the overhead needed to
+    # spin up a Python interpreter.
+    return lambda module_ctx, requirements: evaluate_markers_py(
+        module_ctx,
+        requirements = {
+            k: {
+                p: self.python_versions[pip_attr.python_version][p].triple
+                for p in plats
+            }
+            for k, plats in requirements.items()
+        },
+        python_interpreter = interpreter.path,
+        python_interpreter_target = interpreter.target,
+        srcs = pip_attr._evaluate_markers_srcs,
+        logger = self._logger,
+    )
