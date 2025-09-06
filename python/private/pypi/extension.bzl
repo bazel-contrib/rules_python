@@ -97,7 +97,6 @@ def _create_whl_repos(
             rule.
     """
     logger = repo_utils.logger(module_ctx, "pypi:create_whl_repos")
-    get_index_urls = hub.get_index_urls(pip_attr.python_version)
     interpreter = hub.detect_interpreter(pip_attr)
 
     # containers to aggregate outputs from this function
@@ -184,15 +183,11 @@ def _create_whl_repos(
         ),
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = get_index_urls,
+        get_index_urls = hub.get_index_urls(pip_attr.python_version),
         evaluate_markers = evaluate_markers,
         logger = logger,
     )
 
-    use_downloader = {
-        normalize_name(s): False
-        for s in pip_attr.simpleapi_skip
-    }
     exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
@@ -246,10 +241,7 @@ def _create_whl_repos(
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = hub.config.netrc or pip_attr.netrc,
-                use_downloader = use_downloader.get(
-                    whl.name,
-                    get_index_urls != None,  # defaults to True if the get_index_urls is defined
-                ),
+                use_downloader = hub.use_downloader(pip_attr.python_version, whl.name),
                 auth_patterns = hub.config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,

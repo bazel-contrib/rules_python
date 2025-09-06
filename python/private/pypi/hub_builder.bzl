@@ -47,12 +47,18 @@ def hub_builder(
         _simpleapi_download_fn = simpleapi_download_fn,
         _simpleapi_cache = simpleapi_cache,
         _get_index_urls = {},
+        _pip_attrs = {},
+        _use_downloader = {},
         # keep sorted
         add = lambda *a, **k: _add(self, *a, **k),
         detect_interpreter = lambda *a, **k: _detect_interpreter(self, *a, **k),
-        get_index_urls = lambda version: self._get_index_urls[version],
+        get_index_urls = lambda version: self._get_index_urls.get(version),
         platforms = lambda version: self.python_versions[version],
         add_whl_library = lambda *a, **k: _add_whl_library(self, *a, **k),
+        use_downloader = lambda python_version, whl_name: self._use_downloader.get(python_version, {}).get(
+            normalize_name(whl_name),
+            python_version in self._get_index_urls,
+        ),
     )
 
     # buildifier: enable=uninitialized
@@ -76,22 +82,32 @@ def _add(self, *, pip_attr):
         minor_mapping = self._minor_mapping,
         config = self.config,
     )
-    self._get_index_urls[python_version] = _get_index_urls(self, pip_attr)
+    _set_index_urls(self, pip_attr)
+    self._pip_attrs[python_version] = pip_attr
 
-def _get_index_urls(self, pip_attr):
+def _set_index_urls(self, pip_attr):
     if not pip_attr.experimental_index_url:
         if pip_attr.experimental_extra_index_urls:
             fail("'experimental_extra_index_urls' is a no-op unless 'experimental_index_url' is set")
         elif pip_attr.experimental_index_url_overrides:
             fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
+        elif pip_attr.simpleapi_skip:
+            fail("'simpleapi_skip' is a no-op unless 'experimental_index_url' is set")
+        elif pip_attr.netrc:
+            fail("'netrc' is a no-op unless 'experimental_index_url' is set")
+        elif pip_attr.auth_patterns:
+            fail("'auth_patterns' is a no-op unless 'experimental_index_url' is set")
 
-        return None
+        # parallel_download is set to True by default, so we are not checking/validating it
+        # here
+        return
 
-    skip_sources = [
-        normalize_name(s)
+    python_version = pip_attr.python_version
+    self._use_downloader.setdefault(python_version, {}).update({
+        normalize_name(s): False
         for s in pip_attr.simpleapi_skip
-    ]
-    return lambda ctx, distributions: self._simpleapi_download_fn(
+    })
+    self._get_index_urls[python_version] = lambda ctx, distributions: self._simpleapi_download_fn(
         ctx,
         attr = struct(
             index_url = pip_attr.experimental_index_url,
@@ -100,7 +116,7 @@ def _get_index_urls(self, pip_attr):
             sources = [
                 d
                 for d in distributions
-                if normalize_name(d) not in skip_sources
+                if self.use_downloader(python_version, d)
             ],
             envsubst = pip_attr.envsubst,
             # Auth related info
