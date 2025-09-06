@@ -50,49 +50,55 @@ def hub_builder(
     self = struct(
         name = name,
         module_name = module_name,
+
+        # public methods, keep sorted and to minimum
+        build = lambda: _build(self),
+        pip_parse = lambda *a, **k: _pip_parse(self, *a, **k),
+
+        # build output
+        _exposed_packages = {},  # modified by _add_exposed_packages
+        _extra_aliases = {},  # modified by _add_extra_aliases
+        _group_map = {},  # modified by _add_group_map
+        _whl_libraries = {},  # modified by _add_whl_library
+        _whl_map = {},  # modified by _add_whl_library
+        # internal
         _platforms = {},
-        config = config,
-        whl_map = {},
-        exposed_packages = {},
-        extra_aliases = {},
-        whl_libraries = {},
-        group_map = {},
+        _get_index_urls = {},
+        _use_downloader = {},
+        _simpleapi_cache = simpleapi_cache,
+        # instance constants
+        _config = config,
         _evaluate_markers_fn = evaluate_markers_fn,
         _logger = logger,
         _minor_mapping = minor_mapping,
         _available_interpreters = available_interpreters,
         _simpleapi_download_fn = simpleapi_download_fn,
-        _simpleapi_cache = simpleapi_cache,
-        _get_index_urls = {},
-        _use_downloader = {},
-        # keep sorted
-        get_index_urls = lambda version: self._get_index_urls.get(version),
-        use_downloader = lambda python_version, whl_name: self._use_downloader.get(python_version, {}).get(
-            normalize_name(whl_name),
-            self.get_index_urls(python_version) != None,
-        ),
-        build = lambda: _build(self),
-        pip_parse = lambda *a, **k: _pip_parse(self, *a, **k),
     )
 
     # buildifier: enable=uninitialized
     return self
 
+def _use_downloader(self, python_version, whl_name):
+    return self._use_downloader.get(python_version, {}).get(
+        normalize_name(whl_name),
+        self._get_index_urls.get(python_version) != None,
+    )
+
 def _build(self):
     whl_map = {}
-    for key, settings in self.whl_map.items():
+    for key, settings in self._whl_map.items():
         for setting, repo in settings.items():
             whl_map.setdefault(key, {}).setdefault(repo, []).append(setting)
 
     return struct(
         whl_map = whl_map,
-        group_map = self.group_map,
+        group_map = self._group_map,
         extra_aliases = {
             whl: sorted(aliases)
-            for whl, aliases in self.extra_aliases.items()
+            for whl, aliases in self._extra_aliases.items()
         },
-        exposed_packages = sorted(self.exposed_packages),
-        whl_libraries = self.whl_libraries,
+        exposed_packages = sorted(self._exposed_packages),
+        whl_libraries = self._whl_libraries,
     )
 
 def _set_index_urls(self, pip_attr):
@@ -126,7 +132,7 @@ def _set_index_urls(self, pip_attr):
             sources = [
                 d
                 for d in distributions
-                if self.use_downloader(python_version, d)
+                if _use_downloader(self, python_version, d)
             ],
             envsubst = pip_attr.envsubst,
             # Auth related info
@@ -220,15 +226,15 @@ def _add_whl_library(self, *, python_version, whl, repo):
     # we are using pipstar and we are downloading the wheel using the downloader
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
 
-    if repo_name in self.whl_libraries:
+    if repo_name in self._whl_libraries:
         fail("attempting to create a duplicate library {} for {}".format(
             repo_name,
             whl.name,
         ))
-    self.whl_libraries[repo_name] = repo.args
+    self._whl_libraries[repo_name] = repo.args
 
-    if not self.config.enable_pipstar and "experimental_target_platforms" in repo.args:
-        self.whl_libraries[repo_name] |= {
+    if not self._config.enable_pipstar and "experimental_target_platforms" in repo.args:
+        self._whl_libraries[repo_name] |= {
             "experimental_target_platforms": sorted({
                 # TODO @aignas 2025-07-07: this should be solved in a better way
                 platforms[candidate].triple.partition("_")[-1]: None
@@ -238,7 +244,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
             }),
         }
 
-    mapping = self.whl_map.setdefault(whl.name, {})
+    mapping = self._whl_map.setdefault(whl.name, {})
     if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
         fail(
             "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
@@ -254,7 +260,7 @@ def _evaluate_markers(self, pip_attr):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
-    if self.config.enable_pipstar:
+    if self._config.enable_pipstar:
         return lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
             platforms = self._platforms[pip_attr.python_version],
@@ -325,7 +331,7 @@ def _create_whl_repos(
         ),
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = self.get_index_urls(pip_attr.python_version),
+        get_index_urls = self._get_index_urls.get(pip_attr.python_version),
         evaluate_markers = _evaluate_markers(self, pip_attr),
         logger = logger,
     )
@@ -382,7 +388,7 @@ def _create_whl_repos(
                 for p, args in whl_overrides.get(whl.name, {}).items()
             },
         )
-        if not self.config.enable_pipstar:
+        if not self._config.enable_pipstar:
             maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
         whl_library_args.update({k: v for k, v in maybe_args.items() if v})
@@ -403,12 +409,12 @@ def _create_whl_repos(
                 src = src,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
-                netrc = self.config.netrc or pip_attr.netrc,
-                use_downloader = self.use_downloader(pip_attr.python_version, whl.name),
-                auth_patterns = self.config.auth_patterns or pip_attr.auth_patterns,
+                netrc = self._config.netrc or pip_attr.netrc,
+                use_downloader = _use_downloader(self, pip_attr.python_version, whl.name),
+                auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
-                enable_pipstar = self.config.enable_pipstar,
+                enable_pipstar = self._config.enable_pipstar,
             )
             _add_whl_library(
                 self,
@@ -417,16 +423,19 @@ def _create_whl_repos(
                 repo = repo,
             )
 
-    if self.exposed_packages:
+    _add_exposed_packages(self, exposed_packages)
+
+def _add_exposed_packages(self, exposed_packages):
+    if self._exposed_packages:
         intersection = {}
         for pkg in exposed_packages:
-            if pkg not in self.exposed_packages:
+            if pkg not in self._exposed_packages:
                 continue
             intersection[pkg] = None
-        self.exposed_packages.clear()
+        self._exposed_packages.clear()
         exposed_packages = intersection
 
-    self.exposed_packages.update(exposed_packages)
+    self._exposed_packages.update(exposed_packages)
 
 def _whl_repo(
         *,
@@ -499,6 +508,20 @@ def _whl_repo(
         ),
     )
 
+def _add_group_map(self, group_map):
+    # TODO @aignas 2024-04-05: how do we support different requirement
+    # cycles for different abis/oses? For now we will need the users to
+    # assume the same groups across all versions/platforms until we start
+    # using an alternative cycle resolution strategy.
+    self._group_map.clear()
+    self._group_map.update(group_map)
+
+def _add_extra_aliases(self, extra_hub_aliases):
+    for whl_name, aliases in extra_hub_aliases.items():
+        self._extra_aliases.setdefault(whl_name, {}).update(
+            {alias: True for alias in aliases},
+        )
+
 def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
     python_version = pip_attr.python_version
     if python_version in self._platforms:
@@ -515,21 +538,11 @@ def _pip_parse(self, module_ctx, pip_attr, whl_overrides):
     self._platforms[python_version] = _platforms(
         python_version = python_version,
         minor_mapping = self._minor_mapping,
-        config = self.config,
+        config = self._config,
     )
     _set_index_urls(self, pip_attr)
-
-    # TODO @aignas 2024-04-05: how do we support different requirement
-    # cycles for different abis/oses? For now we will need the users to
-    # assume the same groups across all versions/platforms until we start
-    # using an alternative cycle resolution strategy.
-    self.group_map.clear()
-    self.group_map.update(pip_attr.experimental_requirement_cycles)
-
-    for whl_name, aliases in pip_attr.extra_hub_aliases.items():
-        self.extra_aliases.setdefault(whl_name, {}).update(
-            {alias: True for alias in aliases},
-        )
+    _add_group_map(self, pip_attr.experimental_requirement_cycles)
+    _add_extra_aliases(self, pip_attr.extra_hub_aliases)
     _create_whl_repos(
         self,
         module_ctx,
