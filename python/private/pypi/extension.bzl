@@ -678,16 +678,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     second_module = mod.name,
                 ))
 
-            elif pip_attr.python_version in pip_hub_map[hub_name].python_versions:
-                fail((
-                    "Duplicate pip python version '{version}' for hub " +
-                    "'{hub}' in module '{module}': the Python versions " +
-                    "used for a hub must be unique"
-                ).format(
-                    hub = hub_name,
-                    module = mod.name,
-                    version = pip_attr.python_version,
-                ))
             else:
                 builder = pip_hub_map[pip_attr.hub_name]
 

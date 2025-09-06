@@ -13,4 +13,15 @@ def hub_builder(*, name, module_name):
     return self
 
 def _add(self, *, python_version):
+    if python_version in self.python_versions:
+        fail((
+            "Duplicate pip python version '{version}' for hub " +
+            "'{hub}' in module '{module}': the Python versions " +
+            "used for a hub must be unique"
+        ).format(
+            hub = self.name,
+            module = self.module_name,
+            version = python_version,
+        ))
+
     self.python_versions.append(python_version)
