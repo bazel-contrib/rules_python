@@ -173,6 +173,7 @@ bzl_library(
     srcs = ["hub_builder.bzl"],
     visibility = ["//:__subpackages__"],
     deps = [
+        "//python/private:normalize_name_bzl",
     ],
 )
 

@@ -662,6 +662,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 builder = hub_builder(
                     name = hub_name,
                     module_name = mod.name,
+                    simpleapi_download_fn = simpleapi_download,
+                    simpleapi_cache = simpleapi_cache,
                 )
                 pip_hub_map[pip_attr.hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
@@ -685,41 +687,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 python_version = pip_attr.python_version,
             )
 
-            get_index_urls = None
-            if pip_attr.experimental_index_url:
-                skip_sources = [
-                    normalize_name(s)
-                    for s in pip_attr.simpleapi_skip
-                ]
-                get_index_urls = lambda ctx, distributions: simpleapi_download(
-                    ctx,
-                    attr = struct(
-                        index_url = pip_attr.experimental_index_url,
-                        extra_index_urls = pip_attr.experimental_extra_index_urls or [],
-                        index_url_overrides = pip_attr.experimental_index_url_overrides or {},
-                        sources = [
-                            d
-                            for d in distributions
-                            if normalize_name(d) not in skip_sources
-                        ],
-                        envsubst = pip_attr.envsubst,
-                        # Auth related info
-                        netrc = pip_attr.netrc,
-                        auth_patterns = pip_attr.auth_patterns,
-                    ),
-                    cache = simpleapi_cache,
-                    parallel_download = pip_attr.parallel_download,
-                )
-            elif pip_attr.experimental_extra_index_urls:
-                fail("'experimental_extra_index_urls' is a no-op unless 'experimental_index_url' is set")
-            elif pip_attr.experimental_index_url_overrides:
-                fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
-
             # TODO @aignas 2025-05-19: express pip.parse as a series of configure calls
             out = _create_whl_repos(
                 module_ctx,
                 pip_attr = pip_attr,
-                get_index_urls = get_index_urls,
+                get_index_urls = builder.get_index_urls(pip_attr),
                 whl_overrides = whl_overrides,
                 config = config,
                 **kwargs
