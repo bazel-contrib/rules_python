@@ -32,18 +32,18 @@ def hub_builder(
     """Return a hub builder instance
 
     Args:
-        name: TODO
-        module_name: TODO
+        name: {type}`str`, the name of the hub.
+        module_name: {type}`str`, the module name that has created the hub.
         config: The platform configuration.
-        minor_mapping: TODO
-        evaluate_markers_fn: the function used to evaluate the markers.
+        minor_mapping: {type}`dict[str, str]` the mapping between minor and full versions.
+        evaluate_markers_fn: the override function used to evaluate the markers.
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
             used during the `repository_rule` and must be always compatible with the host.
-        simpleapi_download_fn: TODO
-        simpleapi_cache: TODO
-        logger: TODO
+        simpleapi_download_fn: the function used to download from SimpleAPI.
+        simpleapi_cache: the cache for the download results.
+        logger: the logger for this builder.
     """
 
     # buildifier: disable=uninitialized
