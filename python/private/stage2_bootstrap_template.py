@@ -375,6 +375,7 @@ source =
             # we can do about that, besides ignore the failure here.
             print_verbose_coverage("Error removing temporary coverage rc file:", err)
 
+
 def _add_site_packages(site_packages):
     first_global_offset = len(sys.path)
     for i, p in enumerate(sys.path):
@@ -386,6 +387,7 @@ def _add_site_packages(site_packages):
             break
     prev_len = len(sys.path)
     import site
+
     site.addsitedir(site_packages)
     added_dirs = sys.path[prev_len:]
     del sys.path[prev_len:]
@@ -393,6 +395,7 @@ def _add_site_packages(site_packages):
     # (stdlib, binary specific, runtime site)
     # This matches what a venv's ordering is like.
     sys.path[first_global_offset:0] = added_dirs
+
 
 def main():
     print_verbose("initial argv:", values=sys.argv)
