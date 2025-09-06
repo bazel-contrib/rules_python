@@ -517,22 +517,19 @@ You cannot use both the additive_build_content and additive_build_content_file a
             )
 
     for hub in pip_hub_map.values():
-        hub_whl_map.setdefault(hub.name, {})
-        for key, settings in hub.whl_map.items():
-            for setting, repo in settings.items():
-                hub_whl_map[hub.name].setdefault(key, {}).setdefault(repo, []).append(setting)
+        out = hub.build()
 
-        whl_libraries.update(hub.whl_libraries)
-        for whl_name, lib in hub.whl_libraries.items():
-            if whl_name in lib:
+        for whl_name, lib in out.whl_libraries.items():
+            if whl_name in whl_libraries:
                 fail("'{}' already in created".format(whl_name))
             else:
                 # replicate whl_libraries.update(out.whl_libraries)
                 whl_libraries[whl_name] = lib
 
-        hub_group_map[hub.name] = hub.group_map
-        extra_aliases[hub.name] = hub.extra_aliases
-        exposed_packages[hub.name] = hub.exposed_packages
+        hub_whl_map[hub.name] = out.whl_map
+        hub_group_map[hub.name] = out.group_map
+        extra_aliases[hub.name] = out.extra_aliases
+        exposed_packages[hub.name] = out.exposed_packages
 
     return struct(
         # We sort so that the lock-file remains the same no matter the order of how the

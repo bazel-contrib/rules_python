@@ -68,10 +68,25 @@ def hub_builder(
             python_version in self._get_index_urls,
         ),
         evaluate_markers = lambda *a, **k: _evaluate_markers(self, *a, **k),
+        build = lambda: _build(self),
     )
 
     # buildifier: enable=uninitialized
     return self
+
+def _build(self):
+    whl_map = {}
+    for key, settings in self.whl_map.items():
+        for setting, repo in settings.items():
+            whl_map.setdefault(key, {}).setdefault(repo, []).append(setting)
+
+    return struct(
+        whl_map = whl_map,
+        group_map = self.group_map,
+        extra_aliases = self.extra_aliases,
+        exposed_packages = self.exposed_packages,
+        whl_libraries = self.whl_libraries,
+    )
 
 def _add(self, *, pip_attr):
     python_version = pip_attr.python_version
