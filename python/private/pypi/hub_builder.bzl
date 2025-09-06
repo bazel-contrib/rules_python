@@ -63,6 +63,7 @@ def hub_builder(
         _whl_map = {},  # modified by _add_whl_library
         # internal
         _platforms = {},
+        _group_name_by_whl = {},
         _get_index_urls = {},
         _use_downloader = {},
         _simpleapi_cache = simpleapi_cache,
@@ -145,8 +146,19 @@ def _add_group_map(self, group_map):
     # cycles for different abis/oses? For now we will need the users to
     # assume the same groups across all versions/platforms until we start
     # using an alternative cycle resolution strategy.
+    group_map = {
+        name: [normalize_name(whl_name) for whl_name in whls]
+        for name, whls in group_map.items()
+    }
     self._group_map.clear()
+    self._group_name_by_whl.clear()
+
     self._group_map.update(group_map)
+    self._group_name_by_whl.update({
+        whl_name: group_name
+        for group_name, group_whls in self._group_map.items()
+        for whl_name in group_whls
+    })
 
 def _add_extra_aliases(self, extra_hub_aliases):
     for whl_name, aliases in extra_hub_aliases.items():
@@ -396,29 +408,14 @@ def _create_whl_repos(
         for mod, whl_name in pip_attr.whl_modifications.items():
             whl_modifications[normalize_name(whl_name)] = mod
 
-    if pip_attr.experimental_requirement_cycles:
-        requirement_cycles = {
-            name: [normalize_name(whl_name) for whl_name in whls]
-            for name, whls in pip_attr.experimental_requirement_cycles.items()
-        }
-
-        whl_group_mapping = {
-            whl_name: group_name
-            for group_name, group_whls in requirement_cycles.items()
-            for whl_name in group_whls
-        }
-    else:
-        whl_group_mapping = {}
-        requirement_cycles = {}
-
     interpreter = _detect_interpreter(self, pip_attr)
     exposed_packages = {}
     for whl in requirements_by_platform:
         if whl.is_exposed:
             exposed_packages[whl.name] = None
 
-        group_name = whl_group_mapping.get(whl.name)
-        group_deps = requirement_cycles.get(group_name, [])
+        group_name = self._group_name_by_whl.get(whl.name)
+        group_deps = self._group_map.get(group_name, [])
 
         # Construct args separately so that the lock file can be smaller and does not include unused
         # attrs.
