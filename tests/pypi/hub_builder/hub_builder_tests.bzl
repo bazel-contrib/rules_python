@@ -19,9 +19,9 @@ load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
-load("//python/private/pypi:platform.bzl", _plat = "platform")
 
 _tests = []
 
@@ -40,7 +40,7 @@ simple==0.0.1 \
 
 def hub_builder(
         env,
-        enable_pipstar = 0,
+        enable_pipstar = False,
         debug = False,
         config = None,
         minor_mapping = {},
