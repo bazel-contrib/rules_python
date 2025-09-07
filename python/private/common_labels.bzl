@@ -1,6 +1,6 @@
 """Constants for common labels used in the codebase."""
 
-# NOTE: str() is called becomes some APIs don't accept Label objects
+# NOTE: str() is called because some APIs don't accept Label objects
 # (e.g. transition inputs/outputs or the transition settings return dict)
 
 labels = struct(

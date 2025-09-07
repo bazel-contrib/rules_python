@@ -8,11 +8,11 @@ PyPI hub name)? Stated as code, this situation:
 ```bzl
 
 py_binary(
-  name = "bin_alpha"
+  name = "bin_alpha",
   deps = ["@pypi_alpha//requests", ":common"],
 )
 py_binary(
-  name = "bin_alpha"
+  name = "bin_beta",
   deps = ["@pypi_beta//requests", ":common"],
 )
 
@@ -37,7 +37,7 @@ to pick different dependencies.
 # File: MODULE.bazel
 
 rules_python_config.add_transition_setting(
-    setting = "@//pick:pypi_hub",
+    setting = "//:pypi_hub",
 )
 
 # File: BUILD.bazel
@@ -66,7 +66,7 @@ py_binary(
     config_settings = {
         "//:pypi_hub": "alpha",
     },
-    deps ["@pypi_alpha//requests", ":common"],
+    deps = ["@pypi_alpha//requests", ":common"],
 )
 py_binary(
     name = "bin_beta",
@@ -74,7 +74,7 @@ py_binary(
     config_settings = {
         "//:pypi_hub": "beta",
     },
-    deps ["@pypi_beta//requests", ":common"],
+    deps = ["@pypi_beta//requests", ":common"],
 )
 py_library(
     name = "common",
