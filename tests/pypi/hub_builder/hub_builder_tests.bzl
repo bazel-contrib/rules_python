@@ -62,7 +62,13 @@ def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = 
         whl_platform_tags = whl_platform_tags,
     )
 
-def hub_builder(env, enable_pipstar = 0, debug = False, config = None, **kwargs):
+def hub_builder(
+        env,
+        enable_pipstar = 0,
+        debug = False,
+        config = None,
+        minor_mapping = {},
+        available_interpreters = {}):
     builder = _hub_builder(
         name = "pypi",
         module_name = "unit_test",
@@ -93,8 +99,8 @@ def hub_builder(env, enable_pipstar = 0, debug = False, config = None, **kwargs)
             auth_patterns = None,
         ),
         whl_overrides = {},
-        minor_mapping = {"3.15": "3.15.19"},
-        available_interpreters = {
+        minor_mapping = minor_mapping or {"3.15": "3.15.19"},
+        available_interpreters = available_interpreters or {
             "python_3_15_host": "unit_test_interpreter_target",
         },
         simpleapi_download_fn = lambda *a, **k: {},
@@ -107,7 +113,6 @@ def hub_builder(env, enable_pipstar = 0, debug = False, config = None, **kwargs)
                 },
             ),
         ), "unit-test"),
-        **kwargs
     )
     self = struct(
         build = lambda *a, **k: env.expect.that_struct(
@@ -227,7 +232,7 @@ def _test_simple(env):
 _tests.append(_test_simple)
 
 def _test_simple_multiple_requirements(env):
-    builder = hub_builder(env, debug = True)
+    builder = hub_builder(env)
     builder.pip_parse(
         _mock_mctx(
             read = lambda x: {
@@ -282,104 +287,106 @@ def _test_simple_multiple_requirements(env):
 
 _tests.append(_test_simple_multiple_requirements)
 
-# def _test_simple_multiple_python_versions(env):
-#     pypi = _parse_modules(
-#         env,
-#         module_ctx = _mock_mctx(
-#             _mod(
-#                 name = "rules_python",
-#                 parse = [
-#                     _parse(
-#                         hub_name = "pypi",
-#                         python_version = "3.15",
-#                         requirements_lock = "requirements_3_15.txt",
-#                     ),
-#                     _parse(
-#                         hub_name = "pypi",
-#                         python_version = "3.16",
-#                         requirements_lock = "requirements_3_16.txt",
-#                     ),
-#                 ],
-#             ),
-#             read = lambda x: {
-#                 "requirements_3_15.txt": """
-# simple==0.0.1 --hash=sha256:deadbeef
-# old-package==0.0.1 --hash=sha256:deadbaaf
-# """,
-#                 "requirements_3_16.txt": """
-# simple==0.0.2 --hash=sha256:deadb00f
-# new-package==0.0.1 --hash=sha256:deadb00f2
-# """,
-#             }[x],
-#         ),
-#         available_interpreters = {
-#             "python_3_15_host": "unit_test_interpreter_target",
-#             "python_3_16_host": "unit_test_interpreter_target",
-#         },
-#         minor_mapping = {
-#             "3.15": "3.15.19",
-#             "3.16": "3.16.9",
-#         },
-#     )
-#
-#     pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
-#     pypi.hub_group_map().contains_exactly({"pypi": {}})
-#     pypi.hub_whl_map().contains_exactly({
-#         "pypi": {
-#             "new_package": {
-#                 "pypi_316_new_package": [
-#                     whl_config_setting(
-#                         version = "3.16",
-#                     ),
-#                 ],
-#             },
-#             "old_package": {
-#                 "pypi_315_old_package": [
-#                     whl_config_setting(
-#                         version = "3.15",
-#                     ),
-#                 ],
-#             },
-#             "simple": {
-#                 "pypi_315_simple": [
-#                     whl_config_setting(
-#                         version = "3.15",
-#                     ),
-#                 ],
-#                 "pypi_316_simple": [
-#                     whl_config_setting(
-#                         version = "3.16",
-#                     ),
-#                 ],
-#             },
-#         },
-#     })
-#     pypi.whl_libraries().contains_exactly({
-#         "pypi_315_old_package": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "old-package==0.0.1 --hash=sha256:deadbaaf",
-#         },
-#         "pypi_315_simple": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
-#         },
-#         "pypi_316_new_package": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "new-package==0.0.1 --hash=sha256:deadb00f2",
-#         },
-#         "pypi_316_simple": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
-#         },
-#     })
-#     pypi.whl_mods().contains_exactly({})
-#
-# _tests.append(_test_simple_multiple_python_versions)
-#
+def _test_simple_multiple_python_versions(env):
+    builder = hub_builder(
+        env,
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+            "python_3_16_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {
+            "3.15": "3.15.19",
+            "3.16": "3.16.9",
+        },
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "requirements_3_15.txt": """
+simple==0.0.1 --hash=sha256:deadbeef
+old-package==0.0.1 --hash=sha256:deadbaaf
+""",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "requirements_3_15.txt",
+        ),
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "requirements_3_16.txt": """
+simple==0.0.2 --hash=sha256:deadb00f
+new-package==0.0.1 --hash=sha256:deadb00f2
+""",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.16",
+            requirements_lock = "requirements_3_16.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "new_package": {
+            "pypi_316_new_package": [
+                whl_config_setting(
+                    version = "3.16",
+                ),
+            ],
+        },
+        "old_package": {
+            "pypi_315_old_package": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+        "simple": {
+            "pypi_315_simple": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+            "pypi_316_simple": [
+                whl_config_setting(
+                    version = "3.16",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_old_package": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "old-package==0.0.1 --hash=sha256:deadbaaf",
+        },
+        "pypi_315_simple": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+        "pypi_316_new_package": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "new-package==0.0.1 --hash=sha256:deadb00f2",
+        },
+        "pypi_316_simple": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_simple_multiple_python_versions)
+
 # def _test_simple_with_markers(env):
 #     pypi = _parse_modules(
 #         env,
