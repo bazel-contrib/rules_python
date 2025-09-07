@@ -19,6 +19,7 @@ def platform(*, name, arch_name, os_name, config_settings = [], env = {}, marker
     Returns:
         struct with the necessary values for pipstar implementation.
     """
+
     # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
     if "any" not in whl_platform_tags:
         # the lowest priority one needs to be the first one

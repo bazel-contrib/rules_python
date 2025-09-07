@@ -27,8 +27,8 @@ load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
-load(":simpleapi_download.bzl", "simpleapi_download")
 load(":platform.bzl", _plat = "platform")
+load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):

@@ -111,11 +111,11 @@ bzl_library(
     deps = [
         ":evaluate_markers_bzl",
         ":hub_builder_bzl",
-        ":platform_bzl",
         ":hub_repository_bzl",
         ":parse_whl_name_bzl",
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
+        ":platform_bzl",
         ":simpleapi_download_bzl",
         ":whl_library_bzl",
         "//python/private:auth_bzl",
