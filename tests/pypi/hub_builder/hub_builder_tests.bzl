@@ -20,6 +20,8 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_EN
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
+load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
+load("//python/private/pypi:platform.bzl", _plat = "platform")
 
 _tests = []
 
@@ -34,33 +36,6 @@ def _mock_mctx(environ = {}, read = None):
 simple==0.0.1 \
     --hash=sha256:deadbeef \
     --hash=sha256:deadbaaf"""),
-    )
-
-# TODO @aignas 2025-09-07: reuse the same function from
-# //python/private/pypi:extension.bzl
-def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = "", whl_abi_tags = [], whl_platform_tags = []):
-    # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
-    if "any" not in whl_platform_tags:
-        # the lowest priority one needs to be the first one
-        whl_platform_tags = ["any"] + whl_platform_tags
-
-    whl_abi_tags = whl_abi_tags or ["abi3", "cp{major}{minor}"]
-    if "none" not in whl_abi_tags:
-        # the lowest priority one needs to be the first one
-        whl_abi_tags = ["none"] + whl_abi_tags
-
-    return struct(
-        name = name,
-        arch_name = arch_name,
-        os_name = os_name,
-        config_settings = config_settings,
-        env = {
-            # defaults for env
-            "implementation_name": "cpython",
-        } | env,
-        marker = marker,
-        whl_abi_tags = whl_abi_tags,
-        whl_platform_tags = whl_platform_tags,
     )
 
 def hub_builder(
@@ -108,14 +83,17 @@ def hub_builder(
         },
         simpleapi_download_fn = simpleapi_download_fn or (lambda *a, **k: {}),
         evaluate_markers_fn = evaluate_markers_fn,
-        logger = repo_utils.logger(struct(
-            os = struct(
-                environ = {
-                    REPO_DEBUG_ENV_VAR: "1",
-                    REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
-                },
+        logger = repo_utils.logger(
+            struct(
+                os = struct(
+                    environ = {
+                        REPO_DEBUG_ENV_VAR: "1",
+                        REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "FAIL",
+                    },
+                ),
             ),
-        ), "unit-test"),
+            "unit-test",
+        ),
     )
     self = struct(
         build = lambda *a, **k: env.expect.that_struct(
@@ -131,74 +109,6 @@ def hub_builder(
         pip_parse = lambda *a, **k: builder.pip_parse(*a, **k),
     )
     return self
-
-def _parse(
-        *,
-        hub_name,
-        python_version,
-        add_libdir_to_library_search_path = False,
-        auth_patterns = {},
-        download_only = False,
-        enable_implicit_namespace_pkgs = False,
-        environment = {},
-        envsubst = {},
-        experimental_index_url = "",
-        experimental_requirement_cycles = {},
-        experimental_target_platforms = [],
-        extra_hub_aliases = {},
-        extra_pip_args = [],
-        isolated = True,
-        netrc = None,
-        parse_all_requirements_files = True,
-        pip_data_exclude = None,
-        python_interpreter = None,
-        python_interpreter_target = None,
-        quiet = True,
-        requirements_by_platform = {},
-        requirements_darwin = None,
-        requirements_linux = None,
-        requirements_lock = None,
-        requirements_windows = None,
-        simpleapi_skip = [],
-        timeout = 600,
-        whl_modifications = {},
-        **kwargs):
-    return struct(
-        auth_patterns = auth_patterns,
-        add_libdir_to_library_search_path = add_libdir_to_library_search_path,
-        download_only = download_only,
-        enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
-        environment = environment,
-        envsubst = envsubst,
-        experimental_index_url = experimental_index_url,
-        experimental_requirement_cycles = experimental_requirement_cycles,
-        experimental_target_platforms = experimental_target_platforms,
-        extra_hub_aliases = extra_hub_aliases,
-        extra_pip_args = extra_pip_args,
-        hub_name = hub_name,
-        isolated = isolated,
-        netrc = netrc,
-        parse_all_requirements_files = parse_all_requirements_files,
-        pip_data_exclude = pip_data_exclude,
-        python_interpreter = python_interpreter,
-        python_interpreter_target = python_interpreter_target,
-        python_version = python_version,
-        quiet = quiet,
-        requirements_by_platform = requirements_by_platform,
-        requirements_darwin = requirements_darwin,
-        requirements_linux = requirements_linux,
-        requirements_lock = requirements_lock,
-        requirements_windows = requirements_windows,
-        timeout = timeout,
-        whl_modifications = whl_modifications,
-        # The following are covered by other unit tests
-        experimental_extra_index_urls = [],
-        parallel_download = False,
-        experimental_index_url_overrides = {},
-        simpleapi_skip = simpleapi_skip,
-        _evaluate_markers_srcs = [],
-        **kwargs
-    )
 
 def _test_simple(env):
     builder = hub_builder(env)

@@ -111,6 +111,7 @@ bzl_library(
     deps = [
         ":evaluate_markers_bzl",
         ":hub_builder_bzl",
+        ":platform_bzl",
         ":hub_repository_bzl",
         ":parse_whl_name_bzl",
         ":pep508_env_bzl",
