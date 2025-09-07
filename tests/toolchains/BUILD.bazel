@@ -24,7 +24,7 @@ define_toolchain_tests(
 py_reconfig_test(
     name = "custom_platform_toolchain_test",
     srcs = ["custom_platform_toolchain_test.py"],
-    custom_runtime = "linux-x86-install-only-stripped",
+    config_settings = {"//tests/support:custom_runtime": "linux-x86-install-only-stripped"},
     python_version = "3.13.1",
     target_compatible_with = [
         "@platforms//os:linux",
