@@ -68,6 +68,7 @@ def hub_builder(
         debug = False,
         config = None,
         minor_mapping = {},
+        evaluate_markers_fn = None,
         available_interpreters = {}):
     builder = _hub_builder(
         name = "pypi",
@@ -104,7 +105,7 @@ def hub_builder(
             "python_3_15_host": "unit_test_interpreter_target",
         },
         simpleapi_download_fn = lambda *a, **k: {},
-        evaluate_markers_fn = None,
+        evaluate_markers_fn = evaluate_markers_fn,
         logger = repo_utils.logger(struct(
             os = struct(
                 environ = {
@@ -387,83 +388,77 @@ new-package==0.0.1 --hash=sha256:deadb00f2
 
 _tests.append(_test_simple_multiple_python_versions)
 
-# def _test_simple_with_markers(env):
-#     pypi = _parse_modules(
-#         env,
-#         module_ctx = _mock_mctx(
-#             _mod(
-#                 name = "rules_python",
-#                 parse = [
-#                     _parse(
-#                         hub_name = "pypi",
-#                         python_version = "3.15",
-#                         requirements_lock = "universal.txt",
-#                     ),
-#                 ],
-#             ),
-#             read = lambda x: {
-#                 "universal.txt": """\
-# torch==2.4.1+cpu ; platform_machine == 'x86_64'
-# torch==2.4.1 ; platform_machine != 'x86_64' \
-#     --hash=sha256:deadbeef
-# """,
-#             }[x],
-#         ),
-#         available_interpreters = {
-#             "python_3_15_host": "unit_test_interpreter_target",
-#         },
-#         minor_mapping = {"3.15": "3.15.19"},
-#         evaluate_markers = lambda _, requirements, **__: {
-#             key: [
-#                 platform
-#                 for platform in platforms
-#                 if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
-#             ]
-#             for key, platforms in requirements.items()
-#         },
-#     )
-#
-#     pypi.exposed_packages().contains_exactly({"pypi": ["torch"]})
-#     pypi.hub_group_map().contains_exactly({"pypi": {}})
-#     pypi.hub_whl_map().contains_exactly({"pypi": {
-#         "torch": {
-#             "pypi_315_torch_linux_aarch64_osx_aarch64_windows_aarch64": [
-#                 whl_config_setting(
-#                     target_platforms = [
-#                         "cp315_linux_aarch64",
-#                         "cp315_osx_aarch64",
-#                         "cp315_windows_aarch64",
-#                     ],
-#                     version = "3.15",
-#                 ),
-#             ],
-#             "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": [
-#                 whl_config_setting(
-#                     target_platforms = [
-#                         "cp315_linux_x86_64",
-#                         "cp315_linux_x86_64_freethreaded",
-#                     ],
-#                     version = "3.15",
-#                 ),
-#             ],
-#         },
-#     }})
-#     pypi.whl_libraries().contains_exactly({
-#         "pypi_315_torch_linux_aarch64_osx_aarch64_windows_aarch64": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "torch==2.4.1 --hash=sha256:deadbeef",
-#         },
-#         "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "torch==2.4.1+cpu",
-#         },
-#     })
-#     pypi.whl_mods().contains_exactly({})
-#
-# _tests.append(_test_simple_with_markers)
-#
+def _test_simple_with_markers(env):
+    builder = hub_builder(
+        env,
+        evaluate_markers_fn = lambda _, requirements, **__: {
+            key: [
+                platform
+                for platform in platforms
+                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
+            ]
+            for key, platforms in requirements.items()
+        },
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "universal.txt": """\
+torch==2.4.1+cpu ; platform_machine == 'x86_64'
+torch==2.4.1 ; platform_machine != 'x86_64' \
+    --hash=sha256:deadbeef
+""",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "universal.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["torch"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "torch": {
+            "pypi_315_torch_linux_aarch64_osx_aarch64_windows_aarch64": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_linux_aarch64",
+                        "cp315_osx_aarch64",
+                        "cp315_windows_aarch64",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_linux_x86_64",
+                        "cp315_linux_x86_64_freethreaded",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_torch_linux_aarch64_osx_aarch64_windows_aarch64": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "torch==2.4.1 --hash=sha256:deadbeef",
+        },
+        "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "torch==2.4.1+cpu",
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_simple_with_markers)
+
 # def _test_torch_experimental_index_url(env):
 #     def mocksimpleapi_download(*_, **__):
 #         return {
