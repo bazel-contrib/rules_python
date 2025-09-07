@@ -18,6 +18,7 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 
 _tests = []
@@ -69,6 +70,7 @@ def hub_builder(
         config = None,
         minor_mapping = {},
         evaluate_markers_fn = None,
+        simpleapi_download_fn = None,
         available_interpreters = {}):
     builder = _hub_builder(
         name = "pypi",
@@ -104,7 +106,7 @@ def hub_builder(
         available_interpreters = available_interpreters or {
             "python_3_15_host": "unit_test_interpreter_target",
         },
-        simpleapi_download_fn = lambda *a, **k: {},
+        simpleapi_download_fn = simpleapi_download_fn or (lambda *a, **k: {}),
         evaluate_markers_fn = evaluate_markers_fn,
         logger = repo_utils.logger(struct(
             os = struct(
@@ -459,187 +461,190 @@ torch==2.4.1 ; platform_machine != 'x86_64' \
 
 _tests.append(_test_simple_with_markers)
 
-# def _test_torch_experimental_index_url(env):
-#     def mocksimpleapi_download(*_, **__):
-#         return {
-#             "torch": parse_simpleapi_html(
-#                 url = "https://torch.index",
-#                 content = """\
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-linux_x86_64.whl#sha256=833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6">torch-2.4.1+cpu-cp310-cp310-linux_x86_64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-win_amd64.whl#sha256=1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202">torch-2.4.1+cpu-cp310-cp310-win_amd64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf">torch-2.4.1+cpu-cp311-cp311-linux_x86_64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-win_amd64.whl#sha256=76a6fe7b10491b650c630bc9ae328df40f79a948296b41d3b087b29a8a63cbad">torch-2.4.1+cpu-cp311-cp311-win_amd64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl#sha256=8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364">torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl#sha256=3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97">torch-2.4.1+cpu-cp312-cp312-win_amd64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp38-cp38-linux_x86_64.whl#sha256=0c0a7cc4f7c74ff024d5a5e21230a01289b65346b27a626f6c815d94b4b8c955">torch-2.4.1+cpu-cp38-cp38-linux_x86_64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp38-cp38-win_amd64.whl#sha256=330e780f478707478f797fdc82c2a96e9b8c5f60b6f1f57bb6ad1dd5b1e7e97e">torch-2.4.1+cpu-cp38-cp38-win_amd64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp39-cp39-linux_x86_64.whl#sha256=3c99506980a2fb4b634008ccb758f42dd82f93ae2830c1e41f64536e310bf562">torch-2.4.1+cpu-cp39-cp39-linux_x86_64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp39-cp39-win_amd64.whl#sha256=c4f2c3c026e876d4dad7629170ec14fff48c076d6c2ae0e354ab3fdc09024f00">torch-2.4.1+cpu-cp39-cp39-win_amd64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=fa27b048d32198cda6e9cff0bf768e8683d98743903b7e5d2b1f5098ded1d343">torch-2.4.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp310-none-macosx_11_0_arm64.whl#sha256=d36a8ef100f5bff3e9c3cea934b9e0d7ea277cb8210c7152d34a9a6c5830eadd">torch-2.4.1-cp310-none-macosx_11_0_arm64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=30be2844d0c939161a11073bfbaf645f1c7cb43f62f46cc6e4df1c119fb2a798">torch-2.4.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp311-none-macosx_11_0_arm64.whl#sha256=ddddbd8b066e743934a4200b3d54267a46db02106876d21cf31f7da7a96f98ea">torch-2.4.1-cp311-none-macosx_11_0_arm64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a">torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl#sha256=72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d">torch-2.4.1-cp312-none-macosx_11_0_arm64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=56ad2a760b7a7882725a1eebf5657abbb3b5144eb26bcb47b52059357463c548">torch-2.4.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp38-none-macosx_11_0_arm64.whl#sha256=5fc1d4d7ed265ef853579caf272686d1ed87cebdcd04f2a498f800ffc53dab71">torch-2.4.1-cp38-none-macosx_11_0_arm64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e">torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
-#     <a href="/whl/cpu/torch-2.4.1-cp39-none-macosx_11_0_arm64.whl#sha256=a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec">torch-2.4.1-cp39-none-macosx_11_0_arm64.whl</a><br/>
-# """,
-#             ),
-#         }
-#
-#     pypi = _parse_modules(
-#         env,
-#         module_ctx = _mock_mctx(
-#             _mod(
-#                 name = "rules_python",
-#                 default = [
-#                     _default(
-#                         platform = "{}_{}".format(os, cpu),
-#                         os_name = os,
-#                         arch_name = cpu,
-#                         config_settings = [
-#                             "@platforms//os:{}".format(os),
-#                             "@platforms//cpu:{}".format(cpu),
-#                         ],
-#                         whl_platform_tags = whl_platform_tags,
-#                     )
-#                     for (os, cpu), whl_platform_tags in {
-#                         ("linux", "x86_64"): ["linux_x86_64", "manylinux_*_x86_64"],
-#                         ("linux", "aarch64"): ["linux_aarch64", "manylinux_*_aarch64"],
-#                         ("osx", "aarch64"): ["macosx_*_arm64"],
-#                         ("windows", "x86_64"): ["win_amd64"],
-#                         ("windows", "aarch64"): ["win_arm64"],  # this should be ignored
-#                     }.items()
-#                 ],
-#                 parse = [
-#                     _parse(
-#                         hub_name = "pypi",
-#                         python_version = "3.12",
-#                         download_only = True,
-#                         experimental_index_url = "https://torch.index",
-#                         requirements_lock = "universal.txt",
-#                     ),
-#                 ],
-#             ),
-#             read = lambda x: {
-#                 "universal.txt": """\
-# torch==2.4.1 ; platform_machine != 'x86_64' \
-#     --hash=sha256:1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e \
-#     --hash=sha256:30be2844d0c939161a11073bfbaf645f1c7cb43f62f46cc6e4df1c119fb2a798 \
-#     --hash=sha256:36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a \
-#     --hash=sha256:56ad2a760b7a7882725a1eebf5657abbb3b5144eb26bcb47b52059357463c548 \
-#     --hash=sha256:5fc1d4d7ed265ef853579caf272686d1ed87cebdcd04f2a498f800ffc53dab71 \
-#     --hash=sha256:72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d \
-#     --hash=sha256:a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec \
-#     --hash=sha256:d36a8ef100f5bff3e9c3cea934b9e0d7ea277cb8210c7152d34a9a6c5830eadd \
-#     --hash=sha256:ddddbd8b066e743934a4200b3d54267a46db02106876d21cf31f7da7a96f98ea \
-#     --hash=sha256:fa27b048d32198cda6e9cff0bf768e8683d98743903b7e5d2b1f5098ded1d343
-#     # via -r requirements.in
-# torch==2.4.1+cpu ; platform_machine == 'x86_64' \
-#     --hash=sha256:0c0a7cc4f7c74ff024d5a5e21230a01289b65346b27a626f6c815d94b4b8c955 \
-#     --hash=sha256:1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202 \
-#     --hash=sha256:2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf \
-#     --hash=sha256:330e780f478707478f797fdc82c2a96e9b8c5f60b6f1f57bb6ad1dd5b1e7e97e \
-#     --hash=sha256:3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97 \
-#     --hash=sha256:3c99506980a2fb4b634008ccb758f42dd82f93ae2830c1e41f64536e310bf562 \
-#     --hash=sha256:76a6fe7b10491b650c630bc9ae328df40f79a948296b41d3b087b29a8a63cbad \
-#     --hash=sha256:833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6 \
-#     --hash=sha256:8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364 \
-#     --hash=sha256:c4f2c3c026e876d4dad7629170ec14fff48c076d6c2ae0e354ab3fdc09024f00
-#     # via -r requirements.in
-# """,
-#             }[x],
-#         ),
-#         available_interpreters = {
-#             "python_3_12_host": "unit_test_interpreter_target",
-#         },
-#         minor_mapping = {"3.12": "3.12.19"},
-#         simpleapi_download = mocksimpleapi_download,
-#         evaluate_markers = lambda _, requirements, **__: {
-#             # todo once 2692 is merged, this is going to be easier to test.
-#             key: [
-#                 platform
-#                 for platform in platforms
-#                 if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
-#             ]
-#             for key, platforms in requirements.items()
-#         },
-#     )
-#
-#     pypi.exposed_packages().contains_exactly({"pypi": ["torch"]})
-#     pypi.hub_group_map().contains_exactly({"pypi": {}})
-#     pypi.hub_whl_map().contains_exactly({"pypi": {
-#         "torch": {
-#             "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": [
-#                 whl_config_setting(
-#                     target_platforms = ("cp312_linux_x86_64",),
-#                     version = "3.12",
-#                 ),
-#             ],
-#             "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": [
-#                 whl_config_setting(
-#                     target_platforms = ("cp312_linux_aarch64",),
-#                     version = "3.12",
-#                 ),
-#             ],
-#             "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": [
-#                 whl_config_setting(
-#                     target_platforms = ("cp312_windows_x86_64",),
-#                     version = "3.12",
-#                 ),
-#             ],
-#             "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": [
-#                 whl_config_setting(
-#                     target_platforms = ("cp312_osx_aarch64",),
-#                     version = "3.12",
-#                 ),
-#             ],
-#         },
-#     }})
-#     pypi.whl_libraries().contains_exactly({
-#         "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "experimental_target_platforms": ["linux_x86_64"],
-#             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "torch==2.4.1+cpu",
-#             "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
-#             "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
-#         },
-#         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "experimental_target_platforms": ["linux_aarch64"],
-#             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "torch==2.4.1",
-#             "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
-#             "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
-#         },
-#         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "experimental_target_platforms": ["windows_x86_64"],
-#             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "torch==2.4.1+cpu",
-#             "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
-#             "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
-#         },
-#         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": {
-#             "dep_template": "@pypi//{name}:{target}",
-#             "experimental_target_platforms": ["osx_aarch64"],
-#             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
-#             "python_interpreter_target": "unit_test_interpreter_target",
-#             "requirement": "torch==2.4.1",
-#             "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
-#             "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
-#         },
-#     })
-#     pypi.whl_mods().contains_exactly({})
-#
-# _tests.append(_test_torch_experimental_index_url)
-#
+def _test_torch_experimental_index_url(env):
+    def mocksimpleapi_download(*_, **__):
+        return {
+            "torch": parse_simpleapi_html(
+                url = "https://torch.index",
+                content = """\
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-linux_x86_64.whl#sha256=833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6">torch-2.4.1+cpu-cp310-cp310-linux_x86_64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-win_amd64.whl#sha256=1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202">torch-2.4.1+cpu-cp310-cp310-win_amd64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf">torch-2.4.1+cpu-cp311-cp311-linux_x86_64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-win_amd64.whl#sha256=76a6fe7b10491b650c630bc9ae328df40f79a948296b41d3b087b29a8a63cbad">torch-2.4.1+cpu-cp311-cp311-win_amd64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl#sha256=8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364">torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl#sha256=3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97">torch-2.4.1+cpu-cp312-cp312-win_amd64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp38-cp38-linux_x86_64.whl#sha256=0c0a7cc4f7c74ff024d5a5e21230a01289b65346b27a626f6c815d94b4b8c955">torch-2.4.1+cpu-cp38-cp38-linux_x86_64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp38-cp38-win_amd64.whl#sha256=330e780f478707478f797fdc82c2a96e9b8c5f60b6f1f57bb6ad1dd5b1e7e97e">torch-2.4.1+cpu-cp38-cp38-win_amd64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp39-cp39-linux_x86_64.whl#sha256=3c99506980a2fb4b634008ccb758f42dd82f93ae2830c1e41f64536e310bf562">torch-2.4.1+cpu-cp39-cp39-linux_x86_64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp39-cp39-win_amd64.whl#sha256=c4f2c3c026e876d4dad7629170ec14fff48c076d6c2ae0e354ab3fdc09024f00">torch-2.4.1+cpu-cp39-cp39-win_amd64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=fa27b048d32198cda6e9cff0bf768e8683d98743903b7e5d2b1f5098ded1d343">torch-2.4.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp310-none-macosx_11_0_arm64.whl#sha256=d36a8ef100f5bff3e9c3cea934b9e0d7ea277cb8210c7152d34a9a6c5830eadd">torch-2.4.1-cp310-none-macosx_11_0_arm64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=30be2844d0c939161a11073bfbaf645f1c7cb43f62f46cc6e4df1c119fb2a798">torch-2.4.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp311-none-macosx_11_0_arm64.whl#sha256=ddddbd8b066e743934a4200b3d54267a46db02106876d21cf31f7da7a96f98ea">torch-2.4.1-cp311-none-macosx_11_0_arm64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a">torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl#sha256=72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d">torch-2.4.1-cp312-none-macosx_11_0_arm64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=56ad2a760b7a7882725a1eebf5657abbb3b5144eb26bcb47b52059357463c548">torch-2.4.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp38-none-macosx_11_0_arm64.whl#sha256=5fc1d4d7ed265ef853579caf272686d1ed87cebdcd04f2a498f800ffc53dab71">torch-2.4.1-cp38-none-macosx_11_0_arm64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e">torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
+    <a href="/whl/cpu/torch-2.4.1-cp39-none-macosx_11_0_arm64.whl#sha256=a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec">torch-2.4.1-cp39-none-macosx_11_0_arm64.whl</a><br/>
+""",
+            ),
+        }
+
+    builder = hub_builder(
+        env,
+        config = struct(
+            netrc = None,
+            enable_pipstar = False,
+            auth_patterns = {},
+            platforms = {
+                "{}_{}".format(os, cpu): _plat(
+                    name = "{}_{}".format(os, cpu),
+                    os_name = os,
+                    arch_name = cpu,
+                    config_settings = [
+                        "@platforms//os:{}".format(os),
+                        "@platforms//cpu:{}".format(cpu),
+                    ],
+                    whl_platform_tags = whl_platform_tags,
+                )
+                for (os, cpu), whl_platform_tags in {
+                    ("linux", "x86_64"): ["linux_x86_64", "manylinux_*_x86_64"],
+                    ("linux", "aarch64"): ["linux_aarch64", "manylinux_*_aarch64"],
+                    ("osx", "aarch64"): ["macosx_*_arm64"],
+                    ("windows", "x86_64"): ["win_amd64"],
+                    ("windows", "aarch64"): ["win_arm64"],  # this should be ignored
+                }.items()
+            },
+        ),
+        available_interpreters = {
+            "python_3_12_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.12": "3.12.19"},
+        evaluate_markers_fn = lambda _, requirements, **__: {
+            # todo once 2692 is merged, this is going to be easier to test.
+            key: [
+                platform
+                for platform in platforms
+                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
+            ]
+            for key, platforms in requirements.items()
+        },
+        simpleapi_download_fn = mocksimpleapi_download,
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "universal.txt": """\
+torch==2.4.1 ; platform_machine != 'x86_64' \
+    --hash=sha256:1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e \
+    --hash=sha256:30be2844d0c939161a11073bfbaf645f1c7cb43f62f46cc6e4df1c119fb2a798 \
+    --hash=sha256:36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a \
+    --hash=sha256:56ad2a760b7a7882725a1eebf5657abbb3b5144eb26bcb47b52059357463c548 \
+    --hash=sha256:5fc1d4d7ed265ef853579caf272686d1ed87cebdcd04f2a498f800ffc53dab71 \
+    --hash=sha256:72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d \
+    --hash=sha256:a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec \
+    --hash=sha256:d36a8ef100f5bff3e9c3cea934b9e0d7ea277cb8210c7152d34a9a6c5830eadd \
+    --hash=sha256:ddddbd8b066e743934a4200b3d54267a46db02106876d21cf31f7da7a96f98ea \
+    --hash=sha256:fa27b048d32198cda6e9cff0bf768e8683d98743903b7e5d2b1f5098ded1d343
+    # via -r requirements.in
+torch==2.4.1+cpu ; platform_machine == 'x86_64' \
+    --hash=sha256:0c0a7cc4f7c74ff024d5a5e21230a01289b65346b27a626f6c815d94b4b8c955 \
+    --hash=sha256:1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202 \
+    --hash=sha256:2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf \
+    --hash=sha256:330e780f478707478f797fdc82c2a96e9b8c5f60b6f1f57bb6ad1dd5b1e7e97e \
+    --hash=sha256:3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97 \
+    --hash=sha256:3c99506980a2fb4b634008ccb758f42dd82f93ae2830c1e41f64536e310bf562 \
+    --hash=sha256:76a6fe7b10491b650c630bc9ae328df40f79a948296b41d3b087b29a8a63cbad \
+    --hash=sha256:833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6 \
+    --hash=sha256:8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364 \
+    --hash=sha256:c4f2c3c026e876d4dad7629170ec14fff48c076d6c2ae0e354ab3fdc09024f00
+    # via -r requirements.in
+""",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.12",
+            download_only = True,
+            experimental_index_url = "https://torch.index",
+            requirements_lock = "universal.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["torch"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "torch": {
+            "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": [
+                whl_config_setting(
+                    target_platforms = ("cp312_linux_x86_64",),
+                    version = "3.12",
+                ),
+            ],
+            "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": [
+                whl_config_setting(
+                    target_platforms = ("cp312_linux_aarch64",),
+                    version = "3.12",
+                ),
+            ],
+            "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": [
+                whl_config_setting(
+                    target_platforms = ("cp312_windows_x86_64",),
+                    version = "3.12",
+                ),
+            ],
+            "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": [
+                whl_config_setting(
+                    target_platforms = ("cp312_osx_aarch64",),
+                    version = "3.12",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": {
+            "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["linux_x86_64"],
+            "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "torch==2.4.1+cpu",
+            "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
+            "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
+        },
+        "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
+            "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["linux_aarch64"],
+            "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "torch==2.4.1",
+            "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
+            "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
+        },
+        "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": {
+            "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["windows_x86_64"],
+            "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "torch==2.4.1+cpu",
+            "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
+            "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
+        },
+        "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": {
+            "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["osx_aarch64"],
+            "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "torch==2.4.1",
+            "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
+            "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_torch_experimental_index_url)
+
 # def _test_download_only_multiple(env):
 #     pypi = _parse_modules(
 #         env,
