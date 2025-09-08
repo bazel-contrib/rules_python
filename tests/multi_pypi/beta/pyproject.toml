@@ -3,9 +3,4 @@ name = "multi-pypi-test-beta"
 version = "0.1.0"
 dependencies = [
     "more-itertools==9.0.0"
-[project]
-name = "multi-pypi-test-beta"
-version = "0.1.0"
-dependencies = [
-    "more-itertools==9.0.0"
 ]
