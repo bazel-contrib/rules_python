@@ -1,21 +1,8 @@
 """Extension for configuring global settings of rules_python."""
 
-load("//python/private:rules_python_config_repo.bzl", "rules_python_config_repo")
-
-def _rules_python_config_impl(mctx):
-    transition_setting_generators = {}
-    for mod in mctx.modules:
-        for tag in mod.tags.add_transition_setting:
-            setting = str(tag.setting)
-            if setting not in transition_setting_generators:
-                transition_setting_generators[setting] = []
-            transition_setting_generators[setting].append(mod.name)
-
-    rules_python_config_repo(
-        name = "rules_python_config",
-        transition_setting_generators = transition_setting_generators,
-        transition_settings = transition_setting_generators.keys(),
-    )
+load("@bazel_skylib//lib:modules.bzl", "modules")
+load("//python/private:internal_config_repo.bzl", "internal_config_repo")
+load("//python/private/pypi:deps.bzl", "pypi_deps")
 
 _add_transition_setting = tag_class(
     doc = """
@@ -35,13 +22,32 @@ to repositories that are expensive to create or invalidate frequently.
     },
 )
 
-rules_python_config = module_extension(
+def _config_impl(mctx):
+    transition_setting_generators = {}
+    transition_settings = []
+    for mod in mctx.modules:
+        for tag in mod.tags.add_transition_setting:
+            setting = str(tag.setting)
+            if setting not in transition_setting_generators:
+                transition_setting_generators[setting] = []
+                transition_settings.append(setting)
+            transition_setting_generators[setting].append(mod.name)
+
+    internal_config_repo(
+        name = "rules_python_internal",
+        transition_setting_generators = transition_setting_generators,
+        transition_settings = transition_settings,
+    )
+
+    pypi_deps()
+
+config = module_extension(
     doc = """Global settings for rules_python.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
-    implementation = _rules_python_config_impl,
+    implementation = _config_impl,
     tag_classes = {
         "add_transition_setting": _add_transition_setting,
     },

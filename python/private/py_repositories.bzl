@@ -20,7 +20,6 @@ load("//python:versions.bzl", "MINOR_MAPPING", "TOOL_VERSIONS")
 load("//python/private/pypi:deps.bzl", "pypi_deps")
 load(":internal_config_repo.bzl", "internal_config_repo")
 load(":pythons_hub.bzl", "hub_repo")
-load(":rules_python_config_repo.bzl", "rules_python_config_repo")
 
 def http_archive(**kwargs):
     maybe(_http_archive, **kwargs)
@@ -35,14 +34,13 @@ def py_repositories(transition_settings = []):
         transition_settings: A list of labels that terminal rules transition on
             by default.
     """
+
+    # NOTE: The @rules_python_internal repo is special cased by Bazel: it
+    # has autoloading disabled. This allows the rules to load from it
+    # without triggering recursion.
     maybe(
         internal_config_repo,
         name = "rules_python_internal",
-    )
-    maybe(
-        rules_python_config_repo,
-        name = "rules_python_config",
-        transition_settings = transition_settings,
     )
     maybe(
         hub_repo,

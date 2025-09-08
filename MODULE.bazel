@@ -13,9 +13,9 @@ bazel_dep(name = "platforms", version = "0.0.11")
 # Use py_proto_library directly from protobuf repository
 bazel_dep(name = "protobuf", version = "29.0-rc2", repo_name = "com_google_protobuf")
 
-internal_deps = use_extension("//python/private:internal_deps.bzl", "internal_deps")
+rules_python_config = use_extension("//python/extensions:config.bzl", "config")
 use_repo(
-    internal_deps,
+    rules_python_config,
     "pypi__build",
     "pypi__click",
     "pypi__colorama",
@@ -33,12 +33,6 @@ use_repo(
     "pypi__zipp",
     "rules_python_internal",
 )
-
-rules_python_config = use_extension(
-    "//python/extensions:config.bzl",
-    "rules_python_config",
-)
-use_repo(rules_python_config, "rules_python_config")
 
 # We need to do another use_extension call to expose the "pythons_hub"
 # repo.
@@ -226,7 +220,7 @@ use_repo(
 
 dev_rules_python_config = use_extension(
     "//python/extensions:config.bzl",
-    "rules_python_config",
+    "config",
     dev_dependency = True,
 )
 dev_rules_python_config.add_transition_setting(

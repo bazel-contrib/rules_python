@@ -4,7 +4,7 @@ Terminal rules are e.g. py_binary, py_test, or packaging rules.
 """
 
 load("@bazel_skylib//lib:collections.bzl", "collections")
-load("@rules_python_config//:extra_transition_settings.bzl", "EXTRA_TRANSITION_SETTINGS")
+load("@rules_python_internal//:extra_transition_settings.bzl", "EXTRA_TRANSITION_SETTINGS")
 load(":common_labels.bzl", "labels")
 
 _BASE_TRANSITION_LABELS = [
