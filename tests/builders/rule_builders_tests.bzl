@@ -153,11 +153,11 @@ def _test_rule_api(env):
     expect.that_bool(subject.cfg.implementation()).equals(impl)
     subject.cfg.add_inputs(Label("//some:input"))
     expect.that_collection(subject.cfg.inputs()).contains_exactly([
-        Label("//some:input"),
+        str(Label("//some:input")),
     ])
     subject.cfg.add_outputs(Label("//some:output"))
     expect.that_collection(subject.cfg.outputs()).contains_exactly([
-        Label("//some:output"),
+        str(Label("//some:output")),
     ])
 
 _basic_tests.append(_test_rule_api)
