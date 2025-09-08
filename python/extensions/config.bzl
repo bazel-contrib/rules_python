@@ -1,6 +1,5 @@
 """Extension for configuring global settings of rules_python."""
 
-load("@bazel_skylib//lib:modules.bzl", "modules")
 load("//python/private:internal_config_repo.bzl", "internal_config_repo")
 load("//python/private/pypi:deps.bzl", "pypi_deps")
 

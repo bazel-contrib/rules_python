@@ -18,8 +18,8 @@ such as globals available to Bazel versions, or propagating user environment
 settings for rules to later use.
 """
 
-load(":repo_utils.bzl", "repo_utils")
 load("//python/private:text_util.bzl", "render")
+load(":repo_utils.bzl", "repo_utils")
 
 _ENABLE_PIPSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PIPSTAR"
 _ENABLE_PIPSTAR_DEFAULT = "0"
