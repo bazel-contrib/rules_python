@@ -102,26 +102,6 @@ if os.environ.get("READTHEDOCS") == "True":
     # to the original conf.py template comments
     extensions.insert(0, "readthedocs_ext.readthedocs")
 
-    if os.environ.get("READTHEDOCS_VERSION_TYPE") == "external":
-        # Insert after the main extension
-        extensions.insert(1, "readthedocs_ext.external_version_warning")
-        readthedocs_vcs_url = (
-            "http://github.com/bazel-contrib/rules_python/pull/{}".format(
-                os.environ.get("READTHEDOCS_VERSION", "")
-            )
-        )
-        # The build id isn't directly available, but it appears to be encoded
-        # into the host name, so we can parse it from that. The format appears
-        # to be `build-X-project-Y-Z`, where:
-        # * X is an integer build id
-        # * Y is an integer project id
-        # * Z is the project name
-        _build_id = os.environ.get("HOSTNAME", "build-0-project-0-rules-python")
-        _build_id = _build_id.split("-")[1]
-        readthedocs_build_url = (
-            f"https://readthedocs.org/projects/rules-python/builds/{_build_id}"
-        )
-
 exclude_patterns = ["_includes/*"]
 templates_path = ["_templates"]
 primary_domain = None  # The default is 'py', which we don't make much use of
