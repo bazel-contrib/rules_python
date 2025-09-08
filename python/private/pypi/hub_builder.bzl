@@ -5,7 +5,7 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers")
+load(":evaluate_markers.bzl", "evaluate_markers_py", evaluate_markers_star = "evaluate_markers")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -175,6 +175,8 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # disallow building from sdist.
         return
 
+    platforms = self._platforms[python_version]
+
     # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
     # we are using pipstar and we are downloading the wheel using the downloader
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
@@ -185,6 +187,17 @@ def _add_whl_library(self, *, python_version, whl, repo):
             whl.name,
         ))
     self._whl_libraries[repo_name] = repo.args
+
+    if not self._config.enable_pipstar and "experimental_target_platforms" in repo.args:
+        self._whl_libraries[repo_name] |= {
+            "experimental_target_platforms": sorted({
+                # TODO @aignas 2025-07-07: this should be solved in a better way
+                platforms[candidate].triple.partition("_")[-1]: None
+                for p in repo.args["experimental_target_platforms"]
+                for candidate in platforms
+                if candidate.endswith(p)
+            }),
+        }
 
     mapping = self._whl_map.setdefault(whl.name, {})
     if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
@@ -316,9 +329,41 @@ def _evaluate_markers(self, pip_attr):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
-    return lambda _, requirements: evaluate_markers(
-        requirements = requirements,
-        platforms = self._platforms[pip_attr.python_version],
+    if self._config.enable_pipstar:
+        return lambda _, requirements: evaluate_markers_star(
+            requirements = requirements,
+            platforms = self._platforms[pip_attr.python_version],
+        )
+
+    interpreter = _detect_interpreter(self, pip_attr)
+
+    # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
+    # in the PATH or if specified as a label. We will configure the env
+    # markers when evaluating the requirement lines based on the output
+    # from the `requirements_files_by_platform` which should have something
+    # similar to:
+    # {
+    #    "//:requirements.txt": ["cp311_linux_x86_64", ...]
+    # }
+    #
+    # We know the target python versions that we need to evaluate the
+    # markers for and thus we don't need to use multiple python interpreter
+    # instances to perform this manipulation. This function should be executed
+    # only once by the underlying code to minimize the overhead needed to
+    # spin up a Python interpreter.
+    return lambda module_ctx, requirements: evaluate_markers_py(
+        module_ctx,
+        requirements = {
+            k: {
+                p: self._platforms[pip_attr.python_version][p].triple
+                for p in plats
+            }
+            for k, plats in requirements.items()
+        },
+        python_interpreter = interpreter.path,
+        python_interpreter_target = interpreter.target,
+        srcs = pip_attr._evaluate_markers_srcs,
+        logger = self._logger,
     )
 
 def _create_whl_repos(
@@ -390,6 +435,7 @@ def _create_whl_repos(
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
+                enable_pipstar = self._config.enable_pipstar,
             )
             _add_whl_library(
                 self,
@@ -417,6 +463,8 @@ def _common_args(self, module_ctx, *, pip_attr):
         python_interpreter = interpreter.path,
         python_interpreter_target = interpreter.target,
     )
+    if not self._config.enable_pipstar:
+        maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
     whl_library_args.update({k: v for k, v in maybe_args.items() if v})
     maybe_args_with_default = dict(
@@ -464,7 +512,8 @@ def _whl_repo(
         netrc,
         auth_patterns,
         python_version,
-        use_downloader):
+        use_downloader,
+        enable_pipstar = False):
     args = dict(whl_library_args)
     args["requirement"] = src.requirement_line
     is_whl = src.filename.endswith(".whl")
@@ -507,6 +556,14 @@ def _whl_repo(
     args["urls"] = [src.url]
     args["sha256"] = src.sha256
     args["filename"] = src.filename
+    if not enable_pipstar:
+        args["experimental_target_platforms"] = [
+            # Get rid of the version for the target platforms because we are
+            # passing the interpreter any way. Ideally we should search of ways
+            # how to pass the target platforms through the hub repo.
+            p.partition("_")[2]
+            for p in src.target_platforms
+        ]
 
     return struct(
         repo_name = whl_repo_name(src.filename, src.sha256),

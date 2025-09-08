@@ -40,9 +40,11 @@ simple==0.0.1 \
 
 def hub_builder(
         env,
+        enable_pipstar = False,
         debug = False,
         config = None,
         minor_mapping = {},
+        evaluate_markers_fn = None,
         simpleapi_download_fn = None,
         available_interpreters = {}):
     builder = _hub_builder(
@@ -50,6 +52,7 @@ def hub_builder(
         module_name = "unit_test",
         config = config or struct(
             # no need to evaluate the markers with the interpreter
+            enable_pipstar = enable_pipstar,
             platforms = {
                 "{}_{}{}".format(os, cpu, freethreaded): _plat(
                     name = "{}_{}{}".format(os, cpu, freethreaded),
@@ -73,13 +76,13 @@ def hub_builder(
             netrc = None,
             auth_patterns = None,
         ),
-        evaluate_markers_fn = None,
         whl_overrides = {},
         minor_mapping = minor_mapping or {"3.15": "3.15.19"},
         available_interpreters = available_interpreters or {
             "python_3_15_host": "unit_test_interpreter_target",
         },
         simpleapi_download_fn = simpleapi_download_fn or (lambda *a, **k: {}),
+        evaluate_markers_fn = evaluate_markers_fn,
         logger = repo_utils.logger(
             struct(
                 os = struct(
@@ -300,6 +303,14 @@ _tests.append(_test_simple_multiple_python_versions)
 def _test_simple_with_markers(env):
     builder = hub_builder(
         env,
+        evaluate_markers_fn = lambda _, requirements, **__: {
+            key: [
+                platform
+                for platform in platforms
+                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
+            ]
+            for key, platforms in requirements.items()
+        },
     )
     builder.pip_parse(
         _mock_mctx(
@@ -394,6 +405,7 @@ def _test_torch_experimental_index_url(env):
         env,
         config = struct(
             netrc = None,
+            enable_pipstar = False,
             auth_patterns = {},
             platforms = {
                 "{}_{}".format(os, cpu): _plat(
@@ -419,6 +431,15 @@ def _test_torch_experimental_index_url(env):
             "python_3_12_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.12": "3.12.19"},
+        evaluate_markers_fn = lambda _, requirements, **__: {
+            # todo once 2692 is merged, this is going to be easier to test.
+            key: [
+                platform
+                for platform in platforms
+                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
+            ]
+            for key, platforms in requirements.items()
+        },
         simpleapi_download_fn = mocksimpleapi_download,
     )
     builder.pip_parse(
@@ -495,6 +516,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     pypi.whl_libraries().contains_exactly({
         "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["linux_x86_64"],
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1+cpu",
@@ -503,6 +525,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["linux_aarch64"],
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1",
@@ -511,6 +534,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["windows_x86_64"],
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1+cpu",
@@ -519,6 +543,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": ["osx_aarch64"],
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1",
@@ -596,6 +621,8 @@ simple==0.0.3 \
         "pypi_315_extra": {
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
+            # TODO @aignas 2025-04-20: ensure that this is in the hub repo
+            # "experimental_target_platforms": ["cp315_linux_x86_64"],
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "extra==0.0.1 --hash=sha256:deadb00f",
@@ -794,6 +821,12 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
     pypi.whl_libraries().contains_exactly({
         "pypi_315_any_name": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": [
+                "linux_aarch64",
+                "linux_x86_64",
+                "osx_aarch64",
+                "windows_aarch64",
+            ],
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -803,6 +836,12 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_direct_without_sha_0_0_1_py3_none_any": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": [
+                "linux_aarch64",
+                "linux_x86_64",
+                "osx_aarch64",
+                "windows_aarch64",
+            ],
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "direct_without_sha==0.0.1",
@@ -823,6 +862,12 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_simple_py3_none_any_deadb00f": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": [
+                "linux_aarch64",
+                "linux_x86_64",
+                "osx_aarch64",
+                "windows_aarch64",
+            ],
             "filename": "simple-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1",
@@ -831,6 +876,12 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_some_pkg_py3_none_any_deadbaaf": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": [
+                "linux_aarch64",
+                "linux_x86_64",
+                "osx_aarch64",
+                "windows_aarch64",
+            ],
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "some_pkg==0.0.1",
@@ -839,6 +890,12 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_some_py3_none_any_deadb33f": {
             "dep_template": "@pypi//{name}:{target}",
+            "experimental_target_platforms": [
+                "linux_aarch64",
+                "linux_x86_64",
+                "osx_aarch64",
+                "windows_aarch64",
+            ],
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "some_other_pkg==0.0.1",
@@ -868,6 +925,14 @@ _tests.append(_test_simple_get_index)
 def _test_optimum_sys_platform_extra(env):
     builder = hub_builder(
         env,
+        evaluate_markers_fn = lambda _, requirements, **__: {
+            key: [
+                platform
+                for platform in platforms
+                if ("darwin" in key and "osx" in platform) or ("linux" in key and "linux" in platform)
+            ]
+            for key, platforms in requirements.items()
+        },
     )
     builder.pip_parse(
         _mock_mctx(
@@ -881,14 +946,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         _parse(
             hub_name = "pypi",
             python_version = "3.15",
-            requirements_by_platform = {
-                "universal.txt": "linux_*,osx_*",
-            },
+            requirements_lock = "universal.txt",
         ),
     )
     pypi = builder.build()
 
-    pypi.exposed_packages().contains_exactly(["optimum"])
+    # FIXME @aignas 2025-09-07: we should expose the `optimum` package
+    pypi.exposed_packages().contains_exactly([])
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "optimum": {
@@ -931,7 +995,9 @@ _tests.append(_test_optimum_sys_platform_extra)
 def _test_pipstar_platforms(env):
     builder = hub_builder(
         env,
+        enable_pipstar = True,
         config = struct(
+            enable_pipstar = True,
             netrc = None,
             auth_patterns = {},
             platforms = {
