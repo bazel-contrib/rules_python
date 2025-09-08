@@ -157,3 +157,26 @@ pip_parse(
 load("@dev_pip//:requirements.bzl", docs_install_deps = "install_deps")
 
 docs_install_deps()
+
+#####################
+# Pypi repos for //tests/multi_pypi
+
+pip_parse(
+    name = "pypi_alpha",
+    python_interpreter_target = interpreter,
+    requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
+)
+
+load("@pypi_alpha//:requirements.bzl", pypi_alpha_install_deps = "install_deps")
+
+pypi_alpha_install_deps()
+
+pip_parse(
+    name = "pypi_beta",
+    python_interpreter_target = interpreter,
+    requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
+)
+
+load("@pypi_beta//:requirements.bzl", pypi_beta_install_deps = "install_deps")
+
+pypi_beta_install_deps()
