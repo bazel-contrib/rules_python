@@ -14,6 +14,13 @@ from sphinx.cmd.build import main
 WorkRequest = object
 WorkResponse = object
 
+
+class SphinxMainError(Exception):
+    def __init__(self, message, exit_code):
+        super().__init__(message)
+        self.exit_code = exit_code
+
+
 logger = logging.getLogger("sphinxdocs_build")
 
 _WORKER_SPHINX_EXT_MODULE_NAME = "bazel_worker_sphinx_ext"
@@ -58,7 +65,7 @@ class Worker:
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         for worker_outdir in self._worker_outdirs:
             shutil.rmtree(worker_outdir, ignore_errors=True)
 
@@ -75,6 +82,17 @@ class Worker:
                     response = self._process_request(request)
                     if response:
                         self._send_response(response)
+                except SphinxMainError as e:
+                    logger.error("Sphinx main returned failure: exit_code=%s request=%s",
+                                 request, e.exit_code)
+                    request_id = 0 if not request else request.get("requestId", 0)
+                    self._send_response(
+                        {
+                            "exitCode": e.exit_code,
+                            "output": str(e),
+                            "requestId": request_id,
+                        }
+                    )
                 except Exception:
                     logger.exception("Unhandled error: request=%s", request)
                     output = (
@@ -142,13 +160,10 @@ class Worker:
 
     @contextlib.contextmanager
     def _redirect_streams(self):
-        out = io.StringIO()
-        orig_stdout = sys.stdout
-        try:
-            sys.stdout = out
-            yield out
-        finally:
-            sys.stdout = orig_stdout
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            yield stdout, stderr
 
     def _process_request(self, request: "WorkRequest") -> "WorkResponse | None":
         logger.info("Request: %s", json.dumps(request, sort_keys=True, indent=2))
@@ -159,19 +174,50 @@ class Worker:
 
         # Prevent anything from going to stdout because it breaks the worker
         # protocol. We have limited control over where Sphinx sends output.
-        with self._redirect_streams() as stdout:
+        with self._redirect_streams() as (stdout, stderr):
             logger.info("main args: %s", sphinx_args)
             exit_code = main(sphinx_args)
+            # Running Sphinx multiple times in a process can give spurious
+            # errors. An invocation after an error seems to work, though.
+            if exit_code == 2:
+                logger.warning("Sphinx main() returned exit_code=2, retrying...")
+                # Reset streams to capture output of the retry cleanly
+                stdout.seek(0)
+                stdout.truncate(0)
+                stderr.seek(0)
+                stderr.truncate(0)
+                exit_code = main(sphinx_args)
 
         if exit_code:
-            raise Exception(
+            stdout_output = stdout.getvalue().strip()
+            stderr_output = stderr.getvalue().strip()
+            if stdout_output:
+                stdout_output = (
+                    "========== STDOUT START ==========\n"
+                    + stdout_output
+                    + "\n"
+                    + "========== STDOUT END ==========\n"
+                )
+            else:
+                stdout_output = "========== STDOUT EMPTY ==========\n"
+            if stderr_output:
+                stderr_output = (
+                    "========== STDERR START ==========\n"
+                    + stderr_output
+                    + "\n"
+                    + "========== STDERR END ==========\n"
+                )
+            else:
+                stderr_output = "========== STDERR EMPTY ==========\n"
+
+            message = (
                 "Sphinx main() returned failure: "
                 + f"  exit code: {exit_code}\n"
-                + "========== STDOUT START ==========\n"
-                + stdout.getvalue().rstrip("\n")
-                + "\n"
-                + "========== STDOUT END ==========\n"
+                + stdout_output
+                + stderr_output
             )
+            raise SphinxMainError(message, exit_code)
+
 
         # Copying is unfortunately necessary because Bazel doesn't know to
         # implicily bring along what the symlinks point to.

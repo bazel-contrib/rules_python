@@ -109,22 +109,17 @@ bzl_library(
     name = "extension_bzl",
     srcs = ["extension.bzl"],
     deps = [
-        ":attrs_bzl",
         ":evaluate_markers_bzl",
+        ":hub_builder_bzl",
         ":hub_repository_bzl",
-        ":parse_requirements_bzl",
         ":parse_whl_name_bzl",
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
-        ":python_tag_bzl",
         ":simpleapi_download_bzl",
-        ":whl_config_setting_bzl",
         ":whl_library_bzl",
-        ":whl_repo_name_bzl",
-        "//python/private:full_version_bzl",
+        "//python/private:auth_bzl",
         "//python/private:normalize_name_bzl",
-        "//python/private:version_bzl",
-        "//python/private:version_label_bzl",
+        "//python/private:repo_utils_bzl",
         "@bazel_features//:features",
         "@pythons_hub//:interpreters_bzl",
         "@pythons_hub//:versions_bzl",
@@ -164,6 +159,27 @@ bzl_library(
     srcs = ["group_library.bzl"],
     deps = [
         ":generate_group_library_build_bazel_bzl",
+    ],
+)
+
+bzl_library(
+    name = "hub_builder_bzl",
+    srcs = ["hub_builder.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":attrs_bzl",
+        ":evaluate_markers_bzl",
+        ":parse_requirements_bzl",
+        ":pep508_env_bzl",
+        ":pep508_evaluate_bzl",
+        ":python_tag_bzl",
+        ":requirements_files_by_platform_bzl",
+        ":whl_config_setting_bzl",
+        ":whl_repo_name_bzl",
+        "//python/private:full_version_bzl",
+        "//python/private:normalize_name_bzl",
+        "//python/private:version_bzl",
+        "//python/private:version_label_bzl",
     ],
 )
 

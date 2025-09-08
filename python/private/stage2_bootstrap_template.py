@@ -32,6 +32,9 @@ MAIN_PATH = "%main%"
 # Module name to execute. Empty if MAIN is used.
 MAIN_MODULE = "%main_module%"
 
+# runfiles-root relative path to the root of the venv
+VENV_ROOT = "%venv_root%"
+
 # venv-relative path to the expected location of the binary's site-packages
 # directory.
 # Only set when the toolchain doesn't support the build-time venv. Empty
@@ -66,7 +69,7 @@ def get_windows_path_with_unc_prefix(path):
             break
         except (ValueError, KeyError):
             pass
-    if win32_version and win32_version >= '10.0.14393':
+    if win32_version and win32_version >= "10.0.14393":
         return path
 
     # import sysconfig only now to maintain python 2.6 compatibility
@@ -373,27 +376,32 @@ source =
             print_verbose_coverage("Error removing temporary coverage rc file:", err)
 
 
+def _add_site_packages(site_packages):
+    first_global_offset = len(sys.path)
+    for i, p in enumerate(sys.path):
+        # We assume the first *-packages is the runtime's.
+        # *-packages is matched because Debian may use dist-packages
+        # instead of site-packages.
+        if p.endswith("-packages"):
+            first_global_offset = i
+            break
+    prev_len = len(sys.path)
+    import site
+
+    site.addsitedir(site_packages)
+    added_dirs = sys.path[prev_len:]
+    del sys.path[prev_len:]
+    # Re-insert the binary specific paths so the order is
+    # (stdlib, binary specific, runtime site)
+    # This matches what a venv's ordering is like.
+    sys.path[first_global_offset:0] = added_dirs
+
+
 def main():
     print_verbose("initial argv:", values=sys.argv)
     print_verbose("initial cwd:", os.getcwd())
     print_verbose("initial environ:", mapping=os.environ)
     print_verbose("initial sys.path:", values=sys.path)
-
-    if VENV_SITE_PACKAGES:
-        site_packages = os.path.join(sys.prefix, VENV_SITE_PACKAGES)
-        if site_packages not in sys.path and os.path.exists(site_packages):
-            # NOTE: if this happens, it likely means we're running with a different
-            # Python version than was built with. Things may or may not work.
-            # Such a situation is likely due to the runtime_env toolchain, or some
-            # toolchain configuration. In any case, this better matches how the
-            # previous bootstrap=system_python bootstrap worked (using PYTHONPATH,
-            # which isn't version-specific).
-            print_verbose(
-                f"sys.path missing expected site-packages: adding {site_packages}"
-            )
-            import site
-
-            site.addsitedir(site_packages)
 
     main_rel_path = None
     # todo: things happen to work because find_runfiles_root
@@ -407,6 +415,23 @@ def main():
         runfiles_root = find_runfiles_root(main_rel_path)
     else:
         runfiles_root = find_runfiles_root("")
+
+    site_packages = os.path.join(runfiles_root, VENV_ROOT, VENV_SITE_PACKAGES)
+    if site_packages not in sys.path and os.path.exists(site_packages):
+        # This can happen in a few situations:
+        # 1. We're running with a different Python version than was built with.
+        #    Things may or may not work. Such a situation is likely due to the
+        #    runtime_env toolchain, or some toolchain configuration. In any
+        #    case, this better matches how the previous bootstrap=system_python
+        #    bootstrap worked (using PYTHONPATH, which isn't version-specific).
+        # 2. If site is disabled (`-S` interpreter arg). Some users do this to
+        #    prevent interference from the system.
+        # 3. If running without a venv configured. This occurs with the
+        #    system_python bootstrap.
+        print_verbose(
+            f"sys.path missing expected site-packages: adding {site_packages}"
+        )
+        _add_site_packages(site_packages)
 
     print_verbose("runfiles root:", runfiles_root)
 

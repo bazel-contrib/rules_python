@@ -25,6 +25,10 @@ The {bzl:obj}`interpreter_args` attribute.
 :::
 
 :::{versionadded} 1.3.0
+:::
+:::{versionchanged} VERSION_NEXT_FEATURE
+Support added for {obj}`--bootstrap_impl=system_python`.
+:::
 
 ::::
 
