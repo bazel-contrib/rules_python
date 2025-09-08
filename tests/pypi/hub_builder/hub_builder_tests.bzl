@@ -106,7 +106,7 @@ def hub_builder(
                 extra_aliases = subjects.dict,
             ),
         ),
-        pip_parse = lambda *a, **k: builder.pip_parse(*a, **k),
+        pip_parse = builder.pip_parse,
     )
     return self
 
