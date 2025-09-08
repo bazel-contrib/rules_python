@@ -37,16 +37,8 @@ use_repo(
 rules_python_config = use_extension(
     "//python/extensions:config.bzl",
     "rules_python_config",
-    dev_dependency = True,
 )
 use_repo(rules_python_config, "rules_python_config")
-rules_python_config.add_transition_setting(
-    # Intentionally add a setting already present for testing
-    setting = "//python/config_settings:python_version",
-)
-rules_python_config.add_transition_setting(
-    setting = "//tests/multi_pypi:external_deps_name",
-)
 
 # We need to do another use_extension call to expose the "pythons_hub"
 # repo.
@@ -230,6 +222,19 @@ use_repo(
     "rules_python_runtime_env_tc_info",
     "somepkg_with_build_files",
     "whl_with_build_files",
+)
+
+dev_rules_python_config = use_extension(
+    "//python/extensions:config.bzl",
+    "rules_python_config",
+    dev_dependency = True,
+)
+dev_rules_python_config.add_transition_setting(
+    # Intentionally add a setting already present for testing
+    setting = "//python/config_settings:python_version",
+)
+dev_rules_python_config.add_transition_setting(
+    setting = "//tests/multi_pypi:external_deps_name",
 )
 
 # Add gazelle plugin so that we can run the gazelle example as an e2e integration
