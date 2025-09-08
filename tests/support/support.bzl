@@ -44,6 +44,7 @@ PRECOMPILE_SOURCE_RETENTION = str(Label("//python/config_settings:precompile_sou
 PYC_COLLECTION = str(Label("//python/config_settings:pyc_collection"))
 PYTHON_VERSION = str(Label("//python/config_settings:python_version"))
 VISIBLE_FOR_TESTING = str(Label("//python/private:visible_for_testing"))
+CUSTOM_RUNTIME = str(Label("//tests/support:custom_runtime"))
 
 SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
