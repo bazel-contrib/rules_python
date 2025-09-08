@@ -23,7 +23,7 @@ load("//python/private:py_binary_macro.bzl", "py_binary_macro")  # buildifier: d
 load("//python/private:py_binary_rule.bzl", "create_py_binary_rule_builder")  # buildifier: disable=bzl-visibility
 load("//python/private:py_test_macro.bzl", "py_test_macro")  # buildifier: disable=bzl-visibility
 load("//python/private:py_test_rule.bzl", "create_py_test_rule_builder")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "VISIBLE_FOR_TESTING")
+load("//tests/support:support.bzl", "CUSTOM_RUNTIME", "VISIBLE_FOR_TESTING")
 
 def _perform_transition_impl(input_settings, attr, base_impl):
     settings = {k: input_settings[k] for k in _RECONFIG_INHERITED_OUTPUTS if k in input_settings}
@@ -48,12 +48,13 @@ def _perform_transition_impl(input_settings, attr, base_impl):
     return settings
 
 _RECONFIG_INPUTS = [
+    "//command_line_option:extra_toolchains",
+    CUSTOM_RUNTIME,
     labels.BOOTSTRAP_IMPL,
     labels.PYTHON_SRC,
     labels.REPL_DEP,
-    "//command_line_option:extra_toolchains",
-    labels.VENVS_USE_DECLARE_SYMLINK,
     labels.VENVS_SITE_PACKAGES,
+    labels.VENVS_USE_DECLARE_SYMLINK,
 ]
 _RECONFIG_OUTPUTS = _RECONFIG_INPUTS + [
     "//command_line_option:build_python_zip",
