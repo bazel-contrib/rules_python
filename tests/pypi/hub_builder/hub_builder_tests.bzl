@@ -96,7 +96,7 @@ def hub_builder(
         ),
     )
     self = struct(
-        build = lambda *a, **k: env.expect.that_struct(
+        build = lambda: env.expect.that_struct(
             builder.build(),
             attrs = dict(
                 exposed_packages = subjects.collection,
