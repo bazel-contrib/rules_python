@@ -495,6 +495,9 @@ _BOOL_TYPE = type(True)
 def is_bool(v):
     return type(v) == _BOOL_TYPE
 
+def is_file(v):
+    return type(v) == "File"
+
 def target_platform_has_any_constraint(ctx, constraints):
     """Check if target platform has any of a list of constraints.
 
@@ -510,6 +513,37 @@ def target_platform_has_any_constraint(ctx, constraints):
         if ctx.target_platform_has_constraint(constraint_value):
             return True
     return False
+
+def relative_path(from_, to):
+    """Compute a relative path from one path to another.
+
+    Args:
+        from_: {type}`str` the starting directory. Note that it should be
+            a directory because relative-symlinks are relative to the
+            directory the symlink resides in.
+        to: {type}`str` the path that `from_` wants to point to
+
+    Returns:
+        {type}`str` a relative path
+    """
+    from_parts = from_.split("/")
+    to_parts = to.split("/")
+
+    # Strip common leading parts from both paths
+    n = min(len(from_parts), len(to_parts))
+    for _ in range(n):
+        if from_parts[0] == to_parts[0]:
+            from_parts.pop(0)
+            to_parts.pop(0)
+        else:
+            break
+
+    # Impossible to compute a relative path without knowing what ".." is
+    if from_parts and from_parts[0] == "..":
+        fail("cannot compute relative path from '%s' to '%s'", from_, to)
+
+    parts = ([".."] * len(from_parts)) + to_parts
+    return paths.join(*parts)
 
 def runfiles_root_path(ctx, short_path):
     """Compute a runfiles-root relative path from `File.short_path`

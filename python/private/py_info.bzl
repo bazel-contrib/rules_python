@@ -56,6 +56,14 @@ VenvSymlinkEntry = provider(
 An entry in `PyInfo.venv_symlinks`
 """,
     fields = {
+        "files": """
+:type: depset[File]
+
+Files under `link_to_path`.
+
+This is only used when multiple targets have overlapping `venv_path` paths. e.g.
+if one adds files to `venv_path=a/` and another adds files to `venv_path=a/b/`.
+""",
         "kind": """
 :type: str
 

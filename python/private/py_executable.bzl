@@ -48,6 +48,7 @@ load(
     "filter_to_py_srcs",
     "get_imports",
     "is_bool",
+    "relative_path",
     "runfiles_root_path",
     "target_platform_has_any_constraint",
 )
@@ -67,6 +68,7 @@ load(
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
 load(":transition_labels.bzl", "TRANSITION_LABELS")
+load(":venv_runfiles.bzl", "create_venv_app_files")
 
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
@@ -504,37 +506,6 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
     )
     return output
 
-def relative_path(from_, to):
-    """Compute a relative path from one path to another.
-
-    Args:
-        from_: {type}`str` the starting directory. Note that it should be
-            a directory because relative-symlinks are relative to the
-            directory the symlink resides in.
-        to: {type}`str` the path that `from_` wants to point to
-
-    Returns:
-        {type}`str` a relative path
-    """
-    from_parts = from_.split("/")
-    to_parts = to.split("/")
-
-    # Strip common leading parts from both paths
-    n = min(len(from_parts), len(to_parts))
-    for _ in range(n):
-        if from_parts[0] == to_parts[0]:
-            from_parts.pop(0)
-            to_parts.pop(0)
-        else:
-            break
-
-    # Impossible to compute a relative path without knowing what ".." is
-    if from_parts and from_parts[0] == "..":
-        fail("cannot compute relative path from '%s' to '%s'", from_, to)
-
-    parts = ([".."] * len(from_parts)) + to_parts
-    return paths.join(*parts)
-
 # Create a venv the executable can use.
 # For venv details and the venv startup process, see:
 # * https://docs.python.org/3/library/venv.html
@@ -641,9 +612,9 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         VenvSymlinkKind.BIN: bin_dir,
         VenvSymlinkKind.LIB: site_packages,
     }
-    venv_symlinks = _create_venv_symlinks(ctx, venv_dir_map)
+    venv_app_files = create_venv_app_files(ctx, venv_dir_map)
 
-    files_without_interpreter = [pth, site_init] + venv_symlinks
+    files_without_interpreter = [pth, site_init] + venv_app_files
     if pyvenv_cfg:
         files_without_interpreter.append(pyvenv_cfg)
 
@@ -667,94 +638,6 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
             ),
         ),
     )
-
-def _create_venv_symlinks(ctx, venv_dir_map):
-    """Creates symlinks within the venv.
-
-    Args:
-        ctx: current rule ctx
-        venv_dir_map: mapping of VenvSymlinkKind constants to the
-            venv path.
-
-    Returns:
-        {type}`list[File]` list of the File symlink objects created.
-    """
-
-    # maps venv-relative path to the runfiles path it should point to
-    entries = depset(
-        transitive = [
-            dep[PyInfo].venv_symlinks
-            for dep in ctx.attr.deps
-            if PyInfo in dep
-        ],
-    ).to_list()
-
-    link_map = _build_link_map(entries)
-    venv_files = []
-    for kind, kind_map in link_map.items():
-        base = venv_dir_map[kind]
-        for venv_path, link_to in kind_map.items():
-            venv_link = ctx.actions.declare_symlink(paths.join(base, venv_path))
-            venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
-            rel_path = relative_path(
-                # dirname is necessary because a relative symlink is relative to
-                # the directory the symlink resides within.
-                from_ = paths.dirname(venv_link_rf_path),
-                to = link_to,
-            )
-            ctx.actions.symlink(output = venv_link, target_path = rel_path)
-            venv_files.append(venv_link)
-
-    return venv_files
-
-def _build_link_map(entries):
-    # dict[str package, dict[str kind, dict[str rel_path, str link_to_path]]]
-    pkg_link_map = {}
-
-    # dict[str package, str version]
-    version_by_pkg = {}
-
-    for entry in entries:
-        link_map = pkg_link_map.setdefault(entry.package, {})
-        kind_map = link_map.setdefault(entry.kind, {})
-
-        if version_by_pkg.setdefault(entry.package, entry.version) != entry.version:
-            # We ignore duplicates by design.
-            continue
-        elif entry.venv_path in kind_map:
-            # We ignore duplicates by design.
-            continue
-        else:
-            kind_map[entry.venv_path] = entry.link_to_path
-
-    # An empty link_to value means to not create the site package symlink. Because of the
-    # ordering, this allows binaries to remove entries by having an earlier dependency produce
-    # empty link_to values.
-    for link_map in pkg_link_map.values():
-        for kind, kind_map in link_map.items():
-            for dir_path, link_to in kind_map.items():
-                if not link_to:
-                    kind_map.pop(dir_path)
-
-    # dict[str kind, dict[str rel_path, str link_to_path]]
-    keep_link_map = {}
-
-    # Remove entries that would be a child path of a created symlink.
-    # Earlier entries have precedence to match how exact matches are handled.
-    for link_map in pkg_link_map.values():
-        for kind, kind_map in link_map.items():
-            keep_kind_map = keep_link_map.setdefault(kind, {})
-            for _ in range(len(kind_map)):
-                if not kind_map:
-                    break
-                dirname, value = kind_map.popitem()
-                keep_kind_map[dirname] = value
-                prefix = dirname + "/"  # Add slash to prevent /X matching /XY
-                for maybe_suffix in kind_map.keys():
-                    maybe_suffix += "/"  # Add slash to prevent /X matching /XY
-                    if maybe_suffix.startswith(prefix) or prefix.startswith(maybe_suffix):
-                        kind_map.pop(maybe_suffix)
-    return keep_link_map
 
 def _map_each_identity(v):
     return v

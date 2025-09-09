@@ -14,14 +14,26 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
     def assert_imported_from_venv(self, module_name):
         module = importlib.import_module(module_name)
         self.assertEqual(module.__name__, module_name)
+        self.assertIsNotNone(
+            module.__file__,
+            f"Expected module {module_name!r} to have"
+            + f"__file__ set, but got None. {module=}",
+        )
         self.assertTrue(
             module.__file__.startswith(self.venv),
             f"\n{module_name} was imported, but not from the venv.\n"
             + f"venv  : {self.venv}\n"
             + f"actual: {module.__file__}",
         )
+        return module
 
     def test_imported_from_venv(self):
+        m = self.assert_imported_from_venv("pkgutil_top")
+        self.assertEqual(m.WHOAMI, "pkgutil_top")
+
+        m = self.assert_imported_from_venv("pkgutil_top.sub")
+        self.assertEqual(m.WHOAMI, "pkgutil_top.sub")
+
         self.assert_imported_from_venv("nspkg.subnspkg.alpha")
         self.assert_imported_from_venv("nspkg.subnspkg.beta")
         self.assert_imported_from_venv("nspkg.subnspkg.gamma")

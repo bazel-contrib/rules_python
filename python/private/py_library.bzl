@@ -277,7 +277,12 @@ def _get_venv_symlinks(ctx, package, version_str):
 
     dir_symlinks = {}  # dirname -> runfile path
     venv_symlinks = []
-    for src in ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs:
+    all_files = sorted(
+        ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
+        key = lambda f: f.short_path,
+    )
+
+    for src in all_files:
         path = _repo_relative_short_path(src.short_path)
         if not path.startswith(site_packages_root):
             continue
@@ -309,6 +314,7 @@ def _get_venv_symlinks(ctx, package, version_str):
                 package = package,
                 version = version_str,
                 venv_path = filename,
+                files = depset([src]),
             )
             venv_symlinks.append(entry)
 
@@ -328,12 +334,18 @@ def _get_venv_symlinks(ctx, package, version_str):
 
     for dirname in first_level_explicit_packages:
         prefix = dir_symlinks[dirname]
+        link_to_path = paths.join(prefix, site_packages_root, dirname)
         entry = VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
-            link_to_path = paths.join(prefix, site_packages_root, dirname),
+            link_to_path = link_to_path,
             package = package,
             version = version_str,
             venv_path = dirname,
+            files = depset([
+                f
+                for f in all_files
+                if runfiles_root_path(ctx, f.short_path).startswith(link_to_path + "/")
+            ]),
         )
         venv_symlinks.append(entry)
 
