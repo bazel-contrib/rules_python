@@ -33,7 +33,7 @@ In this example, we create a custom string flag named `//:pypi_hub`,
 register it to allow using it with `py_binary` directly, then use `select()`
 to pick different dependencies.
 
-```
+```bzl
 # File: MODULE.bazel
 
 rules_python_config.add_transition_setting(
@@ -42,7 +42,7 @@ rules_python_config.add_transition_setting(
 
 # File: BUILD.bazel
 
-```bazel
+```bzl
 
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
