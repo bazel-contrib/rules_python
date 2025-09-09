@@ -17,6 +17,7 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(":attr_builders.bzl", "attrb")
+load(":common_labels.bzl", "labels")
 load(":enum.bzl", "enum")
 load(":flags.bzl", "PrecompileFlag", "PrecompileSourceRetentionFlag")
 load(":py_info.bzl", "PyInfo")
@@ -370,11 +371,11 @@ files that may be needed at run time belong in `data`.
             doc = "Defunct, unused, does nothing.",
         ),
         "_precompile_flag": lambda: attrb.Label(
-            default = "//python/config_settings:precompile",
+            default = labels.PRECOMPILE,
             providers = [BuildSettingInfo],
         ),
         "_precompile_source_retention_flag": lambda: attrb.Label(
-            default = "//python/config_settings:precompile_source_retention",
+            default = labels.PRECOMPILE_SOURCE_RETENTION,
             providers = [BuildSettingInfo],
         ),
         # Force enabling auto exec groups, see

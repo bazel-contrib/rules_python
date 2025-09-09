@@ -20,6 +20,7 @@ https://github.com/bazel-contrib/rules_python/issues/824 is considered done.
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load(":common_labels.bzl", "labels")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
 
 def _py_cc_toolchain_impl(ctx):
@@ -70,7 +71,7 @@ py_cc_toolchain = rule(
             mandatory = True,
         ),
         "_visible_for_testing": attr.label(
-            default = "//python/private:visible_for_testing",
+            default = labels.VISIBLE_FOR_TESTING,
         ),
     },
     doc = """\

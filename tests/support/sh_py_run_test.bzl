@@ -18,6 +18,7 @@ without the overhead of a bazel-in-bazel integration test.
 """
 
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
 load(":py_reconfig.bzl", "py_reconfig_binary")
 
@@ -79,7 +80,7 @@ This is so tests can verify information about the build config used for them.
     implementation = _current_build_settings_impl,
     attrs = {
         "_bootstrap_impl_flag": attr.label(
-            default = "//python/config_settings:bootstrap_impl",
+            default = labels.BOOTSTRAP_IMPL,
         ),
     },
     toolchains = [

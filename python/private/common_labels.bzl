@@ -9,9 +9,10 @@ labels = struct(
     BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl")),
     EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
-    PIP_WHL_MUSLC_VERSION = str(Label("//python/config_settings:pip_whl_muslc_version")),
+    NONE = str(Label("//python:none")),
     PIP_WHL = str(Label("//python/config_settings:pip_whl")),
     PIP_WHL_GLIBC_VERSION = str(Label("//python/config_settings:pip_whl_glibc_version")),
+    PIP_WHL_MUSLC_VERSION = str(Label("//python/config_settings:pip_whl_muslc_version")),
     PIP_WHL_OSX_ARCH = str(Label("//python/config_settings:pip_whl_osx_arch")),
     PIP_WHL_OSX_VERSION = str(Label("//python/config_settings:pip_whl_osx_version")),
     PRECOMPILE = str(Label("//python/config_settings:precompile")),
@@ -24,4 +25,5 @@ labels = struct(
     REPL_DEP = str(Label("//python/bin:repl_dep")),
     VENVS_SITE_PACKAGES = str(Label("//python/config_settings:venvs_site_packages")),
     VENVS_USE_DECLARE_SYMLINK = str(Label("//python/config_settings:venvs_use_declare_symlink")),
+    VISIBLE_FOR_TESTING = str(Label("//python/private:visible_for_testing")),
 )
