@@ -23,7 +23,6 @@ _BASE_TRANSITION_LABELS = [
     labels.PYTHON_VERSION,
     labels.PY_FREETHREADED,
     labels.PY_LINUX_LIBC,
-    labels.REPL_DEP,
     labels.VENVS_SITE_PACKAGES,
     labels.VENVS_USE_DECLARE_SYMLINK,
 ]
