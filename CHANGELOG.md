@@ -85,7 +85,7 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) {obj}`--bootstrap_impl=system_python` now supports the
   {obj}`main_module` attribute.
 * (bootstrap) {obj}`--bootstrap_impl=system_python` now supports the
-  {any}`RULES_PYTHON_ADDITIONAL_INTERPRIETER_ARGS` environment variable.
+  {any}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` environment variable.
 * (rules) The `py_binary`, `py_test`, and `py_wheel` rules now have a
   {obj}`config_settings` attribute to control build flags within the build graph.
   Custom settings can be added using {obj}`config.add_transition_setting` in
