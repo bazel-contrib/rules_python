@@ -1,3 +1,4 @@
+(common-deps-with-multiple-pypi-versions)=
 # How to use a common set of dependencies with multiple PyPI versions
 
 In this guide, we show how to handle a situation common to monorepos
