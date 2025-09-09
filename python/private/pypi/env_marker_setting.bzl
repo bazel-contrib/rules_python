@@ -1,8 +1,8 @@
 """Implement a flag for matching the dependency specifiers at analysis time."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("//python/private:common_labels.bzl", "labels")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
-load(":common_labels.bzl", "labels")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
 load(":pep508_env.bzl", "create_env", "set_missing_env_defaults")
 load(":pep508_evaluate.bzl", "evaluate")

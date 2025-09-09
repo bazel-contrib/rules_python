@@ -17,6 +17,7 @@ labels = struct(
     PIP_WHL_OSX_VERSION = str(Label("//python/config_settings:pip_whl_osx_version")),
     PRECOMPILE = str(Label("//python/config_settings:precompile")),
     PRECOMPILE_SOURCE_RETENTION = str(Label("//python/config_settings:precompile_source_retention")),
+    PYC_COLLECTION = str(Label("//python/config_settings:pyc_collection")),
     PYTHON_SRC = str(Label("//python/bin:python_src")),
     PYTHON_VERSION = str(Label("//python/config_settings:python_version")),
     PYTHON_VERSION_MAJOR_MINOR = str(Label("//python/config_settings:python_version_major_minor")),

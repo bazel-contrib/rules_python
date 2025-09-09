@@ -23,13 +23,11 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_info_subject.bzl", "py_info_subject")
 load(
     "//tests/support:support.bzl",
-    "ADD_SRCS_TO_RUNFILES",
     "CC_TOOLCHAIN",
-    "EXEC_TOOLS_TOOLCHAIN",
-    "PRECOMPILE",
     "PY_TOOLCHAINS",
 )
 
@@ -38,7 +36,7 @@ _COMMON_CONFIG_SETTINGS = {
     # it for conformity.
     "//command_line_option:allow_unresolved_symlinks": True,
     "//command_line_option:extra_toolchains": [PY_TOOLCHAINS, CC_TOOLCHAIN],
-    EXEC_TOOLS_TOOLCHAIN: "enabled",
+    labels.EXEC_TOOLS_TOOLCHAIN: "enabled",
 }
 
 _tests = []
@@ -150,7 +148,7 @@ def _test_precompile_enabled_py_library_add_to_runfiles_disabled(name):
         name = name,
         impl = _test_precompile_enabled_py_library_add_to_runfiles_disabled_impl,
         config_settings = {
-            ADD_SRCS_TO_RUNFILES: "disabled",
+            labels.ADD_SRCS_TO_RUNFILES: "disabled",
         },
     )
 
@@ -166,7 +164,7 @@ def _test_precompile_enabled_py_library_add_to_runfiles_enabled(name):
         name = name,
         impl = _test_precompile_enabled_py_library_add_to_runfiles_enabled_impl,
         config_settings = {
-            ADD_SRCS_TO_RUNFILES: "enabled",
+            labels.ADD_SRCS_TO_RUNFILES: "enabled",
         },
     )
 
@@ -203,7 +201,7 @@ def _test_pyc_only(name):
         name = name,
         impl = _test_pyc_only_impl,
         config_settings = _COMMON_CONFIG_SETTINGS | {
-            PRECOMPILE: "enabled",
+            labels.PRECOMPILE: "enabled",
         },
         target = name + "_subject",
     )
@@ -310,7 +308,7 @@ def _setup_precompile_flag_pyc_collection_attr_interaction(
         impl = test_impl,
         target = name + "_bin",
         config_settings = _COMMON_CONFIG_SETTINGS | {
-            PRECOMPILE: precompile_flag,
+            labels.PRECOMPILE: precompile_flag,
         },
     )
 
@@ -531,7 +529,7 @@ def _test_precompile_attr_inherit_pyc_collection_disabled_precompile_flag_enable
         impl = _test_precompile_attr_inherit_pyc_collection_disabled_precompile_flag_enabled_impl,
         target = name + "_subject",
         config_settings = _COMMON_CONFIG_SETTINGS | {
-            PRECOMPILE: "enabled",
+            labels.PRECOMPILE: "enabled",
         },
     )
 
