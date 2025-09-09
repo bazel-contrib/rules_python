@@ -79,6 +79,10 @@ END_UNRELEASED_TEMPLATE
   length errors due to too long environment variables.
 * (bootstrap) {obj}`--bootstrap_impl=script` now supports the `-S` interpreter
   setting.
+* (pypi) We now by default select the highest closest match wheel version if the user is
+  specifying a particular version via the `whl_platform_tags` or if any version is matched via
+  the `*` token, then we select the lowest available version.
+  Fixes [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
 
 {#v0-0-0-added}
 ### Added
