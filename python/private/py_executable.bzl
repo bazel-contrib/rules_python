@@ -894,6 +894,7 @@ def _create_stage1_bootstrap(
         template = template,
         output = output,
         substitutions = subs,
+        is_executable = True,
     )
 
 def _create_windows_exe_launcher(
