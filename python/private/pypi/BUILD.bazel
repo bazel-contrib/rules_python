@@ -115,6 +115,7 @@ bzl_library(
         ":parse_whl_name_bzl",
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
+        ":platform_bzl",
         ":simpleapi_download_bzl",
         ":whl_library_bzl",
         "//python/private:auth_bzl",
@@ -339,6 +340,11 @@ bzl_library(
         "//python/private:text_util_bzl",
         "@bazel_skylib//lib:selects",
     ],
+)
+
+bzl_library(
+    name = "platform_bzl",
+    srcs = ["platform.bzl"],
 )
 
 bzl_library(

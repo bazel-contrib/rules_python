@@ -27,6 +27,7 @@ load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
+load(":platform.bzl", _plat = "platform")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_library.bzl", "whl_library")
 
@@ -54,31 +55,6 @@ def _whl_mods_impl(whl_mods_dict):
             name = hub_name,
             whl_mods = whl_mods,
         )
-
-def _plat(*, name, arch_name, os_name, config_settings = [], env = {}, marker = "", whl_abi_tags = [], whl_platform_tags = []):
-    # NOTE @aignas 2025-07-08: the least preferred is the first item in the list
-    if "any" not in whl_platform_tags:
-        # the lowest priority one needs to be the first one
-        whl_platform_tags = ["any"] + whl_platform_tags
-
-    whl_abi_tags = whl_abi_tags or ["abi3", "cp{major}{minor}"]
-    if "none" not in whl_abi_tags:
-        # the lowest priority one needs to be the first one
-        whl_abi_tags = ["none"] + whl_abi_tags
-
-    return struct(
-        name = name,
-        arch_name = arch_name,
-        os_name = os_name,
-        config_settings = config_settings,
-        env = {
-            # defaults for env
-            "implementation_name": "cpython",
-        } | env,
-        marker = marker,
-        whl_abi_tags = whl_abi_tags,
-        whl_platform_tags = whl_platform_tags,
-    )
 
 def _configure(config, *, override = False, **kwargs):
     """Set the value in the config if the value is provided"""
