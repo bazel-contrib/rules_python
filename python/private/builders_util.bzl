@@ -17,12 +17,12 @@
 load("@bazel_skylib//lib:types.bzl", "types")
 load(":bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 
-def normalize_transition_inout_values(arg_name, values):
+def normalize_transition_in_out_values(arg_name, values):
     """Normalize transition inputs/outputs to canonical label strings."""
     for i, value in enumerate(values):
-        values[i] = normalize_transition_inout_value(arg_name, value)
+        values[i] = normalize_transition_in_out_value(arg_name, value)
 
-def normalize_transition_inout_value(arg_name, value):
+def normalize_transition_in_out_value(arg_name, value):
     """Normalize a transition input/output value to a canonical label string.
 
     Args:

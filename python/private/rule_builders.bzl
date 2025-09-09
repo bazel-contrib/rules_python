@@ -108,8 +108,8 @@ load(
     "kwargs_setter",
     "kwargs_setter_doc",
     "list_add_unique",
-    "normalize_transition_inout_value",
-    "normalize_transition_inout_values",
+    "normalize_transition_in_out_value",
+    "normalize_transition_in_out_values",
 )
 
 # Various string constants for kwarg key names used across two or more
@@ -316,8 +316,8 @@ def _RuleCfg_new(rule_cfg_arg):
     kwargs_set_default_list(state, _INPUTS)
     kwargs_set_default_list(state, _OUTPUTS)
 
-    normalize_transition_inout_values("input", state[_INPUTS])
-    normalize_transition_inout_values("output", state[_OUTPUTS])
+    normalize_transition_in_out_values("input", state[_INPUTS])
+    normalize_transition_in_out_values("output", state[_OUTPUTS])
 
     # buildifier: disable=uninitialized
     self = struct(
@@ -406,7 +406,7 @@ def _RuleCfg_update_inputs(self, *others):
     list_add_unique(
         self._state[_INPUTS],
         others,
-        convert = lambda v: normalize_transition_inout_value("input", v),
+        convert = lambda v: normalize_transition_in_out_value("input", v),
     )
 
 def _RuleCfg_update_outputs(self, *others):
@@ -422,7 +422,7 @@ def _RuleCfg_update_outputs(self, *others):
     list_add_unique(
         self._state[_OUTPUTS],
         others,
-        convert = lambda v: normalize_transition_inout_value("output", v),
+        convert = lambda v: normalize_transition_in_out_value("output", v),
     )
 
 # buildifier: disable=name-conventions
