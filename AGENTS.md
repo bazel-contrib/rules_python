@@ -25,8 +25,7 @@ into the sentence, not verbatim.
 * They should have a single `srcs` file and be named after the file with `_bzl`
   appended.
 * Their deps should be based on the `load()` statements in the source file.
-* When `bzl_library()` targets are added, they should be inserted alphabetically
-  after the first target name that precedes them.
+* `bzl_library()` targets should be kept in alphabetical order by name.
 
 Example:
 
