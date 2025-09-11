@@ -22,9 +22,9 @@ class LocalToolchainTest(unittest.TestCase):
         # runs e.g. /usr/bin/python3
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = os.path.join(temp_dir, "info.py")
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 f.write(
-                """
+                    """
 import sys
 print(sys.executable)
 print(sys._base_executable)
