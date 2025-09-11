@@ -106,6 +106,9 @@ class _DirectoryBased:
             raise TypeError()
         self._runfiles_root = path
 
+    def _GetRunfilesDir(self) -> str:
+        return self._runfiles_root
+
     def RlocationChecked(self, path: str) -> str:
         # Use posixpath instead of os.path, because Bazel only creates a runfiles
         # tree on Unix platforms, so `Create()` will only create a directory-based
@@ -129,7 +132,7 @@ class Runfiles:
 
     def __init__(self, strategy: Union[_ManifestBased, _DirectoryBased]) -> None:
         self._strategy = strategy
-        self._python_runfiles_root = _FindPythonRunfilesRoot()
+        self._python_runfiles_root = self._strategy._GetRunfilesDir()
         self._repo_mapping = _ParseRepoMapping(
             strategy.RlocationChecked("_repo_mapping")
         )
@@ -345,19 +348,6 @@ class Runfiles:
 
 # Support legacy imports by defining a private symbol.
 _Runfiles = Runfiles
-
-
-def _FindPythonRunfilesRoot() -> str:
-    """Finds the root of the Python runfiles tree."""
-    root = __file__
-    # Walk up our own runfiles path to the root of the runfiles tree from which
-    # the current file is being run. This path coincides with what the Bazel
-    # Python stub sets up as sys.path[0]. Since that entry can be changed at
-    # runtime, we rederive it here.
-    for _ in range("rules_python/python/runfiles/runfiles.py".count("/") + 1):
-        root = os.path.dirname(root)
-    return root
-
 
 def _ParseRepoMapping(repo_mapping_path: Optional[str]) -> Dict[Tuple[str, str], str]:
     """Parses the repository mapping manifest."""
