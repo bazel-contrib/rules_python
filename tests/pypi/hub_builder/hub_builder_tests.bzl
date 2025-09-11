@@ -40,7 +40,7 @@ simple==0.0.1 \
 
 def hub_builder(
         env,
-        enable_pipstar = False,
+        enable_pipstar = True,
         debug = False,
         config = None,
         minor_mapping = {},
@@ -405,7 +405,7 @@ def _test_torch_experimental_index_url(env):
         env,
         config = struct(
             netrc = None,
-            enable_pipstar = False,
+            enable_pipstar = True,
             auth_patterns = {},
             platforms = {
                 "{}_{}".format(os, cpu): _plat(
@@ -516,7 +516,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     pypi.whl_libraries().contains_exactly({
         "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": ["linux_x86_64"],
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1+cpu",
@@ -525,7 +524,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": ["linux_aarch64"],
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1",
@@ -534,7 +532,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": ["windows_x86_64"],
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1+cpu",
@@ -543,7 +540,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": ["osx_aarch64"],
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1",
@@ -621,8 +617,6 @@ simple==0.0.3 \
         "pypi_315_extra": {
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
-            # TODO @aignas 2025-04-20: ensure that this is in the hub repo
-            # "experimental_target_platforms": ["cp315_linux_x86_64"],
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "extra==0.0.1 --hash=sha256:deadb00f",
@@ -821,12 +815,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
     pypi.whl_libraries().contains_exactly({
         "pypi_315_any_name": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": [
-                "linux_aarch64",
-                "linux_x86_64",
-                "osx_aarch64",
-                "windows_aarch64",
-            ],
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -836,12 +824,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_direct_without_sha_0_0_1_py3_none_any": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": [
-                "linux_aarch64",
-                "linux_x86_64",
-                "osx_aarch64",
-                "windows_aarch64",
-            ],
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "direct_without_sha==0.0.1",
@@ -862,12 +844,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_simple_py3_none_any_deadb00f": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": [
-                "linux_aarch64",
-                "linux_x86_64",
-                "osx_aarch64",
-                "windows_aarch64",
-            ],
             "filename": "simple-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1",
@@ -876,12 +852,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_some_pkg_py3_none_any_deadbaaf": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": [
-                "linux_aarch64",
-                "linux_x86_64",
-                "osx_aarch64",
-                "windows_aarch64",
-            ],
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "some_pkg==0.0.1",
@@ -890,12 +860,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
         "pypi_315_some_py3_none_any_deadb33f": {
             "dep_template": "@pypi//{name}:{target}",
-            "experimental_target_platforms": [
-                "linux_aarch64",
-                "linux_x86_64",
-                "osx_aarch64",
-                "windows_aarch64",
-            ],
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "some_other_pkg==0.0.1",
