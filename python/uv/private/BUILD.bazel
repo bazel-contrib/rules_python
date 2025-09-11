@@ -43,6 +43,7 @@ bzl_library(
         ":toolchain_types_bzl",
         "//python:py_binary_bzl",
         "//python/private:bzlmod_enabled_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:toolchain_types_bzl",
         "@bazel_skylib//lib:shell",
     ],
@@ -63,6 +64,7 @@ bzl_library(
         ":uv_repository_bzl",
         ":uv_toolchains_repo_bzl",
         "//python/private:auth_bzl",
+        "//python/private:common_labels_bzl",
     ],
 )
 
