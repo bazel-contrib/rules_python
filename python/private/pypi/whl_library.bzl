@@ -619,7 +619,15 @@ attr makes `extra_pip_args` and `download_only` ignored.""",
     ),
     "whl_patches": attr.label_keyed_string_dict(
         doc = """
-A label-keyed-string dict that has json.encode(struct([whls], patch_strip]) as values.
+A label-keyed-string dict with patch files as keys and json-strings as values.
+
+The keys are labels to the patch file to apply.
+
+The values describe what to apply the patch to and how to apply it.
+It is encoded as `json.encode(struct([whls], patch_strip])`,
+where `whls` is a `list[str`] of wheel filenames, and `patch_strip`
+is a number.
+
 So it will look something like this:
 ```
 "//path/to/package:my.patch": json.encode(struct(
