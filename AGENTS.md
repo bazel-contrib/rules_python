@@ -19,6 +19,28 @@ using a grandoise title.
 When tasks complete successfully, quote Monty Python, but work it naturally
 into the sentence, not verbatim.
 
+### bzl_library targets for bzl source files
+
+* `.bzl` files should have `bzl_library` defined for them.
+* They should have a single `srcs` file and be named after the file with `_bzl`
+  appended.
+* Their deps should be based on the `load()` statements in the source file.
+* `bzl_library()` targets should be kept in alphabetical order by name.
+
+Example:
+
+```
+bzl_library(
+    name = "alpha_bzl",
+    srcs = ["alpha.bzl"],
+    deps = [":beta_bzl"],
+)
+bzl_library(
+    name = "beta_bzl",
+    srcs = ["beta.bzl"]
+)
+```
+
 ## Building and testing
 
 Tests are under the `tests/` directory.
@@ -67,3 +89,11 @@ When modifying locked/resolved requirements files:
 
 When building `//docs:docs`, ignore an error about exit code 2; this is a flake,
 so try building again.
+
+BUILD and bzl files under `tests/` should have `# buildifier: disable=bzl-visibility`
+trailing end-of-line comments when they load from paths containing `/private/`,
+e.g.
+
+```
+load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility
+```

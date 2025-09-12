@@ -577,6 +577,9 @@ whl_library_attrs = dict({
 The dep template to use for referencing the dependencies. It should have `{name}`
 and `{target}` tokens that will be replaced with the normalized distribution name
 and the target that we need respectively.
+
+For example if your whl depends on `numpy` and your Python package repo is named
+`pip` so that you would normally do `@pip//numpy`, then this should be: `@pip//{name}`.
 """,
     ),
     "filename": attr.string(
@@ -615,11 +618,29 @@ attr makes `extra_pip_args` and `download_only` ignored.""",
         doc = "The whl file that should be used instead of downloading or building the whl.",
     ),
     "whl_patches": attr.label_keyed_string_dict(
-        doc = """a label-keyed-string dict that has
-            json.encode(struct([whl_file], patch_strip]) as values. This
-            is to maintain flexibility and correct bzlmod extension interface
-            until we have a better way to define whl_library and move whl
-            patching to a separate place. INTERNAL USE ONLY.""",
+        doc = """
+A label-keyed-string dict with patch files as keys and json-strings as values.
+
+The keys are labels to the patch file to apply.
+
+The values describe what to apply the patch to and how to apply it.
+It is encoded as `json.encode(struct([whls], patch_strip])`,
+where `whls` is a `list[str`] of wheel filenames, and `patch_strip`
+is a number.
+
+So it will look something like this:
+```
+"//path/to/package:my.patch": json.encode(struct(
+    whls = ["something-2.7.1-py3-none-any.whl"],
+    patch_strip = 1,
+)),
+```
+The patch is applied within the scope of the .whl file.
+I.e. you should create the patch from the same place you unziped the wheel.
+
+
+This is to maintain flexibility and correct bzlmod extension interface until we have a better
+way to define whl_library and move whl patching to a separate place. INTERNAL USE ONLY.""",
     ),
     "_python_path_entries": attr.label_list(
         # Get the root directory of these rules and keep them as a default attribute
