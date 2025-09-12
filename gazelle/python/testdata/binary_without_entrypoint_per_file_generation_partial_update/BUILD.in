@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_binary")
 # gazelle:python_generation_mode file
 
 py_binary(
-    name = "a",
+    name = "a_bin",
     srcs = ["a.py"],
     visibility = ["//:__subpackages__"],
 )
