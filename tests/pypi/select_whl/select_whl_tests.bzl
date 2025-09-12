@@ -406,9 +406,10 @@ def _test_multiple_musllinux(env):
     _match(
         env,
         got,
-        # select the one with the highest version that is matching
-        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        # select the one with the lowest version that is matching because we want to
+        # increase the compatibility
         "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
     )
 
 _tests.append(_test_multiple_musllinux)
@@ -433,6 +434,28 @@ def _test_multiple_musllinux_exact_params(env):
     )
 
 _tests.append(_test_multiple_musllinux_exact_params)
+
+def _test_multiple_highest_closest_match(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-musllinux_1_4_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        ],
+        whl_platform_tags = ["musllinux_1_3_x86_64"],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        # select the one with the lowest version, because of the input to the function
+        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+    )
+
+_tests.append(_test_multiple_highest_closest_match)
 
 def _test_android(env):
     got = _select_whl(
