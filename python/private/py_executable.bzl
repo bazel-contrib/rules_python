@@ -1266,7 +1266,8 @@ def _get_runtime_details(ctx, semantics):
     #
     # TOOD(bazelbuild/bazel#7901): Remove this once --python_path flag is removed.
 
-    flag_interpreter_path = ctx.fragments.bazel_py.python_path
+    ##flag_interpreter_path = ctx.fragments.bazel_py.python_path
+    flag_interpreter_path = ""
     toolchain_runtime, effective_runtime = _maybe_get_runtime_from_ctx(ctx)
     if not effective_runtime:
         # Clear these just in case
