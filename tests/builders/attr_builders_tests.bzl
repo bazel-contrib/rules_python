@@ -18,6 +18,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "truth")
 load("//python/private:attr_builders.bzl", "attrb")  # buildifier: disable=bzl-visibility
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 
 def _expect_cfg_defaults(expect, cfg):
     expect.where(expr = "cfg.outputs").that_collection(cfg.outputs()).contains_exactly([])
@@ -41,7 +42,7 @@ def _report_failures(name, env):
 
     analysis_test(
         name = name,
-        target = "//python:none",
+        target = labels.NONE,
         impl = _report_failures_impl,
     )
 

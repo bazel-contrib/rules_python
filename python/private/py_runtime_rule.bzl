@@ -17,6 +17,7 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":attributes.bzl", "NATIVE_RULES_ALLOWLIST_ATTRS")
+load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
@@ -379,10 +380,10 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 """,
             ),
             "_py_freethreaded_flag": attr.label(
-                default = "//python/config_settings:py_freethreaded",
+                default = labels.PY_FREETHREADED,
             ),
             "_python_version_flag": attr.label(
-                default = "//python/config_settings:python_version",
+                default = labels.PYTHON_VERSION,
             ),
         },
     ),

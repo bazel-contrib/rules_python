@@ -17,6 +17,7 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/uv:uv_toolchain_info.bzl", "UvToolchainInfo")
 load("//python/uv/private:uv.bzl", "process_modules")  # buildifier: disable=bzl-visibility
 load("//python/uv/private:uv_toolchain.bzl", "uv_toolchain")  # buildifier: disable=bzl-visibility
@@ -166,7 +167,7 @@ def _test_only_defaults(env):
         "none",
     ])
     uv.implementations().contains_exactly({
-        "none": str(Label("//python:none")),
+        "none": labels.NONE,
     })
     uv.compatible_with().contains_exactly({
         "none": ["@platforms//:incompatible"],

@@ -17,6 +17,7 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load(
     "//python/private:toolchain_types.bzl",
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
@@ -24,7 +25,7 @@ load(
     "TARGET_TOOLCHAIN_TYPE",
 )  # buildifier: disable=bzl-visibility
 load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "EXEC_TOOLS_TOOLCHAIN", "VISIBLE_FOR_TESTING")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 
 _LookupInfo = provider()  # buildifier: disable=provider-params
 
@@ -79,8 +80,8 @@ def _test_runtime_env_toolchain_matches(name):
         target = name + "_subject",
         config_settings = {
             "//command_line_option:extra_toolchains": extra_toolchains,
-            EXEC_TOOLS_TOOLCHAIN: "enabled",
-            VISIBLE_FOR_TESTING: True,
+            labels.EXEC_TOOLS_TOOLCHAIN: "enabled",
+            labels.VISIBLE_FOR_TESTING: True,
         },
     )
 

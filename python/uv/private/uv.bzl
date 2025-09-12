@@ -19,6 +19,7 @@ A module extension for working with uv.
 """
 
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
+load("//python/private:common_labels.bzl", "labels")
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 load(":uv_repository.bzl", "uv_repository")
 load(":uv_toolchains_repo.bzl", "uv_toolchains_repo")
@@ -288,7 +289,7 @@ def process_modules(
             toolchain_names = ["none"],
             toolchain_implementations = {
                 # NOTE @aignas 2025-02-24: the label to the toolchain can be anything
-                "none": str(Label("//python:none")),
+                "none": labels.NONE,
             },
             toolchain_compatible_with = {
                 "none": ["@platforms//:incompatible"],

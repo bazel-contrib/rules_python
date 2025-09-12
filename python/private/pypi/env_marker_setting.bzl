@@ -1,6 +1,7 @@
 """Implement a flag for matching the dependency specifiers at analysis time."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("//python/private:common_labels.bzl", "labels")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
 load(":pep508_env.bzl", "create_env", "set_missing_env_defaults")
@@ -85,15 +86,15 @@ for the specification of behavior.
             doc = "Environment marker expression to evaluate.",
         ),
         "_env_marker_config_flag": attr.label(
-            default = "//python/config_settings:pip_env_marker_config",
+            default = labels.PIP_ENV_MARKER_CONFIG,
             providers = [EnvMarkerInfo],
         ),
         "_python_full_version_flag": attr.label(
-            default = "//python/config_settings:python_version",
+            default = labels.PYTHON_VERSION,
             providers = [config_common.FeatureFlagInfo],
         ),
         "_python_version_major_minor_flag": attr.label(
-            default = "//python/config_settings:python_version_major_minor",
+            default = labels.PYTHON_VERSION_MAJOR_MINOR,
             providers = [config_common.FeatureFlagInfo],
         ),
     },

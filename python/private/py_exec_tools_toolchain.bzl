@@ -16,6 +16,7 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load(":common_labels.bzl", "labels")
 load(":py_exec_tools_info.bzl", "PyExecToolsInfo")
 load(":sentinel.bzl", "SentinelInfo")
 load(":toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
@@ -89,7 +90,7 @@ so that the toolchain `py_runtime` field can be correctly forwarded.
             doc = "See {obj}`PyExecToolsInfo.precompiler`",
         ),
         "_visible_for_testing": attr.label(
-            default = "//python/private:visible_for_testing",
+            default = labels.VISIBLE_FOR_TESTING,
         ),
     },
 )

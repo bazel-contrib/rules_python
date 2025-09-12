@@ -20,9 +20,9 @@ load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:util.bzl", br_util = "util")
 load("//tests/support:py_runtime_info_subject.bzl", "py_runtime_info_subject")
-load("//tests/support:support.bzl", "PYTHON_VERSION")
 
 _tests = []
 
@@ -543,7 +543,7 @@ def _test_version_info_from_flag(name):
         target = name + "_subject",
         impl = _test_version_info_from_flag_impl,
         config_settings = {
-            PYTHON_VERSION: "3.12",
+            labels.PYTHON_VERSION: "3.12",
         },
     )
 

@@ -63,6 +63,7 @@ bzl_library(
     srcs = ["config_settings.bzl"],
     deps = [
         ":flags_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:flags_bzl",
         "@bazel_skylib//lib:selects",
     ],
@@ -89,6 +90,7 @@ bzl_library(
         ":env_marker_info_bzl",
         ":pep508_env_bzl",
         ":pep508_evaluate_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:toolchain_types_bzl",
         "@bazel_skylib//rules:common_settings",
     ],
@@ -337,6 +339,7 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:text_util_bzl",
         "@bazel_skylib//lib:selects",
     ],

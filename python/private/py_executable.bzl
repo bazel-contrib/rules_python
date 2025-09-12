@@ -51,6 +51,7 @@ load(
     "runfiles_root_path",
     "target_platform_has_any_constraint",
 )
+load(":common_labels.bzl", "labels")
 load(":flags.bzl", "BootstrapImplFlag", "VenvsUseDeclareSymlinkFlag")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
@@ -60,18 +61,12 @@ load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
-load(
-    ":toolchain_types.bzl",
-    "EXEC_TOOLS_TOOLCHAIN_TYPE",
-    "TARGET_TOOLCHAIN_TYPE",
-    TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
-)
+load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
-_PYTHON_VERSION_FLAG = str(Label("//python/config_settings:python_version"))
 
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
@@ -192,7 +187,7 @@ accepting arbitrary Python versions.
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
         "_bootstrap_impl_flag": lambda: attrb.Label(
-            default = "//python/config_settings:bootstrap_impl",
+            default = labels.BOOTSTRAP_IMPL,
             providers = [BuildSettingInfo],
         ),
         "_bootstrap_template": lambda: attrb.Label(
@@ -222,10 +217,10 @@ accepting arbitrary Python versions.
             default = TARGET_TOOLCHAIN_TYPE,
         ),
         "_python_version_flag": lambda: attrb.Label(
-            default = "//python/config_settings:python_version",
+            default = labels.PYTHON_VERSION,
         ),
         "_venvs_use_declare_symlink_flag": lambda: attrb.Label(
-            default = "//python/config_settings:venvs_use_declare_symlink",
+            default = labels.VENVS_USE_DECLARE_SYMLINK,
             providers = [BuildSettingInfo],
         ),
         "_windows_constraints": lambda: attrb.LabelList(
@@ -1910,7 +1905,7 @@ def _transition_executable_impl(settings, attr):
     apply_config_settings_attr(settings, attr)
 
     if attr.python_version and attr.python_version not in ("PY2", "PY3"):
-        settings[_PYTHON_VERSION_FLAG] = attr.python_version
+        settings[labels.PYTHON_VERSION] = attr.python_version
     return settings
 
 def create_executable_rule(*, attrs, **kwargs):
@@ -1961,8 +1956,8 @@ def create_executable_rule_builder(implementation, **kwargs):
         ],
         cfg = dict(
             implementation = _transition_executable_impl,
-            inputs = TRANSITION_LABELS + [_PYTHON_VERSION_FLAG],
-            outputs = TRANSITION_LABELS + [_PYTHON_VERSION_FLAG],
+            inputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],
+            outputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],
         ),
         **kwargs
     )
