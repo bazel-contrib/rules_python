@@ -464,6 +464,7 @@ bzl_library(
         ":py_internal_bzl",
         ":rule_builders_bzl",
         ":toolchain_types_bzl",
+        ":venv_runfiles_bzl",
         ":version_bzl",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//rules:common_settings",

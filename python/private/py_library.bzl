@@ -28,7 +28,6 @@ load(
 load(":builders.bzl", "builders")
 load(
     ":common.bzl",
-    "PYTHON_FILE_EXTENSIONS",
     "collect_cc_info",
     "collect_imports",
     "collect_runfiles",
@@ -38,13 +37,12 @@ load(
     "create_py_info",
     "filter_to_py_srcs",
     "get_imports",
-    "runfiles_root_path",
 )
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
 load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
-load(":py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
+load(":py_info.bzl", "PyInfo")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
 load(
@@ -52,6 +50,7 @@ load(
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
+load(":venv_runfiles.bzl", "get_venv_symlinks")
 load(":version.bzl", "version")
 
 LIBRARY_ATTRS = dicts.add(
@@ -234,129 +233,10 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
         package, version_str = _get_package_and_version(ctx)
-        venv_symlinks = _get_venv_symlinks(ctx, package, version_str)
+        venv_symlinks = get_venv_symlinks(ctx, package, version_str, ctx.attr.imports)
     else:
         imports = collect_imports(ctx, semantics)
     return imports, venv_symlinks
-
-def _get_venv_symlinks(ctx, package, version_str):
-    imports = ctx.attr.imports
-    if len(imports) == 0:
-        fail("When venvs_site_packages is enabled, exactly one `imports` " +
-             "value must be specified, got 0")
-    elif len(imports) > 1:
-        fail("When venvs_site_packages is enabled, exactly one `imports` " +
-             "value must be specified, got {}".format(imports))
-    else:
-        site_packages_root = imports[0]
-
-    if site_packages_root.endswith("/"):
-        fail("The site packages root value from `imports` cannot end in " +
-             "slash, got {}".format(site_packages_root))
-    if site_packages_root.startswith("/"):
-        fail("The site packages root value from `imports` cannot start with " +
-             "slash, got {}".format(site_packages_root))
-
-    # Append slash to prevent incorrectly prefix-string matches
-    site_packages_root += "/"
-
-    # We have to build a list of (runfiles path, site-packages path) pairs of the files to
-    # create in the consuming binary's venv site-packages directory. To minimize the number of
-    # files to create, we just return the paths to the directories containing the code of
-    # interest.
-    #
-    # However, namespace packages complicate matters: multiple distributions install in the
-    # same directory in site-packages. This works out because they don't overlap in their
-    # files. Typically, they install to different directories within the namespace package
-    # directory. We also need to ensure that we can handle a case where the main package (e.g.
-    # airflow) has directories only containing data files and then namespace packages coming
-    # along and being next to it.
-    #
-    # Lastly we have to assume python modules just being `.py` files (e.g. typing-extensions)
-    # is just a single Python file.
-
-    dir_symlinks = {}  # dirname -> runfile path
-    venv_symlinks = []
-    all_files = sorted(
-        ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
-        key = lambda f: f.short_path,
-    )
-
-    for src in all_files:
-        path = _repo_relative_short_path(src.short_path)
-        if not path.startswith(site_packages_root):
-            continue
-        path = path.removeprefix(site_packages_root)
-        dir_name, _, filename = path.rpartition("/")
-
-        if dir_name in dir_symlinks:
-            # we already have this dir, this allows us to short-circuit since most of the
-            # ctx.files.data might share the same directories as ctx.files.srcs
-            continue
-
-        runfiles_dir_name, _, _ = runfiles_root_path(ctx, src.short_path).partition("/")
-        if dir_name:
-            # This can be either:
-            # * a directory with libs (e.g. numpy.libs, created by auditwheel)
-            # * a directory with `__init__.py` file that potentially also needs to be
-            #   symlinked.
-            # * `.dist-info` directory
-            #
-            # This could be also regular files, that just need to be symlinked, so we will
-            # add the directory here.
-            dir_symlinks[dir_name] = runfiles_dir_name
-        elif src.extension in PYTHON_FILE_EXTENSIONS:
-            # This would be files that do not have directories and we just need to add
-            # direct symlinks to them as is, we only allow Python files in here
-            entry = VenvSymlinkEntry(
-                kind = VenvSymlinkKind.LIB,
-                link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
-                package = package,
-                version = version_str,
-                venv_path = filename,
-                files = depset([src]),
-            )
-            venv_symlinks.append(entry)
-
-    # Sort so that we encounter `foo` before `foo/bar`. This ensures we
-    # see the top-most explicit package first.
-    dirnames = sorted(dir_symlinks.keys())
-    first_level_explicit_packages = []
-    for d in dirnames:
-        is_sub_package = False
-        for existing in first_level_explicit_packages:
-            # Suffix with / to prevent foo matching foobar
-            if d.startswith(existing + "/"):
-                is_sub_package = True
-                break
-        if not is_sub_package:
-            first_level_explicit_packages.append(d)
-
-    for dirname in first_level_explicit_packages:
-        prefix = dir_symlinks[dirname]
-        link_to_path = paths.join(prefix, site_packages_root, dirname)
-        entry = VenvSymlinkEntry(
-            kind = VenvSymlinkKind.LIB,
-            link_to_path = link_to_path,
-            package = package,
-            version = version_str,
-            venv_path = dirname,
-            files = depset([
-                f
-                for f in all_files
-                if runfiles_root_path(ctx, f.short_path).startswith(link_to_path + "/")
-            ]),
-        )
-        venv_symlinks.append(entry)
-
-    return venv_symlinks
-
-def _repo_relative_short_path(short_path):
-    # Convert `../+pypi+foo/some/file.py` to `some/file.py`
-    if short_path.startswith("../"):
-        return short_path[3:].partition("/")[2]
-    else:
-        return short_path
 
 _MaybeBuiltinPyInfo = [BuiltinPyInfo] if BuiltinPyInfo != None else []
 
