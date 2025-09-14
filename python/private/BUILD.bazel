@@ -718,6 +718,16 @@ bzl_library(
     ],
 )
 
+bzl_library(
+    name = "venv_runfiles_bzl",
+    srcs = ["venv_runfiles.bzl"],
+    deps = [
+        ":common_bzl",
+        ":py_info.bzl",
+        "@bazel_skylib//lib:paths.bzl",
+    ],
+)
+
 # Needed to define bzl_library targets for docgen. (We don't define the
 # bzl_library target here because it'd give our users a transitive dependency
 # on Skylib.)
