@@ -21,10 +21,16 @@ into the sentence, not verbatim.
 
 ### bzl_library targets for bzl source files
 
-* `.bzl` files should have `bzl_library` defined for them.
+* A `bzl_library` target should be defined for every `.bzl` file outside
+  of the `tests/` directory.
 * They should have a single `srcs` file and be named after the file with `_bzl`
   appended.
-* Their deps should be based on the `load()` statements in the source file.
+* Their deps should be based on the `load()` statements in the source file
+  and refer to the `bzl_library` target containing the loaded file.
+  * For files in rules_python: replace `.bzl` with `_bzl`.
+    e.g. given `load("//foo:bar.bzl", ...)`, the target is `//foo:bar_bzl`.
+  * For files outside rules_python: remove the `.bzl` suffix. e.g. given
+    `load("@foo//foo:bar.bzl", ...)`, the target is `@foo//foo:bar`.
 * `bzl_library()` targets should be kept in alphabetical order by name.
 
 Example:
