@@ -415,6 +415,7 @@ bzl_library(
         ":rules_cc_srcs_bzl",
         ":toolchain_types_bzl",
         ":transition_labels_bzl",
+        ":venv_runfiles_bzl",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:structs",
@@ -724,7 +725,7 @@ bzl_library(
     deps = [
         ":common_bzl",
         ":py_info.bzl",
-        "@bazel_skylib//lib:paths.bzl",
+        "@bazel_skylib//lib:paths",
     ],
 )
 
