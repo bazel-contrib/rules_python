@@ -198,6 +198,9 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 
     Args:
         ctx: {type}`ctx` the current ctx.
+        files: {type}`list[File]` the underlying files that are under
+            `site_packages_root` and intended to be part of the venv
+            contents.
         package: {type}`str` the Python distribution name.
         version_str: {type}`str` the distribution's version.
         site_packages_root: {type}`str` prefix under which files are
