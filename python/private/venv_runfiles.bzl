@@ -153,8 +153,8 @@ def _merge_venv_path_group(ctx, group, keep_map):
 
     Args:
         ctx: {type}`ctx` current ctx.
-        group: {type}`dict[str, VenvSymlinkEntry]` map of prefixes and their
-            values. Keys are the venv kind relative prefix.
+        group: {type}`list[VenvSymlinkEntry]` a group of entries with overlapping
+            `venv_path` prefixes, ordered from shortest to longest path.
         keep_map: {type}`dict[str, str|File]` files kept after merging are
             populated into this map.
     """
