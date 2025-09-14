@@ -15,13 +15,15 @@ load(
     "VenvSymlinkKind",
 )
 
-def create_venv_app_files(ctx, venv_dir_map):
+def create_venv_app_files(ctx, deps, venv_dir_map):
     """Creates the tree of app-specific files for a venv for a binary.
 
     App specific files are the files that come from dependencies.
 
     Args:
         ctx: {type}`ctx` current ctx.
+        deps: {type}`list[Target]` the targets whose venv information
+            to put into the returned venv files.
         venv_dir_map: mapping of VenvSymlinkKind constants to the
             venv path. This tells the directory name of
             platform/configuration-dependent directories. The values are
@@ -35,7 +37,7 @@ def create_venv_app_files(ctx, venv_dir_map):
     entries = depset(
         transitive = [
             dep[PyInfo].venv_symlinks
-            for dep in ctx.attr.deps
+            for dep in deps
             if PyInfo in dep
         ],
     ).to_list()
@@ -191,24 +193,28 @@ def _merge_venv_path_group(ctx, group, keep_map):
             if venv_path not in keep_map:
                 keep_map[venv_path] = file
 
-def get_venv_symlinks(ctx, package, version_str, imports):
-    if len(imports) == 0:
-        fail("When venvs_site_packages is enabled, exactly one `imports` " +
-             "value must be specified, got 0")
-    elif len(imports) > 1:
-        fail("When venvs_site_packages is enabled, exactly one `imports` " +
-             "value must be specified, got {}".format(imports))
-    else:
-        site_packages_root = imports[0]
+def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
+    """Compute the VenvSymlinkEntry objects for a library.
 
+    Args:
+        ctx: {type}`ctx` the current ctx.
+        package: {type}`str` the Python distribution name.
+        version_str: {type}`str` the distribution's version.
+        site_packages_root: {type}`str` prefix under which files are
+            considered to be part of the installed files.
+
+    Returns:
+        {type}`list[VenvSymlinkEntry]` the entries that describe how
+        to map the files into a venv.
+    """
     if site_packages_root.endswith("/"):
-        fail("The site packages root value from `imports` cannot end in " +
+        fail("The `site_packages_root` value cannot end in " +
              "slash, got {}".format(site_packages_root))
     if site_packages_root.startswith("/"):
-        fail("The site packages root value from `imports` cannot start with " +
+        fail("The `site_packages_root` cannot start with " +
              "slash, got {}".format(site_packages_root))
 
-    # Append slash to prevent incorrectly prefix-string matches
+    # Append slash to prevent incorrect prefix-string matches
     site_packages_root += "/"
 
     # We have to build a list of (runfiles path, site-packages path) pairs of the files to
@@ -228,10 +234,9 @@ def get_venv_symlinks(ctx, package, version_str, imports):
 
     dir_symlinks = {}  # dirname -> runfile path
     venv_symlinks = []
-    all_files = sorted(
-        ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
-        key = lambda f: f.short_path,
-    )
+
+    # Sort so order is top-down
+    all_files = sorted(files, key = lambda f: f.short_path)
 
     for src in all_files:
         path = _repo_relative_short_path(src.short_path)

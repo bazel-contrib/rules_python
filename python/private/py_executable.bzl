@@ -612,7 +612,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         VenvSymlinkKind.BIN: bin_dir,
         VenvSymlinkKind.LIB: site_packages,
     }
-    venv_app_files = create_venv_app_files(ctx, venv_dir_map)
+    venv_app_files = create_venv_app_files(ctx, ctx.attr.deps, venv_dir_map)
 
     files_without_interpreter = [pth, site_init] + venv_app_files
     if pyvenv_cfg:

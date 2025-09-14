@@ -233,7 +233,21 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
         package, version_str = _get_package_and_version(ctx)
-        venv_symlinks = get_venv_symlinks(ctx, package, version_str, ctx.attr.imports)
+        imports = ctx.attr.imports
+        if len(imports) == 0:
+            fail("When venvs_site_packages is enabled, exactly one `imports` " +
+                 "value must be specified, got 0")
+        elif len(imports) > 1:
+            fail("When venvs_site_packages is enabled, exactly one `imports` " +
+                 "value must be specified, got {}".format(imports))
+
+        venv_symlinks = get_venv_symlinks(
+            ctx,
+            ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
+            package,
+            version_str,
+            site_packages_root = imports[0],
+        )
     else:
         imports = collect_imports(ctx, semantics)
     return imports, venv_symlinks
