@@ -15,7 +15,7 @@
 "Unit tests for relative_path computation"
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private:py_executable.bzl", "relative_path")  # buildifier: disable=bzl-visibility
+load("//python/private:common.bzl", "relative_path")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
