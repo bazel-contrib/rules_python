@@ -23,36 +23,42 @@ def _entry(venv_path, link_to_path, files = [], **kwargs):
     kwargs.setdefault("package", None)
     kwargs.setdefault("version", None)
 
-    # Treat paths starting with "+" as external references. This matches
-    # how bzlmod names things.
-    if link_to_path.startswith("+"):
-        # File.short_path to external repos have `../` prefixed
-        short_path_prefix = "../{}".format(link_to_path)
-    else:
-        # File.short_path in main repo is main-repo relative
-        _, _, short_path_prefix = link_to_path.partition("/")
+    def short_pathify(path):
+        path = paths.join(link_to_path, path)
 
-    files = depset([
-        _file(paths.join(short_path_prefix, f))
-        for f in files
-    ])
+        # In tests, `../` is used to step out of the link_to_path scope.
+        path = paths.normalize(path)
+
+        # Treat paths starting with "+" as external references. This matches
+        # how bzlmod names things.
+        if link_to_path.startswith("+"):
+            # File.short_path to external repos have `../` prefixed
+            path = paths.join("../", path)
+        else:
+            # File.short_path in main repo is main-repo relative
+            _, _, path = path.partition("/")
+        return path
+
     return VenvSymlinkEntry(
         venv_path = venv_path,
         link_to_path = link_to_path,
-        files = files,
+        files = depset([
+            _file(short_pathify(f))
+            for f in files
+        ]),
         **kwargs
     )
 
-def _test_build_link_map(name):
+def _test_conflict_merging(name):
     analysis_test(
         name = name,
-        impl = _test_build_link_map_impl,
+        impl = _test_conflict_merging_impl,
         target = "//python:none",
     )
 
-_tests.append(_test_build_link_map)
+_tests.append(_test_conflict_merging)
 
-def _test_overlapping_and_merging(env, _):
+def _test_conflict_merging_impl(env, _):
     entries = [
         _entry("a", "+pypi_a/site-packages/a", ["a.txt"]),
         _entry("a/b", "+pypi_a_b/site-packages/a/b", ["b.txt"]),
@@ -86,19 +92,14 @@ _tests.append(_test_package_version_filtering)
 
 def _test_package_version_filtering_impl(env, _):
     entries = [
-        _entry("foo", "+pypi_foo_v1/site-packages/foo", ["foo.txt"], package = "foo", version = "1.0"),
-        _entry("foo", "+pypi_foo_v2/site-packages/foo", ["bar.txt"], package = "foo", version = "2.0"),
+        _entry("foo", "+pypi_v1/site-packages/foo", ["foo.txt"], package = "foo", version = "1.0"),
+        _entry("foo", "+pypi_v2/site-packages/foo", ["bar.txt"], package = "foo", version = "2.0"),
     ]
 
     actual = build_link_map(_ctx(), entries)
-    expected_libs = {
-        "foo/foo.txt": _file("../+pypi_foo/site-packages/foo/foo.txt"),
-    }
-    env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
 
-    actual = build_link_map(_ctx(), entries)
     expected_libs = {
-        "a/x.py": _file("../+pypi_a/site-packages/a/x.py"),
+        "foo": "+pypi_v1/site-packages/foo",
     }
     env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
 
@@ -119,10 +120,20 @@ def _test_malformed_entry_impl(env, _):
             # This file is outside the link_to_path, so it should be ignored.
             ["../outside.txt"],
         ),
+        # A second, conflicting, entry is added to force merging of the known
+        # files. Without this, there's no conflict, so files is never
+        # considered.
+        _entry(
+            "a",
+            "+pypi_b/site-packages/a",
+            ["../outside.txt"],
+        ),
     ]
 
     actual = build_link_map(_ctx(), entries)
-    env.expect.that_dict(actual).is_empty()
+    env.expect.that_dict(actual).contains_exactly({
+        VenvSymlinkKind.LIB: {},
+    })
 
 def _test_complex_namespace_packages(name):
     analysis_test(
@@ -144,11 +155,11 @@ def _test_complex_namespace_packages_impl(env, _):
 
     actual = build_link_map(_ctx(), entries)
     expected_libs = {
-        "a/b/b.txt": _file("../+pypi_a_b/site-packages/a/b/b.txt"),
-        "a/c/c.txt": _file("../+pypi_a_c/site-packages/a/c/c.txt"),
-        "x/y/z/z.txt": _file("../+pypi_x_y_z/site-packages/x/y/z/z.txt"),
-        "foo/foo.txt": _file("../+pypi_foo/site-packages/foo/foo.txt"),
-        "foobar/foobar.txt": _file("../+pypi_foobar/site-packages/foobar/foobar.txt"),
+        "a/b": "+pypi_a_b/site-packages/a/b",
+        "a/c": "+pypi_a_c/site-packages/a/c",
+        "foo": "+pypi_foo/site-packages/foo",
+        "foobar": "+pypi_foobar/site-packages/foobar",
+        "x/y/z": "+pypi_x_y_z/site-packages/x/y/z",
     }
     env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
 
@@ -164,12 +175,14 @@ _tests.append(_test_empty_and_trivial_inputs)
 def _test_empty_and_trivial_inputs_impl(env, _):
     # Test with empty list of entries
     actual = build_link_map(_ctx(), [])
-    env.expect.that_dict(actual).is_empty()
+    env.expect.that_dict(actual).contains_exactly({})
 
     # Test with an entry with no files
     entries = [_entry("a", "+pypi_a/site-packages/a", [])]
     actual = build_link_map(_ctx(), entries)
-    env.expect.that_dict(actual).is_empty()
+    env.expect.that_dict(actual).contains_exactly({
+        VenvSymlinkKind.LIB: {"a": "+pypi_a/site-packages/a"},
+    })
 
 def _test_multiple_venv_symlink_kinds(name):
     analysis_test(
@@ -182,24 +195,45 @@ _tests.append(_test_multiple_venv_symlink_kinds)
 
 def _test_multiple_venv_symlink_kinds_impl(env, _):
     entries = [
-        _entry("libfile", "+pypi_lib/site-packages/libfile", ["lib.txt"], kind = VenvSymlinkKind.LIB),
-        _entry("binfile", "+pypi_bin/bin/binfile", ["bin.txt"], kind = VenvSymlinkKind.BIN),
-        _entry("includefile", "+pypi_include/include/includefile", ["include.h"], kind = VenvSymlinkKind.INCLUDE),
+        _entry(
+            "libfile",
+            "+pypi_lib/site-packages/libfile",
+            ["lib.txt"],
+            kind =
+                VenvSymlinkKind.LIB,
+        ),
+        _entry(
+            "binfile",
+            "+pypi_bin/bin/binfile",
+            ["bin.txt"],
+            kind = VenvSymlinkKind.BIN,
+        ),
+        _entry(
+            "includefile",
+            "+pypi_include/include/includefile",
+            ["include.h"],
+            kind =
+                VenvSymlinkKind.INCLUDE,
+        ),
     ]
 
     actual = build_link_map(_ctx(), entries)
+
     expected_libs = {
-        "libfile/lib.txt": _file("../+pypi_lib/site-packages/libfile/lib.txt"),
-    }
-    expected_bins = {
-        "binfile/bin.txt": _file("../+pypi_bin/bin/binfile/bin.txt"),
-    }
-    expected_includes = {
-        "includefile/include.h": _file("../+pypi_include/include/includefile/include.h"),
+        "libfile": "+pypi_lib/site-packages/libfile",
     }
     env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
+
+    expected_bins = {
+        "binfile": "+pypi_bin/bin/binfile",
+    }
     env.expect.that_dict(actual[VenvSymlinkKind.BIN]).contains_exactly(expected_bins)
+
+    expected_includes = {
+        "includefile": "+pypi_include/include/includefile",
+    }
     env.expect.that_dict(actual[VenvSymlinkKind.INCLUDE]).contains_exactly(expected_includes)
+
     env.expect.that_dict(actual).keys().contains_exactly([
         VenvSymlinkKind.LIB,
         VenvSymlinkKind.BIN,
