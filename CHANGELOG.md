@@ -79,10 +79,12 @@ END_UNRELEASED_TEMPLATE
   length errors due to too long environment variables.
 * (bootstrap) {obj}`--bootstrap_impl=script` now supports the `-S` interpreter
   setting.
-* (pypi) We now by default select the highest closest match wheel version if the user is
-  specifying a particular version via the `whl_platform_tags` or if any version is matched via
-  the `*` token, then we select the lowest available version.
-  Fixes [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
+* (pypi) We now use the MVC algorithm to select the right wheel when there are multiple wheels for
+  the target platform (e.g. `musllinux_1_1_x86_64` and `musllinux_1_2_x86_64`). If the user
+  wants to set the minimum version for the selection algorithm, use the
+  {attr}`pip.defaults.whl_platform_tags` attribute to configure that. If `musllinux_*_x86_64` is
+  specified, we will chose the lowest available wheel version.  Fixes
+  [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
 
 {#v0-0-0-added}
 ### Added

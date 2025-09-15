@@ -492,11 +492,12 @@ preference.
 Will always  include `"any"` even if it is not specified.
 
 The items in this list can contain a single `*` character that is equivalent to matching the
-latest available version component in the platform_tag. Note, if the wheel platform tag does not
-have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a regular
-character.
+lowest available version component in the platform_tag. Note, if the wheel platform tag does not
+have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a lower bound
+for the platform version, i.e. `musllinux_1_2_x86_64` means select a wheel that is built for
+`muslc` 1.2 or greater, i.e. prefer `musllinux_1_2_x86_64` over `musllinux_1_3_x86_64` over `musllinux_1_4_x86_64` and so on, but exclude `musllinux_1_1_x86_64` and lower.
 
-We will always select the highest available `platform_tag` version that is compatible with the
+We will always select the lowest available `platform_tag` version that is compatible with the
 target platform.
 
 :::{note}
