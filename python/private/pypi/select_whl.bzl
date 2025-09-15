@@ -18,17 +18,59 @@ def _value_priority(*, tag, values):
 
     return max(keys) if keys else None
 
-def _platform_tag_priority(*, tag, values):
-    # Implements matching platform tag
-    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
-
-    if not (
+def _is_platform_tag_versioned(tag):
+    return (
         tag.startswith(_ANDROID) or
         tag.startswith(_IOS) or
         tag.startswith(_MACOSX) or
         tag.startswith(_MANYLINUX) or
         tag.startswith(_MUSLLINUX)
-    ):
+    )
+
+def _parse_platform_tags(tags):
+    """A helper function that parses all of the platform tags.
+
+    The main idea is to make this more robust and have better debug messages about which will
+    is compatible and which is not with the target platform.
+    """
+    ret = []
+    replacements = {}
+    for tag in tags:
+        if not _is_platform_tag_versioned(tag):
+            ret.append(tag)
+            continue
+
+        want_os, sep, tail = tag.partition("_")
+        if not sep:
+            fail("could not parse the tag")
+
+        want_major, _, tail = tail.partition("_")
+        if want_major == "*":
+            # the expected match is any version
+            want_arch = tail
+        elif want_os.startswith(_ANDROID):
+            want_arch = tail
+        else:
+            # drop the minor version segment
+            _, _, want_arch = tail.partition("_")
+
+        placeholder = "{}_*_{}".format(want_os, want_arch)
+        replacements[placeholder] = tag
+        if placeholder in ret:
+            ret.remove(placeholder)
+
+        ret.append(placeholder)
+
+    return [
+        replacements.get(p, p)
+        for p in ret
+    ]
+
+def _platform_tag_priority(*, tag, values):
+    # Implements matching platform tag
+    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
+
+    if not _is_platform_tag_versioned(tag):
         res = _value_priority(tag = tag, values = values)
         if res == None:
             return res
@@ -39,7 +81,7 @@ def _platform_tag_priority(*, tag, values):
 
     os, _, tail = tag.partition("_")
     major, _, tail = tail.partition("_")
-    if not os.startswith(_ANDROID):
+    if not tag.startswith(_ANDROID):
         minor, _, arch = tail.partition("_")
     else:
         minor = "0"
@@ -65,7 +107,7 @@ def _platform_tag_priority(*, tag, values):
             want_major = ""
             want_minor = ""
             want_arch = tail
-        elif os.startswith(_ANDROID):
+        elif tag.startswith(_ANDROID):
             # we set it to `0` above, so setting the `want_minor` her to `0` will make things
             # consistent.
             want_minor = "0"
@@ -105,46 +147,6 @@ def _python_tag_priority(*, tag, implementation, py_version):
         version.key(ver),
     )
 
-def _filter_platform_tags(tags):
-    ret = []
-    replacements = {}
-    for tag in tags:
-        if not (
-            tag.startswith(_ANDROID) or
-            tag.startswith(_IOS) or
-            tag.startswith(_MACOSX) or
-            tag.startswith(_MANYLINUX) or
-            tag.startswith(_MUSLLINUX)
-        ):
-            ret.append(tag)
-            continue
-
-        want_os, sep, tail = tag.partition("_")
-        if not sep:
-            fail("could not parse the tag")
-
-        want_major, _, tail = tail.partition("_")
-        if want_major == "*":
-            # the expected match is any version
-            want_arch = tail
-        elif want_os.startswith(_ANDROID):
-            want_arch = tail
-        else:
-            # drop the minor version segment
-            _, _, want_arch = tail.partition("_")
-
-        placeholder = "{}_*_{}".format(want_os, want_arch)
-        replacements[placeholder] = tag
-        if placeholder in ret:
-            ret.remove(placeholder)
-
-        ret.append(placeholder)
-
-    return [
-        replacements.get(p, p)
-        for p in ret
-    ]
-
 def _candidates_by_priority(
         *,
         whls,
@@ -161,9 +163,6 @@ def _candidates_by_priority(
     """
     py_version = version.parse(python_version, strict = True)
     implementation = python_tag(implementation_name)
-    logger.debug(lambda: "input:  {}".format(whl_platform_tags))
-    whl_platform_tags = _filter_platform_tags(whl_platform_tags)
-    logger.debug(lambda: "output: {}".format(whl_platform_tags))
 
     ret = {}
     for whl in whls:
@@ -265,7 +264,7 @@ def select_whl(
         implementation_name = implementation_name,
         python_version = python_version,
         whl_abi_tags = whl_abi_tags,
-        whl_platform_tags = whl_platform_tags,
+        whl_platform_tags = _parse_platform_tags(whl_platform_tags),
         logger = logger,
     )
 
