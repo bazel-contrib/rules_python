@@ -523,6 +523,8 @@ tasks:
     platform: windows
     build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
     test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    build_flags:
+      - "--action_env=PATH"
 
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
