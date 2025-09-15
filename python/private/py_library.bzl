@@ -234,10 +234,10 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
     if VenvsSitePackages.is_enabled(ctx):
         package, version_str = _get_package_and_version(ctx)
         imports = ctx.attr.imports
-        if len(imports.to_list()) == 0:
+        if len(imports) == 0:
             fail("When venvs_site_packages is enabled, exactly one `imports` " +
                  "value must be specified, got 0")
-        elif len(imports.to_list()) > 1:
+        elif len(imports) > 1:
             fail("When venvs_site_packages is enabled, exactly one `imports` " +
                  "value must be specified, got {}".format(imports))
 
