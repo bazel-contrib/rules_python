@@ -423,12 +423,12 @@ def _test_multiple_musllinux_exact_params(env):
         whl_abi_tags = ["none"],
         python_version = "3.12",
         limit = 2,
+        debug = True,
     )
     _match(
         env,
         got,
-        # select the one with the lowest version, because of the input to the function
-        "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+        # 1.2 is not within the candidates because it is not compatible
         "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
     )
 

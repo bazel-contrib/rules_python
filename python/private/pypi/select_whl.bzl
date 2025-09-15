@@ -105,6 +105,46 @@ def _python_tag_priority(*, tag, implementation, py_version):
         version.key(ver),
     )
 
+def _filter_platform_tags(tags):
+    ret = []
+    replacements = {}
+    for tag in tags:
+        if not (
+            tag.startswith(_ANDROID) or
+            tag.startswith(_IOS) or
+            tag.startswith(_MACOSX) or
+            tag.startswith(_MANYLINUX) or
+            tag.startswith(_MUSLLINUX)
+        ):
+            ret.append(tag)
+            continue
+
+        want_os, sep, tail = tag.partition("_")
+        if not sep:
+            fail("could not parse the tag")
+
+        want_major, _, tail = tail.partition("_")
+        if want_major == "*":
+            # the expected match is any version
+            want_arch = tail
+        elif want_os.startswith(_ANDROID):
+            want_arch = tail
+        else:
+            # drop the minor version segment
+            _, _, want_arch = tail.partition("_")
+
+        placeholder = "{}_*_{}".format(want_os, want_arch)
+        replacements[placeholder] = tag
+        if placeholder in ret:
+            ret.remove(placeholder)
+
+        ret.append(placeholder)
+
+    return [
+        replacements.get(p, p)
+        for p in ret
+    ]
+
 def _candidates_by_priority(
         *,
         whls,
@@ -121,6 +161,9 @@ def _candidates_by_priority(
     """
     py_version = version.parse(python_version, strict = True)
     implementation = python_tag(implementation_name)
+    logger.debug(lambda: "input:  {}".format(whl_platform_tags))
+    whl_platform_tags = _filter_platform_tags(whl_platform_tags)
+    logger.debug(lambda: "output: {}".format(whl_platform_tags))
 
     ret = {}
     for whl in whls:
