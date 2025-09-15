@@ -59,7 +59,7 @@ def _parse_platform_tags(tags):
 
         want_os, sep, tail = tag.partition("_")
         if not sep:
-            fail("could not parse the tag")
+            fail("could not parse the tag: {}".format(tag))
 
         want_major, _, tail = tail.partition("_")
         if want_major == "*":
