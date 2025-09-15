@@ -493,20 +493,21 @@ Will always  include `"any"` even if it is not specified.
 
 The items in this list can contain a single `*` character that is equivalent to matching the
 lowest available version component in the platform_tag. Note, if the wheel platform tag does not
-have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a lower bound
-for the platform version, i.e. `musllinux_1_2_x86_64` means select a wheel that is built for
-`muslc` 1.2 or greater, i.e. prefer `musllinux_1_2_x86_64` over `musllinux_1_3_x86_64` over `musllinux_1_4_x86_64` and so on, but exclude `musllinux_1_1_x86_64` and lower.
-
-We will always select the lowest available `platform_tag` version that is compatible with the
-target platform.
+have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a regular character.
 
 :::{note}
 We select a single wheel and the last match will take precedence, if the platform_tag that we
 match has a version component (e.g. `android_x_arch`, then the version `x` will be used in the
 matching algorithm).
 
-If the matcher you provide has `*`, then we will match a wheel with the highest available target platform, i.e. if `musllinux_1_1_arch` and `musllinux_1_2_arch` are both present, then we will select `musllinux_1_2_arch`.
-Otherwise we will select the highest available version that is equal or lower to the specifier, i.e. if `manylinux_2_12` and `manylinux_2_17` wheels are present and the matcher is `manylinux_2_15`, then we will match `manylinux_2_12` but not `manylinux_2_17`.
+Normally, the `*` in the matcher means that we will target the lowest platform version that we can
+and will give preference to whls built targeting the older versions of the platform. If you
+specify the version, then we will use the MVS (Minimal Version Selection) algorithm to select the
+compatible wheel. As such, you need to keep in mind how to configure the target platforms to
+select a particular wheel of your preference. To sum up:
+* To select any wheel, use `*`.
+* To exclude versions up to `X.Y` - submit a PR supporting this feature.
+* To exclude versions above `X.Y`, provide the full platform tag specifier, e.g. `musllinux_1_2_x86_64`, which will ensure that no wheels with `musllinux_1_3_x86_64` or higher are selected.
 :::
 
 :::{note}
@@ -521,6 +522,10 @@ latest format.
 
 :::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#platform-tag) for more information.
+:::
+:::{versionchanged} VERSION_NEXT_FEATURE
+The matching of versioned platforms have been switched to MVS (Minimal Version Selection)
+algorithm for easier evaluation logic and fewer surprises.
 :::
 """,
     ),
