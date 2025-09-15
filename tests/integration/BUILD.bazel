@@ -96,6 +96,7 @@ rules_python_integration_test(
     env = {
         "RULES_PYTHON_BZLMOD_DEBUG": "1",
     },
+    env_inherit = ["PATH"],
 )
 
 rules_python_integration_test(

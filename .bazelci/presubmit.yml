@@ -171,6 +171,7 @@ tasks:
       # their package path is qualified with the repo name.
       - "@rules_python//examples/wheel/..."
     build_flags:
+      - "--action_env=PATH"
       - "--noenable_bzlmod"
       - "--enable_workspace"
       - "--keep_going"
@@ -195,6 +196,8 @@ tasks:
     <<: *reusable_config
     name: "Default: Windows"
     platform: windows
+    build_flags:
+      - "--action_env=PATH"
     test_flags:
       - "--test_tag_filters=-integration-test,-fix-windows"
   rbe_min:
@@ -537,6 +540,8 @@ tasks:
     platform: windows
     build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
     test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    build_flags:
+      - "--action_env=PATH"
 
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
