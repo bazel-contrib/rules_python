@@ -131,7 +131,6 @@ def _test_not_select_abi3(env):
         whl_abi_tags = ["none"],
         python_version = "3.13",
         limit = 2,
-        debug = True,
     )
     _match(
         env,
