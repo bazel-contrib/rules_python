@@ -46,8 +46,6 @@ def _platform_tag_priority(*, tag, values):
         arch = tail
     version = (int(major), int(minor))
 
-    select_highest = True
-
     keys = []
     for priority, wp in enumerate(values):
         want_os, sep, tail = wp.partition("_")
@@ -67,7 +65,6 @@ def _platform_tag_priority(*, tag, values):
             want_major = ""
             want_minor = ""
             want_arch = tail
-            select_highest = False
         elif os.startswith(_ANDROID):
             # we set it to `0` above, so setting the `want_minor` her to `0` will make things
             # consistent.
@@ -84,7 +81,7 @@ def _platform_tag_priority(*, tag, values):
         # if want_major is defined, then we know that we don't have a `*` in the matcher.
         want_version = (int(want_major), int(want_minor)) if want_major else None
         if not want_version or version <= want_version:
-            keys.append((priority, version if select_highest else (-version[0], -version[1])))
+            keys.append((priority, (-version[0], -version[1])))
 
     return max(keys) if keys else None
 
