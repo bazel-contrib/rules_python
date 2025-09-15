@@ -492,32 +492,27 @@ preference.
 Will always  include `"any"` even if it is not specified.
 
 The items in this list can contain a single `*` character that is equivalent to matching the
-lowest available version component in the platform_tag. Note, if the wheel platform tag does not
+lowest available version component in the platform_tag. If the wheel platform tag does not
 have a version component, e.g. `linux_x86_64` or `win_amd64`, then `*` will act as a regular character.
 
 :::{note}
-We select a single wheel and the last match will take precedence, if the platform_tag that we
-match has a version component (e.g. `android_x_arch`, then the version `x` will be used in the
-matching algorithm).
-
 Normally, the `*` in the matcher means that we will target the lowest platform version that we can
 and will give preference to whls built targeting the older versions of the platform. If you
 specify the version, then we will use the MVS (Minimal Version Selection) algorithm to select the
 compatible wheel. As such, you need to keep in mind how to configure the target platforms to
-select a particular wheel of your preference. To sum up:
-* To select any wheel, use `*`.
-* To exclude versions up to `X.Y` - submit a PR supporting this feature.
-* To exclude versions above `X.Y`, provide the full platform tag specifier, e.g. `musllinux_1_2_x86_64`, which will ensure that no wheels with `musllinux_1_3_x86_64` or higher are selected.
-:::
+select a particular wheel of your preference.
 
-:::{note}
-The following tag prefixes should be used instead of the legacy equivalents:
-* `manylinux_2_5` instead of `manylinux1`
-* `manylinux_2_12` instead of `manylinux2010`
-* `manylinux_2_17` instead of `manylinux2014`
+We select a single wheel and the last match will take precedence, if the platform_tag that we
+match has a version component (e.g. `android_x_arch`, then the version `x` will be used in the
+MVS matching algorithm).
 
-When parsing the whl filenames `rules_python` will automatically transform wheel filenames to the
-latest format.
+Common patterns:
+* To select any versioned wheel for an `<os>`, `<arch>`, use `<os>_*_<arch>`, e.g.
+  `manylinux_2_17_x86_64`.
+* To exclude versions up to `X.Y` - **submit a PR supporting this feature**.
+* To exclude versions above `X.Y`, provide the full platform tag specifier, e.g.
+  `musllinux_1_2_x86_64`, which will ensure that no wheels with `musllinux_1_3_x86_64` or higher
+  are selected.
 :::
 
 :::{seealso}
@@ -525,7 +520,8 @@ See official [docs](https://packaging.python.org/en/latest/specifications/platfo
 :::
 :::{versionchanged} VERSION_NEXT_FEATURE
 The matching of versioned platforms have been switched to MVS (Minimal Version Selection)
-algorithm for easier evaluation logic and fewer surprises.
+algorithm for easier evaluation logic and fewer surprises. The legacy platform tags are
+supported from this version without extra handling from the user.
 :::
 """,
     ),

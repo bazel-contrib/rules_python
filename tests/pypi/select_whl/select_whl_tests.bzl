@@ -231,6 +231,34 @@ def _test_select_by_supported_cp_version(env):
 
 _tests.append(_test_select_by_supported_cp_version)
 
+def _test_legacy_manylinux(env):
+    for legacy, replacement in {
+        "manylinux1": "manylinux_2_5",
+        "manylinux2010": "manylinux_2_12",
+        "manylinux2014": "manylinux_2_17",
+    }.items():
+        for plat in [legacy, replacement]:
+            whls = [
+                "pkg-0.0.1-py3-none-{}_x86_64.whl".format(plat),
+                "pkg-0.0.1-py3-none-any.whl",
+            ]
+
+            got = _select_whl(
+                whls = whls,
+                whl_platform_tags = ["{}_x86_64".format(legacy)],
+                whl_abi_tags = ["none"],
+                python_version = "3.10",
+            )
+            want = _select_whl(
+                whls = whls,
+                whl_platform_tags = ["{}_x86_64".format(replacement)],
+                whl_abi_tags = ["none"],
+                python_version = "3.10",
+            )
+            _match(env, [got], want.filename)
+
+_tests.append(_test_legacy_manylinux)
+
 def _test_supported_cp_version_manylinux(env):
     whls = [
         "pkg-0.0.1-py2.py3-none-manylinux_1_1_x86_64.whl",
