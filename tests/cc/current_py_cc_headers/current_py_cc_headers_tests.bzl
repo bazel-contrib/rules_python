@@ -31,30 +31,40 @@ def _test_current_toolchain_headers(name):
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
         },
         attrs = {
-            "header": attr.label(
-                default = "//tests/support/cc_toolchains:fake_header.h",
-                allow_single_file = True,
+            "header_files": attr.label_list(
+                default = [
+                    "//tests/support/cc_toolchains:py_header_files",
+                ],
+                allow_files = True,
             ),
         },
     )
 
 def _test_current_toolchain_headers_impl(env, target):
+    print(env.ctx.files.header_files)
+
     # Check that the forwarded CcInfo looks vaguely correct.
     compilation_context = env.expect.that_target(target).provider(
         CcInfo,
         factory = cc_info_subject,
     ).compilation_context()
-    compilation_context.direct_headers().contains_exactly([
-        env.ctx.file.header,
-    ])
-    compilation_context.direct_public_headers().contains_exactly([
-        env.ctx.file.header,
-    ])
+    compilation_context.direct_headers().contains_exactly(
+        env.ctx.files.header_files,
+    )
+    compilation_context.direct_public_headers().contains_exactly(
+        env.ctx.files.header_files,
+    )
+
+    # NOTE: Bazel 8 and lower put cc_library.includes into `.system_includes`,
+    # while Bazel 9 put it in `.includes`. Both result in the includes being
+    # added as system includes, so either is acceptable for the expected
+    # `#include <Python.h>` to work.
+    includes = compilation_context.actual.includes.to_list() + compilation_context.actual.system_includes.to_list()
 
     # NOTE: The include dir gets added twice, once for the source path,
     # and once for the config-specific path.
-    compilation_context.system_includes().contains_at_least_predicates([
-        matching.str_matches("*/fake_include"),
+    env.expect.that_collection(includes).contains_at_least_predicates([
+        matching.str_matches("*/py_include"),
     ])
 
     # Check that the forward DefaultInfo looks correct

@@ -81,6 +81,7 @@ def _compilation_context_subject_new(info, *, meta):
 
     # buildifier: disable=uninitialized
     public = struct(
+        actual = info,
         # go/keep-sorted start
         direct_headers = lambda *a, **k: _compilation_context_subject_direct_headers(self, *a, **k),
         direct_public_headers = lambda *a, **k: _compilation_context_subject_direct_public_headers(self, *a, **k),
@@ -156,6 +157,7 @@ def _linking_context_subject_new(info, meta):
 
     # buildifier: disable=uninitialized
     public = struct(
+        actual = info,
         # go/keep-sorted start
         linker_inputs = lambda *a, **k: _linking_context_subject_linker_inputs(self, *a, **k),
         # go/keep-sorted end
