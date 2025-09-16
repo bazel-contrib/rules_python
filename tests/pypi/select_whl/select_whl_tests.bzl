@@ -131,7 +131,6 @@ def _test_not_select_abi3(env):
         whl_abi_tags = ["none"],
         python_version = "3.13",
         limit = 2,
-        debug = True,
     )
     _match(
         env,
@@ -231,6 +230,34 @@ def _test_select_by_supported_cp_version(env):
         _match(env, [got], match)
 
 _tests.append(_test_select_by_supported_cp_version)
+
+def _test_legacy_manylinux(env):
+    for legacy, replacement in {
+        "manylinux1": "manylinux_2_5",
+        "manylinux2010": "manylinux_2_12",
+        "manylinux2014": "manylinux_2_17",
+    }.items():
+        for plat in [legacy, replacement]:
+            whls = [
+                "pkg-0.0.1-py3-none-{}_x86_64.whl".format(plat),
+                "pkg-0.0.1-py3-none-any.whl",
+            ]
+
+            got = _select_whl(
+                whls = whls,
+                whl_platform_tags = ["{}_x86_64".format(legacy)],
+                whl_abi_tags = ["none"],
+                python_version = "3.10",
+            )
+            want = _select_whl(
+                whls = whls,
+                whl_platform_tags = ["{}_x86_64".format(replacement)],
+                whl_abi_tags = ["none"],
+                python_version = "3.10",
+            )
+            _match(env, [got], want.filename)
+
+_tests.append(_test_legacy_manylinux)
 
 def _test_supported_cp_version_manylinux(env):
     whls = [
@@ -406,9 +433,10 @@ def _test_multiple_musllinux(env):
     _match(
         env,
         got,
-        # select the one with the highest version that is matching
-        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        # select the one with the lowest version that is matching because we want to
+        # increase the compatibility
         "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
     )
 
 _tests.append(_test_multiple_musllinux)
@@ -423,16 +451,84 @@ def _test_multiple_musllinux_exact_params(env):
         whl_abi_tags = ["none"],
         python_version = "3.12",
         limit = 2,
+        debug = True,
     )
     _match(
         env,
         got,
-        # select the one with the lowest version, because of the input to the function
-        "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+        # 1.2 is not within the candidates because it is not compatible
         "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
     )
 
 _tests.append(_test_multiple_musllinux_exact_params)
+
+def _test_multiple_mvs_match(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-musllinux_1_4_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        ],
+        whl_platform_tags = ["musllinux_1_3_x86_64"],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        # select the one with the lowest version
+        "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+    )
+
+_tests.append(_test_multiple_mvs_match)
+
+def _test_multiple_mvs_match_override_more_specific(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-musllinux_1_4_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+            "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+        ],
+        whl_platform_tags = [
+            "musllinux_*_x86_64",  # default to something
+            "musllinux_1_3_x86_64",  # override the previous
+        ],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        # Should be the same as without the `*` match
+        "pkg-0.0.1-py3-none-musllinux_1_2_x86_64.whl",
+        "pkg-0.0.1-py3-none-musllinux_1_1_x86_64.whl",
+    )
+
+_tests.append(_test_multiple_mvs_match_override_more_specific)
+
+def _test_multiple_mvs_match_override_less_specific(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-musllinux_1_4_x86_64.whl",
+        ],
+        whl_platform_tags = [
+            "musllinux_1_3_x86_64",  # default to 1.3
+            "musllinux_*_x86_64",  # then override to something less specific
+        ],
+        whl_abi_tags = ["none"],
+        python_version = "3.12",
+        limit = 2,
+    )
+    _match(
+        env,
+        got,
+        "pkg-0.0.1-py3-none-musllinux_1_4_x86_64.whl",
+    )
+
+_tests.append(_test_multiple_mvs_match_override_less_specific)
 
 def _test_android(env):
     got = _select_whl(
