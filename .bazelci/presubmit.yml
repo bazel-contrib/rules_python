@@ -139,6 +139,7 @@ tasks:
     # This is an advisory job; doesn't block merges
     soft_fail:
       - exit_status: 1
+      - exit_status: 3
     test_targets:
       - "--"
       - "//tests/..."
