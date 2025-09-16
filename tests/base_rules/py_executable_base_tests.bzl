@@ -19,12 +19,13 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
 load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "BOOTSTRAP_IMPL", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
 
 _tests = []
 
@@ -355,7 +356,7 @@ def _test_main_module_bootstrap_system_python(name, config):
         impl = _test_main_module_bootstrap_system_python_impl,
         target = name + "_subject",
         config_settings = {
-            BOOTSTRAP_IMPL: "system_python",
+            labels.BOOTSTRAP_IMPL: "system_python",
             "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", LINUX_X86_64],
             "//command_line_option:platforms": [LINUX_X86_64],
         },
@@ -379,7 +380,7 @@ def _test_main_module_bootstrap_script(name, config):
         impl = _test_main_module_bootstrap_script_impl,
         target = name + "_subject",
         config_settings = {
-            BOOTSTRAP_IMPL: "script",
+            labels.BOOTSTRAP_IMPL: "script",
             "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", LINUX_X86_64],
             "//command_line_option:platforms": [LINUX_X86_64],
         },

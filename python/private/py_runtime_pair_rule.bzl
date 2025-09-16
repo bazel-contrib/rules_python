@@ -16,6 +16,7 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
+load(":common_labels.bzl", "labels")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
 load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
@@ -94,7 +95,7 @@ The runtime to use for Python 3 targets. Must have `python_version` set to
 """,
         ),
         "_visible_for_testing": attr.label(
-            default = "//python/private:visible_for_testing",
+            default = labels.VISIBLE_FOR_TESTING,
         ),
     },
     fragments = ["py"],

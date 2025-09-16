@@ -38,6 +38,7 @@ load(
     "filter_to_py_srcs",
     "get_imports",
 )
+load(":common_labels.bzl", "labels")
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
 load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
@@ -101,7 +102,7 @@ and that only one package version will be included.
 """,
         ),
         "_add_srcs_to_runfiles_flag": lambda: attrb.Label(
-            default = "//python/config_settings:add_srcs_to_runfiles",
+            default = labels.ADD_SRCS_TO_RUNFILES,
         ),
     },
 )

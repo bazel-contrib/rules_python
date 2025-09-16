@@ -23,13 +23,13 @@ load("//python/private:py_binary_macro.bzl", "py_binary_macro")  # buildifier: d
 load("//python/private:py_binary_rule.bzl", "create_py_binary_rule_builder")  # buildifier: disable=bzl-visibility
 load("//python/private:py_test_macro.bzl", "py_test_macro")  # buildifier: disable=bzl-visibility
 load("//python/private:py_test_rule.bzl", "create_py_test_rule_builder")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "CUSTOM_RUNTIME", "VISIBLE_FOR_TESTING")
+load("//tests/support:support.bzl", "CUSTOM_RUNTIME")
 
 def _perform_transition_impl(input_settings, attr, base_impl):
     settings = {k: input_settings[k] for k in _RECONFIG_INHERITED_OUTPUTS if k in input_settings}
     settings.update(base_impl(input_settings, attr))
 
-    settings[VISIBLE_FOR_TESTING] = True
+    settings[labels.VISIBLE_FOR_TESTING] = True
     settings["//command_line_option:build_python_zip"] = attr.build_python_zip
     if attr.bootstrap_impl:
         settings[labels.BOOTSTRAP_IMPL] = attr.bootstrap_impl
@@ -58,7 +58,7 @@ _RECONFIG_INPUTS = [
 ]
 _RECONFIG_OUTPUTS = _RECONFIG_INPUTS + [
     "//command_line_option:build_python_zip",
-    VISIBLE_FOR_TESTING,
+    labels.VISIBLE_FOR_TESTING,
 ]
 _RECONFIG_INHERITED_OUTPUTS = [v for v in _RECONFIG_OUTPUTS if v in _RECONFIG_INPUTS]
 

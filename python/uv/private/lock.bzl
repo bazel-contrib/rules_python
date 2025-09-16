@@ -18,12 +18,11 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//python/private:common_labels.bzl", "labels")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 
 visibility(["//..."])
-
-_PYTHON_VERSION_FLAG = "//python/config_settings:python_version"
 
 _RunLockInfo = provider(
     doc = "",
@@ -161,16 +160,16 @@ def _lock_impl(ctx):
 
 def _transition_impl(input_settings, attr):
     settings = {
-        _PYTHON_VERSION_FLAG: input_settings[_PYTHON_VERSION_FLAG],
+        labels.PYTHON_VERSION: input_settings[labels.PYTHON_VERSION],
     }
     if attr.python_version:
-        settings[_PYTHON_VERSION_FLAG] = attr.python_version
+        settings[labels.PYTHON_VERSION] = attr.python_version
     return settings
 
 _python_version_transition = transition(
     implementation = _transition_impl,
-    inputs = [_PYTHON_VERSION_FLAG],
-    outputs = [_PYTHON_VERSION_FLAG],
+    inputs = [labels.PYTHON_VERSION],
+    outputs = [labels.PYTHON_VERSION],
 )
 
 _lock = rule(

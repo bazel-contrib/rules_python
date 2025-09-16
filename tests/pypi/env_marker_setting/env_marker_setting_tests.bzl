@@ -3,9 +3,9 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:env_marker_info.bzl", "EnvMarkerInfo")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "PIP_ENV_MARKER_CONFIG", "PYTHON_VERSION")
 
 def _custom_env_markers_impl(ctx):
     _ = ctx  # @unused
@@ -37,7 +37,7 @@ def _test_custom_env_markers(name):
         impl = _impl,
         target = name + "_subject",
         config_settings = {
-            PIP_ENV_MARKER_CONFIG: str(Label(name + "_env")),
+            labels.PIP_ENV_MARKER_CONFIG: str(Label(name + "_env")),
         },
     )
 
@@ -56,14 +56,14 @@ def _test_expr(name):
     cases = {
         "python_full_version_lt_negative": {
             "config_settings": {
-                PYTHON_VERSION: "3.12.0",
+                labels.PYTHON_VERSION: "3.12.0",
             },
             "expected": "FALSE",
             "expression": "python_full_version < '3.8'",
         },
         "python_version_gte": {
             "config_settings": {
-                PYTHON_VERSION: "3.12.0",
+                labels.PYTHON_VERSION: "3.12.0",
             },
             "expected": "TRUE",
             "expression": "python_version >= '3.12.0'",

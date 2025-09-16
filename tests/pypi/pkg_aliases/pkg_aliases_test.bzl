@@ -15,6 +15,7 @@
 """pkg_aliases tests"""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:config_settings.bzl", "config_settings")  # buildifier: disable=bzl-visibility
 load(
     "//python/private/pypi:pkg_aliases.bzl",
@@ -81,7 +82,7 @@ def _test_config_setting_aliases(env):
         },
         # This will be printing the current config values and will make sure we
         # have an error.
-        "_no_matching_repository": {Label("//python/config_settings:is_not_matching_current_config"): Label("//python:none")},
+        "_no_matching_repository": {Label("//python/config_settings:is_not_matching_current_config"): labels.NONE},
     }
     env.expect.that_dict(got).contains_at_least(want)
     env.expect.that_collection(actual_no_match_error).has_size(1)
