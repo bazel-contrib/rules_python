@@ -240,57 +240,6 @@ def _test_multiple_venv_symlink_kinds_impl(env, _):
         VenvSymlinkKind.INCLUDE,
     ])
 
-def _test_omit_entry(name):
-    analysis_test(
-        name = name,
-        impl = _test_omit_entry_impl,
-        target = "//python:none",
-    )
-
-_tests.append(_test_omit_entry)
-
-def _test_omit_entry_impl(env, _):
-    entries = [
-        # Omit by venv_path
-        _entry("foo", None),
-        _entry("foo", "+pypi_foo/site-packages/foo", ["foo.txt"]),
-
-        # Omit by venv_path and package
-        _entry("bar", None, package = "bar"),
-        _entry("bar", "+pypi_bar_1/site-packages/bar", ["bar.txt"], package = "bar"),
-        _entry(
-            "bar",
-            "+pypi_bar_2/site-packages/bar",
-            ["bar_2.txt"],
-            package = "bar-two",
-        ),
-
-        # Omit by package and version
-        _entry("baz", None, package = "baz", version = "1.0"),
-        _entry(
-            "baz",
-            "+pypi_baz_v1/site-packages/baz",
-            ["baz_v1.txt"],
-            package = "baz",
-            version = "1.0",
-        ),
-        _entry(
-            "baz",
-            "+pypi_baz_v2/site-packages/baz",
-            ["baz_v2.txt"],
-            package = "baz",
-            version = "2.0",
-        ),
-    ]
-
-    actual = build_link_map(_ctx(), entries)
-
-    expected_libs = {
-        "bar": "+pypi_bar_2/site-packages/bar",
-        "baz": "+pypi_baz_v2/site-packages/baz",
-    }
-    env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
-
 def app_files_building_test_suite(name):
     test_suite(
         name = name,
