@@ -234,7 +234,10 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
         package, version_str = _get_package_and_version(ctx)
-        imports = ctx.attr.imports
+
+        # NOTE: Already a list, but buildifier thinks its a depset and
+        # adds to_list() calls later.
+        imports = list(ctx.attr.imports)
         if len(imports) == 0:
             fail("When venvs_site_packages is enabled, exactly one `imports` " +
                  "value must be specified, got 0")
