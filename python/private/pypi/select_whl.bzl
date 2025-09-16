@@ -10,6 +10,21 @@ _MANYLINUX = "manylinux"
 _MACOSX = "macosx"
 _MUSLLINUX = "musllinux"
 
+# Taken from https://peps.python.org/pep-0600/
+_LEGACY_ALIASES = {
+    "manylinux1_i686": "manylinux_2_5_i686",
+    "manylinux1_x86_64": "manylinux_2_5_x86_64",
+    "manylinux2010_i686": "manylinux_2_12_i686",
+    "manylinux2010_x86_64": "manylinux_2_12_x86_64",
+    "manylinux2014_aarch64": "manylinux_2_17_aarch64",
+    "manylinux2014_armv7l": "manylinux_2_17_armv7l",
+    "manylinux2014_i686": "manylinux_2_17_i686",
+    "manylinux2014_ppc64": "manylinux_2_17_ppc64",
+    "manylinux2014_ppc64le": "manylinux_2_17_ppc64le",
+    "manylinux2014_s390x": "manylinux_2_17_s390x",
+    "manylinux2014_x86_64": "manylinux_2_17_x86_64",
+}
+
 def _value_priority(*, tag, values):
     keys = []
     for priority, wp in enumerate(values):
@@ -18,17 +33,61 @@ def _value_priority(*, tag, values):
 
     return max(keys) if keys else None
 
-def _platform_tag_priority(*, tag, values):
-    # Implements matching platform tag
-    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
-
-    if not (
+def _is_platform_tag_versioned(tag):
+    return (
         tag.startswith(_ANDROID) or
         tag.startswith(_IOS) or
         tag.startswith(_MACOSX) or
         tag.startswith(_MANYLINUX) or
         tag.startswith(_MUSLLINUX)
-    ):
+    )
+
+def _parse_platform_tags(tags):
+    """A helper function that parses all of the platform tags.
+
+    The main idea is to make this more robust and have better debug messages about which will
+    is compatible and which is not with the target platform.
+    """
+    ret = []
+    replacements = {}
+    for tag in tags:
+        tag = _LEGACY_ALIASES.get(tag, tag)
+
+        if not _is_platform_tag_versioned(tag):
+            ret.append(tag)
+            continue
+
+        want_os, sep, tail = tag.partition("_")
+        if not sep:
+            fail("could not parse the tag: {}".format(tag))
+
+        want_major, _, tail = tail.partition("_")
+        if want_major == "*":
+            # the expected match is any version
+            want_arch = tail
+        elif want_os.startswith(_ANDROID):
+            want_arch = tail
+        else:
+            # drop the minor version segment
+            _, _, want_arch = tail.partition("_")
+
+        placeholder = "{}_*_{}".format(want_os, want_arch)
+        replacements[placeholder] = tag
+        if placeholder in ret:
+            ret.remove(placeholder)
+
+        ret.append(placeholder)
+
+    return [
+        replacements.get(p, p)
+        for p in ret
+    ]
+
+def _platform_tag_priority(*, tag, values):
+    # Implements matching platform tag
+    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
+
+    if not _is_platform_tag_versioned(tag):
         res = _value_priority(tag = tag, values = values)
         if res == None:
             return res
@@ -39,7 +98,7 @@ def _platform_tag_priority(*, tag, values):
 
     os, _, tail = tag.partition("_")
     major, _, tail = tail.partition("_")
-    if not os.startswith(_ANDROID):
+    if not tag.startswith(_ANDROID):
         minor, _, arch = tail.partition("_")
     else:
         minor = "0"
@@ -65,7 +124,7 @@ def _platform_tag_priority(*, tag, values):
             want_major = ""
             want_minor = ""
             want_arch = tail
-        elif os.startswith(_ANDROID):
+        elif tag.startswith(_ANDROID):
             # we set it to `0` above, so setting the `want_minor` her to `0` will make things
             # consistent.
             want_minor = "0"
@@ -81,7 +140,7 @@ def _platform_tag_priority(*, tag, values):
         # if want_major is defined, then we know that we don't have a `*` in the matcher.
         want_version = (int(want_major), int(want_minor)) if want_major else None
         if not want_version or version <= want_version:
-            keys.append((priority, version))
+            keys.append((priority, (-version[0], -version[1])))
 
     return max(keys) if keys else None
 
@@ -222,7 +281,7 @@ def select_whl(
         implementation_name = implementation_name,
         python_version = python_version,
         whl_abi_tags = whl_abi_tags,
-        whl_platform_tags = whl_platform_tags,
+        whl_platform_tags = _parse_platform_tags(whl_platform_tags),
         logger = logger,
     )
 
