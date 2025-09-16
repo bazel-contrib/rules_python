@@ -74,9 +74,9 @@ def _test_conflict_merging_impl(env, _):
     expected_libs = {
         "a/a.txt": _file("../+pypi_a/site-packages/a/a.txt"),
         "a/b/b.txt": _file("../+pypi_a_b/site-packages/a/b/b.txt"),
+        "duplicate/d.py": _file("../+dupe_a/site-packages/duplicate/d.py"),
         "x/p/p.txt": _file("src-dev/x/p/p.txt"),
         "x/x.txt": _file("src/x/x.txt"),
-        "duplicate/d.py": _file("../+dupe_a/site-packages/duplicate/d.py"),
     }
     env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
     env.expect.that_dict(actual).keys().contains_exactly([VenvSymlinkKind.LIB])
