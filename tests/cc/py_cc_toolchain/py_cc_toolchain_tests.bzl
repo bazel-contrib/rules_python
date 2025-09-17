@@ -60,7 +60,7 @@ def _test_py_cc_toolchain_impl(env, target):
     # NOTE: The include dir gets added twice, once for the source path,
     # and once for the config-specific path, but we don't care about that.
     compilation_context.system_includes().contains_at_least_predicates([
-        matching.str_matches("*/fake_include"),
+        matching.str_matches("*/py_include"),
     ])
 
     default_info = headers_providers.get("DefaultInfo", factory = subjects.default_info)
