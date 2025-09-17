@@ -16,6 +16,18 @@ This target provides:
 * `CcInfo`: The C++ information about the Python headers.
 :::
 
+:::{bzl:target} current_py_cc_headers_abi3
+
+A convenience target that provides the Python ABI3 headers. It uses toolchain
+resolution to find the headers for the Python runtime matching the interpreter
+that will be used. This basically forwards the underlying
+`cc_library(name="python_headers_abi3")` target defined in the `@python_X_Y` repo.
+
+This target provides:
+
+* `CcInfo`: The C++ information about the Python ABI3 headers.
+:::
+
 :::{bzl:target} current_py_cc_libs
 
 A convenience target that provides the Python libraries. It uses toolchain
