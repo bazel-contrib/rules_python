@@ -73,8 +73,14 @@ py_cc_toolchain = rule(
             mandatory = True,
         ),
         "headers_abi3": attr.label(
-            doc = ("Target that provides the Python ABI3 headers. Typically this " +
-                   "is a cc_library target."),
+            doc = ""
+Target that provides the Python ABI3 headers.
+
+Typically this is a cc_library target.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
             providers = [CcInfo],
         ),
         "libs": attr.label(

@@ -40,7 +40,7 @@ Information about the header files, struct with fields:
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
 "",
-        "headers_abi3": "\
+        "headers_abi3": """
 :type: struct | None
 
 If available, information about ABI3 (stable ABI) header files, struct with
@@ -63,7 +63,10 @@ fields:
     considered private and should be forward along as-is (this better allows
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
-",
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         "libs": "\
 :type: struct | None
 

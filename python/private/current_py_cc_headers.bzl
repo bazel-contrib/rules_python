@@ -72,5 +72,8 @@ cc_library(
     deps = ["@rules_python//python/cc:current_py_cc_headers_abi3"]
 )
 ```
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
 )
