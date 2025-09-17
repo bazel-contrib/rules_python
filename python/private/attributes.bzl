@@ -21,11 +21,8 @@ load(":common_labels.bzl", "labels")
 load(":enum.bzl", "enum")
 load(":flags.bzl", "PrecompileFlag", "PrecompileSourceRetentionFlag")
 load(":py_info.bzl", "PyInfo")
-load(":py_internal.bzl", "py_internal")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
-
-_PackageSpecificationInfo = getattr(py_internal, "PackageSpecificationInfo", None)
 
 # Due to how the common exec_properties attribute works, rules must add exec
 # groups even if they don't actually use them. This is due to two interactions:
@@ -174,33 +171,9 @@ This is because Python has a concept of runtime resources.
     ),
 }
 
-def _create_native_rules_allowlist_attrs():
-    if py_internal:
-        # The fragment and name are validated when configuration_field is called
-        default = configuration_field(
-            fragment = "py",
-            name = "native_rules_allowlist",
-        )
-
-        # A None provider isn't allowed
-        providers = [_PackageSpecificationInfo]
-    else:
-        default = None
-        providers = []
-
-    return {
-        "_native_rules_allowlist": lambda: attrb.Label(
-            default = default,
-            providers = providers,
-        ),
-    }
-
-NATIVE_RULES_ALLOWLIST_ATTRS = _create_native_rules_allowlist_attrs()
-
 # Attributes common to all rules.
 COMMON_ATTRS = dicts.add(
     DATA_ATTRS,
-    NATIVE_RULES_ALLOWLIST_ATTRS,
     # buildifier: disable=attr-licenses
     {
         # NOTE: This attribute is deprecated and slated for removal.
