@@ -87,7 +87,7 @@ def _test_libs_optional(name):
     py_cc_toolchain(
         name = name + "_subject",
         libs = None,
-        headers = "//tests/support/cc_toolchains:fake_headers",
+        headers = "//tests/support/cc_toolchains:py_headers",
         python_version = "4.5",
     )
     analysis_test(
