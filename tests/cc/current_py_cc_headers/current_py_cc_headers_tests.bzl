@@ -41,8 +41,6 @@ def _test_current_toolchain_headers(name):
     )
 
 def _test_current_toolchain_headers_impl(env, target):
-    print(env.ctx.files.header_files)
-
     # Check that the forwarded CcInfo looks vaguely correct.
     compilation_context = env.expect.that_target(target).provider(
         CcInfo,
