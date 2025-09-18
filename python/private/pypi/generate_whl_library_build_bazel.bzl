@@ -109,7 +109,7 @@ def generate_whl_library_build_bazel(
         kwargs["copy_executables"] = annotation.copy_executables
         kwargs["data_exclude"] = kwargs.get("data_exclude", []) + annotation.data_exclude_glob
         kwargs["srcs_exclude"] = annotation.srcs_exclude_glob
-        if annotation.enable_implicit_namespace_pkgs != None:
+        if hasattr(annotation, "enable_implicit_namespace_pkgs") and annotation.enable_implicit_namespace_pkgs != None:
             kwargs["enable_implicit_namespace_pkgs"] = annotation.enable_implicit_namespace_pkgs
         if annotation.additive_build_content:
             additional_content.append(annotation.additive_build_content)
