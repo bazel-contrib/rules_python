@@ -23,6 +23,7 @@ dependency graphs under bzlmod.
 :::
 """
 import collections.abc
+from collections import defaultdict
 import inspect
 import os
 import posixpath
@@ -53,6 +54,11 @@ class _RepositoryMapping(collections.abc.Mapping[Tuple[str, str], str]):
         """
         self._exact_mappings = exact_mappings
         self._prefixed_mappings = prefixed_mappings
+        
+        # Group prefixed mappings by target_apparent for faster lookups
+        self._grouped_prefixed_mappings = defaultdict(list)
+        for (prefix_source, target_app), target_canonical in self._prefixed_mappings.items():
+            self._grouped_prefixed_mappings[target_app].append((prefix_source, target_canonical))
 
     @staticmethod
     def create_from_file(repo_mapping_path: Optional[str]) -> "_RepositoryMapping":
@@ -114,9 +120,10 @@ class _RepositoryMapping(collections.abc.Mapping[Tuple[str, str], str]):
             return self._exact_mappings[key]
 
         # Try prefixed mapping if no exact match found
-        for (prefix_source, target_app), target_canonical in self._prefixed_mappings.items():
-            if target_app == target_apparent and source_repo.startswith(prefix_source):
-                return target_canonical
+        if target_apparent in self._grouped_prefixed_mappings:
+            for prefix_source, target_canonical in self._grouped_prefixed_mappings[target_apparent]:
+                if source_repo.startswith(prefix_source):
+                    return target_canonical
 
         # No mapping found
         raise KeyError(key)
