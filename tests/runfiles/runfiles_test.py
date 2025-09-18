@@ -637,7 +637,7 @@ class RunfilesTest(unittest.TestCase):
             )
 
     def testRepositoryMappingImplementsMappingProtocol(self) -> None:
-        """Test that RepositoryMapping implements the Mapping protocol correctly."""
+        """Test that RepositoryMapping implements the Mapping protocol with unified lookup."""
         from python.runfiles.runfiles import _RepositoryMapping  # buildifier: disable=bzl-visibility
         
         # Create a RepositoryMapping with both exact and prefixed mappings
@@ -655,54 +655,86 @@ class RunfilesTest(unittest.TestCase):
         
         # Test Mapping protocol methods
         
-        # Test __len__ - should only count exact mappings
-        self.assertEqual(len(repo_mapping), 3)
+        # Test __len__ - should count both exact and prefixed mappings
+        self.assertEqual(len(repo_mapping), 5)  # 3 exact + 2 prefixed
         
         # Test __getitem__ - should work for exact mappings only
         self.assertEqual(repo_mapping[("", "my_workspace")], "_main")
         self.assertEqual(repo_mapping[("", "config_lib")], "config_lib~1.0.0")
         self.assertEqual(repo_mapping[("deps+specific_repo", "external_dep")], "external_dep~exact")
         
-        # Test KeyError for non-existent exact mapping
+        # Test KeyError for non-existent mapping (neither exact nor prefix match)
         with self.assertRaises(KeyError):
             _ = repo_mapping[("nonexistent", "repo")]
         
-        # Test iteration - should iterate over exact mapping keys only
+        # Test iteration - should iterate over all mapping keys (exact first, then prefixed)
         keys = list(repo_mapping)
-        self.assertEqual(len(keys), 3)
-        self.assertIn(("", "my_workspace"), keys)
-        self.assertIn(("", "config_lib"), keys)
-        self.assertIn(("deps+specific_repo", "external_dep"), keys)
+        self.assertEqual(len(keys), 5)  # 3 exact + 2 prefixed
         
-        # Test 'in' operator (via __contains__)
+        # Check that exact mappings come first
+        exact_keys = [("", "my_workspace"), ("", "config_lib"), ("deps+specific_repo", "external_dep")]
+        prefixed_keys = [("deps+", "external_dep"), ("test_deps+", "test_lib")]
+        
+        for exact_key in exact_keys:
+            self.assertIn(exact_key, keys)
+        
+        for prefixed_key in prefixed_keys:
+            self.assertIn(prefixed_key, keys)
+        
+        # Verify order: exact keys should come before prefixed keys
+        first_three_keys = keys[:3]
+        last_two_keys = keys[3:]
+        
+        for exact_key in exact_keys:
+            self.assertIn(exact_key, first_three_keys)
+        
+        for prefixed_key in prefixed_keys:
+            self.assertIn(prefixed_key, last_two_keys)
+        
+        # Test 'in' operator (via __contains__) - works for both exact and prefix-based
         self.assertTrue(("", "my_workspace") in repo_mapping)
         self.assertFalse(("nonexistent", "repo") in repo_mapping)
+        # Prefix-based lookups also work with 'in' operator (consistent with [])
+        self.assertTrue(("deps+some_repo", "external_dep") in repo_mapping)
         
-        # Test get() method
+        # Test that the mapping interface works for both exact and prefix-based
+        # Exact lookup
+        self.assertEqual(repo_mapping[("", "my_workspace")], "_main")
+        
+        # Prefix-based lookup
+        self.assertEqual(repo_mapping[("deps+some_repo", "external_dep")], "external_dep~prefix")
+        
+        # Exact takes precedence over prefix
+        self.assertEqual(repo_mapping[("deps+specific_repo", "external_dep")], "external_dep~exact")
+        
+        # Test get() method with both exact and prefix-based
         self.assertEqual(repo_mapping.get(("", "my_workspace")), "_main")
+        self.assertEqual(repo_mapping.get(("deps+some_repo", "external_dep")), "external_dep~prefix")
         self.assertIsNone(repo_mapping.get(("nonexistent", "repo")))
         self.assertEqual(repo_mapping.get(("nonexistent", "repo"), "default"), "default")
         
-        # Test that lookup() still works for both exact and prefix-based
-        # Exact lookup
-        self.assertEqual(repo_mapping.lookup("", "my_workspace"), "_main")
-        
-        # Prefix-based lookup (not available via Mapping protocol)
-        self.assertEqual(repo_mapping.lookup("deps+some_repo", "external_dep"), "external_dep~prefix")
-        
-        # Exact takes precedence over prefix
-        self.assertEqual(repo_mapping.lookup("deps+specific_repo", "external_dep"), "external_dep~exact")
-        
         # Test items(), keys(), values() (inherited from Mapping)
         items = list(repo_mapping.items())
-        self.assertEqual(len(items), 3)
+        self.assertEqual(len(items), 5)  # 3 exact + 2 prefixed
         self.assertIn((("", "my_workspace"), "_main"), items)
+        self.assertIn((("deps+", "external_dep"), "external_dep~prefix"), items)
         
         keys = list(repo_mapping.keys())
         values = list(repo_mapping.values())
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(len(values), 3)
+        self.assertEqual(len(keys), 5)  # 3 exact + 2 prefixed
+        self.assertEqual(len(values), 5)  # 3 exact + 2 prefixed
         self.assertIn("_main", values)
+        self.assertIn("external_dep~prefix", values)
+        
+        # Test pythonic truthiness (no need for is_empty method)
+        self.assertTrue(repo_mapping)  # Non-empty mapping is truthy
+        self.assertTrue(bool(repo_mapping))
+        
+        # Test empty mapping
+        empty_mapping = _RepositoryMapping({}, {})
+        self.assertFalse(empty_mapping)  # Empty mapping is falsy
+        self.assertFalse(bool(empty_mapping))
+        self.assertEqual(len(empty_mapping), 0)
 
     # TODO: Add manifest-based test for compact repo mapping
     # def testManifestBasedRlocationWithCompactRepoMapping(self) -> None:
