@@ -78,10 +78,7 @@ class _RepositoryMapping(collections.abc.Mapping[Tuple[str, str], str]):
 
         exact_mappings = {}
         prefixed_mappings = {}
-        for line in content.split("\n"):
-            if not line:
-                # Empty line following the last line break
-                break
+        for line in content.splitlines():
             source_canonical, target_apparent, target_canonical = line.split(",")
             if source_canonical.endswith("*"):
                 # This is a prefixed mapping - remove the '*' for prefix matching
