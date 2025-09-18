@@ -20,7 +20,7 @@ import inspect
 import os
 import posixpath
 import sys
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 
 class _ManifestBased:
@@ -130,7 +130,7 @@ class Runfiles:
     def __init__(self, strategy: Union[_ManifestBased, _DirectoryBased]) -> None:
         self._strategy = strategy
         self._python_runfiles_root = _FindPythonRunfilesRoot()
-        self._repo_mapping = _ParseRepoMapping(
+        self._exact_repo_mapping, self._prefixed_repo_mapping = _ParseRepoMapping(
             strategy.RlocationChecked("_repo_mapping")
         )
 
@@ -179,7 +179,7 @@ class Runfiles:
         if os.path.isabs(path):
             return path
 
-        if source_repo is None and self._repo_mapping:
+        if source_repo is None and (self._exact_repo_mapping or self._prefixed_repo_mapping):
             # Look up runfiles using the repository mapping of the caller of the
             # current method. If the repo mapping is empty, determining this
             # name is not necessary.
@@ -188,25 +188,26 @@ class Runfiles:
         # Split off the first path component, which contains the repository
         # name (apparent or canonical).
         target_repo, _, remainder = path.partition("/")
-        if not remainder or (source_repo, target_repo) not in self._repo_mapping:
-            # One of the following is the case:
-            # - not using Bzlmod, so the repository mapping is empty and
-            #   apparent and canonical repository names are the same
-            # - target_repo is already a canonical repository name and does not
-            #   have to be mapped.
-            # - path did not contain a slash and referred to a root symlink,
-            #   which also should not be mapped.
+        if not remainder:
+            # path did not contain a slash and referred to a root symlink,
+            # which should not be mapped.
             return self._strategy.RlocationChecked(path)
 
-        assert (
-            source_repo is not None
-        ), "BUG: if the `source_repo` is None, we should never go past the `if` statement above"
+        # Try exact mapping first
+        if (source_repo, target_repo) in self._exact_repo_mapping:
+            target_canonical = self._exact_repo_mapping[(source_repo, target_repo)]
+            return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
 
-        # target_repo is an apparent repository name. Look up the corresponding
-        # canonical repository name with respect to the current repository,
-        # identified by its canonical name.
-        target_canonical = self._repo_mapping[(source_repo, target_repo)]
-        return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
+        # Try prefixed mapping if no exact match found
+        for (prefix_source, target_apparent), target_canonical in self._prefixed_repo_mapping.items():
+            if (target_apparent == target_repo and 
+                source_repo is not None and 
+                source_repo.startswith(prefix_source)):
+                return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
+
+        # No mapping found - assume target_repo is already canonical or
+        # we're not using Bzlmod
+        return self._strategy.RlocationChecked(path)
 
     def EnvVars(self) -> Dict[str, str]:
         """Returns environment variables for subprocesses.
@@ -359,28 +360,44 @@ def _FindPythonRunfilesRoot() -> str:
     return root
 
 
-def _ParseRepoMapping(repo_mapping_path: Optional[str]) -> Dict[Tuple[str, str], str]:
-    """Parses the repository mapping manifest."""
+def _ParseRepoMapping(
+    repo_mapping_path: Optional[str]
+) -> Tuple[Dict[Tuple[str, str], str], Dict[Tuple[str, str], str]]:
+    """Parses the repository mapping manifest.
+    
+    Returns:
+        A tuple of (exact_mappings, prefixed_mappings) where:
+        - exact_mappings: Dict mapping (source_canonical, target_apparent) -> target_canonical
+        - prefixed_mappings: Dict mapping (source_prefix, target_apparent) -> target_canonical
+          where source_prefix entries in the input ended with '*'
+    """
     # If the repository mapping file can't be found, that is not an error: We
     # might be running without Bzlmod enabled or there may not be any runfiles.
-    # In this case, just apply an empty repo mapping.
+    # In this case, just apply empty repo mappings.
     if not repo_mapping_path:
-        return {}
+        return {}, {}
     try:
         with open(repo_mapping_path, "r", encoding="utf-8", newline="\n") as f:
             content = f.read()
     except FileNotFoundError:
-        return {}
+        return {}, {}
 
-    repo_mapping = {}
+    exact_mappings = {}
+    prefixed_mappings = {}
     for line in content.split("\n"):
         if not line:
             # Empty line following the last line break
             break
-        current_canonical, target_local, target_canonical = line.split(",")
-        repo_mapping[(current_canonical, target_local)] = target_canonical
+        source_canonical, target_apparent, target_canonical = line.split(",")
+        if source_canonical.endswith("*"):
+            # This is a prefixed mapping - remove the '*' for prefix matching
+            prefix = source_canonical[:-1]
+            prefixed_mappings[(prefix, target_apparent)] = target_canonical
+        else:
+            # This is an exact mapping
+            exact_mappings[(source_canonical, target_apparent)] = target_canonical
 
-    return repo_mapping
+    return exact_mappings, prefixed_mappings
 
 
 def CreateManifestBased(manifest_path: str) -> Runfiles:

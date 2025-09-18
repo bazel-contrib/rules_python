@@ -525,6 +525,122 @@ class RunfilesTest(unittest.TestCase):
                 r.Rlocation("config.json", "protobuf~3.19.2"), dir + "/config.json"
             )
 
+    def testDirectoryBasedRlocationWithCompactRepoMappingFromMain(self) -> None:
+        """Test repository mapping with prefix-based entries (compact format)."""
+        with _MockFile(
+            name="_repo_mapping",
+            contents=[
+                # Exact mappings (no asterisk)
+                "_,config.json,config.json~1.2.3",
+                ",my_module,_main",
+                ",my_workspace,_main",
+                # Prefixed mappings (with asterisk) - these apply to any repo starting with the prefix
+                "deps+*,external_dep,external_dep~1.0.0",
+                "test_deps+*,test_lib,test_lib~2.1.0",
+            ],
+        ) as rm:
+            dir = os.path.dirname(rm.Path())
+            r = runfiles.CreateDirectoryBased(dir)
+
+            # Test exact mappings still work
+            self.assertEqual(
+                r.Rlocation("my_module/bar/runfile", ""), dir + "/_main/bar/runfile"
+            )
+            self.assertEqual(
+                r.Rlocation("my_workspace/bar/runfile", ""), dir + "/_main/bar/runfile"
+            )
+
+            # Test prefixed mappings - should match any repo starting with "deps+"
+            self.assertEqual(
+                r.Rlocation("external_dep/foo/file", "deps+dep1"),
+                dir + "/external_dep~1.0.0/foo/file",
+            )
+            self.assertEqual(
+                r.Rlocation("external_dep/bar/file", "deps+dep2"),
+                dir + "/external_dep~1.0.0/bar/file",
+            )
+            self.assertEqual(
+                r.Rlocation("external_dep/nested/path/file", "deps+some_long_dep_name"),
+                dir + "/external_dep~1.0.0/nested/path/file",
+            )
+
+            # Test that prefixed mappings work for test_deps+ prefix too
+            self.assertEqual(
+                r.Rlocation("test_lib/test/file", "test_deps+junit"),
+                dir + "/test_lib~2.1.0/test/file",
+            )
+
+            # Test that non-matching prefixes don't match
+            self.assertEqual(
+                r.Rlocation("external_dep/foo/file", "other_prefix"),
+                dir + "/external_dep/foo/file",  # No mapping applied, use as-is
+            )
+
+    def testDirectoryBasedRlocationWithCompactRepoMappingPrecedence(self) -> None:
+        """Test that exact mappings take precedence over prefixed mappings."""
+        with _MockFile(
+            name="_repo_mapping",
+            contents=[
+                # Exact mapping for a specific source repo
+                "deps+specific_repo,external_dep,external_dep~exact",
+                # Prefixed mapping for repos starting with "deps+"
+                "deps+*,external_dep,external_dep~prefix",
+                # Another prefixed mapping with different prefix
+                "other+*,external_dep,external_dep~other",
+            ],
+        ) as rm:
+            dir = os.path.dirname(rm.Path())
+            r = runfiles.CreateDirectoryBased(dir)
+
+            # Exact mapping should take precedence over prefix
+            self.assertEqual(
+                r.Rlocation("external_dep/foo/file", "deps+specific_repo"),
+                dir + "/external_dep~exact/foo/file",
+            )
+
+            # Other repos with deps+ prefix should use the prefixed mapping
+            self.assertEqual(
+                r.Rlocation("external_dep/foo/file", "deps+other_repo"),
+                dir + "/external_dep~prefix/foo/file",
+            )
+
+            # Different prefix should use its own mapping
+            self.assertEqual(
+                r.Rlocation("external_dep/foo/file", "other+some_repo"),
+                dir + "/external_dep~other/foo/file",
+            )
+
+    def testDirectoryBasedRlocationWithCompactRepoMappingOrderMatters(self) -> None:
+        """Test that order matters for prefixed mappings (first match wins)."""
+        with _MockFile(
+            name="_repo_mapping",
+            contents=[
+                # More specific prefix comes first
+                "deps+specific+*,lib,lib~specific",
+                # More general prefix comes second
+                "deps+*,lib,lib~general",
+            ],
+        ) as rm:
+            dir = os.path.dirname(rm.Path())
+            r = runfiles.CreateDirectoryBased(dir)
+
+            # Should match the more specific prefix first
+            self.assertEqual(
+                r.Rlocation("lib/foo/file", "deps+specific+repo"),
+                dir + "/lib~specific/foo/file",
+            )
+
+            # Should match the general prefix for non-specific repos
+            self.assertEqual(
+                r.Rlocation("lib/foo/file", "deps+other_repo"),
+                dir + "/lib~general/foo/file",
+            )
+
+# TODO: Add manifest-based test for compact repo mapping
+    # def testManifestBasedRlocationWithCompactRepoMapping(self) -> None:
+    #     """Test that compact repo mapping also works with manifest-based runfiles."""
+    #     pass
+
     def testCurrentRepository(self) -> None:
         # Under bzlmod, the current repository name is the empty string instead
         # of the name in the workspace file.
