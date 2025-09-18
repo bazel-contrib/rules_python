@@ -215,17 +215,25 @@ def _test_enable_implicit_namespace_pkgs_annotation(env):
     want = """\
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
+package(default_visibility = ["//visibility:public"])
+
 whl_library_targets(
     dep_template = "@pypi//{name}:{target}",
-    enable_implicit_namespace_pkgs = True,
-    name = "foo.whl",
     dependencies = ["foo"],
-    dependencies_by_platform = {"baz": ["bar"]},
+    dependencies_by_platform = {
+        "baz": ["bar"],
+    },
+    enable_implicit_namespace_pkgs = True,
     entry_points = {
         "foo": "bar.py",
     },
-    group_deps = ["foo", "fox", "qux"],
+    group_deps = [
+        "foo",
+        "fox",
+        "qux",
+    ],
     group_name = "qux",
+    name = "foo.whl",
     tags = ["tag1"],
 )
 """
@@ -252,17 +260,25 @@ def _test_enable_implicit_namespace_pkgs_annotation_false(env):
     want = """\
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
+package(default_visibility = ["//visibility:public"])
+
 whl_library_targets(
     dep_template = "@pypi//{name}:{target}",
-    enable_implicit_namespace_pkgs = False,
-    name = "foo.whl",
     dependencies = ["foo"],
-    dependencies_by_platform = {"baz": ["bar"]},
+    dependencies_by_platform = {
+        "baz": ["bar"],
+    },
+    enable_implicit_namespace_pkgs = False,
     entry_points = {
         "foo": "bar.py",
     },
-    group_deps = ["foo", "fox", "qux"],
+    group_deps = [
+        "foo",
+        "fox",
+        "qux",
+    ],
     group_name = "qux",
+    name = "foo.whl",
     tags = ["tag1"],
 )
 """
