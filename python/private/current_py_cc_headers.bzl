@@ -16,14 +16,15 @@
 """
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("//python/private:toolchain_types", "PY_CC_TOOLCHAIN_TYPE")
 
 def _current_py_cc_headers_impl(ctx):
-    py_cc_toolchain = ctx.toolchains["//python/cc:toolchain_type"].py_cc_toolchain
+    py_cc_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE].py_cc_toolchain
     return py_cc_toolchain.headers.providers_map.values()
 
 current_py_cc_headers = rule(
     implementation = _current_py_cc_headers_impl,
-    toolchains = ["//python/cc:toolchain_type"],
+    toolchains = [PY_CC_TOOLCHAIN_TYPE],
     provides = [CcInfo],
     doc = """
 Provides the currently active Python toolchain's C headers.
@@ -44,18 +45,18 @@ cc_library(
 )
 
 def _current_py_cc_headers_abi3_impl(ctx):
-    py_cc_toolchain = ctx.toolchains["//python/cc:toolchain_type"].py_cc_toolchain
+    py_cc_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE].py_cc_toolchain
     if not py_cc_toolchain.headers_abi3:
         fail(
-            "The current python toolchain does not provide ABI3 headers".format(
-                py_cc_toolchain.python_version,
+            "The current {} toolchain does not provide abi3 headers.".format(
+                PY_CC_TOOLCHAIN_TYPE,
             ),
         )
     return py_cc_toolchain.headers_abi3.providers_map.values()
 
 current_py_cc_headers_abi3 = rule(
     implementation = _current_py_cc_headers_abi3_impl,
-    toolchains = ["//python/cc:toolchain_type"],
+    toolchains = [PY_CC_TOOLCHAIN_TYPE],
     provides = [CcInfo],
     doc = """
 Provides the currently active Python toolchain's C ABI3 headers.
