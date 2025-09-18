@@ -16,7 +16,7 @@
 """
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
-load("//python/private:toolchain_types", "PY_CC_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
 
 def _current_py_cc_headers_impl(ctx):
     py_cc_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE].py_cc_toolchain
