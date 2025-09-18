@@ -211,6 +211,80 @@ whl_library_targets_from_requires(
 
 _tests.append(_test_all_with_loads)
 
+def _test_enable_implicit_namespace_pkgs_annotation(env):
+    want = """\
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+
+whl_library_targets(
+    dep_template = "@pypi//{name}:{target}",
+    enable_implicit_namespace_pkgs = True,
+    name = "foo.whl",
+    dependencies = ["foo"],
+    dependencies_by_platform = {"baz": ["bar"]},
+    entry_points = {
+        "foo": "bar.py",
+    },
+    group_deps = ["foo", "fox", "qux"],
+    group_name = "qux",
+    tags = ["tag1"],
+)
+"""
+    actual = generate_whl_library_build_bazel(
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo.whl",
+        dependencies = ["foo"],
+        dependencies_by_platform = {"baz": ["bar"]},
+        entry_points = {
+            "foo": "bar.py",
+        },
+        annotation = struct(
+            enable_implicit_namespace_pkgs = True,
+        ),
+        group_name = "qux",
+        group_deps = ["foo", "fox", "qux"],
+        tags = ["tag1"],
+    )
+    env.expect.that_str(actual.replace("@@", "@")).equals(want)
+
+_tests.append(_test_enable_implicit_namespace_pkgs_annotation)
+
+def _test_enable_implicit_namespace_pkgs_annotation_false(env):
+    want = """\
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+
+whl_library_targets(
+    dep_template = "@pypi//{name}:{target}",
+    enable_implicit_namespace_pkgs = False,
+    name = "foo.whl",
+    dependencies = ["foo"],
+    dependencies_by_platform = {"baz": ["bar"]},
+    entry_points = {
+        "foo": "bar.py",
+    },
+    group_deps = ["foo", "fox", "qux"],
+    group_name = "qux",
+    tags = ["tag1"],
+)
+"""
+    actual = generate_whl_library_build_bazel(
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo.whl",
+        dependencies = ["foo"],
+        dependencies_by_platform = {"baz": ["bar"]},
+        entry_points = {
+            "foo": "bar.py",
+        },
+        annotation = struct(
+            enable_implicit_namespace_pkgs = False,
+        ),
+        group_name = "qux",
+        group_deps = ["foo", "fox", "qux"],
+        tags = ["tag1"],
+    )
+    env.expect.that_str(actual.replace("@@", "@")).equals(want)
+
+_tests.append(_test_enable_implicit_namespace_pkgs_annotation_false)
+
 def generate_whl_library_build_bazel_test_suite(name):
     """Create the test suite.
 
