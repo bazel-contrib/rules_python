@@ -50,7 +50,7 @@ def _current_py_cc_headers_abi3_impl(ctx):
         fail((
             "The current {} toolchain does not provide abi3 headers. " +
             "Verify the toolchain sets `.headers_abi3`, or use the " +
-            "regular `:current_py_cc_headers` target."
+            "`:current_py_cc_headers` target."
         ).format(
             PY_CC_TOOLCHAIN_TYPE,
         ))
