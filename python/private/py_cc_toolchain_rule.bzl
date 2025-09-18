@@ -73,8 +73,8 @@ py_cc_toolchain = rule(
             mandatory = True,
         ),
         "headers_abi3": attr.label(
-            doc = ""
-Target that provides the Python ABI3 headers.
+            doc = """
+Target that provides the Python ABI3 (stable abi) headers.
 
 Typically this is a cc_library target.
 
@@ -96,7 +96,7 @@ Typically this is a cc_library target.
             default = labels.VISIBLE_FOR_TESTING,
         ),
     },
-    doc = """\
+    doc = """
 A toolchain for a Python runtime's C/C++ information (e.g. headers)
 
 This rule carries information about the C/C++ side of a Python runtime, e.g.

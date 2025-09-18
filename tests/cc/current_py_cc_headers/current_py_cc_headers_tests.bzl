@@ -76,6 +76,24 @@ def _test_toolchain_is_registered_by_default_impl(env, target):
 
 _tests.append(_test_toolchain_is_registered_by_default)
 
+def _test_current_toolchain_headers_abi3(name):
+    analysis_test(
+        name = name,
+        impl = _test_current_toolchain_headers_impl,
+        target = "//python/cc:current_py_cc_headers_abi3",
+        config_settings = {
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
+        },
+        attrs = {
+            "header": attr.label(
+                default = "//tests/support/cc_toolchains:fake_header.h",
+                allow_single_file = True,
+            ),
+        },
+    )
+
+_tests.append(_test_current_toolchain_headers_abi3)
+
 def current_py_cc_headers_test_suite(name):
     test_suite(
         name = name,

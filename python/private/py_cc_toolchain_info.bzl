@@ -39,7 +39,7 @@ Information about the header files, struct with fields:
     considered private and should be forward along as-is (this better allows
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
-"",
+""",
         "headers_abi3": """
 :type: struct | None
 
@@ -67,7 +67,7 @@ fields:
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
-        "libs": "\
+        "libs": """
 :type: struct | None
 
 If available, information about C libraries, struct with fields:

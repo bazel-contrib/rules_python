@@ -38,6 +38,7 @@ toolchain(
 py_cc_toolchain(
     name = "fake_py_cc_toolchain_impl",
     headers = ":fake_headers",
+    headers_abi3 = ":fake_headers",
     libs = ":fake_libs",
     python_version = "3.999",
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
