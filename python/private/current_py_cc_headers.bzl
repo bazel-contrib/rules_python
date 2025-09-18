@@ -47,11 +47,13 @@ cc_library(
 def _current_py_cc_headers_abi3_impl(ctx):
     py_cc_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE].py_cc_toolchain
     if not py_cc_toolchain.headers_abi3:
-        fail(
-            "The current {} toolchain does not provide abi3 headers.".format(
-                PY_CC_TOOLCHAIN_TYPE,
-            ),
-        )
+        fail((
+            "The current {} toolchain does not provide abi3 headers. " +
+            "Verify the toolchain sets `.headers_abi3`, or use the " +
+            "regular `:current_py_cc_headers` target."
+        ).format(
+            PY_CC_TOOLCHAIN_TYPE,
+        ))
     return py_cc_toolchain.headers_abi3.providers_map.values()
 
 current_py_cc_headers_abi3 = rule(
