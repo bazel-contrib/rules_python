@@ -15,6 +15,12 @@
 """Runfiles lookup library for Bazel-built Python binaries and tests.
 
 See @rules_python//python/runfiles/README.md for usage instructions.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+Support for Bazel's `--incompatible_compact_repo_mapping_manifest` flag was added.
+This enables prefix-based repository mappings to reduce memory usage for large
+dependency graphs under bzlmod.
+:::
 """
 import collections.abc
 import inspect
