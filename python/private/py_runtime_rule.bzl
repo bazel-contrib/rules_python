@@ -16,7 +16,6 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load(":attributes.bzl", "NATIVE_RULES_ALLOWLIST_ATTRS")
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
@@ -191,7 +190,6 @@ py_runtime(
 """,
     fragments = ["py"],
     attrs = dicts.add(
-        {k: v().build() for k, v in NATIVE_RULES_ALLOWLIST_ATTRS.items()},
         {
             "abi_flags": attr.string(
                 default = "<AUTO>",
