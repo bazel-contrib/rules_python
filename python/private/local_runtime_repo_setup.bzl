@@ -131,7 +131,7 @@ def define_local_runtime_toolchain_impl(
     py_cc_toolchain(
         name = "py_cc_toolchain",
         headers = ":_python_headers",
-        headers_abi3 = ":_python_header_abi3",
+        headers_abi3 = ":_python_headers_abi3",
         libs = ":_libpython",
         python_version = major_minor_micro,
         visibility = ["//visibility:public"],
