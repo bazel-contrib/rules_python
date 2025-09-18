@@ -16,11 +16,144 @@
 
 See @rules_python//python/runfiles/README.md for usage instructions.
 """
+import collections.abc
 import inspect
 import os
 import posixpath
 import sys
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple, Union
+
+
+class _RepositoryMapping(collections.abc.Mapping[Tuple[str, str], str]):
+    """Repository mapping for resolving apparent repository names to canonical ones.
+    
+    Handles both exact mappings and prefix-based mappings introduced by the 
+    --incompatible_compact_repo_mapping_manifest flag.
+    
+    Implements the Mapping protocol for exact lookups, while providing a separate
+    lookup() method for prefix-aware resolution.
+    """
+
+    def __init__(
+        self, 
+        exact_mappings: Dict[Tuple[str, str], str], 
+        prefixed_mappings: Dict[Tuple[str, str], str]
+    ) -> None:
+        """Initialize repository mapping with exact and prefixed mappings.
+        
+        Args:
+            exact_mappings: Dict mapping (source_canonical, target_apparent) -> target_canonical
+            prefixed_mappings: Dict mapping (source_prefix, target_apparent) -> target_canonical
+        """
+        self._exact_mappings = exact_mappings
+        self._prefixed_mappings = prefixed_mappings
+
+    @staticmethod
+    def create_from_file(repo_mapping_path: Optional[str]) -> "_RepositoryMapping":
+        """Create RepositoryMapping from a repository mapping manifest file.
+        
+        Args:
+            repo_mapping_path: Path to the repository mapping file, or None if not available
+            
+        Returns:
+            RepositoryMapping instance with parsed mappings
+        """
+        # If the repository mapping file can't be found, that is not an error: We
+        # might be running without Bzlmod enabled or there may not be any runfiles.
+        # In this case, just apply empty repo mappings.
+        if not repo_mapping_path:
+            return _RepositoryMapping({}, {})
+        
+        try:
+            with open(repo_mapping_path, "r", encoding="utf-8", newline="\n") as f:
+                content = f.read()
+        except FileNotFoundError:
+            return _RepositoryMapping({}, {})
+
+        exact_mappings = {}
+        prefixed_mappings = {}
+        for line in content.split("\n"):
+            if not line:
+                # Empty line following the last line break
+                break
+            source_canonical, target_apparent, target_canonical = line.split(",")
+            if source_canonical.endswith("*"):
+                # This is a prefixed mapping - remove the '*' for prefix matching
+                prefix = source_canonical[:-1]
+                prefixed_mappings[(prefix, target_apparent)] = target_canonical
+            else:
+                # This is an exact mapping
+                exact_mappings[(source_canonical, target_apparent)] = target_canonical
+
+        return _RepositoryMapping(exact_mappings, prefixed_mappings)
+
+    def lookup(self, source_repo: str, target_apparent: str) -> Optional[str]:
+        """Look up the canonical repository name for a target apparent repo name.
+        
+        Args:
+            source_repo: The canonical name of the source repository
+            target_apparent: The apparent name of the target repository to resolve
+            
+        Returns:
+            The canonical name of the target repository, or None if no mapping found
+        """
+        # Try exact mapping first
+        if (source_repo, target_apparent) in self._exact_mappings:
+            return self._exact_mappings[(source_repo, target_apparent)]
+
+        # Try prefixed mapping if no exact match found
+        for (prefix_source, target_app), target_canonical in self._prefixed_mappings.items():
+            if target_app == target_apparent and source_repo.startswith(prefix_source):
+                return target_canonical
+
+        # No mapping found
+        return None
+
+    def is_empty(self) -> bool:
+        """Check if the repository mapping is empty."""
+        return not self._exact_mappings and not self._prefixed_mappings
+
+    # Mapping protocol implementation (for exact mappings only)
+    def __getitem__(self, key: Tuple[str, str]) -> str:
+        """Get exact mapping for (source_canonical, target_apparent) key.
+        
+        Note: This only handles exact mappings, not prefix-based mappings.
+        For prefix-aware lookup, use the lookup() method instead.
+        
+        Args:
+            key: Tuple of (source_canonical, target_apparent)
+            
+        Returns:
+            target_canonical repository name
+            
+        Raises:
+            KeyError: if no exact mapping exists for the key
+        """
+        return self._exact_mappings[key]
+
+    def __iter__(self) -> Iterator[Tuple[str, str]]:
+        """Iterate over exact mapping keys."""
+        return iter(self._exact_mappings)
+
+    def __len__(self) -> int:
+        """Return the number of exact mappings."""
+        return len(self._exact_mappings)
+
+    # Additional mapping methods for convenience
+    def get(self, key: Tuple[str, str], default: Optional[str] = None) -> Optional[str]:
+        """Get exact mapping with default value.
+        
+        Note: This only handles exact mappings, not prefix-based mappings.
+        For prefix-aware lookup, use the lookup() method instead.
+        
+        Args:
+            key: Tuple of (source_canonical, target_apparent)
+            default: Default value to return if key not found
+            
+        Returns:
+            target_canonical repository name or default
+        """
+        return self._exact_mappings.get(key, default)
 
 
 class _ManifestBased:
@@ -130,7 +263,7 @@ class Runfiles:
     def __init__(self, strategy: Union[_ManifestBased, _DirectoryBased]) -> None:
         self._strategy = strategy
         self._python_runfiles_root = _FindPythonRunfilesRoot()
-        self._exact_repo_mapping, self._prefixed_repo_mapping = _ParseRepoMapping(
+        self._repo_mapping = _RepositoryMapping.create_from_file(
             strategy.RlocationChecked("_repo_mapping")
         )
 
@@ -179,7 +312,7 @@ class Runfiles:
         if os.path.isabs(path):
             return path
 
-        if source_repo is None and (self._exact_repo_mapping or self._prefixed_repo_mapping):
+        if source_repo is None and not self._repo_mapping.is_empty():
             # Look up runfiles using the repository mapping of the caller of the
             # current method. If the repo mapping is empty, determining this
             # name is not necessary.
@@ -193,16 +326,10 @@ class Runfiles:
             # which should not be mapped.
             return self._strategy.RlocationChecked(path)
 
-        # Try exact mapping first
-        if (source_repo, target_repo) in self._exact_repo_mapping:
-            target_canonical = self._exact_repo_mapping[(source_repo, target_repo)]
-            return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
-
-        # Try prefixed mapping if no exact match found
-        for (prefix_source, target_apparent), target_canonical in self._prefixed_repo_mapping.items():
-            if (target_apparent == target_repo and 
-                source_repo is not None and 
-                source_repo.startswith(prefix_source)):
+        # Look up the target repository using the repository mapping
+        if source_repo is not None:
+            target_canonical = self._repo_mapping.lookup(source_repo, target_repo)
+            if target_canonical is not None:
                 return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
 
         # No mapping found - assume target_repo is already canonical or
@@ -358,46 +485,6 @@ def _FindPythonRunfilesRoot() -> str:
     for _ in range("rules_python/python/runfiles/runfiles.py".count("/") + 1):
         root = os.path.dirname(root)
     return root
-
-
-def _ParseRepoMapping(
-    repo_mapping_path: Optional[str]
-) -> Tuple[Dict[Tuple[str, str], str], Dict[Tuple[str, str], str]]:
-    """Parses the repository mapping manifest.
-    
-    Returns:
-        A tuple of (exact_mappings, prefixed_mappings) where:
-        - exact_mappings: Dict mapping (source_canonical, target_apparent) -> target_canonical
-        - prefixed_mappings: Dict mapping (source_prefix, target_apparent) -> target_canonical
-          where source_prefix entries in the input ended with '*'
-    """
-    # If the repository mapping file can't be found, that is not an error: We
-    # might be running without Bzlmod enabled or there may not be any runfiles.
-    # In this case, just apply empty repo mappings.
-    if not repo_mapping_path:
-        return {}, {}
-    try:
-        with open(repo_mapping_path, "r", encoding="utf-8", newline="\n") as f:
-            content = f.read()
-    except FileNotFoundError:
-        return {}, {}
-
-    exact_mappings = {}
-    prefixed_mappings = {}
-    for line in content.split("\n"):
-        if not line:
-            # Empty line following the last line break
-            break
-        source_canonical, target_apparent, target_canonical = line.split(",")
-        if source_canonical.endswith("*"):
-            # This is a prefixed mapping - remove the '*' for prefix matching
-            prefix = source_canonical[:-1]
-            prefixed_mappings[(prefix, target_apparent)] = target_canonical
-        else:
-            # This is an exact mapping
-            exact_mappings[(source_canonical, target_apparent)] = target_canonical
-
-    return exact_mappings, prefixed_mappings
 
 
 def CreateManifestBased(manifest_path: str) -> Runfiles:

@@ -636,7 +636,75 @@ class RunfilesTest(unittest.TestCase):
                 dir + "/lib~general/foo/file",
             )
 
-# TODO: Add manifest-based test for compact repo mapping
+    def testRepositoryMappingImplementsMappingProtocol(self) -> None:
+        """Test that RepositoryMapping implements the Mapping protocol correctly."""
+        from python.runfiles.runfiles import _RepositoryMapping  # buildifier: disable=bzl-visibility
+        
+        # Create a RepositoryMapping with both exact and prefixed mappings
+        exact_mappings = {
+            ("", "my_workspace"): "_main",
+            ("", "config_lib"): "config_lib~1.0.0",
+            ("deps+specific_repo", "external_dep"): "external_dep~exact",
+        }
+        prefixed_mappings = {
+            ("deps+", "external_dep"): "external_dep~prefix",
+            ("test_deps+", "test_lib"): "test_lib~2.1.0",
+        }
+        
+        repo_mapping = _RepositoryMapping(exact_mappings, prefixed_mappings)
+        
+        # Test Mapping protocol methods
+        
+        # Test __len__ - should only count exact mappings
+        self.assertEqual(len(repo_mapping), 3)
+        
+        # Test __getitem__ - should work for exact mappings only
+        self.assertEqual(repo_mapping[("", "my_workspace")], "_main")
+        self.assertEqual(repo_mapping[("", "config_lib")], "config_lib~1.0.0")
+        self.assertEqual(repo_mapping[("deps+specific_repo", "external_dep")], "external_dep~exact")
+        
+        # Test KeyError for non-existent exact mapping
+        with self.assertRaises(KeyError):
+            _ = repo_mapping[("nonexistent", "repo")]
+        
+        # Test iteration - should iterate over exact mapping keys only
+        keys = list(repo_mapping)
+        self.assertEqual(len(keys), 3)
+        self.assertIn(("", "my_workspace"), keys)
+        self.assertIn(("", "config_lib"), keys)
+        self.assertIn(("deps+specific_repo", "external_dep"), keys)
+        
+        # Test 'in' operator (via __contains__)
+        self.assertTrue(("", "my_workspace") in repo_mapping)
+        self.assertFalse(("nonexistent", "repo") in repo_mapping)
+        
+        # Test get() method
+        self.assertEqual(repo_mapping.get(("", "my_workspace")), "_main")
+        self.assertIsNone(repo_mapping.get(("nonexistent", "repo")))
+        self.assertEqual(repo_mapping.get(("nonexistent", "repo"), "default"), "default")
+        
+        # Test that lookup() still works for both exact and prefix-based
+        # Exact lookup
+        self.assertEqual(repo_mapping.lookup("", "my_workspace"), "_main")
+        
+        # Prefix-based lookup (not available via Mapping protocol)
+        self.assertEqual(repo_mapping.lookup("deps+some_repo", "external_dep"), "external_dep~prefix")
+        
+        # Exact takes precedence over prefix
+        self.assertEqual(repo_mapping.lookup("deps+specific_repo", "external_dep"), "external_dep~exact")
+        
+        # Test items(), keys(), values() (inherited from Mapping)
+        items = list(repo_mapping.items())
+        self.assertEqual(len(items), 3)
+        self.assertIn((("", "my_workspace"), "_main"), items)
+        
+        keys = list(repo_mapping.keys())
+        values = list(repo_mapping.values())
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(len(values), 3)
+        self.assertIn("_main", values)
+
+    # TODO: Add manifest-based test for compact repo mapping
     # def testManifestBasedRlocationWithCompactRepoMapping(self) -> None:
     #     """Test that compact repo mapping also works with manifest-based runfiles."""
     #     pass
