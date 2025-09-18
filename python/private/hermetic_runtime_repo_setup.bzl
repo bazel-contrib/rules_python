@@ -107,25 +107,6 @@ def define_hermetic_runtime_toolchain_impl(
         srcs = native.glob(["include/**/*.h"]),
     )
     cc_library(
-        name = "python_headers",
-        deps = select({
-            "@bazel_tools//src/conditions:windows": [":interface"],
-            "//conditions:default": None,
-        }),
-        hdrs = [":includes"],
-        includes = [
-            "include",
-        ] + select({
-            _IS_FREETHREADED_YES: [
-                "include/python{major}.{minor}t".format(**version_dict),
-            ],
-            _IS_FREETHREADED_NO: [
-                "include/python{major}.{minor}".format(**version_dict),
-                "include/python{major}.{minor}m".format(**version_dict),
-            ],
-        }),
-    )
-    cc_library(
         name = "python_headers_abi3",
         deps = select({
             "@bazel_tools//src/conditions:windows": [":abi3_interface"],
@@ -142,6 +123,13 @@ def define_hermetic_runtime_toolchain_impl(
                 "include/python{major}.{minor}".format(**version_dict),
                 "include/python{major}.{minor}m".format(**version_dict),
             ],
+        }),
+    )
+    cc_library(
+        name = "python_headers",
+        deps = [":python_headers_abi3"] + select({
+            "@bazel_tools//src/conditions:windows": [":interface"],
+            "//conditions:default": [],
         }),
     )
     native.config_setting(
