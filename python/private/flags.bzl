@@ -17,9 +17,89 @@
 NOTE: The transitive loads of this should be kept minimal. This avoids loading
 unnecessary files when all that are needed are flag definitions.
 """
-
-load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("@bazel_features//:features.bzl", "bazel_features")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo", "string_list_flag")
 load(":enum.bzl", "FlagEnum", "enum")
+
+# Migration support for moving Python flags from Bazel to rules_python:
+# https://github.com/bazel-contrib/rules_python/issues/3252).
+#
+# Maps "--myflag" to ("starlark|native", <native reference>).
+#
+# "starlark" means .bzl code should resolve the Starlark definition, which we
+# assume is defined as a private attribute on the reading rule called "_myflag".
+#
+# "native" means .bzl code should resolve the native definition.
+#
+# <native reference> is the Starlark accessor for the native definition.
+_POSSIBLY_NATIVE_FLAGS = {
+  "disable_py2": ("native", lambda ctx: ctx.fragments.py.disable_py2),
+  "incompatible_default_to_explicit_init_py": ("native", lambda ctx: ctx.fragments.py.default_to_explicit_init_py),
+  "build_python_zip": ("native", lambda ctx: ctx.fragments.py.build_python_zip),
+  "experimental_python_import_all_repositories": ("native", lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories),
+
+}
+
+# Provides command-line overrides for which flags resolve to Starlark definitions
+# vs. native Bazel. Offers a workaround in case a user experiences a problem with
+# the Starllark switch.
+#
+# Usage:
+#  --use_starlark_flags=* - all flags use Starlark versions
+#  --use_starlark_flags=flag1,flag2 - only flag1, flag2 use Starlark versions
+#  --use_starlark_flags=flag1,-flag2 - flag1: Starlark, flag2: native version
+#
+# If not specified, apply defaults defined in _POSSIBLY_NATIVE_FLAGS.
+string_list_flag(
+  name = "use_starlark_flags",
+  build_setting_default = []
+)
+
+# mylang/flags/flags.bzl
+def _command_line_setting(use_starlark_flags, flag_name):
+  """Returns if --flag_name should use the Starlark or native definition.
+  
+  Rule logic can set its own defaults, for when this flag isn't set.
+
+  Args:
+    use_starlark_flags: Value of --//mylang:flags:use_starlark_flags 
+    flag_name: name of the flag to check, minus "--". Example: "javacopt". 
+
+  Returns:
+    "starlark": use the Starlark definition
+    "native": use the native definition
+    "language default": use the rule set's default choice
+  """
+  if not use_starlark_flags:
+    return "language default"   # --use_starlark_flags isn't set.   
+  elif len(use_starlark_flags) == 1 and use_starlark_flags[0] == '*':
+    return "starlark"  # --use_starlark_flags=* means "enable all flags".
+  elif len(use_starlark_flags) == 1 and use_starlark_flags[0] == '-':
+    return "native"  # --use_starlark_flags=- means "disable all flags".
+  elif flag_name in use_starlark_flags:
+    return "starlark"  # --use_starlark_flags=foo means "enable --foo".
+  elif "-" + flag_name in use_starlark_flags:
+    return "native"  # --use_starlark_flags=-foo means "disable --foo".
+  else:
+    return "language default" # --use_starlark_flags=otherflag1,otherflag2
+
+# Interface for reading flags that may be defined in Starlark or natively in
+# Bazel. Automatically gets the value from the right flag definition.
+def get_possibly_native_flag_value(ctx, flag_name):
+  flag_source_of_truth = _command_line_setting(
+    getattr(ctx.attr, "_use_starlark_flags")[BuildSettingInfo].value,
+    flag_name)
+  if flag_source_of_truth == "language default":
+    if flag_name in _POSSIBLY_NATIVE_FLAGS:
+      flag_source_of_truth = _POSSIBLY_NATIVE_FLAGS[flag_name][0]
+    else:
+      flag_source_of_truth = "native"
+
+  # Define lang support in https://github.com/bazel-contrib/bazel_features.
+  if bazel_features.flags.supports_starlark_flags_migration and flag_source_of_truth == "starlark":
+    return getattr(ctx.attr, "_" + flag_name)
+  else:
+    return _POSSIBLY_NATIVE_FLAGS[flag_name][1](ctx) 
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value
@@ -117,7 +197,7 @@ PrecompileFlag = enum(
 def _precompile_source_retention_flag_get_effective_value(ctx):
     value = ctx.attr._precompile_source_retention_flag[BuildSettingInfo].value
     if value == PrecompileSourceRetentionFlag.AUTO:
-        value = PrecompileSourceRetentionFlag.KEEP_SOURCE
+.KEEP_SOURCE
     return value
 
 # Determines if, when a source file is compiled, if the source file is kept
