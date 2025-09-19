@@ -28,7 +28,7 @@ import inspect
 import os
 import posixpath
 import sys
-from typing import Dict, Iterator, List, Mapping, Optional, Tuple, Union
+from typing import Dict, Iterator, Optional, Tuple, Union
 
 
 class _RepositoryMapping(collections.abc.Mapping):
