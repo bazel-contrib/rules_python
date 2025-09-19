@@ -34,26 +34,11 @@ load(":enum.bzl", "FlagEnum", "enum")
 # <native reference> is the Starlark accessor for the native definition.
 _POSSIBLY_NATIVE_FLAGS = {
   "disable_py2": ("native", lambda ctx: ctx.fragments.py.disable_py2),
-  "incompatible_default_to_explicit_init_py": ("native", lambda ctx: ctx.fragments.py.default_to_explicit_init_py),
+  "default_to_explicit_init_py": ("native", lambda ctx: ctx.fragments.py.default_to_explicit_init_py),
   "build_python_zip": ("native", lambda ctx: ctx.fragments.py.build_python_zip),
-  "experimental_python_import_all_repositories": ("native", lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories),
-
+  "python_import_all_repositories": ("native", lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories),
+  "python_path": ("native", lambda ctx: ctx.fragments.bazel_py.python_path),
 }
-
-# Provides command-line overrides for which flags resolve to Starlark definitions
-# vs. native Bazel. Offers a workaround in case a user experiences a problem with
-# the Starllark switch.
-#
-# Usage:
-#  --use_starlark_flags=* - all flags use Starlark versions
-#  --use_starlark_flags=flag1,flag2 - only flag1, flag2 use Starlark versions
-#  --use_starlark_flags=flag1,-flag2 - flag1: Starlark, flag2: native version
-#
-# If not specified, apply defaults defined in _POSSIBLY_NATIVE_FLAGS.
-string_list_flag(
-  name = "use_starlark_flags",
-  build_setting_default = []
-)
 
 # mylang/flags/flags.bzl
 def _command_line_setting(use_starlark_flags, flag_name):
@@ -85,7 +70,7 @@ def _command_line_setting(use_starlark_flags, flag_name):
 
 # Interface for reading flags that may be defined in Starlark or natively in
 # Bazel. Automatically gets the value from the right flag definition.
-def get_possibly_native_flag_value(ctx, flag_name):
+def read_possibly_native_flag(ctx, flag_name):
   flag_source_of_truth = _command_line_setting(
     getattr(ctx.attr, "_use_starlark_flags")[BuildSettingInfo].value,
     flag_name)
@@ -197,7 +182,7 @@ PrecompileFlag = enum(
 def _precompile_source_retention_flag_get_effective_value(ctx):
     value = ctx.attr._precompile_source_retention_flag[BuildSettingInfo].value
     if value == PrecompileSourceRetentionFlag.AUTO:
-.KEEP_SOURCE
+        value = PrecompileSourceRetentionFlag.KEEP_SOURCE
     return value
 
 # Determines if, when a source file is compiled, if the source file is kept

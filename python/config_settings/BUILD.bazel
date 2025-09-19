@@ -1,4 +1,4 @@
-load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag", "string_list_flag")
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load(
     "//python/private:flags.bzl",
@@ -239,4 +239,26 @@ label_flag(
     build_setting_default = ":_pip_env_marker_default_config",
     # NOTE: Only public because it is used in pip hub repos.
     visibility = ["//visibility:public"],
+)
+
+# Provides command-line overrides for which flags resolve to Starlark definitions
+# vs. native Bazel. Offers a workaround in case a user experiences a problem with
+# the Starllark switch.
+#
+# Usage:
+#  --use_starlark_flags=* - all flags use Starlark versions
+#  --use_starlark_flags=flag1,flag2 - only flag1, flag2 use Starlark versions
+#  --use_starlark_flags=flag1,-flag2 - flag1: Starlark, flag2: native version
+#
+# If not specified, apply defaults defined in _POSSIBLY_NATIVE_FLAGS.
+string_list_flag(
+  name = "use_starlark_flags",
+  build_setting_default = [],
+  visibility = ["//visibility:public"]
+)
+
+bool_flag(
+    name = "experimental_python_import_all_repositories",
+    build_setting_default = True,
+    visibility = ["//visibility:public"]
 )
