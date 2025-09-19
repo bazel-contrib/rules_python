@@ -49,6 +49,20 @@ simple==0.0.1 \
         ],
     )
 
+def _whl_mod(*, hub_name, whl_name, additive_build_content = None, additive_build_content_file = None, copy_executables = {}, copy_files = {}, data = [], data_exclude_glob = [], srcs_exclude_glob = [], enable_implicit_namespace_pkgs = None):
+    return struct(
+        hub_name = hub_name,
+        whl_name = whl_name,
+        additive_build_content = additive_build_content,
+        additive_build_content_file = additive_build_content_file,
+        copy_executables = copy_executables,
+        copy_files = copy_files,
+        data = data,
+        data_exclude_glob = data_exclude_glob,
+        srcs_exclude_glob = srcs_exclude_glob,
+        enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
+    )
+
 def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_root = True):
     return struct(
         name = name,
@@ -233,6 +247,69 @@ def _test_build_pipstar_platform(env):
     })
 
 _tests.append(_test_build_pipstar_platform)
+
+def _test_whl_mods_with_namespace_pkgs(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+                whl_mods = [
+                    _whl_mod(
+                        hub_name = "pypi",
+                        whl_name = "simple",
+                        additive_build_content = "# Custom build content",
+                        enable_implicit_namespace_pkgs = True,
+                    ),
+                ],
+            ),
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+    pypi.hub_group_map().contains_exactly({"pypi": {}})
+    pypi.hub_whl_map().contains_exactly({"pypi": {
+        "simple": {
+            "pypi_315_simple": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+    }})
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple": {
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        },
+    })
+    pypi.whl_mods().contains_exactly({
+        "pypi": {
+            "simple": struct(
+                build_content = "# Custom build content",
+                copy_files = {},
+                copy_executables = {},
+                data = [],
+                data_exclude_glob = [],
+                srcs_exclude_glob = [],
+                enable_implicit_namespace_pkgs = True,
+            ),
+        },
+    })
+
+_tests.append(_test_whl_mods_with_namespace_pkgs)
 
 def extension_test_suite(name):
     """Create the test suite.
