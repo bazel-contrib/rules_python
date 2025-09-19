@@ -28,17 +28,14 @@ import inspect
 import os
 import posixpath
 import sys
-from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Mapping, Optional, Tuple, Union
 
 
-class _RepositoryMapping(collections.abc.Mapping[Tuple[str, str], str]):
+class _RepositoryMapping(collections.abc.Mapping):
     """Repository mapping for resolving apparent repository names to canonical ones.
     
     Handles both exact mappings and prefix-based mappings introduced by the 
     --incompatible_compact_repo_mapping_manifest flag.
-    
-    Implements the Mapping protocol, providing a unified lookup for both exact
-    and prefix-based mappings.
     """
 
     def __init__(
