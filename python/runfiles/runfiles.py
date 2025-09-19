@@ -309,11 +309,9 @@ class Runfiles:
 
         # Look up the target repository using the repository mapping
         if source_repo is not None:
-            try:
-                target_canonical = self._repo_mapping[(source_repo, target_repo)]
+            target_canonical = self._repo_mapping.get((source_repo, target_repo))
+            if target_canonical is not None:
                 return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
-            except KeyError:
-                pass  # No mapping found, continue to fallback
 
         # No mapping found - assume target_repo is already canonical or
         # we're not using Bzlmod
