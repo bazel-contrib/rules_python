@@ -52,9 +52,6 @@ def _struct_with(s, **kwargs):
     struct_dict.update(kwargs)
     return struct(**struct_dict)
 
-def _is_bazel_6_or_higher():
-    return True
-
 def _is_windows(env):
     """Tell if the target platform is windows.
 
@@ -71,6 +68,5 @@ def _is_windows(env):
 util = struct(
     create_tests = _create_tests,
     struct_with = _struct_with,
-    is_bazel_6_or_higher = _is_bazel_6_or_higher,
     is_windows = _is_windows,
 )
