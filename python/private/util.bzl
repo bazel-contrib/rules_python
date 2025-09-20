@@ -95,8 +95,6 @@ def add_tag(attrs, tag):
 # to get past the loading phase.
 def define_bazel_6_provider(doc, fields, **kwargs):
     """Define a provider, or a stub for pre-Bazel 7."""
-    if not IS_BAZEL_6_OR_HIGHER:
-        return provider("Stub, not used", fields = []), None
     return provider(doc = doc, fields = fields, **kwargs)
 
 IS_BAZEL_7_4_OR_HIGHER = hasattr(native, "legacy_globals")
