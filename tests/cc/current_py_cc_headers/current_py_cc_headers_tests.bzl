@@ -22,25 +22,7 @@ load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 
 _tests = []
 
-def _test_current_toolchain_headers(name):
-    analysis_test(
-        name = name,
-        impl = _test_current_toolchain_headers_impl,
-        target = "//python/cc:current_py_cc_headers",
-        config_settings = {
-            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
-        },
-        attrs = {
-            "header_files": attr.label_list(
-                default = [
-                    "//tests/support/cc_toolchains:py_header_files",
-                ],
-                allow_files = True,
-            ),
-        },
-    )
-
-def _test_current_toolchain_headers_impl(env, target):
+def _verify_headers_target(env, target):
     # Check that the forwarded CcInfo looks vaguely correct.
     compilation_context = env.expect.that_target(target).provider(
         CcInfo,
@@ -70,6 +52,27 @@ def _test_current_toolchain_headers_impl(env, target):
         matching.str_matches("*/cc_toolchains/data.txt"),
     )
 
+def _test_current_toolchain_headers(name):
+    analysis_test(
+        name = name,
+        impl = _test_current_toolchain_headers_impl,
+        target = "//python/cc:current_py_cc_headers",
+        config_settings = {
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
+        },
+        attrs = {
+            "header_files": attr.label_list(
+                default = [
+                    "//tests/support/cc_toolchains:py_headers_files",
+                ],
+                allow_files = True,
+            ),
+        },
+    )
+
+def _test_current_toolchain_headers_impl(env, target):
+    _verify_headers_target(env, target)
+
 _tests.append(_test_current_toolchain_headers)
 
 def _test_toolchain_is_registered_by_default(name):
@@ -83,6 +86,29 @@ def _test_toolchain_is_registered_by_default_impl(env, target):
     env.expect.that_target(target).has_provider(CcInfo)
 
 _tests.append(_test_toolchain_is_registered_by_default)
+
+def _test_current_toolchain_headers_abi3(name):
+    analysis_test(
+        name = name,
+        impl = _test_current_toolchain_headers_abi3_impl,
+        target = "//python/cc:current_py_cc_headers_abi3",
+        config_settings = {
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
+        },
+        attrs = {
+            "header_files": attr.label_list(
+                default = [
+                    "//tests/support/cc_toolchains:py_headers_abi3_files",
+                ],
+                allow_files = True,
+            ),
+        },
+    )
+
+def _test_current_toolchain_headers_abi3_impl(env, target):
+    _verify_headers_target(env, target)
+
+_tests.append(_test_current_toolchain_headers_abi3)
 
 def current_py_cc_headers_test_suite(name):
     test_suite(

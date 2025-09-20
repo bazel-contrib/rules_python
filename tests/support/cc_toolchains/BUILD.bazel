@@ -23,9 +23,18 @@ package(default_visibility = ["//:__subpackages__"])
 
 # Factored out for testing
 filegroup(
-    name = "py_header_files",
+    name = "py_headers_files",
     srcs = [
         "py_header.h",
+        ":py_headers_abi3_files",
+    ],
+)
+
+# Factored out for testing
+filegroup(
+    name = "py_headers_abi3_files",
+    srcs = [
+        "py_abi3_header.h",
         "py_include/py_include.h",
     ],
 )
@@ -46,17 +55,25 @@ toolchain(
 py_cc_toolchain(
     name = "fake_py_cc_toolchain_impl",
     headers = ":py_headers",
+    headers_abi3 = ":py_headers_abi3",
     libs = ":fake_libs",
     python_version = "3.999",
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
 )
 
 cc_library(
-    name = "py_headers",
-    hdrs = [":py_header_files"],
+    name = "py_headers_abi3",
+    hdrs = [":py_headers_abi3_files"],
     data = ["data.txt"],
     includes = ["py_include"],
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+)
+
+cc_library(
+    name = "py_headers",
+    hdrs = [":py_headers_files"],
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+    deps = [":py_headers_abi3"],
 )
 
 cc_library(

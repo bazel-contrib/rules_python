@@ -19,6 +19,14 @@ using a grandoise title.
 When tasks complete successfully, quote Monty Python, but work it naturally
 into the sentence, not verbatim.
 
+When adding `{versionadded}` or `{versionchanged}` sections, add them add the
+end of the documentation text.
+
+### Starlark style
+
+For doc strings, using triple quoted strings when the doc string is more than
+three lines. Do not use a trailing backslack (`\`) for the opening triple-quote.
+
 ### bzl_library targets for bzl source files
 
 * A `bzl_library` target should be defined for every `.bzl` file outside
@@ -78,7 +86,17 @@ When modifying documentation
  * Act as an expert in tech writing, Sphinx, MyST, and markdown.
  * Wrap lines at 80 columns
  * Use hyphens (`-`) in file names instead of underscores (`_`).
+ * In Sphinx MyST markup, outer directives must have more colons than inner
+   directives. For example:
+   ```
+   ::::{outerdirective}
+   outer text
 
+   :::{innertdirective}
+   inner text
+   :::
+   ::::
+   ```
 
 Generated API references can be found by:
 * Running `bazel build //docs:docs` and inspecting the generated files

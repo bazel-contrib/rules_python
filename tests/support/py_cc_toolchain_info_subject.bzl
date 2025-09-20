@@ -19,6 +19,7 @@ def _py_cc_toolchain_info_subject_new(info, *, meta):
     # buildifier: disable=uninitialized
     public = struct(
         headers = lambda *a, **k: _py_cc_toolchain_info_subject_headers(self, *a, **k),
+        headers_abi3 = lambda *a, **k: _py_cc_toolchain_info_subject_headers_abi3(self, *a, **k),
         libs = lambda *a, **k: _py_cc_toolchain_info_subject_libs(self, *a, **k),
         python_version = lambda *a, **k: _py_cc_toolchain_info_subject_python_version(self, *a, **k),
         actual = info,
@@ -30,6 +31,15 @@ def _py_cc_toolchain_info_subject_headers(self):
     return subjects.struct(
         self.actual.headers,
         meta = self.meta.derive("headers()"),
+        attrs = dict(
+            providers_map = subjects.dict,
+        ),
+    )
+
+def _py_cc_toolchain_info_subject_headers_abi3(self):
+    return subjects.struct(
+        self.actual.headers_abi3,
+        meta = self.meta.derive("headers_abi3()"),
         attrs = dict(
             providers_map = subjects.dict,
         ),

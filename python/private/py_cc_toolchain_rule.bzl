@@ -34,6 +34,16 @@ def _py_cc_toolchain_impl(ctx):
     else:
         libs = None
 
+    if ctx.attr.headers_abi3:
+        headers_abi3 = struct(
+            providers_map = {
+                "CcInfo": ctx.attr.headers_abi3[CcInfo],
+                "DefaultInfo": ctx.attr.headers_abi3[DefaultInfo],
+            },
+        )
+    else:
+        headers_abi3 = None
+
     py_cc_toolchain = PyCcToolchainInfo(
         headers = struct(
             providers_map = {
@@ -41,6 +51,7 @@ def _py_cc_toolchain_impl(ctx):
                 "DefaultInfo": ctx.attr.headers[DefaultInfo],
             },
         ),
+        headers_abi3 = headers_abi3,
         libs = libs,
         python_version = ctx.attr.python_version,
     )
@@ -61,6 +72,20 @@ py_cc_toolchain = rule(
             providers = [CcInfo],
             mandatory = True,
         ),
+        "headers_abi3": attr.label(
+            doc = """
+Target that provides the Python ABI3 (stable abi) headers.
+
+Typically this is a cc_library target.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The {obj}`features.headers_abi3` attribute can be used to detect if this
+attribute is available or not.
+:::
+""",
+            default = "//python/private/cc:empty",
+            providers = [CcInfo],
+        ),
         "libs": attr.label(
             doc = ("Target that provides the Python runtime libraries for linking. " +
                    "Typically this is a cc_library target of `.so` files."),
@@ -74,7 +99,7 @@ py_cc_toolchain = rule(
             default = labels.VISIBLE_FOR_TESTING,
         ),
     },
-    doc = """\
+    doc = """
 A toolchain for a Python runtime's C/C++ information (e.g. headers)
 
 This rule carries information about the C/C++ side of a Python runtime, e.g.
