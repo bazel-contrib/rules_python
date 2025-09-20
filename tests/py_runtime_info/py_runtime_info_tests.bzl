@@ -16,18 +16,13 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
 def _create_py_runtime_info_without_interpreter_version_info_impl(ctx):
-    kwargs = {}
-    if IS_BAZEL_7_OR_HIGHER:
-        kwargs["bootstrap_template"] = ctx.attr.bootstrap_template
-
     return [PyRuntimeInfo(
         interpreter = ctx.file.interpreter,
         files = depset(ctx.files.files),
         python_version = "PY3",
-        **kwargs
+        bootstrap_template = ctx.attr.bootstrap_template,
     )]
 
 _create_py_runtime_info_without_interpreter_version_info = rule(

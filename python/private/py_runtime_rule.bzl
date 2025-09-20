@@ -20,7 +20,6 @@ load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
 def _py_runtime_impl(ctx):
     interpreter_path = ctx.attr.interpreter_path or None  # Convert empty string to None
@@ -129,9 +128,6 @@ def _py_runtime_impl(ctx):
         site_init_template = ctx.file.site_init_template,
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
     ))
-
-    if not IS_BAZEL_7_OR_HIGHER:
-        builtin_py_runtime_info_kwargs.pop("bootstrap_template")
 
     providers = [
         PyRuntimeInfo(**py_runtime_info_kwargs),
