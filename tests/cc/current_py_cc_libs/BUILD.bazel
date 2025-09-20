@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load(":current_py_cc_libs_tests.bzl", "current_py_cc_libs_test_suite")
 
@@ -33,10 +32,9 @@ cc_test(
 # Since we define the Py_LIMITED_API macro, we expect the linker to go search
 # for libs/python3.lib.
 cc_test(
-    name = "python_abi3_libs_linking_windows_test",
+    name = "python_abi3_libs_linking_test",
     srcs = ["python_libs_linking_test.cc"],
     defines = ["Py_LIMITED_API=0x030A0000"],
-    target_compatible_with = ["@platforms//os:windows"],
     deps = [
         "@rules_python//python/cc:current_py_cc_headers_abi3",
         "@rules_python//python/cc:current_py_cc_libs",

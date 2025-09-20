@@ -22,6 +22,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(":common_labels.bzl", "labels")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
+load(":sentinel.bzl", "SentinelInfo")
 
 def _py_cc_toolchain_impl(ctx):
     if ctx.attr.libs:
@@ -34,7 +35,7 @@ def _py_cc_toolchain_impl(ctx):
     else:
         libs = None
 
-    if ctx.attr.headers_abi3:
+    if ctx.attr.headers_abi3 and SentinelInfo not in ctx.attr.headers_abi3:
         headers_abi3 = struct(
             providers_map = {
                 "CcInfo": ctx.attr.headers_abi3[CcInfo],
@@ -83,8 +84,8 @@ The {obj}`features.headers_abi3` attribute can be used to detect if this
 attribute is available or not.
 :::
 """,
-            default = "//python/private/cc:empty",
-            providers = [CcInfo],
+            default = "//python:none",
+            providers = [[SentinelInfo], [CcInfo]],
         ),
         "libs": attr.label(
             doc = ("Target that provides the Python runtime libraries for linking. " +
