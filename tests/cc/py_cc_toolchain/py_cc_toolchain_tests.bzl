@@ -62,9 +62,15 @@ def _test_py_cc_toolchain_impl(env, target):
         env.ctx.files.header_files,
     )
 
+    # NOTE: Bazel 8 and lower put cc_library.includes into `.system_includes`,
+    # while Bazel 9 put it in `.includes`. Both result in the includes being
+    # added as system includes, so either is acceptable for the expected
+    # `#include <Python.h>` to work.
+    includes = compilation_context.actual.includes.to_list() + compilation_context.actual.system_includes.to_list()
+
     # NOTE: The include dir gets added twice, once for the source path,
-    # and once for the config-specific path, but we don't care about that.
-    compilation_context.system_includes().contains_at_least_predicates([
+    # and once for the config-specific path.
+    env.expect.that_collection(includes).contains_at_least_predicates([
         matching.str_matches("*/py_include"),
     ])
 
@@ -87,11 +93,11 @@ def _test_py_cc_toolchain_impl(env, target):
         env.ctx.files.header_abi3_files,
     )
 
-    # NOTE: The include dir gets added twice, once for the source path,
-    # and once for the config-specific path, but we don't care about that.
-    compilation_context.system_includes().contains_at_least_predicates([
-        matching.str_matches("*/py_include"),
-    ])
+    # NOTE: Bazel 8 and lower put cc_library.includes into `.system_includes`,
+    # while Bazel 9 put it in `.includes`. Both result in the includes being
+    # added as system includes, so either is acceptable for the expected
+    # `#include <Python.h>` to work.
+    includes = compilation_context.actual.includes.to_list() + compilation_context.actual.system_includes.to_list()
 
     default_info = headers_abi3_providers.get("DefaultInfo", factory = subjects.default_info)
     default_info.runfiles().contains_predicate(
