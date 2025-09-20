@@ -83,6 +83,7 @@ The {obj}`features.headers_abi3` attribute can be used to detect if this
 attribute is available or not.
 :::
 """,
+            default = "//python/private/cc:empty",
             providers = [CcInfo],
         ),
         "libs": attr.label(
