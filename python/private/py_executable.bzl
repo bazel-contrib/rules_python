@@ -1199,7 +1199,7 @@ def _maybe_get_runtime_from_ctx(ctx):
         fail("Python toolchain field 'py3_runtime' is missing")
     if not toolchain.py3_runtime:
         fail("Python toolchain missing py3_runtime")
-    toolchain_runtime = toolchain.py3_runtime
+    py3_runtime = toolchain.py3_runtime
 
     # Hack around the fact that the autodetecting Python toolchain, which is
     # automatically registered, does not yet support Windows. In this case,
@@ -1207,16 +1207,14 @@ def _maybe_get_runtime_from_ctx(ctx):
     # --python_path. See tools/python/toolchain.bzl.
     # TODO(#7844): Remove this hack when the autodetecting toolchain has a
     # Windows implementation.
-    if toolchain_runtime.interpreter_path == "/_magic_pyruntime_sentinel_do_not_use":
+    if py3_runtime.interpreter_path == "/_magic_pyruntime_sentinel_do_not_use":
         return None, None
 
-    if toolchain_runtime.python_version != "PY3":
+    if py3_runtime.python_version != "PY3":
         fail("Python toolchain py3_runtime must be python_version=PY3, got {}".format(
-            toolchain_runtime.python_version,
+            py3_runtime.python_version,
         ))
-    effective_runtime = toolchain_runtime
-
-    return toolchain_runtime, effective_runtime
+    return py3_runtime, py3_runtime
 
 def _get_base_runfiles_for_binary(
         ctx,
