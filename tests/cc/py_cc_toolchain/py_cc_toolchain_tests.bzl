@@ -28,8 +28,12 @@ def _test_py_cc_toolchain(name):
         impl = _test_py_cc_toolchain_impl,
         target = "//tests/support/cc_toolchains:fake_py_cc_toolchain_impl",
         attrs = {
+            "header_abi3_files": attr.label_list(
+                default = ["//tests/support/cc_toolchains:py_headers_abi3_files"],
+                allow_files = True,
+            ),
             "header_files": attr.label_list(
-                default = ["//tests/support/cc_toolchains:py_header_files"],
+                default = ["//tests/support/cc_toolchains:py_headers_files"],
                 allow_files = True,
             ),
         },
@@ -76,17 +80,17 @@ def _test_py_cc_toolchain_impl(env, target):
     cc_info = headers_abi3_providers.get("CcInfo", factory = cc_info_subject)
 
     compilation_context = cc_info.compilation_context()
-    compilation_context.direct_headers().contains_exactly([
-        env.ctx.file.header,
-    ])
-    compilation_context.direct_public_headers().contains_exactly([
-        env.ctx.file.header,
-    ])
+    compilation_context.direct_headers().contains_exactly(
+        env.ctx.files.header_abi3_files,
+    )
+    compilation_context.direct_public_headers().contains_exactly(
+        env.ctx.files.header_abi3_files,
+    )
 
     # NOTE: The include dir gets added twice, once for the source path,
     # and once for the config-specific path, but we don't care about that.
     compilation_context.system_includes().contains_at_least_predicates([
-        matching.str_matches("*/fake_include"),
+        matching.str_matches("*/py_include"),
     ])
 
     default_info = headers_abi3_providers.get("DefaultInfo", factory = subjects.default_info)
