@@ -131,6 +131,17 @@ def define_hermetic_runtime_toolchain_impl(
             "@bazel_tools//src/conditions:windows": [":interface"],
             "//conditions:default": [],
         }),
+        includes = [
+            "include",
+        ] + select({
+            _IS_FREETHREADED_YES: [
+                "include/python{major}.{minor}t".format(**version_dict),
+            ],
+            _IS_FREETHREADED_NO: [
+                "include/python{major}.{minor}".format(**version_dict),
+                "include/python{major}.{minor}m".format(**version_dict),
+            ],
+        }),
     )
     native.config_setting(
         name = "is_freethreaded_linux",
