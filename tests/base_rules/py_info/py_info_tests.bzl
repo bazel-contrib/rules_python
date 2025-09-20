@@ -42,7 +42,7 @@ def _provide_py_info_impl(ctx):
     if config.enable_pystar:
         providers.append(PyInfo(**kwargs))
 
-    # Handle Bazel 6 or if Bazel autoloading is enabled
+    # Handle if Bazel autoloading is enabled
     if not config.enable_pystar or (BuiltinPyInfo and PyInfo != BuiltinPyInfo):
         providers.append(BuiltinPyInfo(**{
             k: kwargs[k]

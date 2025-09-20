@@ -70,7 +70,6 @@ bzl_library(
         ":enum_bzl",
         ":flags_bzl",
         ":py_info_bzl",
-        ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
         "@bazel_skylib//rules:common_settings",

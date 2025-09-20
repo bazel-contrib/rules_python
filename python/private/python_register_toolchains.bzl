@@ -97,21 +97,6 @@ def python_register_toolchains(
 
     toolchain_repo_name = "{name}_toolchains".format(name = name)
 
-    # When using unreleased Bazel versions, the version is an empty string
-    if native.bazel_version:
-        bazel_major = int(native.bazel_version.split(".")[0])
-        if bazel_major < 6:
-            if register_coverage_tool:
-                # buildifier: disable=print
-                print((
-                    "WARNING: ignoring register_coverage_tool=True when " +
-                    "registering @{name}: Bazel 6+ required, got {version}"
-                ).format(
-                    name = name,
-                    version = native.bazel_version,
-                ))
-            register_coverage_tool = False
-
     # list[str] of the platform names that were used
     loaded_platforms = []
 
