@@ -99,6 +99,9 @@ def define_bazel_6_provider(doc, fields, **kwargs):
         return provider("Stub, not used", fields = []), None
     return provider(doc = doc, fields = fields, **kwargs)
 
+# Only bazel 8 can distinguish symlinks within the file depsets.
+IS_BAZEL_8_OR_HIGHER = hasattr(config, "none")
+
 IS_BAZEL_7_4_OR_HIGHER = hasattr(native, "legacy_globals")
 
 IS_BAZEL_7_OR_HIGHER = hasattr(native, "starlark_doc_extract")
