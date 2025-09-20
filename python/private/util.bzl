@@ -90,10 +90,6 @@ IS_BAZEL_7_4_OR_HIGHER = hasattr(native, "legacy_globals")
 
 IS_BAZEL_7_OR_HIGHER = hasattr(native, "starlark_doc_extract")
 
-# Bazel 5.4 has a bug where every access of testing.ExecutionInfo is a
-# different object that isn't equal to any other. This is fixed in bazel 6+.
-IS_BAZEL_6_OR_HIGHER = testing.ExecutionInfo == testing.ExecutionInfo
-
 _marker_rule_to_detect_bazel_6_4_or_higher = rule(implementation = lambda ctx: None)
 
 # Bazel 6.4 and higher have a bug fix where rule names show up in the str()

@@ -14,11 +14,7 @@
 
 """Public entry point for py_runtime_pair."""
 
-load("@bazel_tools//tools/python:toolchain.bzl", _bazel_tools_impl = "py_runtime_pair")
-load("//python/private:py_runtime_pair_macro.bzl", _starlark_impl = "py_runtime_pair")
-load("//python/private:util.bzl", "IS_BAZEL_6_OR_HIGHER")
-
-_py_runtime_pair = _starlark_impl if IS_BAZEL_6_OR_HIGHER else _bazel_tools_impl
+load("//python/private:py_runtime_pair_macro.bzl", "py_runtime_pair")
 
 # NOTE: This doc is copy/pasted from the builtin py_runtime_pair rule so our
 # doc generator gives useful API docs.
@@ -86,7 +82,7 @@ def py_runtime_pair(name, py2_runtime = None, py3_runtime = None, **attrs):
     """
     if attrs.get("py2_runtime"):
         fail("PYthon 2 is no longer supported: see https://github.com/bazel-contrib/rules_python/issues/886")
-    _py_runtime_pair(
+    py_runtime_pair(
         name = name,
         py2_runtime = py2_runtime,
         py3_runtime = py3_runtime,
