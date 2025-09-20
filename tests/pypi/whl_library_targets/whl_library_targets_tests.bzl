@@ -217,7 +217,6 @@ def _test_whl_and_library_deps_from_requires(env):
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             config_setting = lambda **_: None,
             glob = mock_glob.glob,
-            select = _select,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
@@ -230,7 +229,7 @@ def _test_whl_and_library_deps_from_requires(env):
         {
             "name": "whl",
             "srcs": ["foo-0-py3-none-any.whl"],
-            "data": ["@pypi//bar:whl"] + _select({
+            "data": ["@pypi//bar:whl"] + select({
                 ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
                 "//conditions:default": [],
             }),
@@ -245,14 +244,14 @@ def _test_whl_and_library_deps_from_requires(env):
 
     env.expect.that_dict(py_library_call).contains_exactly({
         "name": "pkg",
-        "srcs": ["site-packages/foo/SRCS.py"] + _select({
+        "srcs": ["site-packages/foo/SRCS.py"] + select({
             Label("//python/config_settings:is_venvs_site_packages"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/PYI.pyi"],
         "data": ["site-packages/foo/DATA.txt"],
         "imports": ["site-packages"],
-        "deps": ["@pypi//bar:pkg"] + _select({
+        "deps": ["@pypi//bar:pkg"] + select({
             ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
             "//conditions:default": [],
         }),
@@ -321,7 +320,6 @@ def _test_whl_and_library_deps(env):
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             config_setting = lambda **_: None,
             glob = mock_glob.glob,
-            select = _select,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
@@ -336,7 +334,7 @@ def _test_whl_and_library_deps(env):
             "data": [
                 "@pypi_bar_baz//:whl",
                 "@pypi_foo//:whl",
-            ] + _select(
+            ] + select(
                 {
                     Label("//python/config_settings:is_python_3.9"): ["@pypi_py39_dep//:whl"],
                     "@platforms//cpu:aarch64": ["@pypi_arm_dep//:whl"],
@@ -357,7 +355,7 @@ def _test_whl_and_library_deps(env):
         return
     env.expect.that_dict(py_library_calls[0]).contains_exactly({
         "name": "pkg",
-        "srcs": ["site-packages/foo/SRCS.py"] + _select({
+        "srcs": ["site-packages/foo/SRCS.py"] + select({
             Label("//python/config_settings:is_venvs_site_packages"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
@@ -367,7 +365,7 @@ def _test_whl_and_library_deps(env):
         "deps": [
             "@pypi_bar_baz//:pkg",
             "@pypi_foo//:pkg",
-        ] + _select(
+        ] + select(
             {
                 Label("//python/config_settings:is_python_3.9"): ["@pypi_py39_dep//:pkg"],
                 "@platforms//cpu:aarch64": ["@pypi_arm_dep//:pkg"],
@@ -415,7 +413,6 @@ def _test_group(env):
             config_setting = lambda **_: None,
             glob = mock_glob.glob,
             alias = lambda **kwargs: alias_calls.append(kwargs),
-            select = _select,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
@@ -437,14 +434,14 @@ def _test_group(env):
         py_library_call,
     ).contains_exactly({
         "name": "_pkg",
-        "srcs": ["site-packages/foo/srcs.py"] + _select({
+        "srcs": ["site-packages/foo/srcs.py"] + select({
             Label("//python/config_settings:is_venvs_site_packages"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/pyi.pyi"],
         "data": ["site-packages/foo/data.txt"],
         "imports": ["site-packages"],
-        "deps": ["@pypi_bar_baz//:pkg"] + _select({
+        "deps": ["@pypi_bar_baz//:pkg"] + select({
             "@platforms//os:linux": ["@pypi_box//:pkg"],
             ":is_linux_x86_64": ["@pypi_box//:pkg", "@pypi_box_amd64//:pkg"],
             "//conditions:default": [],
@@ -490,13 +487,6 @@ def _mock_glob():
         glob = glob,
     )
     return mock
-
-def _select(*args, **kwargs):
-    """We need to have this mock select because we still need to support bazel 6."""
-    return [struct(
-        select = args,
-        kwargs = kwargs,
-    )]
 
 def whl_library_targets_test_suite(name):
     """create the test suite.

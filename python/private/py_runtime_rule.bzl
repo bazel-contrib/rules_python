@@ -18,12 +18,8 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
-load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
-
-_py_builtins = py_internal
 
 def _py_runtime_impl(ctx):
     interpreter_path = ctx.attr.interpreter_path or None  # Convert empty string to None
@@ -132,9 +128,6 @@ def _py_runtime_impl(ctx):
         site_init_template = ctx.file.site_init_template,
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
     ))
-
-    if not IS_BAZEL_7_OR_HIGHER:
-        builtin_py_runtime_info_kwargs.pop("bootstrap_template")
 
     providers = [
         PyRuntimeInfo(**py_runtime_info_kwargs),
@@ -388,11 +381,7 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 )
 
 def _is_singleton_depset(files):
-    # Bazel 6 doesn't have this helper to optimize detecting singleton depsets.
-    if _py_builtins:
-        return _py_builtins.is_singleton_depset(files)
-    else:
-        return len(files.to_list()) == 1
+    return len(files.to_list()) == 1
 
 def _interpreter_version_info_from_version_str(version_str):
     parts = version_str.split(".")
