@@ -103,7 +103,15 @@ END_UNRELEASED_TEMPLATE
   `WORKSPACE` files. See the
   {ref}`common-deps-with-multiple-pypi-versions` guide on using common
   dependencies with multiple PyPI versions` for an example.
-
+* (toolchains) Stable ABI headers support added. To use, depend on
+  {obj}`//python/cc:current_py_cc_headers_abi3`. This allows Windows builds
+  a way to depend on headers without the potentially Python unstable ABI
+  objects from the regular {obj}`//python/cc:current_py_cc_headers` target
+  being included.
+  * Adds {obj}`//python/cc:current_py_cc_headers_abi3`,
+    {obj}`py_cc_toolchain.headers_abi3`, and {obj}`PyCcToolchainInfo.headers_abi3`.
+  * {obj}`//python:features.bzl%features.headers_abi3` can be used to
+    feature-detect the presense of the above.
 
 {#v1-6-0}
 ## [1.6.0] - 2025-08-23
