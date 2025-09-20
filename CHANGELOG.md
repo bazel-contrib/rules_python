@@ -76,7 +76,7 @@ END_UNRELEASED_TEMPLATE
   for a target). If they don't match, dependencies won't be importable. (Such a
   misconfiguration was unlikely to work to begin with; this is called out as an
   FYI).
-* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows for bazel 8 and above.
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows for Bazel 8 and above.
 
 {#v0-0-0-fixed}
 ### Fixed
