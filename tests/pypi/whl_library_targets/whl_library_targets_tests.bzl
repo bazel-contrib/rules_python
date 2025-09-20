@@ -488,13 +488,6 @@ def _mock_glob():
     )
     return mock
 
-def select(*args, **kwargs):
-    """We need to have this mock select because we still need to support bazel 6."""
-    return [struct(
-        select = args,
-        kwargs = kwargs,
-    )]
-
 def whl_library_targets_test_suite(name):
     """create the test suite.
 
