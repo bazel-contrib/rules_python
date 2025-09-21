@@ -1,7 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("//python:py_test.bzl", "py_test")
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load("//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
 
@@ -15,7 +14,7 @@ _TARGET_COMPATIBLE_WITH = select({
     "@platforms//os:linux": [],
     "@platforms//os:macos": [],
     "//conditions:default": ["@platforms//:incompatible"],
-}) if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"]
+})
 
 sphinx_docs(
     name = "docs",

@@ -315,13 +315,7 @@ def whl_library_targets(
                 deps_by_platform = dependencies_by_platform,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
-                # NOTE @aignas 2024-10-28: Actually, `select` is not part of
-                # `native`, but in order to support bazel 6.4 in unit tests, I
-                # have to somehow pass the `select` implementation in the unit
-                # tests and I chose this to be routed through the `native`
-                # struct. So, tests` will be successful in `getattr` and the
-                # real code will use the fallback provided here.
-                select = getattr(native, "select", select),
+                select = select,
             ),
             visibility = impl_vis,
         )

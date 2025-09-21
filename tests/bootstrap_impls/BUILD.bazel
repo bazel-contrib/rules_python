@@ -43,9 +43,7 @@ sh_test(
         "ZIP_RLOCATION": "$(rlocationpaths :bootstrap_script_zipapp_zip)".format(),
     },
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
-    deps = [
-        "@bazel_tools//tools/bash/runfiles",
-    ],
+    deps = ["@rules_shell//shell/runfiles"],
 )
 
 sh_py_run_test(

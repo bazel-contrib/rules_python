@@ -14,7 +14,6 @@
 """Helpers and utilities multiple tests re-use."""
 
 load("@bazel_skylib//lib:structs.bzl", "structs")
-load("//python/private:util.bzl", "IS_BAZEL_6_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
 # Use this with is_windows()
 WINDOWS_ATTR = {"windows": attr.label(default = "@platforms//os:windows")}
@@ -53,9 +52,6 @@ def _struct_with(s, **kwargs):
     struct_dict.update(kwargs)
     return struct(**struct_dict)
 
-def _is_bazel_6_or_higher():
-    return IS_BAZEL_6_OR_HIGHER
-
 def _is_windows(env):
     """Tell if the target platform is windows.
 
@@ -72,6 +68,5 @@ def _is_windows(env):
 util = struct(
     create_tests = _create_tests,
     struct_with = _struct_with,
-    is_bazel_6_or_higher = _is_bazel_6_or_higher,
     is_windows = _is_windows,
 )
