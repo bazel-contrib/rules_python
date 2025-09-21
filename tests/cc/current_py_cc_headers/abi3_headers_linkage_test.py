@@ -8,36 +8,26 @@ import pathlib
 from python.runfiles import runfiles
 
 class CheckLinkageTest(unittest.TestCase):
-    def test_linkage(self):
+    @unittest.skipUnless(sys.platform.startswith("win"))
+    def test_linkage_windows(self):
         rf = runfiles.Create()
-        d = rf.Rlocation("_main/tests/cc/current_py_cc_headers")
-        d = pathlib.Path(d)
-        for file_path in d.glob("*.dll"):
-            print(f"[*] Analyzing dependencies for: {file_path}\n")
+        dll_path = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")
+        if not os.path.exists(dll_path):
+            self.fail(f"dll at {dll_path} does not exist")
 
-            try:
-                # Parse the PE file
-                pe = pefile.PE(file_path)
+        pe = pefile.PE(dll_path)
+        if not hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
+            self.fail("No import directory found.")
 
-                if not hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
-                    print("[!] No import directory found. The file may not have dependencies or is packed.")
-                    raise Exception("no deps?")
+        imported_dlls = [
+            entry.dll.decode('utf-8').lower()
+            for entry in pe.DIRECTORY_ENTRY_IMPORT
+        ]
+        python_dlls = [
+            dll for dll in imported_dlls if dll.startswith("python3")
+        ]
+        self.assertEqual(python_dlls, ["python3.dll"])
 
-                print("Imported DLLs:")
-
-                # Iterate over the import directory entries
-                # Each 'entry' corresponds to one imported DLL
-                for entry in pe.DIRECTORY_ENTRY_IMPORT:
-                    # entry.dll is a bytes string, so we decode it to utf-8
-                    dll_name = entry.dll.decode('utf-8')
-                    print(f"  - {dll_name}")
-
-            except pefile.PEFormatError as e:
-                print(f"Error: Not a valid PE file (DLL/EXE). \nDetails: {e}")
-            except Exception as e:
-                print(f"An unexpected error occurred: {e}")
-
-        raise Exception("done")
 
 if __name__ == "__main__":
     unittest.main()
