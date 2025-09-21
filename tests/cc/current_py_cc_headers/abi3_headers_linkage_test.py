@@ -26,9 +26,11 @@ class CheckLinkageTest(unittest.TestCase):
 
         dll_path = dll_paths[0]
 
-        print("=== pl:", dll_path, os.path.exists(dll_path))
+        print("=== pl :", dll_path, os.path.exists(dll_path))
         rfp = rf.Rlocation("_main\\tests\\cc\\current_py_cc_headers\\bin_abi3.dll")
-        print("=== rf:", rfp, os.path.exists(rfp))
+        print("=== rf1:", rfp, os.path.exists(rfp))
+        rfp = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")
+        print("=== rf2:", rfp, os.path.exists(rfp))
 
         pe = pefile.PE(dll_path)
         if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
