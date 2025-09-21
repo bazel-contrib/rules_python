@@ -1025,7 +1025,7 @@ Common patterns:
 :::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#platform-tag) for more information.
 :::
-:::{versionchanged} 1.6.2
+:::{versionchanged} 1.6.3
 The matching of versioned platforms have been switched to MVS (Minimal Version Selection)
 algorithm for easier evaluation logic and fewer surprises. The legacy platform tags are
 supported from this version without extra handling from the user.
