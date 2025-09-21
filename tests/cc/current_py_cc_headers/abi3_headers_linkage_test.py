@@ -15,7 +15,9 @@ class CheckLinkageTest(unittest.TestCase):
 
         resource_path = os.path.join("_main", "tests", "cc", "current_py_cc_headers", "bin_abi3.dll")
 
+        ##resource_path = r"_main\tests\cc\current_py_cc_headers\bin_abi3.dll"
         dll_path = rf.Rlocation(resource_path)
+        dll_path = dll_path.replace("/", "\\")
         if not os.path.exists(dll_path):
             self.fail(f"dll at {dll_path} does not exist")
 
