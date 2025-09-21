@@ -26,6 +26,10 @@ class CheckLinkageTest(unittest.TestCase):
 
         dll_path = dll_paths[0]
 
+        print("=== pl:", dll_path, os.path.exists(dll_path))
+        rfp = rf.Rlocation("_main\\tests\\cc\\current_py_cc_headers\\bin_abi3.dll")
+        print("=== rf:", rfp, os.path.exists(rfp))
+
         pe = pefile.PE(dll_path)
         if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
             self.fail("No import directory found.")
@@ -35,6 +39,8 @@ class CheckLinkageTest(unittest.TestCase):
         ]
         python_dlls = [dll for dll in imported_dlls if dll.startswith("python3")]
         self.assertEqual(python_dlls, ["python3.dll"])
+
+        self.fail("done")
 
 
 if __name__ == "__main__":
