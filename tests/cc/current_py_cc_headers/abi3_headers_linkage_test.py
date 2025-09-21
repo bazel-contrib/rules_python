@@ -3,17 +3,20 @@ import os.path
 import sys
 import pefile
 import unittest
+import pathlib
 
 from python.runfiles import runfiles
 
 class CheckLinkageTest(unittest.TestCase):
     def test_linkage(self):
         rf = runfiles.Create()
-        file_path = rf.Rlocation("_main/tests/cc/current_py_cc_headers/libbin_abi3.dll")
-        if not file_path:
-            self.fail("dll not found")
+        d = rf.Rlocation("_main/tests/cc/current_py_cc_headers")
+        d = pathlib.Path(d)
+        for f in d.glob("*.dll"):
+            print(f)
 
-        print(f"[*] Analyzing dependencies for: {os.path.basename(file_path)}\n")
+        d = rf.Rlocation("_main/tests/cc/current_py_cc_headers")
+        print(f"[*] Analyzing dependencies for: {file_path}\n")
 
         try:
             # Parse the PE file
