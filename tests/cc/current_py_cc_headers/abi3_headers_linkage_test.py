@@ -16,25 +16,27 @@ class CheckLinkageTest(unittest.TestCase):
         ##resource_path = os.path.join("_main", "tests", "cc", "current_py_cc_headers", "bin_abi3.dll")
 
         ##resource_path = r"_main\tests\cc\current_py_cc_headers\bin_abi3.dll"
-        dll_dir = pathlib.Path(rf.Rlocation("_main/tests/cc/current_py_cc_headers"))
-        dll_paths = list(dll_dir.glob("*.dll"))
+        ##dll_dir = pathlib.Path(rf.Rlocation("_main/tests/cc/current_py_cc_headers"))
+        ##dll_paths = list(dll_dir.glob("*.dll"))
 
-        if not dll_paths:
-            self.fail(f"No *.dll found in {dll_dir}")
-        if len(dll_paths) > 1:
-            self.fail(f"Multiple dlls found, expected one: {dll_paths}")
+        ##if not dll_paths:
+        ##    self.fail(f"No *.dll found in {dll_dir}")
+        ##if len(dll_paths) > 1:
+        ##    self.fail(f"Multiple dlls found, expected one: {dll_paths}")
 
-        dll_path = dll_paths[0]
+        ##dll_path = dll_paths[0]
 
-        print("=== pl :", dll_path, os.path.exists(dll_path))
-        rfp = rf.Rlocation("_main\\tests\\cc\\current_py_cc_headers\\bin_abi3.dll")
-        print("=== rf1:", rfp, os.path.exists(rfp))
-        pe = pefile.PE(rfp) # rf1
-        rfp = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")
-        print("=== rf2:", rfp, os.path.exists(rfp))
-        pe = pefile.PE(rfp) # rf2
+        ##print("=== pl :", dll_path, os.path.exists(dll_path))
+        ##rfp = rf.Rlocation("_main\\tests\\cc\\current_py_cc_headers\\bin_abi3.dll")
+        ##print("=== rf1:", rfp, os.path.exists(rfp))
+        ##pe = pefile.PE(rfp) # rf1
+        ##rfp = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")
+        ##print("=== rf2:", rfp, os.path.exists(rfp))
+        ##pe = pefile.PE(rfp) # rf2
 
-        pe = pefile.PE(rfp)
+        dll_path = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")
+
+        pe = pefile.PE(dll_path)
         if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
             self.fail("No import directory found.")
 
