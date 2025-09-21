@@ -12,7 +12,10 @@ class CheckLinkageTest(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("win"), "requires windows")
     def test_linkage_windows(self):
         rf = runfiles.Create()
-        dll_path = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")
+
+        resource_path = os.path.join("_main", "tests", "cc", "current_py_cc_headers", "bin_abi3.dll")
+
+        dll_path = rf.Rlocation(resource_path)
         if not os.path.exists(dll_path):
             self.fail(f"dll at {dll_path} does not exist")
 
