@@ -110,7 +110,7 @@ END_UNRELEASED_TEMPLATE
   (e.g. `musllinux_1_1_x86_64` and `musllinux_1_2_x86_64`). If the user
   wants to set the minimum version for the selection algorithm, use the
   {attr}`pip.defaults.whl_platform_tags` attribute to configure that. If
-  `musllinux_*_x86_64` is specified, we will chose the lowest available
+  `musllinux_*_x86_64` is specified, we will choose the lowest available
   wheel version. Fixes [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
 
 {#v1-6-0}
