@@ -20,4 +20,6 @@ lib=$(rlocation _main/tests/cc/current_py_cc_headers/libbin_abi3.so)
 dumpbin /nologo /DEPENDENTS "$lib"
 dumpbin.exe /nologo /DEPENDENTS "$lib"
 
+ls 
+
 exit 1

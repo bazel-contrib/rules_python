@@ -12,5 +12,6 @@ dependencies = [
     "readthedocs-sphinx-ext",
     "absl-py",
     "typing-extensions",
-    "sphinx-reredirects"
+    "sphinx-reredirects",
+    "pefile"
 ]

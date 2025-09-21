@@ -14,6 +14,7 @@
 
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:py_test.bzl", "py_test")
 load(":current_py_cc_headers_tests.bzl", "current_py_cc_headers_test_suite")
 
 current_py_cc_headers_test_suite(name = "current_py_cc_headers_tests")
@@ -28,9 +29,20 @@ cc_binary(
     ],
 )
 
-sh_test(
-    name = "abi3_headers_linkage_test",
-    srcs = ["abi3_headers_linkage_test.sh"],
+#sh_test(
+#    name = "abi3_headers_linkage_test",
+#    srcs = ["abi3_headers_linkage_test.sh"],
+#    data = [":bin_abi3"],
+#    deps = ["@bazel_tools//tools/bash/runfiles"],
+#)
+
+py_test(
+    name = "abi3_headers_linkage_test_py",
+    srcs = ["abi3_headers_linkage_test.py"],
     data = [":bin_abi3"],
-    deps = ["@bazel_tools//tools/bash/runfiles"],
+    main = "abi3_headers_linkage_test.py",
+    deps = [
+        "//python/runfiles",
+        "@dev_pip//pefile",
+    ],
 )
