@@ -34,7 +34,7 @@ class CheckLinkageTest(unittest.TestCase):
         print("=== rf2:", rfp, os.path.exists(rfp))
         pe = pefile.PE(rfp) # rf2
 
-        pe = pefile.PE(dll_path)
+        pe = pefile.PE(rfp)
         if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
             self.fail("No import directory found.")
 
