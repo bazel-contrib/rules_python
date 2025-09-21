@@ -21,6 +21,7 @@ current_py_cc_headers_test_suite(name = "current_py_cc_headers_tests")
 cc_binary(
     name = "bin_abi3",
     srcs = ["bin_abi3.cc"],
+    defines = ["Py_LIMITED_API=0x030A0000"],
     linkshared = True,
     deps = [
         "//python/cc:current_py_cc_headers_abi3",
