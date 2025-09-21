@@ -97,12 +97,12 @@ END_UNRELEASED_TEMPLATE
   {ref}`common-deps-with-multiple-pypi-versions` guide on using common
   dependencies with multiple PyPI versions` for an example.
 
-{#v1-6-2}
-## [1.6.2] - 2025-09-21
+{#v1-6-3}
+## [1.6.3] - 2025-09-21
 
-[1.6.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.2
+[1.6.3]: https://github.com/bazel-contrib/rules_python/releases/tag/1.6.3
 
-{#v1-6-2-fixed}
+{#v1-6-3-fixed}
 ### Fixed
 
 * (pypi) We now use the Minimal Version Selection (MVS) algorithm to select
