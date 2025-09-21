@@ -8,7 +8,7 @@ import pathlib
 from python.runfiles import runfiles
 
 class CheckLinkageTest(unittest.TestCase):
-    @unittest.skipUnless(sys.platform.startswith("win"))
+    @unittest.skipUnless(sys.platform.startswith("win"), "requires windows")
     def test_linkage_windows(self):
         rf = runfiles.Create()
         dll_path = rf.Rlocation("_main/tests/cc/current_py_cc_headers/bin_abi3.dll")

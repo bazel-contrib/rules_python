@@ -29,18 +29,12 @@ cc_binary(
     ],
 )
 
-#sh_test(
-#    name = "abi3_headers_linkage_test",
-#    srcs = ["abi3_headers_linkage_test.sh"],
-#    data = [":bin_abi3"],
-#    deps = ["@bazel_tools//tools/bash/runfiles"],
-#)
-
 py_test(
     name = "abi3_headers_linkage_test_py",
     srcs = ["abi3_headers_linkage_test.py"],
     data = [":bin_abi3"],
     main = "abi3_headers_linkage_test.py",
+    target_compatible_with = ["@platforms//os:windows"],
     deps = [
         "//python/runfiles",
         "@dev_pip//pefile",
