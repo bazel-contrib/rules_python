@@ -12,6 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":current_py_cc_headers_tests.bzl", "current_py_cc_headers_test_suite")
 
 current_py_cc_headers_test_suite(name = "current_py_cc_headers_tests")
+
+cc_binary(
+    name = "bin_abi3",
+    srcs = ["bin_abi3.cc"],
+    linkshared = True,
+    deps = [
+        "//python/cc:current_py_cc_headers_abi3",
+    ],
+)
+
+sh_test(
+    name = "abi3_headers_linkage_test",
+    srcs = ["abi3_headers_linkage_test.sh"],
+    data = [":bin_abi3"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
+)
