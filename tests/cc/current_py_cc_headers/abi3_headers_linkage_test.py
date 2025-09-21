@@ -13,13 +13,18 @@ class CheckLinkageTest(unittest.TestCase):
     def test_linkage_windows(self):
         rf = runfiles.Create()
 
-        resource_path = os.path.join("_main", "tests", "cc", "current_py_cc_headers", "bin_abi3.dll")
+        ##resource_path = os.path.join("_main", "tests", "cc", "current_py_cc_headers", "bin_abi3.dll")
 
         ##resource_path = r"_main\tests\cc\current_py_cc_headers\bin_abi3.dll"
-        dll_path = rf.Rlocation(resource_path)
-        dll_path = dll_path.replace("/", "\\")
-        if not os.path.exists(dll_path):
-            self.fail(f"dll at {dll_path} does not exist")
+        dll_dir = pathlib.Path(rf.Rlocation("_main/tests/cc/current_py_cc_headers"))
+        dll_paths = list(dll_dir.glob("*.dll"))
+
+        if not dll_paths:
+            self.fail(f"No *.dll found in {dll_dir}")
+        if len(dll_paths) > 1:
+            self.fail(f"Multiple dlls found, expected one: {dll_paths}")
+
+        dll_path = dll_paths[0]
 
         pe = pefile.PE(dll_path)
         if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
