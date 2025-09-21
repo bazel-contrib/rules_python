@@ -1,11 +1,12 @@
-
 import os.path
-import sys
-import pefile
-import unittest
 import pathlib
+import sys
+import unittest
+
+import pefile
 
 from python.runfiles import runfiles
+
 
 class CheckLinkageTest(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("win"), "requires windows")
@@ -16,16 +17,13 @@ class CheckLinkageTest(unittest.TestCase):
             self.fail(f"dll at {dll_path} does not exist")
 
         pe = pefile.PE(dll_path)
-        if not hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
+        if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
             self.fail("No import directory found.")
 
         imported_dlls = [
-            entry.dll.decode('utf-8').lower()
-            for entry in pe.DIRECTORY_ENTRY_IMPORT
+            entry.dll.decode("utf-8").lower() for entry in pe.DIRECTORY_ENTRY_IMPORT
         ]
-        python_dlls = [
-            dll for dll in imported_dlls if dll.startswith("python3")
-        ]
+        python_dlls = [dll for dll in imported_dlls if dll.startswith("python3")]
         self.assertEqual(python_dlls, ["python3.dll"])
 
 

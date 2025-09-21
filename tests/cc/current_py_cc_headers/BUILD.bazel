@@ -13,7 +13,6 @@
 # limitations under the License.
 
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
-load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//python:py_test.bzl", "py_test")
 load(":current_py_cc_headers_tests.bzl", "current_py_cc_headers_test_suite")
 
