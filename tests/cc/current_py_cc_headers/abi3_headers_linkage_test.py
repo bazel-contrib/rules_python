@@ -4,9 +4,11 @@ import sys
 import pefile
 import unittest
 
+from python.runfiles import runfiles
+
 class CheckLinkageTest(unittest.TestCase):
     def test_linkage(self):
-
+        rf = runfiles.Create()
         file_path = rf.Rlocation("_main/tests/cc/current_py_cc_headers/libbin_abi3.dll")
         if not file_path:
             self.fail("dll not found")
