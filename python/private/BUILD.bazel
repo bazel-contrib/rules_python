@@ -186,7 +186,6 @@ bzl_library(
     deps = [
         ":enum_bzl",
         "@bazel_skylib//rules:common_settings",
-        "@bazel_features//:features",
     ],
 )
 

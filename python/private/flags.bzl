@@ -17,74 +17,37 @@
 NOTE: The transitive loads of this should be kept minimal. This avoids loading
 unnecessary files when all that are needed are flag definitions.
 """
-load("@bazel_features//:features.bzl", "bazel_features")
-load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo", "string_list_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":enum.bzl", "FlagEnum", "enum")
 
-# Migration support for moving Python flags from Bazel to rules_python:
-# https://github.com/bazel-contrib/rules_python/issues/3252).
+# Maps "--<myflag>" to the ctx.fragments API that provides its value.
 #
-# Maps "--myflag" to ("starlark|native", <native reference>).
+# Builds that set --incompatible_remove_ctx_py_fragment or
+# --incompatible_remove_ctx_bazel_py_fragment assume Python flags are defined
+# in Starlark, so the ctx.framgent calls no longer resolve.
 #
-# "starlark" means .bzl code should resolve the Starlark definition, which we
-# assume is defined as a private attribute on the reading rule called "_myflag".
+# This map lets callers determine if ctx.fragments.py and ctx.fragments.bazel_py
+# are available before trying to read them.
 #
-# "native" means .bzl code should resolve the native definition.
-#
-# <native reference> is the Starlark accessor for the native definition.
-_POSSIBLY_NATIVE_FLAGS = {
-  "disable_py2": ("native", lambda ctx: ctx.fragments.py.disable_py2),
-  "default_to_explicit_init_py": ("native", lambda ctx: ctx.fragments.py.default_to_explicit_init_py),
-  "build_python_zip": ("native", lambda ctx: ctx.fragments.py.build_python_zip),
-  "python_import_all_repositories": ("native", lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories),
-  "python_path": ("native", lambda ctx: ctx.fragments.bazel_py.python_path),
+# See https://github.com/bazel-contrib/rules_python/issues/3252).
+_NATIVE_FLAG_REFERENCES = {
+  "disable_py2": lambda ctx: ctx.fragments.py.disable_py2,
+  "default_to_explicit_init_py": lambda ctx: ctx.fragments.py.default_to_explicit_init_py,
+  "build_python_zip": lambda ctx: ctx.fragments.py.build_python_zip,
+  "python_import_all_repositories": lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories,
+  "python_path": lambda ctx: ctx.fragments.bazel_py.python_path,
 }
 
-# mylang/flags/flags.bzl
-def _command_line_setting(use_starlark_flags, flag_name):
-  """Returns if --flag_name should use the Starlark or native definition.
-  
-  Rule logic can set its own defaults, for when this flag isn't set.
-
-  Args:
-    use_starlark_flags: Value of --//mylang:flags:use_starlark_flags 
-    flag_name: name of the flag to check, minus "--". Example: "javacopt". 
-
-  Returns:
-    "starlark": use the Starlark definition
-    "native": use the native definition
-    "language default": use the rule set's default choice
-  """
-  if not use_starlark_flags:
-    return "language default"   # --use_starlark_flags isn't set.   
-  elif len(use_starlark_flags) == 1 and use_starlark_flags[0] == '*':
-    return "starlark"  # --use_starlark_flags=* means "enable all flags".
-  elif len(use_starlark_flags) == 1 and use_starlark_flags[0] == '-':
-    return "native"  # --use_starlark_flags=- means "disable all flags".
-  elif flag_name in use_starlark_flags:
-    return "starlark"  # --use_starlark_flags=foo means "enable --foo".
-  elif "-" + flag_name in use_starlark_flags:
-    return "native"  # --use_starlark_flags=-foo means "disable --foo".
-  else:
-    return "language default" # --use_starlark_flags=otherflag1,otherflag2
-
 # Interface for reading flags that may be defined in Starlark or natively in
-# Bazel. Automatically gets the value from the right flag definition.
+# Bazel. Automatically gets the value from the right source.
 def read_possibly_native_flag(ctx, flag_name):
-  flag_source_of_truth = _command_line_setting(
-    getattr(ctx.attr, "_use_starlark_flags")[BuildSettingInfo].value,
-    flag_name)
-  if flag_source_of_truth == "language default":
-    if flag_name in _POSSIBLY_NATIVE_FLAGS:
-      flag_source_of_truth = _POSSIBLY_NATIVE_FLAGS[flag_name][0]
-    else:
-      flag_source_of_truth = "native"
-
-  # Define lang support in https://github.com/bazel-contrib/bazel_features.
-  if bazel_features.flags.supports_starlark_flags_migration and flag_source_of_truth == "starlark":
-    return getattr(ctx.attr, "_" + flag_name)
+  # Bazel 9.0+ can disable these fragments with --incompatible_remove_ctx_py_fragment and
+  # --incompatible_remove_ctx_bazel_py_fragment. 
+  if hasattr(ctx.fragments, "py") and hasattr(ctx.fragments, "bazel_py"):
+      return _NATIVE_FLAG_REFERENCES[flag_name](ctx)
   else:
-    return _POSSIBLY_NATIVE_FLAGS[flag_name][1](ctx) 
+    # Starlark definition of "--foo" is assumed to be a label dependency named "_foo".
+    return  getattr(ctx.attr, "_use_starlark_flags")[BuildSettingInfo].value
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value

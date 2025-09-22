@@ -231,8 +231,6 @@ accepting arbitrary Python versions.
             executable = True,
             default = "@bazel_tools//tools/zip:zipper",
         ),
-        "_use_starlark_flags": attr.label(
-            default = "//python/config_settings:use_starlark_flags")
     },
 )
 
