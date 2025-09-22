@@ -37,9 +37,9 @@ load(":enum.bzl", "FlagEnum", "enum")
 #
 # See https://github.com/bazel-contrib/rules_python/issues/3252.
 _POSSIBLY_NATIVE_FLAGS = {
-    "disable_py2": (lambda ctx: ctx.fragments.py.disable_py2, "native"),
-    "default_to_explicit_init_py": (lambda ctx: ctx.fragments.py.default_to_explicit_init_py, "native"),
     "build_python_zip": (lambda ctx: ctx.fragments.py.build_python_zip, "native"),
+    "default_to_explicit_init_py": (lambda ctx: ctx.fragments.py.default_to_explicit_init_py, "native"),
+    "disable_py2": (lambda ctx: ctx.fragments.py.disable_py2, "native"),
     "python_import_all_repositories": (lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories, "native"),
     "python_path": (lambda ctx: ctx.fragments.bazel_py.python_path, "native"),
     "use_toolchains": (lambda ctx: ctx.fragments.py.use_toolchains, "native"),
