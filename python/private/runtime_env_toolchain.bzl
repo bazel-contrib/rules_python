@@ -107,8 +107,9 @@ def define_runtime_env_toolchain(name):
     )
     py_cc_toolchain(
         name = "_runtime_env_py_cc_toolchain_impl",
-        headers = ":_empty_cc_lib",
-        libs = ":_empty_cc_lib",
+        headers = "//python/private/cc:empty",
+        headers_abi3 = "//python/private/cc:empty",
+        libs = "//python/private/cc:empty",
         python_version = "0.0",
         tags = ["manual"],
     )

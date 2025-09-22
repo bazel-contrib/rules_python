@@ -22,6 +22,16 @@ _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 def _features_typedef():
     """Information about features rules_python has implemented.
 
+    ::::{field} headers_abi3
+    :type: bool
+
+    True if the {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
+    target is available.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
+
     ::::{field} precompile
     :type: bool
 
@@ -60,6 +70,7 @@ def _features_typedef():
 features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
+    headers_abi3 = True,
     precompile = True,
     py_info_venv_symlinks = True,
     uses_builtin_rules = not config.enable_pystar,

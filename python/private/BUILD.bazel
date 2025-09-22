@@ -31,6 +31,7 @@ filegroup(
     name = "distribution",
     srcs = glob(["**"]) + [
         "//python/private/api:distribution",
+        "//python/private/cc:distribution",
         "//python/private/pypi:distribution",
         "//python/private/whl_filegroup:distribution",
         "//tools/build_defs/python/private:distribution",
@@ -360,6 +361,7 @@ bzl_library(
         ":common_labels.bzl",
         ":py_cc_toolchain_info_bzl",
         ":rules_cc_srcs_bzl",
+        ":sentinel_bzl",
         ":util_bzl",
         "@bazel_skylib//rules:common_settings",
     ],

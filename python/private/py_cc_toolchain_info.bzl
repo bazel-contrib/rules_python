@@ -40,7 +40,36 @@ Information about the header files, struct with fields:
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
 """,
-        "libs": """\
+        "headers_abi3": """
+:type: struct | None
+
+If available, information about ABI3 (stable ABI) header files, struct with
+fields:
+  * providers_map: a dict of string to provider instances. The key should be
+    a fully qualified name (e.g. `@rules_foo//bar:baz.bzl#MyInfo`) of the
+    provider to uniquely identify its type.
+
+    The following keys are always present:
+      * CcInfo: the CcInfo provider instance for the headers.
+      * DefaultInfo: the DefaultInfo provider instance for the headers.
+
+    A map is used to allow additional providers from the originating headers
+    target (typically a `cc_library`) to be propagated to consumers (directly
+    exposing a Target object can cause memory issues and is an anti-pattern).
+
+    When consuming this map, it's suggested to use `providers_map.values()` to
+    return all providers; or copy the map and filter out or replace keys as
+    appropriate. Note that any keys beginning with `_` (underscore) are
+    considered private and should be forward along as-is (this better allows
+    e.g. `:current_py_cc_headers` to act as the underlying headers target it
+    represents).
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The {obj}`features.headers_abi3` attribute can be used to detect if this
+attribute is available or not.
+:::
+""",
+        "libs": """
 :type: struct | None
 
 If available, information about C libraries, struct with fields:

@@ -107,9 +107,9 @@ def define_hermetic_runtime_toolchain_impl(
         srcs = native.glob(["include/**/*.h"]),
     )
     cc_library(
-        name = "python_headers",
+        name = "python_headers_abi3",
         deps = select({
-            "@bazel_tools//src/conditions:windows": [":interface", ":abi3_interface"],
+            "@bazel_tools//src/conditions:windows": [":abi3_interface"],
             "//conditions:default": None,
         }),
         hdrs = [":includes"],
@@ -123,6 +123,13 @@ def define_hermetic_runtime_toolchain_impl(
                 "include/python{major}.{minor}".format(**version_dict),
                 "include/python{major}.{minor}m".format(**version_dict),
             ],
+        }),
+    )
+    cc_library(
+        name = "python_headers",
+        deps = [":python_headers_abi3"] + select({
+            "@bazel_tools//src/conditions:windows": [":interface"],
+            "//conditions:default": [],
         }),
     )
     native.config_setting(
@@ -239,6 +246,7 @@ def define_hermetic_runtime_toolchain_impl(
     py_cc_toolchain(
         name = "py_cc_toolchain",
         headers = ":python_headers",
+        headers_abi3 = ":python_headers_abi3",
         # TODO #3155: add libctl, libtk
         libs = ":libpython",
         python_version = python_version,
