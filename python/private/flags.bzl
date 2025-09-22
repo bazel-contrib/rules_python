@@ -42,7 +42,6 @@ _POSSIBLY_NATIVE_FLAGS = {
     "disable_py2": (lambda ctx: ctx.fragments.py.disable_py2, "native"),
     "python_import_all_repositories": (lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories, "native"),
     "python_path": (lambda ctx: ctx.fragments.bazel_py.python_path, "native"),
-    "use_toolchains": (lambda ctx: ctx.fragments.py.use_toolchains, "native"),
 }
 
 def read_possibly_native_flag(ctx, flag_name):
