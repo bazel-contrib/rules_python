@@ -18,6 +18,7 @@ import unittest
 from typing import Any, List, Optional
 
 from python.runfiles import runfiles
+from python.runfiles.runfiles import _RepositoryMapping
 
 
 class RunfilesTest(unittest.TestCase):
@@ -638,10 +639,6 @@ class RunfilesTest(unittest.TestCase):
 
     def testRepositoryMappingLookup(self) -> None:
         """Test _RepositoryMapping.lookup() method for both exact and prefix-based mappings."""
-        from python.runfiles.runfiles import (
-            _RepositoryMapping,
-        )
-
         exact_mappings = {
             ("", "my_workspace"): "_main",
             ("", "config_lib"): "config_lib~1.0.0",
@@ -683,7 +680,7 @@ class RunfilesTest(unittest.TestCase):
         # Test empty mapping
         empty_mapping = _RepositoryMapping({}, {})
         self.assertIsNone(empty_mapping.lookup("any", "repo"))
-        
+
         # Test is_empty() method
         self.assertFalse(repo_mapping.is_empty())  # Should have mappings
         self.assertTrue(empty_mapping.is_empty())  # Should be empty
