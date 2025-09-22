@@ -28,10 +28,10 @@ import inspect
 import os
 import posixpath
 import sys
-from typing import Dict, Iterator, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 
-class _RepositoryMapping(collections.abc.Mapping):
+class _RepositoryMapping:
     """Repository mapping for resolving apparent repository names to canonical ones.
     
     Handles both exact mappings and prefix-based mappings introduced by the 
@@ -93,24 +93,21 @@ class _RepositoryMapping(collections.abc.Mapping):
 
         return _RepositoryMapping(exact_mappings, prefixed_mappings)
 
-    # Mapping protocol implementation
-    def __getitem__(self, key: Tuple[str, str]) -> str:
-        """Get repository mapping for (source_canonical, target_apparent) key.
+    def lookup(self, source_repo: str, target_apparent: str) -> Optional[str]:
+        """Look up repository mapping for the given source and target.
         
         This handles both exact mappings and prefix-based mappings introduced by the 
         --incompatible_compact_repo_mapping_manifest flag. Exact mappings are tried
         first, followed by prefix-based mappings where order matters.
         
         Args:
-            key: Tuple of (source_canonical, target_apparent)
+            source_repo: Source canonical repository name
+            target_apparent: Target apparent repository name
             
         Returns:
-            target_canonical repository name
-            
-        Raises:
-            KeyError: if no mapping exists for the key
+            target_canonical repository name, or None if no mapping exists
         """
-        source_repo, target_apparent = key
+        key = (source_repo, target_apparent)
         
         # Try exact mapping first
         if key in self._exact_mappings:
@@ -123,18 +120,7 @@ class _RepositoryMapping(collections.abc.Mapping):
                     return target_canonical
 
         # No mapping found
-        raise KeyError(key)
-
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
-        """Iterate over all mapping keys (exact first, then prefixed)."""
-        # First yield all exact mapping keys
-        yield from self._exact_mappings.keys()
-        # Then yield all prefixed mapping keys
-        yield from self._prefixed_mappings.keys()
-
-    def __len__(self) -> int:
-        """Return the total number of mappings (exact + prefixed)."""
-        return len(self._exact_mappings) + len(self._prefixed_mappings)
+        return None
 
 
 class _ManifestBased:
@@ -293,7 +279,7 @@ class Runfiles:
         if os.path.isabs(path):
             return path
 
-        if source_repo is None and self._repo_mapping:
+        if source_repo is None and self._repo_mapping is not None:
             # Look up runfiles using the repository mapping of the caller of the
             # current method. If the repo mapping is empty, determining this
             # name is not necessary.
@@ -309,7 +295,7 @@ class Runfiles:
 
         # Look up the target repository using the repository mapping
         if source_repo is not None:
-            target_canonical = self._repo_mapping.get((source_repo, target_repo))
+            target_canonical = self._repo_mapping.lookup(source_repo, target_repo)
             if target_canonical is not None:
                 return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
 
