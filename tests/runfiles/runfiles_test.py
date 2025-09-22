@@ -773,11 +773,6 @@ class RunfilesTest(unittest.TestCase):
         self.assertFalse(empty_mapping)
         self.assertFalse(bool(empty_mapping))
 
-    # TODO: Add manifest-based test for compact repo mapping
-    # def testManifestBasedRlocationWithCompactRepoMapping(self) -> None:
-    #     """Test that compact repo mapping also works with manifest-based runfiles."""
-    #     pass
-
     def testCurrentRepository(self) -> None:
         # Under bzlmod, the current repository name is the empty string instead
         # of the name in the workspace file.
