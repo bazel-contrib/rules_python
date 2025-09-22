@@ -129,6 +129,14 @@ class _RepositoryMapping:
         # No mapping found
         return None
 
+    def is_empty(self) -> bool:
+        """Check if this repository mapping is empty (no exact or prefixed mappings).
+
+        Returns:
+            True if there are no mappings, False otherwise
+        """
+        return len(self._exact_mappings) == 0 and len(self._prefixed_mappings) == 0
+
 
 class _ManifestBased:
     """`Runfiles` strategy that parses a runfiles-manifest to look up runfiles."""
@@ -286,7 +294,7 @@ class Runfiles:
         if os.path.isabs(path):
             return path
 
-        if source_repo is None and self._repo_mapping is not None:
+        if source_repo is None and not self._repo_mapping.is_empty():
             # Look up runfiles using the repository mapping of the caller of the
             # current method. If the repo mapping is empty, determining this
             # name is not necessary.
@@ -295,10 +303,19 @@ class Runfiles:
         # Split off the first path component, which contains the repository
         # name (apparent or canonical).
         target_repo, _, remainder = path.partition("/")
-        if not remainder:
-            # path did not contain a slash and referred to a root symlink,
-            # which should not be mapped.
+        if not remainder or self._repo_mapping.lookup(source_repo, target_repo) is None:
+            # One of the following is the case:
+            # - not using Bzlmod, so the repository mapping is empty and
+            #   apparent and canonical repository names are the same
+            # - target_repo is already a canonical repository name and does not
+            #   have to be mapped.
+            # - path did not contain a slash and referred to a root symlink,
+            #   which also should not be mapped.
             return self._strategy.RlocationChecked(path)
+
+        assert (
+            source_repo is not None
+        ), "BUG: if the `source_repo` is None, we should never go past the `if` statement above"
 
         # Look up the target repository using the repository mapping
         if source_repo is not None:

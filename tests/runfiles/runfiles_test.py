@@ -683,6 +683,10 @@ class RunfilesTest(unittest.TestCase):
         # Test empty mapping
         empty_mapping = _RepositoryMapping({}, {})
         self.assertIsNone(empty_mapping.lookup("any", "repo"))
+        
+        # Test is_empty() method
+        self.assertFalse(repo_mapping.is_empty())  # Should have mappings
+        self.assertTrue(empty_mapping.is_empty())  # Should be empty
 
     def testCurrentRepository(self) -> None:
         # Under bzlmod, the current repository name is the empty string instead
