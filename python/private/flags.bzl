@@ -17,6 +17,7 @@
 NOTE: The transitive loads of this should be kept minimal. This avoids loading
 unnecessary files when all that are needed are flag definitions.
 """
+
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":enum.bzl", "FlagEnum", "enum")
 
