@@ -23,47 +23,52 @@ dependency graphs under bzlmod.
 :::
 """
 import collections.abc
-from collections import defaultdict
 import inspect
 import os
 import posixpath
 import sys
+from collections import defaultdict
 from typing import Dict, Optional, Tuple, Union
 
 
 class _RepositoryMapping:
     """Repository mapping for resolving apparent repository names to canonical ones.
-    
-    Handles both exact mappings and prefix-based mappings introduced by the 
+
+    Handles both exact mappings and prefix-based mappings introduced by the
     --incompatible_compact_repo_mapping_manifest flag.
     """
 
     def __init__(
-        self, 
-        exact_mappings: Dict[Tuple[str, str], str], 
-        prefixed_mappings: Dict[Tuple[str, str], str]
+        self,
+        exact_mappings: Dict[Tuple[str, str], str],
+        prefixed_mappings: Dict[Tuple[str, str], str],
     ) -> None:
         """Initialize repository mapping with exact and prefixed mappings.
-        
+
         Args:
             exact_mappings: Dict mapping (source_canonical, target_apparent) -> target_canonical
             prefixed_mappings: Dict mapping (source_prefix, target_apparent) -> target_canonical
         """
         self._exact_mappings = exact_mappings
         self._prefixed_mappings = prefixed_mappings
-        
+
         # Group prefixed mappings by target_apparent for faster lookups
         self._grouped_prefixed_mappings = defaultdict(list)
-        for (prefix_source, target_app), target_canonical in self._prefixed_mappings.items():
-            self._grouped_prefixed_mappings[target_app].append((prefix_source, target_canonical))
+        for (
+            prefix_source,
+            target_app,
+        ), target_canonical in self._prefixed_mappings.items():
+            self._grouped_prefixed_mappings[target_app].append(
+                (prefix_source, target_canonical)
+            )
 
     @staticmethod
     def create_from_file(repo_mapping_path: Optional[str]) -> "_RepositoryMapping":
         """Create RepositoryMapping from a repository mapping manifest file.
-        
+
         Args:
             repo_mapping_path: Path to the repository mapping file, or None if not available
-            
+
         Returns:
             RepositoryMapping instance with parsed mappings
         """
@@ -72,7 +77,7 @@ class _RepositoryMapping:
         # In this case, just apply empty repo mappings.
         if not repo_mapping_path:
             return _RepositoryMapping({}, {})
-        
+
         try:
             with open(repo_mapping_path, "r", encoding="utf-8", newline="\n") as f:
                 content = f.read()
@@ -95,27 +100,29 @@ class _RepositoryMapping:
 
     def lookup(self, source_repo: str, target_apparent: str) -> Optional[str]:
         """Look up repository mapping for the given source and target.
-        
-        This handles both exact mappings and prefix-based mappings introduced by the 
+
+        This handles both exact mappings and prefix-based mappings introduced by the
         --incompatible_compact_repo_mapping_manifest flag. Exact mappings are tried
         first, followed by prefix-based mappings where order matters.
-        
+
         Args:
             source_repo: Source canonical repository name
             target_apparent: Target apparent repository name
-            
+
         Returns:
             target_canonical repository name, or None if no mapping exists
         """
         key = (source_repo, target_apparent)
-        
+
         # Try exact mapping first
         if key in self._exact_mappings:
             return self._exact_mappings[key]
 
         # Try prefixed mapping if no exact match found
         if target_apparent in self._grouped_prefixed_mappings:
-            for prefix_source, target_canonical in self._grouped_prefixed_mappings[target_apparent]:
+            for prefix_source, target_canonical in self._grouped_prefixed_mappings[
+                target_apparent
+            ]:
                 if source_repo.startswith(prefix_source):
                     return target_canonical
 
@@ -297,7 +304,9 @@ class Runfiles:
         if source_repo is not None:
             target_canonical = self._repo_mapping.lookup(source_repo, target_repo)
             if target_canonical is not None:
-                return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
+                return self._strategy.RlocationChecked(
+                    target_canonical + "/" + remainder
+                )
 
         # No mapping found - assume target_repo is already canonical or
         # we're not using Bzlmod

@@ -638,8 +638,10 @@ class RunfilesTest(unittest.TestCase):
 
     def testRepositoryMappingLookup(self) -> None:
         """Test _RepositoryMapping.lookup() method for both exact and prefix-based mappings."""
-        from python.runfiles.runfiles import _RepositoryMapping  # buildifier: disable=bzl-visibility
-        
+        from python.runfiles.runfiles import (
+            _RepositoryMapping,  # buildifier: disable=bzl-visibility
+        )
+
         exact_mappings = {
             ("", "my_workspace"): "_main",
             ("", "config_lib"): "config_lib~1.0.0",
@@ -649,25 +651,35 @@ class RunfilesTest(unittest.TestCase):
             ("deps+", "external_dep"): "external_dep~prefix",
             ("test_deps+", "test_lib"): "test_lib~2.1.0",
         }
-        
+
         repo_mapping = _RepositoryMapping(exact_mappings, prefixed_mappings)
-        
+
         # Test exact lookups
         self.assertEqual(repo_mapping.lookup("", "my_workspace"), "_main")
         self.assertEqual(repo_mapping.lookup("", "config_lib"), "config_lib~1.0.0")
-        self.assertEqual(repo_mapping.lookup("deps+specific_repo", "external_dep"), "external_dep~exact")
-        
+        self.assertEqual(
+            repo_mapping.lookup("deps+specific_repo", "external_dep"),
+            "external_dep~exact",
+        )
+
         # Test prefix-based lookups
-        self.assertEqual(repo_mapping.lookup("deps+some_repo", "external_dep"), "external_dep~prefix")
-        self.assertEqual(repo_mapping.lookup("test_deps+another_repo", "test_lib"), "test_lib~2.1.0")
-        
+        self.assertEqual(
+            repo_mapping.lookup("deps+some_repo", "external_dep"), "external_dep~prefix"
+        )
+        self.assertEqual(
+            repo_mapping.lookup("test_deps+another_repo", "test_lib"), "test_lib~2.1.0"
+        )
+
         # Test that exact takes precedence over prefix
-        self.assertEqual(repo_mapping.lookup("deps+specific_repo", "external_dep"), "external_dep~exact")
-        
+        self.assertEqual(
+            repo_mapping.lookup("deps+specific_repo", "external_dep"),
+            "external_dep~exact",
+        )
+
         # Test non-existent mapping
         self.assertIsNone(repo_mapping.lookup("nonexistent", "repo"))
         self.assertIsNone(repo_mapping.lookup("unknown+repo", "missing"))
-        
+
         # Test empty mapping
         empty_mapping = _RepositoryMapping({}, {})
         self.assertIsNone(empty_mapping.lookup("any", "repo"))
