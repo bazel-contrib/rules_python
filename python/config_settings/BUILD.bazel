@@ -244,5 +244,5 @@ label_flag(
 bool_flag(
     name = "experimental_python_import_all_repositories",
     build_setting_default = True,
-    visibility = ["//visibility:public"]
+    visibility = ["//visibility:public"],
 )
