@@ -17,9 +17,9 @@
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load(":common_labels.bzl", "labels")
+load(":flags.bzl", "read_possibly_native_flag")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
 load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
-load(":flags.bzl", "read_possibly_native_flag")
 
 def _py_runtime_pair_impl(ctx):
     if ctx.attr.py2_runtime != None:

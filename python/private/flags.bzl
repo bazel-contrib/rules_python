@@ -45,12 +45,22 @@ _POSSIBLY_NATIVE_FLAGS = {
     "use_toolchains": (lambda ctx: ctx.fragments.py.use_toolchains, "native"),
 }
 
-# API for reading flags that might be defined in Starlark or in Bazel. All code
-# that reads Python flags should read them through this function.
-#
-# This properly routes to the right flag source depending on Bazel version and
-# the --incompatible* flags that disable native flag references.
 def read_possibly_native_flag(ctx, flag_name):
+    """
+    Canonical API for reading a Python build flag.
+
+    Flags might be defined in Starlark or native-Bazel. This function reasd flags
+    from tbe correct source based on supporting Bazel version and --incompatible*
+    flags that disable native references.
+
+    Args:
+        ctx: Rule's configuration context.
+        flag_name: Name of the flag to read, without preceding "--".
+
+    Returns:
+        The flag's value.
+    """
+
     # Bazel 9.0+ can disable these fragments with --incompatible_remove_ctx_py_fragment and
     # --incompatible_remove_ctx_bazel_py_fragment. Disabling them means bazel expects
     # Python to read Starlark flags.
