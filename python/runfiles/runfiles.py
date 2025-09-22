@@ -98,7 +98,7 @@ class _RepositoryMapping:
 
         return _RepositoryMapping(exact_mappings, prefixed_mappings)
 
-    def lookup(self, source_repo: str, target_apparent: str) -> Optional[str]:
+    def lookup(self, source_repo: Optional[str], target_apparent: str) -> Optional[str]:
         """Look up repository mapping for the given source and target.
 
         This handles both exact mappings and prefix-based mappings introduced by the
