@@ -38,13 +38,11 @@ load(":enum.bzl", "FlagEnum", "enum")
 # See https://github.com/bazel-contrib/rules_python/issues/3252.
 _POSSIBLY_NATIVE_FLAGS = {
     "disable_py2": (lambda ctx: ctx.fragments.py.disable_py2, "native"),
-    "default_to_explicit_init_py": (lambda ctx:
-                                    ctx.fragments.py.default_to_explicit_init_py, "native"),
+    "default_to_explicit_init_py": (lambda ctx: ctx.fragments.py.default_to_explicit_init_py, "native"),
     "build_python_zip": (lambda ctx: ctx.fragments.py.build_python_zip, "native"),
-    "python_import_all_repositories": (lambda ctx:
-                                       ctx.fragments.bazel_py.python_import_all_repositories, "native"),
+    "python_import_all_repositories": (lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories, "native"),
     "python_path": (lambda ctx: ctx.fragments.bazel_py.python_path, "native"),
-    "use_toolchains": (lambda ctx: ctx.fragments.py.use_toolchains, "native")
+    "use_toolchains": (lambda ctx: ctx.fragments.py.use_toolchains, "native"),
 }
 
 # API for reading flags that might be defined in Starlark or in Bazel. All code
@@ -57,6 +55,7 @@ def read_possibly_native_flag(ctx, flag_name):
     # --incompatible_remove_ctx_bazel_py_fragment. Disabling them means bazel expects
     # Python to read Starlark flags.
     use_native_def = hasattr(ctx.fragments, "py") and hasattr(ctx.fragments, "bazel_py")
+
     # Developer override to force the Starlark definition for testing.
     if _POSSIBLY_NATIVE_FLAGS[flag_name][1] == "starlark":
         use_native_def = False
@@ -64,7 +63,7 @@ def read_possibly_native_flag(ctx, flag_name):
         return _POSSIBLY_NATIVE_FLAGS[flag_name][0](ctx)
     else:
         # Starlark definition of "--foo" is assumed to be a label dependency named "_foo".
-        return  getattr(ctx.attr, "_" + flag_name)[BuildSettingInfo].value
+        return getattr(ctx.attr, "_" + flag_name)[BuildSettingInfo].value
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value
