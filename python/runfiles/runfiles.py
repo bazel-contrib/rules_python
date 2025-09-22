@@ -112,6 +112,9 @@ class _RepositoryMapping:
         Returns:
             target_canonical repository name, or None if no mapping exists
         """
+        if source_repo is None:
+            return None
+
         key = (source_repo, target_apparent)
 
         # Try exact mapping first
