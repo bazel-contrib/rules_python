@@ -44,6 +44,7 @@ _POSSIBLY_NATIVE_FLAGS = {
     "python_import_all_repositories": (lambda ctx:
                                        ctx.fragments.bazel_py.python_import_all_repositories, "native"),
     "python_path": (lambda ctx: ctx.fragments.bazel_py.python_path, "native"),
+    "use_toolchains": (lambda ctx: ctx.fragments.py.use_toolchains, "native")
 }
 
 # API for reading flags that might be defined in Starlark or in Bazel. All code
@@ -63,7 +64,7 @@ def read_possibly_native_flag(ctx, flag_name):
         return _POSSIBLY_NATIVE_FLAGS[flag_name][0](ctx)
     else:
         # Starlark definition of "--foo" is assumed to be a label dependency named "_foo".
-        return  getattr(ctx.attr, "_use_starlark_flags")[BuildSettingInfo].value
+        return  getattr(ctx.attr, "_" + flag_name)[BuildSettingInfo].value
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value
