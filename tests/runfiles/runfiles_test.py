@@ -639,7 +639,7 @@ class RunfilesTest(unittest.TestCase):
     def testRepositoryMappingLookup(self) -> None:
         """Test _RepositoryMapping.lookup() method for both exact and prefix-based mappings."""
         from python.runfiles.runfiles import (
-            _RepositoryMapping,  # buildifier: disable=bzl-visibility
+            _RepositoryMapping,
         )
 
         exact_mappings = {
