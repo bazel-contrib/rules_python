@@ -1,0 +1,29 @@
+# buildifier: disable=bzl-visibility
+load("//python/cc:py_extension.bzl", "py_extension")
+load(
+    "//tests/cc:py_extension_test.bzl",
+    "py_extension_test",
+)
+load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:private"],
+)
+
+licenses(["notice"])
+
+py_extension(
+    name = "ext",
+    srcs = ["ext.c"],
+)
+
+py_extension_test(
+    name = "py_extension_test",
+    srcs = ["py_extension_test.py"],
+    deps = [":ext"],
+)
+
+py_extension_analysis_test_suite(
+    name = "py_extension_analysis_tests",
+)

@@ -20,10 +20,10 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     ),
 }
 
-def create_py_extension_rule_builder(implementation, **kwargs):
+def create_py_extension_rule_builder(**kwargs):
     """Create a rule builder for a py_extension."""
     builder = ruleb.Rule(
-        implementation = implementation,
+        implementation = _py_extension_impl,
         attrs = PY_EXTENSION_ATTRS,
         provides = [PyInfo, CcInfo],
         toolchains = [
@@ -34,6 +34,4 @@ def create_py_extension_rule_builder(implementation, **kwargs):
     )
     return builder
 
-py_extension = create_py_extension_rule_builder(
-    implementation = _py_extension_impl,
-).build()
+py_extension = create_py_extension_rule_builder().build()
