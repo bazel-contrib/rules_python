@@ -1,4 +1,4 @@
-load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load(
     "//python/private:flags.bzl",
@@ -238,5 +238,11 @@ label_flag(
     name = "pip_env_marker_config",
     build_setting_default = ":_pip_env_marker_default_config",
     # NOTE: Only public because it is used in pip hub repos.
+    visibility = ["//visibility:public"],
+)
+
+bool_flag(
+    name = "experimental_python_import_all_repositories",
+    build_setting_default = True,
     visibility = ["//visibility:public"],
 )
