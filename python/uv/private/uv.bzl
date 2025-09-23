@@ -18,6 +18,7 @@ EXPERIMENTAL: This is experimental and may be removed without notice
 A module extension for working with uv.
 """
 
+load("@bazel_features//:features.bzl", "bazel_features")
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:common_labels.bzl", "labels")
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
@@ -372,6 +373,11 @@ def _uv_toolchain_extension(module_ctx):
         module_ctx,
         hub_name = "uv",
     )
+
+    if bazel_features.external_deps.extension_metadata_has_reproducible:
+        return module_ctx.extension_metadata(reproducible = True)
+    else:
+        return None
 
 def _overlap(first_collection, second_collection):
     for x in first_collection:
