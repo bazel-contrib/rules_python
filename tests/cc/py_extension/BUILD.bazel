@@ -14,14 +14,34 @@ package(
 licenses(["notice"])
 
 py_extension(
-    name = "ext",
+    name = "ext_static",
     srcs = ["ext.c"],
+    static_deps = [":my_lib"],
+)
+
+py_extension(
+    name = "ext_dynamic",
+    srcs = ["ext.c"],
+    dynamic_deps = [":my_lib_so"],
+)
+
+cc_library(
+    name = "my_lib",
+    srcs = ["my_lib.c"],
+    hdrs = ["my_lib.h"],
+)
+
+cc_library(
+    name = "my_lib_so",
+    srcs = ["my_lib.c"],
+    hdrs = ["my_lib.h"],
+    linkstatic = False,
 )
 
 py_extension_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
-    deps = [":ext"],
+    deps = [":ext_static"],
 )
 
 py_extension_analysis_test_suite(
