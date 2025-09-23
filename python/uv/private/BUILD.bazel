@@ -65,6 +65,7 @@ bzl_library(
         ":uv_toolchains_repo_bzl",
         "//python/private:auth_bzl",
         "//python/private:common_labels_bzl",
+        "@bazel_features//:features",
     ],
 )
 
