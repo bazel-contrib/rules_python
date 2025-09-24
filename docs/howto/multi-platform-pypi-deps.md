@@ -30,23 +30,21 @@ associating a requirements file with the platform.
 
 ### Defining a platform
 
-First, we define a "platform" using {obj}`pip.defaults`. This associates an
-arbitrary name with a list of Bazel {obj}`config_setting` targets. Any name can
-be used for a platform (it's name has no inherent semantic meaning), however,
-the name should encode all the relevant dimensions that distinguish a
-requirements file. For example, if a requirements file is specifically for the
-combination of CUDA 12.9 and NumPY 2.0, then platform name should represent
-that.
+First, we define a "platform" using {obj}`pip.default`. This associates an
+arbitrary name with a list of Bazel {obj}`config_setting` targets. While any
+name can be used for a platform (its name has no inherent semantic meaning), it
+should encode all the relevant dimensions that distinguish a requirements file.
+For example, if a requirements file is specifically for the combination of CUDA
+12.9 and NumPy 2.0, then the platform name should represent that.
 
 The convention is to follow the format of `{os}_{cpu}{threading}`, where:
 
-Where:
 * `{os}` is the operating system (`linux`, `osx`, `windows`).
 * `{cpu}` is the architecture (`x86_64`, `aarch64`).
 * `{threading}` is `_freethreaded` for a freethreaded Python runtime, or an
   empty string for the regular runtime.
 
-Additional dimensions should be appended and separated with underscore (e.g.
+Additional dimensions should be appended and separated with an underscore (e.g.
 `linux_x86_64_musl_cuda12.9_numpy2`).
 
 The platform name should not include the Python version. That is handled by
@@ -63,11 +61,11 @@ targets, you can define your own flags or implement custom config matching
 logic. This allows you to model settings that aren't inherently part of
 rules_python.
 
-This is typically done using [bazel_skylib flags], but any [Starlark
+This is typically done using [bazel_skylib flags](https://bazel.build/extending/config), but any [Starlark
 defined build setting](https://bazel.build/extending/config) can be used. Just
 remember to use `config_setting()` to match a particular value of the flag.
 
-Here in our example, we define a custom flag for CUDA version.
+In our example below, we define a custom flag for CUDA version.
 
 #### Predefined and common build settings
 
@@ -89,15 +87,15 @@ contains commonly used settings for OS and CPU:
 Note that these are the raw flag names. In order to use them with `pip.default`,
 you must use {obj}`config_setting()` to match a particular value for them.
 
-### Associating requirements to plaforms
+### Associating Requirements to Platforms
 
 Next, we associate a requirements file with a platform using
-{obj}`pip.parse.requirements_by_platform`. This is a dictionary arg where
-keys are requirements files, and the value is a platform name. The platform
-value can use trailing or leading `*` to match multiple platforms. It can also
+{obj}`pip.parse.requirements_by_platform`. This is a dictionary attribute where
+the keys are requirements files and the value is a platform name. The platform
+value can use a trailing or leading `*` to match multiple platforms. It can also
 specify multiple platform names using commas to separate them.
 
-Note that Python version is _not_ part
+Note that the Python version is _not_ part of the platform name.
 
 Under the hood, `pip.parse` merges all the requirements (for a `hub_name`) and
 constructs `select()` expressions to route to the appropriate dependencies.
@@ -116,7 +114,7 @@ bazel build --@rules_python//python/config_settings:py_linux_libc=musl \
   --cpu=aarch64 //:binary
 
 # Build for freethreaded
-bazel build --@rule_python//python/config_settings:py_freethreaded=yes //:binary
+bazel build --@rules_python//python/config_settings:py_freethreaded=true //:binary
 ```
 
 Note that certain combinations of flags may result in an error or undefined
@@ -124,7 +122,7 @@ behavior. For example, trying to set both freethreaded and CUDA at the same
 time would result in an error because no requirements file was registered
 to match that combination.
 
-## Multiple Python version
+## Multiple Python Versions
 
 Having multiple Python versions is fully supported. Simply add a `pip.parse()`
 call and set `python_version` appropriately.
