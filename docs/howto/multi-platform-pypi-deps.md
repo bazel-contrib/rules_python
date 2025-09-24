@@ -35,7 +35,7 @@ arbitrary name with a list of Bazel {obj}`config_setting` targets. Any name can
 be used for a platform (it's name has no inherent semantic meaning), however,
 the name should encode all the relevant dimensions that distinguish a
 requirements file. For example, if a requirements file is specifically for the
-combination of CUDA 12.9 and NumPY 2.0, then platform name should represent
+combination of CUDA 12.9 and NumPy 2.0, then platform name should represent
 that.
 
 The convention is to follow the format of `{os}_{cpu}{threading}`, where:
@@ -89,7 +89,7 @@ contains commonly used settings for OS and CPU:
 Note that these are the raw flag names. In order to use them with `pip.default`,
 you must use {obj}`config_setting()` to match a particular value for them.
 
-### Associating requirements to plaforms
+### Associating requirements to platforms
 
 Next, we associate a requirements file with a platform using
 {obj}`pip.parse.requirements_by_platform`. This is a dictionary arg where
@@ -97,7 +97,7 @@ keys are requirements files, and the value is a platform name. The platform
 value can use trailing or leading `*` to match multiple platforms. It can also
 specify multiple platform names using commas to separate them.
 
-Note that Python version is _not_ part
+Note that Python version is _not_ part of the platform name.
 
 Under the hood, `pip.parse` merges all the requirements (for a `hub_name`) and
 constructs `select()` expressions to route to the appropriate dependencies.
@@ -116,7 +116,7 @@ bazel build --@rules_python//python/config_settings:py_linux_libc=musl \
   --cpu=aarch64 //:binary
 
 # Build for freethreaded
-bazel build --@rule_python//python/config_settings:py_freethreaded=yes //:binary
+bazel build --@rules_python//python/config_settings:py_freethreaded=yes //:binary
 ```
 
 Note that certain combinations of flags may result in an error or undefined
@@ -124,7 +124,7 @@ behavior. For example, trying to set both freethreaded and CUDA at the same
 time would result in an error because no requirements file was registered
 to match that combination.
 
-## Multiple Python version
+## Multiple Python versions
 
 Having multiple Python versions is fully supported. Simply add a `pip.parse()`
 call and set `python_version` appropriately.
