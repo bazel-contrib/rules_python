@@ -1,9 +1,8 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//python:py_test.bzl", "py_test")
+
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
-load(
-    "//tests/cc:py_extension_test.bzl",
-    "py_extension_test",
-)
 load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
 
 package(
@@ -15,33 +14,37 @@ licenses(["notice"])
 
 py_extension(
     name = "ext_static",
-    srcs = ["ext.c"],
-    static_deps = [":my_lib"],
+    srcs = ["ext_static.c"],
+    static_deps = [":static_dep"],
 )
 
 py_extension(
-    name = "ext_dynamic",
-    srcs = ["ext.c"],
-    dynamic_deps = [":my_lib_so"],
+    name = "ext_shared",
+    srcs = ["ext_shared.c"],
+    dynamic_deps = [":dyn_dep_a"],
 )
 
 cc_library(
-    name = "my_lib",
-    srcs = ["my_lib.c"],
-    hdrs = ["my_lib.h"],
+    name = "static_dep",
+    srcs = ["static_dep.c"],
+    hdrs = ["static_dep.h"],
 )
 
 cc_library(
-    name = "my_lib_so",
-    srcs = ["my_lib.c"],
-    hdrs = ["my_lib.h"],
+    name = "dyn_dep_a",
+    srcs = ["dyn_dep_a.c"],
+    hdrs = ["dyn_dep_a.h"],
     linkstatic = False,
 )
 
-py_extension_test(
+py_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
-    deps = [":ext_static"],
+    deps = [
+        ":ext_shared",
+        "@dev_pip//pyelftools",
+        "@rules_python//python/runfiles",
+    ],
 )
 
 py_extension_analysis_test_suite(

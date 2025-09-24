@@ -13,5 +13,6 @@ dependencies = [
     "absl-py",
     "typing-extensions",
     "sphinx-reredirects",
-    "pefile"
+    "pefile",
+    "pyelftools",
 ]

@@ -1,7 +1,7 @@
 """Wrapper macro for the py_extension rule."""
 
-load(":py_extension_rule.bzl", _py_extension = "py_extension")
 load("//python/private:util.bzl", "add_tag")
+load(":py_extension_rule.bzl", _py_extension = "py_extension")
 
 def py_extension(**kwargs):
     """A macro that calls the py_extension rule and adds a tag.

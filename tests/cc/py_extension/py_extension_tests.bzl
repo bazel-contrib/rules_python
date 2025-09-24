@@ -50,7 +50,7 @@ def _test_dynamic_deps_impl(env, target):
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources).has_size(1)
     env.expect.that_collection(py_info.transitive_sources).contains_predicate(
-        matching.str_matches("ext_dynamic.so$"),
+        matching.str_matches("ext_shared.so$"),
     )
 
     # CcInfo from dynamic_deps should be propagated.
@@ -60,7 +60,7 @@ def _test_dynamic_deps(name):
     analysis_test(
         name = name,
         impl = _test_dynamic_deps_impl,
-        target = "//tests/cc/py_extension:ext_dynamic",
+        target = "//tests/cc/py_extension:ext_shared",
     )
 
 _tests.append(_test_dynamic_deps)

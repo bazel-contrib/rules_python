@@ -1,1 +1,0 @@
-"""A no-op C extension."""

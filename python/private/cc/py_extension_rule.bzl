@@ -10,7 +10,7 @@ load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 
 def _py_extension_impl(ctx):
-    cc_toolchain = cc_common.get_toolchain_info(ctx = ctx).cc_toolchain
+    cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
         cc_toolchain = cc_toolchain,
@@ -25,18 +25,14 @@ def _py_extension_impl(ctx):
     )
 
     # Compile sources
-    compilation_outputs, _ = cc_common.compile(
+    _, compilation_outputs = cc_common.compile(
         name = ctx.label.name,
         actions = ctx.actions,
         feature_configuration = feature_configuration,
         cc_toolchain = cc_toolchain,
         srcs = ctx.files.srcs,
-        compilation_context = all_deps_cc_info.compilation_context,
+        compilation_contexts = [all_deps_cc_info.compilation_context],
     )
-
-    # Link the extension
-    output_filename = ctx.label.name + ".so"
-    output = ctx.actions.declare_file(output_filename)
 
     # Static deps are linked directly into the .so
     static_linking_context = cc_common.merge_cc_infos(
@@ -53,17 +49,36 @@ def _py_extension_impl(ctx):
     if ctx.attr.external_deps:
         user_link_flags.append("-Wl,--allow-shlib-undefined")
 
-    cc_common.link(
+    # This function also does the linking
+    _, linking_outputs = cc_common.create_linking_context_from_compilation_outputs(
         name = ctx.label.name,
         actions = ctx.actions,
         feature_configuration = feature_configuration,
         cc_toolchain = cc_toolchain,
-        output = output,
-        linking_contexts = depset([static_linking_context, dynamic_linking_context]),
-        linker_inputs = depset([compilation_outputs.linker_inputs]),
-        output_type = "dynamic_library",
+        compilation_outputs = compilation_outputs,
         user_link_flags = user_link_flags,
-        neverlink = True,
+        linking_contexts = [static_linking_context, dynamic_linking_context],
+    )
+
+    print(linking_outputs)
+    ltl = linking_outputs.library_to_link
+    print(ltl)
+    print(ltl.dynamic_library)
+    print(ltl.resolved_symlink_dynamic_library)
+    lib_dso = ltl.resolved_symlink_dynamic_library
+    if lib_dso == None:
+        lib_dso = ltl.dynamic_library
+
+    if lib_dso == None:
+        fail("No DSO output found in {}".format(ltl))
+
+    # todo: pick appropriate infix based on py_extension attr settings
+    py_dso = ctx.actions.declare_file("{}.so".format(ctx.label.name))
+    ctx.actions.run_shell(
+        command = 'cp "$1" "$2"',
+        arguments = [lib_dso.path, py_dso.path],
+        inputs = [lib_dso],
+        outputs = [py_dso],
     )
 
     # Propagate CcInfo from dynamic and external deps, but not static ones.
@@ -72,9 +87,12 @@ def _py_extension_impl(ctx):
     )
 
     return [
-        DefaultInfo(files = depset([output])),
+        DefaultInfo(
+            files = depset([py_dso]),
+            runfiles = ctx.runfiles([py_dso]),
+        ),
         PyInfo(
-            transitive_sources = depset([output]),
+            transitive_sources = depset([py_dso]),
         ),
         propagated_cc_info,
     ]
@@ -82,15 +100,6 @@ def _py_extension_impl(ctx):
 _MaybeBuiltinPyInfo = [[BuiltinPyInfo]] if BuiltinPyInfo != None else []
 
 PY_EXTENSION_ATTRS = COMMON_ATTRS | {
-    "srcs": lambda: attrb.LabelList(
-        allow_files = True,
-        doc = "The list of source files that are processed to create the target.",
-    ),
-    "static_deps": lambda: attrb.LabelList(
-        providers = [CcInfo],
-        doc = "cc_library targets to be statically and privately linked.",
-        default = [],
-    ),
     "dynamic_deps": lambda: attrb.LabelList(
         providers = [CcInfo],
         doc = "cc_library targets to be dynamically linked.",
@@ -99,6 +108,15 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     "external_deps": lambda: attrb.LabelList(
         providers = [CcInfo],
         doc = "cc_library targets with external linkage.",
+        default = [],
+    ),
+    "srcs": lambda: attrb.LabelList(
+        allow_files = True,
+        doc = "The list of source files that are processed to create the target.",
+    ),
+    "static_deps": lambda: attrb.LabelList(
+        providers = [CcInfo],
+        doc = "cc_library targets to be statically and privately linked.",
         default = [],
     ),
 }
@@ -113,6 +131,7 @@ def create_py_extension_rule_builder(**kwargs):
             ruleb.ToolchainType(TARGET_TOOLCHAIN_TYPE),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type"),
         ],
+        fragments = ["cpp"],
         **kwargs
     )
     return builder
