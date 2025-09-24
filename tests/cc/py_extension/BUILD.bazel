@@ -14,14 +14,35 @@ licenses(["notice"])
 
 py_extension(
     name = "ext_static",
-    srcs = ["ext_static.c"],
+    ##srcs = ["ext_static.c"],
     static_deps = [":static_dep"],
 )
 
 py_extension(
     name = "ext_shared",
+    dynamic_deps = [
+        ":add_one",
+    ],
+    static_deps = [
+        ":ext_shared_impl",
+    ],
+)
+
+cc_library(
+    name = "ext_shared_impl",
     srcs = ["ext_shared.c"],
-    dynamic_deps = [":dyn_dep_a"],
+    copts = [
+        # Gemini says PIC is needed
+        "-fPIC",
+        "-fvisibility=hidden",
+    ],
+    deps = [
+        ":add_one_headers",
+        # todo: if we put this here, we statically link add_one into the
+        # extension.
+        #":add_one_impl",
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
 )
 
 cc_library(
@@ -31,10 +52,13 @@ cc_library(
 )
 
 cc_library(
-    name = "dyn_dep_a",
-    srcs = ["dyn_dep_a.c"],
-    hdrs = ["dyn_dep_a.h"],
-    linkstatic = False,
+    name = "add_one_headers",
+    hdrs = ["add_one.h"],
+)
+
+cc_library(
+    name = "add_one",
+    srcs = ["add_one.c"],
 )
 
 py_test(

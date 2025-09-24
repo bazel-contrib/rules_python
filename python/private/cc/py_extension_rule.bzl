@@ -5,11 +5,13 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
 load("//python/private:py_info.bzl", "PyInfo")
+load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 
 def _py_extension_impl(ctx):
+    module_name = ctx.attr.module_name or ctx.label.name
     cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
@@ -24,62 +26,75 @@ def _py_extension_impl(ctx):
         cc_infos = static_deps_infos + dynamic_deps_infos + external_deps_infos,
     )
 
-    # Compile sources
-    _, compilation_outputs = cc_common.compile(
-        name = ctx.label.name,
-        actions = ctx.actions,
-        feature_configuration = feature_configuration,
-        cc_toolchain = cc_toolchain,
-        srcs = ctx.files.srcs,
-        compilation_contexts = [all_deps_cc_info.compilation_context],
-    )
-
     # Static deps are linked directly into the .so
-    static_linking_context = cc_common.merge_cc_infos(
+    static_cc_info = cc_common.merge_cc_infos(
         cc_infos = static_deps_infos,
-    ).linking_context
+    )
 
     # Dynamic deps are linked as shared libraries
     dynamic_linking_context = cc_common.merge_cc_infos(
         cc_infos = dynamic_deps_infos,
     ).linking_context
 
-    # For external deps, we need to allow undefined symbols.
     user_link_flags = []
+    user_link_flags.append("-Wl,--export-dynamic-symbol=PyInit_{module_name}".format(
+        module_name = module_name,
+    ))
+
+    # The PyInit symbol looks unused, so the linker optimizes it away. Telling it
+    # to treat it as undefined causes it to be retained.
+    user_link_flags.append("-Wl,--undefined=PyInit_{module_name}".format(
+        module_name = module_name,
+    ))
+
     if ctx.attr.external_deps:
         user_link_flags.append("-Wl,--allow-shlib-undefined")
 
-    # This function also does the linking
-    _, linking_outputs = cc_common.create_linking_context_from_compilation_outputs(
-        name = ctx.label.name,
+    # todo: use toolchain to determine `abi3.` infix
+    # todo: use toolchain to determine platform extension (pyd, so, etc)
+    output_filename = "{module_name}.{ext}".format(
+        module_name = module_name,
+        ext = "so",
+    )
+    py_dso = ctx.actions.declare_file(output_filename)
+
+    static_linking_context = static_cc_info.linking_context
+    linking_contexts = [
+        static_linking_context,
+        dynamic_linking_context,
+    ]
+
+    # Add target-level linkopts last so users can override.
+    user_link_flags.extend(ctx.attr.linkopts)
+    print((
+        "===LINK:\n" +
+        "  user_link_flags={user_link_flags}"
+    ).format(
+        user_link_flags = user_link_flags,
+    ))
+
+    # todo: add linker script to hide symbols by default
+    # py_internal allows using some private apis, which may or may not be needed.
+    # based upon cc_shared_library.bzl
+    cc_linking_outputs = py_internal.link(
         actions = ctx.actions,
         feature_configuration = feature_configuration,
         cc_toolchain = cc_toolchain,
-        compilation_outputs = compilation_outputs,
+        linking_contexts = linking_contexts,
         user_link_flags = user_link_flags,
-        linking_contexts = [static_linking_context, dynamic_linking_context],
+        # todo: add additional_inputs
+        name = ctx.label.name,
+        output_type = "dynamic_library",
+        main_output = py_dso,
+        # todo: maybe variables_extension
+        # todo: maybe additional_outputs
     )
-
-    print(linking_outputs)
-    ltl = linking_outputs.library_to_link
-    print(ltl)
-    print(ltl.dynamic_library)
-    print(ltl.resolved_symlink_dynamic_library)
-    lib_dso = ltl.resolved_symlink_dynamic_library
-    if lib_dso == None:
-        lib_dso = ltl.dynamic_library
-
-    if lib_dso == None:
-        fail("No DSO output found in {}".format(ltl))
-
-    # todo: pick appropriate infix based on py_extension attr settings
-    py_dso = ctx.actions.declare_file("{}.so".format(ctx.label.name))
-    ctx.actions.run_shell(
-        command = 'cp "$1" "$2"',
-        arguments = [lib_dso.path, py_dso.path],
-        inputs = [lib_dso],
-        outputs = [py_dso],
-    )
+    print((
+        "===LINK OUTPUT:\n" +
+        "  {}"
+    ).format(
+        cc_linking_outputs,
+    ))
 
     # Propagate CcInfo from dynamic and external deps, but not static ones.
     propagated_cc_info = cc_common.merge_cc_infos(
@@ -87,10 +102,7 @@ def _py_extension_impl(ctx):
     )
 
     return [
-        DefaultInfo(
-            files = depset([py_dso]),
-            runfiles = ctx.runfiles([py_dso]),
-        ),
+        DefaultInfo(files = depset([py_dso])),
         PyInfo(
             transitive_sources = depset([py_dso]),
         ),
@@ -110,15 +122,14 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
         doc = "cc_library targets with external linkage.",
         default = [],
     ),
-    "srcs": lambda: attrb.LabelList(
-        allow_files = True,
-        doc = "The list of source files that are processed to create the target.",
-    ),
     "static_deps": lambda: attrb.LabelList(
         providers = [CcInfo],
         doc = "cc_library targets to be statically and privately linked.",
         default = [],
     ),
+    "copts": lambda: attrb.StringList(),
+    "linkopts": lambda: attrb.StringList(),
+    "module_name": lambda: attrb.String(),
 }
 
 def create_py_extension_rule_builder(**kwargs):
