@@ -114,7 +114,7 @@ bazel build --@rules_python//python/config_settings:py_linux_libc=musl \
   --cpu=aarch64 //:binary
 
 # Build for freethreaded
-bazel build --@rules_python//python/config_settings:py_freethreaded=true //:binary
+bazel build --@rules_python//python/config_settings:py_freethreaded=yes //:binary
 ```
 
 Note that certain combinations of flags may result in an error or undefined
