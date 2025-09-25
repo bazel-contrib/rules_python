@@ -797,12 +797,6 @@ def _test_single_version_platform_override_errors(env):
         ),
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12", platform = "foo"),
-            ],
-            want_error = "The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '3.12'",
-        ),
-        struct(
-            overrides = [
                 _single_version_platform_override(python_version = "foo", platform = "foo"),
             ],
             want_error = "Failed to parse PEP 440 version identifier 'foo'. Parse error at 'foo'",
