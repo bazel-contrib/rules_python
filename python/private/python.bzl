@@ -598,7 +598,7 @@ def _validate_version(version_str, *, _fail = fail):
 
     return True
 
-def _process_single_version_overrides(*, tag, _fail = fail, default, module_ctx=None):
+def _process_single_version_overrides(*, tag, _fail = fail, default, module_ctx = None):
     if not _validate_version(tag.python_version, _fail = _fail):
         return
 
@@ -754,7 +754,7 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default, mo
 
         default["platforms"] = override_first
 
-def _process_global_overrides(*, tag, default, _fail = fail, module_ctx=None):
+def _process_global_overrides(*, tag, default, _fail = fail, module_ctx = None):
     if tag.available_python_versions:
         available_versions = default["tool_versions"]
         all_versions = dict(available_versions)
