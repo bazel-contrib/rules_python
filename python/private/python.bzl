@@ -598,7 +598,7 @@ def _validate_version(version_str, *, _fail = fail):
 
     return True
 
-def _process_single_version_overrides(*, tag, _fail = fail, default, module_ctx = None):
+def _process_single_version_overrides(*, tag, _fail = fail, default, module_ctx = None):  # buildifier: disable=unused-variable
     if not _validate_version(tag.python_version, _fail = _fail):
         return
 
@@ -754,7 +754,7 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default, mo
 
         default["platforms"] = override_first
 
-def _process_global_overrides(*, tag, default, _fail = fail, module_ctx = None):
+def _process_global_overrides(*, tag, default, _fail = fail, module_ctx = None):  # buildifier: disable=unused-variable
     if tag.available_python_versions:
         available_versions = default["tool_versions"]
         all_versions = dict(available_versions)
@@ -814,7 +814,7 @@ def _get_toolchain_config(*, module_ctx, _fail = fail):
     """Computes the configs for toolchains.
 
     Args:
-        modules: The modules from module_ctx
+        module_ctx: {type}`module_ctx` module context.
         _fail: Function to call for failing; only used for testing.
 
     Returns:
@@ -1399,10 +1399,6 @@ Docs for [Registering custom runtimes]
 :::
 """,
         ),
-        "urls": attr.string_list(
-            mandatory = False,
-            doc = "The URL template to fetch releases for this Python version. If the URL template results in a relative fragment, default base URL is going to be used. Occurrences of `{python_version}`, `{platform}` and `{build}` will be interpolated based on the contents in the override and the known {attr}`platform` values.",
-        ),
         "url_env": attr.string(
             mandatory = False,
             doc = """\
@@ -1411,6 +1407,10 @@ The environment variable for a comma-separated list of URLs. Overrides `urls` if
 :::{{versionadded}} 1.6.4
 :::
 """,
+        ),
+        "urls": attr.string_list(
+            mandatory = False,
+            doc = "The URL template to fetch releases for this Python version. If the URL template results in a relative fragment, default base URL is going to be used. Occurrences of `{python_version}`, `{platform}` and `{build}` will be interpolated based on the contents in the override and the known {attr}`platform` values.",
         ),
     },
 )
