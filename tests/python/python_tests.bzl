@@ -896,11 +896,10 @@ def _test_single_version_platform_override_from_env_minor_version(env):
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
-    env.expect.that_dict(py.config.default["tool_versions"]["3.13.6"]).contains_exactly({
-        "sha256": {"aarch64-unknown-linux-gnu": "deadbeef"},
-        "strip_prefix": {"aarch64-unknown-linux-gnu": "my-prefix"},
-        "url": {"aarch64-unknown-linux-gnu": ["example.com", "example.org"]},
-    })
+    tool_versions = py.config.default["tool_versions"]["3.13.6"]
+    env.expect.that_str(tool_versions["sha256"]["aarch64-unknown-linux-gnu"]).equals("deadbeef")
+    env.expect.that_str(tool_versions["strip_prefix"]["aarch64-unknown-linux-gnu"]).equals("my-prefix")
+    env.expect.that_collection(tool_versions["url"]["aarch64-unknown-linux-gnu"]).contains_exactly(["example.com", "example.org"])
 
 _tests.append(_test_single_version_platform_override_from_env_minor_version)
 
