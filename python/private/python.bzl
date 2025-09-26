@@ -686,7 +686,7 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default, mo
     if url_env:
         urls_from_env = module_ctx.getenv(url_env)
         if urls_from_env:
-            urls = [url.strip() for url in urls_from_env.split(",")]
+            urls = [url.strip() for url in urls_from_env.split(",") if url.strip()]
 
     if python_version not in available_versions:
         if not urls or not sha256 or not strip_prefix:
