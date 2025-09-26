@@ -38,6 +38,8 @@ def _modules_mapping_impl(ctx):
     args.set_param_file_format(format = "multiline")
     if ctx.attr.include_stub_packages:
         args.add("--include_stub_packages")
+    if ctx.attr.ignore_native_libs:
+        args.add("--ignore_native_libs")
     args.add("--output_file", modules_mapping)
     args.add_all("--exclude_patterns", ctx.attr.exclude_patterns)
     args.add_all("--wheels", all_wheels)
@@ -62,6 +64,11 @@ modules_mapping = rule(
         "include_stub_packages": attr.bool(
             default = False,
             doc = "Whether to include stub packages in the mapping.",
+            mandatory = False,
+        ),
+        "ignore_native_libs": attr.bool(
+            default = False,
+            doc = "Whether to ignore native libraries (*.so files) for platform-independent mappings.",
             mandatory = False,
         ),
         "modules_mapping_name": attr.string(

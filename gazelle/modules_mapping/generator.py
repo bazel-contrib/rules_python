@@ -26,11 +26,12 @@ class Generator:
     output_file = None
     excluded_patterns = None
 
-    def __init__(self, stderr, output_file, excluded_patterns, include_stub_packages):
+    def __init__(self, stderr, output_file, excluded_patterns, include_stub_packages, ignore_native_libs=False):
         self.stderr = stderr
         self.output_file = output_file
         self.excluded_patterns = [re.compile(pattern) for pattern in excluded_patterns]
         self.include_stub_packages = include_stub_packages
+        self.ignore_native_libs = ignore_native_libs
         self.mapping = {}
 
     # dig_wheel analyses the wheel .whl file determining the modules it provides
@@ -74,6 +75,10 @@ class Generator:
     def module_for_path(self, path, whl):
         ext = pathlib.Path(path).suffix
         if ext == ".py" or ext == ".so":
+            # Skip native libraries if ignore_native_libs is enabled
+            if ext == ".so" and self.ignore_native_libs:
+                return
+
             if "purelib" in path or "platlib" in path:
                 root = "/".join(path.split("/")[2:])
             else:
@@ -158,10 +163,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--include_stub_packages", action="store_true")
+    parser.add_argument("--ignore_native_libs", action="store_true")
     parser.add_argument("--exclude_patterns", nargs="+", default=[])
     parser.add_argument("--wheels", nargs="+", default=[])
     args = parser.parse_args()
     generator = Generator(
-        sys.stderr, args.output_file, args.exclude_patterns, args.include_stub_packages
+        sys.stderr, args.output_file, args.exclude_patterns, args.include_stub_packages, args.ignore_native_libs
     )
     sys.exit(generator.run(args.wheels))
