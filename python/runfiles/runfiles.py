@@ -50,14 +50,13 @@ class _RepositoryMapping:
             prefixed_mappings: Dict mapping (source_prefix, target_apparent) -> target_canonical
         """
         self._exact_mappings = exact_mappings
-        self._prefixed_mappings = prefixed_mappings
 
         # Group prefixed mappings by target_apparent for faster lookups
         self._grouped_prefixed_mappings = defaultdict(list)
         for (
             prefix_source,
             target_app,
-        ), target_canonical in self._prefixed_mappings.items():
+        ), target_canonical in prefixed_mappings.items():
             self._grouped_prefixed_mappings[target_app].append(
                 (prefix_source, target_canonical)
             )
@@ -138,7 +137,7 @@ class _RepositoryMapping:
         Returns:
             True if there are no mappings, False otherwise
         """
-        return len(self._exact_mappings) == 0 and len(self._prefixed_mappings) == 0
+        return len(self._exact_mappings) == 0 and len(self._grouped_prefixed_mappings) == 0
 
 
 class _ManifestBased:
@@ -306,7 +305,8 @@ class Runfiles:
         # Split off the first path component, which contains the repository
         # name (apparent or canonical).
         target_repo, _, remainder = path.partition("/")
-        if not remainder or self._repo_mapping.lookup(source_repo, target_repo) is None:
+        target_canonical = self._repo_mapping.lookup(source_repo, target_repo)
+        if not remainder or target_canonical is None:
             # One of the following is the case:
             # - not using Bzlmod, so the repository mapping is empty and
             #   apparent and canonical repository names are the same
@@ -321,12 +321,10 @@ class Runfiles:
         ), "BUG: if the `source_repo` is None, we should never go past the `if` statement above"
 
         # Look up the target repository using the repository mapping
-        if source_repo is not None:
-            target_canonical = self._repo_mapping.lookup(source_repo, target_repo)
-            if target_canonical is not None:
-                return self._strategy.RlocationChecked(
-                    target_canonical + "/" + remainder
-                )
+        if target_canonical is not None:
+            return self._strategy.RlocationChecked(
+                target_canonical + "/" + remainder
+            )
 
         # No mapping found - assume target_repo is already canonical or
         # we're not using Bzlmod
