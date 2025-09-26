@@ -1331,7 +1331,7 @@ Arbitrary platform strings allowed.
         ),
         "python_version": attr.string(
             mandatory = False,
-            doc = "The python version to override URLs for. Must be in `X.Y.Z` format.",
+            doc = "The python version to override URLs for. Must be in `X.Y.Z` or `X.Y` format.",
         ),
         "python_version_env": attr.string(
             mandatory = False,
