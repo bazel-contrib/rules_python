@@ -85,6 +85,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (runfiles) The Python runfiles library now supports Bazel's
+  `--incompatible_compact_repo_mapping_manifest` flag.
 * (bootstrap) {obj}`--bootstrap_impl=system_python` now supports the
   {obj}`main_module` attribute.
 * (bootstrap) {obj}`--bootstrap_impl=system_python` now supports the

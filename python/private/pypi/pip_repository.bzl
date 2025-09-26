@@ -266,6 +266,9 @@ code will be re-evaluated when any of files in the default changes.
 Those dependencies become available in a generated `requirements.bzl` file.
 You can instead check this `requirements.bzl` file into your repo, see the "vendoring" section below.
 
+For advanced use-cases, such as handling multi-platform dependencies, see the
+[How-to: Multi-Platform PyPI Dependencies guide](/howto/multi-platform-pypi-deps).
+
 In your WORKSPACE file:
 
 ```starlark
