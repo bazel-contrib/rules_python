@@ -1338,7 +1338,7 @@ Arbitrary platform strings allowed.
             doc = """\
 The environment variable for the python version. Overrides `python_version` if set.
 
-:::{{versionadded}} 1.6.0
+:::{{versionadded}} 1.6.4
 :::
 """,
         ),
@@ -1351,7 +1351,7 @@ The environment variable for the python version. Overrides `python_version` if s
             doc = """\
 The environment variable for the sha256. Overrides `sha256` if set.
 
-:::{{versionadded}} 1.6.0
+:::{{versionadded}} 1.6.4
 :::
 """,
         ),
@@ -1365,7 +1365,7 @@ The environment variable for the sha256. Overrides `sha256` if set.
             doc = """\
 The environment variable for the strip_prefix. Overrides `strip_prefix` if set.
 
-:::{{versionadded}} 1.6.0
+:::{{versionadded}} 1.6.4
 :::
 """,
         ),
@@ -1408,7 +1408,7 @@ Docs for [Registering custom runtimes]
             doc = """\
 The environment variable for a comma-separated list of URLs. Overrides `urls` if set.
 
-:::{{versionadded}} 1.6.0
+:::{{versionadded}} 1.6.4
 :::
 """,
         ),
