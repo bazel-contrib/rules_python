@@ -37,7 +37,7 @@ def sh_py_run_test(*, name, sh_src, py_src, **kwargs):
         srcs = [sh_src],
         data = [bin_name],
         deps = [
-            "@rules_shell//shell/runfiles",
+            "@bazel_tools//tools/bash/runfiles",
         ],
         env = {
             "BIN_RLOCATION": "$(rlocationpaths {})".format(bin_name),
