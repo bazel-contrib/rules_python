@@ -106,16 +106,9 @@ def _internal_config_repo_impl(rctx):
     shim_content = _PY_INTERNAL_SHIM
     py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"'
 
-    # Bazel 5 doesn't support repository visibility, so just use public
-    # as a stand-in
-    if native.bazel_version.startswith("5."):
-        visibility = "//visibility:public"
-    else:
-        visibility = "@rules_python//:__subpackages__"
-
     rctx.file("BUILD", ROOT_BUILD_TEMPLATE.format(
         py_internal_dep = py_internal_dep,
-        visibility = visibility,
+        visibility = "@rules_python//:__subpackages__",
     ))
     rctx.file("py_internal.bzl", shim_content)
 
