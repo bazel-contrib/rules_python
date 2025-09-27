@@ -384,11 +384,7 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 )
 
 def _is_singleton_depset(files):
-    # Bazel 6 doesn't have this helper to optimize detecting singleton depsets.
-    if _py_builtins:
-        return _py_builtins.is_singleton_depset(files)
-    else:
-        return len(files.to_list()) == 1
+    return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
     parts = version_str.split(".")
