@@ -139,8 +139,7 @@ def _internal_config_repo_impl(rctx):
 internal_config_repo = repository_rule(
     implementation = _internal_config_repo_impl,
     configure = True,
-    # TODO @aignas 2025-09-27: PIPSTAR env var bugfix
-    environ = [],
+    environ = [_ENABLE_PIPSTAR_ENVVAR_NAME],
     attrs = {
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),
