@@ -315,13 +315,6 @@ def whl_library_targets(
                 deps_by_platform = dependencies_by_platform,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
-                # NOTE @aignas 2024-10-28: Actually, `select` is not part of
-                # `native`, but in order to support bazel 6.4 in unit tests, I
-                # have to somehow pass the `select` implementation in the unit
-                # tests and I chose this to be routed through the `native`
-                # struct. So, tests` will be successful in `getattr` and the
-                # real code will use the fallback provided here.
-                select = getattr(native, "select", select),
             ),
             visibility = impl_vis,
         )
@@ -362,7 +355,7 @@ def whl_library_targets(
         )
 
         if not enable_implicit_namespace_pkgs:
-            srcs = srcs + getattr(native, "select", select)({
+            srcs = srcs + select({
                 Label("//python/config_settings:is_venvs_site_packages"): [],
                 "//conditions:default": rules.create_inits(
                     srcs = srcs + data + pyi_srcs,
@@ -384,7 +377,6 @@ def whl_library_targets(
                 deps_by_platform = dependencies_by_platform,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
-                select = getattr(native, "select", select),
             ),
             tags = tags,
             visibility = impl_vis,
@@ -455,7 +447,7 @@ def _plat_label(plat):
     else:
         return ":is_" + plat.replace("cp3", "python_3.")
 
-def _deps(deps, deps_by_platform, deps_conditional, tmpl, select = select):
+def _deps(deps, deps_by_platform, deps_conditional, tmpl):
     deps = [tmpl.format(d) for d in sorted(deps)]
 
     for dep, setting in deps_conditional.items():
