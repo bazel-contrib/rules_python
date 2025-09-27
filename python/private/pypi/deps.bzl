@@ -101,7 +101,6 @@ _GENERIC_WHEEL = """\
 package(default_visibility = ["//visibility:public"])
 
 load("@rules_python//python:py_library.bzl", "py_library")
-load("@rules_python//python/private:glob_excludes.bzl", "glob_excludes")
 
 py_library(
     name = "lib",
