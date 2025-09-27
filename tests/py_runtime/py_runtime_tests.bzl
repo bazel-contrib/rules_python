@@ -20,14 +20,9 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
-load("//tests/base_rules:util.bzl", br_util = "util")
 load("//tests/support:py_runtime_info_subject.bzl", "py_runtime_info_subject")
 
 _tests = []
-
-_SKIP_TEST = {
-    "target_compatible_with": ["@platforms//:incompatible"],
-}
 
 def _simple_binary_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name)
@@ -71,29 +66,19 @@ def _test_bootstrap_template_impl(env, target):
 _tests.append(_test_bootstrap_template)
 
 def _test_cannot_have_both_inbuild_and_system_interpreter(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {
-            "interpreter": "fake_interpreter",
-            "interpreter_path": "/some/path",
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {
-            "interpreter_path": "/some/path",
-        }
-        attr_values = _SKIP_TEST
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
-        **py_runtime_kwargs
+        interpreter = "fake_interpreter",
+        interpreter_path = "/some/path",
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = _test_cannot_have_both_inbuild_and_system_interpreter_impl,
         expect_failure = True,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_cannot_have_both_inbuild_and_system_interpreter_impl(env, target):
@@ -104,25 +89,19 @@ def _test_cannot_have_both_inbuild_and_system_interpreter_impl(env, target):
 _tests.append(_test_cannot_have_both_inbuild_and_system_interpreter)
 
 def _test_cannot_specify_files_for_system_interpreter(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {"files": ["foo.txt"]}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         interpreter_path = "/foo",
         python_version = "PY3",
-        **py_runtime_kwargs
+        files = ["foo.txt"],
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = _test_cannot_specify_files_for_system_interpreter_impl,
         expect_failure = True,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_cannot_specify_files_for_system_interpreter_impl(env, target):
@@ -133,21 +112,12 @@ def _test_cannot_specify_files_for_system_interpreter_impl(env, target):
 _tests.append(_test_cannot_specify_files_for_system_interpreter)
 
 def _test_coverage_tool_executable(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {
-            "coverage_tool": name + "_coverage_tool",
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
-
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
         interpreter_path = "/bogus",
-        **py_runtime_kwargs
+        coverage_tool = name + "_coverage_tool",
     )
     rt_util.helper_target(
         _simple_binary,
@@ -158,7 +128,7 @@ def _test_coverage_tool_executable(name):
         name = name,
         target = name + "_subject",
         impl = _test_coverage_tool_executable_impl,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_coverage_tool_executable_impl(env, target):
@@ -173,14 +143,10 @@ def _test_coverage_tool_executable_impl(env, target):
 _tests.append(_test_coverage_tool_executable)
 
 def _test_coverage_tool_plain_files(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {
-            "coverage_tool": name + "_coverage_tool",
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
+    py_runtime_kwargs = {
+        "coverage_tool": name + "_coverage_tool",
+    }
+    attr_values = {}
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
@@ -324,14 +290,8 @@ def _test_interpreter_binary_with_single_output_and_runfiles_impl(env, target):
 _tests.append(_test_interpreter_binary_with_single_output_and_runfiles)
 
 def _test_must_have_either_inbuild_or_system_interpreter(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {
-            "interpreter_path": "/some/path",
-        }
-        attr_values = _SKIP_TEST
+    py_runtime_kwargs = {}
+    attr_values = {}
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
@@ -375,14 +335,8 @@ def _test_system_interpreter_impl(env, target):
 _tests.append(_test_system_interpreter)
 
 def _test_system_interpreter_must_be_absolute(name):
-    # Bazel 5.4 will entirely crash when an invalid interpreter_path
-    # is given.
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {"interpreter_path": "relative/path"}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {"interpreter_path": "/junk/value/for/bazel5.4"}
-        attr_values = _SKIP_TEST
+    py_runtime_kwargs = {"interpreter_path": "relative/path"}
+    attr_values = {}
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",

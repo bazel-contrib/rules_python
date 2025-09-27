@@ -184,7 +184,6 @@ bzl_library(
     srcs = ["py_runtime.bzl"],
     deps = [
         "//python/private:py_runtime_macro_bzl",
-        "//python/private:util_bzl",
     ],
 )
 
@@ -192,9 +191,7 @@ bzl_library(
     name = "py_runtime_pair_bzl",
     srcs = ["py_runtime_pair.bzl"],
     deps = [
-        "//python/private:bazel_tools_bzl",
         "//python/private:py_runtime_pair_macro_bzl",
-        "//python/private:util_bzl",
     ],
 )
 

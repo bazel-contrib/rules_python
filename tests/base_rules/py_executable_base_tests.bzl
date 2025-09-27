@@ -179,11 +179,6 @@ def _test_default_main_can_have_multiple_path_segments_impl(env, target):
     )
 
 def _test_default_main_must_be_in_srcs(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -204,11 +199,6 @@ def _test_default_main_must_be_in_srcs_impl(env, target):
     )
 
 def _test_default_main_cannot_be_ambiguous(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -251,11 +241,6 @@ def _test_explicit_main_impl(env, target):
     )
 
 def _test_explicit_main_cannot_be_ambiguous(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -312,11 +297,6 @@ def _test_files_to_build_impl(env, target):
             env.expect.that_file(first_default_output).equals(executable)
 
 def _test_name_cannot_end_in_py(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject.py",
