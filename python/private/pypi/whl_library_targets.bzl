@@ -17,7 +17,6 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
-load("//python/private:glob_excludes.bzl", "glob_excludes")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
 load(
@@ -339,7 +338,7 @@ def whl_library_targets(
             # of generated files produced when wheels are installed. The file is ignored to avoid
             # Bazel caching issues.
             "**/*.dist-info/RECORD",
-        ] + glob_excludes.version_dependent_exclusions()
+        ]
         for item in data_exclude:
             if item not in _data_exclude:
                 _data_exclude.append(item)

@@ -15,7 +15,6 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private:glob_excludes.bzl", "glob_excludes")  # buildifier: disable=bzl-visibility
 load(
     "//python/private/pypi:whl_library_targets.bzl",
     "whl_library_targets",
@@ -275,7 +274,7 @@ def _test_whl_and_library_deps_from_requires(env):
                 "**/*.pyc",
                 "**/*.pyc.*",
                 "**/*.dist-info/RECORD",
-            ] + glob_excludes.version_dependent_exclusions(),
+            ],
         ),
         # pyi call
         _glob_call(["site-packages/**/*.pyi"], allow_empty = True),

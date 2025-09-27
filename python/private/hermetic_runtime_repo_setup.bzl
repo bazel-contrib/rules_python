@@ -18,7 +18,6 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
-load(":glob_excludes.bzl", "glob_excludes")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
 load(":version.bzl", "version")
 
@@ -82,7 +81,7 @@ def define_hermetic_runtime_toolchain_impl(
                 "lib/python{major}.{minor}*/**/tests/**".format(**version_dict),
                 # During pyc creation, temp files named *.pyc.NNN are created
                 "**/__pycache__/*.pyc.*",
-            ] + glob_excludes.version_dependent_exclusions() + extra_files_glob_exclude,
+            ] + extra_files_glob_exclude,
         ),
     )
     cc_import(

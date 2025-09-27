@@ -74,7 +74,6 @@ bzl_library(
     srcs = ["deps.bzl"],
     deps = [
         "//python/private:bazel_tools_bzl",
-        "//python/private:glob_excludes_bzl",
     ],
 )
 

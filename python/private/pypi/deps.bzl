@@ -115,7 +115,7 @@ py_library(
         "**/*.dist-info/RECORD",
         "BUILD",
         "WORKSPACE",
-    ] + glob_excludes.version_dependent_exclusions()),
+    ]),
     # This makes this directory a top-level in the python import
     # search path for anything that depends on this.
     imports = ["."],
