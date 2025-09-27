@@ -264,7 +264,6 @@ bzl_library(
         ":pythons_hub_bzl",
         ":repo_utils_bzl",
         ":toolchains_repo_bzl",
-        ":util_bzl",
         ":version_bzl",
         "@bazel_features//:features",
     ],

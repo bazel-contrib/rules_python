@@ -73,16 +73,3 @@ def add_tag(attrs, tag):
 IS_BAZEL_7_4_OR_HIGHER = hasattr(native, "legacy_globals")
 
 IS_BAZEL_7_OR_HIGHER = hasattr(native, "starlark_doc_extract")
-
-_marker_rule_to_detect_bazel_6_4_or_higher = rule(implementation = lambda ctx: None)
-
-# Bazel 6.4 and higher have a bug fix where rule names show up in the str()
-# of a rule. See
-# https://github.com/bazelbuild/bazel/commit/002490b9a2376f0b2ea4a37102c5e94fc50a65ba
-# https://github.com/bazelbuild/bazel/commit/443cbcb641e17f7337ccfdecdfa5e69bc16cae55
-# This technique is done instead of using native.bazel_version because,
-# under stardoc, the native.bazel_version attribute is entirely missing, which
-# prevents doc generation from being able to correctly generate docs.
-IS_BAZEL_6_4_OR_HIGHER = "_marker_rule_to_detect_bazel_6_4_or_higher" in str(
-    _marker_rule_to_detect_bazel_6_4_or_higher,
-)
