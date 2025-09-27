@@ -44,7 +44,7 @@ sh_test(
     },
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
     deps = [
-        "@bazel_tools//tools/bash/runfiles",
+        "@rules_shell//shell/runfiles",
     ],
 )
 
