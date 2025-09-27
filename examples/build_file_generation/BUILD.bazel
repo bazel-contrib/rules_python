@@ -29,8 +29,8 @@ modules_mapping(
         "(\\.tests)+",  # Add a custom one to get rid of the psutil tests.
     ],
     # Uncomment the next line to enable hermetic builds across platforms
-    # by ignoring platform-specific native libraries (useful for opencv-python-headless, etc.)
-    # ignore_native_libs = True,
+    # by skipping private shared objects under .libs directories (useful for opencv-python-headless, etc.)
+    # skip_private_shared_objects = True,
     wheels = all_whl_requirements,
 )
 

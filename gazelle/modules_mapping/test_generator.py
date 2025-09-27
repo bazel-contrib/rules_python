@@ -39,26 +39,58 @@ class GeneratorTest(unittest.TestCase):
             gen.mapping.items(),
         )
 
-    def test_ignore_native_libs(self):
-        # Test the ignore_native_libs functionality with the module_for_path method
-        gen_with_native_libs = Generator(None, None, {}, False, False)
-        gen_without_native_libs = Generator(None, None, {}, False, True)
+    def test_skip_private_shared_objects(self):
+        # Test the skip_private_shared_objects functionality with the module_for_path method
+        gen_with_private_libs = Generator(None, None, {}, False, False)
+        gen_without_private_libs = Generator(None, None, {}, False, True)
 
-        # Simulate a Python file - should be included in both cases
-        gen_with_native_libs.module_for_path("cv2/__init__.py", "opencv_python_headless-4.8.1-cp310-cp310-linux_x86_64.whl")
-        gen_without_native_libs.module_for_path("cv2/__init__.py", "opencv_python_headless-4.8.1-cp310-cp310-linux_x86_64.whl")
+        # Simulate Python files - should be included in both cases
+        gen_with_private_libs.module_for_path(
+            "cv2/__init__.py",
+            "opencv_python_headless-4.12.0.88-cp37-abi3-manylinux2014_x86_64.whl",
+        )
+        gen_without_private_libs.module_for_path(
+            "cv2/__init__.py",
+            "opencv_python_headless-4.12.0.88-cp37-abi3-manylinux2014_x86_64.whl",
+        )
+        gen_with_private_libs.module_for_path(
+            "numpy/__init__.py", "numpy-2.2.6-cp310-cp310-manylinux_2_17_x86_64.whl"
+        )
+        gen_without_private_libs.module_for_path(
+            "numpy/__init__.py", "numpy-2.2.6-cp310-cp310-manylinux_2_17_x86_64.whl"
+        )
 
-        # Simulate a native library - should be included only when ignore_native_libs=False
-        gen_with_native_libs.module_for_path("opencv_python_headless.libs/libopenblas-r0-f650aae0.so", "opencv_python_headless-4.8.1-cp310-cp310-linux_x86_64.whl")
-        gen_without_native_libs.module_for_path("opencv_python_headless.libs/libopenblas-r0-f650aae0.so", "opencv_python_headless-4.8.1-cp310-cp310-linux_x86_64.whl")
+        # Real-world examples from wheels
+        private_shared_objects = [
+            "opencv_python_headless.libs/libopenblas-r0-f650aae0.so",
+            "numpy.libs/libscipy_openblas64_-56d6093b.so",
+        ]
 
-        # Both should have the Python module mapping
-        self.assertIn("cv2", gen_with_native_libs.mapping)
-        self.assertIn("cv2", gen_without_native_libs.mapping)
+        # Add all private shared objects to both generators
+        for lib_path in private_shared_objects:
+            wheel_name = (
+                "opencv_python_headless-4.12.0.88"
+                if "opencv" in lib_path
+                else "numpy-2.2.6"
+            )
+            gen_with_private_libs.module_for_path(lib_path, f"{wheel_name}.whl")
+            gen_without_private_libs.module_for_path(lib_path, f"{wheel_name}.whl")
 
-        # Only gen_with_native_libs should have the native library mapping
-        self.assertIn("opencv_python_headless.libs.libopenblas-r0-f650aae0", gen_with_native_libs.mapping)
-        self.assertNotIn("opencv_python_headless.libs.libopenblas-r0-f650aae0", gen_without_native_libs.mapping)
+        # Both should have the Python module mappings
+        self.assertIn("cv2", gen_with_private_libs.mapping)
+        self.assertIn("cv2", gen_without_private_libs.mapping)
+        self.assertIn("numpy", gen_with_private_libs.mapping)
+        self.assertIn("numpy", gen_without_private_libs.mapping)
+
+        # Only gen_with_private_libs should have the private shared object mappings
+        expected_private_mappings = [
+            "opencv_python_headless.libs.libopenblas-r0-f650aae0",
+            "numpy.libs.libscipy_openblas64_-56d6093b",
+        ]
+
+        for mapping in expected_private_mappings:
+            self.assertIn(mapping, gen_with_private_libs.mapping)
+            self.assertNotIn(mapping, gen_without_private_libs.mapping)
 
 
 if __name__ == "__main__":

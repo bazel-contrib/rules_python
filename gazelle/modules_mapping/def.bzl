@@ -38,8 +38,8 @@ def _modules_mapping_impl(ctx):
     args.set_param_file_format(format = "multiline")
     if ctx.attr.include_stub_packages:
         args.add("--include_stub_packages")
-    if ctx.attr.ignore_native_libs:
-        args.add("--ignore_native_libs")
+    if ctx.attr.skip_private_shared_objects:
+        args.add("--skip_private_shared_objects")
     args.add("--output_file", modules_mapping)
     args.add_all("--exclude_patterns", ctx.attr.exclude_patterns)
     args.add_all("--wheels", all_wheels)
@@ -66,17 +66,17 @@ modules_mapping = rule(
             doc = "Whether to include stub packages in the mapping.",
             mandatory = False,
         ),
-        "ignore_native_libs": attr.bool(
-            default = False,
-            doc = "Whether to ignore platform-specific native libraries (*.so files) when generating mappings. " +
-                  "When True, ensures hermetic builds across different platforms by excluding native library " +
-                  "mappings that vary between Linux, macOS, etc. Useful for packages like opencv-python-headless " +
-                  "that bundle different native libraries on different platforms.",
-            mandatory = False,
-        ),
         "modules_mapping_name": attr.string(
             default = "modules_mapping.json",
             doc = "The name for the output JSON file.",
+            mandatory = False,
+        ),
+        "skip_private_shared_objects": attr.bool(
+            default = False,
+            doc = "Whether to skip private shared objects under .libs directories when generating mappings. " +
+                  "When True, excludes non-importable dependency libraries (like libopenblas.so) that vary " +
+                  "between Linux platforms and break build hermiticity. These .libs files are not actual " +
+                  "Python modules and cannot be imported. macOS uses .dylib files which are naturally excluded.",
             mandatory = False,
         ),
         "wheels": attr.label_list(

@@ -97,13 +97,14 @@ modules_mapping(
     # reducing manual overhead in managing separate stub packages.
     include_stub_packages = True,
 
-    # ignore_native_libs: bool (default: False)
-    # If set to True, this flag ignores platform-specific native libraries (.so files)
-    # when generating the modules mapping. This ensures hermetic builds across different
-    # platforms (Linux, macOS, etc.) by producing identical manifests regardless of
-    # platform-specific wheel contents. Useful for packages like opencv-python-headless
-    # that include different native libraries on different platforms.
-    ignore_native_libs = True,
+    # skip_private_shared_objects: bool (default: False)
+    # If set to True, this flag skips private shared objects under .libs directories
+    # when generating the modules mapping. These are non-importable dependency libraries
+    # (like libopenblas.so) that vary between Linux distributions and break build
+    # hermiticity. Ensures identical manifests across platforms by excluding libraries
+    # that cannot be imported in Python code. macOS uses .dylib files which are
+    # naturally excluded by this Linux-specific .so filtering.
+    skip_private_shared_objects = True,
 )
 
 # Gazelle python extension needs a manifest file mapping from
