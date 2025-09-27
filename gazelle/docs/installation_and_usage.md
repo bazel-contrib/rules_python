@@ -103,7 +103,7 @@ modules_mapping(
     # platforms (Linux, macOS, etc.) by producing identical manifests regardless of
     # platform-specific wheel contents. Useful for packages like opencv-python-headless
     # that include different native libraries on different platforms.
-    # ignore_native_libs = True,
+    ignore_native_libs = True,
 )
 
 # Gazelle python extension needs a manifest file mapping from
