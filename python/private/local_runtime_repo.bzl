@@ -71,7 +71,7 @@ def _symlink_first_library(rctx, logger, libraries):
         else:
             linked = "lib/{}".format(origin.basename)
         logger.debug("Symlinking {} to {}".format(origin, linked))
-        rctx.watch(origin)
+        repo_utils.watch(rctx, origin)
         rctx.symlink(origin, linked)
         break
 
@@ -142,7 +142,7 @@ def _local_runtime_repo_impl(rctx):
     # path is an error. Silently skip, since includes are only necessary
     # if C extensions are built.
     if include_path.exists and include_path.is_dir:
-        rctx.watch_tree(include_path)
+        repo_utils.watch_tree(rctx, include_path)
     else:
         pass
 
@@ -268,7 +268,7 @@ def _resolve_interpreter_path(rctx):
         resolved_path = result.binary
         describe_failure = result.describe_failure
     else:
-        rctx.watch(rctx.attr.interpreter_path)
+        repo_utils.watch(rctx, rctx.attr.interpreter_path)
         resolved_path = rctx.path(rctx.attr.interpreter_path)
         if not resolved_path.exists:
             describe_failure = lambda: "Path not found: {}".format(repr(rctx.attr.interpreter_path))

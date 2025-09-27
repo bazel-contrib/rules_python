@@ -14,6 +14,7 @@
 """Providers for Python rules."""
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load(":util.bzl", "define_bazel_6_provider")
 
 def _PyCcLinkParamsInfo_init(cc_info):
     return {
@@ -21,7 +22,7 @@ def _PyCcLinkParamsInfo_init(cc_info):
     }
 
 # buildifier: disable=name-conventions
-PyCcLinkParamsInfo, _unused_raw_py_cc_link_params_provider_ctor = provider(
+PyCcLinkParamsInfo, _unused_raw_py_cc_link_params_provider_ctor = define_bazel_6_provider(
     doc = ("Python-wrapper to forward {obj}`CcInfo.linking_context`. This is to " +
            "allow Python targets to propagate C++ linking information, but " +
            "without the Python target appearing to be a valid C++ rule dependency"),

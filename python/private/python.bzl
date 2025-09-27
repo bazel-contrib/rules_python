@@ -29,6 +29,7 @@ load(
     "sorted_host_platform_names",
     "sorted_host_platforms",
 )
+load(":util.bzl", "IS_BAZEL_6_4_OR_HIGHER")
 load(":version.bzl", "version")
 
 def parse_modules(*, module_ctx, logger, _fail = fail):
@@ -931,6 +932,14 @@ def _create_toolchain_attrs_struct(*, tag = None, python_version = None, toolcha
         ignore_root_user_error = getattr(tag, "ignore_root_user_error", True),
     )
 
+def _get_bazel_version_specific_kwargs():
+    kwargs = {}
+
+    if IS_BAZEL_6_4_OR_HIGHER:
+        kwargs["environ"] = ["RULES_PYTHON_BZLMOD_DEBUG"]
+
+    return kwargs
+
 _defaults = tag_class(
     doc = """Tag class to specify the default Python version.""",
     attrs = {
@@ -1347,7 +1356,7 @@ python = module_extension(
         "single_version_platform_override": _single_version_platform_override,
         "toolchain": _toolchain,
     },
-    environ = ["RULES_PYTHON_BZLMOD_DEBUG"],
+    **_get_bazel_version_specific_kwargs()
 )
 
 _DEBUG_BUILD_CONTENT = """

@@ -22,7 +22,7 @@ def envsubst(template_string, varnames, getenv):
     listed in the `varnames` list in the environment defined by the
     `getenv` function. Typically called with `getenv = rctx.getenv`
     (if it is available) or `getenv = rctx.os.environ.get` (on e.g.
-    Bazel 7, which don't have `rctx.getenv` yet).
+    Bazel 6 or Bazel 7, which don't have `rctx.getenv` yet).
 
     Limitations: Unlike the shell, we don't support `${VARNAME}` and
     `${VARNAME:-default}` in the default expression for a different
