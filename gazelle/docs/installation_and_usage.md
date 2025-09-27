@@ -96,6 +96,14 @@ modules_mapping(
     # for tools like type checkers and IDEs, improving the development experience and
     # reducing manual overhead in managing separate stub packages.
     include_stub_packages = True,
+
+    # ignore_native_libs: bool (default: False)
+    # If set to True, this flag ignores platform-specific native libraries (.so files)
+    # when generating the modules mapping. This ensures hermetic builds across different
+    # platforms (Linux, macOS, etc.) by producing identical manifests regardless of
+    # platform-specific wheel contents. Useful for packages like opencv-python-headless
+    # that include different native libraries on different platforms.
+    # ignore_native_libs = True,
 )
 
 # Gazelle python extension needs a manifest file mapping from

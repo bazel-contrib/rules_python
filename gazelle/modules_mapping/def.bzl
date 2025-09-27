@@ -68,7 +68,10 @@ modules_mapping = rule(
         ),
         "ignore_native_libs": attr.bool(
             default = False,
-            doc = "Whether to ignore native libraries (*.so files) for platform-independent mappings.",
+            doc = "Whether to ignore platform-specific native libraries (*.so files) when generating mappings. " +
+                  "When True, ensures hermetic builds across different platforms by excluding native library " +
+                  "mappings that vary between Linux, macOS, etc. Useful for packages like opencv-python-headless " +
+                  "that bundle different native libraries on different platforms.",
             mandatory = False,
         ),
         "modules_mapping_name": attr.string(
