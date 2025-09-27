@@ -14,14 +14,27 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
 load(":py_extension.bzl", "py_extension")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
 
 py_test(
     name = "test",
     srcs = ["test.py"],
     # Make this test better respect pyenv
     env_inherit = ["PYENV_VERSION"],
+)
+
+py_binary(
+    name = "bin",
+    srcs = ["bin.py"],
+    deps = [
+        "@pypi//more_itertools",
+    ],
 )
 
 config_setting(
@@ -36,6 +49,11 @@ config_setting(
 string_flag(
     name = "py",
     build_setting_default = "",
+)
+
+filegroup(
+    name = "pyproject",
+    srcs = ["pyproject.toml"],
 )
 
 # Build rules to generate a python extension.

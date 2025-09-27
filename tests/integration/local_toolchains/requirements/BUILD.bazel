@@ -1,0 +1,12 @@
+load("@rules_python//python/uv:lock.bzl", "lock")
+
+lock(
+    name = "requirements",
+    srcs = ["//:pyproject"],
+    out = "requirements-local.txt",
+    args = [
+        "--emit-index-url",
+        "--universal",
+        "--upgrade",
+    ],
+)

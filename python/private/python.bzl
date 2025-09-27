@@ -156,8 +156,13 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                 if default_python_version:
                     is_default = default_python_version == toolchain_version
                     if toolchain_attr.is_default and not is_default:
-                        fail("The 'is_default' attribute doesn't work if you set " +
-                             "the default Python version with the `defaults` tag.")
+                        fail((
+                            "The 'is_default' attribute doesn't work if you set " +
+                            "the default Python version with the `defaults` tag. " +
+                            "(module {module_name} setting is_default)"
+                        ).format(
+                            module_name = mod.name,
+                        ))
                 else:
                     is_default = toolchain_attr.is_default
 

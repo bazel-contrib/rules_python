@@ -167,3 +167,21 @@ def define_local_runtime_toolchain_impl(
         ],
         visibility = ["//visibility:public"],
     )
+
+def create_info_struct(info):
+    self = struct(
+        _info = info,
+        get_info = lambda *a, **k: _info_get_info(self, *a, **k),
+        get_version_major_minor = lambda *a, **k: _info_get_version_major_minor(self, *a, **k),
+        get_version_full = lambda *a, **k: _info_get_version_full(self, *a, **k),
+    )
+    return self
+
+def _info_get_info(self):
+    return self._info
+
+def _info_get_version_major_minor(self):
+    return "{major}.{minor}".format(**self._info)
+
+def _info_get_version_full(self):
+    return "{major}.{minor}.{micro}".format(**self._info)
