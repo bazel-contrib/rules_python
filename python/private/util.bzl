@@ -49,18 +49,6 @@ def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
 # The implementation of the macros and tagging mechanism follows the example
 # set by rules_cc and rules_java.
 
-# TODO @aignas 2025-09-27: remove this function
-def add_migration_tag(attrs):
-    """Add a special tag to `attrs` to aid migration off native rles.
-
-    Args:
-        attrs: dict of keyword args. The `tags` key will be modified in-place.
-
-    Returns:
-        The same `attrs` object, but modified.
-    """
-    return attrs
-
 def add_tag(attrs, tag):
     """Adds `tag` to `attrs["tags"]`.
 
