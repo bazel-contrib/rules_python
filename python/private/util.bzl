@@ -15,7 +15,6 @@
 """Functionality shared by multiple pieces of code."""
 
 load("@bazel_skylib//lib:types.bzl", "types")
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 
 def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
     """Copies args that must be compatible between two targets with a dependency relationship.
@@ -50,8 +49,7 @@ def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
 # The implementation of the macros and tagging mechanism follows the example
 # set by rules_cc and rules_java.
 
-_MIGRATION_TAG = "__PYTHON_RULES_MIGRATION_DO_NOT_USE_WILL_BREAK__"
-
+# TODO @aignas 2025-09-27: remove this function
 def add_migration_tag(attrs):
     """Add a special tag to `attrs` to aid migration off native rles.
 
@@ -61,8 +59,6 @@ def add_migration_tag(attrs):
     Returns:
         The same `attrs` object, but modified.
     """
-    if not config.enable_pystar:
-        add_tag(attrs, _MIGRATION_TAG)
     return attrs
 
 def add_tag(attrs, tag):

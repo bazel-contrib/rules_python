@@ -441,7 +441,6 @@ bzl_library(
         ":builders_bzl",
         ":reexports_bzl",
         ":util_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -688,7 +687,6 @@ bzl_library(
     ],
     deps = [
         "@bazel_skylib//lib:types",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 

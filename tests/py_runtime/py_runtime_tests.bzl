@@ -13,7 +13,6 @@
 # limitations under the License.
 """Starlark tests for py_runtime rule."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
@@ -49,27 +48,18 @@ _simple_binary = rule(
 )
 
 def _test_bootstrap_template(name):
-    # The bootstrap_template arg isn't present in older Bazel versions, so
-    # we have to conditionally pass the arg and mark the test incompatible.
-    if config.enable_pystar:
-        py_runtime_kwargs = {"bootstrap_template": "bootstrap.txt"}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
-
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         interpreter_path = "/py",
         python_version = "PY3",
-        **py_runtime_kwargs
+        bootstrap_template = "bootstrap.txt",
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = _test_bootstrap_template_impl,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_bootstrap_template_impl(env, target):
@@ -415,28 +405,19 @@ def _test_system_interpreter_must_be_absolute_impl(env, target):
 _tests.append(_test_system_interpreter_must_be_absolute)
 
 def _interpreter_version_info_test(name, interpreter_version_info, impl, expect_failure = True):
-    if config.enable_pystar:
-        py_runtime_kwargs = {
-            "interpreter_version_info": interpreter_version_info,
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
-
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
         interpreter_path = "/py",
-        **py_runtime_kwargs
+        interpreter_version_info = interpreter_version_info,
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = impl,
         expect_failure = expect_failure,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_interpreter_version_info_must_define_major_and_minor_only_major(name):
@@ -530,9 +511,6 @@ def _test_interpreter_version_info_parses_values_to_struct_impl(env, target):
 _tests.append(_test_interpreter_version_info_parses_values_to_struct)
 
 def _test_version_info_from_flag(name):
-    if not config.enable_pystar:
-        rt_util.skip_test(name)
-        return
     py_runtime(
         name = name + "_subject",
         interpreter_version_info = None,
