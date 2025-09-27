@@ -71,5 +71,3 @@ def add_tag(attrs, tag):
         attrs["tags"] = [tag]
 
 IS_BAZEL_7_4_OR_HIGHER = hasattr(native, "legacy_globals")
-
-IS_BAZEL_7_OR_HIGHER = hasattr(native, "starlark_doc_extract")

@@ -20,7 +20,6 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
@@ -286,15 +285,14 @@ def _test_files_to_build_impl(env, target):
             "{package}/{test_name}_subject.py",
         ])
 
-        if IS_BAZEL_7_OR_HIGHER:
-            # As of Bazel 7, the first default output is the executable, so
-            # verify that is the case. rules_testing
-            # DepsetFileSubject.contains_exactly doesn't provide an in_order()
-            # call, nor access to the underlying depset, so we have to do things
-            # manually.
-            first_default_output = target[DefaultInfo].files.to_list()[0]
-            executable = target[DefaultInfo].files_to_run.executable
-            env.expect.that_file(first_default_output).equals(executable)
+        # As of Bazel 7, the first default output is the executable, so
+        # verify that is the case. rules_testing
+        # DepsetFileSubject.contains_exactly doesn't provide an in_order()
+        # call, nor access to the underlying depset, so we have to do things
+        # manually.
+        first_default_output = target[DefaultInfo].files.to_list()[0]
+        executable = target[DefaultInfo].files_to_run.executable
+        env.expect.that_file(first_default_output).equals(executable)
 
 def _test_name_cannot_end_in_py(name, config):
     rt_util.helper_target(
