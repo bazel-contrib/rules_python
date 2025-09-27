@@ -107,9 +107,8 @@ def _construct_pypath(mrctx, *, entries):
 def _execute_prep(mrctx, *, python, srcs, **kwargs):
     for src in srcs:
         # This will ensure that we will re-evaluate the bzlmod extension or
-        # refetch the repository_rule when the srcs change. This should work on
-        # Bazel versions without `mrctx.watch` as well.
-        repo_utils.watch(mrctx, mrctx.path(src))
+        # refetch the repository_rule when the srcs change.
+        mrctx.watch(mrctx.path(src))
 
     environment = kwargs.pop("environment", {})
     pythonpath = environment.get("PYTHONPATH", "")

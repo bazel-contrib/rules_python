@@ -16,12 +16,11 @@
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("@rules_testing//lib:util.bzl", "TestingAspectInfo", rt_util = "util")
+load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 
 # NOTE @aignas 2024-06-04: we are using here something that is registered in the MODULE.Bazel
@@ -106,20 +105,15 @@ def _test_py_binary_windows_build_python_zip_false(name):
 
 def _test_py_binary_windows_build_python_zip_false_impl(env, target):
     default_outputs = env.expect.that_target(target).default_outputs()
-    if IS_BAZEL_7_OR_HIGHER:
-        # TODO: These outputs aren't correct. The outputs shouldn't
-        # have the "_" prefix on them (those are coming from the underlying
-        # wrapped binary).
-        env.expect.that_target(target).default_outputs().contains_exactly([
-            "{package}/{test_name}_subject.exe",
-            "{package}/{test_name}_subject",
-            "{package}/{test_name}_subject.py",
-        ])
-    else:
-        inner_exe = target[TestingAspectInfo].attrs.target[DefaultInfo].files_to_run.executable
-        default_outputs.contains_at_least([
-            inner_exe.short_path,
-        ])
+
+    # TODO: These outputs aren't correct. The outputs shouldn't
+    # have the "_" prefix on them (those are coming from the underlying
+    # wrapped binary).
+    default_outputs.contains_exactly([
+        "{package}/{test_name}_subject.exe",
+        "{package}/{test_name}_subject",
+        "{package}/{test_name}_subject.py",
+    ])
 
 _tests.append(_test_py_binary_windows_build_python_zip_false)
 
@@ -132,21 +126,15 @@ def _test_py_binary_windows_build_python_zip_true(name):
 
 def _test_py_binary_windows_build_python_zip_true_impl(env, target):
     default_outputs = env.expect.that_target(target).default_outputs()
-    if IS_BAZEL_7_OR_HIGHER:
-        # TODO: These outputs aren't correct. The outputs shouldn't
-        # have the "_" prefix on them (those are coming from the underlying
-        # wrapped binary).
-        default_outputs.contains_exactly([
-            "{package}/{test_name}_subject.exe",
-            "{package}/{test_name}_subject.py",
-            "{package}/{test_name}_subject.zip",
-        ])
-    else:
-        inner_exe = target[TestingAspectInfo].attrs.target[DefaultInfo].files_to_run.executable
-        default_outputs.contains_at_least([
-            "{package}/{test_name}_subject.zip",
-            inner_exe.short_path,
-        ])
+
+    # TODO: These outputs aren't correct. The outputs shouldn't
+    # have the "_" prefix on them (those are coming from the underlying
+    # wrapped binary).
+    default_outputs.contains_exactly([
+        "{package}/{test_name}_subject.exe",
+        "{package}/{test_name}_subject.py",
+        "{package}/{test_name}_subject.zip",
+    ])
 
 _tests.append(_test_py_binary_windows_build_python_zip_true)
 

@@ -81,9 +81,6 @@ bzl_library(
 bzl_library(
     name = "features_bzl",
     srcs = ["features.bzl"],
-    deps = [
-        "@rules_python_internal//:rules_python_config_bzl",
-    ],
 )
 
 bzl_library(
@@ -130,8 +127,6 @@ bzl_library(
     deps = [
         "//python/private:py_binary_macro_bzl",
         "//python/private:register_extension_info_bzl",
-        "//python/private:util_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -140,7 +135,6 @@ bzl_library(
     srcs = ["py_cc_link_params_info.bzl"],
     deps = [
         "//python/private:py_cc_link_params_info_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -173,8 +167,6 @@ bzl_library(
     srcs = ["py_info.bzl"],
     deps = [
         "//python/private:py_info_bzl",
-        "//python/private:reexports_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -184,8 +176,6 @@ bzl_library(
     deps = [
         "//python/private:py_library_macro_bzl",
         "//python/private:register_extension_info_bzl",
-        "//python/private:util_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -194,7 +184,6 @@ bzl_library(
     srcs = ["py_runtime.bzl"],
     deps = [
         "//python/private:py_runtime_macro_bzl",
-        "//python/private:util_bzl",
     ],
 )
 
@@ -202,9 +191,7 @@ bzl_library(
     name = "py_runtime_pair_bzl",
     srcs = ["py_runtime_pair.bzl"],
     deps = [
-        "//python/private:bazel_tools_bzl",
         "//python/private:py_runtime_pair_macro_bzl",
-        "//python/private:util_bzl",
     ],
 )
 
@@ -213,8 +200,6 @@ bzl_library(
     srcs = ["py_runtime_info.bzl"],
     deps = [
         "//python/private:py_runtime_info_bzl",
-        "//python/private:reexports_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -224,8 +209,6 @@ bzl_library(
     deps = [
         "//python/private:py_test_macro_bzl",
         "//python/private:register_extension_info_bzl",
-        "//python/private:util_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 

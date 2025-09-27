@@ -195,12 +195,6 @@ bzl_library(
 )
 
 bzl_library(
-    name = "glob_excludes_bzl",
-    srcs = ["glob_excludes.bzl"],
-    deps = [":util_bzl"],
-)
-
-bzl_library(
     name = "internal_config_repo_bzl",
     srcs = ["internal_config_repo.bzl"],
     deps = [":bzlmod_enabled_bzl"],
@@ -264,7 +258,6 @@ bzl_library(
         ":pythons_hub_bzl",
         ":repo_utils_bzl",
         ":toolchains_repo_bzl",
-        ":util_bzl",
         ":version_bzl",
         "@bazel_features//:features",
     ],
@@ -440,8 +433,6 @@ bzl_library(
     deps = [
         ":builders_bzl",
         ":reexports_bzl",
-        ":util_bzl",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -506,7 +497,6 @@ bzl_library(
 bzl_library(
     name = "py_runtime_info_bzl",
     srcs = ["py_runtime_info.bzl"],
-    deps = [":util_bzl"],
 )
 
 bzl_library(
@@ -538,7 +528,6 @@ bzl_library(
         ":py_runtime_info_bzl",
         ":reexports_bzl",
         ":rule_builders_bzl",
-        ":util_bzl",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",
@@ -688,7 +677,6 @@ bzl_library(
     ],
     deps = [
         "@bazel_skylib//lib:types",
-        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 

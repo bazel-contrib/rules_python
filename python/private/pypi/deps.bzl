@@ -101,7 +101,6 @@ _GENERIC_WHEEL = """\
 package(default_visibility = ["//visibility:public"])
 
 load("@rules_python//python:py_library.bzl", "py_library")
-load("@rules_python//python/private:glob_excludes.bzl", "glob_excludes")
 
 py_library(
     name = "lib",
@@ -115,7 +114,7 @@ py_library(
         "**/*.dist-info/RECORD",
         "BUILD",
         "WORKSPACE",
-    ] + glob_excludes.version_dependent_exclusions()),
+    ]),
     # This makes this directory a top-level in the python import
     # search path for anything that depends on this.
     imports = ["."],

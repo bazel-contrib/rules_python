@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for py_info."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
@@ -39,11 +38,10 @@ def _provide_py_info_impl(ctx):
         kwargs["has_py2_only_sources"] = bool(ctx.attr.has_py2_only_sources)
 
     providers = []
-    if config.enable_pystar:
-        providers.append(PyInfo(**kwargs))
+    providers.append(PyInfo(**kwargs))
 
     # Handle Bazel 6 or if Bazel autoloading is enabled
-    if not config.enable_pystar or (BuiltinPyInfo and PyInfo != BuiltinPyInfo):
+    if BuiltinPyInfo and PyInfo != BuiltinPyInfo:
         providers.append(BuiltinPyInfo(**{
             k: kwargs[k]
             for k in (
@@ -95,10 +93,8 @@ def _test_py_info_create_impl(env, target):
         imports = depset(["import-path"]),
         transitive_sources = depset([trans_py]),
         uses_shared_libraries = True,
-        **(dict(
-            direct_pyc_files = depset([direct_pyc]),
-            transitive_pyc_files = depset([trans_pyc]),
-        ) if config.enable_pystar else {})
+        direct_pyc_files = depset([direct_pyc]),
+        transitive_pyc_files = depset([trans_pyc]),
     )
 
     subject = py_info_subject(actual, meta = env.expect.meta)
@@ -107,9 +103,8 @@ def _test_py_info_create_impl(env, target):
     subject.has_py3_only_sources().equals(True)
     subject.transitive_sources().contains_exactly(["tests/base_rules/py_info/trans.py"])
     subject.imports().contains_exactly(["import-path"])
-    if config.enable_pystar:
-        subject.direct_pyc_files().contains_exactly(["tests/base_rules/py_info/direct.pyc"])
-        subject.transitive_pyc_files().contains_exactly(["tests/base_rules/py_info/trans.pyc"])
+    subject.direct_pyc_files().contains_exactly(["tests/base_rules/py_info/direct.pyc"])
+    subject.transitive_pyc_files().contains_exactly(["tests/base_rules/py_info/trans.pyc"])
 
 _tests.append(_test_py_info_create)
 
