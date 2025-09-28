@@ -14,6 +14,6 @@
 
 """Public entry point for PyRuntimeInfo."""
 
-load("//python/private:py_runtime_info.bzl", _starlark_PyRuntimeInfo = "PyRuntimeInfo")
+load("//python/private:py_runtime_info.bzl", _PyRuntimeInfo = "PyRuntimeInfo")
 
-PyRuntimeInfo = _starlark_PyRuntimeInfo
+PyRuntimeInfo = _PyRuntimeInfo

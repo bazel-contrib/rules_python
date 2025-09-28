@@ -14,9 +14,7 @@
 
 """Public entry point for py_runtime_pair."""
 
-load("//python/private:py_runtime_pair_macro.bzl", _starlark_impl = "py_runtime_pair")
-
-_py_runtime_pair = _starlark_impl
+load("//python/private:py_runtime_pair_macro.bzl", _py_runtime_pair = "py_runtime_pair")
 
 # NOTE: This doc is copy/pasted from the builtin py_runtime_pair rule so our
 # doc generator gives useful API docs.
