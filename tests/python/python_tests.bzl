@@ -876,12 +876,10 @@ _tests.append(_test_single_version_platform_override_errors)
 # * incorrect platform failure
 # * missing python_version failure
 
-xtests = []
-
 def python_test_suite(name):
     """Create the test suite.
 
     Args:
         name: the name of the test suite
     """
-    test_suite(name = name, basic_tests = xtests or _tests)
+    test_suite(name = name, basic_tests = _tests)
