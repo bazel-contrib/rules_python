@@ -21,9 +21,8 @@ settings for rules to later use.
 load("//python/private:text_util.bzl", "render")
 load(":repo_utils.bzl", "repo_utils")
 
-_BZLMOD_ENABLED = "@@" in str(Label("//:unused"))
 _ENABLE_PIPSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PIPSTAR"
-_ENABLE_PIPSTAR_DEFAULT = "1" if _BZLMOD_ENABLED else "0"
+_ENABLE_PIPSTAR_DEFAULT = "1"
 _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME = "RULES_PYTHON_DEPRECATION_WARNINGS"
 _ENABLE_DEPRECATION_WARNINGS_DEFAULT = "0"
 
