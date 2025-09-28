@@ -32,6 +32,8 @@ all_data_requirements = [
     "@my_project_pip_deps_vendored_urllib3//:data",
 ]
 
+packages = sorted(all_whl_requirements_by_package)
+
 _packages = [
     ("my_project_pip_deps_vendored_certifi", "certifi==2023.7.22 --hash=sha256:539cc1d13202e33ca466e88b2807e29f4c13049d6d87031a3c110744495cb082 --hash=sha256:92d6037539857d8206b8f6ae472e8b77db8058fec5937a1ef3f54304089edbb9"),
     ("my_project_pip_deps_vendored_charset_normalizer", "charset-normalizer==2.1.1 --hash=sha256:5a3d016c7c547f69d6f81fb0db9449ce888b418b5b9952cc5e6e66843e9dd845 --hash=sha256:83e9a75d1911279afd89352c68b45348559d1fc0506b054b346651b5e7fee29f"),
@@ -112,5 +114,6 @@ def install_deps(**whl_library_kwargs):
             group_name = group_name,
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
+            packages = packages,
             **whl_config
         )

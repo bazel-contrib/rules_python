@@ -72,6 +72,7 @@ def generate_whl_library_build_bazel(
             "requires",
             "metadata_name",
             "metadata_version",
+            "packages",
             "include",
         ]
     else:
@@ -83,16 +84,20 @@ def generate_whl_library_build_bazel(
             "default_python_version",
         ]
         dep_template = kwargs.get("dep_template")
-        loads.append(
-            """load("{}", "{}")""".format(
-                dep_template.format(
-                    name = "",
-                    target = "config.bzl",
+        packages = kwargs.pop("packages", [])
+        if packages:
+            kwargs["include"] = render.list(packages)
+        else:
+            loads.append(
+                """load("{}", "{}")""".format(
+                    dep_template.format(
+                        name = "",
+                        target = "requirements.bzl",
+                    ),
+                    "packages",
                 ),
-                "whl_map",
-            ),
-        )
-        kwargs["include"] = "whl_map"
+            )
+            kwargs["include"] = "packages"
 
     for arg in unsupported_args:
         if kwargs.get(arg):

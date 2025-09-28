@@ -69,8 +69,10 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
   changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
   paths, runtime site-packages]`.
-* (pypi) `pipstar` flag has been flipped to be enabled by default for bzlmod
-  ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
+* (pypi) `pipstar` flag has been flipped to be enabled by default, to turn it
+  off use `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable. If you do, please
+  add a comment to
+  [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
 
 {#v0-0-0-fixed}
 ### Fixed

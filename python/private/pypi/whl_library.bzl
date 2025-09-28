@@ -423,6 +423,7 @@ def _whl_library_impl(rctx):
             name = whl_path.basename,
             sdist_filename = sdist_filename,
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
+            packages = rctx.attr.packages,
             entry_points = entry_points,
             metadata_name = metadata.name,
             metadata_version = metadata.version,
@@ -591,6 +592,9 @@ For example if your whl depends on `numpy` and your Python package repo is named
     ),
     "group_name": attr.string(
         doc = "Name of the group, if any.",
+    ),
+    "packages": attr.string_list(
+        doc = "The list of packages to include in the transitive dependencies. This may be used in workspace where one may vendor the requirements.bzl file.",
     ),
     "repo": attr.string(
         doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",

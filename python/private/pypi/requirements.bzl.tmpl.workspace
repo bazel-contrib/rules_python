@@ -13,6 +13,8 @@ all_whl_requirements = all_whl_requirements_by_package.values()
 
 all_data_requirements = %%ALL_DATA_REQUIREMENTS%%
 
+packages = sorted(all_whl_requirements_by_package)
+
 _packages = %%PACKAGES%%
 _config = %%CONFIG%%
 _annotations = %%ANNOTATIONS%%
@@ -68,5 +70,6 @@ def install_deps(**whl_library_kwargs):
             group_name = group_name,
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
+            packages = packages,
             **whl_config
         )
