@@ -18,7 +18,6 @@ such as globals available to Bazel versions, or propagating user environment
 settings for rules to later use.
 """
 
-load("//python/private:flags.bzl", "BootstrapImplFlag")
 load("//python/private:text_util.bzl", "render")
 load(":repo_utils.bzl", "repo_utils")
 
@@ -93,12 +92,18 @@ def _internal_config_repo_impl(rctx):
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
-        bootstrap_impl_default = BootstrapImplFlag.SCRIPT
+
+        # NOTE @aignas 2025-09-28: we are not using flag constants due to circular
+        # declarations in the WORKSPACE case
+        bootstrap_impl_default = "script"
     else:
         builtin_py_info_symbol = "PyInfo"
         builtin_py_runtime_info_symbol = "PyRuntimeInfo"
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
-        bootstrap_impl_default = BootstrapImplFlag.SYSTEM_PYTHON
+
+        # NOTE @aignas 2025-09-28: we are not using flag constants due to circular
+        # declarations in the WORKSPACE case
+        bootstrap_impl_default = "system_python"
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT),
