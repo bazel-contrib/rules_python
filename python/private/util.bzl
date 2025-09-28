@@ -69,6 +69,3 @@ def add_tag(attrs, tag):
             attrs["tags"] = tags + [tag]
     else:
         attrs["tags"] = [tag]
-
-# `config.none` was introduced in Bazel 8
-IS_BAZEL_8_OR_HIGHER = hasattr(config, "none")

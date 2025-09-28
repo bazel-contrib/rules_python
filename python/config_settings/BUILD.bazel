@@ -1,5 +1,6 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load(
     "//python/private:flags.bzl",
     "AddSrcsToRunfilesFlag",
@@ -13,7 +14,6 @@ load(
     "VenvsUseDeclareSymlinkFlag",
     rp_string_flag = "string_flag",
 )
-load("//python/private:util.bzl", "IS_BAZEL_8_OR_HIGHER")
 load(
     "//python/private/pypi:flags.bzl",
     "UniversalWhlFlag",
@@ -91,7 +91,7 @@ string_flag(
 
 rp_string_flag(
     name = "bootstrap_impl",
-    build_setting_default = BootstrapImplFlag.SCRIPT if IS_BAZEL_8_OR_HIGHER else BootstrapImplFlag.SYSTEM_PYTHON,
+    build_setting_default = rp_config.bootstrap_impl_default,
     override = select({
         # Windows doesn't yet support bootstrap=script, so force disable it
         ":_is_windows": BootstrapImplFlag.SYSTEM_PYTHON,

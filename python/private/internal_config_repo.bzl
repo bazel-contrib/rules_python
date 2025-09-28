@@ -18,6 +18,7 @@ such as globals available to Bazel versions, or propagating user environment
 settings for rules to later use.
 """
 
+load("//python/private:flags.bzl", "BootstrapImplFlag")
 load("//python/private:text_util.bzl", "render")
 load(":repo_utils.bzl", "repo_utils")
 
@@ -30,6 +31,7 @@ _CONFIG_TEMPLATE = """
 config = struct(
   enable_pystar = True,
   enable_pipstar = {enable_pipstar},
+  bootstrap_impl_default = "{bootstrap_impl_default}",
   enable_deprecation_warnings = {enable_deprecation_warnings},
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
@@ -86,32 +88,32 @@ _TRANSITION_SETTINGS_DEBUG_TEMPLATE = """
 """
 
 def _internal_config_repo_impl(rctx):
+    # TODO: remove the conditional once bazel 7 is no longer supported
     if not native.bazel_version or int(native.bazel_version.split(".")[0]) >= 8:
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
+        bootstrap_impl_default = BootstrapImplFlag.SCRIPT
     else:
         builtin_py_info_symbol = "PyInfo"
         builtin_py_runtime_info_symbol = "PyRuntimeInfo"
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
+        bootstrap_impl_default = BootstrapImplFlag.SYSTEM_PYTHON
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT),
+        bootstrap_impl_default = bootstrap_impl_default,
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
     ))
 
-    shim_content = _PY_INTERNAL_SHIM
-    py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"'
-
     rctx.file("BUILD", ROOT_BUILD_TEMPLATE.format(
-        py_internal_dep = py_internal_dep,
+        py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"',
         visibility = "@rules_python//:__subpackages__",
     ))
-    rctx.file("py_internal.bzl", shim_content)
-
+    rctx.file("py_internal.bzl", _PY_INTERNAL_SHIM)
     rctx.file(
         "extra_transition_settings.bzl",
         _EXTRA_TRANSITIONS_TEMPLATE.format(
