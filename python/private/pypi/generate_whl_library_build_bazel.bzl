@@ -85,19 +85,13 @@ def generate_whl_library_build_bazel(
         ]
         dep_template = kwargs.get("dep_template")
         packages = kwargs.pop("packages", [])
-        if dep_template:
-            loads.append(
-                """load("{}", "{}")""".format(
-                    dep_template.format(
-                        name = "",
-                        target = "requirements.bzl",
-                    ),
-                    "packages",
-                ),
-            )
-            kwargs["include"] = "packages"
-        elif packages:
-            kwargs["include"] = render.list(packages)
+        if kwargs.get("requires_dist"):
+            packages_load = dep_template.format(name = "", target = "requirements.bzl")
+            if "_//" in packages_load:
+                kwargs["include"] = render.list(packages)
+            else:
+                loads.append("""load("{}", "{}")""".format(packages_load, "packages"))
+                kwargs["include"] = "packages"
 
     for arg in unsupported_args:
         if kwargs.get(arg):

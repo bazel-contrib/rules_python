@@ -421,16 +421,12 @@ def _whl_library_impl(rctx):
 
         dep_template = rctx.attr.dep_template
 
-        # packages will be set in tests or WORKSPACE
-        if rctx.attr.packages:
-            dep_template = dep_template or "@{}{{name}}//:{{target}}".format(
-                rctx.attr.repo_prefix,
-            )
-
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
             sdist_filename = sdist_filename,
-            dep_template = dep_template,
+            dep_template = dep_template or "@{}{{name}}//:{{target}}".format(
+                rctx.attr.repo_prefix,
+            ),
             packages = rctx.attr.packages,
             entry_points = entry_points,
             metadata_name = metadata.name,
