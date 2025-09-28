@@ -82,6 +82,8 @@ END_UNRELEASED_TEMPLATE
 * (venvs) {obj}`--vens_site_packages=yes` no longer errors when packages with
   overlapping files or directories are used together.
   ([#3204](https://github.com/bazel-contrib/rules_python/issues/3204)).
+* (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
+  runtime.
 
 {#v0-0-0-added}
 ### Added
