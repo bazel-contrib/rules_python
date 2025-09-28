@@ -14,6 +14,6 @@
 
 """Public entry point for PyInfo."""
 
-load("//python/private:py_info.bzl", _starlark_PyInfo = "PyInfo")
+load("//python/private:py_info.bzl", _PyInfo = "PyInfo")
 
-PyInfo = _starlark_PyInfo
+PyInfo = _PyInfo

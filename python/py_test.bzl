@@ -14,11 +14,8 @@
 
 """Public entry point for py_test."""
 
-load("//python/private:py_test_macro.bzl", _starlark_py_test = "py_test")
+load("//python/private:py_test_macro.bzl", _py_test = "py_test")
 load("//python/private:register_extension_info.bzl", "register_extension_info")
-
-# buildifier: disable=native-python
-_py_test_impl = _starlark_py_test
 
 def py_test(**attrs):
     """Creates an executable Python program.
@@ -41,7 +38,7 @@ def py_test(**attrs):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
     # buildifier: disable=native-python
-    _py_test_impl(**attrs)
+    _py_test(**attrs)
 
 register_extension_info(
     extension = py_test,
