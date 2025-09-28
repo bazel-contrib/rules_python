@@ -19,6 +19,7 @@ unnecessary files when all that are needed are flag definitions.
 """
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo", "string_flag")
+load("//python/private:common_labels.bzl", "labels")
 load("//python/private:enum.bzl", "enum")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
 load(
@@ -103,9 +104,9 @@ def _allow_wheels_flag_impl(ctx):
 _allow_wheels_flag = rule(
     implementation = _allow_wheels_flag_impl,
     attrs = {
-        "_setting": attr.label(default = "//python/config_settings:pip_whl"),
+        "_setting": attr.label(default = labels.PIP_WHL),
     },
-    doc = """\
+    doc = """
 This rule allows us to greatly reduce the number of config setting targets at no cost even
 if we are duplicating some of the functionality of the `native.config_setting`.
 """,
@@ -153,7 +154,7 @@ _env_marker_config = rule(
         "platform_system": attr.string(),
         "sys_platform": attr.string(),
         "_pip_whl_osx_version_flag": attr.label(
-            default = "//python/config_settings:pip_whl_osx_version",
+            default = labels.PIP_WHL_OSX_VERSION,
             providers = [[BuildSettingInfo], [config_common.FeatureFlagInfo]],
         ),
     },

@@ -13,9 +13,9 @@ bazel_dep(name = "platforms", version = "0.0.11")
 # Use py_proto_library directly from protobuf repository
 bazel_dep(name = "protobuf", version = "29.0-rc2", repo_name = "com_google_protobuf")
 
-internal_deps = use_extension("//python/private:internal_deps.bzl", "internal_deps")
+rules_python_config = use_extension("//python/extensions:config.bzl", "config")
 use_repo(
-    internal_deps,
+    rules_python_config,
     "pypi__build",
     "pypi__click",
     "pypi__colorama",
@@ -218,6 +218,19 @@ use_repo(
     "whl_with_build_files",
 )
 
+dev_rules_python_config = use_extension(
+    "//python/extensions:config.bzl",
+    "config",
+    dev_dependency = True,
+)
+dev_rules_python_config.add_transition_setting(
+    # Intentionally add a setting already present for testing
+    setting = "//python/config_settings:python_version",
+)
+dev_rules_python_config.add_transition_setting(
+    setting = "//tests/multi_pypi:external_deps_name",
+)
+
 # Add gazelle plugin so that we can run the gazelle example as an e2e integration
 # test and include the distribution files.
 local_path_override(
@@ -291,7 +304,17 @@ dev_pip.parse(
     python_version = "3.11",
     requirements_lock = "//examples/wheel:requirements_server.txt",
 )
-use_repo(dev_pip, "dev_pip", "pypiserver")
+dev_pip.parse(
+    hub_name = "pypi_alpha",
+    python_version = "3.11",
+    requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
+)
+dev_pip.parse(
+    hub_name = "pypi_beta",
+    python_version = "3.11",
+    requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
+)
+use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver")
 
 # Bazel integration test setup below
 

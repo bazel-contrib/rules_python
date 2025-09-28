@@ -291,7 +291,7 @@ def _which_unchecked(mrctx, binary_name):
     """
     binary = mrctx.which(binary_name)
     if binary:
-        _watch(mrctx, binary)
+        mrctx.watch(binary)
         describe_failure = None
     else:
         path = _getenv(mrctx, "PATH", "")
@@ -429,24 +429,6 @@ def _get_platforms_cpu_name(mrctx):
         return "riscv64"
     return arch
 
-# TODO: Remove after Bazel 6 support dropped
-def _watch(mrctx, *args, **kwargs):
-    """Calls mrctx.watch, if available."""
-    if not args and not kwargs:
-        fail("'watch' needs at least a single argument.")
-
-    if hasattr(mrctx, "watch"):
-        mrctx.watch(*args, **kwargs)
-
-# TODO: Remove after Bazel 6 support dropped
-def _watch_tree(mrctx, *args, **kwargs):
-    """Calls mrctx.watch_tree, if available."""
-    if not args and not kwargs:
-        fail("'watch_tree' needs at least a single argument.")
-
-    if hasattr(mrctx, "watch_tree"):
-        mrctx.watch_tree(*args, **kwargs)
-
 repo_utils = struct(
     # keep sorted
     execute_checked = _execute_checked,
@@ -457,8 +439,6 @@ repo_utils = struct(
     getenv = _getenv,
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
-    watch = _watch,
-    watch_tree = _watch_tree,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,
 )

@@ -25,7 +25,4 @@ For detailed documentation, see <https://rules-python.readthedocs.io>
 
 ## Bzlmod support
 
-- Status: Beta
-- Full Feature Parity: No
-
 See [Bzlmod support](BZLMOD_SUPPORT.md) for more details.

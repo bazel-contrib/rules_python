@@ -14,13 +14,11 @@
 
 """Public entry point for py_test."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("//python/private:py_test_macro.bzl", _starlark_py_test = "py_test")
 load("//python/private:register_extension_info.bzl", "register_extension_info")
-load("//python/private:util.bzl", "add_migration_tag")
 
 # buildifier: disable=native-python
-_py_test_impl = _starlark_py_test if config.enable_pystar else native.py_test
+_py_test_impl = _starlark_py_test
 
 def py_test(**attrs):
     """Creates an executable Python program.
@@ -43,7 +41,7 @@ def py_test(**attrs):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
     # buildifier: disable=native-python
-    _py_test_impl(**add_migration_tag(attrs))
+    _py_test_impl(**attrs)
 
 register_extension_info(
     extension = py_test,

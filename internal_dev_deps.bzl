@@ -41,7 +41,12 @@ def rules_python_internal_deps():
     For dependencies needed by *users* of rules_python, see
     python/private/py_repositories.bzl.
     """
-    internal_config_repo(name = "rules_python_internal")
+    internal_config_repo(
+        name = "rules_python_internal",
+        transition_settings = [
+            str(Label("//tests/multi_pypi:external_deps_name")),
+        ],
+    )
 
     local_repository(
         name = "other",

@@ -17,14 +17,14 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load(
     "//python/private:toolchain_types.bzl",
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     "PY_CC_TOOLCHAIN_TYPE",
     "TARGET_TOOLCHAIN_TYPE",
 )  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "EXEC_TOOLS_TOOLCHAIN", "VISIBLE_FOR_TESTING")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 
 _LookupInfo = provider()  # buildifier: disable=provider-params
 
@@ -54,33 +54,22 @@ def _test_runtime_env_toolchain_matches(name):
         name = name + "_subject",
     )
     extra_toolchains = [
+        # We have to add a cc toolchain because py_cc toolchain depends on it.
+        # However, that package also defines a different fake py_cc toolchain we
+        # don't want to use, so we need to ensure the runtime_env toolchain has
+        # higher precendence.
+        CC_TOOLCHAIN,
         str(Label("//python/runtime_env_toolchains:all")),
     ]
 
-    # We have to add a cc toolchain because py_cc toolchain depends on it.
-    # However, that package also defines a different fake py_cc toolchain we
-    # don't want to use, so we need to ensure the runtime_env toolchain has
-    # higher precendence.
-    # However, Bazel 6 and Bazel 7 process --extra_toolchains in different
-    # orders:
-    #  * Bazel 6 goes left to right
-    #  * Bazel 7 goes right to left
-    # We could just put our preferred toolchain before *and* after
-    # the undesired toolchain...
-    # However, Bazel 7 has a bug where *duplicate* entries are ignored,
-    # and only the *first* entry is respected.
-    if IS_BAZEL_7_OR_HIGHER:
-        extra_toolchains.insert(0, CC_TOOLCHAIN)
-    else:
-        extra_toolchains.append(CC_TOOLCHAIN)
     analysis_test(
         name = name,
         impl = _test_runtime_env_toolchain_matches_impl,
         target = name + "_subject",
         config_settings = {
             "//command_line_option:extra_toolchains": extra_toolchains,
-            EXEC_TOOLS_TOOLCHAIN: "enabled",
-            VISIBLE_FOR_TESTING: True,
+            labels.EXEC_TOOLS_TOOLCHAIN: "enabled",
+            labels.VISIBLE_FOR_TESTING: True,
         },
     )
 

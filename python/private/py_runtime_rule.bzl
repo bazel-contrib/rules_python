@@ -16,12 +16,11 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load(":attributes.bzl", "NATIVE_RULES_ALLOWLIST_ATTRS")
+load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
 _py_builtins = py_internal
 
@@ -133,9 +132,6 @@ def _py_runtime_impl(ctx):
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
     ))
 
-    if not IS_BAZEL_7_OR_HIGHER:
-        builtin_py_runtime_info_kwargs.pop("bootstrap_template")
-
     providers = [
         PyRuntimeInfo(**py_runtime_info_kwargs),
         DefaultInfo(
@@ -190,7 +186,6 @@ py_runtime(
 """,
     fragments = ["py"],
     attrs = dicts.add(
-        {k: v().build() for k, v in NATIVE_RULES_ALLOWLIST_ATTRS.items()},
         {
             "abi_flags": attr.string(
                 default = "<AUTO>",
@@ -379,21 +374,17 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 """,
             ),
             "_py_freethreaded_flag": attr.label(
-                default = "//python/config_settings:py_freethreaded",
+                default = labels.PY_FREETHREADED,
             ),
             "_python_version_flag": attr.label(
-                default = "//python/config_settings:python_version",
+                default = labels.PYTHON_VERSION,
             ),
         },
     ),
 )
 
 def _is_singleton_depset(files):
-    # Bazel 6 doesn't have this helper to optimize detecting singleton depsets.
-    if _py_builtins:
-        return _py_builtins.is_singleton_depset(files)
-    else:
-        return len(files.to_list()) == 1
+    return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
     parts = version_str.split(".")

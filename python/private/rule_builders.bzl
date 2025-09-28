@@ -108,6 +108,8 @@ load(
     "kwargs_setter",
     "kwargs_setter_doc",
     "list_add_unique",
+    "normalize_transition_in_out_value",
+    "normalize_transition_in_out_values",
 )
 
 # Various string constants for kwarg key names used across two or more
@@ -314,6 +316,9 @@ def _RuleCfg_new(rule_cfg_arg):
     kwargs_set_default_list(state, _INPUTS)
     kwargs_set_default_list(state, _OUTPUTS)
 
+    normalize_transition_in_out_values("input", state[_INPUTS])
+    normalize_transition_in_out_values("output", state[_OUTPUTS])
+
     # buildifier: disable=uninitialized
     self = struct(
         add_inputs = lambda *a, **k: _RuleCfg_add_inputs(self, *a, **k),
@@ -398,7 +403,11 @@ def _RuleCfg_update_inputs(self, *others):
             `Label`, not `str`, should be passed to ensure different apparent
             labels can be properly de-duplicated.
     """
-    list_add_unique(self._state[_INPUTS], others)
+    list_add_unique(
+        self._state[_INPUTS],
+        others,
+        convert = lambda v: normalize_transition_in_out_value("input", v),
+    )
 
 def _RuleCfg_update_outputs(self, *others):
     """Add a collection of values to outputs.
@@ -410,7 +419,11 @@ def _RuleCfg_update_outputs(self, *others):
             `Label`, not `str`, should be passed to ensure different apparent
             labels can be properly de-duplicated.
     """
-    list_add_unique(self._state[_OUTPUTS], others)
+    list_add_unique(
+        self._state[_OUTPUTS],
+        others,
+        convert = lambda v: normalize_transition_in_out_value("output", v),
+    )
 
 # buildifier: disable=name-conventions
 RuleCfg = struct(

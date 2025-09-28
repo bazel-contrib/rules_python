@@ -24,15 +24,24 @@ load(":pythons_hub.bzl", "hub_repo")
 def http_archive(**kwargs):
     maybe(_http_archive, **kwargs)
 
-def py_repositories():
+def py_repositories(transition_settings = []):
     """Runtime dependencies that users must install.
 
     This function should be loaded and called in the user's `WORKSPACE`.
     With `bzlmod` enabled, this function is not needed since `MODULE.bazel` handles transitive deps.
+
+    Args:
+        transition_settings: A list of labels that terminal rules transition on
+            by default.
     """
+
+    # NOTE: The @rules_python_internal repo is special cased by Bazel: it
+    # has autoloading disabled. This allows the rules to load from it
+    # without triggering recursion.
     maybe(
         internal_config_repo,
         name = "rules_python_internal",
+        transition_settings = transition_settings,
     )
     maybe(
         hub_repo,

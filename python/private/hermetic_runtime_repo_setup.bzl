@@ -18,7 +18,6 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
-load(":glob_excludes.bzl", "glob_excludes")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
 load(":version.bzl", "version")
 
@@ -82,7 +81,7 @@ def define_hermetic_runtime_toolchain_impl(
                 "lib/python{major}.{minor}*/**/tests/**".format(**version_dict),
                 # During pyc creation, temp files named *.pyc.NNN are created
                 "**/__pycache__/*.pyc.*",
-            ] + glob_excludes.version_dependent_exclusions() + extra_files_glob_exclude,
+            ] + extra_files_glob_exclude,
         ),
     )
     cc_import(
@@ -107,9 +106,9 @@ def define_hermetic_runtime_toolchain_impl(
         srcs = native.glob(["include/**/*.h"]),
     )
     cc_library(
-        name = "python_headers",
+        name = "python_headers_abi3",
         deps = select({
-            "@bazel_tools//src/conditions:windows": [":interface", ":abi3_interface"],
+            "@bazel_tools//src/conditions:windows": [":abi3_interface"],
             "//conditions:default": None,
         }),
         hdrs = [":includes"],
@@ -123,6 +122,13 @@ def define_hermetic_runtime_toolchain_impl(
                 "include/python{major}.{minor}".format(**version_dict),
                 "include/python{major}.{minor}m".format(**version_dict),
             ],
+        }),
+    )
+    cc_library(
+        name = "python_headers",
+        deps = [":python_headers_abi3"] + select({
+            "@bazel_tools//src/conditions:windows": [":interface"],
+            "//conditions:default": [],
         }),
     )
     native.config_setting(
@@ -239,6 +245,7 @@ def define_hermetic_runtime_toolchain_impl(
     py_cc_toolchain(
         name = "py_cc_toolchain",
         headers = ":python_headers",
+        headers_abi3 = ":python_headers_abi3",
         # TODO #3155: add libctl, libtk
         libs = ":libpython",
         python_version = python_version,

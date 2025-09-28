@@ -18,6 +18,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//python/private:attr_builders.bzl", "attrb")  # buildifier: disable=bzl-visibility
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:rule_builders.bzl", "ruleb")  # buildifier: disable=bzl-visibility
 
 RuleInfo = provider(doc = "test provider", fields = [])
@@ -49,7 +50,7 @@ def _test_fruit_rule(name):
         flavors = ["spicy", "sweet"],
         organic = True,
         size = 5,
-        origin = "//python:none",
+        origin = labels.NONE,
         fertilizers = [
             "nitrogen.txt",
             "phosphorus.txt",
@@ -153,11 +154,11 @@ def _test_rule_api(env):
     expect.that_bool(subject.cfg.implementation()).equals(impl)
     subject.cfg.add_inputs(Label("//some:input"))
     expect.that_collection(subject.cfg.inputs()).contains_exactly([
-        Label("//some:input"),
+        str(Label("//some:input")),
     ])
     subject.cfg.add_outputs(Label("//some:output"))
     expect.that_collection(subject.cfg.outputs()).contains_exactly([
-        Label("//some:output"),
+        str(Label("//some:output")),
     ])
 
 _basic_tests.append(_test_rule_api)
@@ -169,7 +170,7 @@ def _test_exec_group(env):
     env.expect.that_collection(subject.exec_compatible_with()).contains_exactly([])
     env.expect.that_str(str(subject.build())).contains("ExecGroup")
 
-    subject.toolchains().append(ruleb.ToolchainType("//python:none"))
+    subject.toolchains().append(ruleb.ToolchainType(labels.NONE))
     subject.exec_compatible_with().append("//some:constraint")
     env.expect.that_str(str(subject.build())).contains("ExecGroup")
 

@@ -32,6 +32,7 @@ setting maps to and their precedence, refer to documentation on that page.
 """
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
 load(
     ":labels.bzl",
@@ -63,7 +64,7 @@ build to make it a failure instead by running the build with:
 However, the command above will hide the `bazel config <config id>` message.
 """
 
-_LABEL_NONE = Label("//python:none")
+_LABEL_NONE = labels.NONE
 _LABEL_CURRENT_CONFIG = Label("//python/config_settings:current_config")
 _LABEL_CURRENT_CONFIG_NO_MATCH = Label("//python/config_settings:is_not_matching_current_config")
 _INCOMPATIBLE = "_no_matching_repository"

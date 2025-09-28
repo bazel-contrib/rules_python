@@ -19,6 +19,42 @@ using a grandoise title.
 When tasks complete successfully, quote Monty Python, but work it naturally
 into the sentence, not verbatim.
 
+When adding `{versionadded}` or `{versionchanged}` sections, add them add the
+end of the documentation text.
+
+### Starlark style
+
+For doc strings, using triple quoted strings when the doc string is more than
+three lines. Do not use a trailing backslack (`\`) for the opening triple-quote.
+
+### bzl_library targets for bzl source files
+
+* A `bzl_library` target should be defined for every `.bzl` file outside
+  of the `tests/` directory.
+* They should have a single `srcs` file and be named after the file with `_bzl`
+  appended.
+* Their deps should be based on the `load()` statements in the source file
+  and refer to the `bzl_library` target containing the loaded file.
+  * For files in rules_python: replace `.bzl` with `_bzl`.
+    e.g. given `load("//foo:bar.bzl", ...)`, the target is `//foo:bar_bzl`.
+  * For files outside rules_python: remove the `.bzl` suffix. e.g. given
+    `load("@foo//foo:bar.bzl", ...)`, the target is `@foo//foo:bar`.
+* `bzl_library()` targets should be kept in alphabetical order by name.
+
+Example:
+
+```
+bzl_library(
+    name = "alpha_bzl",
+    srcs = ["alpha.bzl"],
+    deps = [":beta_bzl"],
+)
+bzl_library(
+    name = "beta_bzl",
+    srcs = ["beta.bzl"]
+)
+```
+
 ## Building and testing
 
 Tests are under the `tests/` directory.
@@ -50,7 +86,17 @@ When modifying documentation
  * Act as an expert in tech writing, Sphinx, MyST, and markdown.
  * Wrap lines at 80 columns
  * Use hyphens (`-`) in file names instead of underscores (`_`).
+ * In Sphinx MyST markup, outer directives must have more colons than inner
+   directives. For example:
+   ```
+   ::::{outerdirective}
+   outer text
 
+   :::{innertdirective}
+   inner text
+   :::
+   ::::
+   ```
 
 Generated API references can be found by:
 * Running `bazel build //docs:docs` and inspecting the generated files
@@ -67,3 +113,11 @@ When modifying locked/resolved requirements files:
 
 When building `//docs:docs`, ignore an error about exit code 2; this is a flake,
 so try building again.
+
+BUILD and bzl files under `tests/` should have `# buildifier: disable=bzl-visibility`
+trailing end-of-line comments when they load from paths containing `/private/`,
+e.g.
+
+```
+load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility
+```

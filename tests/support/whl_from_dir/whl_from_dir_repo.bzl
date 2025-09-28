@@ -8,7 +8,7 @@ load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl
 
 def _whl_from_dir_repo(rctx):
     root = rctx.path(rctx.attr.root).dirname
-    repo_utils.watch_tree(rctx, root)
+    rctx.watch_tree(root)
 
     output = rctx.path(rctx.attr.output)
     repo_utils.execute_checked(

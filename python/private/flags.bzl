@@ -21,6 +21,59 @@ unnecessary files when all that are needed are flag definitions.
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":enum.bzl", "FlagEnum", "enum")
 
+# Maps "--myflag" to a tuple of:
+#
+# - the flag's ctx.fragments native API accessor
+# -"native|starlark": which definition to use if the flag is available both
+#      from ctx.fragments and Starlark
+#
+# Builds that set --incompatible_remove_ctx_py_fragment or
+# --incompatible_remove_ctx_bazel_py_fragment disable ctx.fragments. These
+# builds assume flags are solely defined in Starlark.
+#
+# The "native|starlark" override is only for devs who are testing flag
+# Starlarkification. If ctx.fragments.[py|bazel_py] is available and
+# a flag is set to "starlark", we exclusively read its starlark version.
+#
+# See https://github.com/bazel-contrib/rules_python/issues/3252.
+_POSSIBLY_NATIVE_FLAGS = {
+    "build_python_zip": (lambda ctx: ctx.fragments.py.build_python_zip, "native"),
+    "default_to_explicit_init_py": (lambda ctx: ctx.fragments.py.default_to_explicit_init_py, "native"),
+    "disable_py2": (lambda ctx: ctx.fragments.py.disable_py2, "native"),
+    "python_import_all_repositories": (lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories, "native"),
+    "python_path": (lambda ctx: ctx.fragments.bazel_py.python_path, "native"),
+}
+
+def read_possibly_native_flag(ctx, flag_name):
+    """
+    Canonical API for reading a Python build flag.
+
+    Flags might be defined in Starlark or native-Bazel. This function reasd flags
+    from tbe correct source based on supporting Bazel version and --incompatible*
+    flags that disable native references.
+
+    Args:
+        ctx: Rule's configuration context.
+        flag_name: Name of the flag to read, without preceding "--".
+
+    Returns:
+        The flag's value.
+    """
+
+    # Bazel 9.0+ can disable these fragments with --incompatible_remove_ctx_py_fragment and
+    # --incompatible_remove_ctx_bazel_py_fragment. Disabling them means bazel expects
+    # Python to read Starlark flags.
+    use_native_def = hasattr(ctx.fragments, "py") and hasattr(ctx.fragments, "bazel_py")
+
+    # Developer override to force the Starlark definition for testing.
+    if _POSSIBLY_NATIVE_FLAGS[flag_name][1] == "starlark":
+        use_native_def = False
+    if use_native_def:
+        return _POSSIBLY_NATIVE_FLAGS[flag_name][0](ctx)
+    else:
+        # Starlark definition of "--foo" is assumed to be a label dependency named "_foo".
+        return getattr(ctx.attr, "_" + flag_name)[BuildSettingInfo].value
+
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value
     if value == AddSrcsToRunfilesFlag.AUTO:

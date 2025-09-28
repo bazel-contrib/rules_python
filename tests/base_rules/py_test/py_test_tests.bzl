@@ -39,14 +39,6 @@ _SKIP_WINDOWS = {
 _tests = []
 
 def _test_mac_requires_darwin_for_execution(name, config):
-    # Bazel 5.4 has a bug where every access of testing.ExecutionInfo is
-    # a different object that isn't equal to any other, which prevents
-    # rules_testing from detecting it properly and fails with an error.
-    # This is fixed in Bazel 6+.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
-
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -60,7 +52,7 @@ def _test_mac_requires_darwin_for_execution(name, config):
             "//command_line_option:cpu": "darwin_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [MAC_X86_64],
-            "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [MAC_X86_64],
         },
         attr_values = _SKIP_WINDOWS,
@@ -74,13 +66,6 @@ def _test_mac_requires_darwin_for_execution_impl(env, target):
 _tests.append(_test_mac_requires_darwin_for_execution)
 
 def _test_non_mac_doesnt_require_darwin_for_execution(name, config):
-    # Bazel 5.4 has a bug where every access of testing.ExecutionInfo is
-    # a different object that isn't equal to any other, which prevents
-    # rules_testing from detecting it properly and fails with an error.
-    # This is fixed in Bazel 6+.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -94,7 +79,7 @@ def _test_non_mac_doesnt_require_darwin_for_execution(name, config):
             "//command_line_option:cpu": "k8",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [LINUX_X86_64],
-            "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [LINUX_X86_64],
         },
         attr_values = _SKIP_WINDOWS,

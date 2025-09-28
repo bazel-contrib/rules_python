@@ -67,25 +67,33 @@ def define_local_runtime_toolchain_impl(
     # See https://docs.python.org/3/extending/windows.html
     # However not all python installations (such as manylinux) include shared or static libraries,
     # so only create the import library when interface_library is set.
-    import_deps = []
+    full_abi_deps = []
+    abi3_deps = []
     if interface_library:
         cc_import(
             name = "_python_interface_library",
             interface_library = interface_library,
             system_provided = 1,
         )
-        import_deps = [":_python_interface_library"]
+        if interface_library.endswith("{}.lib".format(major)):
+            abi3_deps = [":_python_interface_library"]
+        else:
+            full_abi_deps = [":_python_interface_library"]
 
     cc_library(
-        name = "_python_headers",
+        name = "_python_headers_abi3",
         # NOTE: Keep in sync with watch_tree() called in local_runtime_repo
         srcs = native.glob(
             include = ["include/**/*.h"],
             exclude = ["include/numpy/**"],  # numpy headers are handled separately
             allow_empty = True,  # A Python install may not have C headers
         ),
-        deps = import_deps,
+        deps = abi3_deps,
         includes = ["include"],
+    )
+    cc_library(
+        name = "_python_headers",
+        deps = [":_python_headers_abi3"] + full_abi_deps,
     )
 
     cc_library(
@@ -123,6 +131,7 @@ def define_local_runtime_toolchain_impl(
     py_cc_toolchain(
         name = "py_cc_toolchain",
         headers = ":_python_headers",
+        headers_abi3 = ":_python_headers_abi3",
         libs = ":_libpython",
         python_version = major_minor_micro,
         visibility = ["//visibility:public"],

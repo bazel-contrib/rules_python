@@ -15,6 +15,41 @@
 """Utilities for builders."""
 
 load("@bazel_skylib//lib:types.bzl", "types")
+load(":bzlmod_enabled.bzl", "BZLMOD_ENABLED")
+
+def normalize_transition_in_out_values(arg_name, values):
+    """Normalize transition inputs/outputs to canonical label strings."""
+    for i, value in enumerate(values):
+        values[i] = normalize_transition_in_out_value(arg_name, value)
+
+def normalize_transition_in_out_value(arg_name, value):
+    """Normalize a transition input/output value to a canonical label string.
+
+    Args:
+        arg_name: {type}`str` the transition arg name, "input" or "output"
+        value: A label-like value to normalize.
+
+    Returns:
+        {type}`str` the canonical label string.
+    """
+    if is_label(value):
+        return str(value)
+    elif types.is_string(value):
+        if value.startswith("//command_line_option:"):
+            return value
+        if value.startswith("@@" if BZLMOD_ENABLED else "@"):
+            return value
+        else:
+            fail("transition {arg_name} invalid: non-canonical string '{value}'".format(
+                arg_name = arg_name,
+                value = value,
+            ))
+    else:
+        fail("transition {arg_name} invalid: ({type}) {value}".format(
+            arg_name = arg_name,
+            type = type(value),
+            value = repr(value),
+        ))
 
 def to_label_maybe(value):
     """Converts `value` to a `Label`, maybe.
@@ -100,7 +135,7 @@ def kwargs_setter_mandatory(kwargs):
     """Creates a `kwargs_setter` for the `mandatory` key."""
     return kwargs_setter(kwargs, "mandatory")
 
-def list_add_unique(add_to, others):
+def list_add_unique(add_to, others, convert = None):
     """Bulk add values to a list if not already present.
 
     Args:
@@ -108,9 +143,11 @@ def list_add_unique(add_to, others):
             in-place.
         others: {type}`collection[collection[T]]` collection of collections of
             the values to add.
+        convert: {type}`callable | None` function to convert the values to add.
     """
     existing = {v: None for v in add_to}
     for values in others:
         for value in values:
+            value = convert(value) if convert else value
             if value not in existing:
                 add_to.append(value)

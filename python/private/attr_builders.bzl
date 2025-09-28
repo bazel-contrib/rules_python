@@ -31,6 +31,7 @@ load(
     "kwargs_setter",
     "kwargs_setter_doc",
     "kwargs_setter_mandatory",
+    "normalize_transition_in_out_values",
     "to_label_maybe",
 )
 
@@ -167,6 +168,8 @@ def _AttrCfg_new(
     }
     kwargs_set_default_list(state, _INPUTS)
     kwargs_set_default_list(state, _OUTPUTS)
+    normalize_transition_in_out_values("input", state[_INPUTS])
+    normalize_transition_in_out_values("output", state[_OUTPUTS])
 
     # buildifier: disable=uninitialized
     self = struct(

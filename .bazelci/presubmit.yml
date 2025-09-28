@@ -132,6 +132,20 @@ tasks:
     name: "Default: Ubuntu, upcoming Bazel"
     platform: ubuntu2204
     bazel: last_rc
+  ubuntu_rolling:
+    name: "Default: Ubuntu, rolling Bazel"
+    platform: ubuntu2204
+    bazel: rolling
+    # This is an advisory job; doesn't block merges
+    soft_fail:
+      - exit_status: 1
+      - exit_status: 3
+    test_targets:
+      - "--"
+      - "//tests/..."
+    test_flags:
+      - "--keep_going"
+      - "--test_tag_filters=-integration-test"
   ubuntu_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags

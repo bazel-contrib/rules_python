@@ -63,6 +63,7 @@ bzl_library(
     srcs = ["config_settings.bzl"],
     deps = [
         ":flags_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:flags_bzl",
         "@bazel_skylib//lib:selects",
     ],
@@ -73,7 +74,6 @@ bzl_library(
     srcs = ["deps.bzl"],
     deps = [
         "//python/private:bazel_tools_bzl",
-        "//python/private:glob_excludes_bzl",
     ],
 )
 
@@ -89,6 +89,7 @@ bzl_library(
         ":env_marker_info_bzl",
         ":pep508_env_bzl",
         ":pep508_evaluate_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:toolchain_types_bzl",
         "@bazel_skylib//rules:common_settings",
     ],
@@ -124,6 +125,7 @@ bzl_library(
         "@bazel_features//:features",
         "@pythons_hub//:interpreters_bzl",
         "@pythons_hub//:versions_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -337,6 +339,7 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels_bzl",
+        "//python/private:common_labels_bzl",
         "//python/private:text_util_bzl",
         "@bazel_skylib//lib:selects",
     ],
@@ -436,6 +439,7 @@ bzl_library(
         "//python/private:envsubst_bzl",
         "//python/private:is_standalone_interpreter_bzl",
         "//python/private:repo_utils_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 

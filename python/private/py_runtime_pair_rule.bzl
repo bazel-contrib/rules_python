@@ -16,8 +16,9 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
+load(":common_labels.bzl", "labels")
+load(":flags.bzl", "read_possibly_native_flag")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
 def _py_runtime_pair_impl(ctx):
     if ctx.attr.py2_runtime != None:
@@ -56,7 +57,7 @@ def _get_py_runtime_info(target):
     # py_binary (implemented in Java) performs a type check on the provider
     # value to verify it is an instance of the Java-implemented PyRuntimeInfo
     # class.
-    if (IS_BAZEL_7_OR_HIGHER and PyRuntimeInfo in target) or BuiltinPyRuntimeInfo == None:
+    if (PyRuntimeInfo in target) or BuiltinPyRuntimeInfo == None:
         return target[PyRuntimeInfo]
     else:
         return target[BuiltinPyRuntimeInfo]
@@ -68,7 +69,7 @@ def _is_py2_disabled(ctx):
     # TODO: Remove this once all supported Balze versions have this flag.
     if not hasattr(ctx.fragments.py, "disable_py"):
         return False
-    return ctx.fragments.py.disable_py2
+    return read_possibly_native_flag(ctx, "disable_py2")
 
 _MaybeBuiltinPyRuntimeInfo = [[BuiltinPyRuntimeInfo]] if BuiltinPyRuntimeInfo != None else []
 
@@ -94,7 +95,7 @@ The runtime to use for Python 3 targets. Must have `python_version` set to
 """,
         ),
         "_visible_for_testing": attr.label(
-            default = "//python/private:visible_for_testing",
+            default = labels.VISIBLE_FOR_TESTING,
         ),
     },
     fragments = ["py"],

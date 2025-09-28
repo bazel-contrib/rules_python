@@ -14,9 +14,10 @@
 """Test for py_wheel."""
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
-load("@rules_testing//lib:truth.bzl", "matching")
+load("@rules_testing//lib:truth.bzl", "matching", "subjects")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:packaging.bzl", "py_wheel")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 
 _basic_tests = []
 _tests = []
@@ -166,6 +167,44 @@ def _test_content_type_from_description_impl(env, target):
     )
 
 _tests.append(_test_content_type_from_description)
+
+def _test_config_settings(name):
+    rt_util.helper_target(
+        native.config_setting,
+        name = "is_py_39",
+        flag_values = {
+            labels.PYTHON_VERSION_MAJOR_MINOR: "3.9",
+        },
+    )
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = select({
+            ":is_py_39": "3.9",
+            "//conditions:default": "not-3.9",
+        }),
+        config_settings = {
+            labels.PYTHON_VERSION: "3.9",
+        },
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_impl,
+        target = name + "_subject",
+        config_settings = {
+            # Ensure a different value than the target under test.
+            labels.PYTHON_VERSION: "3.11",
+        },
+    )
+
+def _test_config_settings_impl(env, target):
+    env.expect.that_target(target).attr(
+        "version",
+        factory = subjects.str,
+    ).equals("3.9")
+
+_tests.append(_test_config_settings)
 
 def py_wheel_test_suite(name):
     test_suite(

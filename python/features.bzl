@@ -13,14 +13,22 @@
 # limitations under the License.
 """Allows detecting of rules_python features that aren't easily detected."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
-
 # This is a magic string expanded by `git archive`, as set by `.gitattributes`
 # See https://git-scm.com/docs/git-archive/2.29.0#Documentation/git-archive.txt-export-subst
 _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 
 def _features_typedef():
     """Information about features rules_python has implemented.
+
+    ::::{field} headers_abi3
+    :type: bool
+
+    True if the {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
+    target is available.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
 
     ::::{field} precompile
     :type: bool
@@ -60,8 +68,9 @@ def _features_typedef():
 features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
+    headers_abi3 = True,
     precompile = True,
     py_info_venv_symlinks = True,
-    uses_builtin_rules = not config.enable_pystar,
+    uses_builtin_rules = False,
     version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
 )

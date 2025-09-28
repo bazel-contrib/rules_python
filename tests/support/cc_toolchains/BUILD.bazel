@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc/toolchains:cc_toolchain.bzl", "cc_toolchain")
 load("@rules_cc//cc/toolchains:cc_toolchain_suite.bzl", "cc_toolchain_suite")
 load("@rules_testing//lib:util.bzl", "PREVENT_IMPLICIT_BUILDING_TAGS")
@@ -20,7 +21,23 @@ load(":fake_cc_toolchain_config.bzl", "fake_cc_toolchain_config")
 
 package(default_visibility = ["//:__subpackages__"])
 
-exports_files(["fake_header.h"])
+# Factored out for testing
+filegroup(
+    name = "py_headers_files",
+    srcs = [
+        "py_header.h",
+        ":py_headers_abi3_files",
+    ],
+)
+
+# Factored out for testing
+filegroup(
+    name = "py_headers_abi3_files",
+    srcs = [
+        "py_abi3_header.h",
+        "py_include/py_include.h",
+    ],
+)
 
 filegroup(
     name = "libpython",
@@ -37,22 +54,28 @@ toolchain(
 
 py_cc_toolchain(
     name = "fake_py_cc_toolchain_impl",
-    headers = ":fake_headers",
+    headers = ":py_headers",
+    headers_abi3 = ":py_headers_abi3",
     libs = ":fake_libs",
     python_version = "3.999",
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
 )
 
-# buildifier: disable=native-cc
 cc_library(
-    name = "fake_headers",
-    hdrs = ["fake_header.h"],
+    name = "py_headers_abi3",
+    hdrs = [":py_headers_abi3_files"],
     data = ["data.txt"],
-    includes = ["fake_include"],
+    includes = ["py_include"],
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
 )
 
-# buildifier: disable=native-cc
+cc_library(
+    name = "py_headers",
+    hdrs = [":py_headers_files"],
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+    deps = [":py_headers_abi3"],
+)
+
 cc_library(
     name = "fake_libs",
     srcs = ["libpython3.so"],

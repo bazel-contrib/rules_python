@@ -182,7 +182,7 @@ def _precompile(ctx, src, *, use_pycache):
     # have the repo name, which is likely to contain extraneous info.
     precompile_request_args.add("--src_name", src.short_path)
     precompile_request_args.add("--pyc", pyc)
-    precompile_request_args.add("--optimize", ctx.attr.precompile_optimize_level)
+    precompile_request_args.add("--optimize", str(ctx.attr.precompile_optimize_level))
 
     version_info = target_toolchain.interpreter_version_info
     python_version = "{}.{}".format(version_info.major, version_info.minor)

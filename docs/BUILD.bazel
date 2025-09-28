@@ -15,7 +15,6 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@dev_pip//:requirements.bzl", "requirement")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 load("//sphinxdocs:readthedocs.bzl", "readthedocs_install")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
@@ -107,6 +106,7 @@ sphinx_stardocs(
         "//python/cc:py_cc_toolchain_bzl",
         "//python/cc:py_cc_toolchain_info_bzl",
         "//python/entry_points:py_console_script_binary_bzl",
+        "//python/extensions:python_bzl",
         "//python/local_toolchains:repos_bzl",
         "//python/private:attr_builders_bzl",
         "//python/private:builders_util_bzl",
@@ -128,12 +128,9 @@ sphinx_stardocs(
         "//python/uv:uv_toolchain_bzl",
         "//python/uv:uv_toolchain_info_bzl",
     ] + ([
-        # Bazel 6 + Stardoc isn't able to parse something about the python bzlmod extension
-        "//python/extensions:python_bzl",
-    ] if IS_BAZEL_7_OR_HIGHER else []) + ([
         # This depends on @pythons_hub, which is only created under bzlmod,
         "//python/extensions:pip_bzl",
-    ] if IS_BAZEL_7_OR_HIGHER and BZLMOD_ENABLED else []),
+    ] if BZLMOD_ENABLED else []),
     prefix = "api/rules_python/",
     tags = ["docs"],
     target_compatible_with = _TARGET_COMPATIBLE_WITH,

@@ -17,14 +17,12 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(":attr_builders.bzl", "attrb")
+load(":common_labels.bzl", "labels")
 load(":enum.bzl", "enum")
 load(":flags.bzl", "PrecompileFlag", "PrecompileSourceRetentionFlag")
 load(":py_info.bzl", "PyInfo")
-load(":py_internal.bzl", "py_internal")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
-
-_PackageSpecificationInfo = getattr(py_internal, "PackageSpecificationInfo", None)
 
 # Due to how the common exec_properties attribute works, rules must add exec
 # groups even if they don't actually use them. This is due to two interactions:
@@ -173,33 +171,9 @@ This is because Python has a concept of runtime resources.
     ),
 }
 
-def _create_native_rules_allowlist_attrs():
-    if py_internal:
-        # The fragment and name are validated when configuration_field is called
-        default = configuration_field(
-            fragment = "py",
-            name = "native_rules_allowlist",
-        )
-
-        # A None provider isn't allowed
-        providers = [_PackageSpecificationInfo]
-    else:
-        default = None
-        providers = []
-
-    return {
-        "_native_rules_allowlist": lambda: attrb.Label(
-            default = default,
-            providers = providers,
-        ),
-    }
-
-NATIVE_RULES_ALLOWLIST_ATTRS = _create_native_rules_allowlist_attrs()
-
 # Attributes common to all rules.
 COMMON_ATTRS = dicts.add(
     DATA_ATTRS,
-    NATIVE_RULES_ALLOWLIST_ATTRS,
     # buildifier: disable=attr-licenses
     {
         # NOTE: This attribute is deprecated and slated for removal.
@@ -370,11 +344,11 @@ files that may be needed at run time belong in `data`.
             doc = "Defunct, unused, does nothing.",
         ),
         "_precompile_flag": lambda: attrb.Label(
-            default = "//python/config_settings:precompile",
+            default = labels.PRECOMPILE,
             providers = [BuildSettingInfo],
         ),
         "_precompile_source_retention_flag": lambda: attrb.Label(
-            default = "//python/config_settings:precompile_source_retention",
+            default = labels.PRECOMPILE_SOURCE_RETENTION,
             providers = [BuildSettingInfo],
         ),
         # Force enabling auto exec groups, see
@@ -405,8 +379,58 @@ COVERAGE_ATTRS = {
 # Attributes specific to Python executable-equivalent rules. Such rules may not
 # accept Python sources (e.g. some packaged-version of a py_test/py_binary), but
 # still accept Python source-agnostic settings.
+CONFIG_SETTINGS_ATTR = {
+    "config_settings": lambda: attrb.LabelKeyedStringDict(
+        doc = """
+Config settings to change for this target.
+
+The keys are labels for settings, and the values are strings for the new value
+to use. Pass `Label` objects or canonical label strings for the keys to ensure
+they resolve as expected (canonical labels start with `@@` and can be
+obtained by calling `str(Label(...))`).
+
+Most `@rules_python//python/config_setting` settings can be used here, which
+allows, for example, making only a certain `py_binary` use
+{obj}`--boostrap_impl=script`.
+
+Additional or custom config settings can be registered using the
+{obj}`add_transition_setting` API. This allows, for example, forcing a
+particular CPU, or defining a custom setting that `select()` uses elsewhere
+to pick between `pip.parse` hubs. See the [How to guide on multiple
+versions of a library] for a more concrete example.
+
+:::{note}
+These values are transitioned on, so will affect the analysis graph and the
+associated memory overhead. The more unique configurations in your overall
+build, the more memory and (often unnecessary) re-analysis and re-building
+can occur. See
+https://bazel.build/extending/config#memory-performance-considerations for
+more information about risks and considerations.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+    ),
+}
+
+def apply_config_settings_attr(settings, attr):
+    """Applies the config_settings attribute to the settings.
+
+    Args:
+        settings: The settings dict to modify in-place.
+        attr: The rule attributes struct.
+
+    Returns:
+        {type}`dict[str, object]` the input `settings` value.
+    """
+    for key, value in attr.config_settings.items():
+        settings[str(key)] = value
+    return settings
+
 AGNOSTIC_EXECUTABLE_ATTRS = dicts.add(
     DATA_ATTRS,
+    CONFIG_SETTINGS_ATTR,
     {
         "env": lambda: attrb.StringDict(
             doc = """\
