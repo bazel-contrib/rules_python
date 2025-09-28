@@ -85,9 +85,7 @@ def generate_whl_library_build_bazel(
         ]
         dep_template = kwargs.get("dep_template")
         packages = kwargs.pop("packages", [])
-        if packages:
-            kwargs["include"] = render.list(packages)
-        else:
+        if dep_template:
             loads.append(
                 """load("{}", "{}")""".format(
                     dep_template.format(
@@ -98,6 +96,8 @@ def generate_whl_library_build_bazel(
                 ),
             )
             kwargs["include"] = "packages"
+        elif packages:
+            kwargs["include"] = render.list(packages)
 
     for arg in unsupported_args:
         if kwargs.get(arg):
