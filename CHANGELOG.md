@@ -79,7 +79,7 @@ END_UNRELEASED_TEMPLATE
   length errors due to too long environment variables.
 * (bootstrap) {obj}`--bootstrap_impl=script` now supports the `-S` interpreter
   setting.
-* (venvs) {obj}`--vens_site_packages=yes` no longer errors when packages with
+* (venvs) {obj}`--venvs_site_packages=yes` no longer errors when packages with
   overlapping files or directories are used together.
   ([#3204](https://github.com/bazel-contrib/rules_python/issues/3204)).
 
