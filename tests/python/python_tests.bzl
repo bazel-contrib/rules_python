@@ -44,7 +44,7 @@ def _mock_mctx(*modules, environ = {}, mocked_files = {}):
     )
 
 # todo: change is_root to false by default. most modules aren't root
-def _mod(*, name, defaults = [], toolchain = [], override = [], single_version_override = [], single_version_platform_override = [], is_root = True):
+def _mod(*, name, defaults = [], toolchain = [], override = [], single_version_override = [], single_version_platform_override = [], is_root = False):
     return struct(
         name = name,
         tags = struct(
@@ -203,7 +203,7 @@ _tests.append(_test_default_from_rules_python_when_rules_python_is_not_root)
 def _test_default_with_patch_version(env):
     py = parse_modules(
         module_ctx = _mock_mctx(
-            _mod(name = "alpha", toolchain = [_toolchain("3.11.2")]),
+            _mod(name = "alpha", toolchain = [_toolchain("3.11.2")], is_root = True),
             _rules_python_module(is_root = True),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -226,6 +226,7 @@ def _test_default_non_rules_python_ignore_root_user_error(env):
             _mod(
                 name = "my_module",
                 toolchain = [_toolchain("3.12", ignore_root_user_error = False)],
+                is_root = True,
             ),
             _rules_python_module(),
         ),
@@ -253,9 +254,10 @@ def _test_default_non_rules_python_ignore_root_user_error(env):
 _tests.append(_test_default_non_rules_python_ignore_root_user_error)
 
 def _test_default_non_rules_python_ignore_root_user_error_non_root_module(env):
+    """Verify a non-root intermediate module has its ignore_root_user_error setting ignored."""
     py = parse_modules(
         module_ctx = _mock_mctx(
-            _mod(name = "my_module", toolchain = [_toolchain("3.13")]),
+            _mod(name = "my_module", is_root = True, toolchain = [_toolchain("3.13")]),
             _mod(name = "some_module", toolchain = [_toolchain("3.12", ignore_root_user_error = False)]),
             _rules_python_module(),
         ),
@@ -302,6 +304,7 @@ def _test_toolchain_ordering(env):
                     _toolchain("3.11.10"),
                     _toolchain("3.11.13", is_default = True),
                 ],
+                is_root = True,
             ),
             _rules_python_module(),
         ),
@@ -484,7 +487,7 @@ _tests.append(_test_defaults_overrides_toolchains_setting_is_default)
 def _test_first_occurance_of_the_toolchain_wins(env):
     py = parse_modules(
         module_ctx = _mock_mctx(
-            _mod(name = "my_module", toolchain = [_toolchain("3.12")]),
+            _mod(name = "my_module", is_root = True, toolchain = [_toolchain("3.12")]),
             _mod(name = "some_module", toolchain = [_toolchain("3.12", configure_coverage_tool = True)]),
             _rules_python_module(),
             environ = {
@@ -534,6 +537,7 @@ def _test_auth_overrides(env):
                         auth_patterns = {"foo": "bar"},
                     ),
                 ],
+                is_root = True,
             ),
             _rules_python_module(),
         ),
@@ -569,6 +573,7 @@ def _test_add_new_version(env):
         module_ctx = _mock_mctx(
             _mod(
                 name = "my_module",
+                is_root = True,
                 toolchain = [_toolchain("3.13")],
                 single_version_override = [
                     _single_version_override(
@@ -649,6 +654,7 @@ def _test_register_all_versions(env):
         module_ctx = _mock_mctx(
             _mod(
                 name = "my_module",
+                is_root = True,
                 toolchain = [_toolchain("3.13")],
                 single_version_override = [
                     _single_version_override(
@@ -714,6 +720,7 @@ def _test_add_patches(env):
         module_ctx = _mock_mctx(
             _mod(
                 name = "my_module",
+                is_root = True,
                 toolchain = [_toolchain("3.13")],
                 single_version_override = [
                     _single_version_override(
@@ -792,6 +799,7 @@ def _test_fail_two_overrides(env):
         module_ctx = _mock_mctx(
             _mod(
                 name = "my_module",
+                is_root = True,
                 toolchain = [_toolchain("3.13")],
                 override = [
                     _override(base_url = "foo"),
@@ -823,6 +831,7 @@ def _test_single_version_override_errors(env):
             module_ctx = _mock_mctx(
                 _mod(
                     name = "my_module",
+                    is_root = True,
                     toolchain = [_toolchain("3.13")],
                     single_version_override = test.overrides,
                 ),
@@ -863,6 +872,7 @@ def _test_single_version_platform_override_errors(env):
                     name = "my_module",
                     toolchain = [_toolchain("3.13")],
                     single_version_platform_override = test.overrides,
+                    is_root = True,
                 ),
             ),
             _fail = lambda *a: errors.append(" ".join(a)),
