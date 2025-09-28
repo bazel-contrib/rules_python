@@ -372,7 +372,7 @@ def _whl_library_impl(rctx):
     # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
     # dep_template set or the packages is not set either, we should still not break, best to
     # disable pipstar for that particular case.
-    if rp_config.enable_pipstar and (rctx.dep_template or rctx.packages):
+    if rp_config.enable_pipstar and (rctx.attr.dep_template or rctx.attr.packages):
         pypi_repo_utils.execute_checked(
             rctx,
             op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
@@ -422,12 +422,10 @@ def _whl_library_impl(rctx):
             logger = logger,
         )
 
-        dep_template = rctx.attr.dep_template
-
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
             sdist_filename = sdist_filename,
-            dep_template = dep_template or "@{}{{name}}//:{{target}}".format(
+            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
                 rctx.attr.repo_prefix,
             ),
             packages = rctx.attr.packages,
