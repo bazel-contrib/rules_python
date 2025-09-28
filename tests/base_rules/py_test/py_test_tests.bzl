@@ -39,14 +39,6 @@ _SKIP_WINDOWS = {
 _tests = []
 
 def _test_mac_requires_darwin_for_execution(name, config):
-    # Bazel 5.4 has a bug where every access of testing.ExecutionInfo is
-    # a different object that isn't equal to any other, which prevents
-    # rules_testing from detecting it properly and fails with an error.
-    # This is fixed in Bazel 6+.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
-
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -74,13 +66,6 @@ def _test_mac_requires_darwin_for_execution_impl(env, target):
 _tests.append(_test_mac_requires_darwin_for_execution)
 
 def _test_non_mac_doesnt_require_darwin_for_execution(name, config):
-    # Bazel 5.4 has a bug where every access of testing.ExecutionInfo is
-    # a different object that isn't equal to any other, which prevents
-    # rules_testing from detecting it properly and fails with an error.
-    # This is fixed in Bazel 6+.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",

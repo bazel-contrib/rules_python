@@ -13,7 +13,6 @@
 # limitations under the License.
 """py_common tests."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
@@ -41,13 +40,11 @@ def _test_merge_py_infos_impl(env, target):
     py_common = _py_common.get(env.ctx)
 
     py1 = py_common.PyInfoBuilder()
-    if config.enable_pystar:
-        py1.direct_pyc_files.add(f1_pyc)
+    py1.direct_pyc_files.add(f1_pyc)
     py1.transitive_sources.add(f1_py)
 
     py2 = py_common.PyInfoBuilder()
-    if config.enable_pystar:
-        py1.direct_pyc_files.add(f2_pyc)
+    py1.direct_pyc_files.add(f2_pyc)
     py2.transitive_sources.add(f2_py)
 
     actual = py_info_subject(
@@ -56,8 +53,7 @@ def _test_merge_py_infos_impl(env, target):
     )
 
     actual.transitive_sources().contains_exactly([f1_py.path, f2_py.path])
-    if config.enable_pystar:
-        actual.direct_pyc_files().contains_exactly([f1_pyc.path, f2_pyc.path])
+    actual.direct_pyc_files().contains_exactly([f1_pyc.path, f2_pyc.path])
 
 _tests.append(_test_merge_py_infos)
 

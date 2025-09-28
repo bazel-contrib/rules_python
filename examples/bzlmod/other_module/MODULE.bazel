@@ -5,20 +5,10 @@ module(
 # This module is using the same version of rules_python
 # that the parent module uses.
 bazel_dep(name = "rules_python", version = "")
-
-# The story behind this commented out override:
-# This override is necessary to generate/update the requirements file
-# for this module. This is because running it via the outer
-# module doesn't work -- the `requirements.update` target can't find
-# the correct file to update.
-# Running in the submodule itself works, but submodules using overrides
-# is considered an error until Bazel 6.3, which prevents the outer module
-# from depending on this module.
-# So until 6.3 and higher is the minimum, we leave this commented out.
-# local_path_override(
-#     module_name = "rules_python",
-#     path = "../../..",
-# )
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
 
 PYTHON_NAME_39 = "python_3_9"
 

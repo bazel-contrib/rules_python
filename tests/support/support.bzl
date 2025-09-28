@@ -20,7 +20,6 @@
 # places.
 
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
 MAC = Label("//tests/support:mac")
 MAC_X86_64 = Label("//tests/support:mac_x86_64")
@@ -40,7 +39,7 @@ CUSTOM_RUNTIME = str(Label("//tests/support:custom_runtime"))
 SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
-}) if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"]
+})
 
 SUPPORTS_BZLMOD_UNIXY = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],

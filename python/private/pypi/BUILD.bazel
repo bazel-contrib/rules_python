@@ -74,7 +74,6 @@ bzl_library(
     srcs = ["deps.bzl"],
     deps = [
         "//python/private:bazel_tools_bzl",
-        "//python/private:glob_excludes_bzl",
     ],
 )
 
@@ -126,6 +125,7 @@ bzl_library(
         "@bazel_features//:features",
         "@pythons_hub//:interpreters_bzl",
         "@pythons_hub//:versions_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 
@@ -439,6 +439,7 @@ bzl_library(
         "//python/private:envsubst_bzl",
         "//python/private:is_standalone_interpreter_bzl",
         "//python/private:repo_utils_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 

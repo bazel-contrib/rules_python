@@ -14,14 +14,12 @@
 """Tests common to py_binary and py_test (executable rules)."""
 
 load("@rules_python//python:py_runtime_info.bzl", RulesPythonPyRuntimeInfo = "PyRuntimeInfo")
-load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
@@ -30,10 +28,6 @@ load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_
 _tests = []
 
 def _test_basic_windows(name, config):
-    if rp_config.enable_pystar:
-        target_compatible_with = []
-    else:
-        target_compatible_with = ["@platforms//:incompatible"]
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -56,7 +50,7 @@ def _test_basic_windows(name, config):
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [WINDOWS_X86_64],
         },
-        attr_values = {"target_compatible_with": target_compatible_with},
+        attr_values = {},
     )
 
 def _test_basic_windows_impl(env, target):
@@ -72,14 +66,11 @@ def _test_basic_windows_impl(env, target):
 _tests.append(_test_basic_windows)
 
 def _test_basic_zip(name, config):
-    if rp_config.enable_pystar:
-        target_compatible_with = select({
-            # Disable the new test on windows because we have _test_basic_windows.
-            "@platforms//os:windows": ["@platforms//:incompatible"],
-            "//conditions:default": [],
-        })
-    else:
-        target_compatible_with = ["@platforms//:incompatible"]
+    target_compatible_with = select({
+        # Disable the new test on windows because we have _test_basic_windows.
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    })
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -140,14 +131,13 @@ def _test_executable_in_runfiles_impl(env, target):
         "{workspace}/{package}/{test_name}_subject" + exe,
     ])
 
-    if rp_config.enable_pystar:
-        py_exec_info = env.expect.that_target(target).provider(PyExecutableInfo, factory = PyExecutableInfoSubject.new)
-        py_exec_info.main().path().contains("_subject.py")
-        py_exec_info.interpreter_path().contains("python")
-        py_exec_info.runfiles_without_exe().contains_none_of([
-            "{workspace}/{package}/{test_name}_subject" + exe,
-            "{workspace}/{package}/{test_name}_subject",
-        ])
+    py_exec_info = env.expect.that_target(target).provider(PyExecutableInfo, factory = PyExecutableInfoSubject.new)
+    py_exec_info.main().path().contains("_subject.py")
+    py_exec_info.interpreter_path().contains("python")
+    py_exec_info.runfiles_without_exe().contains_none_of([
+        "{workspace}/{package}/{test_name}_subject" + exe,
+        "{workspace}/{package}/{test_name}_subject",
+    ])
 
 def _test_default_main_can_be_generated(name, config):
     rt_util.helper_target(
@@ -188,11 +178,6 @@ def _test_default_main_can_have_multiple_path_segments_impl(env, target):
     )
 
 def _test_default_main_must_be_in_srcs(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -213,11 +198,6 @@ def _test_default_main_must_be_in_srcs_impl(env, target):
     )
 
 def _test_default_main_cannot_be_ambiguous(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -260,11 +240,6 @@ def _test_explicit_main_impl(env, target):
     )
 
 def _test_explicit_main_cannot_be_ambiguous(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -310,22 +285,16 @@ def _test_files_to_build_impl(env, target):
             "{package}/{test_name}_subject.py",
         ])
 
-        if IS_BAZEL_7_OR_HIGHER:
-            # As of Bazel 7, the first default output is the executable, so
-            # verify that is the case. rules_testing
-            # DepsetFileSubject.contains_exactly doesn't provide an in_order()
-            # call, nor access to the underlying depset, so we have to do things
-            # manually.
-            first_default_output = target[DefaultInfo].files.to_list()[0]
-            executable = target[DefaultInfo].files_to_run.executable
-            env.expect.that_file(first_default_output).equals(executable)
+        # As of Bazel 7, the first default output is the executable, so
+        # verify that is the case. rules_testing
+        # DepsetFileSubject.contains_exactly doesn't provide an in_order()
+        # call, nor access to the underlying depset, so we have to do things
+        # manually.
+        first_default_output = target[DefaultInfo].files.to_list()[0]
+        executable = target[DefaultInfo].files_to_run.executable
+        env.expect.that_file(first_default_output).equals(executable)
 
 def _test_name_cannot_end_in_py(name, config):
-    # Bazel 5 will crash with a Java stacktrace when the native Python
-    # rules have an error.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject.py",

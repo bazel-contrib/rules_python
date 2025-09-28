@@ -12,6 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("//python:py_test.bzl", "py_test")
 load(":current_py_cc_headers_tests.bzl", "current_py_cc_headers_test_suite")
 
 current_py_cc_headers_test_suite(name = "current_py_cc_headers_tests")
+
+cc_binary(
+    name = "bin_abi3",
+    srcs = ["bin_abi3.cc"],
+    defines = ["Py_LIMITED_API=0x030A0000"],
+    linkshared = True,
+    deps = [
+        "//python/cc:current_py_cc_headers_abi3",
+    ],
+)
+
+py_test(
+    name = "abi3_headers_linkage_test_py",
+    srcs = ["abi3_headers_linkage_test.py"],
+    data = [":bin_abi3"],
+    main = "abi3_headers_linkage_test.py",
+    target_compatible_with = ["@platforms//os:windows"],
+    deps = [
+        "//python/runfiles",
+        "@dev_pip//pefile",
+    ],
+)

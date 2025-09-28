@@ -13,12 +13,10 @@
 # limitations under the License.
 
 load("//python:py_test.bzl", "py_test")
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
 
 py_test(
     name = "proto_to_markdown_test",
     srcs = ["proto_to_markdown_test.py"],
-    target_compatible_with = [] if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"],
     deps = [
         "//sphinxdocs/private:proto_to_markdown_lib",
         "@dev_pip//absl_py",

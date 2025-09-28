@@ -23,14 +23,12 @@ load(":repo_utils.bzl", "repo_utils")
 
 _ENABLE_PIPSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PIPSTAR"
 _ENABLE_PIPSTAR_DEFAULT = "0"
-_ENABLE_PYSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PYSTAR"
-_ENABLE_PYSTAR_DEFAULT = "1"
 _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME = "RULES_PYTHON_DEPRECATION_WARNINGS"
 _ENABLE_DEPRECATION_WARNINGS_DEFAULT = "0"
 
 _CONFIG_TEMPLATE = """
 config = struct(
-  enable_pystar = {enable_pystar},
+  enable_pystar = True,
   enable_pipstar = {enable_pipstar},
   enable_deprecation_warnings = {enable_deprecation_warnings},
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
@@ -88,15 +86,6 @@ _TRANSITION_SETTINGS_DEBUG_TEMPLATE = """
 """
 
 def _internal_config_repo_impl(rctx):
-    pystar_requested = _bool_from_environ(rctx, _ENABLE_PYSTAR_ENVVAR_NAME, _ENABLE_PYSTAR_DEFAULT)
-
-    # Bazel 7+ (dev and later) has native.starlark_doc_extract, and thus the
-    # py_internal global, which are necessary for the pystar implementation.
-    if pystar_requested and hasattr(native, "starlark_doc_extract"):
-        enable_pystar = pystar_requested
-    else:
-        enable_pystar = False
-
     if not native.bazel_version or int(native.bazel_version.split(".")[0]) >= 8:
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
@@ -107,7 +96,6 @@ def _internal_config_repo_impl(rctx):
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
-        enable_pystar = enable_pystar,
         enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT),
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
@@ -115,23 +103,12 @@ def _internal_config_repo_impl(rctx):
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
     ))
 
-    if enable_pystar:
-        shim_content = _PY_INTERNAL_SHIM
-        py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"'
-    else:
-        shim_content = "py_internal_impl = None\n"
-        py_internal_dep = ""
-
-    # Bazel 5 doesn't support repository visibility, so just use public
-    # as a stand-in
-    if native.bazel_version.startswith("5."):
-        visibility = "//visibility:public"
-    else:
-        visibility = "@rules_python//:__subpackages__"
+    shim_content = _PY_INTERNAL_SHIM
+    py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"'
 
     rctx.file("BUILD", ROOT_BUILD_TEMPLATE.format(
         py_internal_dep = py_internal_dep,
-        visibility = visibility,
+        visibility = "@rules_python//:__subpackages__",
     ))
     rctx.file("py_internal.bzl", shim_content)
 
@@ -155,7 +132,7 @@ def _internal_config_repo_impl(rctx):
 internal_config_repo = repository_rule(
     implementation = _internal_config_repo_impl,
     configure = True,
-    environ = [_ENABLE_PYSTAR_ENVVAR_NAME],
+    environ = [_ENABLE_PIPSTAR_ENVVAR_NAME],
     attrs = {
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),

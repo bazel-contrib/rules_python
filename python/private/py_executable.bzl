@@ -53,13 +53,13 @@ load(
     "target_platform_has_any_constraint",
 )
 load(":common_labels.bzl", "labels")
-load(":flags.bzl", "BootstrapImplFlag", "VenvsUseDeclareSymlinkFlag")
+load(":flags.bzl", "BootstrapImplFlag", "VenvsUseDeclareSymlinkFlag", "read_possibly_native_flag")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_executable_info.bzl", "PyExecutableInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkKind")
 load(":py_internal.bzl", "py_internal")
-load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
+load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
 load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
@@ -203,15 +203,6 @@ accepting arbitrary Python versions.
             # empty target for other platforms.
             default = "//tools/launcher:launcher",
         ),
-        "_py_interpreter": lambda: attrb.Label(
-            # The configuration_field args are validated when called;
-            # we use the precense of py_internal to indicate this Bazel
-            # build has that fragment and name.
-            default = configuration_field(
-                fragment = "bazel_py",
-                name = "python_top",
-            ) if py_internal else None,
-        ),
         # TODO: This appears to be vestigial. It's only added because
         # GraphlessQueryTest.testLabelsOperator relies on it to test for
         # query behavior of implicit dependencies.
@@ -302,7 +293,7 @@ def _get_stamp_flag(ctx):
 
 def _should_create_init_files(ctx):
     if ctx.attr.legacy_create_init == -1:
-        return not ctx.fragments.py.default_to_explicit_init_py
+        return not read_possibly_native_flag(ctx, "default_to_explicit_init_py")
     else:
         return bool(ctx.attr.legacy_create_init)
 
@@ -390,7 +381,7 @@ def _create_executable(
     extra_files_to_build = []
 
     # NOTE: --build_python_zip defaults to true on Windows
-    build_zip_enabled = ctx.fragments.py.build_python_zip
+    build_zip_enabled = read_possibly_native_flag(ctx, "build_python_zip")
 
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
@@ -596,7 +587,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         output = site_init,
         substitutions = {
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
-            "%import_all%": "True" if ctx.fragments.bazel_py.python_import_all_repositories else "False",
+            "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%site_init_runfiles_path%": "{}/{}".format(ctx.workspace_name, site_init.short_path),
             "%workspace_name%": ctx.workspace_name,
         },
@@ -677,7 +668,7 @@ def _create_stage2_bootstrap(
         output = output,
         substitutions = {
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
-            "%import_all%": "True" if ctx.fragments.bazel_py.python_import_all_repositories else "False",
+            "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%imports%": ":".join(imports.to_list()),
             "%main%": main_py_path,
             "%main_module%": ctx.attr.main_module,
@@ -764,7 +755,7 @@ def _create_stage1_bootstrap(
             template = ctx.file._bootstrap_template
 
         subs["%coverage_tool%"] = coverage_tool_runfiles_path
-        subs["%import_all%"] = ("True" if ctx.fragments.bazel_py.python_import_all_repositories else "False")
+        subs["%import_all%"] = ("True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False")
         subs["%imports%"] = ":".join(imports.to_list())
         subs["%main%"] = "{}/{}".format(ctx.workspace_name, main_py.short_path)
 
@@ -1144,7 +1135,7 @@ def _get_runtime_details(ctx, semantics):
     #
     # TOOD(bazelbuild/bazel#7901): Remove this once --python_path flag is removed.
 
-    flag_interpreter_path = ctx.fragments.bazel_py.python_path
+    flag_interpreter_path = read_possibly_native_flag(ctx, "python_path")
     toolchain_runtime, effective_runtime = _maybe_get_runtime_from_ctx(ctx)
     if not effective_runtime:
         # Clear these just in case
@@ -1202,41 +1193,28 @@ def _maybe_get_runtime_from_ctx(ctx):
     Returns:
         2-tuple of toolchain_runtime, effective_runtime
     """
-    if ctx.fragments.py.use_toolchains:
-        toolchain = ctx.toolchains[TOOLCHAIN_TYPE]
+    toolchain = ctx.toolchains[TOOLCHAIN_TYPE]
 
-        if not hasattr(toolchain, "py3_runtime"):
-            fail("Python toolchain field 'py3_runtime' is missing")
-        if not toolchain.py3_runtime:
-            fail("Python toolchain missing py3_runtime")
-        py3_runtime = toolchain.py3_runtime
+    if not hasattr(toolchain, "py3_runtime"):
+        fail("Python toolchain field 'py3_runtime' is missing")
+    if not toolchain.py3_runtime:
+        fail("Python toolchain missing py3_runtime")
+    py3_runtime = toolchain.py3_runtime
 
-        # Hack around the fact that the autodetecting Python toolchain, which is
-        # automatically registered, does not yet support Windows. In this case,
-        # we want to return null so that _get_interpreter_path falls back on
-        # --python_path. See tools/python/toolchain.bzl.
-        # TODO(#7844): Remove this hack when the autodetecting toolchain has a
-        # Windows implementation.
-        if py3_runtime.interpreter_path == "/_magic_pyruntime_sentinel_do_not_use":
-            return None, None
+    # Hack around the fact that the autodetecting Python toolchain, which is
+    # automatically registered, does not yet support Windows. In this case,
+    # we want to return null so that _get_interpreter_path falls back on
+    # --python_path. See tools/python/toolchain.bzl.
+    # TODO(#7844): Remove this hack when the autodetecting toolchain has a
+    # Windows implementation.
+    if py3_runtime.interpreter_path == "/_magic_pyruntime_sentinel_do_not_use":
+        return None, None
 
-        if py3_runtime.python_version != "PY3":
-            fail("Python toolchain py3_runtime must be python_version=PY3, got {}".format(
-                py3_runtime.python_version,
-            ))
-        toolchain_runtime = toolchain.py3_runtime
-        effective_runtime = toolchain_runtime
-    else:
-        toolchain_runtime = None
-        attr_target = ctx.attr._py_interpreter
-
-        # In Bazel, --python_top is null by default.
-        if attr_target and PyRuntimeInfo in attr_target:
-            effective_runtime = attr_target[PyRuntimeInfo]
-        else:
-            return None, None
-
-    return toolchain_runtime, effective_runtime
+    if py3_runtime.python_version != "PY3":
+        fail("Python toolchain py3_runtime must be python_version=PY3, got {}".format(
+            py3_runtime.python_version,
+        ))
+    return py3_runtime, py3_runtime
 
 def _get_base_runfiles_for_binary(
         ctx,

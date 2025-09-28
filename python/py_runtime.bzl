@@ -15,10 +15,9 @@
 """Public entry point for py_runtime."""
 
 load("//python/private:py_runtime_macro.bzl", _starlark_py_runtime = "py_runtime")
-load("//python/private:util.bzl", "IS_BAZEL_6_OR_HIGHER", "add_migration_tag")
 
 # buildifier: disable=native-python
-_py_runtime_impl = _starlark_py_runtime if IS_BAZEL_6_OR_HIGHER else native.py_runtime
+_py_runtime_impl = _starlark_py_runtime
 
 def py_runtime(**attrs):
     """Creates an executable Python program.
@@ -39,4 +38,4 @@ def py_runtime(**attrs):
     if attrs.get("python_version") == "PY2":
         fail("Python 2 is no longer supported: see https://github.com/bazel-contrib/rules_python/issues/886")
 
-    _py_runtime_impl(**add_migration_tag(attrs))
+    _py_runtime_impl(**attrs)

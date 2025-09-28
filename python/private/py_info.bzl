@@ -13,10 +13,8 @@
 # limitations under the License.
 """Implementation of PyInfo provider and PyInfo-specific utilities."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 load(":builders.bzl", "builders")
 load(":reexports.bzl", "BuiltinPyInfo")
-load(":util.bzl", "define_bazel_6_provider")
 
 def _VenvSymlinkKind_typedef():
     """An enum of types of venv directories.
@@ -160,7 +158,7 @@ def _PyInfo_init(
         "venv_symlinks": venv_symlinks,
     }
 
-PyInfo, _unused_raw_py_info_ctor = define_bazel_6_provider(
+PyInfo, _unused_raw_py_info_ctor = provider(
     doc = """Encapsulates information provided by the Python rules.
 
 Instead of creating this object directly, use {obj}`PyInfoBuilder` and
@@ -327,7 +325,7 @@ This field is currently unused in Bazel and may go away in the future.
 )
 
 # The "effective" PyInfo is what the canonical //python:py_info.bzl%PyInfo symbol refers to
-_EffectivePyInfo = PyInfo if (config.enable_pystar or BuiltinPyInfo == None) else BuiltinPyInfo
+_EffectivePyInfo = PyInfo
 
 def _PyInfoBuilder_typedef():
     """Builder for PyInfo.
@@ -630,28 +628,21 @@ def _PyInfoBuilder_build(self):
     Returns:
         {type}`PyInfo`
     """
-    if config.enable_pystar:
-        kwargs = dict(
-            direct_original_sources = self.direct_original_sources.build(),
-            direct_pyc_files = self.direct_pyc_files.build(),
-            direct_pyi_files = self.direct_pyi_files.build(),
-            transitive_implicit_pyc_files = self.transitive_implicit_pyc_files.build(),
-            transitive_implicit_pyc_source_files = self.transitive_implicit_pyc_source_files.build(),
-            transitive_original_sources = self.transitive_original_sources.build(),
-            transitive_pyc_files = self.transitive_pyc_files.build(),
-            transitive_pyi_files = self.transitive_pyi_files.build(),
-            venv_symlinks = self.venv_symlinks.build(),
-        )
-    else:
-        kwargs = {}
-
     return _EffectivePyInfo(
         has_py2_only_sources = self._has_py2_only_sources[0],
         has_py3_only_sources = self._has_py3_only_sources[0],
         imports = self.imports.build(),
         transitive_sources = self.transitive_sources.build(),
         uses_shared_libraries = self._uses_shared_libraries[0],
-        **kwargs
+        direct_original_sources = self.direct_original_sources.build(),
+        direct_pyc_files = self.direct_pyc_files.build(),
+        direct_pyi_files = self.direct_pyi_files.build(),
+        transitive_implicit_pyc_files = self.transitive_implicit_pyc_files.build(),
+        transitive_implicit_pyc_source_files = self.transitive_implicit_pyc_source_files.build(),
+        transitive_original_sources = self.transitive_original_sources.build(),
+        transitive_pyc_files = self.transitive_pyc_files.build(),
+        transitive_pyi_files = self.transitive_pyi_files.build(),
+        venv_symlinks = self.venv_symlinks.build(),
     )
 
 def _PyInfoBuilder_build_builtin_py_info(self):

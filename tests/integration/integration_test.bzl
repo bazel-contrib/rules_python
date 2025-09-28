@@ -35,12 +35,6 @@ def _test_runner(*, name, bazel_version, py_main, bzlmod, gazelle_plugin):
         )
         return test_runner
 
-    if bazel_version.startswith("6") and not bzlmod:
-        if gazelle_plugin:
-            return "//tests/integration:bazel_6_4_workspace_test_runner_gazelle_plugin"
-        else:
-            return "//tests/integration:bazel_6_4_workspace_test_runner"
-
     if bzlmod and gazelle_plugin:
         return "//tests/integration:test_runner_gazelle_plugin"
     elif bzlmod:
