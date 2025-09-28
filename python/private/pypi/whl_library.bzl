@@ -369,7 +369,10 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
-    if rp_config.enable_pipstar:
+    # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
+    # dep_template set or the packages is not set either, we should still not break, best to
+    # disable pipstar for that particular case.
+    if rp_config.enable_pipstar and (rctx.dep_template or rctx.packages):
         pypi_repo_utils.execute_checked(
             rctx,
             op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
