@@ -196,21 +196,6 @@ create thousands of files for every `py_test`), at the risk of having to rely on
 a system having the necessary Python installed.
 """,
     attrs = {
-        "interpreter_target": attr.label(
-            doc = """
-A label to a Python interpreter executable.
-
-*Mutually exclusive with `interpreter_path`.*
-
-On Windows, if the path doesn't exist, various suffixes will be tried to
-find a usable path.
-
-:::{seealso}
-The {obj}`interpreter_path` attribute for getting the interpreter from
-a path or PATH environment lookup.
-:::
-""",
-        ),
         "interpreter_path": attr.string(
             doc = """
 An absolute path or program name on the `PATH` env var.
@@ -231,6 +216,21 @@ a label
 :::
 """,
             default = "",
+        ),
+        "interpreter_target": attr.label(
+            doc = """
+A label to a Python interpreter executable.
+
+*Mutually exclusive with `interpreter_path`.*
+
+On Windows, if the path doesn't exist, various suffixes will be tried to
+find a usable path.
+
+:::{seealso}
+The {obj}`interpreter_path` attribute for getting the interpreter from
+a path or PATH environment lookup.
+:::
+""",
         ),
         "on_failure": attr.string(
             default = _OnFailure.SKIP,
@@ -289,7 +289,6 @@ def _find_python_exe_from_target(rctx):
         return path, None
     attempted_paths.append(path)
 
-    resolved_path = None
     describe_failure = lambda: (
         "Target '{}' could not be resolved to a valid path. " +
         "Attempted paths: {paths}".format("\n".join([str(p) for p in attempted_paths]))
