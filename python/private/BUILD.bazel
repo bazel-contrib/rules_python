@@ -197,7 +197,10 @@ bzl_library(
 bzl_library(
     name = "internal_config_repo_bzl",
     srcs = ["internal_config_repo.bzl"],
-    deps = [":bzlmod_enabled_bzl"],
+    deps = [
+        ":repo_utils_bzl",
+        ":text_util_bzl",
+    ],
 )
 
 bzl_library(
