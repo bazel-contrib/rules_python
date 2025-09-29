@@ -56,7 +56,7 @@ pbs_archive(
 # installation.
 local_runtime_repo(
     name = "repo_python3",
-    interpreter_target = "@pbs_runtime//:python/bin/python3",
+    interpreter_target = "@pbs_runtime//:python/bin/python",
     on_failure = "fail",
 )
 

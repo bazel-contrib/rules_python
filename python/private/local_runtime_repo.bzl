@@ -277,10 +277,11 @@ def _find_python_exe_from_target(rctx):
         return base_path, None
     attempted_paths = [base_path]
 
-    # On Windows, python.exe is in the root, not under `bin/`, so
-    # go up a directory
-
-    path = base_path.dirname.dirname.get_child(base_path.basename)
+    # Try to convert a unix-y path to a Windows path. On Linux/Mac,
+    # the path is usually `bin/python3`. On Windows, it's simply
+    # `python.exe`.
+    basename = base_path.basename.rstrip("3")
+    path = base_path.dirname.dirname.get_child(basename)
     path = rctx.path("{}.exe".format(path))
     if path.exists:
         return path, None
