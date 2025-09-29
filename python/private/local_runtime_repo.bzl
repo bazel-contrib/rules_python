@@ -271,6 +271,31 @@ def _expand_incompatible_template():
         os = "@platforms//:incompatible",
     )
 
+def _find_python_exe_from_target(rctx):
+    base_path = rctx.path(rctx.attr.interpreter_target)
+    if base_path.exists:
+        return base_path, None
+    attempted_paths = [base_path]
+
+    # On Windows, python.exe is in the root, not under `bin/`
+    path = rctx.path("{}/{}.exe".format(base_path.dirname, base_path.basename))
+    if path.exists:
+        return path, None
+    attempted_paths.append(path)
+
+    # Try adding .exe to the base path
+    path = rctx.path("{}.exe".format(base_path))
+    if path.exists:
+        return path, None
+    attempted_paths.append(path)
+
+    resolved_path = None
+    describe_failure = lambda: (
+        "Target '{}' could not be resolved to a valid path. " +
+        "Attempted paths: {paths}".format("\n".join(attempted_paths))
+    )
+    return None, describe_failure
+
 def _resolve_interpreter_path(rctx):
     """Find the absolute path for an interpreter.
 
@@ -288,19 +313,7 @@ def _resolve_interpreter_path(rctx):
         fail("interpreter_path and interpreter_target are mutually exclusive")
 
     if rctx.attr.interpreter_target:
-        path = rctx.path(rctx.attr.interpreter_target)
-        if path.exists:
-            resolved_path = path
-            describe_failure = None
-        else:
-            resolved_path = None
-            describe_failure = lambda: (
-                "Target '{}' resolved to path '{}', but that file does't exist".format(
-                    rctx.attr.interpreter_target,
-                    path,
-                )
-            )
-
+        resolved_path, describe_failure = _find_python_exe_from_target(rctx)
     else:
         interpreter_path = rctx.attr.interpreter_path or "python3"
         if "/" not in interpreter_path and "\\" not in interpreter_path:
