@@ -292,7 +292,7 @@ def _find_python_exe_from_target(rctx):
     resolved_path = None
     describe_failure = lambda: (
         "Target '{}' could not be resolved to a valid path. " +
-        "Attempted paths: {paths}".format("\n".join(attempted_paths))
+        "Attempted paths: {paths}".format("\n".join([str(p) for p in attempted_paths]))
     )
     return None, describe_failure
 
