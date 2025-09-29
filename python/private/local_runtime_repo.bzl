@@ -296,7 +296,7 @@ def _resolve_interpreter_path(rctx):
             resolved_path = None
             describe_failure = lambda: (
                 "Target '{}' resolved to path '{}', but that file does't exist".format(
-                    rctx.attr.interpreter_taret,
+                    rctx.attr.interpreter_target,
                     path,
                 )
             )
