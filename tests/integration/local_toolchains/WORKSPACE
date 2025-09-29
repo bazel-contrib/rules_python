@@ -9,7 +9,11 @@ local_repository(
 
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
-py_repositories()
+py_repositories(
+    transition_settings = [
+        "@//:py",
+    ],
+)
 
 load("@rules_python//python/local_toolchains:repos.bzl", "local_runtime_repo", "local_runtime_toolchains_repo")
 
@@ -46,7 +50,26 @@ local_runtime_repo(
 # Step 2: Create toolchains for the runtimes
 local_runtime_toolchains_repo(
     name = "local_toolchains",
-    runtimes = ["local_python3"],
+    runtimes = [
+        "local_python3",
+        "repo_python3",
+    ],
+    target_compatible_with = {
+        "local_python3": [
+            "HOST_CONSTRAINTS",
+        ],
+        "repo_python3": [
+            "HOST_CONSTRAINTS",
+        ],
+    },
+    target_settings = {
+        "local_python3": [
+            "@//:is_py_local",
+        ],
+        "repo_python3": [
+            "@//:is_py_repo",
+        ],
+    },
 )
 
 # Step 3: Register the toolchains
