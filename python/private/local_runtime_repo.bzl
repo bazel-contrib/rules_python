@@ -196,17 +196,41 @@ create thousands of files for every `py_test`), at the risk of having to rely on
 a system having the necessary Python installed.
 """,
     attrs = {
+        "interpreter_target": attr.label(
+doc = """
+A label to a Python interpreter executable.
+
+*Mutually exclusive with `interpreter_path`.*
+
+On Windows, if the path doesn't exist, various suffixes will be tried to
+find a usable path.
+
+:::{seealso}
+The {obj}`interpreter_path` attribute for getting the interpreter from
+a path or PATH environment lookup.
+:::
+"""
+),
         "interpreter_path": attr.string(
             doc = """
 An absolute path or program name on the `PATH` env var.
+
+*Mutually exclusive with `interpreter_target`.*
 
 Values with slashes are assumed to be the path to a program. Otherwise, it is
 treated as something to search for on `PATH`
 
 Note that, when a plain program name is used, the path to the interpreter is
 resolved at repository evalution time, not runtime of any resulting binaries.
+
+If not set, defaults to `python3`.
+
+:::{seealso}
+The {obj}`interpreter_target` attribute for getting the interpreter from
+a label
+:::
 """,
-            default = "python3",
+            default = "",
         ),
         "on_failure": attr.string(
             default = _OnFailure.SKIP,
@@ -260,20 +284,34 @@ def _resolve_interpreter_path(rctx):
           returns a description of why it couldn't be resolved
         A path object or None. The path may not exist.
     """
-    if "/" not in rctx.attr.interpreter_path and "\\" not in rctx.attr.interpreter_path:
-        # Provide a bit nicer integration with pyenv: recalculate the runtime if the
-        # user changes the python version using e.g. `pyenv shell`
-        repo_utils.getenv(rctx, "PYENV_VERSION")
-        result = repo_utils.which_unchecked(rctx, rctx.attr.interpreter_path)
-        resolved_path = result.binary
-        describe_failure = result.describe_failure
-    else:
-        rctx.watch(rctx.attr.interpreter_path)
-        resolved_path = rctx.path(rctx.attr.interpreter_path)
-        if not resolved_path.exists:
-            describe_failure = lambda: "Path not found: {}".format(repr(rctx.attr.interpreter_path))
-        else:
+    if rctx.attr.interpreter_path and rctx.attr.interpreter_target:
+        fail("interpreter_path and interpreter_target are mutually exclusive")
+
+    if rctx.attr.interpreter_target:
+        path = rctx.path(rctx.attr.interpreter_target)
+        if path.exists:
+            resolved_path = path
             describe_failure = None
+        else:
+            resolved_path = None
+            describe_failure = lambda: "Target '{}' could not be resolved to a file that exists".format(rctx.attr.interpreter_target)
+
+    else:
+        interpreter_path = rctx.attr.interpreter_path or "python3"
+        if "/" not in interpreter_path and "\\" not in interpreter_path:
+            # Provide a bit nicer integration with pyenv: recalculate the runtime if the
+            # user changes the python version using e.g. `pyenv shell`
+            repo_utils.getenv(rctx, "PYENV_VERSION")
+            result = repo_utils.which_unchecked(rctx, interpreter_path)
+            resolved_path = result.binary
+            describe_failure = result.describe_failure
+        else:
+            rctx.watch(interpreter_path)
+            resolved_path = rctx.path(interpreter_path)
+            if not resolved_path.exists:
+                describe_failure = lambda: "Path not found: {}".format(repr(interpreter_path))
+            else:
+                describe_failure = None
 
     return struct(
         resolved_path = resolved_path,

@@ -6,6 +6,10 @@ import tempfile
 import unittest
 
 
+import config
+
+print(f"{config.CONFIG=}")
+
 class LocalToolchainTest(unittest.TestCase):
     maxDiff = None
 
@@ -28,7 +32,7 @@ class LocalToolchainTest(unittest.TestCase):
 import sys
 print(sys.executable)
 print(sys._base_executable)
-"""
+=
                 )
                 f.flush()
             output_lines = (

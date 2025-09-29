@@ -107,6 +107,7 @@ END_UNRELEASED_TEMPLATE
     {obj}`py_cc_toolchain.headers_abi3`, and {obj}`PyCcToolchainInfo.headers_abi3`.
   * {obj}`//python:features.bzl%features.headers_abi3` can be used to
     feature-detect the presense of the above.
+* (toolchains) Local toolchains can use a label for the interpreter to use.
 
 {#v1-6-3}
 ## [1.6.3] - 2025-09-21
