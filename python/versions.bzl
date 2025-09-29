@@ -1045,7 +1045,13 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
     for u in url:
         p, _, _ = platform.partition(FREETHREADED)
 
-        release_id = int(u.split("/")[-2])
+        # Assume an unknown release_id is a newer url format
+        release_id = 99999999
+        url_parts = u.split("/")
+        if len(url_parts) >= 2:
+            maybe_release_id = url_parts[-2]
+            if maybe_release_id.isdigit():
+                release_id = int(maybe_release_id)
 
         if FREETHREADED.lstrip("-") in platform:
             build = "{}+{}-full".format(
