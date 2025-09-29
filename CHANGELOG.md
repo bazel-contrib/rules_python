@@ -69,6 +69,14 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
   changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
   paths, runtime site-packages]`.
+* If using the (deprecated) autodetecting/runtime_env toolchain, then the Python
+  version specified at build-time *must* match the Python version used at
+  runtime (the {obj}`--@rules_python//python/config_settings:python_version`
+  flag and the {attr}`python_version` attribute control the build-time version
+  for a target). If they don't match, dependencies won't be importable. (Such a
+  misconfiguration was unlikely to work to begin with; this is called out as an
+  FYI).
+* (rules) {obj}`--bootstrap_impl=script` is the default for non-Windows for Bazel 8 and above.
 
 {#v0-0-0-fixed}
 ### Fixed
