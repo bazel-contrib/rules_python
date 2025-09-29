@@ -106,6 +106,7 @@ sphinx_stardocs(
         "//python/cc:py_cc_toolchain_bzl",
         "//python/cc:py_cc_toolchain_info_bzl",
         "//python/entry_points:py_console_script_binary_bzl",
+        "//python/extensions:config_bzl",
         "//python/extensions:python_bzl",
         "//python/local_toolchains:repos_bzl",
         "//python/private:attr_builders_bzl",
