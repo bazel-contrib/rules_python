@@ -197,7 +197,7 @@ a system having the necessary Python installed.
 """,
     attrs = {
         "interpreter_target": attr.label(
-doc = """
+            doc = """
 A label to a Python interpreter executable.
 
 *Mutually exclusive with `interpreter_path`.*
@@ -209,8 +209,8 @@ find a usable path.
 The {obj}`interpreter_path` attribute for getting the interpreter from
 a path or PATH environment lookup.
 :::
-"""
-),
+""",
+        ),
         "interpreter_path": attr.string(
             doc = """
 An absolute path or program name on the `PATH` env var.
@@ -294,7 +294,12 @@ def _resolve_interpreter_path(rctx):
             describe_failure = None
         else:
             resolved_path = None
-            describe_failure = lambda: "Target '{}' could not be resolved to a file that exists".format(rctx.attr.interpreter_target)
+            describe_failure = lambda: (
+                "Target '{}' resolved to path '{}', but that file does't exist".format(
+                    rctx.attr.interpreter_taret,
+                    path,
+                )
+            )
 
     else:
         interpreter_path = rctx.attr.interpreter_path or "python3"
