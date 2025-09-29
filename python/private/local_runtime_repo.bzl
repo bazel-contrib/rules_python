@@ -277,8 +277,11 @@ def _find_python_exe_from_target(rctx):
         return base_path, None
     attempted_paths = [base_path]
 
-    # On Windows, python.exe is in the root, not under `bin/`
-    path = rctx.path("{}/{}.exe".format(base_path.dirname, base_path.basename))
+    # On Windows, python.exe is in the root, not under `bin/`, so
+    # go up a directory
+
+    path = base_path.dirname.dirname.relative_paths(base_path.basename)
+    path = rctx.path("{}.exe".format(path))
     if path.exists:
         return path, None
     attempted_paths.append(path)
