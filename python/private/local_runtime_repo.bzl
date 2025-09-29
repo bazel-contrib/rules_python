@@ -280,7 +280,7 @@ def _find_python_exe_from_target(rctx):
     # On Windows, python.exe is in the root, not under `bin/`, so
     # go up a directory
 
-    path = base_path.dirname.dirname.relative_paths(base_path.basename)
+    path = base_path.dirname.dirname.get_child(base_path.basename)
     path = rctx.path("{}.exe".format(path))
     if path.exists:
         return path, None
@@ -294,10 +294,10 @@ def _find_python_exe_from_target(rctx):
 
     describe_failure = lambda: (
         "Target '{target}' could not be resolved to a valid path. " +
-        "Attempted paths: {paths}".format(
-            target = rctx.attr.interpreter_target,
-            paths = "\n".join([str(p) for p in attempted_paths]),
-        )
+        "Attempted paths: {paths}"
+    ).format(
+        target = rctx.attr.interpreter_target,
+        paths = "\n".join([str(p) for p in attempted_paths]),
     )
     return None, describe_failure
 
