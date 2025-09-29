@@ -25,7 +25,7 @@ def _pbs_archive_impl(repository_ctx):
         ))
 
     url = urls[os_name]
-    sha256 = sha256s.get(os_name)
+    sha256 = sha256s.get(os_name, "")
 
     repository_ctx.download_and_extract(
         url = url,

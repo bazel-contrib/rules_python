@@ -23,10 +23,12 @@ local_path_override(
     path = "../../..",
 )
 
+# Step 1: Define the python runtime
 local_runtime_repo = use_repo_rule("@rules_python//python/local_toolchains:repos.bzl", "local_runtime_repo")
 
 local_runtime_toolchains_repo = use_repo_rule("@rules_python//python/local_toolchains:repos.bzl", "local_runtime_toolchains_repo")
 
+# This will use `python3` from the environment
 local_runtime_repo(
     name = "local_python3",
     interpreter_path = "python3",
@@ -43,18 +45,24 @@ pbs_archive(
         "mac osx": "4fb42ffc8aad2a42ca7646715b8926bc6b2e0d31f13d2fec25943dc236a6fd60",
     },
     urls = {
-        "windows": "https://github.com/astral-sh/python-build-standalone/releases/download/20250918/cpython-3.13.7+20250918-x86_64-pc-windows-msvc-install_only.tar.gz",
+        "windows server 2022": "https://github.com/astral-sh/python-build-standalone/releases/download/20250918/cpython-3.13.7+20250918-x86_64-pc-windows-msvc-install_only.tar.gz",
         "linux": "https://github.com/astral-sh/python-build-standalone/releases/download/20250918/cpython-3.13.7+20250918-x86_64-unknown-linux-gnu-install_only.tar.gz",
-        "mac os x": "https://github.com/astral-sh/python-build-standalone/releases/download/20250918/cpython-3.13.7+20250918-x86_64-apple-darwin-install_only.tar.gz",
+        "mac osx": "https://github.com/astral-sh/python-build-standalone/releases/download/20250918/cpython-3.13.7+20250918-x86_64-apple-darwin-install_only.tar.gz",
     },
 )
 
+# This will use Python from the `pbs_runtime` repository.
+# The pbs_runtime is just an example; the repo just needs to be a valid Python
+# installation.
 local_runtime_repo(
     name = "repo_python3",
     interpreter_target = "@pbs_runtime//:python/bin/python3",
     on_failure = "fail",
 )
 
+# Step 2: Create toolchains for the runtimes
+# Below, we configure them to only activate if the `//:py` flag has particular
+# values.
 local_runtime_toolchains_repo(
     name = "local_toolchains",
     runtimes = [
@@ -84,6 +92,7 @@ config.add_transition_setting(setting = "//:py")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.13")
-use_repo(python, "python_3_13_host", "rules_python_bzlmod_debug")
+use_repo(python, "rules_python_bzlmod_debug")
 
+# Step 3: Register the toolchains
 register_toolchains("@local_toolchains//:all")
