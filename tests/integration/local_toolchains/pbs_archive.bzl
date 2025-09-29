@@ -28,7 +28,6 @@ def _pbs_archive_impl(repository_ctx):
     repository_ctx.download_and_extract(
         url = url,
         sha256 = sha256,
-        strip_prefix = repository_ctx.attr.strip_prefix,
     )
 
     repository_ctx.file("BUILD.bazel", BUILD_BAZEL)
@@ -39,9 +38,6 @@ pbs_archive = repository_rule(
         "sha256": attr.string_dict(
             doc = "A dictionary of SHA256 checksums for the archives, keyed by OS name.",
             mandatory = True,
-        ),
-        "strip_prefix": attr.string(
-            doc = "The prefix to strip from the archive.",
         ),
         "urls": attr.string_dict(
             doc = "A dictionary of URLs to the runtime archives, keyed by OS name (e.g., 'linux', 'windows').",
