@@ -62,10 +62,7 @@ try:
     elif "GNU readline" in readline.__doc__:  # type: ignore
         readline.parse_and_bind("tab: complete")
     else:
-        print(
-            "Could not enable tab completion: "
-            "unable to determine readline backend"
-        )
+        print("Could not enable tab completion: unable to determine readline backend")
 except ImportError:
     print(
         "Could not enable tab completion: "

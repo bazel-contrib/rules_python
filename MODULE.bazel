@@ -192,7 +192,7 @@ use_repo(pip, "rules_python_publish_deps")
 bazel_dep(name = "stardoc", version = "0.7.2", repo_name = "io_bazel_stardoc")
 
 # ===== DEV ONLY DEPS AND SETUP BELOW HERE =====
-bazel_dep(name = "rules_bazel_integration_test", version = "0.27.0", dev_dependency = True)
+bazel_dep(name = "rules_bazel_integration_test", version = "0.33.2", dev_dependency = True)
 bazel_dep(name = "rules_testing", version = "0.6.0", dev_dependency = True)
 bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
