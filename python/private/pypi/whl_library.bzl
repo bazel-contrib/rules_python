@@ -428,7 +428,7 @@ def _whl_library_impl(rctx):
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
                 rctx.attr.repo_prefix,
             ),
-            packages = rctx.attr.packages,
+            packages = rctx.attr.packages if rctx.attr.repo_prefix else [],
             entry_points = entry_points,
             metadata_name = metadata.name,
             metadata_version = metadata.version,
