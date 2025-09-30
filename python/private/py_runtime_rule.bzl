@@ -21,6 +21,7 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
+load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
@@ -387,11 +388,11 @@ def _is_singleton_depset(files):
     return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    parts = version_str.split(".")
+    v = version.parse(version_str)
     version_info = {}
+    parts = list(v.release)
     for key in ("major", "minor", "micro"):
         if not parts:
             break
         version_info[key] = parts.pop(0)
-
     return version_info

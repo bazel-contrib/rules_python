@@ -531,6 +531,7 @@ bzl_library(
         ":py_runtime_info_bzl",
         ":reexports_bzl",
         ":rule_builders_bzl",
+        ":version_bzl",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",

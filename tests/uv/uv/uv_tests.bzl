@@ -21,6 +21,7 @@ load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-
 load("//python/uv:uv_toolchain_info.bzl", "UvToolchainInfo")
 load("//python/uv/private:uv.bzl", "process_modules")  # buildifier: disable=bzl-visibility
 load("//python/uv/private:uv_toolchain.bzl", "uv_toolchain")  # buildifier: disable=bzl-visibility
+load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
 
@@ -575,7 +576,7 @@ def _test_toolchain_precedence(name):
             "//command_line_option:extra_toolchains": [
                 str(Label("//tests/uv/uv_toolchains:all")),
             ],
-            "//command_line_option:platforms": str(Label("//tests/support:linux_aarch64")),
+            "//command_line_option:platforms": str(platform_targets.LINUX_AARCH64),
         },
     )
 

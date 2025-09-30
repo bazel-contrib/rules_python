@@ -622,7 +622,8 @@ def parse(version_str, strict = False, _fail = fail):
         # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
 
-    return struct(
+    # buildifier: disable=uninitialized
+    self = struct(
         epoch = _parse_epoch(parts["epoch"], _fail),
         release = _parse_release(parts["release"]),
         pre = _parse_pre(parts["pre"]),
@@ -631,7 +632,9 @@ def parse(version_str, strict = False, _fail = fail):
         local = _parse_local(parts["local"], _fail),
         string = parts["norm"],
         is_prefix = parts["is_prefix"],
+        key = lambda *a, **k: _version_key(self, *a, **k),
     )
+    return self
 
 def _parse_epoch(value, fail):
     if not value:
