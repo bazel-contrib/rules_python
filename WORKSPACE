@@ -129,6 +129,7 @@ pip_parse(
     requirements_darwin = "//tools/publish:requirements_darwin.txt",
     requirements_lock = "//tools/publish:requirements_linux.txt",
     requirements_windows = "//tools/publish:requirements_windows.txt",
+    use_hub_alias_dependencies = True,
 )
 
 load("@rules_python_publish_deps//:requirements.bzl", "install_deps")
