@@ -1060,6 +1060,7 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
                     "x86_64-apple-darwin": "pgo+lto",
                     "x86_64-pc-windows-msvc": "pgo",
                     "x86_64-unknown-linux-gnu": "pgo+lto",
+                    "x86_64-unknown-linux-musl": "pgo+lto",
                 }[p],
             )
         else:
