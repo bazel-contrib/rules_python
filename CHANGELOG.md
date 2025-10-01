@@ -73,9 +73,9 @@ END_UNRELEASED_TEMPLATE
   off use `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable. If you do, please
   add a comment to
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949). On `WORKSPACE`
-  you will see `whl_library` re-fetching if the list of packages in the 
-  `requirements.txt` file changes, to workaround this in cases where you are not
-  vendoring the requirements you can set
+  you will see `whl_library` re-fetching if the list of packages in the
+  `requirements.txt` file changes. To work around this in cases where you are not
+  vendoring the requirements, you can set
   {obj}`pip_repository.use_hub_alias_dependencies` to `True`.
 
 {#v0-0-0-fixed}
