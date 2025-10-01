@@ -69,6 +69,8 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
   changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
   paths, runtime site-packages]`.
+* (pip) Publishing deps are no longer pulled via `experimental_index_url`.
+  ([#2937](https://github.com/bazel-contrib/rules_python/issues/2937)).
 
 {#v0-0-0-fixed}
 ### Fixed
