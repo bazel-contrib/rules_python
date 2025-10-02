@@ -86,6 +86,10 @@ END_UNRELEASED_TEMPLATE
   ([#3204](https://github.com/bazel-contrib/rules_python/issues/3204)).
 * (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
   runtime.
+* (toolchains) WORKSPACE builds now correctly register musl and freethreaded
+  variants. Setting {obj}`--py_linux_libc=musl` and `--py_freethreaded=yes` now
+  activate them, respectively.
+  ([#3262](https://github.com/bazel-contrib/rules_python/issues/3262)).
 
 {#v0-0-0-added}
 ### Added

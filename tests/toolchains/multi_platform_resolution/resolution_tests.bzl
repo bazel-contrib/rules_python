@@ -141,13 +141,6 @@ def _test_toolchains(name):
         if runtime.libc:
             config_settings[labels.PY_LINUX_LIBC] = runtime.libc
 
-        # TODO: Workspace isn't correctly registering musl and freethreaded
-        # toolchains, so skip them for now.
-        target_compatible_with = []
-        if not BZLMOD_ENABLED and (runtime.libc == "musl" or
-                                   runtime.freethreaded == "yes"):
-            target_compatible_with = ["@platforms//:incompatible"]
-
         analysis_test(
             name = test_name,
             target = name + "_current_toolchain",
