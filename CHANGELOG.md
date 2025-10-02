@@ -72,6 +72,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (rules) The `PyInfo` constructor was setting the wrong value for
+  `has_py3_only_sources` - this is now fixed.
 * (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
   environments, fixing issues where a `py_binary` calls another `py_binary`
   ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
