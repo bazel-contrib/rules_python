@@ -102,7 +102,7 @@ def _compute_runtimes():
     selected_versions = sorted(
         TOOL_VERSIONS.keys(),
         key = lambda v: version.parse(v).key(),
-    )[-2::1]
+    )[-2:]
 
     for python_version in selected_versions:
         for platform in _PLATFORMS:
