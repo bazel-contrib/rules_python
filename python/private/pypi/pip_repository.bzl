@@ -156,7 +156,7 @@ def _pip_repository_impl(rctx):
     imports = [
         # NOTE: Maintain the order consistent with `buildifier`
         'load("@rules_python//python:pip.bzl", "pip_utils")',
-        'load("@rules_python//python/pip_install:pip_repository.bzl", "group_library", "whl_library")',
+        'load("@rules_python//python/pip_install:pip_repository.bzl", "group_library", "whl_config_repository", "whl_library")',
     ]
 
     annotations = {}
@@ -203,6 +203,13 @@ def _pip_repository_impl(rctx):
 
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
+        "    # %%CONFIG_LIBRARY%%": """\
+    whl_config_library(
+        name = config_repo,
+        whl_map = {
+            p: "" for p in all_whl_requirements_by_package
+        },
+    )""",
         "    # %%GROUP_LIBRARY%%": """\
     group_repo = "{name}__groups"
     group_library(

@@ -451,6 +451,7 @@ def _common_args(self, module_ctx, *, pip_attr):
     # attrs.
     whl_library_args = dict(
         dep_template = "@{}//{{name}}:{{target}}".format(self.name),
+        config_load = "@{}//:config.bzl".format(self.name),
     )
     maybe_args = dict(
         # The following values are safe to omit if they have false like values

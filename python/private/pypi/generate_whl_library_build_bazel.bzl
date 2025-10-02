@@ -83,15 +83,11 @@ def generate_whl_library_build_bazel(
             "target_platforms",
             "default_python_version",
         ]
-        dep_template = kwargs.get("dep_template")
-        packages = kwargs.pop("packages", [])
+        packages_load = kwargs.pop("config_load")
         if not kwargs.get("requires_dist"):
             # no deps, we can leave the extra loads out
             pass
-        elif packages:
-            kwargs["include"] = render.list(packages)
         else:
-            packages_load = dep_template.format(name = "", target = "requirements.bzl")
             loads.append("""load("{}", "{}")""".format(packages_load, "packages"))
             kwargs["include"] = "packages"
 

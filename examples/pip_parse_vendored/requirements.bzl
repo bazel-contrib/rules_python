@@ -4,7 +4,7 @@
 """
 
 load("@rules_python//python:pip.bzl", "pip_utils")
-load("@rules_python//python/pip_install:pip_repository.bzl", "group_library", "whl_library")
+load("@rules_python//python/pip_install:pip_repository.bzl", "group_library", "whl_config_repository", "whl_library")
 
 all_requirements = [
     "@my_project_pip_deps_vendored_certifi//:pkg",
@@ -31,8 +31,6 @@ all_data_requirements = [
     "@my_project_pip_deps_vendored_requests//:data",
     "@my_project_pip_deps_vendored_urllib3//:data",
 ]
-
-packages = sorted(all_whl_requirements_by_package)
 
 _packages = [
     ("my_project_pip_deps_vendored_certifi", "certifi==2023.7.22 --hash=sha256:539cc1d13202e33ca466e88b2807e29f4c13049d6d87031a3c110744495cb082 --hash=sha256:92d6037539857d8206b8f6ae472e8b77db8058fec5937a1ef3f54304089edbb9"),
@@ -100,6 +98,15 @@ def install_deps(**whl_library_kwargs):
         groups = all_requirement_groups,
     )
 
+    config_repo = "my_project_pip_deps_vendored__config"
+    whl_config_repository(
+        name = config_repo,
+        whl_map = {
+            p: ""
+            for p in all_whl_requirements_by_package
+        },
+    )
+
     # Install wheels which may be participants in a group
     whl_config = dict(_config)
     whl_config.update(whl_library_kwargs)
@@ -114,6 +121,6 @@ def install_deps(**whl_library_kwargs):
             group_name = group_name,
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
-            packages = packages,
+            config_load = "@{}//:config.bzl".format(config_repo),
             **whl_config
         )

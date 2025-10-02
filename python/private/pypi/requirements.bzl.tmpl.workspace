@@ -13,8 +13,6 @@ all_whl_requirements = all_whl_requirements_by_package.values()
 
 all_data_requirements = %%ALL_DATA_REQUIREMENTS%%
 
-packages = sorted(all_whl_requirements_by_package)
-
 _packages = %%PACKAGES%%
 _config = %%CONFIG%%
 _annotations = %%ANNOTATIONS%%
@@ -56,6 +54,15 @@ def install_deps(**whl_library_kwargs):
 
     # %%GROUP_LIBRARY%%
 
+    config_repo = "%%NAME%%__config"
+    whl_config_repository(
+        name = config_repo,
+        whl_map = {
+            p: ""
+            for p in all_whl_requirements_by_package
+        },
+    )
+
     # Install wheels which may be participants in a group
     whl_config = dict(_config)
     whl_config.update(whl_library_kwargs)
@@ -70,6 +77,6 @@ def install_deps(**whl_library_kwargs):
             group_name = group_name,
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
-            packages = packages,
+            config_load = "@{}//:config.bzl".format(config_repo),
             **whl_config
         )

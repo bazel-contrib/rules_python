@@ -372,7 +372,7 @@ def _whl_library_impl(rctx):
     # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
     # dep_template set or the packages is not set either, we should still not break, best to
     # disable pipstar for that particular case.
-    if rp_config.enable_pipstar and (rctx.attr.dep_template or rctx.attr.packages):
+    if rp_config.enable_pipstar and rctx.attr.config_load:
         pypi_repo_utils.execute_checked(
             rctx,
             op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
@@ -428,7 +428,7 @@ def _whl_library_impl(rctx):
             dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
                 rctx.attr.repo_prefix,
             ),
-            packages = rctx.attr.packages if rctx.attr.repo_prefix else [],
+            config_load = rctx.attr.config_load,
             entry_points = entry_points,
             metadata_name = metadata.name,
             metadata_version = metadata.version,
@@ -578,6 +578,9 @@ whl_library_attrs = dict({
         ),
         allow_files = True,
     ),
+    "config_load": attr.string(
+        doc = "The load location for configuration for pipstar.",
+    ),
     "dep_template": attr.string(
         doc = """
 The dep template to use for referencing the dependencies. It should have `{name}`
@@ -597,9 +600,6 @@ For example if your whl depends on `numpy` and your Python package repo is named
     ),
     "group_name": attr.string(
         doc = "Name of the group, if any.",
-    ),
-    "packages": attr.string_list(
-        doc = "The list of packages to include in the transitive dependencies. This may be used in workspace where one may vendor the requirements.bzl file.",
     ),
     "repo": attr.string(
         doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",
