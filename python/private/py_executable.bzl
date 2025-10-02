@@ -1859,7 +1859,3 @@ def cc_configure_features(
         feature_configuration = feature_configuration,
         requested_features = requested_features,
     )
-
-only_exposed_for_google_internal_reason = struct(
-    create_runfiles_with_build_data = _create_runfiles_with_build_data,
-)

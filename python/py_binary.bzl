@@ -15,7 +15,6 @@
 """Public entry point for py_binary."""
 
 load("//python/private:py_binary_macro.bzl", _py_binary = "py_binary")
-load("//python/private:register_extension_info.bzl", "register_extension_info")
 
 def py_binary(**attrs):
     """Creates an executable Python program.
@@ -38,8 +37,3 @@ def py_binary(**attrs):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
     _py_binary(**attrs)
-
-register_extension_info(
-    extension = py_binary,
-    label_regex_for_dep = "{extension_name}",
-)

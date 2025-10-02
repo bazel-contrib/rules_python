@@ -15,7 +15,6 @@
 """Public entry point for py_test."""
 
 load("//python/private:py_test_macro.bzl", _py_test = "py_test")
-load("//python/private:register_extension_info.bzl", "register_extension_info")
 
 def py_test(**attrs):
     """Creates an executable Python program.
@@ -39,8 +38,3 @@ def py_test(**attrs):
 
     # buildifier: disable=native-python
     _py_test(**attrs)
-
-register_extension_info(
-    extension = py_test,
-    label_regex_for_dep = "{extension_name}",
-)

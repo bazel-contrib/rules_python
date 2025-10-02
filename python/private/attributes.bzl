@@ -44,12 +44,6 @@ REQUIRED_EXEC_GROUP_BUILDERS = {
     "py_precompile": lambda: ruleb.ExecGroup(),
 }
 
-# Backwards compatibility symbol for Google.
-REQUIRED_EXEC_GROUPS = {
-    k: v().build()
-    for k, v in REQUIRED_EXEC_GROUP_BUILDERS.items()
-}
-
 _STAMP_VALUES = [-1, 0, 1]
 
 def _precompile_attr_get_effective_value(ctx):

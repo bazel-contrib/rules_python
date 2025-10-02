@@ -15,7 +15,6 @@
 """Public entry point for py_library."""
 
 load("//python/private:py_library_macro.bzl", _py_library = "py_library")
-load("//python/private:register_extension_info.bzl", "register_extension_info")
 
 def py_library(**attrs):
     """Creates an executable Python program.
@@ -35,8 +34,3 @@ def py_library(**attrs):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
     _py_library(**attrs)
-
-register_extension_info(
-    extension = py_library,
-    label_regex_for_dep = "{extension_name}",
-)
