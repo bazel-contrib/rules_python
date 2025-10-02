@@ -204,12 +204,16 @@ def _pip_repository_impl(rctx):
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
         "    # %%CONFIG_LIBRARY%%": """\
-    whl_config_library(
+    config_repo = "{name}__config"
+    whl_config_repository(
         name = config_repo,
-        whl_map = {
-            p: "" for p in all_whl_requirements_by_package
-        },
-    )""",
+        whl_map = {{
+            p: ""
+            for p in all_whl_requirements_by_package
+        }},
+    )""".format(name = rctx.attr.name) if not rctx.attr.use_hub_alias_dependencies else """\
+    config_repo = "{name}"
+""".format(name = rctx.attr.name),
         "    # %%GROUP_LIBRARY%%": """\
     group_repo = "{name}__groups"
     group_library(

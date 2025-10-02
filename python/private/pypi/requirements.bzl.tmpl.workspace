@@ -54,14 +54,7 @@ def install_deps(**whl_library_kwargs):
 
     # %%GROUP_LIBRARY%%
 
-    config_repo = "%%NAME%%__config"
-    whl_config_repository(
-        name = config_repo,
-        whl_map = {
-            p: ""
-            for p in all_whl_requirements_by_package
-        },
-    )
+    # %%CONFIG_LIBRARY%%
 
     # Install wheels which may be participants in a group
     whl_config = dict(_config)
