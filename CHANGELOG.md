@@ -74,6 +74,12 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) `py_runtime` and `PyRuntimeInfo` reject Python 2 settings.
   Setting `py_runtime.python_version = "PY2"` or non-None
   `PyRuntimeInfo.py2_runtime` is an error.
+* (pypi) `pipstar` flag has been flipped to be enabled by default, to turn it
+  off use `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable. If you do, please
+  add a comment to
+  [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
+  With this release we are deprecating {obj}`pip.parse.experimental_target_platforms` and
+  {obj}`pip_repository.experimental_target_platforms`.
 
 {#v0-0-0-fixed}
 ### Fixed

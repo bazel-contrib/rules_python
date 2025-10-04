@@ -156,7 +156,7 @@ def _pip_repository_impl(rctx):
     imports = [
         # NOTE: Maintain the order consistent with `buildifier`
         'load("@rules_python//python:pip.bzl", "pip_utils")',
-        'load("@rules_python//python/pip_install:pip_repository.bzl", "group_library", "whl_library")',
+        'load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repository", "whl_library")',
     ]
 
     annotations = {}
@@ -193,7 +193,7 @@ def _pip_repository_impl(rctx):
     aliases = render_pkg_aliases(
         aliases = {
             pkg: rctx.attr.name + "_" + pkg
-            for pkg in bzl_packages or []
+            for pkg in bzl_packages
         },
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = requirement_cycles,
@@ -202,14 +202,31 @@ def _pip_repository_impl(rctx):
         rctx.file(path, contents)
 
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
+    if rctx.attr.use_hub_alias_dependencies:
+        rctx.template(
+            "config.bzl",
+            rctx.attr._config_template,
+            substitutions = {
+                "%%PACKAGES%%": render.dict({
+                    pkg: None
+                    for pkg in bzl_packages
+                }, value_repr = lambda x: "None"),
+            },
+        )
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
-        "    # %%GROUP_LIBRARY%%": """\
-    group_repo = "{name}__groups"
-    group_library(
-        name = group_repo,
+        "    # %%CONFIG_REPO%%": """\
+    config_repo = "{name}__config"
+    whl_config_repository(
+        name = config_repo,
         repo_prefix = "{name}_",
         groups = all_requirement_groups,
-    )""".format(name = rctx.attr.name) if not rctx.attr.use_hub_alias_dependencies else "",
+        whl_map = {{
+            p: ""
+            for p in all_whl_requirements_by_package
+        }},
+    )""".format(name = rctx.attr.name) if not rctx.attr.use_hub_alias_dependencies else """\
+    config_repo = "{name}"
+""".format(name = rctx.attr.name),
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
             for p in bzl_packages
@@ -248,6 +265,9 @@ capitalization matching the input requirements file, and values should be
 generated using the `package_name` macro. For example usage, see [this WORKSPACE
 file](https://github.com/bazel-contrib/rules_python/blob/main/examples/pip_repository_annotations/WORKSPACE).
 """,
+        ),
+        _config_template = attr.label(
+            default = ":config.bzl.tmpl",
         ),
         _template = attr.label(
             default = ":requirements.bzl.tmpl.workspace",

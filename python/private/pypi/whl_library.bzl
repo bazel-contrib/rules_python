@@ -369,7 +369,10 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
-    if rp_config.enable_pipstar:
+    # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
+    # dep_template set or the packages is not set either, we should still not break, best to
+    # disable pipstar for that particular case.
+    if rp_config.enable_pipstar and rctx.attr.config_load:
         pypi_repo_utils.execute_checked(
             rctx,
             op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
@@ -422,7 +425,10 @@ def _whl_library_impl(rctx):
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
             sdist_filename = sdist_filename,
-            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
+            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
+                rctx.attr.repo_prefix,
+            ),
+            config_load = rctx.attr.config_load,
             entry_points = entry_points,
             metadata_name = metadata.name,
             metadata_version = metadata.version,
@@ -571,6 +577,9 @@ whl_library_attrs = dict({
             "See `package_annotation`"
         ),
         allow_files = True,
+    ),
+    "config_load": attr.string(
+        doc = "The load location for configuration for pipstar.",
     ),
     "dep_template": attr.string(
         doc = """

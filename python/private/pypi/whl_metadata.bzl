@@ -26,7 +26,11 @@ def whl_metadata(*, install_dir, read_fn, logger):
     result = parse_whl_metadata(contents)
 
     if not (result.name and result.version):
-        logger.fail("Failed to parsed the wheel METADATA file:\n{}".format(contents))
+        logger.fail("Failed to parse the wheel METADATA file:\n{}\n{}\n{}".format(
+            80 * "=",
+            contents.rstrip("\n"),
+            80 * "=",
+        ))
         return None
 
     return result
