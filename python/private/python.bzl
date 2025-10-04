@@ -15,7 +15,7 @@
 "Python toolchain module extensions for use with bzlmod."
 
 load("@bazel_features//:features.bzl", "bazel_features")
-load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VERSIONS")
+load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "MINOR_MAPPING", "PLATFORMS", "TOOL_VERSIONS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
 load(":platform_info.bzl", "platform_info")
@@ -83,7 +83,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
     if not module_ctx.modules[0].tags.toolchain:
         ignore_root_user_error = True
 
-    config = _get_toolchain_config(modules = module_ctx.modules, _fail = _fail)
+    config = _get_toolchain_config(module_ctx = module_ctx, _fail = _fail)
 
     default_python_version = _compute_default_python_version(module_ctx)
 
@@ -562,7 +562,7 @@ def _validate_version(version_str, *, _fail = fail):
 
     return True
 
-def _process_single_version_overrides(*, tag, _fail = fail, default):
+def _process_single_version_overrides(*, tag, _fail = fail, default, module_ctx = None):  # buildifier: disable=unused-variable
     if not _validate_version(tag.python_version, _fail = _fail):
         return
 
@@ -612,31 +612,65 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
     if tag.distutils:
         kwargs.setdefault(tag.python_version, {})["distutils"] = tag.distutils
 
-def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
-    if not _validate_version(tag.python_version, _fail = _fail):
+def _process_single_version_platform_overrides(*, tag, _fail = fail, default, module_ctx):
+    python_version = tag.python_version
+    python_version_env = getattr(tag, "python_version_env", None)
+    if python_version_env:
+        python_version = module_ctx.getenv(python_version_env, python_version)
+
+    if not python_version:
+        _fail("Either `python_version` or `python_version_env` must be specified and non-empty for python.single_version_platform_override.")
+        return
+
+    parsed_version = version.parse(python_version, _fail = _fail)
+    if not parsed_version:
+        _fail("Failed to parse PEP 440 version identifier '{}'. Parse error at '{}'".format(python_version, python_version))
+        return
+    if len(parsed_version.release) < 3:
+        if python_version in MINOR_MAPPING:
+            python_version = MINOR_MAPPING[python_version]
+
+    if not _validate_version(python_version, _fail = _fail):
         return
 
     available_versions = default["tool_versions"]
 
-    if tag.python_version not in available_versions:
-        if not tag.urls or not tag.sha256 or not tag.strip_prefix:
-            _fail("When introducing a new python_version '{}', 'sha256', 'strip_prefix' and 'urls' must be specified".format(tag.python_version))
+    sha256 = getattr(tag, "sha256", None)
+    sha256_env = getattr(tag, "sha256_env", None)
+    if sha256_env:
+        sha256 = module_ctx.getenv(sha256_env, sha256)
+
+    strip_prefix = tag.strip_prefix
+    strip_prefix_env = getattr(tag, "strip_prefix_env", None)
+    if strip_prefix_env:
+        strip_prefix = module_ctx.getenv(strip_prefix_env, strip_prefix)
+
+    urls = getattr(tag, "urls", None)
+    url_env = getattr(tag, "url_env", None)
+    if url_env:
+        urls_from_env = module_ctx.getenv(url_env)
+        if urls_from_env:
+            urls = [url.strip() for url in urls_from_env.split(",") if url.strip()]
+
+    if python_version not in available_versions:
+        if not urls or not sha256 or not strip_prefix:
+            _fail("When introducing a new python_version '{}', 'sha256', 'strip_prefix' and 'urls' must be specified".format(python_version))
             return
-        available_versions[tag.python_version] = {}
+        available_versions[python_version] = {}
 
     if tag.coverage_tool:
-        available_versions[tag.python_version].setdefault("coverage_tool", {})[tag.platform] = tag.coverage_tool
+        available_versions[python_version].setdefault("coverage_tool", {})[tag.platform] = tag.coverage_tool
     if tag.patch_strip:
-        available_versions[tag.python_version].setdefault("patch_strip", {})[tag.platform] = tag.patch_strip
+        available_versions[python_version].setdefault("patch_strip", {})[tag.platform] = tag.patch_strip
     if tag.patches:
-        available_versions[tag.python_version].setdefault("patches", {})[tag.platform] = list(tag.patches)
-    if tag.sha256:
-        available_versions[tag.python_version].setdefault("sha256", {})[tag.platform] = tag.sha256
-    if tag.strip_prefix:
-        available_versions[tag.python_version].setdefault("strip_prefix", {})[tag.platform] = tag.strip_prefix
+        available_versions[python_version].setdefault("patches", {})[tag.platform] = list(tag.patches)
+    if sha256:
+        available_versions[python_version].setdefault("sha256", {})[tag.platform] = sha256
+    if strip_prefix:
+        available_versions[python_version].setdefault("strip_prefix", {})[tag.platform] = strip_prefix
 
-    if tag.urls:
-        available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
+    if urls:
+        available_versions[python_version].setdefault("url", {})[tag.platform] = urls
 
     # If platform is customized, or doesn't exist, (re)define one.
     if ((tag.target_compatible_with or tag.target_settings or tag.os_name or tag.arch) or
@@ -684,7 +718,7 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
 
         default["platforms"] = override_first
 
-def _process_global_overrides(*, tag, default, _fail = fail):
+def _process_global_overrides(*, tag, default, _fail = fail, module_ctx = None):  # buildifier: disable=unused-variable
     if tag.available_python_versions:
         available_versions = default["tool_versions"]
         all_versions = dict(available_versions)
@@ -719,8 +753,8 @@ def _process_global_overrides(*, tag, default, _fail = fail):
         if getattr(tag, key, None):
             default[key] = getattr(tag, key)
 
-def _override_defaults(*overrides, modules, _fail = fail, default):
-    mod = modules[0] if modules else None
+def _override_defaults(*overrides, module_ctx, _fail = fail, default):
+    mod = module_ctx.modules[0] if module_ctx.modules else None
     if not mod or not mod.is_root:
         return
 
@@ -738,13 +772,13 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
                 _fail("Only a single 'python.{}' can be present".format(override.name))
                 return
 
-            override.fn(tag = tag, _fail = _fail, default = default)
+            override.fn(tag = tag, _fail = _fail, default = default, module_ctx = module_ctx)
 
-def _get_toolchain_config(*, modules, _fail = fail):
+def _get_toolchain_config(*, module_ctx, _fail = fail):
     """Computes the configs for toolchains.
 
     Args:
-        modules: The modules from module_ctx
+        module_ctx: {type}`module_ctx` module context.
         _fail: Function to call for failing; only used for testing.
 
     Returns:
@@ -812,7 +846,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
             key = lambda t: None,
             fn = _process_global_overrides,
         ),
-        modules = modules,
+        module_ctx = module_ctx,
         default = default,
         _fail = _fail,
     )
@@ -1322,17 +1356,44 @@ Arbitrary platform strings allowed.
             ),
         ),
         "python_version": attr.string(
-            mandatory = True,
-            doc = "The python version to override URLs for. Must be in `X.Y.Z` format.",
+            mandatory = False,
+            doc = "The python version to override URLs for. Must be in `X.Y.Z` or `X.Y` format.",
+        ),
+        "python_version_env": attr.string(
+            mandatory = False,
+            doc = """\
+The environment variable for the python version. Overrides `python_version` if set.
+
+:::{{versionadded}} 1.6.4
+:::
+""",
         ),
         "sha256": attr.string(
             mandatory = False,
             doc = "The sha256 for the archive",
         ),
+        "sha256_env": attr.string(
+            mandatory = False,
+            doc = """\
+The environment variable for the sha256. Overrides `sha256` if set.
+
+:::{{versionadded}} 1.6.4
+:::
+""",
+        ),
         "strip_prefix": attr.string(
             mandatory = False,
             doc = "The 'strip_prefix' for the archive, defaults to 'python'.",
             default = "python",
+        ),
+        "strip_prefix_env": attr.string(
+            mandatory = False,
+            doc = """\
+The environment variable for the strip_prefix. Overrides `strip_prefix` if set.
+
+:::{{versionadded}} 1.6.4
+:::
+""",
         ),
         "target_compatible_with": attr.string_list(
             doc = """
@@ -1361,6 +1422,15 @@ Docs for [Registering custom runtimes]
 :::
 
 :::{{versionadded}} 1.5.0
+:::
+""",
+        ),
+        "url_env": attr.string(
+            mandatory = False,
+            doc = """\
+The environment variable for a comma-separated list of URLs. Overrides `urls` if set.
+
+:::{{versionadded}} 1.6.4
 :::
 """,
         ),
