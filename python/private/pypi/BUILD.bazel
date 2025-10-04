@@ -409,6 +409,15 @@ bzl_library(
 )
 
 bzl_library(
+    name = "whl_config_repository_bzl",
+    srcs = ["whl_config_repository.bzl"],
+    deps = [
+        ":generate_group_library_build_bazel_bzl",
+        "//python/private:text_util_bzl",
+    ],
+)
+
+bzl_library(
     name = "whl_config_setting_bzl",
     srcs = ["whl_config_setting.bzl"],
 )

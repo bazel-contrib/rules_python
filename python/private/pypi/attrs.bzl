@@ -152,6 +152,7 @@ Special values: `host` (for generating deps for the host platform only) and
 
 NOTE: this is not for cross-compiling Python wheels but rather for parsing the `whl` METADATA correctly.
 """,
+        deprecated = "Use pipstar instead of this feature",
     ),
     "extra_hub_aliases": attr.string_list_dict(
         doc = """\

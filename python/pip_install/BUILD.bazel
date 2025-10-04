@@ -24,7 +24,7 @@ bzl_library(
     deps = [
         "//python/private/pypi:package_annotation_bzl",
         "//python/private/pypi:pip_repository_bzl",
-        "//python/private/pypi:whl_config_library_bzl",
+        "//python/private/pypi:whl_config_repository_bzl",
         "//python/private/pypi:whl_library_bzl",
     ],
 )

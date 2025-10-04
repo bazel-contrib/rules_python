@@ -73,6 +73,8 @@ END_UNRELEASED_TEMPLATE
   off use `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable. If you do, please
   add a comment to
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
+  With this PR we are deprecating {obj}`pip.parse.experimental_target_platforms` and
+  {obj}`pip_repository.experimental_target_platforms`. It will be removed in the version.
 
 {#v0-0-0-fixed}
 ### Fixed
