@@ -27,7 +27,6 @@ whl_config_repository = repository_rule(
             doc = "Prefix used for the whl_library created components of each group",
         ),
         "whl_map": attr.string_dict(
-            mandatory = True,
             doc = """\
 The wheel map where values are json.encoded strings of the whl_map constructed
 in the pip.parse tag class.

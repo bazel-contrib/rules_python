@@ -156,7 +156,7 @@ def _pip_repository_impl(rctx):
     imports = [
         # NOTE: Maintain the order consistent with `buildifier`
         'load("@rules_python//python:pip.bzl", "pip_utils")',
-        'load("@rules_python//python/pip_install:pip_repository.bzl", "group_library", "whl_config_repository", "whl_library")',
+        'load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repository", "whl_library")',
     ]
 
     annotations = {}
