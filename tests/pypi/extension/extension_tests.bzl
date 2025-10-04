@@ -168,6 +168,7 @@ def _test_simple(env):
     }})
     pypi.whl_libraries().contains_exactly({
         "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",

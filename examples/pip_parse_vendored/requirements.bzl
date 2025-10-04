@@ -91,7 +91,7 @@ def install_deps(**whl_library_kwargs):
         for requirement in group_requirements
     }
 
-    group_repo = "my_project_pip_deps_vendored__groups"
+    group_repo = "my_project_pip_deps_vendored__config"
     group_library(
         name = group_repo,
         repo_prefix = "my_project_pip_deps_vendored_",

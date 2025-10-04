@@ -135,6 +135,7 @@ def _test_simple(env):
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
@@ -186,11 +187,13 @@ def _test_simple_multiple_requirements(env):
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_simple_osx_aarch64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
         },
         "pypi_315_simple_windows_aarch64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
@@ -276,21 +279,25 @@ new-package==0.0.1 --hash=sha256:deadb00f2
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_old_package": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "old-package==0.0.1 --hash=sha256:deadbaaf",
         },
         "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
         },
         "pypi_316_new_package": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "new-package==0.0.1 --hash=sha256:deadb00f2",
         },
         "pypi_316_simple": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
@@ -357,11 +364,13 @@ torch==2.4.1 ; platform_machine != 'x86_64' \
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_torch_linux_aarch64_osx_aarch64_windows_aarch64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1 --hash=sha256:deadbeef",
         },
         "pypi_315_torch_linux_x86_64_linux_x86_64_freethreaded": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "torch==2.4.1+cpu",
@@ -515,6 +524,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -523,6 +533,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -531,6 +542,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -539,6 +551,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -615,6 +628,7 @@ simple==0.0.3 \
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_extra": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
@@ -622,6 +636,7 @@ simple==0.0.3 \
             "requirement": "extra==0.0.1 --hash=sha256:deadb00f",
         },
         "pypi_315_simple_linux_x86_64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
@@ -629,6 +644,7 @@ simple==0.0.3 \
             "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
         },
         "pypi_315_simple_osx_aarch64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "download_only": True,
             "extra_pip_args": ["--platform=macosx_10_9_arm64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
@@ -814,6 +830,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_any_name": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
@@ -823,6 +840,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "urls": ["some-archive/any-name.tar.gz"],
         },
         "pypi_315_direct_without_sha_0_0_1_py3_none_any": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -831,18 +849,21 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_git_dep": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef",
         },
         "pypi_315_pip_fallback": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "pip_fallback==0.0.1",
         },
         "pypi_315_simple_py3_none_any_deadb00f": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -851,6 +872,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "urls": ["example2.org"],
         },
         "pypi_315_some_pkg_py3_none_any_deadbaaf": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -859,6 +881,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "urls": ["example-direct.org/some_pkg-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_some_py3_none_any_deadb33f": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -942,11 +965,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
         },
         "pypi_315_optimum_osx_aarch64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime]==1.17.1",
@@ -1023,11 +1048,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     })
     pypi.whl_libraries().contains_exactly({
         "pypi_315_optimum_mylinuxx86_64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
         },
         "pypi_315_optimum_myosxaarch64": {
+            "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime]==1.17.1",

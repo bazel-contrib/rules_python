@@ -274,12 +274,18 @@ def whl_library_targets(
     if group_name and "//:" in dep_template:
         # This is the legacy behaviour where the group library is outside the hub repo
         label_tmpl = dep_template.format(
-            name = "_groups",
+            name = "_config",
             target = normalize_name(group_name) + "_{}",
+        ).replace(
+            "//:",
+            "//_groups:",
         )
         impl_vis = [dep_template.format(
-            name = "_groups",
+            name = "_config",
             target = "__pkg__",
+        ).replace(
+            "//:",
+            "//_groups:",
         )]
 
         native.alias(

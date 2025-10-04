@@ -420,8 +420,8 @@ def _test_group(env):
     )
 
     env.expect.that_collection(alias_calls).contains_exactly([
-        {"name": "pkg", "actual": "@pypi__groups//:qux_pkg", "visibility": ["//visibility:public"]},
-        {"name": "whl", "actual": "@pypi__groups//:qux_whl", "visibility": ["//visibility:public"]},
+        {"name": "pkg", "actual": "@pypi__config//_groups:qux_pkg", "visibility": ["//visibility:public"]},
+        {"name": "whl", "actual": "@pypi__config//_groups:qux_whl", "visibility": ["//visibility:public"]},
     ])  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(py_library_calls).has_size(1)
@@ -446,7 +446,7 @@ def _test_group(env):
             "//conditions:default": [],
         }),
         "tags": [],
-        "visibility": ["@pypi__groups//:__pkg__"],
+        "visibility": ["@pypi__config//_groups:__pkg__"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
     })  # buildifier: @unsorted-dict-items
 

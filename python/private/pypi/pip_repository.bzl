@@ -203,10 +203,12 @@ def _pip_repository_impl(rctx):
 
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
-        "    # %%CONFIG_LIBRARY%%": """\
+        "    # %%CONFIG_REPO%%": """\
     config_repo = "{name}__config"
     whl_config_repository(
         name = config_repo,
+        repo_prefix = "{name}_",
+        groups = all_requirement_groups,
         whl_map = {{
             p: ""
             for p in all_whl_requirements_by_package
@@ -214,13 +216,6 @@ def _pip_repository_impl(rctx):
     )""".format(name = rctx.attr.name) if not rctx.attr.use_hub_alias_dependencies else """\
     config_repo = "{name}"
 """.format(name = rctx.attr.name),
-        "    # %%GROUP_LIBRARY%%": """\
-    group_repo = "{name}__groups"
-    group_library(
-        name = group_repo,
-        repo_prefix = "{name}_",
-        groups = all_requirement_groups,
-    )""".format(name = rctx.attr.name) if not rctx.attr.use_hub_alias_dependencies else "",
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
             for p in bzl_packages
