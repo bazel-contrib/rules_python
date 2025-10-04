@@ -146,7 +146,7 @@ def _PyInfo_init(
         "direct_pyc_files": direct_pyc_files,
         "direct_pyi_files": direct_pyi_files,
         "has_py2_only_sources": has_py2_only_sources,
-        "has_py3_only_sources": has_py2_only_sources,
+        "has_py3_only_sources": has_py3_only_sources,
         "imports": imports,
         "transitive_implicit_pyc_files": transitive_implicit_pyc_files,
         "transitive_implicit_pyc_source_files": transitive_implicit_pyc_source_files,

@@ -31,7 +31,7 @@ _subject = rule(
 )
 
 _flag = struct(
-    platform = lambda x: ("//command_line_option:platforms", str(Label("//tests/support:" + x))),
+    platform = lambda x: ("//command_line_option:platforms", str(Label("//tests/support/platforms:" + x))),
     pip_whl = lambda x: (str(Label("//python/config_settings:pip_whl")), str(x)),
     pip_whl_glibc_version = lambda x: (str(Label("//python/config_settings:pip_whl_glibc_version")), str(x)),
     pip_whl_muslc_version = lambda x: (str(Label("//python/config_settings:pip_whl_muslc_version")), str(x)),

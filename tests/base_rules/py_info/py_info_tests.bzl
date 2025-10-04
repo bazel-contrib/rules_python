@@ -35,7 +35,7 @@ def _provide_py_info_impl(ctx):
     if ctx.attr.has_py2_only_sources != -1:
         kwargs["has_py2_only_sources"] = bool(ctx.attr.has_py2_only_sources)
     if ctx.attr.has_py3_only_sources != -1:
-        kwargs["has_py2_only_sources"] = bool(ctx.attr.has_py2_only_sources)
+        kwargs["has_py3_only_sources"] = bool(ctx.attr.has_py3_only_sources)
 
     providers = []
     providers.append(PyInfo(**kwargs))

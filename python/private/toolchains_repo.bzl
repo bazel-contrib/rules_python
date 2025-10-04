@@ -214,7 +214,7 @@ def python_toolchain_build_file_content(
             user_repository_name = "{}_{}".format(user_repository_name, platform),
             python_version = python_version,
             set_python_version_constraint = set_python_version_constraint,
-            target_settings = [],
+            target_settings = meta.target_settings,
         ))
     return "\n\n".join(entries)
 

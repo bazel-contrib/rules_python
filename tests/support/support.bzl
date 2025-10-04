@@ -21,13 +21,6 @@
 
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
-MAC = Label("//tests/support:mac")
-MAC_X86_64 = Label("//tests/support:mac_x86_64")
-LINUX = Label("//tests/support:linux")
-LINUX_X86_64 = Label("//tests/support:linux_x86_64")
-WINDOWS = Label("//tests/support:windows")
-WINDOWS_X86_64 = Label("//tests/support:windows_x86_64")
-
 PY_TOOLCHAINS = str(Label("//tests/support/py_toolchains:all"))
 CC_TOOLCHAIN = str(Label("//tests/support/cc_toolchains:all"))
 CROSSTOOL_TOP = Label("//tests/support/cc_toolchains:cc_toolchain_suite")

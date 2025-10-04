@@ -85,46 +85,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
 
     config = _get_toolchain_config(modules = module_ctx.modules, _fail = _fail)
 
-    default_python_version = None
-    for mod in module_ctx.modules:
-        defaults_attr_structs = _create_defaults_attr_structs(mod = mod)
-        default_python_version_env = None
-        default_python_version_file = None
-
-        # Only the root module and rules_python are allowed to specify the default
-        # toolchain for a couple reasons:
-        # * It prevents submodules from specifying different defaults and only
-        #   one of them winning.
-        # * rules_python needs to set a soft default in case the root module doesn't,
-        #   e.g. if the root module doesn't use Python itself.
-        # * The root module is allowed to override the rules_python default.
-        if mod.is_root or (mod.name == "rules_python" and not default_python_version):
-            for defaults_attr in defaults_attr_structs:
-                default_python_version = _one_or_the_same(
-                    default_python_version,
-                    defaults_attr.python_version,
-                    onerror = _fail_multiple_defaults_python_version,
-                )
-                default_python_version_env = _one_or_the_same(
-                    default_python_version_env,
-                    defaults_attr.python_version_env,
-                    onerror = _fail_multiple_defaults_python_version_env,
-                )
-                default_python_version_file = _one_or_the_same(
-                    default_python_version_file,
-                    defaults_attr.python_version_file,
-                    onerror = _fail_multiple_defaults_python_version_file,
-                )
-            if default_python_version_file:
-                default_python_version = _one_or_the_same(
-                    default_python_version,
-                    module_ctx.read(default_python_version_file, watch = "yes").strip(),
-                )
-            if default_python_version_env:
-                default_python_version = module_ctx.getenv(
-                    default_python_version_env,
-                    default_python_version,
-                )
+    default_python_version = _compute_default_python_version(module_ctx)
 
     seen_versions = {}
     for mod in module_ctx.modules:
@@ -152,13 +113,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                 # * rules_python needs to set a soft default in case the root module doesn't,
                 #   e.g. if the root module doesn't use Python itself.
                 # * The root module is allowed to override the rules_python default.
-                if default_python_version:
-                    is_default = default_python_version == toolchain_version
-                    if toolchain_attr.is_default and not is_default:
-                        fail("The 'is_default' attribute doesn't work if you set " +
-                             "the default Python version with the `defaults` tag.")
-                else:
-                    is_default = toolchain_attr.is_default
+                is_default = default_python_version == toolchain_version
 
                 # Also only the root module should be able to decide ignore_root_user_error.
                 # Modules being depended upon don't know the final environment, so they aren't
@@ -169,15 +124,15 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                     fail("Toolchains in the root module must have consistent 'ignore_root_user_error' attributes")
 
                 ignore_root_user_error = toolchain_attr.ignore_root_user_error
-            elif mod.name == "rules_python" and not default_toolchain and not default_python_version:
-                # We don't do the len() check because we want the default that rules_python
-                # sets to be clearly visible.
-                is_default = toolchain_attr.is_default
+            elif mod.name == "rules_python" and not default_toolchain:
+                # This branch handles when the root module doesn't declare a
+                # Python toolchain
+                is_default = default_python_version == toolchain_version
             else:
                 is_default = False
 
             if is_default and default_toolchain != None:
-                _fail_multiple_default_toolchains(
+                _fail_multiple_default_toolchains_chosen(
                     first = default_toolchain.name,
                     second = toolchain_name,
                 )
@@ -577,12 +532,22 @@ def _fail_multiple_defaults_python_version_env(first, second):
         second = second,
     ))
 
-def _fail_multiple_default_toolchains(first, second):
+def _fail_multiple_default_toolchains_chosen(first, second):
     fail(("Multiple default toolchains: only one toolchain " +
-          "can have is_default=True. First default " +
+          "can be chosen as a default. First default " +
           "was toolchain '{first}'. Second was '{second}'").format(
         first = first,
         second = second,
+    ))
+
+def _fail_multiple_default_toolchains_in_module(mod, toolchain_attrs):
+    fail(("Multiple default toolchains: only one toolchain " +
+          "can have is_default=True.\n" +
+          "Module '{module}' contains {count} toolchains with " +
+          "is_default=True: {versions}").format(
+        module = mod.name,
+        count = len(toolchain_attrs),
+        versions = ", ".join(sorted([v.python_version for v in toolchain_attrs])),
     ))
 
 def _validate_version(version_str, *, _fail = fail):
@@ -880,6 +845,72 @@ def _get_toolchain_config(*, modules, _fail = fail):
         register_all_versions = register_all_versions,
     )
 
+def _compute_default_python_version(mctx):
+    default_python_version = None
+    for mod in mctx.modules:
+        # Only the root module and rules_python are allowed to specify the default
+        # toolchain for a couple reasons:
+        # * It prevents submodules from specifying different defaults and only
+        #   one of them winning.
+        # * rules_python needs to set a soft default in case the root module doesn't,
+        #   e.g. if the root module doesn't use Python itself.
+        # * The root module is allowed to override the rules_python default.
+        if not (mod.is_root or mod.name == "rules_python"):
+            continue
+
+        defaults_attr_structs = _create_defaults_attr_structs(mod = mod)
+        default_python_version_env = None
+        default_python_version_file = None
+
+        for defaults_attr in defaults_attr_structs:
+            default_python_version = _one_or_the_same(
+                default_python_version,
+                defaults_attr.python_version,
+                onerror = _fail_multiple_defaults_python_version,
+            )
+            default_python_version_env = _one_or_the_same(
+                default_python_version_env,
+                defaults_attr.python_version_env,
+                onerror = _fail_multiple_defaults_python_version_env,
+            )
+            default_python_version_file = _one_or_the_same(
+                default_python_version_file,
+                defaults_attr.python_version_file,
+                onerror = _fail_multiple_defaults_python_version_file,
+            )
+        if default_python_version_file:
+            default_python_version = _one_or_the_same(
+                default_python_version,
+                mctx.read(default_python_version_file, watch = "yes").strip(),
+            )
+        if default_python_version_env:
+            default_python_version = mctx.getenv(
+                default_python_version_env,
+                default_python_version,
+            )
+
+        if default_python_version:
+            break
+
+        # Otherwise, look at legacy python.toolchain() calls for a default
+        toolchain_attrs = mod.tags.toolchain
+
+        # Convenience: if one python.toolchain() call exists, treat it as
+        # the default.
+        if len(toolchain_attrs) == 1:
+            default_python_version = toolchain_attrs[0].python_version
+        else:
+            sets_default = [v for v in toolchain_attrs if v.is_default]
+            if len(sets_default) == 1:
+                default_python_version = sets_default[0].python_version
+            elif len(sets_default) > 1:
+                _fail_multiple_default_toolchains_in_module(mod, toolchain_attrs)
+
+        if default_python_version:
+            break
+
+    return default_python_version
+
 def _create_defaults_attr_structs(*, mod):
     arg_structs = []
 
@@ -915,7 +946,11 @@ def _create_toolchain_attr_structs(*, mod, config, seen_versions):
 
     return arg_structs
 
-def _create_toolchain_attrs_struct(*, tag = None, python_version = None, toolchain_tag_count = None):
+def _create_toolchain_attrs_struct(
+        *,
+        tag = None,
+        python_version = None,
+        toolchain_tag_count = None):
     if tag and python_version:
         fail("Only one of tag and python version can be specified")
     if tag:

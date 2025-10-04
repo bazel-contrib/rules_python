@@ -20,7 +20,7 @@ load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "LINUX", "MAC")
+load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _LookupInfo = provider()  # buildifier: disable=provider-params
 
@@ -126,9 +126,9 @@ def _test_exec_matches_target_python_version(name):
         target = name + "_subject",
         impl = _test_exec_matches_target_python_version_impl,
         config_settings = {
-            "//command_line_option:extra_execution_platforms": [str(MAC)],
+            "//command_line_option:extra_execution_platforms": [str(platform_targets.MAC)],
             "//command_line_option:extra_toolchains": ["//tests/exec_toolchain_matching:all"],
-            "//command_line_option:platforms": [str(LINUX)],
+            "//command_line_option:platforms": [str(platform_targets.LINUX)],
             labels.PYTHON_VERSION: "3.12",
         },
     )

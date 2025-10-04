@@ -200,13 +200,37 @@ a system having the necessary Python installed.
             doc = """
 An absolute path or program name on the `PATH` env var.
 
+*Mutually exclusive with `interpreter_target`.*
+
 Values with slashes are assumed to be the path to a program. Otherwise, it is
 treated as something to search for on `PATH`
 
 Note that, when a plain program name is used, the path to the interpreter is
 resolved at repository evalution time, not runtime of any resulting binaries.
+
+If not set, defaults to `python3`.
+
+:::{seealso}
+The {obj}`interpreter_target` attribute for getting the interpreter from
+a label
+:::
 """,
-            default = "python3",
+            default = "",
+        ),
+        "interpreter_target": attr.label(
+            doc = """
+A label to a Python interpreter executable.
+
+*Mutually exclusive with `interpreter_path`.*
+
+On Windows, if the path doesn't exist, various suffixes will be tried to
+find a usable path.
+
+:::{seealso}
+The {obj}`interpreter_path` attribute for getting the interpreter from
+a path or PATH environment lookup.
+:::
+""",
         ),
         "on_failure": attr.string(
             default = _OnFailure.SKIP,
@@ -247,6 +271,37 @@ def _expand_incompatible_template():
         os = "@platforms//:incompatible",
     )
 
+def _find_python_exe_from_target(rctx):
+    base_path = rctx.path(rctx.attr.interpreter_target)
+    if base_path.exists:
+        return base_path, None
+    attempted_paths = [base_path]
+
+    # Try to convert a unix-y path to a Windows path. On Linux/Mac,
+    # the path is usually `bin/python3`. On Windows, it's simply
+    # `python.exe`.
+    basename = base_path.basename.rstrip("3")
+    path = base_path.dirname.dirname.get_child(basename)
+    path = rctx.path("{}.exe".format(path))
+    if path.exists:
+        return path, None
+    attempted_paths.append(path)
+
+    # Try adding .exe to the base path
+    path = rctx.path("{}.exe".format(base_path))
+    if path.exists:
+        return path, None
+    attempted_paths.append(path)
+
+    describe_failure = lambda: (
+        "Target '{target}' could not be resolved to a valid path. " +
+        "Attempted paths: {paths}"
+    ).format(
+        target = rctx.attr.interpreter_target,
+        paths = "\n".join([str(p) for p in attempted_paths]),
+    )
+    return None, describe_failure
+
 def _resolve_interpreter_path(rctx):
     """Find the absolute path for an interpreter.
 
@@ -260,20 +315,27 @@ def _resolve_interpreter_path(rctx):
           returns a description of why it couldn't be resolved
         A path object or None. The path may not exist.
     """
-    if "/" not in rctx.attr.interpreter_path and "\\" not in rctx.attr.interpreter_path:
-        # Provide a bit nicer integration with pyenv: recalculate the runtime if the
-        # user changes the python version using e.g. `pyenv shell`
-        repo_utils.getenv(rctx, "PYENV_VERSION")
-        result = repo_utils.which_unchecked(rctx, rctx.attr.interpreter_path)
-        resolved_path = result.binary
-        describe_failure = result.describe_failure
+    if rctx.attr.interpreter_path and rctx.attr.interpreter_target:
+        fail("interpreter_path and interpreter_target are mutually exclusive")
+
+    if rctx.attr.interpreter_target:
+        resolved_path, describe_failure = _find_python_exe_from_target(rctx)
     else:
-        rctx.watch(rctx.attr.interpreter_path)
-        resolved_path = rctx.path(rctx.attr.interpreter_path)
-        if not resolved_path.exists:
-            describe_failure = lambda: "Path not found: {}".format(repr(rctx.attr.interpreter_path))
+        interpreter_path = rctx.attr.interpreter_path or "python3"
+        if "/" not in interpreter_path and "\\" not in interpreter_path:
+            # Provide a bit nicer integration with pyenv: recalculate the runtime if the
+            # user changes the python version using e.g. `pyenv shell`
+            repo_utils.getenv(rctx, "PYENV_VERSION")
+            result = repo_utils.which_unchecked(rctx, interpreter_path)
+            resolved_path = result.binary
+            describe_failure = result.describe_failure
         else:
-            describe_failure = None
+            rctx.watch(interpreter_path)
+            resolved_path = rctx.path(interpreter_path)
+            if not resolved_path.exists:
+                describe_failure = lambda: "Path not found: {}".format(repr(interpreter_path))
+            else:
+                describe_failure = None
 
     return struct(
         resolved_path = resolved_path,

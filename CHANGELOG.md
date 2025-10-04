@@ -69,6 +69,11 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
   changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
   paths, runtime site-packages]`.
+* (pip) Publishing deps are no longer pulled via `experimental_index_url`.
+  ([#2937](https://github.com/bazel-contrib/rules_python/issues/2937)).
+* (toolchains) `py_runtime` and `PyRuntimeInfo` reject Python 2 settings.
+  Setting `py_runtime.python_version = "PY2"` or non-None
+  `PyRuntimeInfo.py2_runtime` is an error.
 * (pypi) `pipstar` flag has been flipped to be enabled by default, to turn it
   off use `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable. If you do, please
   add a comment to
@@ -78,6 +83,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (rules) The `PyInfo` constructor was setting the wrong value for
+  `has_py3_only_sources` - this is now fixed.
 * (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
   environments, fixing issues where a `py_binary` calls another `py_binary`
   ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
@@ -85,9 +92,15 @@ END_UNRELEASED_TEMPLATE
   length errors due to too long environment variables.
 * (bootstrap) {obj}`--bootstrap_impl=script` now supports the `-S` interpreter
   setting.
-* (venvs) {obj}`--vens_site_packages=yes` no longer errors when packages with
+* (venvs) {obj}`--venvs_site_packages=yes` no longer errors when packages with
   overlapping files or directories are used together.
   ([#3204](https://github.com/bazel-contrib/rules_python/issues/3204)).
+* (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
+  runtime.
+* (toolchains) WORKSPACE builds now correctly register musl and freethreaded
+  variants. Setting {obj}`--py_linux_libc=musl` and `--py_freethreaded=yes` now
+  activate them, respectively.
+  ([#3262](https://github.com/bazel-contrib/rules_python/issues/3262)).
 
 {#v0-0-0-added}
 ### Added
@@ -113,6 +126,7 @@ END_UNRELEASED_TEMPLATE
     {obj}`py_cc_toolchain.headers_abi3`, and {obj}`PyCcToolchainInfo.headers_abi3`.
   * {obj}`//python:features.bzl%features.headers_abi3` can be used to
     feature-detect the presense of the above.
+* (toolchains) Local toolchains can use a label for the interpreter to use.
 
 {#v1-6-3}
 ## [1.6.3] - 2025-09-21

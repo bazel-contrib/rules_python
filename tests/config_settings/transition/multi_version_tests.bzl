@@ -22,6 +22,7 @@ load("//python:py_info.bzl", "PyInfo")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "CC_TOOLCHAIN")
+load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 # NOTE @aignas 2024-06-04: we are using here something that is registered in the MODULE.Bazel
 # and if you find tests failing, it could be because of the toolchain resolution issues here.
@@ -92,7 +93,7 @@ def _setup_py_binary_windows(name, *, impl, build_python_zip):
         config_settings = {
             "//command_line_option:build_python_zip": build_python_zip,
             "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
-            "//command_line_option:platforms": str(Label("//tests/support:windows_x86_64")),
+            "//command_line_option:platforms": str(platform_targets.WINDOWS_X86_64),
         },
     )
 

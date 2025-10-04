@@ -126,7 +126,6 @@ bzl_library(
     srcs = ["py_binary.bzl"],
     deps = [
         "//python/private:py_binary_macro_bzl",
-        "//python/private:register_extension_info_bzl",
     ],
 )
 
@@ -175,7 +174,6 @@ bzl_library(
     srcs = ["py_library.bzl"],
     deps = [
         "//python/private:py_library_macro_bzl",
-        "//python/private:register_extension_info_bzl",
     ],
 )
 
@@ -208,7 +206,6 @@ bzl_library(
     srcs = ["py_test.bzl"],
     deps = [
         "//python/private:py_test_macro_bzl",
-        "//python/private:register_extension_info_bzl",
     ],
 )
 

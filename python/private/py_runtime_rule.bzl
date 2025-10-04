@@ -21,6 +21,7 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
+load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
@@ -86,10 +87,9 @@ def _py_runtime_impl(ctx):
         if python_version_flag:
             interpreter_version_info = _interpreter_version_info_from_version_str(python_version_flag)
 
-    # TODO: Uncomment this after --incompatible_python_disable_py2 defaults to true
-    # if ctx.fragments.py.disable_py2 and python_version == "PY2":
-    #     fail("Using Python 2 is not supported and disabled; see " +
-    #          "https://github.com/bazelbuild/bazel/issues/15684")
+    if python_version == "PY2":
+        fail("Using Python 2 is not supported and disabled; see " +
+             "https://github.com/bazelbuild/bazel/issues/15684")
 
     pyc_tag = ctx.attr.pyc_tag
     if not pyc_tag and (ctx.attr.implementation_name and
@@ -387,11 +387,11 @@ def _is_singleton_depset(files):
     return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    parts = version_str.split(".")
+    v = version.parse(version_str)
     version_info = {}
+    parts = list(v.release)
     for key in ("major", "minor", "micro"):
         if not parts:
             break
         version_info[key] = parts.pop(0)
-
     return version_info

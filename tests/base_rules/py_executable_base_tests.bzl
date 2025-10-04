@@ -23,7 +23,8 @@ load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: di
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "WINDOWS_X86_64")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP")
+load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
 
@@ -46,9 +47,9 @@ def _test_basic_windows(name, config):
             "//command_line_option:build_python_zip": "true",
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
-            "//command_line_option:extra_execution_platforms": [WINDOWS_X86_64],
+            "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
-            "//command_line_option:platforms": [WINDOWS_X86_64],
+            "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
         },
         attr_values = {},
     )
@@ -89,9 +90,9 @@ def _test_basic_zip(name, config):
             "//command_line_option:build_python_zip": "true",
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
-            "//command_line_option:extra_execution_platforms": [LINUX_X86_64],
+            "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
-            "//command_line_option:platforms": [LINUX_X86_64],
+            "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
         },
         attr_values = {"target_compatible_with": target_compatible_with},
     )
@@ -326,8 +327,8 @@ def _test_main_module_bootstrap_system_python(name, config):
         target = name + "_subject",
         config_settings = {
             labels.BOOTSTRAP_IMPL: "system_python",
-            "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", LINUX_X86_64],
-            "//command_line_option:platforms": [LINUX_X86_64],
+            "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", platform_targets.LINUX_X86_64],
+            "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
         },
     )
 
@@ -350,8 +351,8 @@ def _test_main_module_bootstrap_script(name, config):
         target = name + "_subject",
         config_settings = {
             labels.BOOTSTRAP_IMPL: "script",
-            "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", LINUX_X86_64],
-            "//command_line_option:platforms": [LINUX_X86_64],
+            "//command_line_option:extra_execution_platforms": ["@bazel_tools//tools:host_platform", platform_targets.LINUX_X86_64],
+            "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
         },
     )
 

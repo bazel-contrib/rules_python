@@ -14,11 +14,7 @@
 
 """Public entry point for py_binary."""
 
-load("//python/private:py_binary_macro.bzl", _starlark_py_binary = "py_binary")
-load("//python/private:register_extension_info.bzl", "register_extension_info")
-
-# buildifier: disable=native-python
-_py_binary_impl = _starlark_py_binary
+load("//python/private:py_binary_macro.bzl", _py_binary = "py_binary")
 
 def py_binary(**attrs):
     """Creates an executable Python program.
@@ -40,9 +36,4 @@ def py_binary(**attrs):
     if attrs.get("srcs_version") in ("PY2", "PY2ONLY"):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
-    _py_binary_impl(**attrs)
-
-register_extension_info(
-    extension = py_binary,
-    label_regex_for_dep = "{extension_name}",
-)
+    _py_binary(**attrs)

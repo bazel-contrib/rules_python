@@ -14,11 +14,7 @@
 
 """Public entry point for py_library."""
 
-load("//python/private:py_library_macro.bzl", _starlark_py_library = "py_library")
-load("//python/private:register_extension_info.bzl", "register_extension_info")
-
-# buildifier: disable=native-python
-_py_library_impl = _starlark_py_library
+load("//python/private:py_library_macro.bzl", _py_library = "py_library")
 
 def py_library(**attrs):
     """Creates an executable Python program.
@@ -37,9 +33,4 @@ def py_library(**attrs):
     if attrs.get("srcs_version") in ("PY2", "PY2ONLY"):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
-    _py_library_impl(**attrs)
-
-register_extension_info(
-    extension = py_library,
-    label_regex_for_dep = "{extension_name}",
-)
+    _py_library(**attrs)

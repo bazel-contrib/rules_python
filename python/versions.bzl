@@ -1045,7 +1045,12 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
     for u in url:
         p, _, _ = platform.partition(FREETHREADED)
 
-        release_id = int(u.split("/")[-2])
+        # Assume an unknown release_id is a newer url format
+        release_id = 99999999
+        url_parts = u.split("/")
+        if len(url_parts) >= 2 and url_parts[-2].isdigit():
+            maybe_release_id = url_parts[-2]
+            release_id = int(maybe_release_id)
 
         if FREETHREADED.lstrip("-") in platform:
             build = "{}+{}-full".format(
@@ -1060,6 +1065,7 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
                     "x86_64-apple-darwin": "pgo+lto",
                     "x86_64-pc-windows-msvc": "pgo",
                     "x86_64-unknown-linux-gnu": "pgo+lto",
+                    "x86_64-unknown-linux-musl": "pgo+lto",
                 }[p],
             )
         else:

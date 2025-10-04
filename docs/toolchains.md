@@ -460,6 +460,10 @@ local_runtime_toolchains_repo(
 register_toolchains("@local_toolchains//:all", dev_dependency = True)
 ```
 
+In the example above, `interpreter_path` is used to find Python via `PATH`
+lookups. Alternatively, {obj}`interpreter_target` can be set, which can
+refer to a Python in an arbitrary Bazel repository.
+
 :::{important}
 Be sure to set `dev_dependency = True`. Using a local toolchain only makes sense
 for the root module.

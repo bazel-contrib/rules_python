@@ -18,16 +18,34 @@ load("@rules_python//python:py_test.bzl", "py_test")
 load(":py_extension.bzl", "py_extension")
 
 py_test(
-    name = "test",
-    srcs = ["test.py"],
+    name = "local_runtime_test",
+    srcs = ["local_runtime_test.py"],
+    config_settings = {
+        "//:py": "local",
+    },
     # Make this test better respect pyenv
     env_inherit = ["PYENV_VERSION"],
+)
+
+py_test(
+    name = "repo_runtime_test",
+    srcs = ["repo_runtime_test.py"],
+    config_settings = {
+        "//:py": "repo",
+    },
 )
 
 config_setting(
     name = "is_py_local",
     flag_values = {
         ":py": "local",
+    },
+)
+
+config_setting(
+    name = "is_py_repo",
+    flag_values = {
+        ":py": "repo",
     },
 )
 
