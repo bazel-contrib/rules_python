@@ -33,7 +33,7 @@ in the pip.parse tag class.
 """,
         ),
         "_config_template": attr.label(
-            default = ":config.bzl.tmpl.bzlmod",
+            default = ":config.bzl.tmpl",
         ),
     },
     doc = """

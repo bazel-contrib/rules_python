@@ -193,7 +193,7 @@ def _pip_repository_impl(rctx):
     aliases = render_pkg_aliases(
         aliases = {
             pkg: rctx.attr.name + "_" + pkg
-            for pkg in bzl_packages or []
+            for pkg in bzl_packages
         },
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = requirement_cycles,
@@ -202,6 +202,17 @@ def _pip_repository_impl(rctx):
         rctx.file(path, contents)
 
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
+    if rctx.attr.use_hub_alias_dependencies:
+        rctx.template(
+            "config.bzl",
+            rctx.attr._config_template,
+            substitutions = {
+                "%%PACKAGES%%": render.dict({
+                    pkg: None
+                    for pkg in bzl_packages
+                }, value_repr = lambda x: "None"),
+            },
+        )
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
         "    # %%CONFIG_REPO%%": """\
     config_repo = "{name}__config"
@@ -254,6 +265,9 @@ capitalization matching the input requirements file, and values should be
 generated using the `package_name` macro. For example usage, see [this WORKSPACE
 file](https://github.com/bazel-contrib/rules_python/blob/main/examples/pip_repository_annotations/WORKSPACE).
 """,
+        ),
+        _config_template = attr.label(
+            default = ":config.bzl.tmpl",
         ),
         _template = attr.label(
             default = ":requirements.bzl.tmpl.workspace",
