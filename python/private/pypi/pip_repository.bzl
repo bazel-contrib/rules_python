@@ -24,13 +24,9 @@ load(":pip_repository_attrs.bzl", "ATTRS")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 
-_HUB_CONFIG_REPO_TEMPLATE = """\
-    config_repo = "{name}"
-    """
-_LEGACY_CONFIG_REPO_TEMPLATE = """\
-    config_repo = "{name}__config"
+_CONFIG_REPO_TEMPLATE = """"{name}__config"
     whl_config_repo(
-        name = config_repo,
+        name = "{name}__config",
         repo_prefix = "{name}_",
         groups = all_requirement_groups,
         whl_map = {{
@@ -228,12 +224,11 @@ def _pip_repository_impl(rctx):
                 }, value_repr = lambda x: "None"),
             },
         )
-        config_repo_template = _HUB_CONFIG_REPO_TEMPLATE
+        config_repo_template = repr(rctx.attr.name)
     else:
-        config_repo_template = _LEGACY_CONFIG_REPO_TEMPLATE
+        config_repo_template = _CONFIG_REPO_TEMPLATE.format(name = rctx.attr.name)
 
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
-        "    # %%CONFIG_REPO%%": config_repo_template.format(name = rctx.attr.name),
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
             for p in bzl_packages
@@ -249,6 +244,7 @@ def _pip_repository_impl(rctx):
         }),
         "%%ANNOTATIONS%%": render.dict(dict(sorted(annotations.items()))),
         "%%CONFIG%%": render.dict(dict(sorted(config.items()))),
+        "%%CONFIG_REPO%%": config_repo_template,
         "%%EXTRA_PIP_ARGS%%": json.encode(options),
         "%%IMPORTS%%": "\n".join(imports),
         "%%MACRO_TMPL%%": macro_tmpl,

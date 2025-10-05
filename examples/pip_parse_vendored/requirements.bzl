@@ -93,7 +93,7 @@ def install_deps(**whl_library_kwargs):
 
     config_repo = "my_project_pip_deps_vendored__config"
     whl_config_repo(
-        name = config_repo,
+        name = "my_project_pip_deps_vendored__config",
         repo_prefix = "my_project_pip_deps_vendored_",
         groups = all_requirement_groups,
         whl_map = {
@@ -101,6 +101,7 @@ def install_deps(**whl_library_kwargs):
             for p in all_whl_requirements_by_package
         },
     )
+    config_load = "@{}//:config.bzl".format(config_repo)
 
     # Install wheels which may be participants in a group
     whl_config = dict(_config)
@@ -116,6 +117,6 @@ def install_deps(**whl_library_kwargs):
             group_name = group_name,
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
-            config_load = "@{}//:config.bzl".format(config_repo),
+            config_load = config_load,
             **whl_config
         )
