@@ -79,7 +79,9 @@ END_UNRELEASED_TEMPLATE
   add a comment to
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
   With this release we are deprecating {obj}`pip.parse.experimental_target_platforms` and
-  {obj}`pip_repository.experimental_target_platforms`.
+  {obj}`pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
+  vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
+  when the APIs get removed.
 
 {#v0-0-0-fixed}
 ### Fixed

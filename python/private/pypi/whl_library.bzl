@@ -372,6 +372,8 @@ def _whl_library_impl(rctx):
     # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
     # dep_template set or the packages is not set either, we should still not break, best to
     # disable pipstar for that particular case.
+    #
+    # Remove non-pipstar and config_load check when we release rules_python 2.
     if rp_config.enable_pipstar and rctx.attr.config_load:
         pypi_repo_utils.execute_checked(
             rctx,
