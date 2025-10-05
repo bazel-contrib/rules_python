@@ -115,6 +115,10 @@ def build_config(
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
                 netrc = tag.netrc,
+                use_downloader = tag.user_downloader,
+                parallel_download = tag.parallel_download,
+                index_url_overrides = tag.index_url_overrides,
+                downloader_skip = tag.downloader_skip,
                 # TODO @aignas 2025-05-19: add more attr groups:
                 # * for index/downloader config. This includes all of those attributes for
                 # overrides, etc. Index overrides per platform could be also used here.
@@ -525,7 +529,72 @@ supported from this version without extra handling from the user.
 :::
 """,
     ),
-} | AUTH_ATTRS
+} | AUTH_ATTRS | {
+    # Downloader options
+    "downloader": attr.string(
+        values = ["disabled", "debug", "enabled", "auto"],
+        default = "auto",
+        doc = """\
+Option values:
+* `disabled` - disable downloader.
+* `debug` - stop using parallel downloading for debugging cases.
+* `enabled` - enable downloader for all hubs.
+* `auto` - use the downloader if `experimental_index_url` is passed.
+
+The default index URL is defined by the {attr}`index_url` with overrides taken from
+`index_overrides`. If the package is not found in the index, we will search all of the indexes
+listed in the lock files used to create a particular hub repository.
+
+TODO: experimental and docs in flux.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+    ),
+    "index_overrides": attr.string_dict(
+        doc = """\
+The index URL overrides for each package to use for downloading wheels using
+bazel downloader. This value is going to be subject to `envsubst` substitutions
+if necessary.
+
+The key is the package name (will be normalized before usage) and the value is the
+index URL.
+
+This design pattern has been chosen in order to be fully deterministic about which
+packages come from which source. We want to avoid issues similar to what happened in
+https://pytorch.org/blog/compromised-nightly-dependency/.
+
+The indexes must support Simple API as described here:
+<https://packaging.python.org/en/latest/specifications/simple-repository-api/>
+
+If `skip` is used as a value, then we will not use the downloader for a particular package. The
+values by `root` module take precedence over all others and non-root module precedence is
+undefined.
+
+TODO: experimental
+TODO: implement skip
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+    ),
+    "index_url": attr.string(
+        doc = """\
+The index URL to use for downloading wheels using bazel downloader. This value is going
+to be subject to `envsubst` substitutions if necessary.
+
+The indexes must support Simple API as described here:
+<https://packaging.python.org/en/latest/specifications/simple-repository-api/>.
+
+Note, this is used for *all* repositories by this feature, so that root modules can override the
+value to use a private mirror if necessary.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        default = "${PYPI_INDEX_URL:-https://pypi.org/simple}",
+    ),
+}
 
 _SUPPORTED_PEP508_KEYS = [
     "implementation_name",
