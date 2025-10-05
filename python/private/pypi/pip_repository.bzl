@@ -24,6 +24,21 @@ load(":pip_repository_attrs.bzl", "ATTRS")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 
+_HUB_CONFIG_REPO_TEMPLATE = """\
+    config_repo = "{name}"
+    """
+_LEGACY_CONFIG_REPO_TEMPLATE = """\
+    config_repo = "{name}__config"
+    whl_config_repo(
+        name = config_repo,
+        repo_prefix = "{name}_",
+        groups = all_requirement_groups,
+        whl_map = {{
+            p: ""
+            for p in all_whl_requirements_by_package
+        }},
+    )"""
+
 def _get_python_interpreter_attr(rctx):
     """A helper function for getting the `python_interpreter` attribute or it's default
 
@@ -156,7 +171,7 @@ def _pip_repository_impl(rctx):
     imports = [
         # NOTE: Maintain the order consistent with `buildifier`
         'load("@rules_python//python:pip.bzl", "pip_utils")',
-        'load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repository", "whl_library")',
+        'load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repo", "whl_library")',
     ]
 
     annotations = {}
@@ -213,20 +228,12 @@ def _pip_repository_impl(rctx):
                 }, value_repr = lambda x: "None"),
             },
         )
+        config_repo_template = _HUB_CONFIG_REPO_TEMPLATE
+    else:
+        config_repo_template = _LEGACY_CONFIG_REPO_TEMPLATE
+
     rctx.template("requirements.bzl", rctx.attr._template, substitutions = {
-        "    # %%CONFIG_REPO%%": """\
-    config_repo = "{name}__config"
-    whl_config_repository(
-        name = config_repo,
-        repo_prefix = "{name}_",
-        groups = all_requirement_groups,
-        whl_map = {{
-            p: ""
-            for p in all_whl_requirements_by_package
-        }},
-    )""".format(name = rctx.attr.name) if not rctx.attr.use_hub_alias_dependencies else """\
-    config_repo = "{name}"
-""".format(name = rctx.attr.name),
+        "    # %%CONFIG_REPO%%": config_repo_template.format(name = rctx.attr.name),
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
             for p in bzl_packages

@@ -4,7 +4,7 @@
 """
 
 load("@rules_python//python:pip.bzl", "pip_utils")
-load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repository", "whl_library")
+load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repo", "whl_library")
 
 all_requirements = [
     "@my_project_pip_deps_vendored_certifi//:pkg",
@@ -92,7 +92,7 @@ def install_deps(**whl_library_kwargs):
     }
 
     config_repo = "my_project_pip_deps_vendored__config"
-    whl_config_repository(
+    whl_config_repo(
         name = config_repo,
         repo_prefix = "my_project_pip_deps_vendored_",
         groups = all_requirement_groups,

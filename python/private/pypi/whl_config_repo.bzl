@@ -3,7 +3,7 @@
 load("//python/private:text_util.bzl", "render")
 load(":generate_group_library_build_bazel.bzl", "generate_group_library_build_bazel")
 
-def _impl(rctx):
+def _whl_config_repo_impl(rctx):
     build_file_contents = generate_group_library_build_bazel(
         repo_prefix = rctx.attr.repo_prefix,
         groups = rctx.attr.groups,
@@ -18,7 +18,7 @@ def _impl(rctx):
         },
     )
 
-whl_config_repository = repository_rule(
+whl_config_repo = repository_rule(
     attrs = {
         "groups": attr.string_list_dict(
             doc = "A mapping of group names to requirements within that group.",
@@ -42,5 +42,5 @@ This is an implementation detail of dependency groups and should not be used alo
 
 PRIVATE USE ONLY, only used in WORKSPACE.
     """,
-    implementation = _impl,
+    implementation = _whl_config_repo_impl,
 )
