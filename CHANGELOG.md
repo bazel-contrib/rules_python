@@ -82,7 +82,7 @@ END_UNRELEASED_TEMPLATE
   {obj}`pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
   vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
   when the APIs get removed. If you need to customize the way the dependencies get
-  evaluated, see [our docs](pypi/download.md) on customizing `Requires-Dist` resolution.
+  evaluated, see [our docs](/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
 
 {#v0-0-0-fixed}
 ### Fixed
