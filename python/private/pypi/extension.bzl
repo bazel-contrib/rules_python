@@ -115,13 +115,10 @@ def build_config(
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
                 netrc = tag.netrc,
-                use_downloader = tag.user_downloader,
-                parallel_download = tag.parallel_download,
-                index_url_overrides = tag.index_url_overrides,
-                downloader_skip = tag.downloader_skip,
-                # TODO @aignas 2025-05-19: add more attr groups:
-                # * for index/downloader config. This includes all of those attributes for
-                # overrides, etc. Index overrides per platform could be also used here.
+                # TODO @aignas 2025-10-05: is this enough?
+                # downloader = tag.downloader,
+                # index_url = tag.index_url,
+                # index_overrides = tag.index_overrides,
             )
 
     return struct(
