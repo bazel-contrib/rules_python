@@ -71,6 +71,9 @@ instead of the legacy Python scripts.
 
 :::{versionadded} 1.5.0
 :::
+:::{versionchanged} VERSION_NEXT_FEATURE
+Flipped to be enabled by default.
+:::
 ::::
 
 ::::{envvar} RULES_PYTHON_EXTRACT_ROOT
