@@ -236,6 +236,9 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	appendPyLibrary := func(srcs *treeset.Set, pyLibraryTargetName string) {
 		allDeps, mainModules, annotations, err := parser.parse(srcs)
+		for name := range mainModules {
+			validFilesMap[name] = struct{}{}
+		}
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -365,6 +368,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addResolvedDependencies(annotations.includeDeps).
 			setAnnotations(*annotations).
 			generateImportsAttribute()
+
 
 		pyBinary := pyBinaryTarget.build()
 
