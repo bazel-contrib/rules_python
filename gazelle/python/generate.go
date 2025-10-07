@@ -231,6 +231,8 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	collisionErrors := singlylinkedlist.New()
+	// Create a validFilesMap of mainModules to validate if python macros have valid srcs.
+	validFilesMap := make(map[string]struct{})
 
 	appendPyLibrary := func(srcs *treeset.Set, pyLibraryTargetName string) {
 		allDeps, mainModules, annotations, err := parser.parse(srcs)
@@ -243,6 +245,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			mainFileNames := make([]string, 0, len(mainModules))
 			for name := range mainModules {
 				mainFileNames = append(mainFileNames, name)
+				validFilesMap[name] = struct{}{}
 
 				// Remove the file from srcs if we're doing per-file library generation so
 				// that we don't also generate a py_library target for it.
@@ -490,10 +493,8 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		result.Gen = append(result.Gen, pyTest)
 		result.Imports = append(result.Imports, pyTest.PrivateAttr(config.GazelleImportsKey))
 	}
-	if !cfg.CoarseGrainedGeneration() {
-		emptyRules := py.getRulesWithInvalidSrcs(cfg, args)
-		result.Empty = append(result.Empty, emptyRules...)
-	}
+	emptyRules := py.getRulesWithInvalidSrcs(args, validFilesMap)
+	result.Empty = append(result.Empty, emptyRules...)
 	if !collisionErrors.Empty() {
 		it := collisionErrors.Iterator()
 		for it.Next() {
@@ -507,19 +508,12 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 // getRulesWithInvalidSrcs checks existing Python rules in the BUILD file and return the rules with invalid source files.
 // Invalid source files are files that do not exist or not a target.
-func (py *Python) getRulesWithInvalidSrcs(cfg *pythonconfig.Config, args language.GenerateArgs) (invalidRules []*rule.Rule) {
+func (py *Python) getRulesWithInvalidSrcs(args language.GenerateArgs, validFilesMap map[string]struct{}) (invalidRules []*rule.Rule) {
 	if args.File == nil {
 		return
 	}
-	filesMap := make(map[string]struct{})
-	for _, file := range args.RegularFiles {
-		if cfg.IgnoresFile(filepath.Base(file)) {
-			continue
-		}
-		filesMap[file] = struct{}{}
-	}
 	for _, file := range args.GenFiles {
-		filesMap[file] = struct{}{}
+		validFilesMap[file] = struct{}{}
 	}
 
 	isTarget := func(src string) bool {
@@ -535,13 +529,13 @@ func (py *Python) getRulesWithInvalidSrcs(cfg *pythonconfig.Config, args languag
 				hasValidSrcs = true
 				break
 			}
-			if _, ok := filesMap[src]; ok {
+			if _, ok := validFilesMap[src]; ok {
 				hasValidSrcs = true
 				break
 			}
 		}
 		if !hasValidSrcs {
-			invalidRules = append(invalidRules, newTargetBuilder(existingRule.Kind(), existingRule.Name(), args.Config.RepoRoot, args.Rel, nil).build())
+			invalidRules = append(invalidRules, newTargetBuilder(existingRule.Kind(), existingRule.Name(), args.Config.RepoRoot, args.Rel, nil, false).build())
 		}
 	}
 	return invalidRules
