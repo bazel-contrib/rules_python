@@ -248,7 +248,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			mainFileNames := make([]string, 0, len(mainModules))
 			for name := range mainModules {
 				mainFileNames = append(mainFileNames, name)
-				validFilesMap[name] = struct{}{}
 
 				// Remove the file from srcs if we're doing per-file library generation so
 				// that we don't also generate a py_library target for it.
