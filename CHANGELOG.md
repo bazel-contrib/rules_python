@@ -81,7 +81,9 @@ END_UNRELEASED_TEMPLATE
   With this release we are deprecating {obj}`pip.parse.experimental_target_platforms` and
   {obj}`pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
   vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
-  when the APIs get removed.
+  when the APIs get removed. If you need to customize the way the dependencies get
+  evaluated, see [our docs](/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
+* (toolchains) Added Python version 3.14.0.
 
 {#v0-0-0-fixed}
 ### Fixed

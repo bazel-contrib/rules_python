@@ -168,11 +168,6 @@ available on the PyPI index that you use.
 
 ### Customizing `Requires-Dist` resolution
 
-:::{note}
-Currently this is disabled by default, but you can turn it on using 
-{envvar}`RULES_PYTHON_ENABLE_PIPSTAR` environment variable.
-:::
-
 In order to understand what dependencies to pull for a particular package,
 `rules_python` parses the `whl` file [`METADATA`][metadata].
 Packages can express dependencies via `Requires-Dist`, and they can add conditions using
