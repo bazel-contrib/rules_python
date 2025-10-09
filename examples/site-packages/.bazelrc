@@ -1,0 +1,6 @@
+common --@rules_python//python/config_settings:bootstrap_impl=script
+common --@rules_python//python/config_settings:venvs_site_packages=yes
+# See https://github.com/bazel-contrib/rules_python/issues/2864#issuecomment-2859325467
+# common --@rules_python//python/config_settings:venvs_use_declare_symlink=no
+
+build --incompatible_default_to_explicit_init_py=true
