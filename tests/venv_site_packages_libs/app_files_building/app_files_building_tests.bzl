@@ -4,7 +4,25 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:py_info.bzl", "VenvSymlinkEntry", "VenvSymlinkKind")  # buildifier: disable=bzl-visibility
-load("//python/private:venv_runfiles.bzl", "build_link_map")  # buildifier: disable=bzl-visibility
+load("//python/private:venv_runfiles.bzl", "build_link_map", "get_venv_symlinks")  # buildifier: disable=bzl-visibility
+
+def _empty_files_impl(ctx):
+    files = []
+    for p in ctx.attr.paths:
+        f = ctx.actions.declare_file(p)
+        ctx.actions.write(output = f, content = "")
+        files.append(f)
+    return [DefaultInfo(files = depset(files))]
+
+empty_files = rule(
+    implementation = _empty_files_impl,
+    attrs = {
+        "paths": attr.string_list(
+            doc = "A list of paths to create as files.",
+            mandatory = True,
+        ),
+    },
+)
 
 _tests = []
 
@@ -239,6 +257,62 @@ def _test_multiple_venv_symlink_kinds_impl(env, _):
         VenvSymlinkKind.BIN,
         VenvSymlinkKind.INCLUDE,
     ])
+
+def _test_shared_library_symlinking(name):
+    empty_files(
+        name = name + "_files",
+        # NOTE: Test relies upon order
+        paths = [
+            "site-packages/bar/libs/liby.so",
+            "site-packages/bar/x.py",
+            "site-packages/bar/y.so",
+            "site-packages/foo.libs/libx.so",
+            "site-packages/foo/a.py",
+            "site-packages/foo/b.so",
+        ],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_shared_library_symlinking_impl,
+        target = name + "_files",
+    )
+
+_tests.append(_test_shared_library_symlinking)
+
+def _test_shared_library_symlinking_impl(env, target):
+    srcs = target.files.to_list()
+    actual_entries = get_venv_symlinks(
+        _ctx(),
+        srcs,
+        package = "foo",
+        version_str = "1.0",
+        site_packages_root = env.ctx.label.package + "/site-packages",
+    )
+
+    actual = [e for e in actual_entries if e.venv_path == "foo.libs/libx.so"]
+    if not actual:
+        fail("Did not find VenvSymlinkEntry with venv_path equal to foo.libs/libx.so. " +
+             "Found: {}".format(actual_entries))
+    elif len(actual) > 1:
+        fail("Found multiple entries with venv_path=foo.libs/libx.so. " +
+             "Found: {}".format(actual_entries))
+    actual = actual[0]
+
+    actual_files = actual.files.to_list()
+    expected_lib_dso = [f for f in srcs if f.basename == "libx.so"]
+    env.expect.that_collection(actual_files).contains_exactly(expected_lib_dso)
+
+    entries = actual_entries
+    actual = build_link_map(_ctx(), entries)
+
+    expected_libs = {
+        "bar/libs/liby.so": srcs[0],
+        "bar/x.py": srcs[1],
+        "bar/y.so": srcs[2],
+        "foo": "_main/tests/venv_site_packages_libs/app_files_building/site-packages/foo",
+        "foo.libs/libx.so": srcs[3],
+    }
+    env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
 
 def app_files_building_test_suite(name):
     test_suite(
