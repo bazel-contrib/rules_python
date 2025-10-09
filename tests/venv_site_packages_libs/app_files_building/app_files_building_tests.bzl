@@ -73,9 +73,9 @@ def _test_conflict_merging_impl(env, _):
 
     actual = build_link_map(_ctx(), entries)
     expected_libs = {
+        "a-1.0.dist-info": "+pypi_a/site-packages/a-1.0.dist-info",
         "a/a.txt": _file("../+pypi_a/site-packages/a/a.txt"),
         "a/b/b.txt": _file("../+pypi_a_b/site-packages/a/b/b.txt"),
-        "a-1.0.dist-info": "+pypi_a/site-packages/a-1.0.dist-info",
         "duplicate/d.py": _file("../+dupe_a/site-packages/duplicate/d.py"),
         "x/p/p.txt": _file("src-dev/x/p/p.txt"),
         "x/x.txt": _file("src/x/x.txt"),
