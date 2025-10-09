@@ -61,6 +61,7 @@ _tests.append(_test_conflict_merging)
 def _test_conflict_merging_impl(env, _):
     entries = [
         _entry("a", "+pypi_a/site-packages/a", ["a.txt"]),
+        _entry("a-1.0.dist-info", "+pypi_a/site-packages/a-1.0.dist-info", ["METADATA"]),
         _entry("a/b", "+pypi_a_b/site-packages/a/b", ["b.txt"]),
         _entry("x", "_main/src/x", ["x.txt"]),
         _entry("x/p", "_main/src-dev/x/p", ["p.txt"]),
@@ -74,6 +75,7 @@ def _test_conflict_merging_impl(env, _):
     expected_libs = {
         "a/a.txt": _file("../+pypi_a/site-packages/a/a.txt"),
         "a/b/b.txt": _file("../+pypi_a_b/site-packages/a/b/b.txt"),
+        "a-1.0.dist-info": "+pypi_a/site-packages/a-1.0.dist-info",
         "duplicate/d.py": _file("../+dupe_a/site-packages/duplicate/d.py"),
         "x/p/p.txt": _file("src-dev/x/p/p.txt"),
         "x/x.txt": _file("src/x/x.txt"),

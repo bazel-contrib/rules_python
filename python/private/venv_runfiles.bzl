@@ -138,7 +138,9 @@ def _group_venv_path_entries(entries):
     """
 
     # Sort so order is top-down, ensuring grouping by short common prefix
-    entries = sorted(entries, key = lambda e: e.venv_path)
+    # Split it into path components so `foo foo-bar foo/bar` sorts as
+    # `foo foo/bar foo-bar`
+    entries = sorted(entries, key = lambda e: tuple(e.venv_path.split("/")))
 
     groups = []
     current_group = None
