@@ -15,4 +15,4 @@
 ---
 expect:
   stderr: |
-    gazelle: failed to generate target "//:collided_main" of kind "py_binary": a target of kind "filegroup" with the same name already exists
+    gazelle: failed to generate target "//:collided_main_bin" of kind "py_binary": a target of kind "filegroup" with the same name already exists
