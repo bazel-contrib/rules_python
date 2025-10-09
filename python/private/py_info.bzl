@@ -47,12 +47,17 @@ VenvSymlinkKind = struct(
     INCLUDE = "INCLUDE",
 )
 
+def _VenvSymlinkEntry_init(**kwargs):
+    kwargs.setdefault("link_to_file", None)
+    return kwargs
+
 # A provider is used for memory efficiency.
 # buildifier: disable=name-conventions
-VenvSymlinkEntry = provider(
+VenvSymlinkEntry, _ = provider(
     doc = """
 An entry in `PyInfo.venv_symlinks`
 """,
+    init = _VenvSymlinkEntry_init,
     fields = {
         "files": """
 :type: depset[File]
@@ -68,11 +73,17 @@ if one adds files to `venv_path=a/` and another adds files to `venv_path=a/b/`.
 One of the {obj}`VenvSymlinkKind` values. It represents which directory within
 the venv to create the path under.
 """,
+        "link_to_file": """
+:type: File | None
+
+A file that `venv_path` should point to. The file to link to should also be in
+`files`.
+""",
         "link_to_path": """
 :type: str | None
 
-A runfiles-root relative path that `venv_path` will symlink to. If `None`,
-it means to not create a symlink.
+A runfiles-root relative path that `venv_path` will symlink to (if
+`link_to_file` is None). If `None`, it means to not create it in the venv.
 """,
         "package": """
 :type: str | None
