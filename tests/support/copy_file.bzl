@@ -16,10 +16,10 @@ def _copy_file_to_dir_impl(ctx):
 copy_file_to_dir = rule(
     implementation = _copy_file_to_dir_impl,
     attrs = {
+        "out_dir": attr.string(mandatory = True),
         "src": attr.label(
             allow_single_file = True,
             mandatory = True,
         ),
-        "out_dir": attr.string(mandatory = True),
     },
 )
