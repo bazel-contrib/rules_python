@@ -174,8 +174,8 @@ def _merge_venv_path_group(ctx, group, keep_map):
     # flattening the files depset, but can lower the number of materialized
     # files significantly. Usually overlaps are limited to a small number
     # of directories. Note that, when doing so, shared libraries need to
-    # be symlinked directory, not the directory containing them, due to
-    # symlink resolution semantics on Linux.
+    # be symlinked directly, not the directory containing them, due to
+    # dynamic linker symlink resolution semantics on Linux.
     for entry in group:
         prefix = entry.venv_path
         for file in entry.files.to_list():

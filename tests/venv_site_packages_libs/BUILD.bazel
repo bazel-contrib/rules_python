@@ -34,3 +34,16 @@ py_reconfig_test(
         "@other//with_external_data",
     ],
 )
+
+py_reconfig_test(
+    name = "shared_lib_loading_test",
+    srcs = ["shared_lib_loading_test.py"],
+    bootstrap_impl = "script",
+    main = "shared_lib_loading_test.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    venvs_site_packages = "yes",
+    deps = [
+        "//tests/venv_site_packages_libs/ext_with_libs",
+        "@dev_pip//pyelftools",
+    ],
+)

@@ -1,0 +1,71 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
+load("//python:py_library.bzl", "py_library")
+load("//tests/support:copy_file.bzl", "copy_file_to_dir")
+
+package(
+    default_visibility = ["//visibility:public"],
+    licenses = ["notice"],
+)
+
+cc_library(
+    name = "increment_impl",
+    srcs = ["increment.c"],
+    deps = [":increment_headers"],
+)
+
+cc_library(
+    name = "increment_headers",
+    hdrs = ["increment.h"],
+)
+
+cc_shared_library(
+    name = "increment",
+    deps = [":increment_impl"],
+)
+
+cc_library(
+    name = "adder_impl",
+    srcs = ["adder.c"],
+    deps = [
+        ":increment_headers",
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+# todo: copy more from py_extension in local_toolchains
+cc_shared_library(
+    name = "adder",
+    dynamic_deps = [":increment"],
+    shared_lib_name = select({
+        "//conditions:default": "adder.so",
+    }),
+    user_link_flags = [
+        # NOTE: cc_shared_library adds Bazelized rpath entries, too.
+        "-Wl,-rpath,$ORIGIN/libs",
+    ],
+    deps = [":adder_impl"],
+)
+
+copy_file_to_dir(
+    name = "relocate_adder",
+    src = ":adder",
+    out_dir = "site-packages/ext_with_libs",
+)
+
+copy_file_to_dir(
+    name = "relocate_increment",
+    src = ":increment",
+    out_dir = "site-packages/ext_with_libs/libs",
+)
+
+py_library(
+    name = "ext_with_libs",
+    srcs = glob(["site-packages/**/*.py"]),
+    data = [
+        ":relocate_adder",
+        ":relocate_increment",
+    ],
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    imports = [package_name() + "/site-packages"],
+)
