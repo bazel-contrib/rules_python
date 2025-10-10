@@ -23,7 +23,7 @@ cc_shared_library(
     name = "increment",
     user_link_flags = select({
         "@platforms//os:osx": [
-            "-Wl,-instal_name,@rpath/libincrement.dylib",
+            "-Wl,-install_name,@rpath/libincrement.dylib",
         ],
         "//conditions:default": [],
     }),
