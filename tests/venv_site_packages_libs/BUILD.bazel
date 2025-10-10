@@ -1,6 +1,10 @@
 load("//python:py_library.bzl", "py_library")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
-load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
+load(
+    "//tests/support:support.bzl",
+    "NOT_WINDOWS",
+    "SUPPORTS_BOOTSTRAP_SCRIPT",
+)
 
 py_library(
     name = "user_lib",
@@ -40,7 +44,7 @@ py_reconfig_test(
     srcs = ["shared_lib_loading_test.py"],
     bootstrap_impl = "script",
     main = "shared_lib_loading_test.py",
-    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    target_compatible_with = NOT_WINDOWS,
     venvs_site_packages = "yes",
     deps = [
         "//tests/venv_site_packages_libs/ext_with_libs",
