@@ -42,17 +42,20 @@ cc_shared_library(
     # 3. Ensures libincrement.so is available at link time to satisfy (2)
     dynamic_deps = [":increment"],
     shared_lib_name = "adder.so",
+    # NOTE: cc_shared_library adds Bazelized rpath entries, too.
     user_link_flags = [
-        # NOTE: cc_shared_library adds Bazelized rpath entries, too.
-        "-Wl,-rpath,$ORIGIN/libs",
     ] + select({
         "@platforms//os:osx": [
+            "-Wl,-rpath,@loader_path/libs",
             "-undefined",
             "dynamic_lookup",
             "-Wl,-exported_symbol",
             "-Wl,_PyInit_adder",
         ],
-        "//conditions:default": [],
+        # Assume linux default
+        "//conditions:default": [
+            "-Wl,-rpath,$ORIGIN/libs",
+        ],
     }),
     deps = [":adder_impl"],
 )
