@@ -42,6 +42,7 @@ cc_shared_library(
     # 3. Ensures libincrement.so is available at link time to satisfy (2)
     dynamic_deps = [":increment"],
     shared_lib_name = "adder.so",
+    tags = ["manual"],
     # NOTE: cc_shared_library adds Bazelized rpath entries, too.
     user_link_flags = [
     ] + select({

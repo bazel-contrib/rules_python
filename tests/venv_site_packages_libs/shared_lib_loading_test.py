@@ -3,6 +3,7 @@ import os
 import unittest
 
 from elftools.elf.elffile import ELFFile
+from macholib import mach_o
 from macholib.MachO import MachO
 
 
@@ -64,9 +65,9 @@ class SharedLibLoadingTest(unittest.TestCase):
             macho = MachO(path)
             for header in macho.headers:
                 for cmd_load, cmd, data in header.commands:
-                    if cmd_load == "LC_LOAD_DYLIB":
+                    if cmd_load.cmd == mach_o.LC_LOAD_DYLIB:
                         info["needed"].append(cmd.name)
-                    elif cmd_load == "LC_RPATH":
+                    elif cmd_load.cmd == mach_o.LC_RPATH:
                         info["rpaths"].append(cmd.path)
         return info
 
@@ -102,7 +103,7 @@ class SharedLibLoadingTest(unittest.TestCase):
             cmd.name
             for header in macho.headers
             for cmd_load, cmd, data in header.commands
-            if cmd_load == "LC_LOAD_DYLIB"
+            if cmd_load.cmd == mach_o.LC_LOAD_DYLIB
         ]
         self.assertIn("@rpath/libincrement.dylib", loaded_dylibs)
 
