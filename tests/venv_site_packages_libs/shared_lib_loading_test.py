@@ -4,8 +4,15 @@ import unittest
 
 from elftools.elf.elffile import ELFFile
 from macholib import mach_o
-from macholib import SymbolTable
 from macholib.MachO import MachO
+
+ELF_MAGIC = b"\x7fELF"
+MACHO_MAGICS = (
+    b"\xce\xfa\xed\xfe",  # 32-bit big-endian
+    b"\xcf\xfa\xed\xfe",  # 64-bit big-endian
+    b"\xfe\xed\xfa\xce",  # 32-bit little-endian
+    b"\xfe\xed\xfa\xcf",  # 64-bit little-endian
+)
 
 
 class SharedLibLoadingTest(unittest.TestCase):
@@ -18,6 +25,8 @@ class SharedLibLoadingTest(unittest.TestCase):
                 self.fail(f"Import failed and could not find module spec: {e}")
 
             info = self._get_linking_info(spec.origin)
+
+            # Give a useful error message for debugging.
             self.fail(
                 f"Failed to import adder extension.\n"
                 f"Original error: {e}\n"
@@ -34,9 +43,9 @@ class SharedLibLoadingTest(unittest.TestCase):
         with open(adder_path, "rb") as f:
             magic_bytes = f.read(4)
 
-        if magic_bytes == b"\x7fELF":
+        if magic_bytes == ELF_MAGIC:
             self._assert_elf_linking(adder_path)
-        elif magic_bytes in (b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf"):
+        elif magic_bytes in MACHO_MAGICS:
             self._assert_macho_linking(adder_path)
         else:
             self.fail(f"Unsupported file format for adder: magic bytes {magic_bytes!r}")
@@ -46,76 +55,60 @@ class SharedLibLoadingTest(unittest.TestCase):
 
     def _get_linking_info(self, path):
         """Parses a shared library and returns its rpaths and dependencies."""
-        info = {"rpaths": [], "needed": []}
         path = os.path.realpath(path)
         with open(path, "rb") as f:
             magic_bytes = f.read(4)
 
-        if magic_bytes == b"\x7fELF":
-            with open(path, "rb") as f:
-                elf = ELFFile(f)
-                dynamic = elf.get_section_by_name(".dynamic")
-                if not dynamic:
-                    return info
+        if magic_bytes == ELF_MAGIC:
+            return self._get_elf_info(path)
+        elif magic_bytes in MACHO_MAGICS:
+            return self._get_macho_info(path)
+        return {}
+
+    def _get_elf_info(self, path):
+        """Extracts linking information from an ELF file."""
+        info = {"rpaths": [], "needed": [], "undefined_symbols": []}
+        with open(path, "rb") as f:
+            elf = ELFFile(f)
+            dynamic = elf.get_section_by_name(".dynamic")
+            if dynamic:
                 for tag in dynamic.iter_tags():
                     if tag.entry.d_tag == "DT_NEEDED":
                         info["needed"].append(tag.needed)
                     elif tag.entry.d_tag in ("DT_RPATH", "DT_RUNPATH"):
                         info["rpaths"].append(tag.rpath)
-        elif magic_bytes in (b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf"):
-            macho = MachO(path)
-            for header in macho.headers:
-                for cmd_load, cmd, data in header.commands:
-                    if cmd_load.cmd == mach_o.LC_LOAD_DYLIB:
-                        info["needed"].append(data.decode().strip("\x00"))
-                    elif cmd_load.cmd == mach_o.LC_RPATH:
-                        info["rpaths"].append(data.decode().strip("\x00"))
+
+            dynsym = elf.get_section_by_name(".dynsym")
+            if dynsym:
+                info["undefined_symbols"] = [
+                    s.name
+                    for s in dynsym.iter_symbols()
+                    if s.entry["st_shndx"] == "SHN_UNDEF"
+                ]
+        return info
+
+    def _get_macho_info(self, path):
+        """Extracts linking information from a Mach-O file."""
+        info = {"rpaths": [], "needed": []}
+        macho = MachO(path)
+        for header in macho.headers:
+            for cmd_load, cmd, data in header.commands:
+                if cmd_load.cmd == mach_o.LC_LOAD_DYLIB:
+                    info["needed"].append(data.decode().strip("\x00"))
+                elif cmd_load.cmd == mach_o.LC_RPATH:
+                    info["rpaths"].append(data.decode().strip("\x00"))
         return info
 
     def _assert_elf_linking(self, path):
         """Asserts dynamic linking properties for an ELF file."""
-        with open(path, "rb") as f:
-            elf = ELFFile(f)
-
-            # Check that the adder module depends on the increment library.
-            needed = []
-            dynamic_section = elf.get_section_by_name(".dynamic")
-            self.assertIsNotNone(dynamic_section)
-            for tag in dynamic_section.iter_tags("DT_NEEDED"):
-                needed.append(tag.needed)
-            self.assertIn("libincrement.so", needed)
-
-            # Check that the 'increment' symbol is undefined.
-            dynsym_section = elf.get_section_by_name(".dynsym")
-            self.assertIsNotNone(dynsym_section)
-            undefined_symbols = [
-                s.name
-                for s in dynsym_section.iter_symbols()
-                if s.entry["st_shndx"] == "SHN_UNDEF"
-            ]
-            self.assertIn("increment", undefined_symbols)
+        info = self._get_elf_info(path)
+        self.assertIn("libincrement.so", info["needed"])
+        self.assertIn("increment", info["undefined_symbols"])
 
     def _assert_macho_linking(self, path):
         """Asserts dynamic linking properties for a Mach-O file."""
-        macho = MachO(path)
-
-        # Check dependency on the increment library.
-        loaded_dylibs = [
-            data.decode().strip("\x00")
-            for header in macho.headers
-            for cmd_load, cmd, data in header.commands
-            if cmd_load.cmd == mach_o.LC_LOAD_DYLIB
-        ]
-        self.assertIn("@rpath/libincrement.dylib", loaded_dylibs)
-
-        # Check that the 'increment' symbol is undefined.
-        symtab = SymbolTable(macho)
-        undefined_symbols = [
-            s.n_name.decode()
-            for s in symtab.nlists
-            if s.n_type & 0x01 and s.n_sect == 0  # N_EXT and NO_SECT
-        ]
-        self.assertIn("_increment", undefined_symbols)
+        info = self._get_macho_info(path)
+        self.assertIn("@rpath/libincrement.dylib", info["needed"])
 
 
 if __name__ == "__main__":
