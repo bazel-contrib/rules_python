@@ -96,6 +96,15 @@ modules_mapping(
     # for tools like type checkers and IDEs, improving the development experience and
     # reducing manual overhead in managing separate stub packages.
     include_stub_packages = True,
+
+    # skip_private_shared_objects: bool (default: False)
+    # If set to True, this flag skips private shared objects under .libs directories
+    # when generating the modules mapping. These are non-importable dependency libraries
+    # (like libopenblas.so) that vary between Linux distributions and break build
+    # hermiticity. Ensures identical manifests across platforms by excluding libraries
+    # that cannot be imported in Python code. macOS uses .dylib files which are
+    # naturally excluded by this Linux-specific .so filtering.
+    skip_private_shared_objects = True,
 )
 
 # Gazelle python extension needs a manifest file mapping from
