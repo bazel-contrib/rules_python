@@ -23,6 +23,8 @@ cc_shared_library(
     name = "increment",
     user_link_flags = select({
         "@platforms//os:osx": [
+            # Needed so that DT_NEEDED=libincrement.dylib can find
+            # this shared library
             "-Wl,-install_name,@rpath/libincrement.dylib",
         ],
         "//conditions:default": [],

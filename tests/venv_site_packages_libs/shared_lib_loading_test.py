@@ -4,8 +4,8 @@ import unittest
 
 from elftools.elf.elffile import ELFFile
 from macholib import mach_o
+from macholib import SymbolTable
 from macholib.MachO import MachO
-from macholib.symtab import SymbolTable
 
 
 class SharedLibLoadingTest(unittest.TestCase):
