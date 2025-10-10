@@ -105,6 +105,8 @@ END_UNRELEASED_TEMPLATE
   variants. Setting {obj}`--py_linux_libc=musl` and `--py_freethreaded=yes` now
   activate them, respectively.
   ([#3262](https://github.com/bazel-contrib/rules_python/issues/3262)).
+* (gazelle) Remove py_binary targets with invalid srcs. This includes files
+  that are not generated or regular files.
 
 {#v0-0-0-added}
 ### Added
