@@ -49,6 +49,7 @@ def _whl_mods_impl(whl_mods_dict):
                 data = mods.data,
                 data_exclude_glob = mods.data_exclude_glob,
                 srcs_exclude_glob = mods.srcs_exclude_glob,
+                enable_implicit_namespace_pkgs = mods.enable_implicit_namespace_pkgs,
             ))
 
         _whl_mods_repo(
@@ -178,6 +179,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 data = whl_mod.data,
                 data_exclude_glob = whl_mod.data_exclude_glob,
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
+                enable_implicit_namespace_pkgs = whl_mod.enable_implicit_namespace_pkgs,
             )
 
     config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar)
@@ -740,6 +742,12 @@ cannot have a child module that uses the same `hub_name`.
         "whl_name": attr.string(
             doc = "The whl name that the modifications are used for.",
             mandatory = True,
+        ),
+        "enable_implicit_namespace_pkgs": attr.bool(
+            doc = """\
+(bool, optional): Override the global setting for generating __init__.py
+files for namespace packages. If None, uses the repository-level setting.
+""",
         ),
     }
     return attrs
