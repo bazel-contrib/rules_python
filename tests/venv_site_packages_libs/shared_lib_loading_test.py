@@ -66,9 +66,9 @@ class SharedLibLoadingTest(unittest.TestCase):
             for header in macho.headers:
                 for cmd_load, cmd, data in header.commands:
                     if cmd_load.cmd == mach_o.LC_LOAD_DYLIB:
-                        info["needed"].append(cmd.name)
+                        info["needed"].append(data.decode().strip("\x00"))
                     elif cmd_load.cmd == mach_o.LC_RPATH:
-                        info["rpaths"].append(cmd.path)
+                        info["rpaths"].append(data.decode().strip("\x00"))
         return info
 
     def _assert_elf_linking(self, path):
@@ -100,7 +100,7 @@ class SharedLibLoadingTest(unittest.TestCase):
 
         # Check dependency on the increment library.
         loaded_dylibs = [
-            cmd.name
+            data.decode().strip("\x00")
             for header in macho.headers
             for cmd_load, cmd, data in header.commands
             if cmd_load.cmd == mach_o.LC_LOAD_DYLIB
