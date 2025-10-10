@@ -1,7 +1,6 @@
 import os
 import unittest
 
-import magic
 from elftools.elf.elffile import ELFFile
 from macholib.MachO import MachO
 
@@ -15,13 +14,15 @@ class SharedLibLoadingTest(unittest.TestCase):
 
         adder_path = os.path.realpath(ext_with_libs.adder.__file__)
 
-        magic_info = magic.from_file(adder_path)
-        if "ELF" in magic_info:
+        with open(adder_path, "rb") as f:
+            magic_bytes = f.read(4)
+
+        if magic_bytes == b"\x7fELF":
             self._assert_elf_linking(adder_path)
-        elif "Mach-O" in magic_info:
+        elif magic_bytes in (b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe"):
             self._assert_macho_linking(adder_path)
         else:
-            self.fail(f"Unsupported file format for adder: {magic_info}")
+            self.fail(f"Unsupported file format for adder: magic bytes {magic_bytes!r}")
 
         # Check the function works regardless of format.
         self.assertEqual(ext_with_libs.adder.do_add(), 2)
