@@ -96,3 +96,34 @@ use_repo(python, "rules_python_bzlmod_debug")
 
 # Step 3: Register the toolchains
 register_toolchains("@local_toolchains//:all")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    python_version_file = "@local_python3//:python-version",
+)
+
+# todo: loosen toolchain checking. These lines are only necessary to satisfy
+# some python.toolchain logic that expects the default to be registered through
+# its apis. But this is problematic becaue the default changes based on the env
+python.toolchain(python_version = "3.13")
+python.toolchain(python_version = "3.12")
+python.toolchain(python_version = "3.11")
+use_repo(python, "rules_python_bzlmod_debug")
+
+register_toolchains("@local_toolchains//:all")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pypi",
+    requirements_lock = "//requirements:requirements-local.txt",
+)
+use_repo(pip, "pypi")
+
+uv_dev = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv_dev.configure(
+    version = "0.8.22",
+)
