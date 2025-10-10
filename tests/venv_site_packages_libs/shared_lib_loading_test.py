@@ -5,6 +5,7 @@ import unittest
 from elftools.elf.elffile import ELFFile
 from macholib import mach_o
 from macholib.MachO import MachO
+from macholib.symtab import SymbolTable
 
 
 class SharedLibLoadingTest(unittest.TestCase):
@@ -108,10 +109,10 @@ class SharedLibLoadingTest(unittest.TestCase):
         self.assertIn("@rpath/libincrement.dylib", loaded_dylibs)
 
         # Check that the 'increment' symbol is undefined.
-        self.assertIsNotNone(macho.symtab)
+        symtab = SymbolTable(macho)
         undefined_symbols = [
             s.n_name.decode()
-            for s in macho.symtab.nlists
+            for s in symtab.nlists
             if s.n_type & 0x01 and s.n_sect == 0  # N_EXT and NO_SECT
         ]
         self.assertIn("_increment", undefined_symbols)
