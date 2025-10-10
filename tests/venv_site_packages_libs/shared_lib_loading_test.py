@@ -75,8 +75,10 @@ class SharedLibLoadingTest(unittest.TestCase):
                 for tag in dynamic.iter_tags():
                     if tag.entry.d_tag == "DT_NEEDED":
                         info["needed"].append(tag.needed)
-                    elif tag.entry.d_tag in ("DT_RPATH", "DT_RUNPATH"):
+                    elif tag.entry.d_tag == "DT_RPATH":
                         info["rpaths"].append(tag.rpath)
+                    elif tag.entry.d_tag == "DT_RUNPATH":
+                        info["rpaths"].append(tag.runpath)
 
             dynsym = elf.get_section_by_name(".dynsym")
             if dynsym:
