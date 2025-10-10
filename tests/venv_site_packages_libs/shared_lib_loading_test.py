@@ -1,39 +1,75 @@
+import os
 import unittest
 
+import magic
 from elftools.elf.elffile import ELFFile
+from macholib.MachO import MachO
 
 
 class SharedLibLoadingTest(unittest.TestCase):
-    def test_ext_loads_and_resolves(self):
+    def test_shared_library_linking(self):
         import ext_with_libs.adder
 
         # Check that the module was loaded from the venv.
         self.assertIn(".venv/", ext_with_libs.adder.__file__)
 
-        with open(ext_with_libs.adder.__file__, "rb") as f:
+        adder_path = os.path.realpath(ext_with_libs.adder.__file__)
+
+        magic_info = magic.from_file(adder_path)
+        if "ELF" in magic_info:
+            self._assert_elf_linking(adder_path)
+        elif "Mach-O" in magic_info:
+            self._assert_macho_linking(adder_path)
+        else:
+            self.fail(f"Unsupported file format for adder: {magic_info}")
+
+        # Check the function works regardless of format.
+        self.assertEqual(ext_with_libs.adder.do_add(), 2)
+
+    def _assert_elf_linking(self, path):
+        """Asserts dynamic linking properties for an ELF file."""
+        with open(path, "rb") as f:
             elf = ELFFile(f)
 
             # Check that the adder module depends on the increment library.
             needed = []
             dynamic_section = elf.get_section_by_name(".dynamic")
-            if dynamic_section:
-                for tag in dynamic_section.iter_tags("DT_NEEDED"):
-                    needed.append(tag.needed)
+            self.assertIsNotNone(dynamic_section)
+            for tag in dynamic_section.iter_tags("DT_NEEDED"):
+                needed.append(tag.needed)
             self.assertIn("libincrement.so", needed)
 
-            # Check that the 'increment' symbol is undefined in the adder module,
-            # as it's dynamically linked.
-            is_increment_undefined = False
+            # Check that the 'increment' symbol is undefined.
             dynsym_section = elf.get_section_by_name(".dynsym")
-            undefined_dynamic_symbols = []
-            if dynsym_section:
-                for symbol in dynsym_section.iter_symbols():
-                    if symbol.entry["st_shndx"] == "SHN_UNDEF":
-                        undefined_dynamic_symbols.append(symbol.name)
-            self.assertIn("increment", undefined_dynamic_symbols)
+            self.assertIsNotNone(dynsym_section)
+            undefined_symbols = [
+                s.name
+                for s in dynsym_section.iter_symbols()
+                if s.entry["st_shndx"] == "SHN_UNDEF"
+            ]
+            self.assertIn("increment", undefined_symbols)
 
-        # Check the function.
-        self.assertEqual(ext_with_libs.adder.do_add(), 2)
+    def _assert_macho_linking(self, path):
+        """Asserts dynamic linking properties for a Mach-O file."""
+        macho = MachO(path)
+
+        # Check dependency on the increment library.
+        loaded_dylibs = [
+            cmd.name
+            for header in macho.headers
+            for cmd_load, cmd, data in header.commands
+            if cmd_load == "LC_LOAD_DYLIB"
+        ]
+        self.assertIn("@rpath/libincrement.dylib", loaded_dylibs)
+
+        # Check that the 'increment' symbol is undefined.
+        self.assertIsNotNone(macho.symtab)
+        undefined_symbols = [
+            s.n_name.decode()
+            for s in macho.symtab.nlists
+            if s.n_type & 0x01 and s.n_sect == 0  # N_EXT and NO_SECT
+        ]
+        self.assertIn("_increment", undefined_symbols)
 
 
 if __name__ == "__main__":

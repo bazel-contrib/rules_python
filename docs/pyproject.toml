@@ -15,4 +15,6 @@ dependencies = [
     "sphinx-reredirects",
     "pefile",
     "pyelftools",
+    "python-magic",
+    "macholib",
 ]

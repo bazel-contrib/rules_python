@@ -44,6 +44,8 @@ py_reconfig_test(
     venvs_site_packages = "yes",
     deps = [
         "//tests/venv_site_packages_libs/ext_with_libs",
+        "@dev_pip//macholib",
         "@dev_pip//pyelftools",
+        "@dev_pip//python_magic",
     ],
 )
