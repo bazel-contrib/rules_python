@@ -65,12 +65,14 @@ copy_file_to_dir(
     name = "relocate_adder",
     src = ":adder",
     out_dir = "site-packages/ext_with_libs",
+    tags = ["manual"],
 )
 
 copy_file_to_dir(
     name = "relocate_increment",
     src = ":increment",
     out_dir = "site-packages/ext_with_libs/libs",
+    tags = ["manual"],
 )
 
 py_library(
@@ -82,4 +84,5 @@ py_library(
     ],
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
     imports = [package_name() + "/site-packages"],
+    tags = ["manual"],
 )
