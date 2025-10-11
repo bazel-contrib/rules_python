@@ -298,11 +298,11 @@ def _test_toolchain_ordering(env):
                 toolchain = [
                     _toolchain("3.10"),
                     _toolchain("3.10.15"),
-                    _toolchain("3.10.18"),
+                    _toolchain(MINOR_MAPPING["3.10"]),
                     _toolchain("3.10.13"),
                     _toolchain("3.11.1"),
                     _toolchain("3.11.10"),
-                    _toolchain("3.11.13", is_default = True),
+                    _toolchain(MINOR_MAPPING["3.11"], is_default = True),
                 ],
                 is_root = True,
             ),
@@ -315,16 +315,8 @@ def _test_toolchain_ordering(env):
         for t in py.toolchains
     ]
 
-    env.expect.that_str(py.default_python_version).equals("3.11.13")
-    env.expect.that_dict(py.config.minor_mapping).contains_exactly({
-        "3.10": "3.10.18",
-        "3.11": "3.11.13",
-        "3.12": "3.12.11",
-        "3.13": "3.13.6",
-        "3.14": "3.14.0",
-        "3.8": "3.8.20",
-        "3.9": "3.9.23",
-    })
+    env.expect.that_str(py.default_python_version).equals(MINOR_MAPPING["3.11"])
+    env.expect.that_dict(py.config.minor_mapping).contains_exactly(MINOR_MAPPING)
     env.expect.that_collection(got_versions).contains_exactly([
         # First the full-version toolchains that are in minor_mapping
         # so that they get matched first if only the `python_version` is in MINOR_MAPPING
@@ -332,9 +324,9 @@ def _test_toolchain_ordering(env):
         # The default version is always set in the `python_version` flag, so know, that
         # the default match will be somewhere in the first bunch.
         "3.10",
-        "3.10.18",
+        MINOR_MAPPING["3.10"],
         "3.11",
-        "3.11.13",
+        MINOR_MAPPING["3.11"],
         # Next, the rest, where we will match things based on the `python_version` being
         # the same
         "3.10.15",
