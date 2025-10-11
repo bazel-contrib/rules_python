@@ -271,6 +271,7 @@ def _test_shared_library_symlinking(name):
             "site-packages/foo.libs/libx.so",
             "site-packages/foo/a.py",
             "site-packages/foo/b.so",
+            "site-packages/foo/foo.pth",
             "site-packages/root.pth",
             "site-packages/root.py",
             "site-packages/root.so",
