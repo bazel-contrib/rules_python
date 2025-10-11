@@ -5,7 +5,6 @@ load("//tests/support:copy_file.bzl", "copy_file_to_dir")
 
 package(
     default_visibility = ["//visibility:public"],
-    licenses = ["notice"],
 )
 
 cc_library(
@@ -41,7 +40,6 @@ cc_library(
     ],
 )
 
-# todo: copy more from py_extension in local_toolchains
 cc_shared_library(
     name = "adder",
     # Necessary for several reasons:

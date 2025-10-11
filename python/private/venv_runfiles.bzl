@@ -332,13 +332,14 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     return venv_symlinks
 
 def _is_linker_loaded_library(filename):
-    """Tells if a filename is one that `dlopen()` or the runtime linker handle.
+    """Tells if a filename is one that `dlopen()` or the runtime linker handles.
 
-    Notably, it should return False for Python C extension modules.
+    This should return true for `libfoo.so` (regular C library), but not
+    `foo.so` (Python C extension library).
     """
     if not filename.startswith("lib"):
         return False
-    if filename.endswith((".so", ".dylib")):
+    if filename.endswith((".so", ".dylib", ".lib")):
         return True
 
     # Versioned library, e.g. libfoo.so.1.2.3

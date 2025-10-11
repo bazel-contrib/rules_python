@@ -305,6 +305,7 @@ def _test_shared_library_symlinking_impl(env, target):
     entries = actual_entries
     actual = build_link_map(_ctx(), entries)
 
+    # The important condition is that each lib*.so file is linked directly.
     expected_libs = {
         "bar/libs/liby.so": srcs[0],
         "bar/x.py": srcs[1],
