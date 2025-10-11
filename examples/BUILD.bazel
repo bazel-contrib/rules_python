@@ -28,3 +28,28 @@ lock(
     ],
     python_version = "3.9.19",
 )
+
+lock(
+    name = "bzlmod_requirements_3_11",
+    srcs = ["bzlmod/requirements.in"],
+    out = "bzlmod/requirements_lock_3_11.txt",
+    args = [
+        "--emit-index-url",
+        "--universal",
+        "--python-version=3.11",
+    ],
+    python_version = "3.11",
+)
+
+lock(
+    name = "bzlmod_requirements_3_11_windows",
+    srcs = ["bzlmod/requirements.in"],
+    out = "bzlmod/requirements_windows_3_11.txt",
+    args = [
+        "--emit-index-url",
+        "--python-platform",
+        "windows",
+        "--python-version=3.11",
+    ],
+    python_version = "3.11",
+)

@@ -171,6 +171,35 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
     ]
 ]
 
+[
+    pip.default(
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:windows",
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
+        ],
+        env = {"platform_version": "0"},
+        marker = "python_version >= '3.13'" if freethreaded else "python_version >= '3.11'",
+        os_name = "windows",
+        platform = "windows_{}{}".format(cpu, freethreaded),
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        whl_platform_tags = whl_platform_tags,
+    )
+    for cpu, whl_platform_tags in {
+        "aarch64": ["win_arm64"],
+    }.items()
+    for freethreaded in [
+        "",
+        "_freethreaded",
+    ]
+]
+
 pip.parse(
     hub_name = "rules_python_publish_deps",
     python_version = "3.11",

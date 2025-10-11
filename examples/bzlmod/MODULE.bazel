@@ -169,10 +169,13 @@ pip.default(
     env = {
         "platform_version": "0",
     },
+    # Windows ARM64 support has been added only on 3.11 and above, hence, constrain
+    # the availability of the platform for those python versions.
+    marker = "python_version >= '3.11'",
     os_name = "windows",
     platform = "windows_aarch64",
     whl_abi_tags = [],  # default to all ABIs
-    whl_platform_tags = ["win_amd64"],
+    whl_platform_tags = ["win_arm64"],
 )
 
 # To fetch pip dependencies, use pip.parse. We can pass in various options,
@@ -206,14 +209,6 @@ pip.parse(
             "sphinxcontrib-serializinghtml",
         ],
     },
-    # You can use one of the values below to specify the target platform
-    # to generate the dependency graph for.
-    experimental_target_platforms = [
-        # Specifying the target platforms explicitly
-        "cp39_linux_x86_64",
-        "cp39_linux_*",
-        "cp39_*",
-    ],
     extra_hub_aliases = {
         "wheel": ["generated_file"],
     },
@@ -239,30 +234,34 @@ pip.parse(
             "sphinxcontrib-serializinghtml",
         ],
     },
-    # You can use one of the values below to specify the target platform
-    # to generate the dependency graph for.
-    experimental_target_platforms = [
-        # Using host python version
-        "linux_*",
-        "osx_*",
-        "windows_*",
-        # Or specifying an exact platform
-        "linux_x86_64",
-        # Or the following to get the `host` platform only
-        "host",
-    ],
     hub_name = "pip",
     python_version = "3.10",
     # The requirements files for each platform that we want to support.
     requirements_by_platform = {
         # Default requirements file for needs to explicitly provide the platforms
         "//:requirements_lock_3_10.txt": "linux_*,osx_*",
+        "//:requirements_windows_3_10.txt": "windows_x86_64",
+    },
+    # These modifications were created above and we
+    # are providing pip.parse with the label of the mod
+    # and the name of the wheel.
+    whl_modifications = {
+        "@whl_mods_hub//:requests.json": "requests",
+        "@whl_mods_hub//:wheel.json": "wheel",
+    },
+)
+pip.parse(
+    hub_name = "pip",
+    python_version = "3.11",
+    requirements_by_platform = {
+        # Default requirements file for needs to explicitly provide the platforms
+        "//:requirements_lock_3_11.txt": "linux_*,osx_*",
         # This API allows one to specify additional platforms that the users
         # configure the toolchains for themselves. In this example we add
         # `windows_aarch64` to illustrate that `rules_python` won't fail to
         # process the value, but it does not mean that this example will work
         # on Windows ARM.
-        "//:requirements_windows_3_10.txt": "windows_x86_64,windows_aarch64",
+        "//:requirements_windows_3_11.txt": "windows_x86_64,windows_aarch64",
     },
     # These modifications were created above and we
     # are providing pip.parse with the label of the mod

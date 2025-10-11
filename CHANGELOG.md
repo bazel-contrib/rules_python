@@ -131,6 +131,9 @@ END_UNRELEASED_TEMPLATE
   * {obj}`//python:features.bzl%features.headers_abi3` can be used to
     feature-detect the presense of the above.
 * (toolchains) Local toolchains can use a label for the interpreter to use.
+* (pypi) Support for environment marker handling and `experimental_index_url` handling for
+  Windows ARM64 for Python 3.11 and later
+  ([#2276](https://github.com/bazel-contrib/rules_python/issues/2276)).
 
 {#v1-6-3}
 ## [1.6.3] - 2025-09-21
