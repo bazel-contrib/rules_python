@@ -259,7 +259,6 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
         if _is_linker_loaded_library(filename):
             entry = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
-                # todo: omit setting link_to_path
                 link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
                 link_to_file = src,
                 package = package,
@@ -297,8 +296,6 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
                 files = depset([src]),
             )
             venv_symlinks.append(entry)
-        else:
-            fail("hit", src)
 
     # Sort so that we encounter `foo` before `foo/bar`. This ensures we
     # see the top-most explicit package first.
@@ -336,16 +333,18 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 def _is_linker_loaded_library(filename):
     """Tells if a filename is one that `dlopen()` or the runtime linker handles.
 
-    This should return true for `libfoo.so` (regular C library), but not
-    `foo.so` (Python C extension library).
-    """
-    if not filename.startswith("lib"):
-        return False
-    if filename.endswith((".so", ".dylib", ".lib")):
-        return True
+    This should return true for regular C libraries, but false for Python
+    C extension modules.
 
-    # Versioned library, e.g. libfoo.so.1.2.3
-    if ".so." in filename:
+    Python extensions: .so (linux, mac), .pyd (windows)
+
+    C libraries: lib*.so (linux), lib*.so.* (linux), lib*.dylib (mac), .dll (windows)
+    """
+    if filename.endswith(".dll"):
+        return True
+    if filename.startswith("lib") and (
+        filename.endswith((".so", ".dylib")) or ".so." in filename
+    ):
         return True
     return False
 
