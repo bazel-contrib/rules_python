@@ -17,6 +17,7 @@ This facilitates verify running binaries with different configuration settings
 without the overhead of a bazel-in-bazel integration test.
 """
 
+load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("//python/private:attr_builders.bzl", "attrb")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:py_binary_macro.bzl", "py_binary_macro")  # buildifier: disable=bzl-visibility
@@ -30,7 +31,8 @@ def _perform_transition_impl(input_settings, attr, base_impl):
     settings.update(base_impl(input_settings, attr))
 
     settings[labels.VISIBLE_FOR_TESTING] = True
-    settings["//command_line_option:build_python_zip"] = attr.build_python_zip
+    settings["//command_line_option:build_python_zip"] = str(attr.build_python_zip)
+    settings[labels.BUILD_PYTHON_ZIP] = attr.build_python_zip
     if attr.bootstrap_impl:
         settings[labels.BOOTSTRAP_IMPL] = attr.bootstrap_impl
     if attr.extra_toolchains:
@@ -58,13 +60,14 @@ _RECONFIG_INPUTS = [
 ]
 _RECONFIG_OUTPUTS = _RECONFIG_INPUTS + [
     "//command_line_option:build_python_zip",
+    labels.BUILD_PYTHON_ZIP,
     labels.VISIBLE_FOR_TESTING,
 ]
 _RECONFIG_INHERITED_OUTPUTS = [v for v in _RECONFIG_OUTPUTS if v in _RECONFIG_INPUTS]
 
 _RECONFIG_ATTRS = {
     "bootstrap_impl": attrb.String(),
-    "build_python_zip": attrb.String(default = "auto"),
+    "build_python_zip": attrb.Bool(default = config.build_python_zip_default),
     "config_settings": attrb.LabelKeyedStringDict(),
     "extra_toolchains": attrb.StringList(
         doc = """
