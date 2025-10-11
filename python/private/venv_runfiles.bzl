@@ -290,9 +290,10 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             entry = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
                 link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
+                link_to_file = src,
                 package = package,
                 version = version_str,
-                venv_path = filename,
+                venv_path = path,
                 files = depset([src]),
             )
             venv_symlinks.append(entry)

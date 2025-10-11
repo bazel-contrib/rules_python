@@ -36,6 +36,7 @@ PYTHON_FILE_EXTENSIONS = [
     "dylib",  # Python C modules, Mac specific
     "py",
     "pyc",
+    "pth",  # import 'pth' files
     "pyi",
     "so",  # Python C modules, usually Linux
 ]

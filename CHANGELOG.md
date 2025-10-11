@@ -105,6 +105,9 @@ END_UNRELEASED_TEMPLATE
 * (venvs) {obj}`--venvs_site_packages=yes` works for packages that dynamically
   link to shared libraries
   ([#3228](https://github.com/bazel-contrib/rules_python/issues/3228)).
+* (venvs) {obj}`--venvs_site_packages=yes` includes `pth` files at the root of the
+  site-packages folder
+  ([#3339](https://github.com/bazel-contrib/rules_python/issues/3339)).
 * (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
   runtime.
 * (toolchains) WORKSPACE builds now correctly register musl and freethreaded

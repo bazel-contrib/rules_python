@@ -271,6 +271,9 @@ def _test_shared_library_symlinking(name):
             "site-packages/foo.libs/libx.so",
             "site-packages/foo/a.py",
             "site-packages/foo/b.so",
+            "site-packages/root.pth",
+            "site-packages/root.py",
+            "site-packages/root.so",
         ],
     )
     analysis_test(
@@ -314,6 +317,9 @@ def _test_shared_library_symlinking_impl(env, target):
         "bar/y.so": srcs[2],
         "foo": "_main/tests/venv_site_packages_libs/app_files_building/site-packages/foo",
         "foo.libs/libx.so": srcs[3],
+        "root.pth": srcs[-3],
+        "root.py": srcs[-2],
+        "root.so": srcs[-1],
     }
     env.expect.that_dict(actual[VenvSymlinkKind.LIB]).contains_exactly(expected_libs)
 
