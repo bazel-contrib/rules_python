@@ -78,12 +78,15 @@ the venv to create the path under.
 
 A file that `venv_path` should point to. The file to link to should also be in
 `files`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "link_to_path": """
 :type: str | None
 
 A runfiles-root relative path that `venv_path` will symlink to (if
-`link_to_file` is None). If `None`, it means to not create it in the venv.
+`link_to_file` is `None`). If `None`, it means to not create it in the venv.
 """,
         "package": """
 :type: str | None

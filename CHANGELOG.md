@@ -99,6 +99,9 @@ END_UNRELEASED_TEMPLATE
 * (venvs) {obj}`--venvs_site_packages=yes` no longer errors when packages with
   overlapping files or directories are used together.
   ([#3204](https://github.com/bazel-contrib/rules_python/issues/3204)).
+* (venvs) {obj}`--venvs_site_packages=yes` works for packages that dynamically
+  link to shared libraries
+  ([#3228](https://github.com/bazel-contrib/rules_python/issues/3228)).
 * (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
   runtime.
 * (toolchains) WORKSPACE builds now correctly register musl and freethreaded
