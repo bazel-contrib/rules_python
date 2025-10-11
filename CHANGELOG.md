@@ -83,7 +83,10 @@ END_UNRELEASED_TEMPLATE
   vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
   when the APIs get removed. If you need to customize the way the dependencies get
   evaluated, see [our docs](/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
-* (toolchains) Added Python versions 3.14.0, 3.13.8, 3.12.12, 3.11.14, 3.10.19, and 3.9.24.
+* (toolchains) Added Python versions 3.14.0, 3.13.8, 3.12.12, 3.11.14, 3.10.19, and 3.9.24
+  from the [20251010] release.
+
+[20251010]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251010
 
 {#v0-0-0-fixed}
 ### Fixed
