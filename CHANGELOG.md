@@ -108,6 +108,8 @@ END_UNRELEASED_TEMPLATE
   variants. Setting {obj}`--py_linux_libc=musl` and `--py_freethreaded=yes` now
   activate them, respectively.
   ([#3262](https://github.com/bazel-contrib/rules_python/issues/3262)).
+* (rules) {obj}`py_console_script_binary` is now compatible with symbolic macros
+  ([#3195](https://github.com/bazel-contrib/rules_python/pull/3195)).
 
 {#v0-0-0-added}
 ### Added
