@@ -402,7 +402,7 @@ https://bazel.build/extending/config#memory-performance-considerations for
 more information about risks and considerations.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 """,
     ),

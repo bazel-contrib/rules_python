@@ -26,7 +26,7 @@ def _features_typedef():
     True if the {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
     target is available.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.7.0
     :::
     ::::
 

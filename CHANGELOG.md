@@ -48,18 +48,18 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
-{#v0-0-0}
-## Unreleased
+{#v1-7-0}
+## [1.7.0] - 2025-10-11
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[1.7.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.7.0
 
-{#v0-0-0-removed}
+{#v1-7-0-removed}
 ### Removed
 * (core rules) Support for Bazel's long deprecated "extra actions" has been
   removed
   ([#3215](https://github.com/bazel-contrib/rules_python/issues/3215)).
 
-{#v0-0-0-changed}
+{#v1-7-0-changed}
 ### Changed
 * (deps) bumped rules_cc dependency to `0.1.5`.
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, `PYTHONPATH` is no
@@ -88,7 +88,7 @@ END_UNRELEASED_TEMPLATE
 
 [20251010]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251010
 
-{#v0-0-0-fixed}
+{#v1-7-0-fixed}
 ### Fixed
 * (rules) The `PyInfo` constructor was setting the wrong value for
   `has_py3_only_sources` - this is now fixed.
@@ -117,7 +117,7 @@ END_UNRELEASED_TEMPLATE
 * (rules) {obj}`py_console_script_binary` is now compatible with symbolic macros
   ([#3195](https://github.com/bazel-contrib/rules_python/pull/3195)).
 
-{#v0-0-0-added}
+{#v1-7-0-added}
 ### Added
 * (runfiles) The Python runfiles library now supports Bazel's
   `--incompatible_compact_repo_mapping_manifest` flag.

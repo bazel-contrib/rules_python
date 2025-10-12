@@ -139,7 +139,7 @@ This is mutually exclusive with {obj}`main`.
 
 :::{versionadded} 1.3.0
 :::
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.7.0
 Support added for {obj}`--bootstrap_impl=system_python`.
 :::
 """,

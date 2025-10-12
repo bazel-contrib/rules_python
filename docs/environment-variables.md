@@ -26,7 +26,7 @@ The {bzl:obj}`interpreter_args` attribute.
 
 :::{versionadded} 1.3.0
 :::
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.7.0
 Support added for {obj}`--bootstrap_impl=system_python`.
 :::
 
@@ -71,7 +71,7 @@ instead of the legacy Python scripts.
 
 :::{versionadded} 1.5.0
 :::
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.7.0
 Flipped to be enabled by default.
 :::
 ::::

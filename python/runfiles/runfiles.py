@@ -16,7 +16,7 @@
 
 See @rules_python//python/runfiles/README.md for usage instructions.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 Support for Bazel's `--incompatible_compact_repo_mapping_manifest` flag was added.
 This enables prefix-based repository mappings to reduce memory usage for large
 dependency graphs under bzlmod.

@@ -79,7 +79,7 @@ Target that provides the Python ABI3 (stable abi) headers.
 
 Typically this is a cc_library target.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 The {obj}`features.headers_abi3` attribute can be used to detect if this
 attribute is available or not.
 :::

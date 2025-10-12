@@ -43,7 +43,7 @@ def _config_impl(mctx):
 config = module_extension(
     doc = """Global settings for rules_python.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 """,
     implementation = _config_impl,
