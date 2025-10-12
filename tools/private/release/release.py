@@ -170,6 +170,10 @@ def create_parser():
 
 
 def main():
+    # Change to the workspace root so the script can be run using `bazel run`
+    if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
+        os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])
+
     parser = create_parser()
     args = parser.parse_args()
 
@@ -178,10 +182,6 @@ def main():
         print("No version provided, determining next version automatically...")
         version = determine_next_version()
         print(f"Determined next version: {version}")
-
-    # Change to the workspace root so the script can be run using `bazel run`
-    if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
-        os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])
 
     print("Updating changelog ...")
     release_date = datetime.date.today().strftime("%Y-%m-%d")

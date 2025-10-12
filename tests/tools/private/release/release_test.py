@@ -210,5 +210,62 @@ class GetLatestVersionTest(unittest.TestCase):
             releaser.get_latest_version()
 
 
+class DetermineNextVersionTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = pathlib.Path(tempfile.mkdtemp())
+        self.original_cwd = os.getcwd()
+        self.addCleanup(shutil.rmtree, self.tmpdir)
+
+        os.chdir(self.tmpdir)
+        # NOTE: On windows, this must be done before files are deleted.
+        self.addCleanup(os.chdir, self.original_cwd)
+
+        self.mock_get_latest_version = patch(
+            "tools.private.release.release.get_latest_version"
+        ).start()
+        self.addCleanup(patch.stopall)
+
+    def test_no_markers(self):
+        (self.tmpdir / "mock_file.bzl").write_text("no markers here")
+        self.mock_get_latest_version.return_value = "1.2.3"
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "1.2.4")
+
+    def test_only_patch(self):
+        (self.tmpdir / "mock_file.bzl").write_text(
+            ":::{versionchanged} VERSION_NEXT_PATCH"
+        )
+        self.mock_get_latest_version.return_value = "1.2.3"
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "1.2.4")
+
+    def test_only_feature(self):
+        (self.tmpdir / "mock_file.bzl").write_text(
+            ":::{versionadded} VERSION_NEXT_FEATURE"
+        )
+        self.mock_get_latest_version.return_value = "1.2.3"
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "1.3.0")
+
+    def test_both_markers(self):
+        (self.tmpdir / "mock_file_patch.bzl").write_text(
+            ":::{versionchanged} VERSION_NEXT_PATCH"
+        )
+        (self.tmpdir / "mock_file_feature.bzl").write_text(
+            ":::{versionadded} VERSION_NEXT_FEATURE"
+        )
+        self.mock_get_latest_version.return_value = "1.2.3"
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "1.3.0")
+
+
 if __name__ == "__main__":
     unittest.main()
