@@ -104,6 +104,10 @@ else
         stub_filename="${stub_filename%/*}/$stub_filename_target"
       fi
       unset stub_filename_target
+      if [[ ! -e "$stub_filename" ]]; then
+        echo >&2 "Unable to find runfiles directory for $1: dangling symlink: $stub_filename"
+        exit 1
+      fi
     done
     echo >&2 "Unable to find runfiles directory for $1"
     exit 1
