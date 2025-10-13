@@ -97,7 +97,13 @@ else
       if [[ ! -L "$stub_filename" ]]; then
         break
       fi
-      stub_filename=$(readlink $stub_filename)
+      stub_filename_target=$(readlink $stub_filename)
+      if [[ "$stub_filename_target" == /* ]]; then
+        stub_filename="$stub_filename_target"
+      else
+        stub_filename="${stub_filename%/*}/$stub_filename_target"
+      fi
+      unset stub_filename_target
     done
     echo >&2 "Unable to find runfiles directory for $1"
     exit 1
