@@ -96,6 +96,7 @@ def _pip_repository_impl(rctx):
                 "linux_aarch64",
                 "linux_arm",
                 "linux_ppc",
+                "linux_riscv64",
                 "linux_s390x",
                 "linux_x86_64",
                 "osx_aarch64",
