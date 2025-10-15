@@ -127,19 +127,27 @@ def _single_version_platform_override(
         patches = [],
         platform = "",
         python_version = "",
+        python_version_env = None,
         sha256 = "",
+        sha256_env = None,
         strip_prefix = "python",
-        urls = []):
-    if not platform or not python_version:
-        fail("missing mandatory args: platform ({}) and python_version ({})".format(platform, python_version))
+        strip_prefix_env = None,
+        urls = [],
+        url_env = None):
+    if not platform:
+        fail("missing mandatory arg: platform")
 
     return struct(
         sha256 = sha256,
+        sha256_env = sha256_env,
         urls = urls,
+        url_env = url_env,
         strip_prefix = strip_prefix,
+        strip_prefix_env = strip_prefix_env,
         platform = platform,
         coverage_tool = coverage_tool,
         python_version = python_version,
+        python_version_env = python_version_env,
         patch_strip = patch_strip,
         patches = patches,
         target_compatible_with = [],
@@ -846,12 +854,6 @@ def _test_single_version_platform_override_errors(env):
         ),
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12", platform = "foo"),
-            ],
-            want_error = "The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '3.12'",
-        ),
-        struct(
-            overrides = [
                 _single_version_platform_override(python_version = "foo", platform = "foo"),
             ],
             want_error = "Failed to parse PEP 440 version identifier 'foo'. Parse error at 'foo'",
@@ -873,6 +875,83 @@ def _test_single_version_platform_override_errors(env):
         env.expect.that_collection(errors).contains_exactly([test.want_error])
 
 _tests.append(_test_single_version_platform_override_errors)
+
+def _test_single_version_platform_override_from_env(env):
+    py = parse_modules(
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "my_module",
+                toolchain = [_toolchain("3.13")],
+                single_version_platform_override = [
+                    _single_version_platform_override(
+                        platform = "aarch64-unknown-linux-gnu",
+                        python_version_env = "PYTHON_VERSION_ENV",
+                        sha256_env = "SHA256_ENV",
+                        strip_prefix_env = "STRIP_PREFIX_ENV",
+                        url_env = "URL_ENV",
+                    ),
+                ],
+                override = [
+                    _override(
+                        available_python_versions = ["3.13.99"],
+                    ),
+                ],
+            ),
+            environ = {
+                "PYTHON_VERSION_ENV": "3.13.99",
+                "SHA256_ENV": "deadbeef",
+                "STRIP_PREFIX_ENV": "my-prefix",
+                "URL_ENV": "example.com,example.org",
+            },
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    env.expect.that_dict(py.config.default["tool_versions"]["3.13.99"]).contains_exactly({
+        "sha256": {"aarch64-unknown-linux-gnu": "deadbeef"},
+        "strip_prefix": {"aarch64-unknown-linux-gnu": "my-prefix"},
+        "url": {"aarch64-unknown-linux-gnu": ["example.com", "example.org"]},
+    })
+
+_tests.append(_test_single_version_platform_override_from_env)
+
+def _test_single_version_platform_override_from_env_minor_version(env):
+    py = parse_modules(
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "my_module",
+                toolchain = [_toolchain("3.13")],
+                single_version_platform_override = [
+                    _single_version_platform_override(
+                        platform = "aarch64-unknown-linux-gnu",
+                        python_version_env = "PYTHON_VERSION_ENV",
+                        sha256_env = "SHA256_ENV",
+                        strip_prefix_env = "STRIP_PREFIX_ENV",
+                        url_env = "URL_ENV",
+                    ),
+                ],
+                override = [
+                    _override(
+                        available_python_versions = ["3.13.6"],
+                    ),
+                ],
+            ),
+            environ = {
+                "PYTHON_VERSION_ENV": "3.13",
+                "SHA256_ENV": "deadbeef",
+                "STRIP_PREFIX_ENV": "my-prefix",
+                "URL_ENV": "example.com,example.org",
+            },
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    tool_versions = py.config.default["tool_versions"]["3.13.6"]
+    env.expect.that_str(tool_versions["sha256"]["aarch64-unknown-linux-gnu"]).equals("deadbeef")
+    env.expect.that_str(tool_versions["strip_prefix"]["aarch64-unknown-linux-gnu"]).equals("my-prefix")
+    env.expect.that_collection(tool_versions["url"]["aarch64-unknown-linux-gnu"]).contains_exactly(["example.com", "example.org"])
+
+_tests.append(_test_single_version_platform_override_from_env_minor_version)
 
 # TODO @aignas 2024-09-03: add failure tests:
 # * incorrect platform failure
