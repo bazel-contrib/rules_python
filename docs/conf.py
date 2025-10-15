@@ -123,7 +123,7 @@ intersphinx_mapping = {
 extlinks = {
     "gh-issue": (f"https://github.com/bazel-contrib/rules_python/issues/%s", "#%s issue"),
     "gh-path": (f"https://github.com/bazel-contrib/rules_python/tree/main/%s", "%s"),
-    "gh-pr": (f"https://github.com/bazel-contrib/rules_python/pulls/%s", "#%s PR"),
+    "gh-pr": (f"https://github.com/bazel-contrib/rules_python/pull/%s", "#%s PR"),
 }
 
 # --- MyST configuration

@@ -40,6 +40,8 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_imported_from_venv("nspkg.subnspkg.delta")
         self.assert_imported_from_venv("single_file")
         self.assert_imported_from_venv("simple")
+        m = self.assert_imported_from_venv("nested_with_pth")
+        self.assertEqual(m.WHOAMI, "nested_with_pth")
 
     def test_data_is_included(self):
         self.assert_imported_from_venv("simple")

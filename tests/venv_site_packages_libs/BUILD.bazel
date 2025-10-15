@@ -28,6 +28,7 @@ py_reconfig_test(
     venvs_site_packages = "yes",
     deps = [
         ":closer_lib",
+        "//tests/venv_site_packages_libs/nested_with_pth",
         "//tests/venv_site_packages_libs/nspkg_alpha",
         "//tests/venv_site_packages_libs/nspkg_beta",
         "//tests/venv_site_packages_libs/pkgutil_top",
