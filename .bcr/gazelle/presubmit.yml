@@ -13,7 +13,7 @@
 # limitations under the License.
 
 bcr_test_module:
-  module_path: "../examples/bzlmod_build_file_generation"
+  module_path: "examples/bzlmod_build_file_generation"
   matrix:
     platform: ["debian11", "macos", "ubuntu2004", "windows"]
     # last_rc is to get latest 8.x release. Replace with 8.x when available.
@@ -23,6 +23,8 @@ bcr_test_module:
       name: "Run test module"
       platform: ${{ platform }}
       bazel: ${{ bazel }}
+      shell_commands:
+        - "echo 'common --override_module=rules_python=' >> .bazelrc"
       build_targets:
         - "//..."
         - ":modules_map"

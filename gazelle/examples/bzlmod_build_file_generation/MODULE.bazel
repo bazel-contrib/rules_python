@@ -13,26 +13,28 @@ module(
 # For typical setups you set the version.
 # See the releases page for available versions.
 # https://github.com/bazel-contrib/rules_python/releases
-bazel_dep(name = "rules_python", version = "0.0.0")
+bazel_dep(name = "rules_python", version = "1.0.0")
 
+# NOTE: This override is removed for BCR presubmits and the version
+# specified by bazel_dep() is used instead.
 # The following loads rules_python from the file system.
 # For usual setups you should remove this local_path_override block.
 local_path_override(
     module_name = "rules_python",
-    path = "../..",
+    path = "../../..",
 )
 
 # The following stanza defines the dependency rules_python_gazelle_plugin.
 # For typical setups you set the version.
 # See the releases page for available versions.
 # https://github.com/bazel-contrib/rules_python/releases
-bazel_dep(name = "rules_python_gazelle_plugin", version = "0.0.0")
+bazel_dep(name = "rules_python_gazelle_plugin", version = "1.5.0")
 
 # The following starlark loads the gazelle plugin from the file system.
 # For usual setups you should remove this local_path_override block.
 local_path_override(
     module_name = "rules_python_gazelle_plugin",
-    path = "../../gazelle",
+    path = "../..",
 )
 
 # The following stanza defines the dependency for gazelle
@@ -84,7 +86,7 @@ use_repo(pip, "pip")
 
 # This project includes a different module that is on the local file system.
 # Add the module to this parent project.
-bazel_dep(name = "other_module", version = "", repo_name = "our_other_module")
+bazel_dep(name = "other_module", version = "0.0.0", repo_name = "our_other_module")
 local_path_override(
     module_name = "other_module",
     path = "other_module",
