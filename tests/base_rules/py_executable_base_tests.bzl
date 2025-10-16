@@ -44,7 +44,10 @@ def _test_basic_windows(name, config):
             # the target platform. For windows, it defaults to true, so force
             # it to that to match behavior when this test runs on other
             # platforms.
+            # Pass value to both native and starlark versions of the flag until
+            # the native one is removed.
             "//command_line_option:build_python_zip": "true",
+            labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
@@ -87,7 +90,10 @@ def _test_basic_zip(name, config):
             # the target platform. For windows, it defaults to true, so force
             # it to that to match behavior when this test runs on other
             # platforms.
+            # Pass value to both native and starlark versions of the flag until
+            # the native one is removed.
             "//command_line_option:build_python_zip": "true",
+            labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],

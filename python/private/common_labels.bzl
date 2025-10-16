@@ -7,6 +7,7 @@ labels = struct(
     # keep sorted
     ADD_SRCS_TO_RUNFILES = str(Label("//python/config_settings:add_srcs_to_runfiles")),
     BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl")),
+    BUILD_PYTHON_ZIP = str(Label("//python/config_settings:build_python_zip")),
     EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
     NONE = str(Label("//python:none")),
@@ -18,6 +19,7 @@ labels = struct(
     PRECOMPILE = str(Label("//python/config_settings:precompile")),
     PRECOMPILE_SOURCE_RETENTION = str(Label("//python/config_settings:precompile_source_retention")),
     PYC_COLLECTION = str(Label("//python/config_settings:pyc_collection")),
+    PYTHON_IMPORT_ALL_REPOSITORIES = str(Label("//python/config_settings:experimental_python_import_all_repositories")),
     PYTHON_SRC = str(Label("//python/bin:python_src")),
     PYTHON_VERSION = str(Label("//python/config_settings:python_version")),
     PYTHON_VERSION_MAJOR_MINOR = str(Label("//python/config_settings:python_version_major_minor")),
