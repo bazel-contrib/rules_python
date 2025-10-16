@@ -18,6 +18,17 @@ set -o pipefail
 set -o errexit
 
 set -x
+
+TAG=$1
+if [ -z "$TAG" ]; then
+  echo "ERROR: TAG env var must be set"
+  exit 1
+fi
+# If the workflow checks out one commit, but is releasing another
+git fetch origin tag "$TAG"
+# Update our local state so the grep command below searches what we expect
+git checkout "$TAG"
+
 # Exclude dot directories, specifically, this file so that we don't
 # find the substring we're looking for in our own file.
 # Exclude CONTRIBUTING.md, RELEASING.md because they document how to use these strings.
@@ -34,14 +45,11 @@ if [[ $grep_exit_code -eq 0 ]]; then
   exit 1
 fi
 
-# Set by GH actions, see
-# https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-TAG=${GITHUB_REF_NAME}
 # A prefix is added to better match the GitHub generated archives.
 PREFIX="rules_python-${TAG}"
 ARCHIVE="rules_python-$TAG.tar.gz"
-git archive --format=tar --prefix=${PREFIX}/ ${TAG} | gzip > $ARCHIVE
-SHA=$(shasum -a 256 $ARCHIVE | awk '{print $1}')
+git archive --format=tar "--prefix=${PREFIX}/" "$TAG" | gzip > "$ARCHIVE"
+SHA=$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')
 
 cat > release_notes.txt << EOF
 
