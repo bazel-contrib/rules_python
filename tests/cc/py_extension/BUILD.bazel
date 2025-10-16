@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//python:py_test.bzl", "py_test")
 
 # buildifier: disable=bzl-visibility
@@ -28,6 +28,22 @@ py_extension(
     ],
 )
 
+py_extension(
+    name = "ext_csl_shared",
+    dynamic_deps = [
+        ":add_one_shared",
+    ],
+    exports_filter = [
+        "//tests/cc/py_extension:ext_shared_impl",
+        ":ext_shared_impl",
+    ],
+    module_name = "ext_shared",
+    use_csl = True,
+    deps = [
+        ":ext_shared_impl",
+    ],
+)
+
 cc_library(
     name = "ext_shared_impl",
     srcs = ["ext_shared.c"],
@@ -37,10 +53,10 @@ cc_library(
         "-fvisibility=hidden",
     ],
     deps = [
-        ":add_one_headers",
+        #":add_one_headers",
         # todo: if we put this here, we statically link add_one into the
         # extension.
-        #":add_one_impl",
+        ":add_one_impl",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
 )
@@ -51,14 +67,29 @@ cc_library(
     hdrs = ["static_dep.h"],
 )
 
+cc_shared_library(
+    name = "add_one_shared",
+    deps = [":add_one_impl"],
+)
+
 cc_library(
     name = "add_one_headers",
     hdrs = ["add_one.h"],
 )
 
 cc_library(
-    name = "add_one",
+    name = "add_one_impl",
     srcs = ["add_one.c"],
+    deps = [
+        ":add_one_headers",
+        ":add_one_helper",
+    ],
+)
+
+cc_library(
+    name = "add_one_helper",
+    srcs = ["add_one_helper.c"],
+    hdrs = ["add_one_helper.h"],
 )
 
 py_test(
