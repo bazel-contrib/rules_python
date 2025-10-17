@@ -48,6 +48,30 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+
+* Nothing removed.
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
+### Added
+* (gazelle) A new directive `python_generate_pyi_deps` has been added. When
+  `true`, a py_* target's `pyi_srcs` attribute will be set if any `.pyi` files
+  that are associated with the target's `srcs` are present.
+  ([#3354](https://github.com/bazel-contrib/rules_python/issues/3354)).
+
 {#v1-7-0}
 ## [1.7.0] - 2025-10-11
 

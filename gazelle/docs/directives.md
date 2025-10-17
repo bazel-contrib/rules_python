@@ -155,6 +155,12 @@ The Python-specific directives are:
   * Default: `false`
   * Allowed Values: `true`, `false`
 
+[`# gazelle:python_generate_pyi_srcs bool`](#python-generate-pyi-srcs)
+: Controls whether to generate a `pyi_srcs` attribute if a sibling `.pyi` file
+  is found. When `false` (default), the `pyi_srcs` attribute is not added.
+  * Default: `false`
+  * Allowed Values: `true`, `false`
+
 [`# gazelle:python_generate_proto bool`](#python-generate-proto)
 : Controls whether to generate a {bzl:obj}`py_proto_library` for each
   {bzl:obj}`proto_library` in the package. By default we load this rule from the
@@ -624,6 +630,28 @@ that are relative to the current package.
 :::{error}
 Detailed docs are not yet written.
 :::
+
+
+## `python_generate_pyi_deps`
+
+When `true`, include any sibling `.pyi` files in the `pyi_srcs` target attribute.
+
+For example, assume you have the following files:
+
+```
+foo.py
+foo.pyi
+```
+
+The generated target will be:
+
+```starlark
+py_library(
+    name = "foo",
+    srcs = ["foo.py"],
+    pyi_srcs = ["foo.pyi"],
+)
+```
 
 
 ## `python_generate_proto`
