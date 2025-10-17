@@ -1,9 +1,9 @@
-# For bazel-in-bazel testing
-# Trick bazel into treating BUILD files under examples/* as being regular files
+# For bazel-in-bazel testing and ignoring sub-workspaces for ... patterns.
+#
+# Trick Bazel into treating BUILD files under examples/* as being regular files
 # This lets us glob() up all the files inside the examples to make them inputs to tests
-# (Note, we cannot use `common --deleted_packages` because the bazel version command doesn't support it)
 # To update these lines, execute
-# `bazel run @rules_bazel_integration_test//tools:update_deleted_packages`
+# `tools/update_deleted_packages.sh`
 # GENERATED_DELETED_PACKAGES_START
 common --deleted_packages=examples/build_file_generation
 common --deleted_packages=examples/build_file_generation/random_number_generator
@@ -17,13 +17,16 @@ common --deleted_packages=examples/bzlmod/patches
 common --deleted_packages=examples/bzlmod/py_proto_library
 common --deleted_packages=examples/bzlmod/py_proto_library/example.com/another_proto
 common --deleted_packages=examples/bzlmod/py_proto_library/example.com/proto
+common --deleted_packages=examples/bzlmod/py_proto_library/foo_external
 common --deleted_packages=examples/bzlmod/runfiles
 common --deleted_packages=examples/bzlmod/tests
 common --deleted_packages=examples/bzlmod/tests/other_module
 common --deleted_packages=examples/bzlmod/whl_mods
 common --deleted_packages=examples/bzlmod_build_file_generation
+common --deleted_packages=examples/bzlmod_build_file_generation/other_module
 common --deleted_packages=examples/bzlmod_build_file_generation/other_module/other_module/pkg
 common --deleted_packages=examples/bzlmod_build_file_generation/runfiles
+common --deleted_packages=examples/multi_python_versions
 common --deleted_packages=examples/multi_python_versions/libs/my_lib
 common --deleted_packages=examples/multi_python_versions/requirements
 common --deleted_packages=examples/multi_python_versions/tests
@@ -34,6 +37,7 @@ common --deleted_packages=examples/py_proto_library
 common --deleted_packages=examples/py_proto_library/example.com/another_proto
 common --deleted_packages=examples/py_proto_library/example.com/proto
 common --deleted_packages=gazelle
+common --deleted_packages=gazelle/docs
 common --deleted_packages=gazelle/manifest
 common --deleted_packages=gazelle/manifest/generate
 common --deleted_packages=gazelle/manifest/hasher
@@ -41,8 +45,80 @@ common --deleted_packages=gazelle/manifest/test
 common --deleted_packages=gazelle/modules_mapping
 common --deleted_packages=gazelle/python
 common --deleted_packages=gazelle/python/private
+common --deleted_packages=gazelle/python/testdata/add_type_stub_packages
+common --deleted_packages=gazelle/python/testdata/annotation_include_dep
+common --deleted_packages=gazelle/python/testdata/annotation_include_pytest_conftest
+common --deleted_packages=gazelle/python/testdata/binary_without_entrypoint
+common --deleted_packages=gazelle/python/testdata/binary_without_entrypoint_per_file_generation
+common --deleted_packages=gazelle/python/testdata/binary_without_entrypoint_per_file_generation_partial_update
+common --deleted_packages=gazelle/python/testdata/clear_out_deps
+common --deleted_packages=gazelle/python/testdata/dependency_resolution_order
+common --deleted_packages=gazelle/python/testdata/different_packages_in_same_namespace
+common --deleted_packages=gazelle/python/testdata/directive_python_default_visibility
+common --deleted_packages=gazelle/python/testdata/directive_python_generate_proto
+common --deleted_packages=gazelle/python/testdata/directive_python_generate_proto_bzlmod_protobuf
+common --deleted_packages=gazelle/python/testdata/directive_python_generate_proto_bzlmod_protobuf_renamed
+common --deleted_packages=gazelle/python/testdata/directive_python_label_convention
+common --deleted_packages=gazelle/python/testdata/directive_python_label_normalization
+common --deleted_packages=gazelle/python/testdata/directive_python_proto_naming_convention
+common --deleted_packages=gazelle/python/testdata/directive_python_test_file_pattern
+common --deleted_packages=gazelle/python/testdata/directive_python_test_file_pattern_bad_glob
+common --deleted_packages=gazelle/python/testdata/directive_python_test_file_pattern_no_value
+common --deleted_packages=gazelle/python/testdata/directive_python_visibility
+common --deleted_packages=gazelle/python/testdata/disable_import_statements_validation
+common --deleted_packages=gazelle/python/testdata/dont_ignore_setup
+common --deleted_packages=gazelle/python/testdata/dont_rename_target
+common --deleted_packages=gazelle/python/testdata/file_name_matches_import_statement
+common --deleted_packages=gazelle/python/testdata/first_party_dependencies
+common --deleted_packages=gazelle/python/testdata/first_party_file_and_directory_modules
+common --deleted_packages=gazelle/python/testdata/from_imports
+common --deleted_packages=gazelle/python/testdata/generated_test_entrypoint
+common --deleted_packages=gazelle/python/testdata/ignored_invalid_imported_module
+common --deleted_packages=gazelle/python/testdata/invalid_annotation_exclude
+common --deleted_packages=gazelle/python/testdata/invalid_annotation_include_dep
+common --deleted_packages=gazelle/python/testdata/invalid_imported_module
+common --deleted_packages=gazelle/python/testdata/monorepo
+common --deleted_packages=gazelle/python/testdata/multiple_tests
+common --deleted_packages=gazelle/python/testdata/naming_convention
+common --deleted_packages=gazelle/python/testdata/naming_convention_binary_fail
+common --deleted_packages=gazelle/python/testdata/naming_convention_library_fail
+common --deleted_packages=gazelle/python/testdata/naming_convention_test_fail
+common --deleted_packages=gazelle/python/testdata/per_file
+common --deleted_packages=gazelle/python/testdata/per_file_non_empty_init
+common --deleted_packages=gazelle/python/testdata/per_file_subdirs
+common --deleted_packages=gazelle/python/testdata/per_package_test_target_without_entry_point
+common --deleted_packages=gazelle/python/testdata/project_generation_mode
+common --deleted_packages=gazelle/python/testdata/project_generation_mode_with_test_entrypoint
+common --deleted_packages=gazelle/python/testdata/project_generation_mode_with_tests
+common --deleted_packages=gazelle/python/testdata/py312_syntax
+common --deleted_packages=gazelle/python/testdata/python_ignore_dependencies_directive
+common --deleted_packages=gazelle/python/testdata/python_ignore_files_directive
+common --deleted_packages=gazelle/python/testdata/python_target_with_test_in_name
+common --deleted_packages=gazelle/python/testdata/relative_imports_package_mode
+common --deleted_packages=gazelle/python/testdata/relative_imports_project_mode
+common --deleted_packages=gazelle/python/testdata/remove_invalid_library
+common --deleted_packages=gazelle/python/testdata/respect_kind_mapping
+common --deleted_packages=gazelle/python/testdata/sibling_imports
+common --deleted_packages=gazelle/python/testdata/sibling_imports_disabled
+common --deleted_packages=gazelle/python/testdata/sibling_imports_disabled_file_mode
+common --deleted_packages=gazelle/python/testdata/simple_binary
+common --deleted_packages=gazelle/python/testdata/simple_binary_with_library
+common --deleted_packages=gazelle/python/testdata/simple_library
+common --deleted_packages=gazelle/python/testdata/simple_library_without_init
+common --deleted_packages=gazelle/python/testdata/simple_test
+common --deleted_packages=gazelle/python/testdata/simple_test_with_conftest
+common --deleted_packages=gazelle/python/testdata/simple_test_with_conftest_sibling_imports_disabled
+common --deleted_packages=gazelle/python/testdata/subdir_sources
+common --deleted_packages=gazelle/python/testdata/type_checking_imports
+common --deleted_packages=gazelle/python/testdata/type_checking_imports_across_packages
+common --deleted_packages=gazelle/python/testdata/type_checking_imports_disabled
+common --deleted_packages=gazelle/python/testdata/type_checking_imports_package
+common --deleted_packages=gazelle/python/testdata/type_checking_imports_project
+common --deleted_packages=gazelle/python/testdata/with_nested_import_statements
+common --deleted_packages=gazelle/python/testdata/with_std_requirements
+common --deleted_packages=gazelle/python/testdata/with_third_party_requirements
+common --deleted_packages=gazelle/python/testdata/with_third_party_requirements_from_imports
 common --deleted_packages=gazelle/pythonconfig
-common --deleted_packages=rules_python-repro
 common --deleted_packages=tests/integration/compile_pip_requirements
 common --deleted_packages=tests/integration/compile_pip_requirements_test_from_external_repo
 common --deleted_packages=tests/integration/custom_commands
@@ -60,10 +136,6 @@ common --deleted_packages=tests/modules/other/nspkg_single
 common --deleted_packages=tests/modules/other/simple_v1
 common --deleted_packages=tests/modules/other/simple_v2
 common --deleted_packages=tests/modules/other/with_external_data
-common --deleted_packages=tests/whl_with_build_files/testdata
-common --deleted_packages=tests/whl_with_build_files/testdata/somepkg
-common --deleted_packages=tests/whl_with_build_files/testdata/somepkg-1.0.dist-info
-common --deleted_packages=tests/whl_with_build_files/testdata/somepkg/subpkg
 # GENERATED_DELETED_PACKAGES_END
 
 test --test_output=errors
