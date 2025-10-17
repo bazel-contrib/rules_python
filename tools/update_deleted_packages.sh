@@ -18,7 +18,6 @@
 # `--deleted_packages` flag.
 
 set -euo pipefail
-set -x
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 ROOT_DIR="$DIR/.."
@@ -40,7 +39,9 @@ found_packages() {
 # Update .bazelrc
 update_bazelrc() {
     local packages
-    packages=$(found_packages | sort -u)
+    # Set LC_COLLATE so that "/" sorts before "_", which makes
+    # for slightly nicer ordering with file paths
+    packages=$(found_packages | LC_COLLATE=C sort | uniq)
 
     local start_marker="# GENERATED_DELETED_PACKAGES_START"
     local end_marker="# GENERATED_DELETED_PACKAGES_END"
@@ -53,7 +54,6 @@ update_bazelrc() {
     sed "/$start_marker/q" "$BAZELRC" > "$tmpfile"
 
     # Write the generated packages
-    echo "$start_marker" >> "$tmpfile"
     for pkg in $packages; do
         echo "common --deleted_packages=$pkg" >> "$tmpfile"
     done
