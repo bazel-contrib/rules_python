@@ -118,6 +118,8 @@ END_UNRELEASED_TEMPLATE
   ([#3262](https://github.com/bazel-contrib/rules_python/issues/3262)).
 * (rules) {obj}`py_console_script_binary` is now compatible with symbolic macros
   ([#3195](https://github.com/bazel-contrib/rules_python/pull/3195)).
+* (gazelle) Remove py_binary targets with invalid srcs. This includes files
+  that are not generated or regular files.
 
 {#v1-7-0-added}
 ### Added
