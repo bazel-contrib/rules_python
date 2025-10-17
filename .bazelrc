@@ -9,6 +9,9 @@ query --deleted_packages=examples/build_file_generation,examples/build_file_gene
 
 test --test_output=errors
 
+common --deleted_packages=gazelle/examples/bzlmod_build_file_generation
+common --deleted_packages=gazelle/examples/bzlmod_build_file_generation/runfiles
+
 # Do NOT implicitly create empty __init__.py files in the runfiles tree.
 # By default, these are created in every directory containing Python source code
 # or shared libraries, and every parent directory of those directories,
