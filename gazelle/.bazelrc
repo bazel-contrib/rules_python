@@ -1,3 +1,6 @@
+common --deleted_packages=examples/bzlmod_build_file_generation
+common --deleted_packages=examples/bzlmod_build_file_generation/runfiles
+
 test --test_output=errors
 
 # Do NOT implicitly create empty __init__.py files in the runfiles tree.
