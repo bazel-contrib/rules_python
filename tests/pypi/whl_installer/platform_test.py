@@ -38,17 +38,17 @@ class PlatformTest(unittest.TestCase):
 
     def test_can_get_all_for_py_version(self):
         cp39 = Platform.all(minor_version=9, micro_version=0)
-        self.assertEqual(21, len(cp39), f"Got {cp39}")
+        self.assertEqual(24, len(cp39), f"Got {cp39}")
         self.assertEqual(cp39, Platform.from_string("cp39.0_*"))
 
     def test_can_get_all_for_os(self):
         linuxes = Platform.all(OS.linux, minor_version=9)
-        self.assertEqual(7, len(linuxes))
+        self.assertEqual(8, len(linuxes))
         self.assertEqual(linuxes, Platform.from_string("cp39_linux_*"))
 
     def test_can_get_all_for_os_for_host_python(self):
         linuxes = Platform.all(OS.linux)
-        self.assertEqual(7, len(linuxes))
+        self.assertEqual(8, len(linuxes))
         self.assertEqual(linuxes, Platform.from_string("linux_*"))
 
     def test_platform_sort(self):
