@@ -219,8 +219,8 @@ tasks:
       - "--enable_workspace"
       - "--keep_going"
       - "--build_tag_filters=-integration-test"
-      - "--cxxopt=/std=c++17"
-      - "--host_cxxopt=/std=c++17"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
     test_targets:
       - "--"
       - "..."
@@ -228,8 +228,8 @@ tasks:
       - "--noenable_bzlmod"
       - "--enable_workspace"
       - "--test_tag_filters=-integration-test"
-      - "--cxxopt=/std=c++17"
-      - "--host_cxxopt=/std=c++17"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
 
   debian:
     <<: *reusable_config
@@ -372,11 +372,11 @@ tasks:
     platform: windows
     bazel: 7.x
     build_flags:
-      - "--cxxopt=/std=c++17"
-      - "--host_cxxopt=/std=c++17"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
     test_flags:
-      - "--cxxopt=/std=c++17"
-      - "--host_cxxopt=/std=c++17"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
   integration_test_bzlmod_windows_upcoming:
     <<: *reusable_build_test_all
     # coverage is not supported on Windows
@@ -549,15 +549,15 @@ tasks:
       - "--enable_workspace"
       - "--test_tag_filters=-integration-test"
       # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
-      - "--cxxopt=/std=c++17"
-      - "--host_cxxopt=/std=c++17"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
     build_flags:
       - "--noenable_bzlmod"
       - "--enable_workspace"
       - "--build_tag_filters=-integration-test"
       # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
-      - "--cxxopt=/std=c++17"
-      - "--host_cxxopt=/std=c++17"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
 
   integration_test_pip_repository_annotations_ubuntu_workspace:
     <<: *reusable_build_test_all
