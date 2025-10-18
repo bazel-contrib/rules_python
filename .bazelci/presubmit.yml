@@ -219,6 +219,8 @@ tasks:
       - "--enable_workspace"
       - "--keep_going"
       - "--build_tag_filters=-integration-test"
+      - "--cxxopt=/std=c++17"
+      - "--host_cxxopt=/std=c++17"
     test_targets:
       - "--"
       - "..."
@@ -226,6 +228,8 @@ tasks:
       - "--noenable_bzlmod"
       - "--enable_workspace"
       - "--test_tag_filters=-integration-test"
+      - "--cxxopt=/std=c++17"
+      - "--host_cxxopt=/std=c++17"
 
   debian:
     <<: *reusable_config
@@ -337,6 +341,7 @@ tasks:
     bazel: 7.x
   integration_test_bzlmod_ubuntu_vendor:
     <<: *reusable_build_test_all
+    <<: *bazel_7_cxx_17_flags
     name: "examples/bzlmod: bazel vendor"
     working_directory: examples/bzlmod
     platform: ubuntu2204
@@ -361,12 +366,17 @@ tasks:
     bazel: last_rc
   integration_test_bzlmod_windows:
     <<: *reusable_build_test_all
-    <<: *bazel_7_cxx_17_flags
     # coverage is not supported on Windows
     name: "examples/bzlmod: Windows"
     working_directory: examples/bzlmod
     platform: windows
     bazel: 7.x
+    build_flags:
+      - "--cxxopt=/std=c++17"
+      - "--host_cxxopt=/std=c++17"
+    test_flags:
+      - "--cxxopt=/std=c++17"
+      - "--host_cxxopt=/std=c++17"
   integration_test_bzlmod_windows_upcoming:
     <<: *reusable_build_test_all
     # coverage is not supported on Windows
@@ -534,6 +544,20 @@ tasks:
     name: "examples/py_proto_library: Windows, workspace"
     working_directory: examples/py_proto_library
     platform: windows
+    test_flags:
+      - "--noenable_bzlmod"
+      - "--enable_workspace"
+      - "--test_tag_filters=-integration-test"
+      # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+      - "--cxxopt=/std=c++17"
+      - "--host_cxxopt=/std=c++17"
+    build_flags:
+      - "--noenable_bzlmod"
+      - "--enable_workspace"
+      - "--build_tag_filters=-integration-test"
+      # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+      - "--cxxopt=/std=c++17"
+      - "--host_cxxopt=/std=c++17"
 
   integration_test_pip_repository_annotations_ubuntu_workspace:
     <<: *reusable_build_test_all
