@@ -26,6 +26,9 @@ buildifier:
   test_flags:
     - "--cxxopt=-std=c++17"
     - "--host_cxxopt=-std=c++17"
+  coverage_flags:
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
 # NOTE: Minimum supported version is 7.x
 .minimum_supported_version: &minimum_supported_version
   # For testing minimum supported version.
@@ -339,7 +342,7 @@ tasks:
     platform: ubuntu2204
     shell_commands:
     - "bazel vendor --vendor_dir=./vendor //..."
-    - "bazel build --vendor_dir=./vendor //..."
+    - "bazel build --vendor_dir=./vendor --cxxopt=-std=c++17 --host_cxxopt=-std=c++17 //..."
     - "rm -rf ./vendor"
   integration_test_bzlmod_macos:
     <<: *reusable_build_test_all
