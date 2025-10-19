@@ -70,6 +70,10 @@ jobs:
     needs: publish_bcr
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.tag_name || github.ref_name }}
       - if: github.event_name == 'push' || github.event.inputs.publish_to_pypi
         env:
           # This special value tells pypi that the user identity is supplied within the token
