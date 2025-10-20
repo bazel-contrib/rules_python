@@ -11,9 +11,11 @@ py_repositories()
 
 # Needed for rules_cc 0.2.10
 load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
 bazel_features_deps()
 
 load("@rules_cc//cc:extensions.bzl", "compatibility_proxy_repo")
+
 compatibility_proxy_repo()
 
 python_register_toolchains(
