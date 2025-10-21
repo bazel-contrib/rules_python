@@ -41,7 +41,7 @@ Values:
 
 This flag replaces the Bazel builtin `--build_python_zip` flag.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 ::::
 
@@ -62,7 +62,7 @@ Values;
 This flag replaces the Bazel builtin
 `--experimental_python_import_all_repositories` flag.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 ::::
 
@@ -75,11 +75,11 @@ be removed.
 
 This flag replaces the Bazel builtin `--python_path` flag.
 
-:::{deprecated} VERSION_NEXT_FEATURE
+:::{deprecated} 1.7.0
 Use toolchains instead.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 ::::
 
@@ -111,7 +111,7 @@ Values:
 This flag replaces the Bazel builtin
 `--incompatible_default_to_explicit_init_py` flag.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 ::::
 
