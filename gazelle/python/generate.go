@@ -658,17 +658,19 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 // file names if GeneratePyiSrcs is set. Otherwise, returns an empty set.
 func getPyiFilenames(filenames *treeset.Set, generatePyiSrcs bool, basePath string) (*treeset.Set, error) {
 	pyiSrcs := treeset.NewWith(godsutils.StringComparator)
-	if generatePyiSrcs {
-		it := filenames.Iterator()
-		for it.Next() {
-			pyiFilename := it.Value().(string) + "i" // foo.py --> foo.pyi
+	if !generatePyiSrcs {
+		return pyiSrcs, nil
+	}
 
-			_, err := os.Stat(filepath.Join(basePath, pyiFilename))
-			// If the file DNE or there's some other error, there's nothing to do.
-			if err == nil {
-				// pyi file exists, add it
-				pyiSrcs.Add(pyiFilename)
-			}
+	it := filenames.Iterator()
+	for it.Next() {
+		pyiFilename := it.Value().(string) + "i" // foo.py --> foo.pyi
+
+		_, err := os.Stat(filepath.Join(basePath, pyiFilename))
+		// If the file DNE or there's some other error, there's nothing to do.
+		if err == nil {
+			// pyi file exists, add it
+			pyiSrcs.Add(pyiFilename)
 		}
 	}
 	return pyiSrcs, nil
