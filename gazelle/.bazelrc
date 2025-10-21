@@ -1,3 +1,6 @@
+common --deleted_packages=examples/bzlmod_build_file_generation
+common --deleted_packages=examples/bzlmod_build_file_generation/runfiles
+
 test --test_output=errors
 
 # Do NOT implicitly create empty __init__.py files in the runfiles tree.
@@ -7,6 +10,7 @@ test --test_output=errors
 # creating (possibly empty) __init__.py files and adding them to the srcs of
 # Python targets as required.
 build --incompatible_default_to_explicit_init_py
+build --@rules_python//python/config_settings:incompatible_default_to_explicit_init_py=True
 
 # Windows makes use of runfiles for some rules
 build --enable_runfiles

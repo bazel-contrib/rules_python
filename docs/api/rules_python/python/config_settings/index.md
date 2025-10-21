@@ -24,6 +24,65 @@ This is a transition flag and will be removed in a subsequent release.
 ::::
 :::
 
+::::{bzl:flag} build_python_zip
+Controls if a `py_binary/py_test` output is a self-executable zipapp.
+
+When enabled, the output of `py_binary` or `py_test` targets will be a
+self-executable zipapp.
+
+:::{note}
+This affects _all_ `py_binary` and `py_test` targets in the build, not
+only the target(s) specified on the command line.
+:::
+
+Values:
+* `true`
+* `false`
+
+This flag replaces the Bazel builtin `--build_python_zip` flag.
+
+:::{versionadded} 1.7.0
+:::
+::::
+
+::::{bzl:flag} experimental_python_import_all_repositories
+Controls whether repository directories are added to the import path.
+
+When enabled, the top-level directories in the runfiles root directory (which
+are presumbed to be repository directories) are added to the Python import
+search path.
+
+It's recommended to set this to **`false`** to avoid external dependencies
+unexpectedly interferring with import searching.
+
+Values;
+* `true` (default)
+* `false`
+
+This flag replaces the Bazel builtin
+`--experimental_python_import_all_repositories` flag.
+
+:::{versionadded} 1.7.0
+:::
+::::
+
+::::{bzl:flag} python_path
+A fallback path to use for Python for particular legacy Windows-specific code paths.
+
+Deprecated, do not use. This flag is largely a no-op and was replaced by
+toolchains. It only remains for some legacy Windows code-paths that will
+be removed.
+
+This flag replaces the Bazel builtin `--python_path` flag.
+
+:::{deprecated} 1.7.0
+Use toolchains instead.
+:::
+
+:::{versionadded} 1.7.0
+:::
+::::
+
 :::{bzl:flag} python_version
 Determines the default hermetic Python toolchain version. This can be set to
 one of the values that `rules_python` maintains.
@@ -32,6 +91,29 @@ one of the values that `rules_python` maintains.
 :::{bzl:target} python_version_major_minor
 Parses the value of the `python_version` and transforms it into a `X.Y` value.
 :::
+
+::::{bzl:flag} incompatible_default_to_explicit_init_py
+Controls if missing `__init__.py` files are generated or not.
+
+If false, `py_binary` and `py_test` will, for every `*.py` and `*.so` file,
+create `__init__.py` files for the containing directory, and all parent
+directories, that do not already have an `__init__.py` file. If true, this
+behavior is disabled.
+
+It's recommended to disable this behavior to avoid surprising import effects
+from directories being importable when they otherwise wouldn't be, and for
+how it can interfere with implicit namespace packages.
+
+Values:
+* `true`: do not generate missing `__init__.py` files
+* `false` (default): generate missing `__init__.py` files
+
+This flag replaces the Bazel builtin
+`--incompatible_default_to_explicit_init_py` flag.
+
+:::{versionadded} 1.7.0
+:::
+::::
 
 :::{bzl:target} is_python_*
 config_settings to match Python versions

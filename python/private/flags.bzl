@@ -71,7 +71,7 @@ def read_possibly_native_flag(ctx, flag_name):
         return _POSSIBLY_NATIVE_FLAGS[flag_name][0](ctx)
     else:
         # Starlark definition of "--foo" is assumed to be a label dependency named "_foo".
-        return getattr(ctx.attr, "_" + flag_name)[BuildSettingInfo].value
+        return getattr(ctx.attr, "_" + flag_name + "_flag")[BuildSettingInfo].value
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value

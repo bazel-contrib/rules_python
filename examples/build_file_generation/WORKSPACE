@@ -7,54 +7,7 @@ workspace(name = "build_file_generation_example")
 # file.  When the symbol is loaded you can use the rule.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-######################################################################
-# We need rules_go and bazel_gazelle, to build the gazelle plugin from source.
-# Setup instructions for this section are at
-# https://github.com/bazelbuild/bazel-gazelle#running-gazelle-with-bazel
-# You may need to update the version of the rule, which is listed in the above
-# documentation.
-######################################################################
-
-# Define an http_archive rule that will download the below ruleset,
-# test the sha, and extract the ruleset to you local bazel cache.
-
-http_archive(
-    name = "io_bazel_rules_go",
-    sha256 = "9d72f7b8904128afb98d46bbef82ad7223ec9ff3718d419afb355fddd9f9484a",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
-        "https://github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
-    ],
-)
-
-# Download the bazel_gazelle ruleset.
-http_archive(
-    name = "bazel_gazelle",
-    sha256 = "75df288c4b31c81eb50f51e2e14f4763cb7548daae126817247064637fd9ea62",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.36.0/bazel-gazelle-v0.36.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.36.0/bazel-gazelle-v0.36.0.tar.gz",
-    ],
-)
-
-# Load rules_go ruleset and expose the toolchain and dep rules.
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
-# go_rules_dependencies is a function that registers external dependencies
-# needed by the Go rules.
-# See: https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#go_rules_dependencies
-go_rules_dependencies()
-
-# go_rules_dependencies is a function that registers external dependencies
-# needed by the Go rules.
-# See: https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#go_rules_dependencies
-go_register_toolchains(version = "1.21.13")
-
-# The following call configured the gazelle dependencies, Go environment and Go SDK.
-gazelle_dependencies()
-
-# Remaining setup is for rules_python.
+# Setup rules_python.
 
 # DON'T COPY_PASTE THIS.
 # Our example uses `local_repository` to point to the HEAD version of rules_python.
@@ -123,6 +76,53 @@ load("@pip//:requirements.bzl", "install_deps")
 
 # Initialize repositories for all packages in requirements_lock.txt.
 install_deps()
+
+######################################################################
+# We need rules_go and bazel_gazelle, to build the gazelle plugin from source.
+# Setup instructions for this section are at
+# https://github.com/bazelbuild/bazel-gazelle#running-gazelle-with-bazel
+# You may need to update the version of the rule, which is listed in the above
+# documentation.
+######################################################################
+
+# Define an http_archive rule that will download the below ruleset,
+# test the sha, and extract the ruleset to you local bazel cache.
+
+http_archive(
+    name = "io_bazel_rules_go",
+    sha256 = "9d72f7b8904128afb98d46bbef82ad7223ec9ff3718d419afb355fddd9f9484a",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
+        "https://github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
+    ],
+)
+
+# Download the bazel_gazelle ruleset.
+http_archive(
+    name = "bazel_gazelle",
+    sha256 = "75df288c4b31c81eb50f51e2e14f4763cb7548daae126817247064637fd9ea62",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.36.0/bazel-gazelle-v0.36.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.36.0/bazel-gazelle-v0.36.0.tar.gz",
+    ],
+)
+
+# Load rules_go ruleset and expose the toolchain and dep rules.
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+# go_rules_dependencies is a function that registers external dependencies
+# needed by the Go rules.
+# See: https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#go_rules_dependencies
+go_rules_dependencies()
+
+# go_rules_dependencies is a function that registers external dependencies
+# needed by the Go rules.
+# See: https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#go_rules_dependencies
+go_register_toolchains(version = "1.21.13")
+
+# The following call configured the gazelle dependencies, Go environment and Go SDK.
+gazelle_dependencies()
 
 # The rules_python gazelle extension has some third-party go dependencies
 # which we need to fetch in order to compile it.

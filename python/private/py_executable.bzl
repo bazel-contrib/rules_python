@@ -77,6 +77,13 @@ EXECUTABLE_ATTRS = dicts.add(
     AGNOSTIC_EXECUTABLE_ATTRS,
     PY_SRCS_ATTRS,
     IMPORTS_ATTRS,
+    # starlark flags attributes
+    {
+        "_build_python_zip_flag": attr.label(default = "//python/config_settings:build_python_zip"),
+        "_default_to_explicit_init_py_flag": attr.label(default = "//python/config_settings:incompatible_default_to_explicit_init_py"),
+        "_python_import_all_repositories_flag": attr.label(default = "//python/config_settings:experimental_python_import_all_repositories"),
+        "_python_path_flag": attr.label(default = "//python/config_settings:python_path"),
+    },
     {
         "interpreter_args": lambda: attrb.StringList(
             doc = """
@@ -1136,6 +1143,9 @@ def _get_runtime_details(ctx, semantics):
     # TOOD(bazelbuild/bazel#7901): Remove this once --python_path flag is removed.
 
     flag_interpreter_path = read_possibly_native_flag(ctx, "python_path")
+    if not flag_interpreter_path.startswith("python") and not paths.is_absolute(flag_interpreter_path):
+        fail("'python_path' must be an absolute path or a name to be resolved from the system PATH (e.g., 'python', 'python3').")
+
     toolchain_runtime, effective_runtime = _maybe_get_runtime_from_ctx(ctx)
     if not effective_runtime:
         # Clear these just in case

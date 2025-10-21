@@ -23,7 +23,7 @@ py_reconfig_binary(
     srcs = ["bin.py"],
     bootstrap_impl = "script",
     # Force it to not be self-executable
-    build_python_zip = "no",
+    build_python_zip = False,
     main = "bin.py",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
 )
@@ -50,14 +50,14 @@ sh_test(
 
 sh_py_run_test(
     name = "run_binary_zip_no_test",
-    build_python_zip = "no",
+    build_python_zip = False,
     py_src = "bin.py",
     sh_src = "run_binary_zip_no_test.sh",
 )
 
 sh_py_run_test(
     name = "run_binary_zip_yes_test",
-    build_python_zip = "yes",
+    build_python_zip = True,
     py_src = "bin.py",
     sh_src = "run_binary_zip_yes_test.sh",
 )
@@ -81,7 +81,7 @@ sh_py_run_test(
 sh_py_run_test(
     name = "run_binary_bootstrap_script_zip_yes_test",
     bootstrap_impl = "script",
-    build_python_zip = "yes",
+    build_python_zip = True,
     py_src = "bin.py",
     sh_src = "run_binary_zip_yes_test.sh",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
@@ -90,7 +90,7 @@ sh_py_run_test(
 sh_py_run_test(
     name = "run_binary_bootstrap_script_zip_no_test",
     bootstrap_impl = "script",
-    build_python_zip = "no",
+    build_python_zip = False,
     py_src = "bin.py",
     sh_src = "run_binary_zip_no_test.sh",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,

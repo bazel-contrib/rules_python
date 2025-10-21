@@ -329,20 +329,20 @@ tasks:
     <<: *minimum_supported_version
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "examples/bzlmod_build_file_generation: Ubuntu, minimum Bazel"
-    working_directory: examples/bzlmod_build_file_generation
+    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu, minimum Bazel"
+    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: ubuntu2204
     bazel: 7.x
   integration_test_bzlmod_generation_build_files_ubuntu:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "examples/bzlmod_build_file_generation: Ubuntu"
-    working_directory: examples/bzlmod_build_file_generation
+    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu"
+    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: ubuntu2204
   integration_test_bzlmod_generation_build_files_ubuntu_run:
     <<: *reusable_build_test_all
-    name: "examples/bzlmod_build_file_generation: Ubuntu, Gazelle and pip"
-    working_directory: examples/bzlmod_build_file_generation
+    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu, Gazelle and pip"
+    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: ubuntu2204
     shell_commands:
     - "bazel run //:gazelle_python_manifest.update"
@@ -350,20 +350,20 @@ tasks:
   integration_test_bzlmod_build_file_generation_debian:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "examples/bzlmod_build_file_generation: Debian"
-    working_directory: examples/bzlmod_build_file_generation
+    name: "gazelle/examples/bzlmod_build_file_generation: Debian"
+    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: debian11
   integration_test_bzlmod_build_file_generation_macos:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "examples/bzlmod_build_file_generation: MacOS"
-    working_directory: examples/bzlmod_build_file_generation
+    name: "gazelle/examples/bzlmod_build_file_generation: MacOS"
+    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: macos
   integration_test_bzlmod_build_file_generation_windows:
     <<: *reusable_build_test_all
     # coverage is not supported on Windows
-    name: "examples/bzlmod_build_file_generation: Windows"
-    working_directory: examples/bzlmod_build_file_generation
+    name: "gazelle/examples/bzlmod_build_file_generation: Windows"
+    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: windows
 
   integration_test_multi_python_versions_ubuntu_workspace:

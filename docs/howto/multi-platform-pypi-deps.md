@@ -163,16 +163,16 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 # A custom platform for CUDA on glibc linux
 pip.default(
     platform = "linux_x86_64_cuda12.9",
-    os = "linux",
-    cpu = "x86_64",
+    arch_name = "x86_64",
+    os_name = "linux",
     config_settings = ["@//:is_cuda_12_9"],
 )
 
 # A custom platform for musl on linux
 pip.default(
     platform = "linux_aarch64_musl",
-    os = "linux",
-    cpu = "aarch64",
+    os_name = "linux",
+    arch_name = "aarch64",
     config_settings = ["@//:is_musl"],
 )
 
