@@ -38,8 +38,7 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
-  that are not generated or regular files.
+* Nothing fixed.
 
 {#v0-0-0-added}
 ### Added
@@ -64,12 +63,13 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
+  that are not generated or regular files.
 
 {#v0-0-0-added}
 ### Added
 * (gazelle) A new directive `python_generate_pyi_deps` has been added. When
-  `true`, a py_* target's `pyi_srcs` attribute will be set if any `.pyi` files
+  `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files
   that are associated with the target's `srcs` are present.
   ([#3354](https://github.com/bazel-contrib/rules_python/issues/3354)).
 
