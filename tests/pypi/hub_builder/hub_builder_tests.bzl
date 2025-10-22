@@ -943,7 +943,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "optimum": {
-            "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded": [
+            "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded_onnxruntime-gpu": [
                 whl_config_setting(
                     version = "3.15",
                     target_platforms = [
@@ -953,7 +953,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
                     ],
                 ),
             ],
-            "pypi_315_optimum_osx_aarch64": [
+            "pypi_315_optimum_osx_aarch64_onnxruntime": [
                 whl_config_setting(
                     version = "3.15",
                     target_platforms = [
@@ -964,13 +964,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded": {
+        "pypi_315_optimum_linux_aarch64_linux_x86_64_linux_x86_64_freethreaded_onnxruntime-gpu": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
         },
-        "pypi_315_optimum_osx_aarch64": {
+        "pypi_315_optimum_osx_aarch64_onnxruntime": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -1028,7 +1028,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "optimum": {
-            "pypi_315_optimum_mylinuxx86_64": [
+            "pypi_315_optimum_mylinuxx86_64_onnxruntime-gpu": [
                 whl_config_setting(
                     version = "3.15",
                     target_platforms = [
@@ -1036,7 +1036,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
                     ],
                 ),
             ],
-            "pypi_315_optimum_myosxaarch64": [
+            "pypi_315_optimum_myosxaarch64_onnxruntime": [
                 whl_config_setting(
                     version = "3.15",
                     target_platforms = [
@@ -1047,13 +1047,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum_mylinuxx86_64": {
+        "pypi_315_optimum_mylinuxx86_64_onnxruntime-gpu": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "optimum[onnxruntime-gpu]==1.17.1",
         },
-        "pypi_315_optimum_myosxaarch64": {
+        "pypi_315_optimum_myosxaarch64_onnxruntime": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
@@ -1063,6 +1063,99 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.extra_aliases().contains_exactly({})
 
 _tests.append(_test_pipstar_platforms)
+
+def _test_multiple_extras_multiple_requirements(env):
+    """Test that reproduces an issue where multiple extras point to same whl.
+
+    Based on https://github.com/bazel-contrib/rules_python/issues/2797#issuecomment-3143914644.
+    """
+
+    def mock_simpleapi_download(*_, **__):
+        return {
+            "package": parse_simpleapi_html(
+                url = "https://example.com/package",
+                content = '''
+<a href="package-0.7.0.tar.gz#sha256=4dd8924f171ed73a4f1a6191e2f800ae1745069989b69fabc45593d6b6504003">package-0.7.0.tar.gz</a>
+<a href="package-0.7.0-py3-none-any.whl#sha256=62833036cbaf4641d66ae94c61c0446890a91b2c0d153946583a0ebe04877a76">package-0.7.0-py3-none-any.whl</a>
+''',
+            ),
+        }
+
+    builder = hub_builder(
+        env,
+        available_interpreters = {
+            "python_3_12_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.12": "3.12.11"},
+        simpleapi_download_fn = mock_simpleapi_download,
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "requirements.linux_arm64.txt": """
+package==0.7.0 --hash=sha256:4dd8924f171ed73a4f1a6191e2f800ae1745069989b69fabc45593d6b6504003
+               --hash=sha256:62833036cbaf4641d66ae94c61c0446890a91b2c0d153946583a0ebe04877a76
+""",
+                "requirements.linux_x86_64.txt": """
+package[extra]==0.7.0 --hash=sha256:62833036cbaf4641d66ae94c61c0446890a91b2c0d153946583a0ebe04877a76
+""",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.12",
+            download_only = True,
+            requirements_by_platform = {
+                "requirements.linux_arm64.txt": "linux_aarch64",
+                "requirements.linux_x86_64.txt": "linux_x86_64",
+            },
+            experimental_index_url = "pypi.org",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["package"])
+    pypi.group_map().contains_exactly({})
+
+    pypi.whl_map().contains_exactly({
+        "package": {
+            "pypi_312_package_py3_none_any_62833036": [
+                whl_config_setting(
+                    target_platforms = ["cp312_linux_aarch64"],
+                    version = "3.12",
+                ),
+            ],
+            "pypi_312_package_py3_none_any_62833036_extra": [
+                whl_config_setting(
+                    target_platforms = ["cp312_linux_x86_64"],
+                    version = "3.12",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_312_package_py3_none_any_62833036": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "package-0.7.0-py3-none-any.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "package==0.7.0",
+            "sha256": "62833036cbaf4641d66ae94c61c0446890a91b2c0d153946583a0ebe04877a76",
+            "urls": ["https://example.com/package/package-0.7.0-py3-none-any.whl"],
+        },
+        "pypi_312_package_py3_none_any_62833036_extra": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "package-0.7.0-py3-none-any.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "package[extra]==0.7.0",
+            "sha256": "62833036cbaf4641d66ae94c61c0446890a91b2c0d153946583a0ebe04877a76",
+            "urls": ["https://example.com/package/package-0.7.0-py3-none-any.whl"],
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_multiple_extras_multiple_requirements)
 
 def hub_builder_test_suite(name):
     """Create the test suite.

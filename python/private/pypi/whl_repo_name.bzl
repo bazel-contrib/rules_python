@@ -18,7 +18,7 @@
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
-def whl_repo_name(filename, sha256):
+def whl_repo_name(filename, sha256, extras = []):
     """Return a valid whl_library repo name given a distribution filename.
 
     Args:
@@ -59,9 +59,12 @@ def whl_repo_name(filename, sha256):
     elif version:
         parts.insert(1, version)
 
+    if extras:
+        parts.extend(sorted([e for e in extras if e]))
+
     return "_".join(parts)
 
-def pypi_repo_name(whl_name, *target_platforms):
+def pypi_repo_name(whl_name, target_platforms = [], extras = []):
     """Return a valid whl_library given a requirement line.
 
     Args:
@@ -75,5 +78,8 @@ def pypi_repo_name(whl_name, *target_platforms):
         normalize_name(whl_name),
     ]
     parts.extend([p.partition("_")[-1] for p in target_platforms])
+
+    if extras:
+        parts.extend(sorted([e for e in extras if e]))
 
     return "_".join(parts)

@@ -274,6 +274,7 @@ def _package_srcs(
                     sha256 = dist.sha256,
                     url = dist.url,
                     yanked = dist.yanked,
+                    extras = requirement(r.requirement_line).extras,
                 ),
             )
 
