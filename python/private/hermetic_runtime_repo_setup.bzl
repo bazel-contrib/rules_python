@@ -179,16 +179,16 @@ def define_hermetic_runtime_toolchain_impl(
                 "libs/python{major}{minor}t.lib".format(**version_dict),
                 "libs/python3t.lib",
             ],
-            "@platforms//os:linux": [
-                "lib/libpython{major}.{minor}.so".format(**version_dict),
-                "lib/libpython{major}.{minor}.so.1.0".format(**version_dict),
-            ],
             "@platforms//os:macos": ["lib/libpython{major}.{minor}.dylib".format(**version_dict)],
             "@platforms//os:windows": [
                 "python3.dll",
                 "python{major}{minor}.dll".format(**version_dict),
                 "libs/python{major}{minor}.lib".format(**version_dict),
                 "libs/python3.lib",
+            ],
+            "//conditions:default": [
+                "lib/libpython{major}.{minor}.so".format(**version_dict),
+                "lib/libpython{major}.{minor}.so.1.0".format(**version_dict),
             ],
         }),
     )
