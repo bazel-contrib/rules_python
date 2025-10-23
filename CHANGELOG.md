@@ -38,7 +38,8 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
+  that are not generated or regular files.
 
 {#v0-0-0-added}
 ### Added
