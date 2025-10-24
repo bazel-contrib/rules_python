@@ -38,8 +38,7 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
-  that are not generated or regular files.
+* Nothing fixed.
 
 {#v0-0-0-added}
 ### Added
@@ -48,6 +47,28 @@ BEGIN_UNRELEASED_TEMPLATE
 
 END_UNRELEASED_TEMPLATE
 -->
+
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* (toolchain) removed all old 3.9 toolchains except for the latest version since it has been
+  announced as an EOL.
+
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
+  that are not generated or regular files.
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
 
 {#v1-7-0}
 ## [1.7.0] - 2025-10-11
