@@ -17,7 +17,9 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -32,7 +34,6 @@ load(
     "apply_config_settings_attr",
 )
 load(":builders.bzl", "builders")
-load(":cc_helper.bzl", "cc_helper")
 load(
     ":common.bzl",
     "collect_cc_info",
@@ -1092,7 +1093,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     )
 
 def _get_build_info(ctx, cc_toolchain):
-    build_info_files = py_internal.cc_toolchain_build_info_files(cc_toolchain)
+    build_info_files = cc_toolchain._build_info_files
     if cc_helper.is_stamping_enabled(ctx):
         # Makes the target depend on BUILD_INFO_KEY, which helps to discover stamped targets
         # See b/326620485 for more details.
@@ -1400,7 +1401,7 @@ def _write_build_data(ctx, central_uncachable_version_file, extra_write_build_da
             # https://github.com/bazelbuild/bazel/issues/9363
             "INFO_FILE": ctx.info_file.path,
             "OUTPUT": build_data.path,
-            "PLATFORM": cc_helper.find_cpp_toolchain(ctx).toolchain_id,
+            "PLATFORM": find_cc_toolchain(ctx).toolchain_id,
             "TARGET": str(ctx.label),
             "VERSION_FILE": version_file.path,
         }, extra_write_build_data_env),
@@ -1444,7 +1445,7 @@ def _get_native_deps_details(ctx, *, semantics, cc_details, is_test):
 
     # The regular cc_common.link API can't be used because several
     # args are private-use only; see # private comments
-    py_internal.link(
+    getattr(py_internal, "link", cc_common.link)(
         name = ctx.label.name,
         actions = ctx.actions,
         linking_contexts = [cc_info.linking_context],
@@ -1475,7 +1476,7 @@ def _create_shared_native_deps_dso(
         requested_features,
         cc_toolchain):
     linkstamps = [
-        py_internal.linkstamp_file(linkstamp)
+        linkstamp.file()
         for linker_input in cc_info.linking_context.linker_inputs.to_list()
         for linkstamp in linker_input.linkstamps
     ]
