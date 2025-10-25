@@ -45,6 +45,7 @@ class Arch(Enum):
     ppc64le = 5
     s390x = 6
     arm = 7
+    riscv64 = 8
     amd64 = x86_64
     arm64 = aarch64
     i386 = x86_32
@@ -269,6 +270,8 @@ class Platform:
             return "ppc"
         elif self.arch == Arch.ppc64le:
             return "ppc64le"
+        elif self.arch == Arch.riscv64:
+            return "riscv64"
         elif self.arch == Arch.s390x:
             return "s390x"
         else:
