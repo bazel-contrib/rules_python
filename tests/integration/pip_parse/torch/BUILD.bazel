@@ -1,0 +1,32 @@
+load("@pip_torch//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements")
+load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/uv:lock.bzl", "lock")
+
+# Run bazel run //torch:requirements.update
+lock(
+    name = "requirements",
+    srcs = ["requirements.in"],
+    out = "requirements.txt",
+    args = [
+        "--emit-index-url",
+        "--universal",
+        "--upgrade",
+        "--extra-index-url=https://download.pytorch.org/whl/cpu",
+    ],
+    # NOTE @aignas 2025-08-17: here we select the lowest actively supported version so that the
+    # requirements file is generated to be compatible with Python version 3.9 or greater.
+    python_version = "3.10",
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "test_empty",
+    srcs = ["test_empty.py"],
+    deps = ["@pip_torch//torch"],
+    python_version = "3.10",  # Use a non-default toolchain version
+    env = {
+        "REQUIREMENTS": ",".join(all_requirements),
+        "REQUIREMENTS_DATA": ",".join(all_data_requirements),
+        "REQUIREMENTS_WHL": ",".join(all_whl_requirements),
+    },
+)
