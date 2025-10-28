@@ -7,3 +7,8 @@ common --experimental_enable_bzlmod
 
 coverage --java_runtime_version=remotejdk_11
 common:bazel7.x --incompatible_python_disallow_native_rules
+
+# NOTE: rules_python MUST be overridden using bazelrc config.
+# This is because the BCR presubmits run with a different directory
+# structure, so override this to remove the override.
+common --override_module=rules_python=../../../

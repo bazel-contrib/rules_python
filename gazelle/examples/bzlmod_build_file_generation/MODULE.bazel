@@ -15,15 +15,6 @@ module(
 # https://github.com/bazel-contrib/rules_python/releases
 bazel_dep(name = "rules_python", version = "1.0.0")
 
-# NOTE: This override is removed for BCR presubmits and the version
-# specified by bazel_dep() is used instead.
-# The following loads rules_python from the file system.
-# For usual setups you should remove this local_path_override block.
-local_path_override(
-    module_name = "rules_python",
-    path = "../../..",
-)
-
 # The following stanza defines the dependency rules_python_gazelle_plugin.
 # For typical setups you set the version.
 # See the releases page for available versions.
