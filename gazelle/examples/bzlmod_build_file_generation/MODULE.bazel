@@ -13,7 +13,7 @@ module(
 # For typical setups you set the version.
 # See the releases page for available versions.
 # https://github.com/bazel-contrib/rules_python/releases
-bazel_dep(name = "rules_python", version = "1.0.0")
+bazel_dep(name = "rules_python", version = "1.4.0")
 
 # The following stanza defines the dependency rules_python_gazelle_plugin.
 # For typical setups you set the version.
