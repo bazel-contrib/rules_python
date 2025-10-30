@@ -34,7 +34,9 @@ BEGIN_UNRELEASED_TEMPLATE
 * Nothing removed.
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (toolchain) Use Python from [20251028] release.
+
+[20251028]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251028
 
 {#v0-0-0-fixed}
 ### Fixed
