@@ -134,7 +134,6 @@ def parse_requirements(
         # The requirement lines might have duplicate names because lines for extras
         # are returned as just the base package name. e.g., `foo[bar]` results
         # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
-        # Lines with different markers are not considered duplicates.
         requirements_dict = {}
         for entry in sorted(
             parse_results,
