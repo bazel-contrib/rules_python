@@ -127,7 +127,7 @@ def parse_requirements(
     ))
 
     requirements_by_platform = {}
-    for target_platform, reqs_ in requirements.items():
+    for target_platform, parse_results in requirements.items():
         # Replicate a surprising behavior that WORKSPACE builds allowed:
         # Defining a repo with the same name multiple times, but only the last
         # definition is respected.
@@ -137,7 +137,7 @@ def parse_requirements(
         # Lines with different markers are not considered duplicates.
         requirements_dict = {}
         for entry in sorted(
-            reqs_,
+            parse_results,
             # Get the longest match and fallback to original WORKSPACE sorting,
             # which should get us the entry with most extras.
             #
