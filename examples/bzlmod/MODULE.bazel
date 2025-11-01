@@ -64,7 +64,7 @@ python.override(
     # instead of rules_python's defaulting to the latest available version,
     # controls what full version is used when `3.x` is requested.
     minor_mapping = {
-        "3.9": "3.9.24",
+        "3.9": "3.9.25",
     },
 )
 
