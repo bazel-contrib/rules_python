@@ -65,20 +65,6 @@ TOOL_VERSIONS = {
         },
         "strip_prefix": "python",
     },
-    "3.9.20": {
-        "url": "20241016/cpython-{python_version}+20241016-{platform}-{build}.tar.gz",
-        "sha256": {
-            "aarch64-apple-darwin": "34ab2bc4c51502145e1a624b4e4ea06877e3d1934a88cc73ac2e0fd5fd439b75",
-            "aarch64-unknown-linux-gnu": "1e486c054a4e86666cf24e04f5e29456324ba9c2b95bf1cae1805be90d3da154",
-            "ppc64le-unknown-linux-gnu": "9a24ccdbfc7f67545d859128f02a3150a160ea6c2fc134b0773bf56f2d90b397",
-            "s390x-unknown-linux-gnu": "2cee381069bf344fb20eba609af92dfe7ba67eb75bea08eeccf11048a2c380c0",
-            "x86_64-apple-darwin": "193dc7f0284e4917d52b17a077924474882ee172872f2257cfe3375d6d468ed9",
-            "x86_64-pc-windows-msvc": "5069008a237b90f6f7a86956903f2a0221b90d471daa6e4a94831eaa399e3993",
-            "x86_64-unknown-linux-gnu": "c20ee831f7f46c58fa57919b75a40eb2b6a31e03fd29aaa4e8dab4b9c4b60d5d",
-            "x86_64-unknown-linux-musl": "5c1cc348e317fe7af1acd6a7f665b46eccb554b20d6533f0e76c53f44d4556cc",
-        },
-        "strip_prefix": "python",
-    },
     "3.9.21": {
         "url": "20250317/cpython-{python_version}+20250317-{platform}-{build}.tar.gz",
         "sha256": {
