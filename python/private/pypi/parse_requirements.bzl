@@ -156,9 +156,7 @@ def parse_requirements(
                 elif target_platform not in plats:
                     continue
 
-            # FIXME @aignas 2025-11-01: I don't think the `req.version` should be here
-            # because WORKSPACE would create files based on the `req.name`.
-            requirements_dict[(req.name, req.version)] = entry
+            requirements_dict[req.name] = entry
 
         extra_pip_args = options[target_platform]
 

@@ -22,12 +22,6 @@ load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: 
 
 def _mock_ctx():
     testdata = {
-        "requirements_different_package_version": """\
-foo==0.0.1+local \
-    --hash=sha256:deadbeef
-foo==0.0.1 \
-    --hash=sha256:deadb00f
-""",
         "requirements_direct": """\
 foo[extra] @ https://some-url/package.whl
 """,
@@ -38,6 +32,14 @@ foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz
 --index-url=example.org
 
 foo[extra]==0.0.1 \
+    --hash=sha256:deadbeef
+""",
+        "requirements_foo": """\
+foo==0.0.1 \
+    --hash=sha256:deadb00f
+""",
+        "requirements_foo_local": """\
+foo==0.0.1+local \
     --hash=sha256:deadbeef
 """,
         "requirements_git": """
@@ -75,7 +77,7 @@ foo==0.0.2; python_full_version >= '3.10.0' \
     --hash=sha256:deadb11f
 """,
         "requirements_optional_hash": """
-foo==0.0.4 @ https://example.org/foo-0.0.4.whl
+bar==0.0.4 @ https://example.org/bar-0.0.4.whl
 foo==0.0.5 @ https://example.org/foo-0.0.5.whl --hash=sha256:deadbeef
 """,
         "requirements_osx": """\
@@ -441,7 +443,8 @@ _tests.append(_test_env_marker_resolution)
 def _test_different_package_version(env):
     got = parse_requirements(
         requirements_by_platform = {
-            "requirements_different_package_version": ["linux_x86_64"],
+            "requirements_foo": ["linux_aarch64"],
+            "requirements_foo_local": ["linux_x86_64"],
         },
     )
     env.expect.that_collection(got).contains_exactly([
@@ -454,7 +457,7 @@ def _test_different_package_version(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.1 --hash=sha256:deadb00f",
-                    target_platforms = ["linux_x86_64"],
+                    target_platforms = ["linux_aarch64"],
                     url = "",
                     filename = "",
                     sha256 = "",
@@ -484,20 +487,27 @@ def _test_optional_hash(env):
     )
     env.expect.that_collection(got).contains_exactly([
         struct(
-            name = "foo",
+            name = "bar",
             is_exposed = True,
-            is_multiple_versions = True,
+            is_multiple_versions = False,
             srcs = [
                 struct(
-                    distribution = "foo",
+                    distribution = "bar",
                     extra_pip_args = [],
-                    requirement_line = "foo==0.0.4",
+                    requirement_line = "bar==0.0.4",
                     target_platforms = ["linux_x86_64"],
-                    url = "https://example.org/foo-0.0.4.whl",
-                    filename = "foo-0.0.4.whl",
+                    url = "https://example.org/bar-0.0.4.whl",
+                    filename = "bar-0.0.4.whl",
                     sha256 = "",
                     yanked = False,
                 ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
                 struct(
                     distribution = "foo",
                     extra_pip_args = [],
