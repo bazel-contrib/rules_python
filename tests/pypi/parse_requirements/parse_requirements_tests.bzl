@@ -479,6 +479,45 @@ def _test_different_package_version(env):
 
 _tests.append(_test_different_package_version)
 
+def _test_different_package_extras(env):
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_foo": ["linux_aarch64"],
+            "requirements_lock": ["linux_x86_64"],
+        },
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadb00f",
+                    target_platforms = ["linux_aarch64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_different_package_extras)
+
 def _test_optional_hash(env):
     got = parse_requirements(
         requirements_by_platform = {
