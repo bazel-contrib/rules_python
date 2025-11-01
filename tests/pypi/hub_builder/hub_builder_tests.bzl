@@ -203,6 +203,142 @@ def _test_simple_multiple_requirements(env):
 
 _tests.append(_test_simple_multiple_requirements)
 
+def _test_simple_extras_vs_no_extras(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
+                "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_darwin = "darwin.txt",
+            requirements_windows = "win.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple_osx_aarch64": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_osx_aarch64",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_simple_windows_aarch64": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_windows_aarch64",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple_osx_aarch64": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
+        },
+        "pypi_315_simple_windows_aarch64": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_simple_extras_vs_no_extras)
+
+def _test_simple_extras_vs_no_extras_simpleapi(env):
+    def mocksimpleapi_download(*_, **__):
+        return {
+            "simple": parse_simpleapi_html(
+                url = "https://example.com",
+                content = """\
+    <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
+""",
+            ),
+        }
+
+    builder = hub_builder(
+        env,
+        simpleapi_download_fn = mocksimpleapi_download,
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            read = lambda x: {
+                "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
+                "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_darwin = "darwin.txt",
+            requirements_windows = "win.txt",
+            experimental_index_url = "example.com",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple_py3_none_any_deadbeef_osx_aarch64": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_osx_aarch64",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_windows_aarch64",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple_py3_none_any_deadbeef_osx_aarch64": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "simple-0.0.1-py3-none-any.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple[foo]==0.0.1",
+            "sha256": "deadbeef",
+            "urls": ["https://example.com/simple-0.0.1-py3-none-any.whl"],
+        },
+        "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "simple-0.0.1-py3-none-any.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1",
+            "sha256": "deadbeef",
+            "urls": ["https://example.com/simple-0.0.1-py3-none-any.whl"],
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_simple_extras_vs_no_extras_simpleapi)
+
 def _test_simple_multiple_python_versions(env):
     builder = hub_builder(
         env,
@@ -496,34 +632,34 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "torch": {
-            "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": [
+            "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef_linux_x86_64": [
                 whl_config_setting(
-                    target_platforms = ("cp312_linux_x86_64",),
+                    target_platforms = ["cp312_linux_x86_64"],
                     version = "3.12",
                 ),
             ],
-            "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": [
+            "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": [
                 whl_config_setting(
-                    target_platforms = ("cp312_linux_aarch64",),
+                    target_platforms = ["cp312_linux_aarch64"],
                     version = "3.12",
                 ),
             ],
-            "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": [
+            "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": [
                 whl_config_setting(
-                    target_platforms = ("cp312_windows_x86_64",),
+                    target_platforms = ["cp312_windows_x86_64"],
                     version = "3.12",
                 ),
             ],
-            "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": [
+            "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": [
                 whl_config_setting(
-                    target_platforms = ("cp312_osx_aarch64",),
+                    target_platforms = ["cp312_osx_aarch64"],
                     version = "3.12",
                 ),
             ],
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": {
+        "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef_linux_x86_64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
@@ -532,7 +668,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
             "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
-        "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
+        "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
@@ -541,7 +677,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
             "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
-        "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": {
+        "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
@@ -550,7 +686,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
             "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
-        "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": {
+        "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
