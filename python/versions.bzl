@@ -65,21 +65,6 @@ TOOL_VERSIONS = {
         },
         "strip_prefix": "python",
     },
-    "3.9.23": {
-        "url": "20250808/cpython-{python_version}+20250808-{platform}-{build}.tar.gz",
-        "sha256": {
-            "aarch64-apple-darwin": "d32da9eae3f516cc0bd8240bfef54dede757d6daf1d8cf605eacbc8a205884e8",
-            "aarch64-unknown-linux-gnu": "0318b6c9ad6fb229da8d40aa3671ee27eeb678530246a1b172b72071f76091bc",
-            "ppc64le-unknown-linux-gnu": "b40b3509dc72abb21f4310f0e94678b36ff73432dc84c41fea132a51c4017f79",
-            "riscv64-unknown-linux-gnu": "a7d847dc62177cf06237dfa26c317148b22418ded51aa89e8cf7242784293ad4",
-            "s390x-unknown-linux-gnu": "425abe5d3ec98e9b18c908209a4ffe239a283ee648e0eea65821e45f074689e7",
-            "x86_64-apple-darwin": "c1bfab90aea566ffaeff65299a20503a880ea93054bbd8bbed98f4f11e9e7383",
-            "x86_64-pc-windows-msvc": "fb400b25cbcbfed6aeaaca8d9a3cdf1a09b602bf5ed6d1ae7075cde40c1cd81e",
-            "x86_64-unknown-linux-gnu": "77fd3fa10abbb08949eda70ca7fb94f72e2f9e0016611be328a7b31c3aa9894d",
-            "x86_64-unknown-linux-musl": "a8a0df23bc1bc050ed8730c65d818382667cf37ba96a08fccd5bb12a689e6a1c",
-        },
-        "strip_prefix": "python",
-    },
     "3.9.24": {
         "url": "20251014/cpython-{python_version}+20251014-{platform}-{build}.tar.gz",
         "sha256": {
