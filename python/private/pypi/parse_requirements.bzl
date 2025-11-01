@@ -88,6 +88,7 @@ def parse_requirements(
     evaluate_markers = evaluate_markers or (lambda _ctx, _requirements: {})
     options = {}
     requirements = {}
+    reqs_with_env_markers = {}
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -96,16 +97,41 @@ def parse_requirements(
         # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
 
+        tokenized_options = []
+        for opt in parse_result.options:
+            for p in opt.split(" "):
+                tokenized_options.append(p)
+
+        pip_args = tokenized_options + extra_pip_args
+        for plat in plats:
+            requirements[plat] = parse_result.requirements
+            for entry in parse_result.requirements:
+                requirement_line = entry[1]
+
+                # output all of the requirement lines that have a marker
+                if ";" in requirement_line:
+                    reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
+            options[plat] = pip_args
+
+    # This may call to Python, so execute it early (before calling to the
+    # internet below) and ensure that we call it only once.
+    resolved_marker_platforms = evaluate_markers(ctx, reqs_with_env_markers)
+    logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
+        reqs_with_env_markers,
+        resolved_marker_platforms,
+    ))
+
+    requirements_by_platform = {}
+    for plat, parse_results in requirements.items():
         # Replicate a surprising behavior that WORKSPACE builds allowed:
         # Defining a repo with the same name multiple times, but only the last
         # definition is respected.
         # The requirement lines might have duplicate names because lines for extras
         # are returned as just the base package name. e.g., `foo[bar]` results
         # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
-        # Lines with different markers are not condidered duplicates.
         requirements_dict = {}
         for entry in sorted(
-            parse_result.requirements,
+            parse_results,
             # Get the longest match and fallback to original WORKSPACE sorting,
             # which should get us the entry with most extras.
             #
@@ -114,32 +140,21 @@ def parse_requirements(
             # should do this now.
             key = lambda x: (len(x[1].partition("==")[0]), x),
         ):
-            req = requirement(entry[1])
-            requirements_dict[(req.name, req.version, req.marker)] = entry
+            req_line = entry[1]
+            req = requirement(req_line)
 
-        tokenized_options = []
-        for opt in parse_result.options:
-            for p in opt.split(" "):
-                tokenized_options.append(p)
+            if req.marker and plat not in resolved_marker_platforms.get(req_line, []):
+                continue
 
-        pip_args = tokenized_options + extra_pip_args
-        for plat in plats:
-            requirements[plat] = requirements_dict.values()
-            options[plat] = pip_args
+            requirements_dict[req.name] = entry
 
-    requirements_by_platform = {}
-    reqs_with_env_markers = {}
-    for target_platform, reqs_ in requirements.items():
-        extra_pip_args = options[target_platform]
+        extra_pip_args = options[plat]
 
-        for distribution, requirement_line in reqs_:
+        for distribution, requirement_line in requirements_dict.values():
             for_whl = requirements_by_platform.setdefault(
                 normalize_name(distribution),
                 {},
             )
-
-            if ";" in requirement_line:
-                reqs_with_env_markers.setdefault(requirement_line, []).append(target_platform)
 
             for_req = for_whl.setdefault(
                 (requirement_line, ",".join(extra_pip_args)),
@@ -151,20 +166,7 @@ def parse_requirements(
                     extra_pip_args = extra_pip_args,
                 ),
             )
-            for_req.target_platforms.append(target_platform)
-
-    # This may call to Python, so execute it early (before calling to the
-    # internet below) and ensure that we call it only once.
-    #
-    # NOTE @aignas 2024-07-13: in the future, if this is something that we want
-    # to do, we could use Python to parse the requirement lines and infer the
-    # URL of the files to download things from. This should be important for
-    # VCS package references.
-    env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
-    logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
-        reqs_with_env_markers,
-        env_marker_target_platforms,
-    ))
+            for_req.target_platforms.append(plat)
 
     index_urls = {}
     if get_index_urls:
@@ -183,8 +185,7 @@ def parse_requirements(
     for name, reqs in sorted(requirements_by_platform.items()):
         requirement_target_platforms = {}
         for r in reqs.values():
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
-            for p in target_platforms:
+            for p in r.target_platforms:
                 requirement_target_platforms[p] = None
 
         item = struct(
@@ -197,7 +198,6 @@ def parse_requirements(
                 reqs = reqs,
                 index_urls = index_urls,
                 platforms = platforms,
-                env_marker_target_platforms = env_marker_target_platforms,
                 extract_url_srcs = extract_url_srcs,
                 logger = logger,
             ),
@@ -221,18 +221,13 @@ def _package_srcs(
         index_urls,
         platforms,
         logger,
-        env_marker_target_platforms,
         extract_url_srcs):
     """A function to return sources for a particular package."""
     srcs = {}
     for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
-        if ";" in r.requirement_line:
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, [])
-        else:
-            target_platforms = r.target_platforms
         extra_pip_args = tuple(r.extra_pip_args)
 
-        for target_platform in target_platforms:
+        for target_platform in r.target_platforms:
             if platforms and target_platform not in platforms:
                 fail("The target platform '{}' could not be found in {}".format(
                     target_platform,
