@@ -156,7 +156,7 @@ def parse_requirements(
                 elif target_platform not in plats:
                     continue
 
-            requirements_dict[req.name] = entry
+            requirements_dict[(req.name, req.version)] = entry
 
         extra_pip_args = options[target_platform]
 
