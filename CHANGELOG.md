@@ -30,7 +30,9 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
-* (toolchain) Remove all of the python 3.9 toolchain versions except for the latest.
+* (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
+  This version has reached EOL and will no longer receive any security fixes, please update to
+  `3.10` or above.
 
 {#v0-0-0-changed}
 ### Changed
