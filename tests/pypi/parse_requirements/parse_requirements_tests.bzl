@@ -766,7 +766,7 @@ def _test_get_index_urls_single_py_version(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             is_exposed = True,
-            is_multiple_versions = True,
+            is_multiple_versions = False,
             name = "foo",
             srcs = [
                 struct(
