@@ -65,17 +65,6 @@ TOOL_VERSIONS = {
         },
         "strip_prefix": "python",
     },
-    "3.9.10": {
-        "url": "20220227/cpython-{python_version}+20220227-{platform}-{build}.tar.gz",
-        "sha256": {
-            "aarch64-apple-darwin": "ad66c2a3e7263147e046a32694de7b897a46fb0124409d29d3a93ede631c8aee",
-            "aarch64-unknown-linux-gnu": "12dd1f125762f47975990ec744532a1cf3db74ad60f4dfb476ca42deb7f78ca4",
-            "x86_64-apple-darwin": "fdaf594142446029e314a9beb91f1ac75af866320b50b8b968181e592550cd68",
-            "x86_64-pc-windows-msvc": "c145d9d8143ce163670af124b623d7a2405143a3708b033b4d33eed355e61b24",
-            "x86_64-unknown-linux-gnu": "455089cc576bd9a58db45e919d1fc867ecdbb0208067dffc845cc9bbf0701b70",
-        },
-        "strip_prefix": "python",
-    },
     "3.9.12": {
         "url": "20220502/cpython-{python_version}+20220502-{platform}-{build}.tar.gz",
         "sha256": {
