@@ -696,7 +696,6 @@ def _test_get_index_urls_different_versions(env):
                 ),
             },
         ),
-        debug = True,
     )
 
     env.expect.that_collection(got).contains_exactly([
@@ -770,7 +769,6 @@ def _test_get_index_urls_single_py_version(env):
                 ),
             },
         ),
-        debug = True,
     )
 
     env.expect.that_collection(got).contains_exactly([

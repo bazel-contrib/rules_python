@@ -115,14 +115,14 @@ def parse_requirements(
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
-    env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
+    resolved_marker_platforms = evaluate_markers(ctx, reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
-        env_marker_target_platforms,
+        resolved_marker_platforms,
     ))
 
     requirements_by_platform = {}
-    for target_platform, parse_results in requirements.items():
+    for plat, parse_results in requirements.items():
         # Replicate a surprising behavior that WORKSPACE builds allowed:
         # Defining a repo with the same name multiple times, but only the last
         # definition is respected.
@@ -143,16 +143,12 @@ def parse_requirements(
             req_line = entry[1]
             req = requirement(req_line)
 
-            if req.marker:
-                plats = env_marker_target_platforms.get(req_line, [])
-                if not plats:
-                    continue
-                elif target_platform not in plats:
-                    continue
+            if req.marker and plat not in resolved_marker_platforms.get(req_line, []):
+                continue
 
             requirements_dict[req.name] = entry
 
-        extra_pip_args = options[target_platform]
+        extra_pip_args = options[plat]
 
         for distribution, requirement_line in requirements_dict.values():
             for_whl = requirements_by_platform.setdefault(
@@ -170,7 +166,7 @@ def parse_requirements(
                     extra_pip_args = extra_pip_args,
                 ),
             )
-            for_req.target_platforms.append(target_platform)
+            for_req.target_platforms.append(plat)
 
     index_urls = {}
     if get_index_urls:
