@@ -88,6 +88,7 @@ def parse_requirements(
     evaluate_markers = evaluate_markers or (lambda _ctx, _requirements: {})
     options = {}
     requirements = {}
+    reqs_with_env_markers = {}
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -96,27 +97,6 @@ def parse_requirements(
         # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
 
-        # Replicate a surprising behavior that WORKSPACE builds allowed:
-        # Defining a repo with the same name multiple times, but only the last
-        # definition is respected.
-        # The requirement lines might have duplicate names because lines for extras
-        # are returned as just the base package name. e.g., `foo[bar]` results
-        # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
-        # Lines with different markers are not condidered duplicates.
-        requirements_dict = {}
-        for entry in sorted(
-            parse_result.requirements,
-            # Get the longest match and fallback to original WORKSPACE sorting,
-            # which should get us the entry with most extras.
-            #
-            # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
-            # entry with all aggregated extras, but it is unclear if we
-            # should do this now.
-            key = lambda x: (len(x[1].partition("==")[0]), x),
-        ):
-            req = requirement(entry[1])
-            requirements_dict[(req.name, req.version, req.marker)] = entry
-
         tokenized_options = []
         for opt in parse_result.options:
             for p in opt.split(" "):
@@ -124,34 +104,14 @@ def parse_requirements(
 
         pip_args = tokenized_options + extra_pip_args
         for plat in plats:
-            requirements[plat] = requirements_dict.values()
+            requirements[plat] = parse_result.requirements
+            for entry in parse_result.requirements:
+                requirement_line = entry[1]
+
+                # output all of the requirement lines that have a marker
+                if ";" in requirement_line:
+                    reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
             options[plat] = pip_args
-
-    requirements_by_platform = {}
-    reqs_with_env_markers = {}
-    for target_platform, reqs_ in requirements.items():
-        extra_pip_args = options[target_platform]
-
-        for distribution, requirement_line in reqs_:
-            for_whl = requirements_by_platform.setdefault(
-                normalize_name(distribution),
-                {},
-            )
-
-            if ";" in requirement_line:
-                reqs_with_env_markers.setdefault(requirement_line, []).append(target_platform)
-
-            for_req = for_whl.setdefault(
-                (requirement_line, ",".join(extra_pip_args)),
-                struct(
-                    distribution = distribution,
-                    srcs = index_sources(requirement_line),
-                    requirement_line = requirement_line,
-                    target_platforms = [],
-                    extra_pip_args = extra_pip_args,
-                ),
-            )
-            for_req.target_platforms.append(target_platform)
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
@@ -165,6 +125,58 @@ def parse_requirements(
         reqs_with_env_markers,
         env_marker_target_platforms,
     ))
+
+    requirements_by_platform = {}
+    for target_platform, reqs_ in requirements.items():
+        # Replicate a surprising behavior that WORKSPACE builds allowed:
+        # Defining a repo with the same name multiple times, but only the last
+        # definition is respected.
+        # The requirement lines might have duplicate names because lines for extras
+        # are returned as just the base package name. e.g., `foo[bar]` results
+        # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
+        # Lines with different markers are not condidered duplicates.
+        requirements_dict = {}
+        for entry in sorted(
+            reqs_,
+            # Get the longest match and fallback to original WORKSPACE sorting,
+            # which should get us the entry with most extras.
+            #
+            # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
+            # entry with all aggregated extras, but it is unclear if we
+            # should do this now.
+            key = lambda x: (len(x[1].partition("==")[0]), x),
+        ):
+            req_line = entry[1]
+            req = requirement(req_line)
+
+            if req.marker:
+                plats = env_marker_target_platforms.get(req_line, [])
+                if not plats:
+                    continue
+                elif target_platform not in plats:
+                    continue
+
+            requirements_dict[req.name] = entry
+
+        extra_pip_args = options[target_platform]
+
+        for distribution, requirement_line in requirements_dict.values():
+            for_whl = requirements_by_platform.setdefault(
+                normalize_name(distribution),
+                {},
+            )
+
+            for_req = for_whl.setdefault(
+                (requirement_line, ",".join(extra_pip_args)),
+                struct(
+                    distribution = distribution,
+                    srcs = index_sources(requirement_line),
+                    requirement_line = requirement_line,
+                    target_platforms = [],
+                    extra_pip_args = extra_pip_args,
+                ),
+            )
+            for_req.target_platforms.append(target_platform)
 
     index_urls = {}
     if get_index_urls:
