@@ -197,8 +197,7 @@ def parse_requirements(
     for name, reqs in sorted(requirements_by_platform.items()):
         requirement_target_platforms = {}
         for r in reqs.values():
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
-            for p in target_platforms:
+            for p in r.target_platforms:
                 requirement_target_platforms[p] = None
 
         item = struct(
@@ -211,7 +210,6 @@ def parse_requirements(
                 reqs = reqs,
                 index_urls = index_urls,
                 platforms = platforms,
-                env_marker_target_platforms = env_marker_target_platforms,
                 extract_url_srcs = extract_url_srcs,
                 logger = logger,
             ),
@@ -235,18 +233,13 @@ def _package_srcs(
         index_urls,
         platforms,
         logger,
-        env_marker_target_platforms,
         extract_url_srcs):
     """A function to return sources for a particular package."""
     srcs = {}
     for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
-        if ";" in r.requirement_line:
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, [])
-        else:
-            target_platforms = r.target_platforms
         extra_pip_args = tuple(r.extra_pip_args)
 
-        for target_platform in target_platforms:
+        for target_platform in r.target_platforms:
             if platforms and target_platform not in platforms:
                 fail("The target platform '{}' could not be found in {}".format(
                     target_platform,
