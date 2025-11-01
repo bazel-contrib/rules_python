@@ -35,6 +35,7 @@ use_repo(
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 use_repo(pip, "pypi")
+
 pip.parse(
     hub_name = "pypi",
     python_version = "3.9",
