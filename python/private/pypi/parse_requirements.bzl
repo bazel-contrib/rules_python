@@ -115,11 +115,6 @@ def parse_requirements(
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
-    #
-    # NOTE @aignas 2024-07-13: in the future, if this is something that we want
-    # to do, we could use Python to parse the requirement lines and infer the
-    # URL of the files to download things from. This should be important for
-    # VCS package references.
     env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
