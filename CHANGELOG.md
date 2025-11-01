@@ -34,7 +34,8 @@ BEGIN_UNRELEASED_TEMPLATE
 * Nothing removed.
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (pip) Bump {obj}`whl_library` and {obj}`compile_pip_requirements` Python dependencies
+  to latest.
 
 {#v0-0-0-fixed}
 ### Fixed
