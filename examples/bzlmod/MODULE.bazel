@@ -55,7 +55,6 @@ python.override(
     # require versions not listed here.
     # available_python_versions = [
     #     "3.10.9",
-    #     "3.9.18",
     #     "3.9.19",
     #     # The following is used by the `other_module` and we need to include it here
     #     # as well.
@@ -65,7 +64,7 @@ python.override(
     # instead of rules_python's defaulting to the latest available version,
     # controls what full version is used when `3.x` is requested.
     minor_mapping = {
-        "3.9": "3.9.19",
+        "3.9": "3.9.25",
     },
 )
 
