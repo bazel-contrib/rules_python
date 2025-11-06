@@ -30,11 +30,13 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
+* (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
+  This version has reached EOL and will no longer receive any security fixes, please update to
+  `3.10` or above.
 
-* Nothing removed.
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (toolchains) Use toolchains from the [20251031] release.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -43,8 +45,9 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* (toolchains) `3.9.25` Python toolchain from [20251031] release.
 
+[20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
 
 END_UNRELEASED_TEMPLATE
 -->

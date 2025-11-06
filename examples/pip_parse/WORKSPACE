@@ -11,7 +11,7 @@ py_repositories()
 
 python_register_toolchains(
     name = "python_3_9",
-    python_version = "3.9.13",
+    python_version = "3.9.25",
 )
 
 load("@rules_python//python:pip.bzl", "pip_parse")
