@@ -66,10 +66,12 @@ class RunfilesTest(unittest.TestCase):
         )
 
     def testRlocationWithData(self) -> None:
-        rf = runfiles.Create()
-        settings_path = rf.Rlocation(
+        r = runfiles.Create()
+        assert r is not None  # mypy doesn't understand the unittest api.
+        settings_path = r.Rlocation(
             "rules_python/tests/support/current_build_settings.json"
         )
+        assert settings_path is not None
         settings = json.loads(pathlib.Path(settings_path).read_text())
         self.assertIn("bootstrap_impl", settings)
 
