@@ -23,7 +23,7 @@ bazel_dep(name = "rules_java", version = "8.3.1")
 # MODULE.bazel.lock is cross-platform friendly, and there are transitive
 # dependencies on rules_rust, so we need rules_rust 0.54.1+ where such issues
 # were fixed.
-bazel_dep(name = "rules_rust", version = "0.54.1")
+bazel_dep(name = "rules_rust", version = "0.67.0")
 
 # We next initialize the python toolchain using the extension.
 # You can set different Python versions in this block.
