@@ -16,8 +16,7 @@ bcr_test_module:
   module_path: "examples/bzlmod"
   matrix:
     platform: ["debian11", "macos", "ubuntu2004", "windows"]
-    # last_rc is to get latest 8.x release. Replace with 8.x when available.
-    bazel: [7.x, last_rc]
+    bazel: [7.x, 8.x]
   tasks:
     run_tests:
       name: "Run test module"
