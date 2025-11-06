@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_binaries//:defs.bzl", "bazel_binaries")
 load("@rules_bazel_integration_test//bazel_integration_test:defs.bzl", "default_test_runner")
 load("//python:py_library.bzl", "py_library")
 load(":integration_test.bzl", "rules_python_integration_test")
@@ -78,31 +77,33 @@ rules_python_integration_test(
 
 rules_python_integration_test(
     name = "ignore_root_user_error_test",
+    env = {
+        "RULES_PYTHON_BZLMOD_DEBUG": "1",
+    },
 )
 
 rules_python_integration_test(
     name = "ignore_root_user_error_workspace_test",
     bzlmod = False,
+    env = {
+        "RULES_PYTHON_BZLMOD_DEBUG": "1",
+    },
     workspace_path = "ignore_root_user_error",
 )
 
 rules_python_integration_test(
     name = "local_toolchains_test",
-    bazel_versions = [
-        version
-        for version in bazel_binaries.versions.all
-        if not version.startswith("6.")
-    ],
+    env = {
+        "RULES_PYTHON_BZLMOD_DEBUG": "1",
+    },
 )
 
 rules_python_integration_test(
     name = "local_toolchains_workspace_test",
-    bazel_versions = [
-        version
-        for version in bazel_binaries.versions.all
-        if not version.startswith("6.")
-    ],
     bzlmod = False,
+    env = {
+        "RULES_PYTHON_BZLMOD_DEBUG": "1",
+    },
     workspace_path = "local_toolchains",
 )
 
