@@ -1,0 +1,10 @@
+[project]
+name = "local_toolchains"
+version = "0.0.0"
+
+dependencies = [
+    # NOTE: This is only used as input to create the resolved requirements.txt
+    # file, which is what builds, both Bazel and Readthedocs, both use.
+    "more_itertools"
+]
+

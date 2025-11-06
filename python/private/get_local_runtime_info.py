@@ -205,11 +205,12 @@ def _get_base_executable():
     # is missing.
     return sys.executable
 
-
 data = {
     "major": sys.version_info.major,
     "minor": sys.version_info.minor,
     "micro": sys.version_info.micro,
+    "releaselevel": sys.version_info.releaselevel,
+    "serial": sys.version_info.serial,
     "include": sysconfig.get_path("include"),
     "implementation_name": sys.implementation.name,
     "base_executable": _get_base_executable(),

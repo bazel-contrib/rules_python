@@ -16,7 +16,7 @@
 
 load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
-load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
@@ -80,7 +80,11 @@ def build_config(
             evaluation of the extension.
 
     Returns:
-        A struct with the configuration.
+        A struct with the configuration, attributes:
+        * `auth_patterns`: dict of authentication patterns
+        * `netrc`: netrc file or None
+        * `platforms`: dict[str, ??] of platform configs
+        * `enable_pipstar`: bool
     """
     defaults = {
         "platforms": {},
@@ -229,6 +233,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     whl_overrides = whl_overrides,
                     simpleapi_download_fn = simpleapi_download,
                     simpleapi_cache = simpleapi_cache,
+                    default_python_version = DEFAULT_PYTHON_VERSION,
                     # TODO @aignas 2025-09-06: do not use kwargs
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
                     evaluate_markers_fn = kwargs.get("evaluate_markers", None),
@@ -647,7 +652,7 @@ find in case extra indexes are specified.
             default = True,
         ),
         "python_version": attr.string(
-            mandatory = True,
+            ##mandatory = True,
             doc = """
 The Python version the dependencies are targetting, in Major.Minor format
 (e.g., "3.11") or patch level granularity (e.g. "3.11.1").
