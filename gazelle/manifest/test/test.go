@@ -26,23 +26,31 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/bazel-contrib/rules_python/gazelle/manifest"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
 func TestGazelleManifestIsUpdated(t *testing.T) {
 	requirementsPath := os.Getenv("_TEST_REQUIREMENTS")
-	if requirementsPath == "" {
+	requirementsPathResolved, err := runfiles.Rlocation(requirementsPath)
+	if err != nil {
+		t.Fatalf("failed to resolve runfiles path of requirements: %v", err)
+	}
+	if requirementsPathResolved == "" {
 		t.Fatal("_TEST_REQUIREMENTS must be set")
 	}
 
 	manifestPath := os.Getenv("_TEST_MANIFEST")
-	if manifestPath == "" {
+	manifestPathResolved, err := runfiles.Rlocation(manifestPath)
+	if err != nil {
+		t.Fatalf("failed to resolve runfiles path of manifest: %v", err)
+	}
+	if manifestPathResolved == "" {
 		t.Fatal("_TEST_MANIFEST must be set")
 	}
 
 	manifestFile := new(manifest.File)
-	if err := manifestFile.Decode(manifestPath); err != nil {
+	if err := manifestFile.Decode(manifestPathResolved); err != nil {
 		t.Fatalf("decoding manifest file: %v", err)
 	}
 
@@ -62,9 +70,9 @@ func TestGazelleManifestIsUpdated(t *testing.T) {
 	}
 	defer manifestGeneratorHash.Close()
 
-	requirements, err := os.Open(requirementsPath)
+	requirements, err := os.Open(requirementsPathResolved)
 	if err != nil {
-		t.Fatalf("opening %q: %v", requirementsPath, err)
+		t.Fatalf("opening %q: %v", requirementsPathResolved, err)
 	}
 	defer requirements.Close()
 
@@ -73,9 +81,9 @@ func TestGazelleManifestIsUpdated(t *testing.T) {
 		t.Fatalf("verifying integrity: %v", err)
 	}
 	if !valid {
-		manifestRealpath, err := filepath.EvalSymlinks(manifestPath)
+		manifestRealpath, err := filepath.EvalSymlinks(manifestPathResolved)
 		if err != nil {
-			t.Fatalf("evaluating symlink %q: %v", manifestPath, err)
+			t.Fatalf("evaluating symlink %q: %v", manifestPathResolved, err)
 		}
 		t.Errorf(
 			"%q is out-of-date. Follow the update instructions in that file to resolve this",
