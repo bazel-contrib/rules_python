@@ -30,24 +30,25 @@ import (
 	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
-func TestGazelleManifestIsUpdated(t *testing.T) {
-	requirementsPath := os.Getenv("_TEST_REQUIREMENTS")
-	requirementsPathResolved, err := runfiles.Rlocation(requirementsPath)
+// getResolvedRunfile resolves an environment variable to a runfiles path.
+// It handles getting the env var, checking it's set, and resolving it through
+// the runfiles mechanism, providing detailed error messages if anything fails.
+func getResolvedRunfile(t *testing.T, envVar string) string {
+	t.Helper()
+	path := os.Getenv(envVar)
+	if path == "" {
+		t.Fatalf("%s must be set", envVar)
+	}
+	resolvedPath, err := runfiles.Rlocation(path)
 	if err != nil {
-		t.Fatalf("failed to resolve runfiles path of requirements: %v", err)
+		t.Fatalf("failed to resolve runfiles path for %s (%q): %v", envVar, path, err)
 	}
-	if requirementsPathResolved == "" {
-		t.Fatal("_TEST_REQUIREMENTS must be set")
-	}
+	return resolvedPath
+}
 
-	manifestPath := os.Getenv("_TEST_MANIFEST")
-	manifestPathResolved, err := runfiles.Rlocation(manifestPath)
-	if err != nil {
-		t.Fatalf("failed to resolve runfiles path of manifest: %v", err)
-	}
-	if manifestPathResolved == "" {
-		t.Fatal("_TEST_MANIFEST must be set")
-	}
+func TestGazelleManifestIsUpdated(t *testing.T) {
+	requirementsPathResolved := getResolvedRunfile(t, "_TEST_REQUIREMENTS")
+	manifestPathResolved := getResolvedRunfile(t, "_TEST_MANIFEST")
 
 	manifestFile := new(manifest.File)
 	if err := manifestFile.Decode(manifestPathResolved); err != nil {
@@ -58,11 +59,7 @@ func TestGazelleManifestIsUpdated(t *testing.T) {
 		t.Fatal("failed to find the Gazelle manifest file integrity")
 	}
 
-	manifestGeneratorHashPath, err := runfiles.Rlocation(
-		os.Getenv("_TEST_MANIFEST_GENERATOR_HASH"))
-	if err != nil {
-		t.Fatalf("failed to resolve runfiles path of manifest: %v", err)
-	}
+	manifestGeneratorHashPath := getResolvedRunfile(t, "_TEST_MANIFEST_GENERATOR_HASH")
 
 	manifestGeneratorHash, err := os.Open(manifestGeneratorHashPath)
 	if err != nil {
