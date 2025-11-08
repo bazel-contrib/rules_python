@@ -33,7 +33,8 @@ def define_local_runtime_toolchain_impl(
         interface_library,
         libraries,
         implementation_name,
-        os):
+        os,
+        abi_flags):
     """Defines a toolchain implementation for a local Python runtime.
 
     Generates public targets:
@@ -59,6 +60,7 @@ def define_local_runtime_toolchain_impl(
             `sys.implementation.name`.
         os: `str` A label to the OS constraint (e.g. `@platforms//os:linux`) for
             this runtime.
+        abi_flags: `str` Str. Flags provided by sys.abiflags for the runtime.
     """
     major_minor = "{}.{}".format(major, minor)
     major_minor_micro = "{}.{}".format(major_minor, micro)
@@ -113,6 +115,7 @@ def define_local_runtime_toolchain_impl(
             "minor": minor,
         },
         implementation_name = implementation_name,
+        abi_flags = abi_flags,
     )
 
     py_runtime_pair(
