@@ -30,6 +30,31 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
+END_UNRELEASED_TEMPLATE
+-->
+
+
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
 * (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
   This version has reached EOL and will no longer receive any security fixes, please update to
   `3.10` or above.
@@ -46,16 +71,14 @@ BEGIN_UNRELEASED_TEMPLATE
   implementation assumes that it is always four levels below the runfiles
   directory, leading to incorrect path checks
   ([#3085](https://github.com/bazel-contrib/rules_python/issues/3085)).
+* (toolchains) local toolchains now tell the `sys.abiflags` value of the
+  underlying runtime.
 
 {#v0-0-0-added}
 ### Added
 * (toolchains) `3.9.25` Python toolchain from [20251031] release.
 
 [20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
-
-END_UNRELEASED_TEMPLATE
--->
-
 {#v1-7-0}
 ## [1.7.0] - 2025-10-11
 
