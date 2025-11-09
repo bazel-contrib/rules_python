@@ -819,15 +819,25 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
         ),
     )
 
-    def map_empty_filenames(path):
-        return "{}=".format(_get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles))
+    def map_zip_empty_filenames(list_paths_cb):
+        return [
+            _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles) + "="
+            for path in list_paths_cb().to_list()
+        ]
 
-    manifest.add_all(runfiles.empty_filenames, map_each = map_empty_filenames, allow_closure = True)
+    manifest.add_all(
+        # NOTE: Accessing runfiles.empty_filenames implicitly flattens the runfiles.
+        # Smuggle a lambda in via a list to defer that flattening.
+        [lambda: runfiles.empty_filenames],
+        map_each = map_zip_empty_filenames,
+        allow_closure = True
+    )
 
     def map_zip_runfiles(file):
-        return "{}={}".format(
-            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles),
-            file.path,
+        return (
+            # NOTE: Use "+" for performance
+            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles)
+            + "=" + file.path
         )
 
     manifest.add_all(runfiles.files, map_each = map_zip_runfiles, allow_closure = True)
@@ -864,6 +874,7 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
     )
 
 def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
+    maybe_workspace = ""
     if legacy_external_runfiles and path.startswith(_EXTERNAL_PATH_PREFIX):
         zip_runfiles_path = path.removeprefix(_EXTERNAL_PATH_PREFIX)
     else:
@@ -871,8 +882,13 @@ def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
         # path component of "../" so that they refer outside the main workspace
         # directory and into the runfiles root. So we simplify it, e.g.
         # "workspace/../foo/bar" to simply "foo/bar".
-        zip_runfiles_path = "{}/{}".format(workspace_name, path) if not path.startswith("../") else path[3:]
-    return "{}/{}".format(_ZIP_RUNFILES_DIRECTORY_NAME, zip_runfiles_path)
+        if path.startswith("../"):
+            zip_runfiles_path = path[3:]
+        else:
+            zip_runfiles_path = path
+            maybe_workspace = workspace_name + "/"
+    # NOTE: Use "+" for performance
+    return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + maybe_workspace + zip_runfiles_path
 
 def _create_executable_zip_file(
         ctx,
