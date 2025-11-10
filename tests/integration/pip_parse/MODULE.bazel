@@ -5,11 +5,21 @@ local_path_override(
     module_name = "rules_python",
     path = "../../..",
 )
+bazel_dep(name = "platforms", version = "0.0.11")
+
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    # Use `dev_dependency` so that the toolchains are not defined pulled when your
+    # module is used elsewhere.
+    dev_dependency = True,
+)
+uv.configure(version = "0.9.5")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(
-    python_version = "3.9",
-)
+python.toolchain(python_version = "3.9", is_default=True)
+python.toolchain(python_version = "3.10")
+python.toolchain(python_version = "3.13")
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
@@ -17,4 +27,15 @@ pip.parse(
     python_version = "3.9",
     requirements_lock = "//empty:requirements.txt",
 )
-use_repo(pip, "pip_empty")
+
+pip.parse(
+    hub_name = "pip_torch",
+    python_version = "3.10",
+    requirements_lock = "//torch:requirements.txt",
+)
+pip.parse(
+    hub_name = "pip_torch",
+    python_version = "3.13",
+    requirements_lock = "//torch:requirements.txt",
+)
+use_repo(pip, "pip_empty", "pip_torch")
