@@ -830,14 +830,14 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
         # Smuggle a lambda in via a list to defer that flattening.
         [lambda: runfiles.empty_filenames],
         map_each = map_zip_empty_filenames,
-        allow_closure = True
+        allow_closure = True,
     )
 
     def map_zip_runfiles(file):
         return (
             # NOTE: Use "+" for performance
-            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles)
-            + "=" + file.path
+            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles) +
+            "=" + file.path
         )
 
     manifest.add_all(runfiles.files, map_each = map_zip_runfiles, allow_closure = True)
@@ -887,6 +887,7 @@ def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
         else:
             zip_runfiles_path = path
             maybe_workspace = workspace_name + "/"
+
     # NOTE: Use "+" for performance
     return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + maybe_workspace + zip_runfiles_path
 
