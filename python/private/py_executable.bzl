@@ -356,7 +356,7 @@ def _create_executable(
             [stage2_bootstrap] + (
                 venv.files_without_interpreter if venv else []
             ),
-        )
+        ).merge(venv.lib_runfiles)
         zip_main = _create_zip_main(
             ctx,
             stage2_bootstrap = stage2_bootstrap,
@@ -606,7 +606,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     }
     venv_app_files = create_venv_app_files(ctx, ctx.attr.deps, venv_dir_map)
 
-    files_without_interpreter = [pth, site_init] + venv_app_files
+    files_without_interpreter = [pth, site_init] + venv_app_files.venv_files
     if pyvenv_cfg:
         files_without_interpreter.append(pyvenv_cfg)
 
@@ -628,6 +628,11 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
                 py_internal.get_label_repo_runfiles_path(ctx.label),
                 venv,
             ),
+        ),
+        # venv files for user library dependencies (files that are specific
+        # to the executable bootstrap and python runtime aren't here).
+        lib_runfiles = ctx.runfiles(
+            symlinks = venv_app_files.runfiles_symlinks,
         ),
     )
 
