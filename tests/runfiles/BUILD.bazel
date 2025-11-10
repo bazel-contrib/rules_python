@@ -5,6 +5,9 @@ load("@rules_python//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # bu
 py_test(
     name = "runfiles_test",
     srcs = ["runfiles_test.py"],
+    data = [
+        "//tests/support:current_build_settings",
+    ],
     env = {
         "BZLMOD_ENABLED": "1" if BZLMOD_ENABLED else "0",
     },
