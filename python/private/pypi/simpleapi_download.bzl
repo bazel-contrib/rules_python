@@ -235,7 +235,7 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
     return _read_index_result(ctx, download, output, real_url, cache, cache_key)
 
 def strip_empty_path_segments(url):
-    """Removes empty path segments from a URL. Does nothing for urls with no scheme.
+    """Removes empty path segments from a URL. Does nothing for urls with no scheme and file:// urls.
 
     Public only for testing.
 
@@ -246,6 +246,8 @@ def strip_empty_path_segments(url):
         The url with empty path segments removed and any trailing slash preserved.
         If the url had no scheme it is returned unchanged.
     """
+    if url.startswith("file://"):
+        return url
     scheme, _, rest = url.partition("://")
     if rest == "":
         return url
