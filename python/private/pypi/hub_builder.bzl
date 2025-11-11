@@ -566,8 +566,13 @@ def _whl_repo(
             for p in src.target_platforms
         ]
 
+    # TODO @aignas 2025-11-02: once we have pipstar enabled we can add extra
+    # targets to each hub for each extra combination and solve this more cleanly as opposed to
+    # duplicating whl_library repositories.
+    target_platforms = src.target_platforms if is_multiple_versions else []
+
     return struct(
-        repo_name = whl_repo_name(src.filename, src.sha256),
+        repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,

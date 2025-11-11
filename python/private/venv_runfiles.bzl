@@ -30,7 +30,12 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
             paths within the current ctx's venv (e.g. `_foo.venv/bin`).
 
     Returns:
-        {type}`list[File]` of the files that were created.
+        {type}`struct` with the following attributes:
+        * {type}`list[File]` `venv_files` additional files created for
+          the venv.
+        * {type}`dict[str, File]` `runfiles_symlinks` map intended for
+          the `runfiles.symlinks` argument. A map of main-repo
+          relative paths to File.
     """
 
     # maps venv-relative path to the runfiles path it should point to
@@ -44,16 +49,16 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
 
     link_map = build_link_map(ctx, entries)
     venv_files = []
+    runfiles_symlinks = {}
+
     for kind, kind_map in link_map.items():
         base = venv_dir_map[kind]
         for venv_path, link_to in kind_map.items():
             bin_venv_path = paths.join(base, venv_path)
             if is_file(link_to):
-                if link_to.is_directory:
-                    venv_link = ctx.actions.declare_directory(bin_venv_path)
-                else:
-                    venv_link = ctx.actions.declare_file(bin_venv_path)
-                ctx.actions.symlink(output = venv_link, target_file = link_to)
+                symlink_from = "{}/{}".format(ctx.label.package, bin_venv_path)
+                runfiles_symlinks[symlink_from] = link_to
+
             else:
                 venv_link = ctx.actions.declare_symlink(bin_venv_path)
                 venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
@@ -64,9 +69,12 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                     to = link_to,
                 )
                 ctx.actions.symlink(output = venv_link, target_path = rel_path)
-            venv_files.append(venv_link)
+                venv_files.append(venv_link)
 
-    return venv_files
+    return struct(
+        venv_files = venv_files,
+        runfiles_symlinks = runfiles_symlinks,
+    )
 
 # Visible for testing
 def build_link_map(ctx, entries):
