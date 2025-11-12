@@ -31,7 +31,7 @@ local_path_override(
 # The following stanza defines the dependency for gazelle
 # See here https://github.com/bazelbuild/bazel-gazelle/releases/ for the
 # latest version.
-bazel_dep(name = "gazelle", version = "0.36.0", repo_name = "bazel_gazelle")
+bazel_dep(name = "gazelle", version = "0.47.0", repo_name = "bazel_gazelle")
 
 # The following stanze returns a proxy object representing a module extension;
 # its methods can be invoked to create module extension tags.
@@ -84,4 +84,4 @@ local_path_override(
 )
 
 # Only needed to make rules_python's CI happy
-bazel_dep(name = "rules_java", version = "8.3.1")
+bazel_dep(name = "rules_java", version = "8.16.1")

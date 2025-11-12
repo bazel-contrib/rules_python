@@ -15,11 +15,42 @@
 
 
 set -o errexit -o nounset -o pipefail
+set -x
+
+env
 
 # VERSION_PY_BINARY is a space separate list of the executable and its main
 # py file. We just want the executable.
 bin=($VERSION_PY_BINARY)
 bin="${bin[@]//*.py}"
+
+bindir=$(dirname $bin)
+
+#
+##set +e
+##
+##ls -la $bindir
+##dir $bindir
+##
+##stat $bin
+##stat -L $bin
+##icacls $bin
+##
+##cp $bin mybin.exe
+##./mybin.exe
+##
+##cmd.exe //c tests\\version_3_10.exe
+##
+##cmd.exe //c "tests\\version_3_10.exe"
+##
+##cmd.exe //c "tests\version_3_10.exe"
+##
+##set -e
+##cp tests/version_3_10.zip mybin.zip
+##./mybin.exe
+
+./$bin
+
 version_py_binary=$($bin)
 
 if [[ "${version_py_binary}" != "${VERSION_CHECK}" ]]; then

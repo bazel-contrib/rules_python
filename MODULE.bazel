@@ -226,7 +226,7 @@ bazel_dep(name = "another_module", version = "0", dev_dependency = True)
 
 # Extra gazelle plugin deps so that WORKSPACE.bzlmod can continue including it for e2e tests.
 # We use `WORKSPACE.bzlmod` because it is impossible to have dev-only local overrides.
-bazel_dep(name = "rules_go", version = "0.41.0", dev_dependency = True, repo_name = "io_bazel_rules_go")
+bazel_dep(name = "rules_go", version = "0.59.0", dev_dependency = True, repo_name = "io_bazel_rules_go")
 bazel_dep(name = "rules_python_gazelle_plugin", version = "0", dev_dependency = True)
 bazel_dep(name = "gazelle", version = "0.40.0", dev_dependency = True, repo_name = "bazel_gazelle")
 
