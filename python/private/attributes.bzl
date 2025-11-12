@@ -487,6 +487,11 @@ environment when the test is executed by bazel test.
                 "@platforms//os:watchos",
             ],
         ),
+        "_windows_constraints": lambda: attrb.LabelList(
+            default = [
+                "@platforms//os:windows",
+            ],
+        ),
     })
 
 # Attributes specific to Python test-equivalent executable rules. Such rules may
