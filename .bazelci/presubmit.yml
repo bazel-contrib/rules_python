@@ -87,7 +87,54 @@ buildifier:
     - //tests:version_3_11_test
     - //tests:version_3_9_test
     - //tests:version_default_test
+
+matrix:
+  platform:
+    - ubuntu2204
+    - macos
+    - windows
+  bazel: [7.*, 8.*, 9.*]
 tasks:
+  # Keep in sync with .bcr/presubmit.yml
+  bcr_tests:
+    name: BCR test module
+    platform: ${{ platform }}
+    bazel: ${{ bazel }}
+    working_directory: examples/bzlmod
+    platform: ${{ platform }}
+    bazel: ${{ bazel }}
+    shell_commands:
+      - "bazel vendor --vendor_dir=./vendor //..."
+      - "bazel build --vendor_dir=./vendor //..."
+      - "rm -rf ./vendor"
+    coverage_targets: ["//:test"]
+    test_flags:
+      - "--keep_going"
+        # Without these cxxopts, BCR's Mac builds fail
+      - '--cxxopt=-std=c++14'
+      - '--host_cxxopt=-std=c++14'
+    test_targets:
+      - "//..."
+  bcr_gazelle_tests:
+    # Keep in sync with .bcr/gazelle/presubmit.yml
+    name: BCR gazelle test module
+    platform: ${{ platform }}
+    bazel: ${{ bazel }}
+    working_directory: gazelle/examples/bzlmod_build_file_generation
+    # Regenerate the BUILD files for the test module using Gazelle.
+    # Also verify -repo_config are generated correctly in gazelle.bash
+    shell_commands:
+      - "echo 'common --override_module=rules_python=' >> .bazelrc"
+      - bazel run //:gazelle
+    batch_commands:
+      - "echo common --override_module=rules_python= >> .bazelrc"
+      - bazel run //:gazelle
+    build_targets:
+      - "//..."
+      - ":modules_map"
+    test_targets:
+      - "//..."
+
   gazelle_extension_min:
     <<: *common_workspace_flags_min_bazel
     <<: *minimum_supported_version
@@ -256,114 +303,6 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/build_file_generation: Windows, workspace"
     working_directory: examples/build_file_generation
-    platform: windows
-
-  integration_test_bzlmod_ubuntu_min:
-    <<: *minimum_supported_version
-    <<: *reusable_build_test_all
-    coverage_targets: ["//:test"]
-    name: "examples/bzlmod: Ubuntu, minimum Bazel"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    bazel: 7.x
-  integration_test_bzlmod_ubuntu:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: Ubuntu"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    bazel: 7.x
-  integration_test_bzlmod_ubuntu_upcoming:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: Ubuntu, upcoming Bazel"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    bazel: last_rc
-  integration_test_bzlmod_debian:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: Debian"
-    working_directory: examples/bzlmod
-    platform: debian11
-    bazel: 7.x
-  integration_test_bzlmod_ubuntu_vendor:
-    <<: *reusable_build_test_all
-    name: "examples/bzlmod: bazel vendor"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    shell_commands:
-    - "bazel vendor --vendor_dir=./vendor //..."
-    - "bazel build --vendor_dir=./vendor //..."
-    - "rm -rf ./vendor"
-  integration_test_bzlmod_macos:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: macOS"
-    working_directory: examples/bzlmod
-    platform: macos
-    bazel: 7.x
-  integration_test_bzlmod_macos_upcoming:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: macOS, upcoming Bazel"
-    working_directory: examples/bzlmod
-    platform: macos
-    bazel: last_rc
-  integration_test_bzlmod_windows:
-    <<: *reusable_build_test_all
-    # coverage is not supported on Windows
-    name: "examples/bzlmod: Windows"
-    working_directory: examples/bzlmod
-    platform: windows
-    bazel: 7.x
-  integration_test_bzlmod_windows_upcoming:
-    <<: *reusable_build_test_all
-    # coverage is not supported on Windows
-    name: "examples/bzlmod: Windows, upcoming Bazel"
-    working_directory: examples/bzlmod
-    platform: windows
-    bazel: last_rc
-
-  integration_test_bzlmod_generate_build_file_generation_ubuntu_min:
-    <<: *minimum_supported_version
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu, minimum Bazel"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: ubuntu2204
-    bazel: 7.x
-  integration_test_bzlmod_generation_build_files_ubuntu:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: ubuntu2204
-  integration_test_bzlmod_generation_build_files_ubuntu_run:
-    <<: *reusable_build_test_all
-    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu, Gazelle and pip"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: ubuntu2204
-    shell_commands:
-    - "bazel run //:gazelle_python_manifest.update"
-    - "bazel run //:gazelle -- update"
-  integration_test_bzlmod_build_file_generation_debian:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: Debian"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: debian11
-  integration_test_bzlmod_build_file_generation_macos:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: MacOS"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: macos
-  integration_test_bzlmod_build_file_generation_windows:
-    <<: *reusable_build_test_all
-    # coverage is not supported on Windows
-    name: "gazelle/examples/bzlmod_build_file_generation: Windows"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
     platform: windows
 
   integration_test_multi_python_versions_ubuntu_workspace:
