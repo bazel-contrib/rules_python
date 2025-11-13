@@ -30,6 +30,9 @@ build --enable_runfiles
 # Make Bazel 7 use bzlmod by default
 common --enable_bzlmod
 
+# Local disk cache greatly speeds up builds if the regular cache is lost
+common --disk_cache=~/.cache/bazel/bazel-disk-cache
+
 # Additional config to use for readthedocs builds.
 # See .readthedocs.yml for additional flags that can only be determined from
 # the runtime environment.
