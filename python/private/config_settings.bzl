@@ -35,7 +35,13 @@ If the value is missing, then the default value is being used, see documentation
 # access it, but it's not intended for general public usage.
 _NOT_ACTUALLY_PUBLIC = ["//visibility:public"]
 
-def construct_config_settings(*, name, default_version, versions, minor_mapping, documented_flags):  # buildifier: disable=function-docstring
+def construct_config_settings(
+        *,
+        name,
+        default_version,
+        versions,
+        minor_mapping,
+        documented_flags):  # buildifier: disable=function-docstring
     """Create a 'python_version' config flag and construct all config settings used in rules_python.
 
     This mainly includes the targets that are used in the toolchain and pip hub
@@ -109,10 +115,26 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
     # It's private because matching the concept of e.g. "3.8" value is done
     # using the `is_python_X.Y` config setting group, which is aware of the
     # minor versions that could match instead.
+    first_minor = None
     for minor in minor_mapping.keys():
+        if first_minor == None:
+            first_minor = minor
+
         native.config_setting(
             name = "is_python_{}".format(minor),
             flag_values = {_PYTHON_VERSION_MAJOR_MINOR_FLAG: minor},
+            visibility = ["//visibility:public"],
+        )
+
+    for minor in range(int(first_minor.partition(".")[-1]) + 1):
+        minor = "3.{}".format(minor)
+        if minor in minor_mapping:
+            break
+
+        # TODO @aignas 2025-11-04: use env-marker-setting with the smallest minor_mapping version
+        native.alias(
+            name = "is_python_{}".format(minor),
+            actual = "@platforms//:incompatible",
             visibility = ["//visibility:public"],
         )
 

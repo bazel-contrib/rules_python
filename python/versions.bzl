@@ -54,17 +54,6 @@ DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone
 #
 # buildifier: disable=unsorted-dict-items
 TOOL_VERSIONS = {
-    "3.8.20": {
-        "url": "20241002/cpython-{python_version}+20241002-{platform}-{build}.tar.gz",
-        "sha256": {
-            "aarch64-apple-darwin": "2ddfc04bdb3e240f30fb782fa1deec6323799d0e857e0b63fa299218658fd3d4",
-            "aarch64-unknown-linux-gnu": "9d8798f9e79e0fc0f36fcb95bfa28a1023407d51a8ea5944b4da711f1f75f1ed",
-            "x86_64-apple-darwin": "68d060cd373255d2ca5b8b3441363d5aa7cc45b0c11bbccf52b1717c2b5aa8bb",
-            "x86_64-pc-windows-msvc": "41b6709fec9c56419b7de1940d1f87fa62045aff81734480672dcb807eedc47e",
-            "x86_64-unknown-linux-gnu": "285e141c36f88b2e9357654c5f77d1f8fb29cc25132698fe35bb30d787f38e87",
-        },
-        "strip_prefix": "python",
-    },
     "3.9.25": {
         "url": "20251031/cpython-{python_version}+20251031-{platform}-{build}.tar.gz",
         "sha256": {
@@ -872,7 +861,6 @@ TOOL_VERSIONS = {
 
 # buildifier: disable=unsorted-dict-items
 MINOR_MAPPING = {
-    "3.8": "3.8.20",
     "3.9": "3.9.25",
     "3.10": "3.10.19",
     "3.11": "3.11.14",

@@ -54,7 +54,6 @@ copy_file(
             "@rules_python//python/config_settings:is_python_3.10": "@python_stdlib_list//:stdlib_list/lists/3.10.txt",
             "@rules_python//python/config_settings:is_python_3.11": "@python_stdlib_list//:stdlib_list/lists/3.11.txt",
             "@rules_python//python/config_settings:is_python_3.12": "@python_stdlib_list//:stdlib_list/lists/3.12.txt",
-            "@rules_python//python/config_settings:is_python_3.8": "@python_stdlib_list//:stdlib_list/lists/3.8.txt",
             "@rules_python//python/config_settings:is_python_3.9": "@python_stdlib_list//:stdlib_list/lists/3.9.txt",
             # This is the same behaviour as previously
             "//conditions:default": "@python_stdlib_list//:stdlib_list/lists/3.11.txt",
