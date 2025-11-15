@@ -195,9 +195,9 @@ def rules_python_internal_deps():
 
     http_archive(
         name = "com_google_protobuf",
-        sha256 = "23082dca1ca73a1e9c6cbe40097b41e81f71f3b4d6201e36c134acc30a1b3660",
-        url = "https://github.com/protocolbuffers/protobuf/releases/download/v29.0-rc2/protobuf-29.0-rc2.zip",
-        strip_prefix = "protobuf-29.0-rc2",
+        sha256 = "aaddf29b205ed915100a5fd096e8252842b67da9accfb7ba91ec3680ea307e45",
+        url = "https://github.com/protocolbuffers/protobuf/releases/download/v33.0/protobuf-33.0.zip",
+        strip_prefix = "protobuf-33.0",
     )
 
     # Needed for stardoc
@@ -238,9 +238,9 @@ def rules_python_internal_deps():
 
     http_archive(
         name = "rules_cc",
-        urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
-        sha256 = "b8b918a85f9144c01f6cfe0f45e4f2838c7413961a8ff23bc0c6cdf8bb07a3b6",
-        strip_prefix = "rules_cc-0.1.5",
+        urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.2.10/rules_cc-0.2.10.tar.gz"],
+        sha256 = "774fd6cb9f90f98f1d26c776896b16a517a1af65337fcfaa705261df175f04a6",
+        strip_prefix = "rules_cc-0.2.10",
     )
 
     http_archive(
