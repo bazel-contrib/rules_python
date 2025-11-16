@@ -62,6 +62,7 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 * (toolchains) Use toolchains from the [20251031] release.
+* (gazelle) Internally split modules mapping generation to be per-wheel for concurrency and caching.
 
 {#v0-0-0-fixed}
 ### Fixed
