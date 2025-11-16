@@ -8,40 +8,37 @@ from merger import merge_modules_mappings
 
 class MergerTest(unittest.TestCase):
     def test_merger(self):
-        file1 = tempfile.NamedTemporaryFile("w")
-        json.dump(
-            {
-                "_pytest": "pytest",
-                "_pytest.__init__": "pytest",
-                "_pytest._argcomplete": "pytest",
-                "_pytest.config.argparsing": "pytest",
-            },
-            file1,
-        )
-        file1.flush()
-        file2 = tempfile.NamedTemporaryFile("w")
-        json.dump(
-            {"django_types": "django_types"},
-            file2,
-        )
-        file2.flush()
-        output_file = tempfile.NamedTemporaryFile("r")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            d = pathlib.Path(tmpdir)
+            path1 = d / "file1.json"
+            path2 = d / "file2.json"
+            output_path = d / "output.json"
 
-        merge_modules_mappings(
-            [pathlib.Path(file1.name), pathlib.Path(file2.name)],
-            pathlib.Path(output_file.name),
-        )
+            path1.write_text(
+                json.dumps(
+                    {
+                        "_pytest": "pytest",
+                        "_pytest.__init__": "pytest",
+                        "_pytest._argcomplete": "pytest",
+                        "_pytest.config.argparsing": "pytest",
+                    }
+                )
+            )
 
-        self.assertEqual(
-            {
-                "_pytest": "pytest",
-                "_pytest.__init__": "pytest",
-                "_pytest._argcomplete": "pytest",
-                "_pytest.config.argparsing": "pytest",
-                "django_types": "django_types",
-            },
-            json.load(output_file),
-        )
+            path2.write_text(json.dumps({"django_types": "django_types"}))
+
+            merge_modules_mappings([path1, path2], output_path)
+
+            self.assertEqual(
+                {
+                    "_pytest": "pytest",
+                    "_pytest.__init__": "pytest",
+                    "_pytest._argcomplete": "pytest",
+                    "_pytest.config.argparsing": "pytest",
+                    "django_types": "django_types",
+                },
+                json.loads(output_path.read_text()),
+            )
 
 
 if __name__ == "__main__":

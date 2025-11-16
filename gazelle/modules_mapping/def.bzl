@@ -33,7 +33,7 @@ def _modules_mapping_impl(ctx):
     # Run the generator once per-wheel (to leverage caching)
     per_wheel_outputs = []
     for idx, whl in enumerate(all_wheels.to_list()):
-        wheel_modules_mapping = ctx.actions.declare_file("modules_mapping_{}_{}".format(idx, ctx.attr.modules_mapping_name))
+        wheel_modules_mapping = ctx.actions.declare_file("{}.{}".format(modules_mapping.short_path, idx))
         args = ctx.actions.args()
         args.add("--output_file", wheel_modules_mapping.path)
         if ctx.attr.include_stub_packages:
