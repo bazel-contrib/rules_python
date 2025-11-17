@@ -104,8 +104,15 @@ class Generator:
                 return True
         return False
 
-    # run is the entrypoint for the generator.
-    def run(self, wheel):
+    def run(self, wheel: pathlib.Path) -> int:
+        """
+        Entrypoint for the generator.
+
+        Args:
+            wheel: The path to the wheel file (`.whl`)
+        Returns:
+            Exit code (for `sys.exit`)
+        """
         try:
             self.dig_wheel(wheel)
         except AssertionError as error:

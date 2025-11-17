@@ -20,7 +20,7 @@ def merge_modules_mappings(input_files: list[Path], output_file: Path) -> None:
         # if there are conflicts
         merged_mapping.update(mapping)
 
-    output_file.write_text(json.dumps(merged_mapping, indent=2, sort_keys=True))
+    output_file.write_text(json.dumps(merged_mapping))
 
 
 if __name__ == "__main__":
