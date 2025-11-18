@@ -120,7 +120,11 @@ def _pip_parse(self, module_ctx, pip_attr):
         err = False,
     )
     if not full_python_version:
-        self._logger.warn(lambda: (
+        # NOTE @aignas 2025-11-18: If the python version is not present in our
+        # minor_mapping, then we will not register any packages and then the
+        # select in the hub repository will fail, which will prompt the user to
+        # configure the toolchain correctly and move forward.
+        self._logger.info(lambda: (
             "Ignoring pip python version '{version}' for hub " +
             "'{hub}' in module '{module}' because there is no registered " +
             "toolchain for it."
