@@ -258,6 +258,22 @@ tasks:
     working_directory: examples/build_file_generation
     platform: windows
 
+  mytorch_ubuntu:
+    <<: *reusable_build_test_all
+    name: "Default: Ubuntu, bzlmod"
+    platform: ubuntu2204
+    working_directory: examples/mytorch
+  mytorch_osx:
+    <<: *reusable_build_test_all
+    name: "Default: OSX, bzlmod"
+    platform: macos
+    working_directory: examples/mytorch
+  mytorch_windows:
+    <<: *reusable_build_test_all
+    name: "Default: Windows, bzlmod"
+    platform: windows
+    working_directory: examples/mytorch
+
   integration_test_bzlmod_ubuntu_min:
     <<: *minimum_supported_version
     <<: *reusable_build_test_all

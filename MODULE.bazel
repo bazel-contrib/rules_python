@@ -457,6 +457,4 @@ uv_dev = use_extension(
     "uv",
     dev_dependency = True,
 )
-uv_dev.configure(
-    version = "0.6.2",
-)
+uv_dev.configure(version = "0.9.10")

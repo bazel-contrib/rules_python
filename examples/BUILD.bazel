@@ -57,7 +57,7 @@ lock(
 lock(
     name = "mytorch_requirements",
     srcs = ["mytorch/requirements.in"],
-    out = "mytorch/requirements_lock_.txt",
+    out = "mytorch/requirements_lock.txt",
     args = [
         "--emit-index-url",
         "--universal",
