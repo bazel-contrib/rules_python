@@ -21,7 +21,7 @@ repos:
     hooks:
       - id: check-merge-conflict
   - repo: https://github.com/keith/pre-commit-buildifier
-    rev: 6.1.0
+    rev: 8.2.1
     hooks:
       - id: buildifier
         args: &args

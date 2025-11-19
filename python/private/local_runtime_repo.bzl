@@ -39,6 +39,7 @@ define_local_runtime_toolchain_impl(
     libraries = {libraries},
     implementation_name = "{implementation_name}",
     os = "{os}",
+    abi_flags = "{abi_flags}",
 )
 """
 
@@ -49,33 +50,33 @@ def _norm_path(path):
         path = path[:-1]
     return path
 
-def _symlink_first_library(rctx, logger, libraries):
+def _symlink_first_library(rctx, logger, libraries, shlib_suffix):
     """Symlinks the shared libraries into the lib/ directory.
 
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
         libraries: A list of static library paths to potentially symlink.
+        shlib_suffix: A suffix only provided for shared libraries to ensure
+          that the srcs restriction of cc_library targets are met.
     Returns:
         A single library path linked by the action.
     """
-    linked = None
     for target in libraries:
         origin = rctx.path(target)
         if not origin.exists:
             # The reported names don't always exist; it depends on the particulars
             # of the runtime installation.
             continue
-        if target.endswith("/Python"):
-            linked = "lib/{}.dylib".format(origin.basename)
+        if shlib_suffix and not target.endswith(shlib_suffix):
+            linked = "lib/{}{}".format(origin.basename, shlib_suffix)
         else:
             linked = "lib/{}".format(origin.basename)
         logger.debug("Symlinking {} to {}".format(origin, linked))
         rctx.watch(origin)
         rctx.symlink(origin, linked)
-        break
-
-    return linked
+        return linked
+    return None
 
 def _local_runtime_repo_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -152,9 +153,9 @@ def _local_runtime_repo_impl(rctx):
     rctx.symlink(include_path, "include")
 
     rctx.report_progress("Symlinking external Python shared libraries")
-    interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"])
-    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"])
-    static_library = _symlink_first_library(rctx, logger, info["static_libraries"])
+    interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"], None)
+    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"], info["shlib_suffix"])
+    static_library = _symlink_first_library(rctx, logger, info["static_libraries"], None)
 
     libraries = []
     if shared_library:
@@ -173,6 +174,7 @@ def _local_runtime_repo_impl(rctx):
         libraries = repr(libraries),
         implementation_name = info["implementation_name"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
+        abi_flags = info["abi_flags"],
     )
     logger.debug(lambda: "BUILD.bazel\n{}".format(build_bazel))
 
@@ -269,6 +271,7 @@ def _expand_incompatible_template():
         minor = "0",
         micro = "0",
         os = "@platforms//:incompatible",
+        abi_flags = "",
     )
 
 def _find_python_exe_from_target(rctx):

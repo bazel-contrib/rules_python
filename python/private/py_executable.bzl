@@ -380,9 +380,8 @@ def _create_executable(
     _create_zip_file(
         ctx,
         output = zip_file,
-        original_nonzip_executable = executable,
         zip_main = zip_main,
-        runfiles = runfiles_details.default_runfiles.merge(extra_runfiles),
+        runfiles = runfiles_details.runfiles_without_exe.merge(extra_runfiles),
     )
 
     extra_files_to_build = []
@@ -803,7 +802,7 @@ def _create_windows_exe_launcher(
         use_default_shell_env = True,
     )
 
-def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfiles):
+def _create_zip_file(ctx, *, output, zip_main, runfiles):
     """Create a Python zipapp (zip with __main__.py entry point)."""
     workspace_name = ctx.workspace_name
     legacy_external_runfiles = _py_builtins.get_legacy_external_runfiles(ctx)
@@ -819,17 +818,27 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
             _get_zip_runfiles_path("__init__.py", workspace_name, legacy_external_runfiles),
         ),
     )
-    for path in runfiles.empty_filenames.to_list():
-        manifest.add("{}=".format(_get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles)))
+
+    def map_zip_empty_filenames(list_paths_cb):
+        return [
+            _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles) + "="
+            for path in list_paths_cb().to_list()
+        ]
+
+    manifest.add_all(
+        # NOTE: Accessing runfiles.empty_filenames implicitly flattens the runfiles.
+        # Smuggle a lambda in via a list to defer that flattening.
+        [lambda: runfiles.empty_filenames],
+        map_each = map_zip_empty_filenames,
+        allow_closure = True,
+    )
 
     def map_zip_runfiles(file):
-        if file != original_nonzip_executable and file != output:
-            return "{}={}".format(
-                _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles),
-                file.path,
-            )
-        else:
-            return None
+        return (
+            # NOTE: Use "+" for performance
+            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles) +
+            "=" + file.path
+        )
 
     manifest.add_all(runfiles.files, map_each = map_zip_runfiles, allow_closure = True)
 
@@ -850,13 +859,6 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
         ))
         inputs.append(zip_repo_mapping_manifest)
 
-    for artifact in runfiles.files.to_list():
-        # Don't include the original executable because it isn't used by the
-        # zip file, so no need to build it for the action.
-        # Don't include the zipfile itself because it's an output.
-        if artifact != original_nonzip_executable and artifact != output:
-            inputs.append(artifact)
-
     zip_cli_args = ctx.actions.args()
     zip_cli_args.add("cC")
     zip_cli_args.add(output)
@@ -864,7 +866,7 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
     ctx.actions.run(
         executable = ctx.executable._zipper,
         arguments = [zip_cli_args, manifest],
-        inputs = depset(inputs),
+        inputs = depset(inputs, transitive = [runfiles.files]),
         outputs = [output],
         use_default_shell_env = True,
         mnemonic = "PythonZipper",
@@ -872,15 +874,22 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
     )
 
 def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
+    maybe_workspace = ""
     if legacy_external_runfiles and path.startswith(_EXTERNAL_PATH_PREFIX):
-        zip_runfiles_path = paths.relativize(path, _EXTERNAL_PATH_PREFIX)
+        zip_runfiles_path = path.removeprefix(_EXTERNAL_PATH_PREFIX)
     else:
         # NOTE: External runfiles (artifacts in other repos) will have a leading
         # path component of "../" so that they refer outside the main workspace
-        # directory and into the runfiles root. By normalizing, we simplify e.g.
+        # directory and into the runfiles root. So we simplify it, e.g.
         # "workspace/../foo/bar" to simply "foo/bar".
-        zip_runfiles_path = paths.normalize("{}/{}".format(workspace_name, path))
-    return "{}/{}".format(_ZIP_RUNFILES_DIRECTORY_NAME, zip_runfiles_path)
+        if path.startswith("../"):
+            zip_runfiles_path = path[3:]
+        else:
+            zip_runfiles_path = path
+            maybe_workspace = workspace_name + "/"
+
+    # NOTE: Use "+" for performance
+    return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + maybe_workspace + zip_runfiles_path
 
 def _create_executable_zip_file(
         ctx,
