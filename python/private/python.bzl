@@ -271,7 +271,7 @@ def _python_impl(module_ctx):
             err = False,
         )
         if not full_python_version:
-            logger.info(lambda: "The python version '{}' is unknown, please configure a toolchain to be downloaded".format(toolchain_info.python_version))
+            logger.info(lambda: "The actual toolchain for python_version '{}' has not been registered, but was requested, please configure a toolchain to be actually downloaded and setup".format(toolchain_info.python_version))
             continue
 
         kwargs = {
