@@ -1,0 +1,8 @@
+load("@rules_python//python:py_test.bzl", "py_test")
+
+py_test(
+    name = "torch_test",
+    srcs = ["torch_test.py"],
+    main = "torch_test.py",
+    deps = ["@pip//torch"],
+)

@@ -1,0 +1,31 @@
+module(
+    name = "example_torch",
+    version = "0.0.0",
+    compatibility_level = 1,
+)
+
+local_path_override(
+    module_name = "rules_python",
+    path = "../..",
+)
+
+# Initialize the python extension
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    # Use python.defaults if you have defined multiple toolchain versions.
+    python_version = "3.14",
+    python_version_env = "BAZEL_PYTHON_VERSION",
+)
+python.toolchain(
+    configure_coverage_tool = True,
+    python_version = "3.14",
+)
+
+# Add the pip deps
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
+    hub_name = "pip",
+    requirements_lock = "requirements_lock.txt",
+)
+use_repo(pip, "pip")

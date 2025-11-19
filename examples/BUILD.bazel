@@ -53,3 +53,15 @@ lock(
     ],
     python_version = "3.11",
 )
+
+lock(
+    name = "mytorch_requirements",
+    srcs = ["mytorch/requirements.in"],
+    out = "mytorch/requirements_lock_.txt",
+    args = [
+        "--emit-index-url",
+        "--universal",
+        "--python-version=3.14",
+    ],
+    python_version = "3.14",
+)
