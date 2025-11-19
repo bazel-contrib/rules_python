@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import unittest
 
 from tests.integration import runner
@@ -21,7 +20,13 @@ from tests.integration import runner
 class CustomCommandsTest(runner.TestCase):
     # Regression test for https://github.com/bazel-contrib/rules_python/issues/1840
     def test_run_build_python_zip_false(self):
-        result = self.run_bazel("run", "--build_python_zip=false", "--@rules_python//python/config_settings:build_python_zip=false", "//:bin")
+        result = self.run_bazel(
+            "run",
+            "--build_python_zip=false",
+            "--@rules_python//python/config_settings:build_python_zip=false",
+            "--action_env=PATH",
+            "//:bin",
+        )
         self.assert_result_matches(result, "bazel-out")
 
 

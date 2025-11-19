@@ -24,6 +24,8 @@ build --//python/config_settings:incompatible_default_to_explicit_init_py=True
 # Ensure ongoing compatibility with this flag.
 common --incompatible_disallow_struct_provider_syntax
 
+common --incompatible_strict_action_env
+
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
 
