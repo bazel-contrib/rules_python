@@ -21,6 +21,7 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:text_util.bzl", "render")
 load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
@@ -149,6 +150,18 @@ def parse_modules(
     Returns:
         A struct with the following attributes:
     """
+    dependencies = {}
+    bind_pypi = {}
+    for mod in module_ctx.modules:
+        for dep in mod.tags.dependency:
+            dependencies[dep.name] = None
+        if mod.is_root:
+            for binding in mod.tags.bind_pypi:
+                bind_pypi[binding.hub_name] = None
+
+    dependencies = dependencies.keys()
+    bind_pypi = bind_pypi.keys()
+
     whl_mods = {}
     for mod in module_ctx.modules:
         for whl_mod in mod.tags.whl_mods:
@@ -282,9 +295,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     return struct(
         config = config,
+        dependencies = dependencies,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         hub_group_map = hub_group_map,
+        bind_pypi = bind_pypi,
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
@@ -385,6 +400,30 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
+    root_hubs = ["root_pypi"]
+    pypi_latebind_actuals = []
+    pypi_latebind_conditions = []
+    for hub_name, whl_map in mods.hub_whl_map.items():
+        print(hub_name)
+        if hub_name not in root_hubs:
+            continue
+        print("HUB:", hub_name)
+        for dirname, backing_repo in whl_map.items():
+            bazel_pkg = "@{hub}//{dirname}".format(
+                hub = hub_name,
+                dirname = dirname,
+            )
+            pypi_latebind_actuals.append("{}:{}".format(bazel_pkg, dirname))
+            pypi_latebind_conditions.append("//conditions:default")
+
+    _pypi_latebind_repo(
+        name = "pypi",
+        actuals = pypi_latebind_actuals,
+        conditions = pypi_latebind_conditions,
+        # todo: pass pip.dependency() names to generate build file that
+        # points to a nice error-generating target.
+    )
+
     if bazel_features.external_deps.extension_metadata_has_reproducible:
         # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
         # results after calling the PyPI index should be reproducible on each
@@ -392,6 +431,51 @@ def _pip_impl(module_ctx):
         return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
+
+def _pypi_latebind_repo_impl(rctx):
+    build_lines = []
+
+    # dict[dirname, dict[target, dict[condition, actual]]]
+    targets_by_dirname = {}
+    for actual, condition in zip(rctx.attr.actuals, rctx.attr.conditions):
+        _, _, tail = actual.partition("//")
+        dirname, _, target_name = tail.partition(":")
+        dir_targets = targets_by_dirname.setdefault(dirname, {})
+        actuals = dir_targets.setdefault(target_name, {})
+        actuals[condition] = actual
+
+    for dirname, targets in targets_by_dirname.items():
+        for target_name, actuals in targets.items():
+            build_file_path = "{}/BUILD.bazel".format(dirname)
+            content = []
+            content.append("""package(default_visibility = ["//visibility:public"])""")
+            actual_expr = render.select({
+                condition: actual,
+            })
+            content.append(render.alias(
+                name = target_name,
+                actual = actual_expr,
+            ))
+
+            content = "\n".join(content)
+            print(build_file_path, content)
+            rctx.file(build_file_path, content)
+
+    rctx.file("BUILD.bazel", "")
+
+_pypi_latebind_repo = repository_rule(
+    doc = "todo",
+    implementation = _pypi_latebind_repo_impl,
+    attrs = {
+        # todo: passing all the targets like this is somewhat expensive.
+        # it means anytime the loading-phase set of targets changes, the
+        # repository has to be re-evaluated. It would make more sense to
+        # move that logic into a macro shared by this repo, the hub, and
+        # the spokes
+        "actuals": attr.string_list(),
+        "conditions": attr.string_list(),
+    },
+)
 
 _default_attrs = {
     "arch_name": attr.string(
@@ -773,6 +857,26 @@ Apply any overrides (e.g. patches) to a given Python distribution defined by
 other tags in this extension.""",
 )
 
+_dependency_tag = tag_class(
+    attrs = {
+        "name": attr.string(
+            mandatory = True,
+            doc = "The name of the PyPI package.",
+        ),
+    },
+    doc = "Declare a dependency on a PyPI package, to be provided by the root module.",
+)
+
+_bind_pypi_tag = tag_class(
+    attrs = {
+        "hub_name": attr.string(
+            mandatory = True,
+            doc = "The hub_name of a pip.parse repository to bind to @pypi.",
+        ),
+    },
+    doc = "Bind a pip.parse hub to the @pypi repository for late binding.",
+)
+
 pypi = module_extension(
     doc = """\
 This extension is used to make dependencies from pip available.
@@ -793,6 +897,8 @@ the BUILD files for wheels.
 """,
     implementation = _pip_impl,
     tag_classes = {
+        "bind_pypi": _bind_pypi_tag,
+        "dependency": _dependency_tag,
         "default": tag_class(
             attrs = _default_attrs,
             doc = """\
