@@ -707,6 +707,77 @@ def _test_register_all_versions(env):
 
 _tests.append(_test_register_all_versions)
 
+def _test_ignore_unsupported_versions(env):
+    py = parse_modules(
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "my_module",
+                is_root = True,
+                toolchain = [
+                    _toolchain("3.11"),
+                    _toolchain("3.12"),
+                    _toolchain("3.13", is_default = True),
+                ],
+                single_version_override = [
+                    _single_version_override(
+                        python_version = "3.13.0",
+                        sha256 = {
+                            "aarch64-unknown-linux-gnu": "deadbeef",
+                        },
+                        urls = ["example.org"],
+                    ),
+                ],
+                single_version_platform_override = [
+                    _single_version_platform_override(
+                        sha256 = "deadb00f",
+                        urls = ["something.org"],
+                        platform = "aarch64-unknown-linux-gnu",
+                        python_version = "3.13.99",
+                    ),
+                ],
+                override = [
+                    _override(
+                        base_url = "",
+                        available_python_versions = ["3.12.4", "3.13.0", "3.13.1"],
+                        minor_mapping = {
+                            "3.12": "3.12.4",
+                            "3.13": "3.13.1",
+                        },
+                    ),
+                ],
+            ),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    env.expect.that_str(py.default_python_version).equals("3.13")
+    env.expect.that_collection(py.config.default["tool_versions"].keys()).contains_exactly([
+        "3.12.4",
+        "3.13.0",
+        "3.13.1",
+    ])
+    env.expect.that_dict(py.config.minor_mapping).contains_exactly({
+        # The mapping is calculated automatically
+        "3.12": "3.12.4",
+        "3.13": "3.13.1",
+    })
+    env.expect.that_collection(py.toolchains).contains_exactly([
+        struct(
+            name = name,
+            python_version = version,
+            register_coverage_tool = False,
+        )
+        for name, version in {
+            # NOTE: that '3.11' wont be actually registered and present in the
+            # `tool_versions` above.
+            "python_3_11": "3.11",
+            "python_3_12": "3.12",
+            "python_3_13": "3.13",
+        }.items()
+    ])
+
+_tests.append(_test_ignore_unsupported_versions)
+
 def _test_add_patches(env):
     py = parse_modules(
         module_ctx = _mock_mctx(
