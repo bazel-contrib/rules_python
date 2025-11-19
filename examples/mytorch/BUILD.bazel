@@ -6,3 +6,13 @@ py_test(
     main = "torch_test.py",
     deps = ["@pip//torch"],
 )
+
+py_test(
+    name = "torch_test_freethreaded",
+    srcs = ["torch_test.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:py_freethreaded": "yes",
+    },
+    main = "torch_test.py",
+    deps = ["@pip//torch"],
+)
