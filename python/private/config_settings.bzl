@@ -41,6 +41,7 @@ def construct_config_settings(
         default_version,
         versions,
         minor_mapping,
+        compat_lowest_version = "3.8",
         documented_flags):  # buildifier: disable=function-docstring
     """Create a 'python_version' config flag and construct all config settings used in rules_python.
 
@@ -52,6 +53,8 @@ def construct_config_settings(
         default_version: {type}`str` the default value for the `python_version` flag.
         versions: {type}`list[str]` A list of versions to build constraint settings for.
         minor_mapping: {type}`dict[str, str]` A mapping from `X.Y` to `X.Y.Z` python versions.
+        compat_lowest_version: {type}`str` The version that we should use as the lowest available
+            version for `is_python_3.X` flags.
         documented_flags: {type}`list[str]` The labels of the documented settings
             that affect build configuration.
     """
@@ -129,7 +132,8 @@ def construct_config_settings(
 
     # This is a compatibility layer to ensure that `select` statements don't break out right
     # when the toolchains for EOL minor versions are no longer registered.
-    for minor in range(first_minor.release[-1]):
+    compat_lowest_version = version.parse(compat_lowest_version)
+    for minor in range(compat_lowest_version.release[-1], first_minor.release[-1]):
         native.alias(
             name = "is_python_3.{}".format(minor),
             actual = "@platforms//:incompatible",
