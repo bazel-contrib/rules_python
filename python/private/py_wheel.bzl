@@ -505,9 +505,9 @@ def _py_wheel_impl(ctx):
 
     for target, filename in ctx.attr.data_files.items():
         target_files = target[DefaultInfo].files.to_list()
-        if len(target_files) != 1:
+        if len(target_files) != 1 and not filename.endswith("/"):
             fail(
-                "Multi-file target listed in data_files %s",
+                "Multi-file target listed in data_files %s, this is only supported when specifying a folder path (i.e. a path ending in '/')",
                 filename,
             )
 
@@ -520,13 +520,14 @@ def _py_wheel_impl(ctx):
                 ),
             )
 
-        final_filename = filename + target_files[0].basename if filename.endswith("/") else filename
+        for file in target_files:
+            final_filename = filename + file.basename if filename.endswith("/") else filename
 
-        other_inputs.extend(target_files)
-        args.add(
-            "--data_files",
-            final_filename + ";" + target_files[0].path,
-        )
+            other_inputs.extend(target_files)
+            args.add(
+                "--data_files",
+                final_filename + ";" + file.path,
+            )
 
     ctx.actions.run(
         mnemonic = "PyWheel",
