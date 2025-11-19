@@ -75,21 +75,21 @@ def construct_config_settings(
     )
 
     _reverse_minor_mapping = {full: minor for minor, full in minor_mapping.items()}
-    for version in versions:
-        minor_version = _reverse_minor_mapping.get(version)
+    for ver in versions:
+        minor_version = _reverse_minor_mapping.get(ver)
         if not minor_version:
             native.config_setting(
-                name = "is_python_{}".format(version),
-                flag_values = {":python_version": version},
+                name = "is_python_{}".format(ver),
+                flag_values = {":python_version": ver},
                 visibility = ["//visibility:public"],
             )
             continue
 
         # Also need to match the minor version when using
-        name = "is_python_{}".format(version)
+        name = "is_python_{}".format(ver)
         native.config_setting(
             name = "_" + name,
-            flag_values = {":python_version": version},
+            flag_values = {":python_version": ver},
             visibility = ["//visibility:public"],
         )
 
@@ -100,7 +100,7 @@ def construct_config_settings(
         selects.config_setting_group(
             name = "_{}_group".format(name),
             match_any = [
-                ":_is_python_{}".format(version),
+                ":_is_python_{}".format(ver),
                 ":is_python_{}".format(minor_version),
             ],
             visibility = ["//visibility:private"],
@@ -117,8 +117,9 @@ def construct_config_settings(
     # minor versions that could match instead.
     first_minor = None
     for minor in minor_mapping.keys():
-        if first_minor == None:
-            first_minor = minor
+        ver = version.parse(minor)
+        if first_minor == None or version.is_lt(ver, first_minor):
+            first_minor = ver
 
         native.config_setting(
             name = "is_python_{}".format(minor),
@@ -126,14 +127,11 @@ def construct_config_settings(
             visibility = ["//visibility:public"],
         )
 
-    for minor in range(int(first_minor.partition(".")[-1]) + 1):
-        minor = "3.{}".format(minor)
-        if minor in minor_mapping:
-            break
-
-        # TODO @aignas 2025-11-04: use env-marker-setting with the smallest minor_mapping version
+    # This is a compatibility layer to ensure that `select` statements don't break out right
+    # when the toolchains for EOL minor versions are no longer registered.
+    for minor in range(first_minor.release[-1]):
         native.alias(
-            name = "is_python_{}".format(minor),
+            name = "is_python_3.{}".format(minor),
             actual = "@platforms//:incompatible",
             visibility = ["//visibility:public"],
         )
