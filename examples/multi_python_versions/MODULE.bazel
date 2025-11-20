@@ -57,17 +57,17 @@ pip.parse(
 pip.parse(
     hub_name = "pypi",
     python_version = "3.12",
-    requirements_lock = "//requirements:requirements_lock_3_11.txt",
+    requirements_lock = "//requirements:requirements_lock_3_12.txt",
 )
 pip.parse(
     hub_name = "pypi",
     python_version = "3.13",
-    requirements_lock = "//requirements:requirements_lock_3_11.txt",
+    requirements_lock = "//requirements:requirements_lock_3_13.txt",
 )
 pip.parse(
     hub_name = "pypi",
     python_version = "3.14",
-    requirements_lock = "//requirements:requirements_lock_3_11.txt",
+    requirements_lock = "//requirements:requirements_lock_3_14.txt",
 )
 
 # example test dependencies
