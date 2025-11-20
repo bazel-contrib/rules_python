@@ -260,17 +260,17 @@ tasks:
 
   mytorch_ubuntu:
     <<: *reusable_build_test_all
-    name: "Default: Ubuntu, bzlmod"
+    name: "examples/mytorch: Ubuntu, bzlmod"
     platform: ubuntu2204
     working_directory: examples/mytorch
   mytorch_osx:
     <<: *reusable_build_test_all
-    name: "Default: OSX, bzlmod"
+    name: "examples/mytorch: OSX aarch64, bzlmod"
     platform: macos_arm64
     working_directory: examples/mytorch
   mytorch_windows:
     <<: *reusable_build_test_all
-    name: "Default: Windows, bzlmod"
+    name: "examples/mytorch: Windows, bzlmod"
     platform: windows
     working_directory: examples/mytorch
 
