@@ -130,13 +130,6 @@ def _python_repository_impl(rctx):
     #
     # Note, when on Windows the `chmod` may not work
     if "windows" not in platform and "windows" != repo_utils.get_platforms_os_name(rctx):
-        repo_utils.execute_checked(
-            rctx,
-            op = "python_repository.MakeReadOnly",
-            arguments = [repo_utils.which_checked(rctx, "chmod"), "-R", "ugo-w", "lib"],
-            logger = logger,
-        )
-
         # If the user is not ignoring the warnings, then proceed to run a check,
         # otherwise these steps can be skipped, as they both result in some warning.
         if not rctx.attr.ignore_root_user_error:
