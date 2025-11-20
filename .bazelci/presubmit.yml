@@ -266,7 +266,7 @@ tasks:
   mytorch_osx:
     <<: *reusable_build_test_all
     name: "Default: OSX, bzlmod"
-    platform: macos
+    platform: macos-m1
     working_directory: examples/mytorch
   mytorch_windows:
     <<: *reusable_build_test_all
