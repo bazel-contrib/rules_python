@@ -117,7 +117,7 @@ def _pip_parse(self, module_ctx, pip_attr):
     full_python_version = full_version(
         version = python_version,
         minor_mapping = self._minor_mapping,
-        err = False,
+        fail_on_err = False,
     )
     if not full_python_version:
         # NOTE @aignas 2025-11-18: If the python version is not present in our

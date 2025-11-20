@@ -268,7 +268,7 @@ def _python_impl(module_ctx):
         full_python_version = full_version(
             version = toolchain_info.python_version,
             minor_mapping = py.config.minor_mapping,
-            err = False,
+            fail_on_err = False,
         )
         if not full_python_version:
             logger.info(lambda: (
