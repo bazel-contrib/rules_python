@@ -55,9 +55,13 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
+* (toolchain) Remove all of the python 3.8 toolchain support out of the box. Users need
+  to pass the `TOOL_VERSIONS` that include 3.8 toolchains or use the `bzlmod` APIs to add
+  them back. This means any hub `pip.parse` calls that target `3.8` will be ignored from
+  now on. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
 * (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
   This version has reached EOL and will no longer receive any security fixes, please update to
-  `3.10` or above.
+  `3.10` or above. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
 
 {#v0-0-0-changed}
 ### Changed
