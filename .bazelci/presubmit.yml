@@ -611,19 +611,6 @@ tasks:
     - "git diff --exit-code"
 
 
-  integration_test_ignore_root_user_error_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "ignore_root_user_error: macOS, workspace"
-    working_directory: tests/integration/ignore_root_user_error
-    platform: macos
-  integration_test_ignore_root_user_error_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "ignore_root_user_error: Windows, workspace"
-    working_directory: tests/integration/ignore_root_user_error
-    platform: windows
-
   integration_compile_pip_requirements_test_from_external_repo_ubuntu_min_workspace:
     <<: *minimum_supported_version
     <<: *common_workspace_flags_min_bazel
