@@ -138,7 +138,10 @@ def _test_cross_compile_to_unix(name, config):
 def _test_cross_compile_to_unix_impl(_env, _target):
     pass
 
-_tests.append(_test_cross_compile_to_unix)
+# The default test toolchain prevents cross-compiling py_test to a non-exec
+# platform. 
+if rp_config.bazel_9_or_later and "py_test" not in str(config.rule):
+    _tests.append(_test_cross_compile_to_unix)
 
 def _test_executable_in_runfiles(name, config):
     rt_util.helper_target(
