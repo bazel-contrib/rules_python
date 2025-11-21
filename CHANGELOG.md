@@ -55,6 +55,11 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
+* (toolchain) `ignore_root_user_error` has now been flipped to be always enabled and
+  the `chmod` of the python toolchain directories have been removed. From now on `rules_python`
+  always adds the `pyc` files to the glob excludes and in order to avoid any problems when using
+  the toolchains in the repository phase, ensure that you pass `-B` to the python interpreter.
+  ([#2016](https://github.com/bazel-contrib/rules_python/issues/2016))
 * (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
   This version has reached EOL and will no longer receive any security fixes, please update to
   `3.10` or above.
