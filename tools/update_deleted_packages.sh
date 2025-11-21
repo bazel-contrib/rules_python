@@ -23,7 +23,7 @@
 #   2. For each of the directories, get all directories that contains a BUILD.bazel file.
 #   3. Sort and remove duplicates.
 
-set -euxo pipefail
+set -euo pipefail
 
 DIR="$(dirname $0)/.."
 cd $DIR
@@ -35,5 +35,6 @@ sed -i.bak "/^[^#].*--deleted_packages/s#=.*#=$(\
         xargs -n 1 -I{} find {} \( -name BUILD -or -name BUILD.bazel \) |
         xargs -n 1 dirname |
         sort -u |
+        grep -v 'gazelle/docs' |
         paste -sd, -\
 )#" $DIR/.bazelrc && rm .bazelrc.bak
