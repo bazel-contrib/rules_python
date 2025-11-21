@@ -88,16 +88,17 @@ _TRANSITION_SETTINGS_DEBUG_TEMPLATE = """
 """
 
 def _internal_config_repo_impl(rctx):
-    if not native.bazel_version or int(native.bazel_version.split(".")[0]) >= 8:
+    # An empty version signifies a development build, which is treated as
+    # the latest version.
+    bazel_major_version = int(native.bazel_version.split(".")[0]) if native.bazel_version else 99999
+    if bazel_major_version >= 8:
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
-        bazel_9_or_later = "True"
     else:
         builtin_py_info_symbol = "PyInfo"
         builtin_py_runtime_info_symbol = "PyRuntimeInfo"
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
-        bazel_9_or_later = "False"
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         build_python_zip_default = repo_utils.get_platforms_os_name(rctx) == "windows",
@@ -106,7 +107,7 @@ def _internal_config_repo_impl(rctx):
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
-        bazel_9_or_later = bazel_9_or_later,
+        bazel_9_or_later = str(bazel_major_version >= 9),
     ))
 
     shim_content = _PY_INTERNAL_SHIM
