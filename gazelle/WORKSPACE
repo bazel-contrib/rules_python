@@ -61,3 +61,12 @@ load("//:deps.bzl", _py_gazelle_deps = "gazelle_deps")
 
 # gazelle:repository_macro deps.bzl%go_deps
 _py_gazelle_deps()
+
+# Needed for rules_cc 0.2.10
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
+bazel_features_deps()
+
+load("@rules_cc//cc:extensions.bzl", "compatibility_proxy_repo")
+
+compatibility_proxy_repo()

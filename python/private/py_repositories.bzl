@@ -66,11 +66,21 @@ def py_repositories(transition_settings = []):
             "https://github.com/bazelbuild/bazel-skylib/releases/download/1.8.2/bazel-skylib-1.8.2.tar.gz",
         ],
     )
+
+    # For this version of rules_cc, loading compatibility_proxy_repo in WORKSPACE is needed
     http_archive(
         name = "rules_cc",
-        sha256 = "b8b918a85f9144c01f6cfe0f45e4f2838c7413961a8ff23bc0c6cdf8bb07a3b6",
-        strip_prefix = "rules_cc-0.1.5",
-        urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
+        sha256 = "774fd6cb9f90f98f1d26c776896b16a517a1af65337fcfaa705261df175f04a6",
+        strip_prefix = "rules_cc-0.2.10",
+        urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.2.10/rules_cc-0.2.10.tar.gz"],
+    )
+
+    # Needed by rules_cc 0.2.10
+    http_archive(
+        name = "bazel_features",
+        sha256 = "adc8ddf121917f197f75c5245dfa8d7b1619f10a1002e25062b093b7957f2798",
+        strip_prefix = "bazel_features-1.37.0",
+        url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.37.0/bazel_features-v1.37.0.tar.gz",
     )
 
     # Needed by rules_cc, triggered by @rules_java_prebuilt in Bazel by using @rules_cc//cc:defs.bzl
@@ -78,8 +88,8 @@ def py_repositories(transition_settings = []):
     # support; Bazel itself has references to com_google_protobuf.
     http_archive(
         name = "com_google_protobuf",
-        sha256 = "23082dca1ca73a1e9c6cbe40097b41e81f71f3b4d6201e36c134acc30a1b3660",
-        url = "https://github.com/protocolbuffers/protobuf/releases/download/v29.0-rc2/protobuf-29.0-rc2.zip",
-        strip_prefix = "protobuf-29.0-rc2",
+        sha256 = "aaddf29b205ed915100a5fd096e8252842b67da9accfb7ba91ec3680ea307e45",
+        url = "https://github.com/protocolbuffers/protobuf/releases/download/v33.0/protobuf-33.0.zip",
+        strip_prefix = "protobuf-33.0",
     )
     pypi_deps()

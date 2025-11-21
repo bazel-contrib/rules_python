@@ -97,7 +97,11 @@ END_UNRELEASED_TEMPLATE
 
 {#v1-7-0-changed}
 ### Changed
-* (deps) bumped rules_cc dependency to `0.1.5`.
+* (deps) bumped rules_cc dependency to `0.2.10`.
+* (deps) bumped protobuf dependency to `33.0`.
+* (deps) WORKSPACE should call
+  `@rules_python//python:repositories_deps.bzl%rules_python_deps`
+  to setup additional dependencies.
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, `PYTHONPATH` is no
   longer used to add import paths. The sys.path order has changed from
   `[app paths, stdlib, runtime site-packages]` to `[stdlib, app paths, runtime

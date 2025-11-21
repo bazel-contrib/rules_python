@@ -18,10 +18,22 @@ buildifier:
   # Use a specific version to avoid skew issues when new versions are released.
   version: 8.2.1
   warnings: "all"
+.bazel_7_cxx_17_flags: &bazel_7_cxx_17_flags
+  # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+  build_flags:
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
+  test_flags:
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
+  coverage_flags:
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
 # NOTE: Minimum supported version is 7.x
 .minimum_supported_version: &minimum_supported_version
   # For testing minimum supported version.
   # NOTE: Keep in sync with //:version.bzl
+  <<: *bazel_7_cxx_17_flags
   bazel: 7.x
   skip_in_bazel_downstream_pipeline: "Bazel 7 required"
 .reusable_config: &reusable_config
@@ -39,23 +51,56 @@ buildifier:
     - "..."
   test_flags:
     - "--test_tag_filters=-integration-test"
+.reusable_config_bazel_7: &reusable_config_bazel_7
+  build_targets:
+    - "--"
+    - "..."
+    # As a regression test for #225, check that wheel targets still build when
+    # their package path is qualified with the repo name.
+    - "@rules_python//examples/wheel/..."
+  build_flags:
+    - "--keep_going"
+    - "--build_tag_filters=-integration-test"
+    # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
+  test_targets:
+    - "--"
+    - "..."
+  test_flags:
+    - "--test_tag_filters=-integration-test"
+    # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
 .common_workspace_flags_min_bazel: &common_workspace_flags_min_bazel
   build_flags:
     - "--noenable_bzlmod"
     - "--build_tag_filters=-integration-test"
+    # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
   test_flags:
     - "--noenable_bzlmod"
     - "--test_tag_filters=-integration-test"
+    # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
 .common_workspace_flags: &common_workspace_flags
   skip_in_bazel_downstream_pipeline: "Bazel 9 doesn't support workspace"
   test_flags:
     - "--noenable_bzlmod"
     - "--enable_workspace"
     - "--test_tag_filters=-integration-test"
+    # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
   build_flags:
     - "--noenable_bzlmod"
     - "--enable_workspace"
     - "--build_tag_filters=-integration-test"
+    # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+    - "--cxxopt=-std=c++17"
+    - "--host_cxxopt=-std=c++17"
   bazel: 7.x
 # NOTE: The Mac and Windows bazelinbazel jobs override parts of this config.
 .common_bazelinbazel_config: &common_bazelinbazel_config
@@ -119,7 +164,7 @@ tasks:
 
   ubuntu_min_bzlmod:
     <<: *minimum_supported_version
-    <<: *reusable_config
+    <<: *reusable_config_bazel_7
     name: "Default: Ubuntu, bzlmod, minimum Bazel"
     platform: ubuntu2204
     bazel: 7.x
@@ -174,6 +219,8 @@ tasks:
       - "--enable_workspace"
       - "--keep_going"
       - "--build_tag_filters=-integration-test"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
     test_targets:
       - "--"
       - "..."
@@ -181,6 +228,8 @@ tasks:
       - "--noenable_bzlmod"
       - "--enable_workspace"
       - "--test_tag_filters=-integration-test"
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
 
   debian:
     <<: *reusable_config
@@ -198,7 +247,7 @@ tasks:
       - "--test_tag_filters=-integration-test,-fix-windows"
   rbe_min:
     <<: *minimum_supported_version
-    <<: *reusable_config
+    <<: *reusable_config_bazel_7
     name: "RBE: Ubuntu, minimum Bazel"
     platform: rbe_ubuntu2204
     build_flags:
@@ -216,7 +265,7 @@ tasks:
       # build kite cc toolchain.
       - "--extra_toolchains=@buildkite_config//config:cc-toolchain"
   rbe:
-    <<: *reusable_config
+    <<: *reusable_config_bazel_7
     name: "RBE: Ubuntu"
     platform: rbe_ubuntu2204
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
@@ -225,7 +274,8 @@ tasks:
     test_flags:
       - "--test_tag_filters=-integration-test,-acceptance-test"
       - "--extra_toolchains=@buildkite_config//config:cc-toolchain"
-
+      - "--cxxopt=-std=c++17"
+      - "--host_cxxopt=-std=c++17"
   integration_test_build_file_generation_ubuntu_minimum_supported_workspace:
     <<: *minimum_supported_version
     <<: *reusable_build_test_all
@@ -269,6 +319,7 @@ tasks:
   integration_test_bzlmod_ubuntu:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod
+    <<: *bazel_7_cxx_17_flags
     name: "examples/bzlmod: Ubuntu"
     working_directory: examples/bzlmod
     platform: ubuntu2204
@@ -283,22 +334,25 @@ tasks:
   integration_test_bzlmod_debian:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod
+    <<: *bazel_7_cxx_17_flags
     name: "examples/bzlmod: Debian"
     working_directory: examples/bzlmod
     platform: debian11
     bazel: 7.x
   integration_test_bzlmod_ubuntu_vendor:
     <<: *reusable_build_test_all
+    <<: *bazel_7_cxx_17_flags
     name: "examples/bzlmod: bazel vendor"
     working_directory: examples/bzlmod
     platform: ubuntu2204
     shell_commands:
     - "bazel vendor --vendor_dir=./vendor //..."
-    - "bazel build --vendor_dir=./vendor //..."
+    - "bazel build --vendor_dir=./vendor --cxxopt=-std=c++17 --host_cxxopt=-std=c++17 //..."
     - "rm -rf ./vendor"
   integration_test_bzlmod_macos:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod
+    <<: *bazel_7_cxx_17_flags
     name: "examples/bzlmod: macOS"
     working_directory: examples/bzlmod
     platform: macos
@@ -317,6 +371,12 @@ tasks:
     working_directory: examples/bzlmod
     platform: windows
     bazel: 7.x
+    build_flags:
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
+    test_flags:
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
   integration_test_bzlmod_windows_upcoming:
     <<: *reusable_build_test_all
     # coverage is not supported on Windows
@@ -484,6 +544,20 @@ tasks:
     name: "examples/py_proto_library: Windows, workspace"
     working_directory: examples/py_proto_library
     platform: windows
+    test_flags:
+      - "--noenable_bzlmod"
+      - "--enable_workspace"
+      - "--test_tag_filters=-integration-test"
+      # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
+    build_flags:
+      - "--noenable_bzlmod"
+      - "--enable_workspace"
+      - "--build_tag_filters=-integration-test"
+      # recent protobuf and abseil-cpp requires C++17 which is not used by default in Bazel 7
+      - "--cxxopt=/std:c++17"
+      - "--host_cxxopt=/std:c++17"
 
   integration_test_pip_repository_annotations_ubuntu_workspace:
     <<: *reusable_build_test_all
