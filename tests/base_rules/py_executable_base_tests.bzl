@@ -13,8 +13,8 @@
 # limitations under the License.
 """Tests common to py_binary and py_test (executable rules)."""
 
-load("@bazel_features//:features.bzl", "bazel_features")
 load("@rules_python//python:py_runtime_info.bzl", RulesPythonPyRuntimeInfo = "PyRuntimeInfo")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
@@ -116,7 +116,7 @@ def _test_basic_zip_impl(env, target):
 _tests.append(_test_basic_zip)
 
 def _test_cross_compile_to_unix(name, config):
-    if not bazel_features.rules._has_launcher_maker_toolchain or "py_test" in str(config.rule):
+    if not rp_config.bazel_9_or_later or "py_test" in str(config.rule):
         # The default test toolchain prevents cross-compiling py_test to
         # a non-exec platform.
         return

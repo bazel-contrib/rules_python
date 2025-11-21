@@ -32,6 +32,7 @@ config = struct(
   enable_pystar = True,
   enable_pipstar = {enable_pipstar},
   enable_deprecation_warnings = {enable_deprecation_warnings},
+  bazel_9_or_later = {bazel_9_or_later},
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
   BuiltinPyCcLinkParamsProvider = getattr(getattr(native, "legacy_globals", None), "PyCcLinkParamsProvider", {builtin_py_cc_link_params_provider}),
@@ -91,10 +92,12 @@ def _internal_config_repo_impl(rctx):
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
+        bazel_9_or_later = "True"
     else:
         builtin_py_info_symbol = "PyInfo"
         builtin_py_runtime_info_symbol = "PyRuntimeInfo"
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
+        bazel_9_or_later = "False"
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         build_python_zip_default = repo_utils.get_platforms_os_name(rctx) == "windows",
@@ -103,6 +106,7 @@ def _internal_config_repo_impl(rctx):
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
+        bazel_9_or_later = bazel_9_or_later,
     ))
 
     shim_content = _PY_INTERNAL_SHIM

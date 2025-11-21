@@ -13,12 +13,12 @@
 # limitations under the License.
 """Common functionality between test/binary executables."""
 
-load("@bazel_features//:features.bzl", "bazel_features")
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -242,7 +242,7 @@ accepting arbitrary Python versions.
             cfg = "exec",
             executable = True,
         ),
-    } if not bazel_features.rules._has_launcher_maker_toolchain else {},
+    } if not rp_config.bazel_9_or_later else {},
 )
 
 def convert_legacy_create_init_to_int(kwargs):
@@ -782,7 +782,7 @@ def _create_stage1_bootstrap(
     )
 
 def _find_launcher_maker(ctx):
-    if bazel_features.rules._has_launcher_maker_toolchain:
+    if rp_config.bazel_9_or_later:
         return ctx.toolchains[_LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary
     return ctx.executable._windows_launcher_maker
 
@@ -1847,7 +1847,7 @@ def create_executable_rule_builder(implementation, **kwargs):
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-        ] + ([ruleb.ToolchainType(_LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if bazel_features.rules._has_launcher_maker_toolchain else []),
+        ] + ([ruleb.ToolchainType(_LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(
             implementation = _transition_executable_impl,
             inputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],

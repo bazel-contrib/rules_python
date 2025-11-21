@@ -72,12 +72,6 @@ def py_repositories(transition_settings = []):
         strip_prefix = "rules_cc-0.1.5",
         urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
     )
-    http_archive(
-        name = "bazel_features",
-        sha256 = "a660027f5a87f13224ab54b8dc6e191693c554f2692fcca46e8e29ee7dabc43b",
-        strip_prefix = "bazel_features-1.30.0",
-        url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.30.0/bazel_features-v1.30.0.tar.gz",
-    )
 
     # Needed by rules_cc, triggered by @rules_java_prebuilt in Bazel by using @rules_cc//cc:defs.bzl
     # NOTE: This name must be com_google_protobuf until Bazel drops WORKSPACE
