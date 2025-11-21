@@ -134,8 +134,7 @@ def _test_cross_compile_to_unix(name, config):
 def _test_cross_compile_to_unix_impl(_env, _target):
     pass
 
-if rp_config.bazel_9_or_later:
-    _tests.append(_test_cross_compile_to_unix)
+_tests.append(_test_cross_compile_to_unix) if rp_config.bazel_9_or_later else None
 
 def _test_executable_in_runfiles(name, config):
     rt_util.helper_target(
