@@ -116,10 +116,6 @@ def _test_basic_zip_impl(env, target):
 _tests.append(_test_basic_zip)
 
 def _test_cross_compile_to_unix(name, config):
-    if not rp_config.bazel_9_or_later or "py_test" in str(config.rule):
-        # The default test toolchain prevents cross-compiling py_test to
-        # a non-exec platform.
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
