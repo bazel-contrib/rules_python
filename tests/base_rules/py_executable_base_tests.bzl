@@ -125,16 +125,18 @@ def _test_cross_compile_to_unix(name, config):
         name = name,
         impl = _test_cross_compile_to_unix_impl,
         target = name + "_subject",
+        # Cross-compilation of py_test fails since the default test toolchain
+        # requires an execution platform that matches the target platform.
         config_settings = {
             "//command_line_option:platforms": [platform_targets.EXOTIC_UNIX],
-        },
+        } if rp_config.bazel_9_or_later and not "py_test" in str(config.rule) else {},
         expect_failure = True,
     )
 
 def _test_cross_compile_to_unix_impl(_env, _target):
     pass
 
-_tests.append(_test_cross_compile_to_unix) if rp_config.bazel_9_or_later else None
+_tests.append(_test_cross_compile_to_unix)
 
 def _test_executable_in_runfiles(name, config):
     rt_util.helper_target(

@@ -783,8 +783,8 @@ def _create_stage1_bootstrap(
 
 def _find_launcher_maker(ctx):
     if rp_config.bazel_9_or_later:
-        return ctx.toolchains[_LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary
-    return ctx.executable._windows_launcher_maker
+        return (ctx.toolchains[_LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary, _LAUNCHER_MAKER_TOOLCHAIN_TYPE)
+    return (ctx.executable._windows_launcher_maker, None)
 
 def _create_windows_exe_launcher(
         ctx,
@@ -805,8 +805,9 @@ def _create_windows_exe_launcher(
     launch_info.add("1" if use_zip_file else "0", format = "use_zip_file=%s")
 
     launcher = ctx.attr._launcher[DefaultInfo].files_to_run.executable
+    executable, toolchain = _find_launcher_maker(ctx)
     ctx.actions.run(
-        executable = _find_launcher_maker(ctx),
+        executable = executable,
         arguments = [launcher.path, launch_info, output.path],
         inputs = [launcher],
         outputs = [output],
@@ -814,6 +815,7 @@ def _create_windows_exe_launcher(
         progress_message = "Creating launcher for %{label}",
         # Needed to inherit PATH when using non-MSVC compilers like MinGW
         use_default_shell_env = True,
+        toolchain = toolchain,
     )
 
 def _create_zip_file(ctx, *, output, zip_main, runfiles):
