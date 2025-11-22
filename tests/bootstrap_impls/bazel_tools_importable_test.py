@@ -2,7 +2,7 @@ import sys
 import unittest
 
 
-class SysPathOrderTest(unittest.TestCase):
+class BazelToolsImportableTest(unittest.TestCase):
     def test_bazel_tools_importable(self):
         try:
             import bazel_tools
