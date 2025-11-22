@@ -114,9 +114,29 @@ def _pip_parse(self, module_ctx, pip_attr):
             version = python_version,
         ))
 
-    self._platforms[python_version] = _platforms(
-        python_version = python_version,
+    full_python_version = full_version(
+        version = python_version,
         minor_mapping = self._minor_mapping,
+        fail_on_err = False,
+    )
+    if not full_python_version:
+        # NOTE @aignas 2025-11-18: If the python version is not present in our
+        # minor_mapping, then we will not register any packages and then the
+        # select in the hub repository will fail, which will prompt the user to
+        # configure the toolchain correctly and move forward.
+        self._logger.info(lambda: (
+            "Ignoring pip python version '{version}' for hub " +
+            "'{hub}' in module '{module}' because there is no registered " +
+            "toolchain for it."
+        ).format(
+            hub = self.name,
+            module = self.module_name,
+            version = python_version,
+        ))
+        return
+
+    self._platforms[python_version] = _platforms(
+        python_version = full_python_version,
         config = self._config,
     )
     _set_get_index_urls(self, pip_attr)
@@ -280,13 +300,10 @@ def _detect_interpreter(self, pip_attr):
         path = pip_attr.python_interpreter,
     )
 
-def _platforms(*, python_version, minor_mapping, config):
+def _platforms(*, python_version, config):
     platforms = {}
     python_version = version.parse(
-        full_version(
-            version = python_version,
-            minor_mapping = minor_mapping,
-        ),
+        python_version,
         strict = True,
     )
 

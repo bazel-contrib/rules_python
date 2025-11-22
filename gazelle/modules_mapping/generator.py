@@ -96,8 +96,7 @@ class Generator:
                 ext = "".join(pathlib.Path(root).suffixes)
             module = root[: -len(ext)].replace("/", ".")
             if not self.is_excluded(module):
-                if not self.is_excluded(module):
-                    self.mapping[module] = wheel_name
+                self.mapping[module] = wheel_name
 
     def is_excluded(self, module):
         for pattern in self.excluded_patterns:
@@ -105,14 +104,20 @@ class Generator:
                 return True
         return False
 
-    # run is the entrypoint for the generator.
-    def run(self, wheels):
-        for whl in wheels:
-            try:
-                self.dig_wheel(whl)
-            except AssertionError as error:
-                print(error, file=self.stderr)
-                return 1
+    def run(self, wheel: pathlib.Path) -> int:
+        """
+        Entrypoint for the generator.
+
+        Args:
+            wheel: The path to the wheel file (`.whl`)
+        Returns:
+            Exit code (for `sys.exit`)
+        """
+        try:
+            self.dig_wheel(wheel)
+        except AssertionError as error:
+            print(error, file=self.stderr)
+            return 1
         self.simplify()
         mapping_json = json.dumps(self.mapping)
         with open(self.output_file, "w") as f:
@@ -152,16 +157,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="generator",
         description="Generates the modules mapping used by the Gazelle manifest.",
-        # Automatically read parameters from a file. Note, the '@' is the same prefix
-        # as set in the 'args.use_param_file' in the bazel rule.
-        fromfile_prefix_chars="@",
     )
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--include_stub_packages", action="store_true")
     parser.add_argument("--exclude_patterns", nargs="+", default=[])
-    parser.add_argument("--wheels", nargs="+", default=[])
+    parser.add_argument("--wheel", type=pathlib.Path)
     args = parser.parse_args()
     generator = Generator(
         sys.stderr, args.output_file, args.exclude_patterns, args.include_stub_packages
     )
-    sys.exit(generator.run(args.wheels))
+    sys.exit(generator.run(args.wheel))

@@ -1,3 +1,8 @@
+# Starting with Bazel 8, Windows requires this flag in order
+# for symlinks to work properly (namely, so that sh_test with
+# py_binary as a data dependency gets symlinks that are executable)
+startup --windows_enable_symlinks
+
 common --enable_bzlmod
 common --lockfile_mode=update
 

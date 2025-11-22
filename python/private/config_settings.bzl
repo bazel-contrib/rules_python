@@ -35,7 +35,14 @@ If the value is missing, then the default value is being used, see documentation
 # access it, but it's not intended for general public usage.
 _NOT_ACTUALLY_PUBLIC = ["//visibility:public"]
 
-def construct_config_settings(*, name, default_version, versions, minor_mapping, documented_flags):  # buildifier: disable=function-docstring
+def construct_config_settings(
+        *,
+        name,
+        default_version,
+        versions,
+        minor_mapping,
+        compat_lowest_version = "3.8",
+        documented_flags):  # buildifier: disable=function-docstring
     """Create a 'python_version' config flag and construct all config settings used in rules_python.
 
     This mainly includes the targets that are used in the toolchain and pip hub
@@ -46,6 +53,8 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
         default_version: {type}`str` the default value for the `python_version` flag.
         versions: {type}`list[str]` A list of versions to build constraint settings for.
         minor_mapping: {type}`dict[str, str]` A mapping from `X.Y` to `X.Y.Z` python versions.
+        compat_lowest_version: {type}`str` The version that we should use as the lowest available
+            version for `is_python_3.X` flags.
         documented_flags: {type}`list[str]` The labels of the documented settings
             that affect build configuration.
     """
@@ -69,21 +78,21 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
     )
 
     _reverse_minor_mapping = {full: minor for minor, full in minor_mapping.items()}
-    for version in versions:
-        minor_version = _reverse_minor_mapping.get(version)
+    for ver in versions:
+        minor_version = _reverse_minor_mapping.get(ver)
         if not minor_version:
             native.config_setting(
-                name = "is_python_{}".format(version),
-                flag_values = {":python_version": version},
+                name = "is_python_{}".format(ver),
+                flag_values = {":python_version": ver},
                 visibility = ["//visibility:public"],
             )
             continue
 
         # Also need to match the minor version when using
-        name = "is_python_{}".format(version)
+        name = "is_python_{}".format(ver)
         native.config_setting(
             name = "_" + name,
-            flag_values = {":python_version": version},
+            flag_values = {":python_version": ver},
             visibility = ["//visibility:public"],
         )
 
@@ -94,7 +103,7 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
         selects.config_setting_group(
             name = "_{}_group".format(name),
             match_any = [
-                ":_is_python_{}".format(version),
+                ":_is_python_{}".format(ver),
                 ":is_python_{}".format(minor_version),
             ],
             visibility = ["//visibility:private"],
@@ -109,10 +118,25 @@ def construct_config_settings(*, name, default_version, versions, minor_mapping,
     # It's private because matching the concept of e.g. "3.8" value is done
     # using the `is_python_X.Y` config setting group, which is aware of the
     # minor versions that could match instead.
+    first_minor = None
     for minor in minor_mapping.keys():
+        ver = version.parse(minor)
+        if first_minor == None or version.is_lt(ver, first_minor):
+            first_minor = ver
+
         native.config_setting(
             name = "is_python_{}".format(minor),
             flag_values = {_PYTHON_VERSION_MAJOR_MINOR_FLAG: minor},
+            visibility = ["//visibility:public"],
+        )
+
+    # This is a compatibility layer to ensure that `select` statements don't break out right
+    # when the toolchains for EOL minor versions are no longer registered.
+    compat_lowest_version = version.parse(compat_lowest_version)
+    for minor in range(compat_lowest_version.release[-1], first_minor.release[-1]):
+        native.alias(
+            name = "is_python_3.{}".format(minor),
+            actual = "@platforms//:incompatible",
             visibility = ["//visibility:public"],
         )
 
