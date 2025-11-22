@@ -81,11 +81,15 @@ buildifier:
   coverage_targets:
     - //tests:my_lib_3_10_test
     - //tests:my_lib_3_11_test
-    - //tests:my_lib_3_9_test
+    - //tests:my_lib_3_12_test
+    - //tests:my_lib_3_13_test
+    - //tests:my_lib_3_14_test
     - //tests:my_lib_default_test
     - //tests:version_3_10_test
     - //tests:version_3_11_test
-    - //tests:version_3_9_test
+    - //tests:version_3_12_test
+    - //tests:version_3_13_test
+    - //tests:version_3_14_test
     - //tests:version_default_test
 tasks:
   gazelle_extension_min:
