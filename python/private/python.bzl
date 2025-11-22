@@ -268,7 +268,18 @@ def _python_impl(module_ctx):
         full_python_version = full_version(
             version = toolchain_info.python_version,
             minor_mapping = py.config.minor_mapping,
+            fail_on_err = False,
         )
+        if not full_python_version:
+            logger.info(lambda: (
+                "The actual toolchain for python_version '{version}' " +
+                "has not been registered, but was requested, please configure a toolchain " +
+                "to be actually downloaded and setup"
+            ).format(
+                version = toolchain_info.python_version,
+            ))
+            continue
+
         kwargs = {
             "python_version": full_python_version,
             "register_coverage_tool": toolchain_info.register_coverage_tool,

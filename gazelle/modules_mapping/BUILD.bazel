@@ -9,6 +9,12 @@ py_binary(
     visibility = ["//visibility:public"],
 )
 
+py_binary(
+    name = "merger",
+    srcs = ["merger.py"],
+    visibility = ["//visibility:public"],
+)
+
 copy_file(
     name = "pytest_wheel",
     src = "@pytest//file",
@@ -31,6 +37,18 @@ py_test(
     imports = ["."],
     main = "test_generator.py",
     deps = [":generator"],
+)
+
+py_test(
+    name = "test_merger",
+    srcs = ["test_merger.py"],
+    data = [
+        "django_types_wheel",
+        "pytest_wheel",
+    ],
+    imports = ["."],
+    main = "test_merger.py",
+    deps = [":merger"],
 )
 
 filegroup(

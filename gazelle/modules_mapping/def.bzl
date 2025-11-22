@@ -30,25 +30,39 @@ def _modules_mapping_impl(ctx):
         transitive = [dep[DefaultInfo].files for dep in ctx.attr.wheels] + [dep[DefaultInfo].data_runfiles.files for dep in ctx.attr.wheels],
     )
 
-    args = ctx.actions.args()
+    # Run the generator once per-wheel (to leverage caching)
+    per_wheel_outputs = []
+    for idx, whl in enumerate(all_wheels.to_list()):
+        wheel_modules_mapping = ctx.actions.declare_file("{}.{}".format(modules_mapping.short_path, idx))
+        args = ctx.actions.args()
+        args.add("--output_file", wheel_modules_mapping.path)
+        if ctx.attr.include_stub_packages:
+            args.add("--include_stub_packages")
+        args.add_all("--exclude_patterns", ctx.attr.exclude_patterns)
+        args.add("--wheel", whl.path)
 
-    # Spill parameters to a file prefixed with '@'. Note, the '@' prefix is the same
-    # prefix as used in the `generator.py` in `fromfile_prefix_chars` attribute.
-    args.use_param_file(param_file_arg = "@%s")
-    args.set_param_file_format(format = "multiline")
-    if ctx.attr.include_stub_packages:
-        args.add("--include_stub_packages")
-    args.add("--output_file", modules_mapping)
-    args.add_all("--exclude_patterns", ctx.attr.exclude_patterns)
-    args.add_all("--wheels", all_wheels)
+        ctx.actions.run(
+            inputs = [whl],
+            outputs = [wheel_modules_mapping],
+            executable = ctx.executable._generator,
+            arguments = [args],
+            use_default_shell_env = False,
+        )
+        per_wheel_outputs.append(wheel_modules_mapping)
+
+    # Then merge the individual JSONs together
+    merge_args = ctx.actions.args()
+    merge_args.add("--output", modules_mapping.path)
+    merge_args.add_all("--inputs", [f.path for f in per_wheel_outputs])
 
     ctx.actions.run(
-        inputs = all_wheels,
+        inputs = per_wheel_outputs,
         outputs = [modules_mapping],
-        executable = ctx.executable._generator,
-        arguments = [args],
+        executable = ctx.executable._merger,
+        arguments = [merge_args],
         use_default_shell_env = False,
     )
+
     return [DefaultInfo(files = depset([modules_mapping]))]
 
 modules_mapping = rule(
@@ -77,6 +91,11 @@ modules_mapping = rule(
         "_generator": attr.label(
             cfg = "exec",
             default = "//modules_mapping:generator",
+            executable = True,
+        ),
+        "_merger": attr.label(
+            cfg = "exec",
+            default = "//modules_mapping:merger",
             executable = True,
         ),
     },
