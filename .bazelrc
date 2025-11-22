@@ -3,7 +3,7 @@
 # This lets us glob() up all the files inside the examples to make them inputs to tests
 # (Note, we cannot use `common --deleted_packages` because the bazel version command doesn't support it)
 # To update the file, execute
-import .bazelrc.deleted_packages
+import %workspace%/.bazelrc.deleted_packages
 
 test --test_output=errors
 
