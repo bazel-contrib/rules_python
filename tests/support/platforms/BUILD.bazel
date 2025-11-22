@@ -75,3 +75,11 @@ platform(
         "@platforms//cpu:aarch64",
     ],
 )
+
+platform(
+    name = "exotic_unix",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:s390x",
+    ],
+)

@@ -14,6 +14,7 @@
 """Tests common to py_binary and py_test (executable rules)."""
 
 load("@rules_python//python:py_runtime_info.bzl", RulesPythonPyRuntimeInfo = "PyRuntimeInfo")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
@@ -113,6 +114,29 @@ def _test_basic_zip_impl(env, target):
     ))
 
 _tests.append(_test_basic_zip)
+
+def _test_cross_compile_to_unix(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        main_module = "dummy",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_cross_compile_to_unix_impl,
+        target = name + "_subject",
+        # Cross-compilation of py_test fails since the default test toolchain
+        # requires an execution platform that matches the target platform.
+        config_settings = {
+            "//command_line_option:platforms": [platform_targets.EXOTIC_UNIX],
+        } if rp_config.bazel_9_or_later and not "py_test" in str(config.rule) else {},
+        expect_failure = True,
+    )
+
+def _test_cross_compile_to_unix_impl(_env, _target):
+    pass
+
+_tests.append(_test_cross_compile_to_unix)
 
 def _test_executable_in_runfiles(name, config):
     rt_util.helper_target(
