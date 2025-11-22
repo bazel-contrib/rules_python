@@ -528,7 +528,7 @@ tasks:
   integration_test_bazelinbazel_macos:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: macOS (subset)"
-    platform: macos_arm64
+    platform: macos
     build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
     test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
   # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
