@@ -74,6 +74,8 @@ END_UNRELEASED_TEMPLATE
   ([#3085](https://github.com/bazel-contrib/rules_python/issues/3085)).
 * (toolchains) local toolchains now tell the `sys.abiflags` value of the
   underlying runtime.
+* (toolchains) The `python_headers` target is now compatible with
+  layering_check.
 * (performance) 90% reduction in py_binary/py_test analysis phase cost.
   ([#3381](https://github.com/bazel-contrib/rules_python/pull/3381)).
 * (gazelle) Fix `gazelle_python_manifest.test` so that it accesses manifest files via `runfile` path handling rather than directly ([#3397](https://github.com/bazel-contrib/rules_python/issues/3397)).
