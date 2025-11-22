@@ -29,12 +29,12 @@ DIR="$(dirname $0)/.."
 cd $DIR
 
 # The sed -i.bak pattern is compatible between macos and linux
-sed -i.bak "/^[^#].*--deleted_packages/s#=.*#=$(\
-    find examples/*/* tests/*/* \( -name WORKSPACE -or -name MODULE.bazel \) |
+{
+    echo "# Generated via './tools/update_deleted_packages.sh'"
+    find examples/*/* tests/*/* gazelle/examples/*/* \( -name WORKSPACE -or -name MODULE.bazel \) |
         xargs -n 1 dirname |
-        xargs -n 1 -I{} find {} \( -name BUILD -or -name BUILD.bazel \) |
+        xargs -I{} find {} \( -name BUILD -or -name BUILD.bazel \) |
         xargs -n 1 dirname |
         sort -u |
-        grep -v 'gazelle/docs' |
-        paste -sd, -\
-)#" $DIR/.bazelrc && rm .bazelrc.bak
+        sed 's/^/common --deleted_packages=/g' 
+} > "$DIR"/.bazelrc.deleted_packages

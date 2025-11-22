@@ -2,9 +2,8 @@
 # Trick bazel into treating BUILD files under examples/* as being regular files
 # This lets us glob() up all the files inside the examples to make them inputs to tests
 # (Note, we cannot use `common --deleted_packages` because the bazel version command doesn't support it)
-# To update these lines, execute
-# `./tools/update_deleted_packages.sh`
-common --deleted_packages=examples/build_file_generation,examples/build_file_generation/random_number_generator,examples/bzlmod,examples/bzlmod/entry_points,examples/bzlmod/entry_points/tests,examples/bzlmod/libs/my_lib,examples/bzlmod/other_module,examples/bzlmod/other_module/other_module/pkg,examples/bzlmod/patches,examples/bzlmod/py_proto_library,examples/bzlmod/py_proto_library/example.com/another_proto,examples/bzlmod/py_proto_library/example.com/proto,examples/bzlmod/py_proto_library/foo_external,examples/bzlmod/runfiles,examples/bzlmod/tests,examples/bzlmod/tests/other_module,examples/bzlmod/whl_mods,examples/multi_python_versions/libs/my_lib,examples/multi_python_versions/requirements,examples/multi_python_versions/tests,examples/pip_parse,examples/pip_parse_vendored,examples/pip_repository_annotations,examples/py_proto_library,examples/py_proto_library/example.com/another_proto,examples/py_proto_library/example.com/proto,tests/integration/compile_pip_requirements,tests/integration/compile_pip_requirements_test_from_external_repo,tests/integration/custom_commands,tests/integration/local_toolchains,tests/integration/pip_parse,tests/integration/pip_parse/empty,tests/integration/py_cc_toolchain_registered,tests/modules/another_module,tests/modules/other,tests/modules/other/nspkg_delta,tests/modules/other/nspkg_gamma,tests/modules/other/nspkg_single,tests/modules/other/simple_v1,tests/modules/other/simple_v2,tests/modules/other/with_external_data
+# To update the file, execute
+import .bazelrc.deleted_packages
 
 test --test_output=errors
 
