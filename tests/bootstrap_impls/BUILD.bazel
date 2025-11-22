@@ -105,6 +105,18 @@ sh_py_run_test(
 )
 
 py_reconfig_test(
+    name = "bazel_tools_importable_system_python_test",
+    srcs = ["bazel_tools_importable_test.py"],
+    bootstrap_impl = "system_python",
+    # Necessary because bazel_tools doesn't have __init__.py files.
+    legacy_create_init = True,
+    main = "bazel_tools_importable_test.py",
+    deps = [
+        "@bazel_tools//tools/python/runfiles",
+    ],
+)
+
+py_reconfig_test(
     name = "sys_path_order_bootstrap_script_test",
     srcs = ["sys_path_order_test.py"],
     bootstrap_impl = "script",
@@ -121,6 +133,9 @@ py_reconfig_test(
     env = {"BOOTSTRAP": "system_python"},
     imports = ["./site-packages"],
     main = "sys_path_order_test.py",
+    deps = [
+        "@bazel_tools//tools/python/runfiles",
+    ],
 )
 
 py_reconfig_test(

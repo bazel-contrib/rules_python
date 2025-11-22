@@ -26,6 +26,8 @@ _WORKSPACE_NAME = "%workspace_name%"
 _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 # Runfiles-relative path to the coverage tool entry point, if any.
 _COVERAGE_TOOL = "%coverage_tool%"
+# True if the runfiles root should be added to sys.path
+_ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
 
 
 def _is_verbose():
@@ -127,11 +129,6 @@ def _search_path(name):
 def _setup_sys_path():
     """Perform Bazel/binary specific sys.path setup.
 
-    NOTE: We do not add _RUNFILES_ROOT to sys.path for two reasons:
-    1. Under workspace, it makes every external repository importable. If a Bazel
-       repository matches a Python import name, they conflict.
-    2. Under bzlmod, the repo names in the runfiles directory aren't importable
-       Python names, so there's no point in adding the runfiles root to sys.path.
     """
     seen = set(sys.path)
     python_path_entries = []
@@ -146,6 +143,17 @@ def _setup_sys_path():
         _print_verbose("append sys.path:", path)
         sys.path.append(path)
         seen.add(path)
+
+    # Adding the runfiles root to sys.path is a legacy behavior that will be
+    # removed. We don't want to add it to sys.path for two reasons:
+    # 1. Under workspace, it makes every external repository importable. If a Bazel
+    #    repository matches a Python import name, they conflict.
+    # 2. Under bzlmod, the repo names in the runfiles directory aren't importable
+    #    Python names, so there's no point in adding the runfiles root to sys.path.
+    # For temporary compatibility with the original system_python bootstrap
+    # behavior, it is conditionally added for that boostrap mode.
+    if _ADD_RUNFILES_ROOT_TO_SYS_PATH:
+        _maybe_add_path(_RUNFILES_ROOT)
 
     for rel_path in _IMPORTS_STR.split(":"):
         abs_path = os.path.join(_RUNFILES_ROOT, rel_path)
