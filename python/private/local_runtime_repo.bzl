@@ -34,14 +34,35 @@ define_local_runtime_toolchain_impl(
     major = "{major}",
     minor = "{minor}",
     micro = "{micro}",
+    abi_flags = "{abi_flags}",
+    os = "{os}",
+    implementation_name = "{implementation_name}",
     interpreter_path = "{interpreter_path}",
     interface_library = {interface_library},
     libraries = {libraries},
-    implementation_name = "{implementation_name}",
-    os = "{os}",
-    abi_flags = "{abi_flags}",
+    defines = {defines},
+    abi3_interface_library = {abi3_interface_library},
+    abi3_libraries = {abi3_libraries},
+    additional_dlls = {additional_dlls},
 )
 """
+
+def _expand_incompatible_template():
+    return _TOOLCHAIN_IMPL_TEMPLATE.format(
+        major = "0",
+        minor = "0",
+        micro = "0",
+        abi_flags = "",
+        os = "@platforms//:incompatible",
+        implementation_name = "incompatible",
+        interpreter_path = "/incompatible",
+        interface_library = "None",
+        libraries = "[]",
+        defines = "[]",
+        abi3_interface_library = "None",
+        abi3_libraries = "[]",
+        additional_dlls = "[]",
+    )
 
 def _norm_path(path):
     """Returns a path using '/' separators and no trailing slash."""
@@ -50,33 +71,39 @@ def _norm_path(path):
         path = path[:-1]
     return path
 
-def _symlink_first_library(rctx, logger, libraries, shlib_suffix):
+def _symlink_libraries(rctx, logger, libraries, shlib_suffix):
     """Symlinks the shared libraries into the lib/ directory.
 
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
-        libraries: A list of static library paths to potentially symlink.
-        shlib_suffix: A suffix only provided for shared libraries to ensure
-          that the srcs restriction of cc_library targets are met.
+        libraries: paths to libraries to attempt to symlink.
+        shlib_suffix: Optional. Ensure that the generated symlinks end with this suffix.
     Returns:
-        A single library path linked by the action.
+        A list of library paths (under lib/) linked by the action.
+
+    Individual files are symlinked instead of the whole directory because
+    shared_lib_dirs contains multiple search paths for the shared libraries,
+    and the python files may be missing from any of those directories, and
+    any of those directories may include non-python runtime libraries,
+    as would be the case if LIBDIR were, for example, /usr/lib.
     """
-    for target in libraries:
-        origin = rctx.path(target)
+    result = []
+    for source in libraries:
+        origin = rctx.path(source)
         if not origin.exists:
             # The reported names don't always exist; it depends on the particulars
             # of the runtime installation.
             continue
-        if shlib_suffix and not target.endswith(shlib_suffix):
-            linked = "lib/{}{}".format(origin.basename, shlib_suffix)
+        if shlib_suffix and not origin.basename.endswith(shlib_suffix):
+            target = "lib/{}{}".format(origin.basename, shlib_suffix)
         else:
-            linked = "lib/{}".format(origin.basename)
-        logger.debug("Symlinking {} to {}".format(origin, linked))
+            target = "lib/{}".format(origin.basename)
+        logger.debug(lambda: "Symlinking {} to {}".format(origin, target))
         rctx.watch(origin)
-        rctx.symlink(origin, linked)
-        return linked
-    return None
+        rctx.symlink(origin, target)
+        result.append(target)
+    return result
 
 def _local_runtime_repo_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -150,31 +177,48 @@ def _local_runtime_repo_impl(rctx):
     # The cc_library.includes values have to be non-absolute paths, otherwise
     # the toolchain will give an error. Work around this error by making them
     # appear as part of this repo.
+    logger.debug(lambda: "Symlinking {} to include".format(include_path))
     rctx.symlink(include_path, "include")
 
     rctx.report_progress("Symlinking external Python shared libraries")
-    interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"], None)
-    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"], info["shlib_suffix"])
-    static_library = _symlink_first_library(rctx, logger, info["static_libraries"], None)
 
-    libraries = []
-    if shared_library:
-        libraries.append(shared_library)
-    elif static_library:
-        libraries.append(static_library)
+    interface_library = None
+    if info["dynamic_libraries"]:
+        libraries = _symlink_libraries(rctx, logger, info["dynamic_libraries"][:1], info["shlib_suffix"])
+        symlinked = _symlink_libraries(rctx, logger, info["interface_libraries"][:1], None)
+        if symlinked:
+            interface_library = symlinked[0]
     else:
-        logger.warn("No external python libraries found.")
+        libraries = _symlink_libraries(rctx, logger, info["static_libraries"], None)
+        if not libraries:
+            logger.info("No python libraries found.")
+
+    abi3_interface_library = None
+    if info["abi_dynamic_libraries"]:
+        abi3_libraries = _symlink_libraries(rctx, logger, info["abi_dynamic_libraries"][:1], info["shlib_suffix"])
+        symlinked = _symlink_libraries(rctx, logger, info["abi_interface_libraries"][:1], None)
+        if symlinked:
+            abi3_interface_library = symlinked[0]
+    else:
+        abi3_libraries = []
+        logger.info("No abi3 python libraries found.")
+
+    additional_dlls = _symlink_libraries(rctx, logger, info["additional_dlls"], None)
 
     build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
         major = info["major"],
         minor = info["minor"],
         micro = info["micro"],
+        abi_flags = info["abi_flags"],
+        os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
+        implementation_name = info["implementation_name"],
         interpreter_path = _norm_path(interpreter_path),
         interface_library = repr(interface_library),
         libraries = repr(libraries),
-        implementation_name = info["implementation_name"],
-        os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
-        abi_flags = info["abi_flags"],
+        defines = repr(info["defines"]),
+        abi3_interface_library = repr(abi3_interface_library),
+        abi3_libraries = repr(abi3_libraries),
+        additional_dlls = repr(additional_dlls),
     )
     logger.debug(lambda: "BUILD.bazel\n{}".format(build_bazel))
 
@@ -260,19 +304,6 @@ How to handle errors when trying to automatically determine settings.
     },
     environ = ["PATH", REPO_DEBUG_ENV_VAR, "DEVELOPER_DIR", "XCODE_VERSION"],
 )
-
-def _expand_incompatible_template():
-    return _TOOLCHAIN_IMPL_TEMPLATE.format(
-        interpreter_path = "/incompatible",
-        implementation_name = "incompatible",
-        interface_library = "None",
-        libraries = "[]",
-        major = "0",
-        minor = "0",
-        micro = "0",
-        os = "@platforms//:incompatible",
-        abi_flags = "",
-    )
 
 def _find_python_exe_from_target(rctx):
     base_path = rctx.path(rctx.attr.interpreter_target)

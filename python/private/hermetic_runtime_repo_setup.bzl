@@ -126,6 +126,7 @@ def define_hermetic_runtime_toolchain_impl(
     )
     cc_library(
         name = "python_headers",
+        hdrs = [":includes"],
         deps = [":python_headers_abi3"] + select({
             "@bazel_tools//src/conditions:windows": [":interface"],
             "//conditions:default": [],

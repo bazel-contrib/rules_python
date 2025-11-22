@@ -14,12 +14,13 @@
 
 """A small helper to ensure that we are working with full versions."""
 
-def full_version(*, version, minor_mapping):
+def full_version(*, version, minor_mapping, fail_on_err = True):
     """Return a full version.
 
     Args:
         version: {type}`str` the version in `X.Y` or `X.Y.Z` format.
         minor_mapping: {type}`dict[str, str]` mapping between `X.Y` to `X.Y.Z` format.
+        fail_on_err: {type}`bool` whether to fail on error or return `None` instead.
 
     Returns:
         a full version given the version string. If the string is already a
@@ -31,6 +32,8 @@ def full_version(*, version, minor_mapping):
     parts = version.split(".")
     if len(parts) == 3:
         return version
+    elif not fail_on_err:
+        return None
     elif len(parts) == 2:
         fail(
             "Unknown Python version '{}', available values are: {}".format(

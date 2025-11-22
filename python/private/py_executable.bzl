@@ -18,6 +18,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -69,6 +70,7 @@ load(":venv_runfiles.bzl", "create_venv_app_files")
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
+_LAUNCHER_MAKER_TOOLCHAIN_TYPE = "@bazel_tools//tools/launcher:launcher_maker_toolchain_type"
 
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
@@ -228,17 +230,19 @@ accepting arbitrary Python versions.
                 "@platforms//os:windows",
             ],
         ),
-        "_windows_launcher_maker": lambda: attrb.Label(
-            default = "@bazel_tools//tools/launcher:launcher_maker",
-            cfg = "exec",
-            executable = True,
-        ),
         "_zipper": lambda: attrb.Label(
             cfg = "exec",
             executable = True,
             default = "@bazel_tools//tools/zip:zipper",
         ),
     },
+    {
+        "_windows_launcher_maker": lambda: attrb.Label(
+            default = "@bazel_tools//tools/launcher:launcher_maker",
+            cfg = "exec",
+            executable = True,
+        ),
+    } if not rp_config.bazel_9_or_later else {},
 )
 
 def convert_legacy_create_init_to_int(kwargs):
@@ -777,6 +781,11 @@ def _create_stage1_bootstrap(
         is_executable = True,
     )
 
+def _find_launcher_maker(ctx):
+    if rp_config.bazel_9_or_later:
+        return (ctx.toolchains[_LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary, _LAUNCHER_MAKER_TOOLCHAIN_TYPE)
+    return (ctx.executable._windows_launcher_maker, None)
+
 def _create_windows_exe_launcher(
         ctx,
         *,
@@ -796,8 +805,9 @@ def _create_windows_exe_launcher(
     launch_info.add("1" if use_zip_file else "0", format = "use_zip_file=%s")
 
     launcher = ctx.attr._launcher[DefaultInfo].files_to_run.executable
+    executable, toolchain = _find_launcher_maker(ctx)
     ctx.actions.run(
-        executable = ctx.executable._windows_launcher_maker,
+        executable = executable,
         arguments = [launcher.path, launch_info, output.path],
         inputs = [launcher],
         outputs = [output],
@@ -805,6 +815,7 @@ def _create_windows_exe_launcher(
         progress_message = "Creating launcher for %{label}",
         # Needed to inherit PATH when using non-MSVC compilers like MinGW
         use_default_shell_env = True,
+        toolchain = toolchain,
     )
 
 def _create_zip_file(ctx, *, output, zip_main, runfiles):
@@ -1838,7 +1849,7 @@ def create_executable_rule_builder(implementation, **kwargs):
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-        ],
+        ] + ([ruleb.ToolchainType(_LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(
             implementation = _transition_executable_impl,
             inputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],
