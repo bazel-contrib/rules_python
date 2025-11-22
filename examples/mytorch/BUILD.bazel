@@ -7,13 +7,19 @@ py_test(
     deps = ["@pip//torch"],
 )
 
-# Uncomment if using the experimental_index_url
-# py_test(
-#     name = "torch_test_freethreaded",
-#     srcs = ["torch_test.py"],
-#     config_settings = {
-#         "@rules_python//python/config_settings:py_freethreaded": "yes",
-#     },
-#     main = "torch_test.py",
-#     deps = ["@pip//torch"],
-# )
+py_test(
+    name = "torch_test_experimental_index_url",
+    srcs = ["torch_test.py"],
+    main = "torch_test.py",
+    deps = ["@pip_next//torch"],
+)
+
+py_test(
+    name = "torch_test_freethreaded",
+    srcs = ["torch_test.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:py_freethreaded": "yes",
+    },
+    main = "torch_test.py",
+    deps = ["@pip_next//torch"],
+)

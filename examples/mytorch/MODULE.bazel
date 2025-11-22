@@ -25,11 +25,15 @@ python.toolchain(
 # Add the pip deps
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
-    envsubst = ["PIP_INDEX_URL"],
-    # envsubst = ["PIP_INDEX_URL"],
-    # experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
     hub_name = "pip",
     python_version = "3.14",
     requirements_lock = "requirements_lock.txt",
 )
-use_repo(pip, "pip")
+pip.parse(
+    envsubst = ["PIP_INDEX_URL"],
+    experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
+    hub_name = "pip_next",
+    python_version = "3.14",
+    requirements_lock = "requirements_lock.txt",
+)
+use_repo(pip, "pip", "pip_next")
