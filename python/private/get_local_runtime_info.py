@@ -137,6 +137,7 @@ def _search_library_names(get_config, version, abi_flags) -> list[str]:
     # Also include the abi3 libraries for the system.
     lib_names.extend(_default_library_names(sys.version_info.major, abi_flags))
 
+    # Uniqify, preserving order.
     return list(dict.fromkeys(k for k in lib_names if k))
 
 
