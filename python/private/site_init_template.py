@@ -26,6 +26,8 @@ _WORKSPACE_NAME = "%workspace_name%"
 _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 # Runfiles-relative path to the coverage tool entry point, if any.
 _COVERAGE_TOOL = "%coverage_tool%"
+# True if the runfiles root should be added to sys.path
+_ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
 
 
 def _is_verbose():
@@ -146,6 +148,9 @@ def _setup_sys_path():
         _print_verbose("append sys.path:", path)
         sys.path.append(path)
         seen.add(path)
+
+    if _ADD_RUNFILES_ROOT_TO_SYS_PATH:
+        _maybe_add_path(_RUNFILES_ROOT)
 
     for rel_path in _IMPORTS_STR.split(":"):
         abs_path = os.path.join(_RUNFILES_ROOT, rel_path)

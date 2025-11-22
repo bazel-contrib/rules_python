@@ -77,7 +77,8 @@ END_UNRELEASED_TEMPLATE
 * (performance) 90% reduction in py_binary/py_test analysis phase cost.
   ([#3381](https://github.com/bazel-contrib/rules_python/pull/3381)).
 * (gazelle) Fix `gazelle_python_manifest.test` so that it accesses manifest files via `runfile` path handling rather than directly ([#3397](https://github.com/bazel-contrib/rules_python/issues/3397)).
-
+* (core rules) For the system_python bootstrap, the runfiles root is added to
+  sys.path.
 
 {#v0-0-0-added}
 ### Added
