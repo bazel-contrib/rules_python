@@ -143,10 +143,11 @@ def _parse_entry_points(contents):
         if not start:
             continue
 
-        if start and not line:
+        if start and line.startswith("["):
             break
 
         line, _, _comment = line.partition("#")
+        line = line.strip()
         if not line:
             continue
 

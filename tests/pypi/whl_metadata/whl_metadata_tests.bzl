@@ -188,7 +188,8 @@ interesting # with comments
 foo = foomod:main
 # One which depends on extras:
 foobar = importable.foomod:main_bar [bar, baz]
-# With a comment at the end
+
+  # With a comment at the end
 foobarbaz = foomod:main.attr # comment
 
 [something else]
