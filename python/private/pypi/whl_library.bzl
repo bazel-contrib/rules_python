@@ -324,7 +324,11 @@ def _whl_library_impl(rctx):
 
     args = _parse_optional_attrs(rctx, args, extra_pip_args)
 
-    if not whl_path:
+    enable_pipstar = rp_config.enable_pipstar and rctx.attr.config_load
+    if whl_path:
+        # Enable pipstar for any whls that are downloaded without `pip`
+        enable_pipstar = True
+    else:
         if rctx.attr.urls:
             op_tmpl = "whl_library.BuildWheelFromSource({name}, {requirement})"
         elif rctx.attr.download_only:
@@ -374,7 +378,7 @@ def _whl_library_impl(rctx):
     # disable pipstar for that particular case.
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
-    if rp_config.enable_pipstar and rctx.attr.config_load:
+    if enable_pipstar:
         pypi_repo_utils.execute_checked(
             rctx,
             op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),

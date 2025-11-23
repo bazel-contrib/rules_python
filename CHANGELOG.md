@@ -67,6 +67,9 @@ END_UNRELEASED_TEMPLATE
 ### Changed
 * (toolchains) Use toolchains from the [20251031] release.
 * (gazelle) Internally split modules mapping generation to be per-wheel for concurrency and caching.
+* (pip) `pipstar` has been enabled for all `whl_library` instances where the whl
+  is passed through a label or downloaded using the bazel downloader
+  ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
 
 {#v0-0-0-fixed}
 ### Fixed
