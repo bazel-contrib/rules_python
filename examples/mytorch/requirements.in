@@ -1,1 +1,2 @@
-torch
+torch==2.8.0; python_version < "3.13"
+torch==2.9.1; python_version >= "3.13"

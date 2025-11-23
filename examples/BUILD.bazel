@@ -61,7 +61,11 @@ lock(
     args = [
         "--emit-index-url",
         "--universal",
-        "--python-version=3.14",
+        # This means that the lowest supported version in the requirements file will
+        # be 3.12
+        "--python-version=3.12",
     ],
-    python_version = "3.14",
+    # Means that we will pass the available 3.12 interpreter to the locking rule irrespective
+    # of what we have in rules_python as the default toolchain.
+    python_version = "3.12",
 )
