@@ -12,6 +12,8 @@ done < <(env -0)
 # In order to get the build number, we extract it from the host name
 extra_env+=("--//sphinxdocs:extra_env=HOSTNAME=$HOSTNAME")
 
+export RULES_PYTHON_ENABLE_PIPSTAR=1
+
 set -x
 bazel run \
   --config=rtd \
