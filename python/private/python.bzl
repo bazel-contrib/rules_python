@@ -76,13 +76,6 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
     # Map of string Major.Minor or Major.Minor.Patch to the toolchain_info struct
     global_toolchain_versions = {}
 
-    ignore_root_user_error = None
-
-    # if the root module does not register any toolchain then the
-    # ignore_root_user_error takes its default value: True
-    if not module_ctx.modules[0].tags.toolchain:
-        ignore_root_user_error = True
-
     config = _get_toolchain_config(modules = module_ctx.modules, _fail = _fail)
 
     default_python_version = _compute_default_python_version(module_ctx)
@@ -115,15 +108,6 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                 # * The root module is allowed to override the rules_python default.
                 is_default = default_python_version == toolchain_version
 
-                # Also only the root module should be able to decide ignore_root_user_error.
-                # Modules being depended upon don't know the final environment, so they aren't
-                # in the right position to know or decide what the correct setting is.
-
-                # If an inconsistency in the ignore_root_user_error among multiple toolchains is detected, fail.
-                if ignore_root_user_error != None and toolchain_attr.ignore_root_user_error != ignore_root_user_error:
-                    fail("Toolchains in the root module must have consistent 'ignore_root_user_error' attributes")
-
-                ignore_root_user_error = toolchain_attr.ignore_root_user_error
             elif mod.name == "rules_python" and not default_toolchain:
                 # This branch handles when the root module doesn't declare a
                 # Python toolchain
@@ -166,7 +150,6 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                 global_toolchain_versions[toolchain_version] = toolchain_info
                 if debug_info:
                     debug_info["toolchains_registered"].append({
-                        "ignore_root_user_error": ignore_root_user_error,
                         "module": {"is_root": mod.is_root, "name": mod.name},
                         "name": toolchain_name,
                     })
@@ -184,8 +167,6 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                     default_toolchain = toolchain_info
             elif toolchain_info:
                 toolchains.append(toolchain_info)
-
-    config.default.setdefault("ignore_root_user_error", ignore_root_user_error)
 
     # A default toolchain is required so that the non-version-specific rules
     # are able to match a toolchain.
@@ -722,7 +703,6 @@ def _process_global_overrides(*, tag, default, _fail = fail):
         default["minor_mapping"] = tag.minor_mapping
 
     forwarded_attrs = sorted(AUTH_ATTRS) + [
-        "ignore_root_user_error",
         "base_url",
         "register_all_versions",
     ]
@@ -974,7 +954,6 @@ def _create_toolchain_attrs_struct(
         is_default = is_default,
         python_version = python_version if python_version else tag.python_version,
         configure_coverage_tool = getattr(tag, "configure_coverage_tool", False),
-        ignore_root_user_error = getattr(tag, "ignore_root_user_error", True),
     )
 
 _defaults = tag_class(
@@ -1086,16 +1065,9 @@ Then the python interpreter will be available as `my_python_name`.
         "ignore_root_user_error": attr.bool(
             default = True,
             doc = """\
-The Python runtime installation is made read only. This improves the ability for
-Bazel to cache it by preventing the interpreter from creating `.pyc` files for
-the standard library dynamically at runtime as they are loaded (this often leads
-to spurious cache misses or build failures).
-
-However, if the user is running Bazel as root, this read-onlyness is not
-respected. Bazel will print a warning message when it detects that the runtime
-installation is writable despite being made read only (i.e. it's running with
-root access) while this attribute is set `False`, however this messaging can be ignored by setting
-this to `False`.
+:::{versionchanged} VERSION_NEXT_FEATURE
+Noop, will be removed in the next major release.
+:::
 """,
             mandatory = False,
         ),

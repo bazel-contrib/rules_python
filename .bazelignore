@@ -31,6 +31,5 @@ gazelle/examples/bzlmod_build_file_generation/bazel-bzlmod_build_file_generation
 gazelle/examples/bzlmod_build_file_generation/bazel-out
 gazelle/examples/bzlmod_build_file_generation/bazel-testlog
 tests/integration/compile_pip_requirements/bazel-compile_pip_requirements
-tests/integration/ignore_root_user_error/bazel-ignore_root_user_error
 tests/integration/local_toolchains/bazel-local_toolchains
 tests/integration/py_cc_toolchain_registered/bazel-py_cc_toolchain_registered
