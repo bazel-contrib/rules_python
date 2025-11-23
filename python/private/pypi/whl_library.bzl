@@ -377,20 +377,9 @@ def _whl_library_impl(rctx):
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
-        pypi_repo_utils.execute_checked(
-            rctx,
-            op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
-            python = python_interpreter,
-            arguments = args + [
-                "--whl-file",
-                whl_path,
-                "--enable-pipstar",
-            ],
-            srcs = rctx.attr._python_srcs,
-            environment = environment,
-            quiet = rctx.attr.quiet,
-            timeout = rctx.attr.timeout,
-            logger = logger,
+        rctx.extract(
+            archive = whl_path,
+            output = "site-packages",
         )
 
         metadata = whl_metadata(
