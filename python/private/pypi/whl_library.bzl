@@ -391,18 +391,21 @@ def _whl_library_impl(rctx):
             logger = logger,
         )
 
-        metadata = json.decode(rctx.read("metadata.json"))
-        rctx.delete("metadata.json")
+        metadata = whl_metadata(
+            install_dir = whl_path.dirname.get_child("site-packages"),
+            read_fn = rctx.read,
+            logger = logger,
+        )
 
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
         #
         # See ../../packaging.bzl line 190
         entry_points = {}
-        for item in metadata["entry_points"]:
-            name = item["name"]
-            module = item["module"]
-            attribute = item["attribute"]
+        for item in metadata.entry_points:
+            name = item.name
+            module = item.module
+            attribute = item.attribute
 
             # There is an extreme edge-case with entry_points that end with `.py`
             # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
@@ -417,12 +420,6 @@ def _whl_library_impl(rctx):
                 _generate_entry_point_contents(module, attribute),
             )
             entry_points[entry_point_without_py] = entry_point_script_name
-
-        metadata = whl_metadata(
-            install_dir = whl_path.dirname.get_child("site-packages"),
-            read_fn = rctx.read,
-            logger = logger,
-        )
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
