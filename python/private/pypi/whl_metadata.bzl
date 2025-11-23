@@ -4,6 +4,7 @@ _NAME = "Name: "
 _PROVIDES_EXTRA = "Provides-Extra: "
 _REQUIRES_DIST = "Requires-Dist: "
 _VERSION = "Version: "
+_CONSOLE_SCRIPTS = "[console_scripts]"
 
 def whl_metadata(*, install_dir, read_fn, logger):
     """Find and parse the METADATA file in the extracted whl contents dir.
@@ -23,7 +24,13 @@ def whl_metadata(*, install_dir, read_fn, logger):
     """
     metadata_file = find_whl_metadata(install_dir = install_dir, logger = logger)
     contents = read_fn(metadata_file)
-    result = parse_whl_metadata(contents)
+    entry_points_file = metadata_file.dirname.get_child("entry_points.txt")
+    if entry_points_file.exists:
+        entry_points_contents = read_fn(entry_points_file)
+    else:
+        entry_points_contents = ""
+
+    result = parse_whl_metadata(contents, entry_points_contents)
 
     if not (result.name and result.version):
         logger.fail("Failed to parse the wheel METADATA file:\n{}\n{}\n{}".format(
@@ -35,11 +42,12 @@ def whl_metadata(*, install_dir, read_fn, logger):
 
     return result
 
-def parse_whl_metadata(contents):
+def parse_whl_metadata(contents, entry_points_contents = ""):
     """Parse .whl METADATA file
 
     Args:
         contents: {type}`str` the contents of the file.
+        entry_points_contents: {type}`str` the contents of the `entry_points.txt` file if it exists.
 
     Returns:
         A struct with parsed values:
@@ -48,6 +56,8 @@ def parse_whl_metadata(contents):
         * `requires_dist`: {type}`list[str]` the list of requirements.
         * `provides_extra`: {type}`list[str]` the list of extras that this package
           provides.
+        * `entry_points`: {type}`list[struct]` the list of
+            entry_point metadata.
     """
     parsed = {
         "name": "",
@@ -79,6 +89,7 @@ def parse_whl_metadata(contents):
         provides_extra = parsed["provides_extra"],
         requires_dist = parsed["requires_dist"],
         version = parsed["version"],
+        entry_points = _parse_entry_points(entry_points_contents),
     )
 
 def find_whl_metadata(*, install_dir, logger):
@@ -110,3 +121,47 @@ def find_whl_metadata(*, install_dir, logger):
     else:
         logger.fail("The '*.dist-info' directory could not be found in '{}'".format(install_dir.basename))
     return None
+
+def _parse_entry_points(contents):
+    """parse the entry_points.txt file.
+
+    Args:
+        contents: {type}`str` The contents of the file
+
+    Returns:
+        A list of console_script entry point metadata.
+    """
+    start = False
+    ret = []
+    for line in contents.split("\n"):
+        line = line.rstrip()
+
+        if line == _CONSOLE_SCRIPTS:
+            start = True
+            continue
+
+        if not start:
+            continue
+
+        if start and line.startswith("["):
+            break
+
+        line, _, _comment = line.partition("#")
+        line = line.strip()
+        if not line:
+            continue
+
+        name, _, tail = line.partition("=")
+
+        # importable.module:object.attr
+        py_import, _, extras = tail.strip().partition(" ")
+        module, _, attribute = py_import.partition(":")
+
+        ret.append(struct(
+            name = name.strip(),
+            module = module.strip(),
+            attribute = attribute.strip(),
+            extras = extras.replace(" ", ""),
+        ))
+
+    return ret

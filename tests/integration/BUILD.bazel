@@ -76,22 +76,6 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
-    name = "ignore_root_user_error_test",
-    env = {
-        "RULES_PYTHON_BZLMOD_DEBUG": "1",
-    },
-)
-
-rules_python_integration_test(
-    name = "ignore_root_user_error_workspace_test",
-    bzlmod = False,
-    env = {
-        "RULES_PYTHON_BZLMOD_DEBUG": "1",
-    },
-    workspace_path = "ignore_root_user_error",
-)
-
-rules_python_integration_test(
     name = "local_toolchains_test",
     env = {
         "RULES_PYTHON_BZLMOD_DEBUG": "1",

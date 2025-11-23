@@ -345,6 +345,9 @@ def _create_executable(
             output_prefix = base_executable_name,
             imports = imports,
             runtime_details = runtime_details,
+            add_runfiles_root_to_sys_path = (
+                "1" if BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SYSTEM_PYTHON else "0"
+            ),
         )
 
         stage2_bootstrap = _create_stage2_bootstrap(
@@ -508,7 +511,7 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://snarky.ca/how-virtual-environments-work/
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
-def _create_venv(ctx, output_prefix, imports, runtime_details):
+def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path):
     create_full_venv = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     venv = "_{}.venv".format(output_prefix.lstrip("_"))
 
@@ -596,6 +599,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         template = runtime.site_init_template,
         output = site_init,
         substitutions = {
+            "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%site_init_runfiles_path%": "{}/{}".format(ctx.workspace_name, site_init.short_path),
