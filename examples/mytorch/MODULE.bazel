@@ -42,6 +42,13 @@ pip.parse(
     envsubst = ["PIP_INDEX_URL"],
     experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
     hub_name = "pip_next",
+    python_version = "3.12",
+    requirements_lock = "requirements_lock.txt",
+)
+pip.parse(
+    envsubst = ["PIP_INDEX_URL"],
+    experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
+    hub_name = "pip_next",
     python_version = "3.14",
     requirements_lock = "requirements_lock.txt",
 )
