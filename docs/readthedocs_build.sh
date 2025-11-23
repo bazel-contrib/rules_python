@@ -15,6 +15,7 @@ extra_env+=("--//sphinxdocs:extra_env=HOSTNAME=$HOSTNAME")
 export RULES_PYTHON_ENABLE_PIPSTAR=1
 
 set -x
+export RULES_PYTHON_ENABLE_PIPSTAR=1
 bazel run \
   --config=rtd \
   "--//sphinxdocs:extra_defines=version=$READTHEDOCS_VERSION" \
