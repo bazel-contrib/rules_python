@@ -146,6 +146,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         self,
         module_ctx,
         pip_attr = pip_attr,
+        enable_pipstar = self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version),
     )
 
 ### end of PUBLIC methods
@@ -188,7 +189,7 @@ def _add_extra_aliases(self, extra_hub_aliases):
             {alias: True for alias in aliases},
         )
 
-def _add_whl_library(self, *, python_version, whl, repo):
+def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
     if repo == None:
         # NOTE @aignas 2025-07-07: we guard against an edge-case where there
         # are more platforms defined than there are wheels for and users
@@ -208,7 +209,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         ))
     self._whl_libraries[repo_name] = repo.args
 
-    if not self._config.enable_pipstar and "experimental_target_platforms" in repo.args:
+    if not enable_pipstar and "experimental_target_platforms" in repo.args:
         self._whl_libraries[repo_name] |= {
             "experimental_target_platforms": sorted({
                 # TODO @aignas 2025-07-07: this should be solved in a better way
@@ -342,11 +343,11 @@ def _platforms(*, python_version, config):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr):
+def _evaluate_markers(self, pip_attr, enable_pipstar):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
-    if self._config.enable_pipstar:
+    if enable_pipstar:
         return lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
             platforms = self._platforms[pip_attr.python_version],
@@ -387,13 +388,15 @@ def _create_whl_repos(
         self,
         module_ctx,
         *,
-        pip_attr):
+        pip_attr,
+        enable_pipstar = False):
     """create all of the whl repositories
 
     Args:
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        enable_pipstar: {type}`bool` - enable the pipstar or not.
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
@@ -416,7 +419,7 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr),
+        evaluate_markers = _evaluate_markers(self, pip_attr, enable_pipstar),
         logger = logger,
     )
 
@@ -435,6 +438,7 @@ def _create_whl_repos(
         self,
         module_ctx,
         pip_attr = pip_attr,
+        enable_pipstar = enable_pipstar,
     )
     for whl in requirements_by_platform:
         whl_library_args = common_args | _whl_library_args(
@@ -452,16 +456,17 @@ def _create_whl_repos(
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
-                enable_pipstar = self._config.enable_pipstar,
+                enable_pipstar = enable_pipstar,
             )
             _add_whl_library(
                 self,
                 python_version = pip_attr.python_version,
                 whl = whl,
                 repo = repo,
+                enable_pipstar = enable_pipstar,
             )
 
-def _common_args(self, module_ctx, *, pip_attr):
+def _common_args(self, module_ctx, *, pip_attr, enable_pipstar):
     interpreter = _detect_interpreter(self, pip_attr)
 
     # Construct args separately so that the lock file can be smaller and does not include unused
@@ -481,7 +486,7 @@ def _common_args(self, module_ctx, *, pip_attr):
         python_interpreter = interpreter.path,
         python_interpreter_target = interpreter.target,
     )
-    if not self._config.enable_pipstar:
+    if not enable_pipstar:
         maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
     whl_library_args.update({k: v for k, v in maybe_args.items() if v})
