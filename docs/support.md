@@ -61,8 +61,9 @@ are Linux, Mac, and Windows.
 
 In order to better describe different support levels, the following acts as a rough
 guideline for different platform tiers:
-* Tier 0 - The platforms that our CI runs on: `linux_x86_64`, `osx_x86_64`, `RBE linux_x86_64`.
-* Tier 1 - The platforms that are similar enough to what the CI runs on: `linux_aarch64`, `osx_arm64`.
+* Tier 0 - The platforms that our CI runs on: `linux_x86_64`, `osx_arm64`, `RBE linux_x86_64`.
+* Tier 1 - The platforms that are similar enough to what the CI runs on: `linux_aarch64`,
+  `osx_x86_64`.
   What is more, `windows_x86_64` is in this list, as we run tests in CI, but
   developing for Windows is more challenging, and features may come later to
   this platform.

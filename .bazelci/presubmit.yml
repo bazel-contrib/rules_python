@@ -159,7 +159,7 @@ tasks:
     <<: *reusable_config
     <<: *common_workspace_flags
     name: "Default: Mac, workspace"
-    platform: macos
+    platform: macos_arm64
   windows_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags
@@ -190,10 +190,10 @@ tasks:
     <<: *reusable_config
     name: "Default: Debian"
     platform: debian11
-  macos:
+  macos_arm64:
     <<: *reusable_config
     name: "Default: MacOS"
-    platform: macos
+    platform: macos_arm64
   windows:
     <<: *reusable_config
     name: "Default: Windows"
@@ -254,7 +254,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/build_file_generation: macOS, workspace"
     working_directory: examples/build_file_generation
-    platform: macos
+    platform: macos_arm64
   integration_test_build_file_generation_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -305,14 +305,14 @@ tasks:
     <<: *coverage_targets_example_bzlmod
     name: "examples/bzlmod: macOS"
     working_directory: examples/bzlmod
-    platform: macos
+    platform: macos_arm64
     bazel: 7.x
   integration_test_bzlmod_macos_upcoming:
     <<: *reusable_build_test_all
     <<: *coverage_targets_example_bzlmod
     name: "examples/bzlmod: macOS, upcoming Bazel"
     working_directory: examples/bzlmod
-    platform: macos
+    platform: macos_arm64
     bazel: last_rc
   integration_test_bzlmod_windows:
     <<: *reusable_build_test_all
@@ -362,7 +362,7 @@ tasks:
     <<: *coverage_targets_example_bzlmod_build_file_generation
     name: "gazelle/examples/bzlmod_build_file_generation: MacOS"
     working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: macos
+    platform: macos_arm64
   integration_test_bzlmod_build_file_generation_windows:
     <<: *reusable_build_test_all
     # coverage is not supported on Windows
@@ -390,7 +390,7 @@ tasks:
     <<: *coverage_targets_example_multi_python
     name: "examples/multi_python_versions: MacOS, workspace"
     working_directory: examples/multi_python_versions
-    platform: macos
+    platform: macos_arm64
   integration_test_multi_python_versions_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -427,7 +427,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: MacOS"
     working_directory: examples/pip_parse
-    platform: macos
+    platform: macos_arm64
   integration_test_pip_parse_windows:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Windows"
@@ -458,7 +458,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_parse_vendored: MacOS"
     working_directory: examples/pip_parse_vendored
-    platform: macos
+    platform: macos_arm64
   # We don't run pip_parse_vendored under Windows as the file checked in is
   # generated from a repository rule containing OS-specific rendered paths.
 
@@ -481,7 +481,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/py_proto_library: MacOS, workspace"
     working_directory: examples/py_proto_library
-    platform: macos
+    platform: macos_arm64
   integration_test_py_proto_library_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -506,7 +506,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_repository_annotations: macOS, workspace"
     working_directory: examples/pip_repository_annotations
-    platform: macos
+    platform: macos_arm64
   integration_test_pip_repository_annotations_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -528,7 +528,7 @@ tasks:
   integration_test_bazelinbazel_macos:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: macOS (subset)"
-    platform: macos
+    platform: macos_arm64
     build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
     test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
   # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
@@ -581,7 +581,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: MacOS"
     working_directory: tests/integration/compile_pip_requirements
-    platform: macos
+    platform: macos_arm64
     shell_commands:
     # Make a change to the locked requirements and then assert that //:requirements.update does the
     # right thing.
@@ -613,7 +613,6 @@ tasks:
     - "! git diff --exit-code"
     - "bazel run //:os_specific_requirements.update"
     - "git diff --exit-code"
-
 
   integration_compile_pip_requirements_test_from_external_repo_ubuntu_min_workspace:
     <<: *minimum_supported_version
@@ -650,7 +649,7 @@ tasks:
   integration_compile_pip_requirements_test_from_external_repo_macos:
     name: "compile_pip_requirements_test_from_external_repo: macOS"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: macos
+    platform: macos_arm64
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."
