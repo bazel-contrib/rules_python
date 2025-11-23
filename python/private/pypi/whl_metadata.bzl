@@ -56,7 +56,7 @@ def parse_whl_metadata(contents, entry_points_contents = ""):
         * `requires_dist`: {type}`list[str]` the list of requirements.
         * `provides_extra`: {type}`list[str]` the list of extras that this package
           provides.
-        * `entry_points`: {type}`list[dict[str, str]]` the list of
+        * `entry_points`: {type}`list[struct]` the list of
             entry_point metadata.
     """
     parsed = {
