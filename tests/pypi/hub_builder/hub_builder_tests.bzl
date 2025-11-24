@@ -566,7 +566,8 @@ def _test_torch_experimental_index_url(env):
                 for (os, cpu), whl_platform_tags in {
                     ("linux", "x86_64"): ["linux_x86_64", "manylinux_*_x86_64"],
                     ("linux", "aarch64"): ["linux_aarch64", "manylinux_*_aarch64"],
-                    # this should be ignored as well because there is no sdist
+                    # this should be ignored as well because there is no sdist and no whls
+                    # for intel Macs
                     ("osx", "x86_64"): ["macosx_*_x86_64"],
                     ("osx", "aarch64"): ["macosx_*_arm64"],
                     ("windows", "x86_64"): ["win_amd64"],
