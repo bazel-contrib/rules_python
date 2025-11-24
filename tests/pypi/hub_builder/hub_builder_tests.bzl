@@ -44,6 +44,7 @@ def hub_builder(
         debug = False,
         config = None,
         minor_mapping = {},
+        whl_overrides = {},
         evaluate_markers_fn = None,
         simpleapi_download_fn = None,
         available_interpreters = {}):
@@ -76,7 +77,7 @@ def hub_builder(
             netrc = None,
             auth_patterns = None,
         ),
-        whl_overrides = {},
+        whl_overrides = whl_overrides,
         minor_mapping = minor_mapping or {"3.15": "3.15.19"},
         available_interpreters = available_interpreters or {
             "python_3_15_host": "unit_test_interpreter_target",
@@ -832,6 +833,11 @@ def _test_simple_get_index(env):
     builder = hub_builder(
         env,
         simpleapi_download_fn = mocksimpleapi_download,
+        whl_overrides = {
+            "direct_without_sha": {
+                "my_patch": 1,
+            },
+        },
     )
     builder.pip_parse(
         _mock_mctx(
@@ -973,9 +979,14 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "direct_without_sha==0.0.1",
             "sha256": "",
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
+            # NOTE @aignas 2025-11-24: any patching still requires the python interpreter from the
+            # hermetic toolchain or the system. This is so that we can rezip it back to a wheel and
+            # verify the metadata so that it is installable by any installer out there.
+            "whl_patches": {"my_patch": "1"},
         },
         "pypi_315_git_dep": {
             "config_load": "@pypi//:config.bzl",

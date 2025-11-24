@@ -549,7 +549,7 @@ def _whl_repo(
         # need to pass the extra args there, so only pop this for whls
         args["extra_pip_args"] = src.extra_pip_args
 
-    if not (enable_pipstar and is_whl):
+    if "whl_patches" in args or not (enable_pipstar and is_whl):
         if interpreter.path:
             args["python_interpreter"] = interpreter.path
         if interpreter.target:
