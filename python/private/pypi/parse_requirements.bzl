@@ -234,7 +234,7 @@ def _package_srcs(
                     platforms.keys(),
                 ))
 
-            dist, can_fallback = _add_dists(
+            dist = _add_dists(
                 requirement = r,
                 target_platform = platforms.get(target_platform),
                 index_urls = index_urls.get(name),
@@ -244,7 +244,7 @@ def _package_srcs(
 
             if extract_url_srcs and dist:
                 req_line = r.srcs.requirement
-            elif can_fallback:
+            else:
                 dist = struct(
                     url = "",
                     filename = "",
@@ -252,8 +252,6 @@ def _package_srcs(
                     yanked = False,
                 )
                 req_line = r.srcs.requirement_line
-            else:
-                continue
 
             key = (
                 dist.filename,
@@ -339,14 +337,6 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         index_urls: The result of simpleapi_download.
         target_platform: The target_platform information.
         logger: A logger for printing diagnostic info.
-
-    Returns:
-        (dist, can_fallback_to_pip): a struct with distribution details and how to fetch
-        it and a boolean flag to tell the other layers if we should add an entry to
-        fallback for pip if there are no supported whls found - if there is an sdist, we
-        can attempt the fallback, otherwise better to not, because the pip command will
-        fail and the error message will be confusing. What is more that would lead to
-        breakage of the bazel query.
     """
 
     if requirement.srcs.url:
@@ -354,7 +344,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
                 requirement.srcs.url,
             ))
-            return None, True
+            return None
 
         # Handle direct URLs in requirements
         dist = struct(
@@ -365,12 +355,12 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         )
 
         if dist.filename.endswith(".whl"):
-            return dist, False
+            return dist
         else:
-            return dist, False
+            return dist
 
     if not index_urls:
-        return None, True
+        return None
 
     whls = []
     sdist = None
@@ -423,4 +413,4 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         whl_abi_tags = target_platform.whl_abi_tags,
         whl_platform_tags = target_platform.whl_platform_tags,
         logger = logger,
-    ) or sdist, sdist != None
+    ) or sdist
