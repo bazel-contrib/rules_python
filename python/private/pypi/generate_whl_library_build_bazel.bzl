@@ -23,7 +23,7 @@ _RENDER = {
     "data_exclude": render.list,
     "dependencies": render.list,
     "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
-    "entry_points": render.dict,
+    "entry_points": render.list,
     "extras": render.list,
     "group_deps": render.list,
     "include": str,

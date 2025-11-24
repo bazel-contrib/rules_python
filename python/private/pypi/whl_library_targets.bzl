@@ -17,6 +17,7 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
+load("//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
 load(
@@ -42,6 +43,7 @@ _BAZEL_REPO_FILE_GLOBS = [
     "WORKSPACE",
     "WORKSPACE.bazel",
 ]
+_WHEEL_ENTRY_POINT_PREFIX = "rules_python_wheel_entry_point"
 
 def whl_library_targets_from_requires(
         *,
@@ -126,6 +128,7 @@ def whl_library_targets(
         rules = struct(
             copy_file = copy_file,
             py_binary = py_binary,
+            py_console_script_binary = py_console_script_binary,
             py_library = py_library,
             env_marker_setting = env_marker_setting,
             create_inits = _create_inits,
@@ -234,20 +237,6 @@ def whl_library_targets(
         for d in dependencies_with_markers
     }
 
-    # TODO @aignas 2024-10-25: remove the entry_point generation once
-    # `py_console_script_binary` is the only way to use entry points.
-    for entry_point, entry_point_script_name in entry_points.items():
-        rules.py_binary(
-            name = "{}_{}".format(WHEEL_ENTRY_POINT_PREFIX, entry_point),
-            # Ensure that this works on Windows as well - script may have Windows path separators.
-            srcs = [entry_point_script_name.replace("\\", "/")],
-            # This makes this directory a top-level in the python import
-            # search path for anything that depends on this.
-            imports = ["."],
-            deps = [":" + PY_LIBRARY_PUBLIC_LABEL],
-            visibility = ["//visibility:public"],
-        )
-
     # Ensure this list is normalized
     # Note: mapping used as set
     group_deps = {
@@ -314,6 +303,33 @@ def whl_library_targets(
         py_library_label = PY_LIBRARY_PUBLIC_LABEL
         whl_file_label = WHEEL_FILE_PUBLIC_LABEL
         impl_vis = ["//visibility:public"]
+
+    for entry_point in entry_points:
+        # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
+        # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
+        #
+        # See ../../packaging.bzl line 190
+
+        # There is an extreme edge-case with entry_points that end with `.py`
+        # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
+        entry_point_without_py = entry_point[:-3] + "_py" if entry_point.endswith(".py") else entry_point
+        entry_point_target_name = (
+            _WHEEL_ENTRY_POINT_PREFIX + "_" + entry_point_without_py
+        )
+        entry_point_script_name = entry_point_target_name + ".py"
+
+        rules.py_console_script_binary(
+            name = "{}_{}".format(WHEEL_ENTRY_POINT_PREFIX, entry_point),
+            pkg = PY_LIBRARY_PUBLIC_LABEL,
+            entry_points_txt = DIST_INFO_LABEL,
+            script = entry_point,
+            main = entry_point_script_name,
+            shebang = "#!/usr/bin/env python3",
+            # This makes this directory a top-level in the python import
+            # search path for anything that depends on this.
+            imports = ["."],
+            visibility = ["//visibility:public"],
+        )
 
     if hasattr(native, "filegroup"):
         native.filegroup(
