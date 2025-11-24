@@ -188,19 +188,35 @@ def parse_requirements(
             for p in r.target_platforms:
                 requirement_target_platforms[p] = None
 
+        package_srcs = _package_srcs(
+            name = name,
+            reqs = reqs,
+            index_urls = index_urls,
+            platforms = platforms,
+            extract_url_srcs = extract_url_srcs,
+            logger = logger,
+        )
+
+        # FIXME @aignas 2025-11-24: we can get the list of target platforms here
+        #
+        # However it is likely that we may stop exposing packages like torch in here
+        # which do not have wheels for all osx platforms.
+        #
+        # If users specify the target platforms accurately, then it is a different
+        # (better) story, but we may not be able to guarantee this
+        #
+        # target_platforms = [
+        #     p
+        #     for dist in package_srcs
+        #     for p in dist.target_platforms
+        # ]
+
         item = struct(
             # Return normalized names
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,
-            srcs = _package_srcs(
-                name = name,
-                reqs = reqs,
-                index_urls = index_urls,
-                platforms = platforms,
-                extract_url_srcs = extract_url_srcs,
-                logger = logger,
-            ),
+            srcs = package_srcs,
         )
         ret.append(item)
         if not item.is_exposed and logger:
@@ -364,10 +380,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             yanked = False,
         )
 
-        if dist.filename.endswith(".whl"):
-            return dist, False
-        else:
-            return dist, False
+        return dist, False
 
     if not index_urls:
         return None, True
