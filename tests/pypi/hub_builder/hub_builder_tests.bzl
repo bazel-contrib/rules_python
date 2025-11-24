@@ -566,7 +566,6 @@ def _test_torch_experimental_index_url(env):
                 for (os, cpu), whl_platform_tags in {
                     ("linux", "x86_64"): ["linux_x86_64", "manylinux_*_x86_64"],
                     ("linux", "aarch64"): ["linux_aarch64", "manylinux_*_aarch64"],
-                    ("osx", "x86_64"): ["macosx_*_x86_64"],
                     ("osx", "aarch64"): ["macosx_*_arm64"],
                     ("windows", "x86_64"): ["win_amd64"],
                     ("windows", "aarch64"): ["win_arm64"],  # this should be ignored
@@ -577,15 +576,6 @@ def _test_torch_experimental_index_url(env):
             "python_3_12_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.12": "3.12.19"},
-        evaluate_markers_fn = lambda _, requirements, **__: {
-            # todo once 2692 is merged, this is going to be easier to test.
-            key: [
-                platform
-                for platform in platforms
-                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
-            ]
-            for key, platforms in requirements.items()
-        },
         simpleapi_download_fn = mocksimpleapi_download,
     )
     builder.pip_parse(
@@ -1085,14 +1075,6 @@ _tests.append(_test_simple_get_index)
 def _test_optimum_sys_platform_extra(env):
     builder = hub_builder(
         env,
-        evaluate_markers_fn = lambda _, requirements, **__: {
-            key: [
-                platform
-                for platform in platforms
-                if ("darwin" in key and "osx" in platform) or ("linux" in key and "linux" in platform)
-            ]
-            for key, platforms in requirements.items()
-        },
     )
     builder.pip_parse(
         _mock_mctx(
