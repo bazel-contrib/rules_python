@@ -107,10 +107,10 @@ tasks:
     working_directory: examples/bzlmod
     bazel: ${{ bazel }}
     test_flags:
+      # Minimum bazel supported C++
       - "--keep_going"
-        # Without these cxxopts, BCR's Mac builds fail
-      - '--cxxopt=-std=c++14'
-      - '--host_cxxopt=-std=c++14'
+      - '--cxxopt=-std=c++17'
+      - '--host_cxxopt=-std=c++17'
     build_targets:
       - "//..."
     test_targets:
