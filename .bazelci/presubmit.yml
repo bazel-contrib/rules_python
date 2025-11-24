@@ -102,7 +102,7 @@ matrix:
 
 tasks:
   bcr_test:
-    name: BCR example - rules_python
+    name: BCR example (bazel ${{ bazel }}) - rules_python
     platform: ${{ platform }}
     working_directory: examples/bzlmod
     bazel: ${{ bazel }}
@@ -117,7 +117,7 @@ tasks:
       - "//..."
 
   bcr_gazelle_test:
-    name: BCR example - rules_python_gazelle_plugin
+    name: BCR example (bazel ${{ bazel }}) - rules_python_gazelle_plugin
     platform: ${{ platform }}
     bazel: ${{ bazel }}
     working_directory: gazelle/examples/bzlmod_build_file_generation
