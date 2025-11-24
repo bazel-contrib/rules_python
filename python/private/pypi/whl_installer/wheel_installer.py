@@ -96,7 +96,17 @@ def _extract_wheel(
     whl = wheel.Wheel(wheel_file)
     whl.unzip(installation_dir)
 
+    if enable_pipstar:
+        return
+
+    extras_requested = extras[whl.name] if whl.name in extras else set()
+    dependencies = whl.dependencies(extras_requested, platforms)
+
     metadata = {
+        "name": whl.name,
+        "version": whl.version,
+        "deps": dependencies.deps,
+        "deps_by_platform": dependencies.deps_select,
         "entry_points": [
             {
                 "name": name,
@@ -106,18 +116,6 @@ def _extract_wheel(
             for name, (module, attribute) in sorted(whl.entry_points().items())
         ],
     }
-    if not enable_pipstar:
-        extras_requested = extras[whl.name] if whl.name in extras else set()
-        dependencies = whl.dependencies(extras_requested, platforms)
-
-        metadata.update(
-            {
-                "name": whl.name,
-                "version": whl.version,
-                "deps": dependencies.deps,
-                "deps_by_platform": dependencies.deps_select,
-            }
-        )
 
     with open(os.path.join(installation_dir, "metadata.json"), "w") as f:
         json.dump(metadata, f)

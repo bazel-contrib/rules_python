@@ -324,6 +324,8 @@ def _whl_library_impl(rctx):
 
     args = _parse_optional_attrs(rctx, args, extra_pip_args)
 
+    # also enable pipstar for any whls that are downloaded without `pip`
+    enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
     if not whl_path:
         if rctx.attr.urls:
             op_tmpl = "whl_library.BuildWheelFromSource({name}, {requirement})"
@@ -374,7 +376,7 @@ def _whl_library_impl(rctx):
     # disable pipstar for that particular case.
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
-    if rp_config.enable_pipstar and rctx.attr.config_load:
+    if enable_pipstar:
         pypi_repo_utils.execute_checked(
             rctx,
             op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
@@ -391,18 +393,21 @@ def _whl_library_impl(rctx):
             logger = logger,
         )
 
-        metadata = json.decode(rctx.read("metadata.json"))
-        rctx.delete("metadata.json")
+        metadata = whl_metadata(
+            install_dir = whl_path.dirname.get_child("site-packages"),
+            read_fn = rctx.read,
+            logger = logger,
+        )
 
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
         #
         # See ../../packaging.bzl line 190
         entry_points = {}
-        for item in metadata["entry_points"]:
-            name = item["name"]
-            module = item["module"]
-            attribute = item["attribute"]
+        for item in metadata.entry_points:
+            name = item.name
+            module = item.module
+            attribute = item.attribute
 
             # There is an extreme edge-case with entry_points that end with `.py`
             # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
@@ -417,12 +422,6 @@ def _whl_library_impl(rctx):
                 _generate_entry_point_contents(module, attribute),
             )
             entry_points[entry_point_without_py] = entry_point_script_name
-
-        metadata = whl_metadata(
-            install_dir = whl_path.dirname.get_child("site-packages"),
-            read_fn = rctx.read,
-            logger = logger,
-        )
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,

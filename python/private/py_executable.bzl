@@ -20,6 +20,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -70,6 +71,7 @@ load(":venv_runfiles.bzl", "create_venv_app_files")
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
+_LAUNCHER_MAKER_TOOLCHAIN_TYPE = "@bazel_tools//tools/launcher:launcher_maker_toolchain_type"
 
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
@@ -229,17 +231,19 @@ accepting arbitrary Python versions.
                 "@platforms//os:windows",
             ],
         ),
-        "_windows_launcher_maker": lambda: attrb.Label(
-            default = "@bazel_tools//tools/launcher:launcher_maker",
-            cfg = "exec",
-            executable = True,
-        ),
         "_zipper": lambda: attrb.Label(
             cfg = "exec",
             executable = True,
             default = "@bazel_tools//tools/zip:zipper",
         ),
     },
+    {
+        "_windows_launcher_maker": lambda: attrb.Label(
+            default = "@bazel_tools//tools/launcher:launcher_maker",
+            cfg = "exec",
+            executable = True,
+        ),
+    } if not rp_config.bazel_9_or_later else {},
 )
 
 def convert_legacy_create_init_to_int(kwargs):
@@ -342,6 +346,9 @@ def _create_executable(
             output_prefix = base_executable_name,
             imports = imports,
             runtime_details = runtime_details,
+            add_runfiles_root_to_sys_path = (
+                "1" if BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SYSTEM_PYTHON else "0"
+            ),
         )
 
         stage2_bootstrap = _create_stage2_bootstrap(
@@ -357,7 +364,7 @@ def _create_executable(
             [stage2_bootstrap] + (
                 venv.files_without_interpreter if venv else []
             ),
-        )
+        ).merge(venv.lib_runfiles)
         zip_main = _create_zip_main(
             ctx,
             stage2_bootstrap = stage2_bootstrap,
@@ -381,9 +388,8 @@ def _create_executable(
     _create_zip_file(
         ctx,
         output = zip_file,
-        original_nonzip_executable = executable,
         zip_main = zip_main,
-        runfiles = runfiles_details.default_runfiles.merge(extra_runfiles),
+        runfiles = runfiles_details.runfiles_without_exe.merge(extra_runfiles),
     )
 
     extra_files_to_build = []
@@ -506,7 +512,7 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://snarky.ca/how-virtual-environments-work/
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
-def _create_venv(ctx, output_prefix, imports, runtime_details):
+def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path):
     create_full_venv = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     venv = "_{}.venv".format(output_prefix.lstrip("_"))
 
@@ -594,6 +600,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
         template = runtime.site_init_template,
         output = site_init,
         substitutions = {
+            "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%site_init_runfiles_path%": "{}/{}".format(ctx.workspace_name, site_init.short_path),
@@ -608,7 +615,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
     }
     venv_app_files = create_venv_app_files(ctx, ctx.attr.deps, venv_dir_map)
 
-    files_without_interpreter = [pth, site_init] + venv_app_files
+    files_without_interpreter = [pth, site_init] + venv_app_files.venv_files
     if pyvenv_cfg:
         files_without_interpreter.append(pyvenv_cfg)
 
@@ -630,6 +637,11 @@ def _create_venv(ctx, output_prefix, imports, runtime_details):
                 py_internal.get_label_repo_runfiles_path(ctx.label),
                 venv,
             ),
+        ),
+        # venv files for user library dependencies (files that are specific
+        # to the executable bootstrap and python runtime aren't here).
+        lib_runfiles = ctx.runfiles(
+            symlinks = venv_app_files.runfiles_symlinks,
         ),
     )
 
@@ -774,6 +786,11 @@ def _create_stage1_bootstrap(
         is_executable = True,
     )
 
+def _find_launcher_maker(ctx):
+    if rp_config.bazel_9_or_later:
+        return (ctx.toolchains[_LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary, _LAUNCHER_MAKER_TOOLCHAIN_TYPE)
+    return (ctx.executable._windows_launcher_maker, None)
+
 def _create_windows_exe_launcher(
         ctx,
         *,
@@ -793,8 +810,9 @@ def _create_windows_exe_launcher(
     launch_info.add("1" if use_zip_file else "0", format = "use_zip_file=%s")
 
     launcher = ctx.attr._launcher[DefaultInfo].files_to_run.executable
+    executable, toolchain = _find_launcher_maker(ctx)
     ctx.actions.run(
-        executable = ctx.executable._windows_launcher_maker,
+        executable = executable,
         arguments = [launcher.path, launch_info, output.path],
         inputs = [launcher],
         outputs = [output],
@@ -802,9 +820,10 @@ def _create_windows_exe_launcher(
         progress_message = "Creating launcher for %{label}",
         # Needed to inherit PATH when using non-MSVC compilers like MinGW
         use_default_shell_env = True,
+        toolchain = toolchain,
     )
 
-def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfiles):
+def _create_zip_file(ctx, *, output, zip_main, runfiles):
     """Create a Python zipapp (zip with __main__.py entry point)."""
     workspace_name = ctx.workspace_name
     legacy_external_runfiles = _py_builtins.get_legacy_external_runfiles(ctx)
@@ -820,17 +839,27 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
             _get_zip_runfiles_path("__init__.py", workspace_name, legacy_external_runfiles),
         ),
     )
-    for path in runfiles.empty_filenames.to_list():
-        manifest.add("{}=".format(_get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles)))
+
+    def map_zip_empty_filenames(list_paths_cb):
+        return [
+            _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles) + "="
+            for path in list_paths_cb().to_list()
+        ]
+
+    manifest.add_all(
+        # NOTE: Accessing runfiles.empty_filenames implicitly flattens the runfiles.
+        # Smuggle a lambda in via a list to defer that flattening.
+        [lambda: runfiles.empty_filenames],
+        map_each = map_zip_empty_filenames,
+        allow_closure = True,
+    )
 
     def map_zip_runfiles(file):
-        if file != original_nonzip_executable and file != output:
-            return "{}={}".format(
-                _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles),
-                file.path,
-            )
-        else:
-            return None
+        return (
+            # NOTE: Use "+" for performance
+            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles) +
+            "=" + file.path
+        )
 
     manifest.add_all(runfiles.files, map_each = map_zip_runfiles, allow_closure = True)
 
@@ -851,13 +880,6 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
         ))
         inputs.append(zip_repo_mapping_manifest)
 
-    for artifact in runfiles.files.to_list():
-        # Don't include the original executable because it isn't used by the
-        # zip file, so no need to build it for the action.
-        # Don't include the zipfile itself because it's an output.
-        if artifact != original_nonzip_executable and artifact != output:
-            inputs.append(artifact)
-
     zip_cli_args = ctx.actions.args()
     zip_cli_args.add("cC")
     zip_cli_args.add(output)
@@ -865,7 +887,7 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
     ctx.actions.run(
         executable = ctx.executable._zipper,
         arguments = [zip_cli_args, manifest],
-        inputs = depset(inputs),
+        inputs = depset(inputs, transitive = [runfiles.files]),
         outputs = [output],
         use_default_shell_env = True,
         mnemonic = "PythonZipper",
@@ -873,15 +895,22 @@ def _create_zip_file(ctx, *, output, original_nonzip_executable, zip_main, runfi
     )
 
 def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
+    maybe_workspace = ""
     if legacy_external_runfiles and path.startswith(_EXTERNAL_PATH_PREFIX):
-        zip_runfiles_path = paths.relativize(path, _EXTERNAL_PATH_PREFIX)
+        zip_runfiles_path = path.removeprefix(_EXTERNAL_PATH_PREFIX)
     else:
         # NOTE: External runfiles (artifacts in other repos) will have a leading
         # path component of "../" so that they refer outside the main workspace
-        # directory and into the runfiles root. By normalizing, we simplify e.g.
+        # directory and into the runfiles root. So we simplify it, e.g.
         # "workspace/../foo/bar" to simply "foo/bar".
-        zip_runfiles_path = paths.normalize("{}/{}".format(workspace_name, path))
-    return "{}/{}".format(_ZIP_RUNFILES_DIRECTORY_NAME, zip_runfiles_path)
+        if path.startswith("../"):
+            zip_runfiles_path = path[3:]
+        else:
+            zip_runfiles_path = path
+            maybe_workspace = workspace_name + "/"
+
+    # NOTE: Use "+" for performance
+    return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + maybe_workspace + zip_runfiles_path
 
 def _create_executable_zip_file(
         ctx,
@@ -1825,7 +1854,7 @@ def create_executable_rule_builder(implementation, **kwargs):
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-        ],
+        ] + ([ruleb.ToolchainType(_LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(
             implementation = _transition_executable_impl,
             inputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],

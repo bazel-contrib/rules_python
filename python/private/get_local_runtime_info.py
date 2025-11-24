@@ -11,19 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Returns information about the local Python runtime as JSON."""
 
+import glob
 import json
 import os
 import sys
 import sysconfig
+from typing import Any
 
 _IS_WINDOWS = sys.platform == "win32"
 _IS_DARWIN = sys.platform == "darwin"
 
 
-def _search_directories(get_config, base_executable):
+def _get_abi_flags(get_config) -> str:
+    """Returns the ABI flags for the Python runtime."""
+    # sys.abiflags may not exist, but it still may be set in the config.
+    abi_flags = getattr(sys, "abiflags", None)
+    if abi_flags is None:
+        abi_flags = get_config("ABIFLAGS") or get_config("abiflags") or ""
+    return abi_flags
+
+
+def _search_directories(get_config, base_executable) -> list[str]:
     """Returns a list of library directories to search for shared libraries."""
     # There's several types of libraries with different names and a plethora
     # of settings, and many different config variables to check:
@@ -38,7 +48,9 @@ def _search_directories(get_config, base_executable):
     # On MacOS, the LDLIBRARY may be a relative path under /Library/Frameworks,
     # such as "Python.framework/Versions/3.12/Python", not a file under the
     # LIBDIR/LIBPL directory, so include PYTHONFRAMEWORKPREFIX.
-    lib_dirs = [get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")]
+    lib_dirs = [
+        get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")
+    ]
 
     # On Debian, with multiarch enabled, prior to Python 3.10, `LIBDIR` didn't
     # tell the location of the libs, just the base directory. The `MULTIARCH`
@@ -55,8 +67,8 @@ def _search_directories(get_config, base_executable):
 
     if not _IS_DARWIN:
         for exec_dir in (
-            os.path.dirname(base_executable) if base_executable else None,
-            get_config("BINDIR"),
+                os.path.dirname(base_executable) if base_executable else None,
+                get_config("BINDIR"),
         ):
             if not exec_dir:
                 continue
@@ -67,16 +79,36 @@ def _search_directories(get_config, base_executable):
                 lib_dirs.append(os.path.join(exec_dir, "lib"))
                 lib_dirs.append(os.path.join(exec_dir, "libs"))
             else:
-                # On most systems the executable is in a bin/ directory and the libraries
-                # are in a sibling lib/ directory.
+                # On most non-windows systems the executable is in a bin/ directory and
+                # the libraries are in a sibling lib/ directory.
                 lib_dirs.append(os.path.join(os.path.dirname(exec_dir), "lib"))
 
     # Dedup and remove empty values, keeping the order.
-    lib_dirs = [v for v in lib_dirs if v]
-    return {k: None for k in lib_dirs}.keys()
+    return list(dict.fromkeys(d for d in lib_dirs if d))
 
 
-def _search_library_names(get_config):
+def _default_library_names(version, abi_flags) -> tuple[str, ...]:
+    """Returns a list of default library files to search for shared libraries."""
+    if _IS_WINDOWS:
+        return (
+            f"python{version}{abi_flags}.dll",
+            f"python{version}.dll",
+        )
+    elif _IS_DARWIN:
+        return (
+            f"libpython{version}{abi_flags}.dylib",
+            f"libpython{version}.dylib",
+        )
+    else:
+        return (
+            f"libpython{version}{abi_flags}.so",
+            f"libpython{version}.so",
+            f"libpython{version}{abi_flags}.so.1.0",
+            f"libpython{version}.so.1.0",
+        )
+
+
+def _search_library_names(get_config, version, abi_flags) -> list[str]:
     """Returns a list of library files to search for shared libraries."""
     # Quoting configure.ac in the cpython code base:
     # "INSTSONAME is the name of the shared library that will be use to install
@@ -90,8 +122,7 @@ def _search_library_names(get_config):
     #
     # A typical LIBRARY is 'libpythonX.Y.a' on Linux.
     lib_names = [
-        get_config(x)
-        for x in (
+        get_config(x) for x in (
             "LDLIBRARY",
             "INSTSONAME",
             "PY3LIBRARY",
@@ -100,110 +131,133 @@ def _search_library_names(get_config):
         )
     ]
 
-    # Set the prefix and suffix to construct the library name used for linking.
-    # The suffix and version are set here to the default values for the OS,
-    # since they are used below to construct "default" library names.
-    if _IS_DARWIN:
-        suffix = ".dylib"
-        prefix = "lib"
-    elif _IS_WINDOWS:
-        suffix = ".dll"
-        prefix = ""
-    else:
-        suffix = get_config("SHLIB_SUFFIX")
-        prefix = "lib"
-        if not suffix:
-            suffix = ".so"
+    # Include the default libraries for the system.
+    lib_names.extend(_default_library_names(version, abi_flags))
 
-    version = get_config("VERSION")
+    # Also include the abi3 libraries for the system.
+    lib_names.extend(_default_library_names(sys.version_info.major, abi_flags))
 
-    # Ensure that the pythonXY.dll files are included in the search.
-    lib_names.append(f"{prefix}python{version}{suffix}")
-
-    # If there are ABIFLAGS, also add them to the python version lib search.
-    abiflags = get_config("ABIFLAGS") or get_config("abiflags") or ""
-    if abiflags:
-        lib_names.append(f"{prefix}python{version}{abiflags}{suffix}")
-
-    # Dedup and remove empty values, keeping the order.
-    lib_names = [v for v in lib_names if v]
-    return {k: None for k in lib_names}.keys()
+    # Uniqify, preserving order.
+    return list(dict.fromkeys(k for k in lib_names if k))
 
 
-def _get_python_library_info(base_executable):
+def _get_python_library_info(base_executable) -> dict[str, Any]:
     """Returns a dictionary with the static and dynamic python libraries."""
     config_vars = sysconfig.get_config_vars()
 
     # VERSION is X.Y in Linux/macOS and XY in Windows.  This is used to
     # construct library paths such as python3.12, so ensure it exists.
-    if not config_vars.get("VERSION"):
-        if sys.platform == "win32":
-            config_vars["VERSION"] = f"{sys.version_info.major}{sys.version_info.minor}"
+    version = config_vars.get("VERSION")
+    if not version:
+        if _IS_WINDOWS:
+            version = f"{sys.version_info.major}{sys.version_info.minor}"
         else:
-            config_vars["VERSION"] = (
-                f"{sys.version_info.major}.{sys.version_info.minor}"
-            )
+            version = f"{sys.version_info.major}.{sys.version_info.minor}"
+
+    defines = []
+    if config_vars.get("Py_GIL_DISABLED", "0") == "1":
+        defines.append("Py_GIL_DISABLED")
+
+    # Avoid automatically linking the libraries on windows via pydefine.h
+    # pragma comment(lib ...)
+    if _IS_WINDOWS:
+        defines.append("Py_NO_LINK_LIB")
+
+    # sys.abiflags may not exist, but it still may be set in the config.
+    abi_flags = _get_abi_flags(config_vars.get)
 
     search_directories = _search_directories(config_vars.get, base_executable)
-    search_libnames = _search_library_names(config_vars.get)
+    search_libnames = _search_library_names(config_vars.get, version,
+                                            abi_flags)
 
-    def _add_if_exists(target, path):
-        if os.path.exists(path) or os.path.isdir(path):
-            target[path] = None
+    # Used to test whether the library is an abi3 library or a full api library.
+    abi3_libraries = _default_library_names(sys.version_info.major, abi_flags)
 
-    interface_libraries = {}
-    dynamic_libraries = {}
-    static_libraries = {}
+    # Found libraries
+    static_libraries: dict[str, None] = {}
+    dynamic_libraries: dict[str, None] = {}
+    interface_libraries: dict[str, None] = {}
+    abi_dynamic_libraries: dict[str, None] = {}
+    abi_interface_libraries: dict[str, None] = {}
+
     for root_dir in search_directories:
         for libname in search_libnames:
             composed_path = os.path.join(root_dir, libname)
-            if libname.endswith(".a"):
-                _add_if_exists(static_libraries, composed_path)
-                continue
+            is_abi3_file = os.path.basename(composed_path) in abi3_libraries
 
-            _add_if_exists(dynamic_libraries, composed_path)
+            # Check whether the library exists and add it to the appropriate list.
+            if os.path.exists(composed_path) or os.path.isdir(composed_path):
+                if is_abi3_file:
+                    if not libname.endswith(".a"):
+                        abi_dynamic_libraries[composed_path] = None
+                elif libname.endswith(".a"):
+                    static_libraries[composed_path] = None
+                else:
+                    dynamic_libraries[composed_path] = None
+
+            interface_path = None
             if libname.endswith(".dll"):
-                # On windows a .lib file may be an "import library" or a static library.
-                # The file could be inspected to determine which it is; typically python
-                # is used as a shared library.
+                # On windows a .lib file may be an "import library" or a static
+                # library. The file could be inspected to determine which it is;
+                # typically python is used as a shared library.
                 #
                 # On Windows, extensions should link with the pythonXY.lib interface
                 # libraries.
                 #
                 # See: https://docs.python.org/3/extending/windows.html
                 # https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation
-                _add_if_exists(
-                    interface_libraries, os.path.join(root_dir, libname[:-3] + "lib")
-                )
+                interface_path = os.path.join(root_dir, libname[:-3] + "lib")
             elif libname.endswith(".so"):
                 # It's possible, though unlikely, that interface stubs (.ifso) exist.
-                _add_if_exists(
-                    interface_libraries, os.path.join(root_dir, libname[:-2] + "ifso")
-                )
+                interface_path = os.path.join(root_dir, libname[:-2] + "ifso")
+
+            # Check whether an interface library exists.
+            if interface_path and os.path.exists(interface_path):
+                if is_abi3_file:
+                    abi_interface_libraries[interface_path] = None
+                else:
+                    interface_libraries[interface_path] = None
+
+    # Additional DLLs are needed on Windows to link properly.
+    dlls = []
+    if _IS_WINDOWS:
+        dlls.extend(
+            glob.glob(os.path.join(os.path.dirname(base_executable), "*.dll")))
+        dlls = [
+            x for x in dlls
+            if x not in dynamic_libraries and x not in abi_dynamic_libraries
+        ]
+
+    def _unique_basenames(inputs: dict[str, None]) -> list[str]:
+        """Returns a list of paths, keeping only the first path for each basename."""
+        result = []
+        seen = set()
+        for k in inputs:
+            b = os.path.basename(k)
+            if b not in seen:
+                seen.add(b)
+                result.append(k)
+        return result
 
     # When no libraries are found it's likely that the python interpreter is not
     # configured to use shared or static libraries (minilinux).  If this seems
     # suspicious try running `uv tool run find_libpython --list-all -v`
     return {
-        "dynamic_libraries": list(dynamic_libraries.keys()),
-        "static_libraries": list(static_libraries.keys()),
-        "interface_libraries": list(interface_libraries.keys()),
+        "dynamic_libraries": _unique_basenames(dynamic_libraries),
+        "static_libraries": _unique_basenames(static_libraries),
+        "interface_libraries": _unique_basenames(interface_libraries),
+        "abi_dynamic_libraries": _unique_basenames(abi_dynamic_libraries),
+        "abi_interface_libraries": _unique_basenames(abi_interface_libraries),
+        "abi_flags": abi_flags,
+        "shlib_suffix": ".dylib" if _IS_DARWIN else "",
+        "additional_dlls": dlls,
+        "defines": defines,
     }
 
 
-def _get_base_executable():
+def _get_base_executable() -> str:
     """Returns the base executable path."""
-    try:
-        if sys._base_executable:  # pylint: disable=protected-access
-            return sys._base_executable  # pylint: disable=protected-access
-    except AttributeError:
-        # Bug reports indicate sys._base_executable  doesn't exist in some cases,
-        # but it's not clear why.
-        # See https://github.com/bazel-contrib/rules_python/issues/3172
-        pass
-    # The normal sys.executable is the next-best guess if sys._base_executable
-    # is missing.
-    return sys.executable
+    return getattr(sys, "_base_executable", None) or sys.executable
 
 
 data = {

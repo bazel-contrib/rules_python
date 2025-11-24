@@ -23,7 +23,7 @@ bazel_dep(name = "rules_java", version = "8.3.1")
 # MODULE.bazel.lock is cross-platform friendly, and there are transitive
 # dependencies on rules_rust, so we need rules_rust 0.54.1+ where such issues
 # were fixed.
-bazel_dep(name = "rules_rust", version = "0.54.1")
+bazel_dep(name = "rules_rust", version = "0.67.0")
 
 # We next initialize the python toolchain using the extension.
 # You can set different Python versions in this block.
@@ -55,7 +55,6 @@ python.override(
     # require versions not listed here.
     # available_python_versions = [
     #     "3.10.9",
-    #     "3.9.18",
     #     "3.9.19",
     #     # The following is used by the `other_module` and we need to include it here
     #     # as well.
@@ -65,7 +64,7 @@ python.override(
     # instead of rules_python's defaulting to the latest available version,
     # controls what full version is used when `3.x` is requested.
     minor_mapping = {
-        "3.9": "3.9.19",
+        "3.9": "3.9.25",
     },
 )
 

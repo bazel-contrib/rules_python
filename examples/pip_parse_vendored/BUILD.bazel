@@ -3,6 +3,7 @@ load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
 
 # This rule adds a convenient way to update the requirements.txt

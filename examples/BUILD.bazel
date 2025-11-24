@@ -26,7 +26,7 @@ lock(
         "--universal",
         "--python-version=3.9",
     ],
-    python_version = "3.9.19",
+    python_version = "3.9",
 )
 
 lock(

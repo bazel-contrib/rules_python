@@ -21,8 +21,13 @@ Differences with the legacy {obj}`compile_pip_requirements` rule:
 - This does not error out if the output file does not exist yet.
 - Supports transitions out of the box.
 
-Note, this does not provide a `test` target, if you would like to add a test
-target that always does the locking automatically to ensure that the
+Note, this does not provide a test target like {obj}`compile_pip_requirements` does.
+The `uv pip compile` command is not hermetic and thus a test based on it would most likely be flaky:
+- It may require auth injected into it, so most likely it requires a local tag added so that the bazel action runs without sandboxing.
+- It requires network access.
+
+Given those points, a test target should be an explicit and properly documented target and not a hidden implicit target.
+If, you would like to add a test target that always does the locking automatically to ensure that the
 `requirements.txt` file is up-to-date, add something similar to:
 
 ```starlark

@@ -15,6 +15,7 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@dev_pip//:requirements.bzl", "requirement")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 load("//sphinxdocs:readthedocs.bzl", "readthedocs_install")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
@@ -161,6 +162,10 @@ readthedocs_install(
 
 sphinx_build_binary(
     name = "sphinx-build",
+    config_settings = {
+        labels.BOOTSTRAP_IMPL: "script",
+        labels.VENVS_SITE_PACKAGES: "yes",
+    },
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
         requirement("sphinx"),

@@ -30,25 +30,78 @@ BEGIN_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
-
 * Nothing removed.
+
 {#v0-0-0-changed}
 ### Changed
 * Nothing changed.
 
 {#v0-0-0-fixed}
 ### Fixed
-* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
-  that are not generated or regular files.
+* Nothing fixed.
 
 {#v0-0-0-added}
 ### Added
 * Nothing added.
 
-
 END_UNRELEASED_TEMPLATE
 -->
 
+
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* (toolchain) Remove all of the python 3.8 toolchain support out of the box. Users need
+  to pass the `TOOL_VERSIONS` that include 3.8 toolchains or use the `bzlmod` APIs to add
+  them back. This means any hub `pip.parse` calls that target `3.8` will be ignored from
+  now on. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
+* (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
+  This version has reached EOL and will no longer receive any security fixes, please update to
+  `3.10` or above. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
+* (toolchain) `ignore_root_user_error` has now been flipped to be always enabled and
+  the `chmod` of the python toolchain directories have been removed. From now on `rules_python`
+  always adds the `pyc` files to the glob excludes and in order to avoid any problems when using
+  the toolchains in the repository phase, ensure that you pass `-B` to the python interpreter.
+  ([#2016](https://github.com/bazel-contrib/rules_python/issues/2016))
+
+{#v0-0-0-changed}
+### Changed
+* (toolchains) Use toolchains from the [20251031] release.
+* (gazelle) Internally split modules mapping generation to be per-wheel for concurrency and caching.
+* (pip) `pipstar` has been enabled for all `whl_library` instances where the whl
+  is passed through a label or downloaded using the bazel downloader
+  ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
+
+{#v0-0-0-fixed}
+### Fixed
+* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
+  that are not generated or regular files.
+* (runfiles) Fix incorrect Python runfiles path assumption - the existing
+  implementation assumes that it is always four levels below the runfiles
+  directory, leading to incorrect path checks
+  ([#3085](https://github.com/bazel-contrib/rules_python/issues/3085)).
+* (toolchains) local toolchains now tell the `sys.abiflags` value of the
+  underlying runtime.
+* (toolchains) various local toolchain fixes: add abi3 header targets,
+  fixes to linking, Windows DLL detection, and defines for free threaded
+  runtimes.
+* (toolchains) The `python_headers` target is now compatible with
+  layering_check.
+* (performance) 90% reduction in py_binary/py_test analysis phase cost.
+  ([#3381](https://github.com/bazel-contrib/rules_python/pull/3381)).
+* (gazelle) Fix `gazelle_python_manifest.test` so that it accesses manifest files via `runfile` path handling rather than directly ([#3397](https://github.com/bazel-contrib/rules_python/issues/3397)).
+* (core rules) For the system_python bootstrap, the runfiles root is added to
+  sys.path.
+
+{#v0-0-0-added}
+### Added
+* (toolchains) `3.9.25` Python toolchain from [20251031] release.
+
+[20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
 {#v1-7-0}
 ## [1.7.0] - 2025-10-11
 
@@ -113,6 +166,8 @@ END_UNRELEASED_TEMPLATE
   ([#3339](https://github.com/bazel-contrib/rules_python/issues/3339)).
 * (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
   runtime.
+* (pypi) `linux_riscv64` is added to the platforms list in `_pip_repository_impl`,
+  which fixes [a build issue for tensorflow on riscv64](https://github.com/bazel-contrib/rules_python/discussions/2729).
 * (toolchains) WORKSPACE builds now correctly register musl and freethreaded
   variants. Setting {obj}`--py_linux_libc=musl` and `--py_freethreaded=yes` now
   activate them, respectively.

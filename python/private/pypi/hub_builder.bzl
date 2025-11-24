@@ -114,9 +114,29 @@ def _pip_parse(self, module_ctx, pip_attr):
             version = python_version,
         ))
 
-    self._platforms[python_version] = _platforms(
-        python_version = python_version,
+    full_python_version = full_version(
+        version = python_version,
         minor_mapping = self._minor_mapping,
+        fail_on_err = False,
+    )
+    if not full_python_version:
+        # NOTE @aignas 2025-11-18: If the python version is not present in our
+        # minor_mapping, then we will not register any packages and then the
+        # select in the hub repository will fail, which will prompt the user to
+        # configure the toolchain correctly and move forward.
+        self._logger.info(lambda: (
+            "Ignoring pip python version '{version}' for hub " +
+            "'{hub}' in module '{module}' because there is no registered " +
+            "toolchain for it."
+        ).format(
+            hub = self.name,
+            module = self.module_name,
+            version = python_version,
+        ))
+        return
+
+    self._platforms[python_version] = _platforms(
+        python_version = full_python_version,
         config = self._config,
     )
     _set_get_index_urls(self, pip_attr)
@@ -126,6 +146,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         self,
         module_ctx,
         pip_attr = pip_attr,
+        enable_pipstar = self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version),
     )
 
 ### end of PUBLIC methods
@@ -168,7 +189,7 @@ def _add_extra_aliases(self, extra_hub_aliases):
             {alias: True for alias in aliases},
         )
 
-def _add_whl_library(self, *, python_version, whl, repo):
+def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
     if repo == None:
         # NOTE @aignas 2025-07-07: we guard against an edge-case where there
         # are more platforms defined than there are wheels for and users
@@ -188,7 +209,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         ))
     self._whl_libraries[repo_name] = repo.args
 
-    if not self._config.enable_pipstar and "experimental_target_platforms" in repo.args:
+    if not enable_pipstar and "experimental_target_platforms" in repo.args:
         self._whl_libraries[repo_name] |= {
             "experimental_target_platforms": sorted({
                 # TODO @aignas 2025-07-07: this should be solved in a better way
@@ -280,13 +301,10 @@ def _detect_interpreter(self, pip_attr):
         path = pip_attr.python_interpreter,
     )
 
-def _platforms(*, python_version, minor_mapping, config):
+def _platforms(*, python_version, config):
     platforms = {}
     python_version = version.parse(
-        full_version(
-            version = python_version,
-            minor_mapping = minor_mapping,
-        ),
+        python_version,
         strict = True,
     )
 
@@ -325,11 +343,11 @@ def _platforms(*, python_version, minor_mapping, config):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr):
+def _evaluate_markers(self, pip_attr, enable_pipstar):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
-    if self._config.enable_pipstar:
+    if enable_pipstar:
         return lambda _, requirements: evaluate_markers_star(
             requirements = requirements,
             platforms = self._platforms[pip_attr.python_version],
@@ -370,13 +388,15 @@ def _create_whl_repos(
         self,
         module_ctx,
         *,
-        pip_attr):
+        pip_attr,
+        enable_pipstar = False):
     """create all of the whl repositories
 
     Args:
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        enable_pipstar: {type}`bool` - enable the pipstar or not.
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
@@ -399,7 +419,7 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr),
+        evaluate_markers = _evaluate_markers(self, pip_attr, enable_pipstar),
         logger = logger,
     )
 
@@ -418,6 +438,7 @@ def _create_whl_repos(
         self,
         module_ctx,
         pip_attr = pip_attr,
+        enable_pipstar = enable_pipstar,
     )
     for whl in requirements_by_platform:
         whl_library_args = common_args | _whl_library_args(
@@ -435,16 +456,17 @@ def _create_whl_repos(
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
-                enable_pipstar = self._config.enable_pipstar,
+                enable_pipstar = enable_pipstar,
             )
             _add_whl_library(
                 self,
                 python_version = pip_attr.python_version,
                 whl = whl,
                 repo = repo,
+                enable_pipstar = enable_pipstar,
             )
 
-def _common_args(self, module_ctx, *, pip_attr):
+def _common_args(self, module_ctx, *, pip_attr, enable_pipstar):
     interpreter = _detect_interpreter(self, pip_attr)
 
     # Construct args separately so that the lock file can be smaller and does not include unused
@@ -464,7 +486,7 @@ def _common_args(self, module_ctx, *, pip_attr):
         python_interpreter = interpreter.path,
         python_interpreter_target = interpreter.target,
     )
-    if not self._config.enable_pipstar:
+    if not enable_pipstar:
         maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
     whl_library_args.update({k: v for k, v in maybe_args.items() if v})
@@ -566,8 +588,13 @@ def _whl_repo(
             for p in src.target_platforms
         ]
 
+    # TODO @aignas 2025-11-02: once we have pipstar enabled we can add extra
+    # targets to each hub for each extra combination and solve this more cleanly as opposed to
+    # duplicating whl_library repositories.
+    target_platforms = src.target_platforms if is_multiple_versions else []
+
     return struct(
-        repo_name = whl_repo_name(src.filename, src.sha256),
+        repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,

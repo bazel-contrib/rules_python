@@ -10,4 +10,8 @@ platform_targets = struct(
     WINDOWS = Label("//tests/support/platforms:windows"),
     WINDOWS_AARCH64 = Label("//tests/support/platforms:windows_aarch64"),
     WINDOWS_X86_64 = Label("//tests/support/platforms:windows_x86_64"),
+
+    # Unspecified Unix platform that is unlikely to be the host platform in CI,
+    # but still provides a Python toolchain.
+    EXOTIC_UNIX = Label("//tests/support/platforms:exotic_unix"),
 )
