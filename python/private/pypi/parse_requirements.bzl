@@ -426,7 +426,14 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
 
     if not target_platform:
         # The pipstar platforms are undefined here, so we cannot do any matching
-        return sdist
+        return sdist, True
+
+    if not whls and not sdist:
+        # If there are no suitable wheels to handle for now allow fallback to pip, it
+        # may be a little bit more helpful when debugging? Most likely something is
+        # going a bit wrong here, should we raise an error because the sha256 have most
+        # likely mismatched? We are already printing a warning above.
+        return None, True
 
     # Select a single wheel that can work on the target_platform
     return select_whl(
