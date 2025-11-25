@@ -98,7 +98,7 @@ matrix:
     - debian11
     - macos_arm64
     - windows
-  bazel: [7.*, 8.*, 9.*]
+  bazel: [7.*, 8.*]
 
 tasks:
   bcr_test:

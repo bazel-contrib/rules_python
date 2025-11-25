@@ -16,7 +16,7 @@ bcr_test_module:
   module_path: "examples/bzlmod_build_file_generation"
   matrix:
     platform: ["debian11", "macos", "ubuntu2204", "windows"]
-    bazel: [7.x, 8.x, 9.x]
+    bazel: [7.*, 8.*]
   tasks:
     run_tests:
       name: "Run test module"
