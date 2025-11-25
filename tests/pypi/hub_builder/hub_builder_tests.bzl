@@ -1026,7 +1026,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
-            "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "plat_pkg==0.0.4",
             "sha256": "deadb44f",
             "urls": ["example2.org/index/plat_pkg/"],
