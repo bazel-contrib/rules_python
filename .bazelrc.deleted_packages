@@ -19,6 +19,7 @@ common --deleted_packages=examples/bzlmod/whl_mods
 common --deleted_packages=examples/multi_python_versions/libs/my_lib
 common --deleted_packages=examples/multi_python_versions/requirements
 common --deleted_packages=examples/multi_python_versions/tests
+common --deleted_packages=examples/mytorch
 common --deleted_packages=examples/pip_parse
 common --deleted_packages=examples/pip_parse_vendored
 common --deleted_packages=examples/pip_repository_annotations
