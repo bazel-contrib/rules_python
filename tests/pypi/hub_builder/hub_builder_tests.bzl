@@ -565,6 +565,9 @@ def _test_torch_experimental_index_url(env):
                 for (os, cpu), whl_platform_tags in {
                     ("linux", "x86_64"): ["linux_x86_64", "manylinux_*_x86_64"],
                     ("linux", "aarch64"): ["linux_aarch64", "manylinux_*_aarch64"],
+                    # this should be ignored as well because there is no sdist and no whls
+                    # for intel Macs
+                    ("osx", "x86_64"): ["macosx_*_x86_64"],
                     ("osx", "aarch64"): ["macosx_*_arm64"],
                     ("windows", "x86_64"): ["win_amd64"],
                     ("windows", "aarch64"): ["win_arm64"],  # this should be ignored
@@ -575,15 +578,6 @@ def _test_torch_experimental_index_url(env):
             "python_3_12_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.12": "3.12.19"},
-        evaluate_markers_fn = lambda _, requirements, **__: {
-            # todo once 2692 is merged, this is going to be easier to test.
-            key: [
-                platform
-                for platform in platforms
-                if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
-            ]
-            for key, platforms in requirements.items()
-        },
         simpleapi_download_fn = mocksimpleapi_download,
     )
     builder.pip_parse(
@@ -620,7 +614,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         _parse(
             hub_name = "pypi",
             python_version = "3.12",
-            download_only = True,
             experimental_index_url = "https://torch.index",
             requirements_lock = "universal.txt",
         ),
@@ -795,6 +788,20 @@ def _test_simple_get_index(env):
         got_simpleapi_download_args.extend(args)
         got_simpleapi_download_kwargs.update(kwargs)
         return {
+            "plat_pkg": struct(
+                whls = {
+                    "deadb44f": struct(
+                        yanked = False,
+                        filename = "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
+                        sha256 = "deadb44f",
+                        url = "example2.org/index/plat_pkg/",
+                    ),
+                },
+                sdists = {},
+                sha256s_by_version = {
+                    "0.0.4": ["deadb44f"],
+                },
+            ),
             "simple": struct(
                 whls = {
                     "deadb00f": struct(
@@ -850,6 +857,7 @@ some_pkg==0.0.1 @ example-direct.org/some_pkg-0.0.1-py3-none-any.whl \
     --hash=sha256:deadbaaf
 direct_without_sha==0.0.1 @ example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl
 some_other_pkg==0.0.1
+plat_pkg==0.0.4
 pip_fallback==0.0.1
 direct_sdist_without_sha @ some-archive/any-name.tar.gz
 git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
@@ -873,6 +881,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         "direct_without_sha",
         "git_dep",
         "pip_fallback",
+        "plat_pkg",
         "simple",
         "some_other_pkg",
         "some_pkg",
@@ -917,6 +926,17 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         "pip_fallback": {
             "pypi_315_pip_fallback": [
                 whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+        "plat_pkg": {
+            "pypi_315_plat_py3_none_linux_x86_64_deadb44f": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_linux_x86_64",
+                        "cp315_linux_x86_64_freethreaded",
+                    ],
                     version = "3.15",
                 ),
             ],
@@ -1002,6 +1022,15 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "pip_fallback==0.0.1",
         },
+        "pypi_315_plat_py3_none_linux_x86_64_deadb44f": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "plat_pkg==0.0.4",
+            "sha256": "deadb44f",
+            "urls": ["example2.org/index/plat_pkg/"],
+        },
         "pypi_315_simple_py3_none_any_deadb00f": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
@@ -1037,7 +1066,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                 index_url = "pypi.org",
                 index_url_overrides = {},
                 netrc = None,
-                sources = ["simple", "pip_fallback", "some_other_pkg"],
+                sources = ["simple", "plat_pkg", "pip_fallback", "some_other_pkg"],
             ),
             "cache": {},
             "parallel_download": False,
@@ -1049,14 +1078,6 @@ _tests.append(_test_simple_get_index)
 def _test_optimum_sys_platform_extra(env):
     builder = hub_builder(
         env,
-        evaluate_markers_fn = lambda _, requirements, **__: {
-            key: [
-                platform
-                for platform in platforms
-                if ("darwin" in key and "osx" in platform) or ("linux" in key and "linux" in platform)
-            ]
-            for key, platforms in requirements.items()
-        },
     )
     builder.pip_parse(
         _mock_mctx(
