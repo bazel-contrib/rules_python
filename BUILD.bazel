@@ -45,7 +45,6 @@ filegroup(
         "version.bzl",
         "//python:distribution",
         "//tools:distribution",
-        "@rules_python_gazelle_plugin//:distribution",
     ],
     visibility = [
         "//:__subpackages__",

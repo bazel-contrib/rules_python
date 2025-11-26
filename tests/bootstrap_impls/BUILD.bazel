@@ -133,9 +133,6 @@ py_reconfig_test(
     env = {"BOOTSTRAP": "system_python"},
     imports = ["./site-packages"],
     main = "sys_path_order_test.py",
-    deps = [
-        "@bazel_tools//tools/python/runfiles",
-    ],
 )
 
 py_reconfig_test(

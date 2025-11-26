@@ -228,11 +228,6 @@ bazel_dep(name = "another_module", version = "0", dev_dependency = True)
 # We use `WORKSPACE.bzlmod` because it is impossible to have dev-only local overrides.
 bazel_dep(name = "rules_go", version = "0.41.0", dev_dependency = True, repo_name = "io_bazel_rules_go")
 
-##bazel_dep(name = "rules_go", version = "0.59.0", dev_dependency = True, repo_name = "io_bazel_rules_go")
-bazel_dep(name = "rules_python_gazelle_plugin", version = "0", dev_dependency = True)
-bazel_dep(name = "gazelle", version = "0.40.0", dev_dependency = True, repo_name = "bazel_gazelle")
-##bazel_dep(name = "gazelle", version = "0.47.0", dev_dependency = True, repo_name = "bazel_gazelle")
-
 internal_dev_deps = use_extension(
     "//python/private:internal_dev_deps.bzl",
     "internal_dev_deps",
@@ -259,13 +254,6 @@ dev_rules_python_config.add_transition_setting(
 )
 dev_rules_python_config.add_transition_setting(
     setting = "//tests/multi_pypi:external_deps_name",
-)
-
-# Add gazelle plugin so that we can run the gazelle example as an e2e integration
-# test and include the distribution files.
-local_path_override(
-    module_name = "rules_python_gazelle_plugin",
-    path = "gazelle",
 )
 
 local_path_override(
