@@ -82,6 +82,7 @@ class TestCase(unittest.TestCase):
         self.tmp_dir = outer_test_tmpdir / "bit_tmp"
         self.bazel_env = {
             "PATH": os.environ["PATH"],
+            "HOME": os.environ["HOME"],
             "TEST_TMPDIR": str(self.test_tmp_dir),
             "TMP": str(self.tmp_dir),
             # For some reason, this is necessary for Bazel 6.4 to work.
