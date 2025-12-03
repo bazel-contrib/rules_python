@@ -106,6 +106,10 @@ tasks:
     platform: ${{ platform }}
     working_directory: examples/bzlmod
     bazel: ${{ bazel }}
+    build_flags:
+      - "--keep_going"
+      - '--cxxopt=-std=c++17'
+      - '--host_cxxopt=-std=c++17'
     test_flags:
       # Minimum bazel supported C++
       - "--keep_going"
