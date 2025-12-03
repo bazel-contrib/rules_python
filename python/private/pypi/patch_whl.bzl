@@ -87,6 +87,8 @@ def patch_whl(rctx, *, python_interpreter, whl_path, patches, **kwargs):
     # symlink to a zip file to use bazel's extract so that we can use bazel's
     # repository_ctx patch implementation. The whl file may be in a different
     # external repository.
+    #
+    # TODO @aignas 2025-11-24: remove this symlinking workaround when we drop support for bazel 7
     whl_file_zip = whl_input.basename + ".zip"
     rctx.symlink(whl_input, whl_file_zip)
     rctx.extract(whl_file_zip)

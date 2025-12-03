@@ -440,6 +440,9 @@ def _create_whl_repos(
         pip_attr = pip_attr,
         enable_pipstar = enable_pipstar,
     )
+
+    interpreter = _detect_interpreter(self, pip_attr)
+
     for whl in requirements_by_platform:
         whl_library_args = common_args | _whl_library_args(
             self,
@@ -456,6 +459,7 @@ def _create_whl_repos(
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
+                interpreter = interpreter,
                 enable_pipstar = enable_pipstar,
             )
             _add_whl_library(
@@ -467,8 +471,6 @@ def _create_whl_repos(
             )
 
 def _common_args(self, module_ctx, *, pip_attr, enable_pipstar):
-    interpreter = _detect_interpreter(self, pip_attr)
-
     # Construct args separately so that the lock file can be smaller and does not include unused
     # attrs.
     whl_library_args = dict(
@@ -483,8 +485,6 @@ def _common_args(self, module_ctx, *, pip_attr, enable_pipstar):
         environment = pip_attr.environment,
         envsubst = pip_attr.envsubst,
         pip_data_exclude = pip_attr.pip_data_exclude,
-        python_interpreter = interpreter.path,
-        python_interpreter_target = interpreter.target,
     )
     if not enable_pipstar:
         maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
@@ -536,6 +536,7 @@ def _whl_repo(
         auth_patterns,
         python_version,
         use_downloader,
+        interpreter,
         enable_pipstar = False):
     args = dict(whl_library_args)
     args["requirement"] = src.requirement_line
@@ -547,6 +548,12 @@ def _whl_repo(
         # for sdists, they will be built by `pip`, so we still
         # need to pass the extra args there, so only pop this for whls
         args["extra_pip_args"] = src.extra_pip_args
+
+    if "whl_patches" in args or not (enable_pipstar and is_whl):
+        if interpreter.path:
+            args["python_interpreter"] = interpreter.path
+        if interpreter.target:
+            args["python_interpreter_target"] = interpreter.target
 
     if not src.url or (not is_whl and download_only):
         if download_only and use_downloader:

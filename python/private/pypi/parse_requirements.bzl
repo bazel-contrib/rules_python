@@ -188,19 +188,35 @@ def parse_requirements(
             for p in r.target_platforms:
                 requirement_target_platforms[p] = None
 
+        package_srcs = _package_srcs(
+            name = name,
+            reqs = reqs,
+            index_urls = index_urls,
+            platforms = platforms,
+            extract_url_srcs = extract_url_srcs,
+            logger = logger,
+        )
+
+        # FIXME @aignas 2025-11-24: we can get the list of target platforms here
+        #
+        # However it is likely that we may stop exposing packages like torch in here
+        # which do not have wheels for all osx platforms.
+        #
+        # If users specify the target platforms accurately, then it is a different
+        # (better) story, but we may not be able to guarantee this
+        #
+        # target_platforms = [
+        #     p
+        #     for dist in package_srcs
+        #     for p in dist.target_platforms
+        # ]
+
         item = struct(
             # Return normalized names
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,
-            srcs = _package_srcs(
-                name = name,
-                reqs = reqs,
-                index_urls = index_urls,
-                platforms = platforms,
-                extract_url_srcs = extract_url_srcs,
-                logger = logger,
-            ),
+            srcs = package_srcs,
         )
         ret.append(item)
         if not item.is_exposed and logger:
@@ -234,7 +250,7 @@ def _package_srcs(
                     platforms.keys(),
                 ))
 
-            dist = _add_dists(
+            dist, can_fallback = _add_dists(
                 requirement = r,
                 target_platform = platforms.get(target_platform),
                 index_urls = index_urls.get(name),
@@ -244,7 +260,7 @@ def _package_srcs(
 
             if extract_url_srcs and dist:
                 req_line = r.srcs.requirement
-            else:
+            elif can_fallback:
                 dist = struct(
                     url = "",
                     filename = "",
@@ -252,6 +268,8 @@ def _package_srcs(
                     yanked = False,
                 )
                 req_line = r.srcs.requirement_line
+            else:
+                continue
 
             key = (
                 dist.filename,
@@ -337,6 +355,14 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         index_urls: The result of simpleapi_download.
         target_platform: The target_platform information.
         logger: A logger for printing diagnostic info.
+
+    Returns:
+        (dist, can_fallback_to_pip): a struct with distribution details and how to fetch
+        it and a boolean flag to tell the other layers if we should add an entry to
+        fallback for pip if there are no supported whls found - if there is an sdist, we
+        can attempt the fallback, otherwise better to not, because the pip command will
+        fail and the error message will be confusing. What is more that would lead to
+        breakage of the bazel query.
     """
 
     if requirement.srcs.url:
@@ -344,7 +370,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
                 requirement.srcs.url,
             ))
-            return None
+            return None, True
 
         # Handle direct URLs in requirements
         dist = struct(
@@ -354,13 +380,10 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             yanked = False,
         )
 
-        if dist.filename.endswith(".whl"):
-            return dist
-        else:
-            return dist
+        return dist, False
 
     if not index_urls:
-        return None
+        return None, True
 
     whls = []
     sdist = None
@@ -403,7 +426,14 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
 
     if not target_platform:
         # The pipstar platforms are undefined here, so we cannot do any matching
-        return sdist
+        return sdist, True
+
+    if not whls and not sdist:
+        # If there are no suitable wheels to handle for now allow fallback to pip, it
+        # may be a little bit more helpful when debugging? Most likely something is
+        # going a bit wrong here, should we raise an error because the sha256 have most
+        # likely mismatched? We are already printing a warning above.
+        return None, True
 
     # Select a single wheel that can work on the target_platform
     return select_whl(
@@ -413,4 +443,4 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         whl_abi_tags = target_platform.whl_abi_tags,
         whl_platform_tags = target_platform.whl_platform_tags,
         logger = logger,
-    ) or sdist
+    ) or sdist, sdist != None
