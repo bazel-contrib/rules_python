@@ -108,13 +108,8 @@ tasks:
     bazel: ${{ bazel }}
     build_flags:
       - "--keep_going"
-      - '--cxxopt=-std=c++17'
-      - '--host_cxxopt=-std=c++17'
     test_flags:
-      # Minimum bazel supported C++
       - "--keep_going"
-      - '--cxxopt=-std=c++17'
-      - '--host_cxxopt=-std=c++17'
     build_targets:
       - "//..."
     test_targets:
