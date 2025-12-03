@@ -126,8 +126,8 @@ tasks:
       - "bazel run //:gazelle -- update"
     batch_commands:
       - "echo common --override_module=rules_python= >> .bazelrc "
-      - "bazel run //:gazelle_python_manifest.update "
-      - "bazel run //:gazelle -- update"
+      - " bazel run //:gazelle_python_manifest.update "
+      - " bazel run //:gazelle -- update"
     build_targets:
       - "//..."
       - ":modules_map"
