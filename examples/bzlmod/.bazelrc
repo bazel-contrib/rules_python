@@ -10,8 +10,8 @@ common --lockfile_mode=update
 # https://bazel.build/reference/command-line-reference#common_options-flag--enable_platform_specific_config
 common --enable_platform_specific_config
 
-common:windows --cxxopt=/std=c++17
-common:windows --host_cxxopt=/std=c++17
+common:windows --cxxopt=/std:c++17
+common:windows --host_cxxopt=/std:c++17
 common:linux --cxxopt=-std=c++17
 common:linux --host_cxxopt=-std=c++17
 common:macos --cxxopt=-std=c++17
