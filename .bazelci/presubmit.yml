@@ -102,7 +102,7 @@ matrix:
 
 tasks:
   bcr_test:
-    name: BCR example - rules_python
+    name: "BCR example - rules_python bazel {bazel}"
     platform: ${{ platform }}
     working_directory: examples/bzlmod
     bazel: ${{ bazel }}
