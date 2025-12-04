@@ -92,6 +92,7 @@ buildifier:
     - //tests:version_3_14_test
     - //tests:version_default_test
 
+# Keep in sync with .bcr/gazelle/presubmit.yml
 .gazelle_common_bcr: &gazelle_common_bcr
     bazel: ${{ bazel }}
     working_directory: gazelle/examples/bzlmod_build_file_generation
@@ -119,6 +120,7 @@ matrix:
   bazel: [7.*, 8.*]
 
 tasks:
+  # Keep in sync with .bcr/presubmit.yml
   bcr_test:
     name: "BCR: Bazel {bazel}"
     platform: ${{ platform }}
