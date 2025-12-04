@@ -53,6 +53,12 @@ END_UNRELEASED_TEMPLATE
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
+{#v0-0-0-known-issues}
+### Known Issues
+* (gazelle) Windows support for the Gazelle plugin may be broken. See
+  [#3416](https://github.com/bazel-contrib/rules_python/issues/3416) for
+  details and possible workarounds.
+
 {#v0-0-0-removed}
 ### Removed
 * (toolchain) Remove all of the python 3.8 toolchain support out of the box. Users need
