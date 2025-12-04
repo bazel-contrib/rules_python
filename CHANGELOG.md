@@ -75,6 +75,8 @@ END_UNRELEASED_TEMPLATE
 * (pip) `pipstar` has been enabled for all `whl_library` instances where the whl
   is passed through a label or downloaded using the bazel downloader
   ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
+* (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
+* (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
 
 {#v0-0-0-fixed}
 ### Fixed
