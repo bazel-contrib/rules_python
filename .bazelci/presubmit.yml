@@ -134,15 +134,15 @@ tasks:
       - "//..."
 
   gazelle_bcr_ubuntu:
-    << *gazelle_common_bcr
+    <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: ubuntu2204
   gazelle_bcr_debian11:
-    << *gazelle_common_bcr
+    <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: debian11
   gazelle_bcr_macos_arm64:
-    << *gazelle_common_bcr
+    <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: macos_arm64
 
