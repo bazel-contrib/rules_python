@@ -108,6 +108,14 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-added}
 ### Added
 * (toolchains) `3.9.25` Python toolchain from [20251031] release.
+* (pypi) API to tell `pip.parse` which platforms users care about. This is very useful to  ensure
+  that when users do `bazel query` for their deps, they don't have to download all of the
+  dependencies for all of the available wheels. Torch wheels can be up of 1GB and it takes a lot
+  of time to download those, which is unnecessary if only the host platform builds are necessary
+  to be performed. This is mainly for backwards/forwards compatibility whilst rolling out
+  `RULES_PYTHON_ENABLE_PIPSTAR=1` by default. Users of `experimental_index_url` that perform
+  cross-builds should add {obj}`target_platforms` to their `pip.parse` invocations, which will
+  become mandatory if any cross-builds are required from the next release.
 
 [20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
 {#v1-7-0}

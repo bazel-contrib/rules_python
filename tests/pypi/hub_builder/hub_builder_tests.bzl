@@ -25,12 +25,12 @@ load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
 
 _tests = []
 
-def _mock_mctx(environ = {}, read = None):
+def _mock_mctx(os = "unittest", arch = "exotic", environ = {}, read = None):
     return struct(
         os = struct(
             environ = environ,
-            name = "unittest",
-            arch = "exotic",
+            name = os,
+            arch = arch,
         ),
         read = read or (lambda _: """\
 simple==0.0.1 \
@@ -723,6 +723,10 @@ simple==0.0.3 \
                 "requirements.linux_x86_64.txt": "linux_x86_64",
                 "requirements.osx_aarch64.txt": "osx_aarch64",
             },
+            target_platforms = [
+                "linux_x86_64",
+                "osx_aarch64",
+            ],
         ),
     )
     pypi = builder.build()
@@ -1220,6 +1224,73 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.extra_aliases().contains_exactly({})
 
 _tests.append(_test_pipstar_platforms)
+
+def _test_pipstar_platforms_limit(env):
+    builder = hub_builder(
+        env,
+        enable_pipstar = True,
+        config = struct(
+            enable_pipstar = True,
+            netrc = None,
+            auth_patterns = {},
+            platforms = {
+                "my{}{}".format(os, cpu): _plat(
+                    name = "my{}{}".format(os, cpu),
+                    os_name = os,
+                    arch_name = cpu,
+                    marker = "python_version ~= \"3.13\"",
+                    config_settings = [
+                        "@platforms//os:{}".format(os),
+                        "@platforms//cpu:{}".format(cpu),
+                    ],
+                )
+                for os, cpu in [
+                    ("linux", "x86_64"),
+                    ("osx", "aarch64"),
+                ]
+            },
+        ),
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            os = "linux",
+            arch = "amd64",
+            read = lambda x: {
+                "universal.txt": """\
+optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
+optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
+""",
+            }[x],
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "universal.txt",
+            target_platforms = ["my{os}{arch}"],
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["optimum"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "optimum": {
+            "pypi_315_optimum": [
+                whl_config_setting(version = "3.15"),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_optimum": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_pipstar_platforms_limit)
 
 def hub_builder_test_suite(name):
     """Create the test suite.

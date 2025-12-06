@@ -2,6 +2,7 @@
 
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
@@ -135,11 +136,15 @@ def _pip_parse(self, module_ctx, pip_attr):
         ))
         return
 
+    default_cross_setup = _set_get_index_urls(self, pip_attr)
     self._platforms[python_version] = _platforms(
+        module_ctx,
         python_version = full_python_version,
         config = self._config,
+        # FIXME @aignas 2025-12-06: should we have this behaviour?
+        # TODO @aignas 2025-12-06: use target_platforms always even when the get_index_urls is set.
+        target_platforms = [] if default_cross_setup else pip_attr.target_platforms,
     )
-    _set_get_index_urls(self, pip_attr)
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
     _create_whl_repos(
@@ -249,7 +254,7 @@ def _set_get_index_urls(self, pip_attr):
 
         # parallel_download is set to True by default, so we are not checking/validating it
         # here
-        return
+        return False
 
     python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
@@ -275,6 +280,7 @@ def _set_get_index_urls(self, pip_attr):
         cache = self._simpleapi_cache,
         parallel_download = pip_attr.parallel_download,
     )
+    return True
 
 def _detect_interpreter(self, pip_attr):
     python_interpreter_target = pip_attr.python_interpreter_target
@@ -301,14 +307,25 @@ def _detect_interpreter(self, pip_attr):
         path = pip_attr.python_interpreter,
     )
 
-def _platforms(*, python_version, config):
+def _platforms(module_ctx, *, python_version, config, target_platforms):
     platforms = {}
     python_version = version.parse(
         python_version,
         strict = True,
     )
 
+    target_platforms = sorted({
+        p.format(
+            os = repo_utils.get_platforms_os_name(module_ctx),
+            arch = repo_utils.get_platforms_cpu_name(module_ctx),
+        ): None
+        for p in target_platforms
+    })
+
     for platform, values in config.platforms.items():
+        if target_platforms and platform not in target_platforms:
+            continue
+
         # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
         # many times.
         abi = "{}{}{}.{}".format(

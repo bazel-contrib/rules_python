@@ -140,9 +140,10 @@ def requirements_files_by_platform(
 
     platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
-        logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
+        logger.debug(lambda: "Platforms from pip args: {} (from {})".format(platforms_from_args, extra_pip_args))
 
-    default_platforms = platforms
+    input_platforms = platforms
+    default_platforms = [_platform(p, python_version) for p in platforms]
 
     if platforms_from_args:
         lock_files = [
@@ -174,6 +175,7 @@ def requirements_files_by_platform(
                 platform
                 for filter_or_platform in specifier.split(",")
                 for platform in (_default_platforms(filter = filter_or_platform, platforms = platforms) if filter_or_platform.endswith("*") else [filter_or_platform])
+                if _platform(platform, python_version) in default_platforms
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
@@ -227,9 +229,10 @@ def requirements_files_by_platform(
                 configured_platforms[p] = file
 
         elif logger:
-            logger.warn(lambda: "File {} will be ignored because there are no configured platforms: {}".format(
+            logger.info(lambda: "File {} will be ignored because there are no configured platforms: {} out of {}".format(
                 file,
                 default_platforms,
+                input_platforms,
             ))
             continue
 
