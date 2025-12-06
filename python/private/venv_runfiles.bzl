@@ -33,9 +33,6 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
         {type}`struct` with the following attributes:
         * {type}`list[File]` `venv_files` additional files created for
           the venv.
-        * {type}`dict[str, File]` `runfiles_symlinks` map intended for
-          the `runfiles.symlinks` argument. A map of main-repo
-          relative paths to File.
     """
 
     # maps venv-relative path to the runfiles path it should point to
@@ -49,31 +46,29 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
 
     link_map = build_link_map(ctx, entries)
     venv_files = []
-    runfiles_symlinks = {}
 
     for kind, kind_map in link_map.items():
         base = venv_dir_map[kind]
         for venv_path, link_to in kind_map.items():
             bin_venv_path = paths.join(base, venv_path)
-            if is_file(link_to):
-                symlink_from = "{}/{}".format(ctx.label.package, bin_venv_path)
-                runfiles_symlinks[symlink_from] = link_to
 
-            else:
-                venv_link = ctx.actions.declare_symlink(bin_venv_path)
-                venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
-                rel_path = relative_path(
-                    # dirname is necessary because a relative symlink is relative to
-                    # the directory the symlink resides within.
-                    from_ = paths.dirname(venv_link_rf_path),
-                    to = link_to,
-                )
-                ctx.actions.symlink(output = venv_link, target_path = rel_path)
-                venv_files.append(venv_link)
+            # Just for demonstration purposes,
+            # there is definitely a better thing to do upstream that removeprefix("../") 
+            link_to_path = link_to.short_path.removeprefix("../") if is_file(link_to) else link_to
+
+            venv_link = ctx.actions.declare_symlink(bin_venv_path)
+            venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
+            rel_path = relative_path(
+                # dirname is necessary because a relative symlink is relative to
+                # the directory the symlink resides within.
+                from_ = paths.dirname(venv_link_rf_path),
+                to = link_to_path,
+            )
+            ctx.actions.symlink(output = venv_link, target_path = rel_path)
+            venv_files.append(venv_link)
 
     return struct(
         venv_files = venv_files,
-        runfiles_symlinks = runfiles_symlinks,
     )
 
 # Visible for testing
