@@ -175,6 +175,8 @@ def requirements_files_by_platform(
                 platform
                 for filter_or_platform in specifier.split(",")
                 for platform in (_default_platforms(filter = filter_or_platform, platforms = platforms) if filter_or_platform.endswith("*") else [filter_or_platform])
+                # TODO @aignas 2025-12-06: add a test
+                if platform in input_platforms
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
