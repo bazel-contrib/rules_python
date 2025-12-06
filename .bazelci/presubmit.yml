@@ -117,7 +117,7 @@ matrix:
     - debian11
     - macos_arm64
     - windows
-  bazel: [7.*, 8.*]
+  bazel: [7.*, 8.*, 9.*]
 
 tasks:
   # Keep in sync with .bcr/presubmit.yml
@@ -135,6 +135,7 @@ tasks:
     test_targets:
       - "//..."
 
+  # Keep in sync with .bcr/gazelle/presubmit.yml
   gazelle_bcr_ubuntu:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
