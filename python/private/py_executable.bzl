@@ -70,6 +70,7 @@ load(":venv_runfiles.bzl", "create_venv_app_files")
 _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
+_INIT_PY = "__init__.py"
 _LAUNCHER_MAKER_TOOLCHAIN_TYPE = "@bazel_tools//tools/launcher:launcher_maker_toolchain_type"
 
 # Non-Google-specific attributes for executables
@@ -834,14 +835,14 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
     manifest.add("__main__.py={}".format(zip_main.path))
     manifest.add("__init__.py=")
     manifest.add(
-        "{}=".format(
-            _get_zip_runfiles_path("__init__.py", workspace_name, legacy_external_runfiles),
-        ),
+        "{}=".format(_get_zip_runfiles_path(_INIT_PY, workspace_name)),
     )
 
     def map_zip_empty_filenames(list_paths_cb):
         return [
-            _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles) + "="
+            # FIXME @aignas 2025-12-06: what kind of paths do we expect here? Will they
+            # ever start with `../` or `external`?
+            _get_zip_runfiles_path_legacy(path, workspace_name, legacy_external_runfiles) + "="
             for path in list_paths_cb().to_list()
         ]
 
@@ -856,7 +857,7 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
     def map_zip_runfiles(file):
         return (
             # NOTE: Use "+" for performance
-            _get_zip_runfiles_path(file.short_path, workspace_name, legacy_external_runfiles) +
+            _get_zip_runfiles_path_legacy(file.short_path, workspace_name, legacy_external_runfiles) +
             "=" + file.path
         )
 
@@ -893,23 +894,28 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
         progress_message = "Building Python zip: %{label}",
     )
 
-def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
-    maybe_workspace = ""
-    if legacy_external_runfiles and path.startswith(_EXTERNAL_PATH_PREFIX):
-        zip_runfiles_path = path.removeprefix(_EXTERNAL_PATH_PREFIX)
+def _get_zip_runfiles_path(path, workspace_name = ""):
+    # NOTE @aignas 2025-12-06: This is to avoid the prefix checking in the very
+    # trivial case that is always happening once per this function call
+
+    # NOTE: Use "+" for performance
+    if workspace_name:
+        # NOTE: Use "+" for performance
+        return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + workspace_name + "/" + path
     else:
+        return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + path
+
+def _get_zip_runfiles_path_legacy(path, workspace_name, legacy_external_runfiles):
+    if legacy_external_runfiles and path.startswith(_EXTERNAL_PATH_PREFIX):
+        return _get_zip_runfiles_path(path.removeprefix(_EXTERNAL_PATH_PREFIX))
+    elif path.startswith("../"):
         # NOTE: External runfiles (artifacts in other repos) will have a leading
         # path component of "../" so that they refer outside the main workspace
         # directory and into the runfiles root. So we simplify it, e.g.
         # "workspace/../foo/bar" to simply "foo/bar".
-        if path.startswith("../"):
-            zip_runfiles_path = path[3:]
-        else:
-            zip_runfiles_path = path
-            maybe_workspace = workspace_name + "/"
-
-    # NOTE: Use "+" for performance
-    return _ZIP_RUNFILES_DIRECTORY_NAME + "/" + maybe_workspace + zip_runfiles_path
+        return _get_zip_runfiles_path(path[3:])
+    else:
+        return _get_zip_runfiles_path(path, workspace_name)
 
 def _create_executable_zip_file(
         ctx,
