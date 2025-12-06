@@ -142,6 +142,7 @@ def requirements_files_by_platform(
     if logger:
         logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
 
+    input_platforms = platforms
     default_platforms = platforms
 
     if platforms_from_args:
@@ -227,9 +228,10 @@ def requirements_files_by_platform(
                 configured_platforms[p] = file
 
         elif logger:
-            logger.debug(lambda: "File {} will be ignored because there are no configured platforms: {}".format(
+            logger.info(lambda: "File {} will be ignored because there are no configured platforms: {} out of {}".format(
                 file,
                 default_platforms,
+                input_platforms,
             ))
             continue
 

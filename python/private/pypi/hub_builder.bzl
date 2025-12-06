@@ -2,6 +2,7 @@
 
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
@@ -314,7 +315,10 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
     )
 
     target_platforms = sorted({
-        p.format(os = module_ctx.os.name, arch = module_ctx.os.arch): None
+        p.format(
+            os = repo_utils.get_platforms_os_name(module_ctx),
+            arch = repo_utils.get_platforms_cpu_name(module_ctx),
+        ): None
         for p in target_platforms
     })
 
