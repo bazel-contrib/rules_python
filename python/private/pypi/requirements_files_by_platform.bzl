@@ -227,7 +227,7 @@ def requirements_files_by_platform(
                 configured_platforms[p] = file
 
         elif logger:
-            logger.warn(lambda: "File {} will be ignored because there are no configured platforms: {}".format(
+            logger.debug(lambda: "File {} will be ignored because there are no configured platforms: {}".format(
                 file,
                 default_platforms,
             ))

@@ -135,11 +135,15 @@ def _pip_parse(self, module_ctx, pip_attr):
         ))
         return
 
+    default_cross_setup = _set_get_index_urls(self, pip_attr)
     self._platforms[python_version] = _platforms(
+        module_ctx,
         python_version = full_python_version,
         config = self._config,
+        # FIXME @aignas 2025-12-06: should we have this behaviour?
+        # TODO @aignas 2025-12-06: use target_platforms always even when the get_index_urls is set.
+        target_platforms = [] if default_cross_setup else pip_attr.target_platforms,
     )
-    _set_get_index_urls(self, pip_attr)
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
     _create_whl_repos(
@@ -249,7 +253,7 @@ def _set_get_index_urls(self, pip_attr):
 
         # parallel_download is set to True by default, so we are not checking/validating it
         # here
-        return
+        return False
 
     python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
@@ -275,6 +279,7 @@ def _set_get_index_urls(self, pip_attr):
         cache = self._simpleapi_cache,
         parallel_download = pip_attr.parallel_download,
     )
+    return True
 
 def _detect_interpreter(self, pip_attr):
     python_interpreter_target = pip_attr.python_interpreter_target
@@ -301,14 +306,22 @@ def _detect_interpreter(self, pip_attr):
         path = pip_attr.python_interpreter,
     )
 
-def _platforms(*, python_version, config):
+def _platforms(module_ctx, *, python_version, config, target_platforms):
     platforms = {}
     python_version = version.parse(
         python_version,
         strict = True,
     )
 
+    target_platforms = sorted({
+        p.format(os = module_ctx.os.name, arch = module_ctx.os.arch): None
+        for p in target_platforms
+    })
+
     for platform, values in config.platforms.items():
+        if target_platforms and platform not in target_platforms:
+            continue
+
         # TODO @aignas 2025-07-07: this is probably doing the parsing of the version too
         # many times.
         abi = "{}{}{}.{}".format(
@@ -400,22 +413,24 @@ def _create_whl_repos(
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
+    requirements_by_platform = requirements_files_by_platform(
+        requirements_by_platform = pip_attr.requirements_by_platform,
+        requirements_linux = pip_attr.requirements_linux,
+        requirements_lock = pip_attr.requirements_lock,
+        requirements_osx = pip_attr.requirements_darwin,
+        requirements_windows = pip_attr.requirements_windows,
+        extra_pip_args = pip_attr.extra_pip_args,
+        platforms = sorted(platforms),  # here we only need keys
+        python_version = full_version(
+            version = pip_attr.python_version,
+            minor_mapping = self._minor_mapping,
+        ),
+        logger = logger,
+    )
+
     requirements_by_platform = parse_requirements(
         module_ctx,
-        requirements_by_platform = requirements_files_by_platform(
-            requirements_by_platform = pip_attr.requirements_by_platform,
-            requirements_linux = pip_attr.requirements_linux,
-            requirements_lock = pip_attr.requirements_lock,
-            requirements_osx = pip_attr.requirements_darwin,
-            requirements_windows = pip_attr.requirements_windows,
-            extra_pip_args = pip_attr.extra_pip_args,
-            platforms = sorted(platforms),  # here we only need keys
-            python_version = full_version(
-                version = pip_attr.python_version,
-                minor_mapping = self._minor_mapping,
-            ),
-            logger = logger,
-        ),
+        requirements_by_platform = requirements_by_platform,
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),

@@ -669,6 +669,25 @@ EXPERIMENTAL: this may be removed without notice.
 :::
 """,
         ),
+        "target_platforms": attr.string_list(
+            default = ["{host}"],
+            doc = """\
+The list of platforms for which we would evaluate the requirements files. If you need to be able to
+only evaluate for a particular platform (e.g. "linux_x86_64"), then put it in here.
+
+If you want `freethreaded` variant, then you can use `_freethreaded` suffix as `rules_python` is
+defining target platforms for these variants in its `MODULE.bazel` file. The identifiers for this
+function in general are the same as used in the {obj}`pip.default.platform` attribute.
+
+If you only care for the host platform and do not have a usecase to cross-build, then you can put in
+a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
+
+EXPERIMENTAL: this may be removed without notice.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "whl_modifications": attr.label_keyed_string_dict(
             mandatory = False,
             doc = """\
