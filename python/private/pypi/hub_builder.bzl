@@ -413,24 +413,22 @@ def _create_whl_repos(
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
-    requirements_by_platform = requirements_files_by_platform(
-        requirements_by_platform = pip_attr.requirements_by_platform,
-        requirements_linux = pip_attr.requirements_linux,
-        requirements_lock = pip_attr.requirements_lock,
-        requirements_osx = pip_attr.requirements_darwin,
-        requirements_windows = pip_attr.requirements_windows,
-        extra_pip_args = pip_attr.extra_pip_args,
-        platforms = sorted(platforms),  # here we only need keys
-        python_version = full_version(
-            version = pip_attr.python_version,
-            minor_mapping = self._minor_mapping,
-        ),
-        logger = logger,
-    )
-
     requirements_by_platform = parse_requirements(
         module_ctx,
-        requirements_by_platform = requirements_by_platform,
+        requirements_by_platform = requirements_files_by_platform(
+            requirements_by_platform = pip_attr.requirements_by_platform,
+            requirements_linux = pip_attr.requirements_linux,
+            requirements_lock = pip_attr.requirements_lock,
+            requirements_osx = pip_attr.requirements_darwin,
+            requirements_windows = pip_attr.requirements_windows,
+            extra_pip_args = pip_attr.extra_pip_args,
+            platforms = sorted(platforms),  # here we only need keys
+            python_version = full_version(
+                version = pip_attr.python_version,
+                minor_mapping = self._minor_mapping,
+            ),
+            logger = logger,
+        ),
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
