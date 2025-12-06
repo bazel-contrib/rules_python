@@ -1225,7 +1225,6 @@ def _test_pipstar_platforms_limit(env):
     builder = hub_builder(
         env,
         enable_pipstar = True,
-        debug = True,
         config = struct(
             enable_pipstar = True,
             netrc = None,
@@ -1251,7 +1250,7 @@ def _test_pipstar_platforms_limit(env):
     builder.pip_parse(
         _mock_mctx(
             os = "linux",
-            arch = "x86_64",
+            arch = "amd64",
             read = lambda x: {
                 "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
