@@ -723,6 +723,10 @@ simple==0.0.3 \
                 "requirements.linux_x86_64.txt": "linux_x86_64",
                 "requirements.osx_aarch64.txt": "osx_aarch64",
             },
+            target_platforms = [
+                "linux_x86_64",
+                "osx_aarch64",
+            ],
         ),
     )
     pypi = builder.build()

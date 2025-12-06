@@ -140,7 +140,7 @@ def requirements_files_by_platform(
 
     platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
-        logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
+        logger.debug(lambda: "Platforms from pip args: {} (from {})".format(platforms_from_args, extra_pip_args))
 
     input_platforms = platforms
     default_platforms = platforms
@@ -175,7 +175,7 @@ def requirements_files_by_platform(
                 platform
                 for filter_or_platform in specifier.split(",")
                 for platform in (_default_platforms(filter = filter_or_platform, platforms = platforms) if filter_or_platform.endswith("*") else [filter_or_platform])
-                if platform in input_platforms
+                if _platform(platform, python_version) in input_platforms
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
