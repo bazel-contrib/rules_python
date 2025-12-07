@@ -113,12 +113,12 @@ This will not work for sdists with C extensions, but pure Python sdists may stil
 approach.
 :::
 
-By default we select the host `{os}_{arch}` platform defined in the `rules_python` `MODULE.bazel`
-file. This means that `rules_python` by default does not come with cross-platform building support
+By default, `rules_python` selects the host `{os}_{arch}` platform from its `MODULE.bazel`
+file. This means that `rules_python` by default does not provide cross-platform building support
 because some packages have very large wheels and users should be able to use `bazel query` with
-minimal overhead. As a result, we think that it is up to the user to configure the `pip.parse`
-calls and select which platforms they want to target via
-{obj}`pip.parse.target_platforms` attribute:
+minimal overhead. As a result, users should configure their `pip.parse`
+calls and select which platforms they want to target via the
+{attr}`pip.parse.target_platforms` attribute:
 ```starlark
     # Enable free threaded and non-freethreaded switching on the host platform
     target_platforms = ["{os}_{arch}", "{os}_{arch}_freethreaded"],
