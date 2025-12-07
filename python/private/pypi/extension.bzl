@@ -682,7 +682,8 @@ function in general are the same as used in the {obj}`pip.default.platform` attr
 If you only care for the host platform and do not have a usecase to cross-build, then you can put in
 a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
 
-EXPERIMENTAL: this may be removed without notice.
+:::{include} /_includes/experimental_api.md
+:::
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
