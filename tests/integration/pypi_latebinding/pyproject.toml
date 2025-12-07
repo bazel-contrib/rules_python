@@ -1,0 +1,7 @@
+[project]
+name = "pypi_latebinding"
+version = "0.0.0"
+
+dependencies = [
+  "more_itertools"
+]

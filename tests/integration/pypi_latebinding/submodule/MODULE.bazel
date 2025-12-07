@@ -1,0 +1,22 @@
+module(name = "submodule")
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+local_path_override(
+    module_name = "rules_python",
+    path = "../../../..",
+)
+
+##python = use_extension(
+##    "@rules_python//python/extensions:python.bzl",
+##    "python",
+##    dev_dependency = True,
+##)
+##python.toolchain(python_version = "3.13")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.dependency(
+    name = "more_itertools",
+)
+use_repo(pip, "pypi")

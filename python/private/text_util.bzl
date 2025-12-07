@@ -58,6 +58,14 @@ def _render_dict(d, *, key_repr = repr, value_repr = repr):
     ])
 
 def _render_select(selects, *, no_match_error = None, key_repr = repr, value_repr = repr, name = "select"):
+    """Render a select() call.
+
+    Args:
+        selects: {type}`dict[str, str]`
+
+    Returns:
+        {type}`str`
+    """
     dict_str = _render_dict(selects, key_repr = key_repr, value_repr = value_repr) + ","
 
     if no_match_error:
