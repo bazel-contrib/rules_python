@@ -120,11 +120,11 @@ minimal overhead. As a result, users should configure their `pip.parse`
 calls and select which platforms they want to target via the
 {attr}`pip.parse.target_platforms` attribute:
 ```starlark
-    # Enable free threaded and non-freethreaded switching on the host platform
+    # Example of enabling free threaded and non-freethreaded switching on the host platform:
     target_platforms = ["{os}_{arch}", "{os}_{arch}_freethreaded"],
 
-    # Enable building for `linux_x86_64` containers and the host platform.
-    target_platforms = ["{os}_{arch}", "linux_x86_64"],
+    # As another example, to enable building for `linux_x86_64` containers and the host platform:
+    # target_platforms = ["{os}_{arch}", "linux_x86_64"],
 )
 ```
 
