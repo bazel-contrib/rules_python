@@ -137,19 +137,13 @@ def _pip_parse(self, module_ctx, pip_attr):
         return
 
     default_cross_setup = _set_get_index_urls(self, pip_attr)
-    target_platforms = pip_attr.target_platforms
-    if default_cross_setup and not target_platforms:
-        # TODO @aignas 2025-12-06: use target_platforms always even when the
-        # get_index_urls is set.
-        target_platforms = []
-    elif not target_platforms:
-        target_platforms = ["{os}_{arch}"]
-
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
         config = self._config,
-        target_platforms = target_platforms,
+        # TODO @aignas 2025-12-09: flip or part to default to 'os_arch' after
+        # VERSION_NEXT_FEATURE is released
+        target_platforms = pip_attr.target_platforms or ([] if default_cross_setup else ["{os}_{arch}"]),
     )
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
