@@ -305,6 +305,11 @@ dev_pip = use_extension(
         parallel_download = False,
         python_version = python_version,
         requirements_lock = "//docs:requirements.txt",
+        # Ensure that we are setting up the following platforms
+        target_platforms = [
+            "{os}_{arch}",
+            "{os}_{arch}_freethreaded",
+        ],
     )
     for python_version in [
         "3.9",
