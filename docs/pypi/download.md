@@ -113,6 +113,21 @@ This will not work for sdists with C extensions, but pure Python sdists may stil
 approach.
 :::
 
+By default, `rules_python` selects the host `{os}_{arch}` platform from its `MODULE.bazel`
+file. This means that `rules_python` by default does not provide cross-platform building support
+because some packages have very large wheels and users should be able to use `bazel query` with
+minimal overhead. As a result, users should configure their `pip.parse`
+calls and select which platforms they want to target via the
+{attr}`pip.parse.target_platforms` attribute:
+```starlark
+    # Example of enabling free threaded and non-freethreaded switching on the host platform:
+    target_platforms = ["{os}_{arch}", "{os}_{arch}_freethreaded"],
+
+    # As another example, to enable building for `linux_x86_64` containers and the host platform:
+    # target_platforms = ["{os}_{arch}", "linux_x86_64"],
+)
+```
+
 ### Using `download_only` attribute
 
 Let's say you have two requirements files:
