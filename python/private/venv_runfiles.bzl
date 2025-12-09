@@ -1,6 +1,7 @@
 """Code for constructing venvs."""
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load(
     ":common.bzl",
     "is_file",
@@ -57,7 +58,6 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
             if is_file(link_to):
                 symlink_from = "{}/{}".format(ctx.label.package, bin_venv_path)
                 runfiles_symlinks[symlink_from] = link_to
-
             else:
                 venv_link = ctx.actions.declare_symlink(bin_venv_path)
                 venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
@@ -76,14 +76,16 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
     )
 
 # Visible for testing
-def build_link_map(ctx, entries):
+def build_link_map(ctx, entries, return_conflicts = False):
     """Compute the mapping of venv paths to their backing objects.
-
 
     Args:
         ctx: {type}`ctx` current ctx.
         entries: {type}`list[VenvSymlinkEntry]` the entries that describe the
             venv-relative
+        return_conflicts: {type}`bool`. Only present for testing. If True,
+            also return a list of the groups that had overlapping paths and had
+            to be resolved and merged.
 
     Returns:
         {type}`dict[str, dict[str, str|File]]` Mappings of venv paths to their
@@ -113,6 +115,7 @@ def build_link_map(ctx, entries):
 
     # final paths to keep, grouped by kind
     keep_link_map = {}  # dict[str kind, dict[path, str|File]]
+    conflicts = [] if return_conflicts else None
     for kind, entries in entries_by_kind.items():
         # dict[str kind-relative path, str|File link_to]
         keep_kind_link_map = {}
@@ -128,12 +131,17 @@ def build_link_map(ctx, entries):
                 else:
                     keep_kind_link_map[entry.venv_path] = entry.link_to_path
             else:
+                if return_conflicts:
+                    conflicts.append(group)
+
                 # Merge a group of overlapping prefixes
                 _merge_venv_path_group(ctx, group, keep_kind_link_map)
 
         keep_link_map[kind] = keep_kind_link_map
-
-    return keep_link_map
+    if return_conflicts:
+        return keep_link_map, conflicts
+    else:
+        return keep_link_map
 
 def _group_venv_path_entries(entries):
     """Group entries by VenvSymlinkEntry.venv_path overlap.
@@ -236,17 +244,6 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 
     all_files = sorted(files, key = lambda f: f.short_path)
 
-    # We want to minimize the number of files symlinked. Ideally only
-    # the top-level directories under site-packages are symlinked.
-    # Unfortunately, shared libraries complicate matters: if a
-    # shared library's directory is linked, then the dynamic linker
-    # computes the wrong search path. To fix, we have to directly link
-    # shared libraries. This then means that all the parent directories of
-    # the shared library can't be linked directly.
-    # So what we do is identify the shared libraries, mark all their
-    # parent directories as "cannot be directly linked", then compute
-    # the files that can be linked with that constraint.
-
     # venv paths that cannot be directly linked. Dict acting as set.
     cannot_be_linked_directly = {}
 
@@ -257,7 +254,14 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # List of (File, str venv_path) tuples
     files_left_to_link = []
 
-    repo_runfiles_dirname = None
+    # We want to minimize the number of files symlinked. Ideally, only the
+    # top-level directories are symlinked. Unfortunately, shared libraries
+    # complicate matters: if a shared library's directory is linked, then the
+    # dynamic linker computes the wrong search path.
+    #
+    # To fix, we have to directly link shared libraries. This then means that
+    # all the parent directories of the shared library can't be linked
+    # directly.
     for src in all_files:
         if src.owner.repo_name != ctx.label.repo_name:
             # Files in other repos complicate symlink optimization, so
@@ -280,11 +284,13 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             )
             parent = paths.dirname(venv_path)
             for _ in range(len(venv_path) + 1):  # Iterate enough times to traverse up
-                if parent and parent != ".":
-                    cannot_be_linked_directly[parent] = True
-                    parent = paths.dirname(parent)
-                else:
+                if not parent:
                     break
+                if cannot_be_linked_directly.get(parent, False):
+                    # Already seen
+                    break
+                cannot_be_linked_directly[parent] = True
+                parent = paths.dirname(parent)
         else:
             files_left_to_link.append((src, venv_path))
 
@@ -298,7 +304,7 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 
     for src, venv_path in files_left_to_link:
         parent = paths.dirname(venv_path)
-        if not parent or parent == ".":
+        if not parent:
             # File in root, must be linked directly
             optimized_groups.setdefault(venv_path, [])
             optimized_groups[venv_path].append(src)
@@ -314,8 +320,8 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             venv_path = parent
             next_parent = paths.dirname(parent)
             for _ in range(len(venv_path) + 1):  # Iterate enough times
-                if next_parent and next_parent != ".":
-                    if not (next_parent in cannot_be_linked_directly):
+                if next_parent:
+                    if next_parent not in cannot_be_linked_directly:
                         venv_path = next_parent
                         next_parent = paths.dirname(next_parent)
                     else:
@@ -328,7 +334,7 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 
     repo_name = ctx.label.repo_name
     if repo_name == "":
-        repo_name = "_main"
+        repo_name = "_main" if BZLMOD_ENABLED else "__main__"
     runfiles_root_prefix = paths.join(repo_name, site_packages_root)
 
     # Finally, for each group, we create the VenvSymlinkEntry objects
@@ -339,14 +345,10 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             ).format(
                 venv_path = venv_path,
             ))
-        if len(files) == 1:
-            link_to_file = files[0]
-        else:
-            link_to_file = None
         venv_symlinks[venv_path] = VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
             link_to_path = paths.join(runfiles_root_prefix, venv_path),
-            link_to_file = link_to_file,
+            link_to_file = None,
             package = package,
             version = version_str,
             venv_path = venv_path,
