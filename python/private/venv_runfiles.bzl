@@ -3,7 +3,6 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load(
     ":common.bzl",
-    "PYTHON_FILE_EXTENSIONS",
     "is_file",
     "relative_path",
     "runfiles_root_path",
@@ -235,109 +234,126 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # Append slash to prevent incorrect prefix-string matches
     site_packages_root += "/"
 
-    # We have to build a list of (runfiles path, site-packages path) pairs of the files to
-    # create in the consuming binary's venv site-packages directory. To minimize the number of
-    # files to create, we just return the paths to the directories containing the code of
-    # interest.
-    #
-    # However, namespace packages complicate matters: multiple distributions install in the
-    # same directory in site-packages. This works out because they don't overlap in their
-    # files. Typically, they install to different directories within the namespace package
-    # directory. We also need to ensure that we can handle a case where the main package (e.g.
-    # airflow) has directories only containing data files and then namespace packages coming
-    # along and being next to it.
-    #
-    # Lastly we have to assume python modules just being `.py` files (e.g. typing-extensions)
-    # is just a single Python file.
-
-    dir_symlinks = {}  # dirname -> runfile path
-    venv_symlinks = []
-
-    # Sort so order is top-down
     all_files = sorted(files, key = lambda f: f.short_path)
 
+    # We want to minimize the number of files symlinked. Ideally only
+    # the top-level directories under site-packages are symlinked.
+    # Unfortunately, shared libraries complicate matters: if a
+    # shared library's directory is linked, then the dynamic linker
+    # computes the wrong search path. To fix, we have to directly link
+    # shared libraries. This then means that all the parent directories of
+    # the shared library can't be linked directly.
+    # So what we do is identify the shared libraries, mark all their
+    # parent directories as "cannot be directly linked", then compute
+    # the files that can be linked with that constraint.
+
+    # venv paths that cannot be directly linked. Dict acting as set.
+    cannot_be_linked_directly = {}
+
+    # dict[str path, VenvSymlinkEntry]
+    # Where path is the venv path (i.e. relative to site_packages_prefix)
+    venv_symlinks = {}
+
+    # List of (File, str venv_path) tuples
+    files_left_to_link = []
+
+    repo_runfiles_dirname = None
     for src in all_files:
-        path = _repo_relative_short_path(src.short_path)
-        if not path.startswith(site_packages_root):
+        if src.owner.repo_name != ctx.label.repo_name:
+            # Files in other repos complicate symlink optimization, so
+            # skip them for now.
             continue
-        path = path.removeprefix(site_packages_root)
-        dir_name, _, filename = path.rpartition("/")
-        runfiles_dir_name, _, _ = runfiles_root_path(ctx, src.short_path).partition("/")
-
+        repo_rel_path = _repo_relative_short_path(src.short_path)
+        if not repo_rel_path.startswith(site_packages_root):
+            continue
+        venv_path = repo_rel_path.removeprefix(site_packages_root)
+        filename = paths.basename(venv_path)
         if _is_linker_loaded_library(filename):
-            entry = VenvSymlinkEntry(
+            venv_symlinks[venv_path] = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
-                link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
+                link_to_path = runfiles_root_path(ctx, src.short_path),
                 link_to_file = src,
                 package = package,
                 version = version_str,
-                venv_path = path,
                 files = depset([src]),
+                venv_path = venv_path,
             )
-            venv_symlinks.append(entry)
+            parent = paths.dirname(venv_path)
+            for _ in range(len(venv_path) + 1):  # Iterate enough times to traverse up
+                if parent and parent != ".":
+                    cannot_be_linked_directly[parent] = True
+                    parent = paths.dirname(parent)
+                else:
+                    break
+        else:
+            files_left_to_link.append((src, venv_path))
+
+    # At this point, venv_symlinks has entries for the shared libraries
+    # and cannot_be_linked_directly has the directories that cannot be
+    # directly linked. Next, we loop over the remaining files and group
+    # them into the highest level directory that can be linked.
+
+    # dict[str venv_path, list[File]]
+    optimized_groups = {}
+
+    for src, venv_path in files_left_to_link:
+        parent = paths.dirname(venv_path)
+        if not parent or parent == ".":
+            # File in root, must be linked directly
+            optimized_groups.setdefault(venv_path, [])
+            optimized_groups[venv_path].append(src)
             continue
 
-        if dir_name in dir_symlinks:
-            # we already have this dir, this allows us to short-circuit since most of the
-            # ctx.files.data might share the same directories as ctx.files.srcs
-            continue
+        if parent in cannot_be_linked_directly:
+            # File in a directory that cannot be directly linked,
+            # so link the file directly
+            optimized_groups.setdefault(venv_path, [])
+            optimized_groups[venv_path].append(src)
+        else:
+            # This path can be grouped. Find the highest-level directory to link.
+            venv_path = parent
+            next_parent = paths.dirname(parent)
+            for _ in range(len(venv_path) + 1):  # Iterate enough times
+                if next_parent and next_parent != ".":
+                    if not (next_parent in cannot_be_linked_directly):
+                        venv_path = next_parent
+                        next_parent = paths.dirname(next_parent)
+                    else:
+                        break
+                else:
+                    break
 
-        if dir_name:
-            # This can be either:
-            # * a directory with libs (e.g. numpy.libs, created by auditwheel)
-            # * a directory with `__init__.py` file that potentially also needs to be
-            #   symlinked.
-            # * `.dist-info` directory
-            #
-            # This could be also regular files, that just need to be symlinked, so we will
-            # add the directory here.
-            dir_symlinks[dir_name] = runfiles_dir_name
-        elif src.extension in PYTHON_FILE_EXTENSIONS:
-            # This would be files that do not have directories and we just need to add
-            # direct symlinks to them as is, we only allow Python files in here
-            entry = VenvSymlinkEntry(
-                kind = VenvSymlinkKind.LIB,
-                link_to_path = paths.join(runfiles_dir_name, site_packages_root, filename),
-                link_to_file = src,
-                package = package,
-                version = version_str,
-                venv_path = path,
-                files = depset([src]),
-            )
-            venv_symlinks.append(entry)
+            optimized_groups.setdefault(venv_path, [])
+            optimized_groups[venv_path].append(src)
 
-    # Sort so that we encounter `foo` before `foo/bar`. This ensures we
-    # see the top-most explicit package first.
-    dirnames = sorted(dir_symlinks.keys())
-    first_level_explicit_packages = []
-    for d in dirnames:
-        is_sub_package = False
-        for existing in first_level_explicit_packages:
-            # Suffix with / to prevent foo matching foobar
-            if d.startswith(existing + "/"):
-                is_sub_package = True
-                break
-        if not is_sub_package:
-            first_level_explicit_packages.append(d)
+    repo_name = ctx.label.repo_name
+    if repo_name == "":
+        repo_name = "_main"
+    runfiles_root_prefix = paths.join(repo_name, site_packages_root)
 
-    for dirname in first_level_explicit_packages:
-        prefix = dir_symlinks[dirname]
-        link_to_path = paths.join(prefix, site_packages_root, dirname)
-        entry = VenvSymlinkEntry(
+    # Finally, for each group, we create the VenvSymlinkEntry objects
+    for venv_path, files in optimized_groups.items():
+        if venv_path in venv_symlinks:
+            fail((
+                "duplicate entry: {venv_path}"
+            ).format(
+                venv_path = venv_path,
+            ))
+        if len(files) == 1:
+            link_to_file = files[0]
+        else:
+            link_to_file = None
+        venv_symlinks[venv_path] = VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
-            link_to_path = link_to_path,
+            link_to_path = paths.join(runfiles_root_prefix, venv_path),
+            link_to_file = link_to_file,
             package = package,
             version = version_str,
-            venv_path = dirname,
-            files = depset([
-                f
-                for f in all_files
-                if runfiles_root_path(ctx, f.short_path).startswith(link_to_path + "/")
-            ]),
+            venv_path = venv_path,
+            files = depset(files),
         )
-        venv_symlinks.append(entry)
 
-    return venv_symlinks
+    return venv_symlinks.values()
 
 def _is_linker_loaded_library(filename):
     """Tells if a filename is one that `dlopen()` or the runtime linker handles.
