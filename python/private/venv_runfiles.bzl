@@ -1,7 +1,6 @@
 """Code for constructing venvs."""
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load(
     ":common.bzl",
     "is_file",
@@ -264,7 +263,7 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # directly.
     for src in all_files:
         rf_root_path = runfiles_root_path(ctx, src.short_path)
-        repo, _, repo_rel_path = rf_root_path.partition("/")
+        _, _, repo_rel_path = rf_root_path.partition("/")
         head, found_sp_root, venv_path = repo_rel_path.partition(site_packages_root)
         if head or not found_sp_root:
             # If head is set, then the path didn't start with site_packages_root
