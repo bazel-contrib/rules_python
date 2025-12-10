@@ -58,7 +58,7 @@ def _modules_mapping_impl(ctx):
 
     ctx.actions.run(
         inputs = per_wheel_outputs,
-        mnemonic = "PyModMapMerge",
+        mnemonic = "PyGazelleModMapMerge",
         outputs = [modules_mapping],
         executable = ctx.executable._merger,
         arguments = [merge_args],
