@@ -333,12 +333,6 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 
     # Finally, for each group, we create the VenvSymlinkEntry objects
     for venv_path, files in optimized_groups.items():
-        if venv_path in venv_symlinks:
-            fail((
-                "duplicate entry: {venv_path}"
-            ).format(
-                venv_path = venv_path,
-            ))
         link_to_path = (
             _get_label_runfiles_repo(ctx, files[0].owner) +
             "/" +
