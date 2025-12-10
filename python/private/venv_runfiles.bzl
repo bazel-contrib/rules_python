@@ -263,19 +263,19 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # all the parent directories of the shared library can't be linked
     # directly.
     for src in all_files:
-        if src.owner.repo_name != ctx.label.repo_name:
-            # Files in other repos complicate symlink optimization, so
-            # skip them for now.
+        rf_root_path = runfiles_root_path(ctx, src.short_path)
+        repo, _, repo_rel_path = rf_root_path.partition("/")
+        head, found_sp_root, venv_path = repo_rel_path.partition(site_packages_root)
+        if head or not found_sp_root:
+            # If head is set, then the path didn't start with site_packages_root
+            # if found_sp_root is empty, then it means it wasn't found at all.
             continue
-        repo_rel_path = _repo_relative_short_path(src.short_path)
-        if not repo_rel_path.startswith(site_packages_root):
-            continue
-        venv_path = repo_rel_path.removeprefix(site_packages_root)
+
         filename = paths.basename(venv_path)
         if _is_linker_loaded_library(filename):
             venv_symlinks[venv_path] = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
-                link_to_path = runfiles_root_path(ctx, src.short_path),
+                link_to_path = rf_root_path,
                 link_to_file = src,
                 package = package,
                 version = version_str,
@@ -332,11 +332,6 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             optimized_groups.setdefault(venv_path, [])
             optimized_groups[venv_path].append(src)
 
-    repo_name = ctx.label.repo_name
-    if repo_name == "":
-        repo_name = "_main" if BZLMOD_ENABLED else "__main__"
-    runfiles_root_prefix = paths.join(repo_name, site_packages_root)
-
     # Finally, for each group, we create the VenvSymlinkEntry objects
     for venv_path, files in optimized_groups.items():
         if venv_path in venv_symlinks:
@@ -345,9 +340,15 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             ).format(
                 venv_path = venv_path,
             ))
+        link_to_path = (
+            _get_label_runfiles_repo(ctx, files[0].owner) +
+            "/" +
+            site_packages_root +
+            venv_path
+        )
         venv_symlinks[venv_path] = VenvSymlinkEntry(
             kind = VenvSymlinkKind.LIB,
-            link_to_path = paths.join(runfiles_root_prefix, venv_path),
+            link_to_path = link_to_path,
             link_to_file = None,
             package = package,
             version = version_str,
@@ -375,9 +376,10 @@ def _is_linker_loaded_library(filename):
         return True
     return False
 
-def _repo_relative_short_path(short_path):
-    # Convert `../+pypi+foo/some/file.py` to `some/file.py`
-    if short_path.startswith("../"):
-        return short_path[3:].partition("/")[2]
+def _get_label_runfiles_repo(ctx, label):
+    repo = label.repo_name
+    if repo:
+        return repo
     else:
-        return short_path
+        # For files, empty repo means the main repo
+        return ctx.workspace_name

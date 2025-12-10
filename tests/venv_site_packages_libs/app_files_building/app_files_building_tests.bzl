@@ -30,11 +30,10 @@ _tests = []
 # Under workspace, the workspace name is the name configured in WORKSPACE,
 # or "__main__" if was unspecified.
 # NOTE: ctx.workspace_name is always the root workspace, not the workspace
-# of the target being processed.
+# of the target being processed (ctx.label).
 def _ctx(workspace_name = "_main"):
     return struct(
         workspace_name = workspace_name,
-        label = Label("//:some_target"),
     )
 
 def _file(short_path):
