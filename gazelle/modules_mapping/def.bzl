@@ -43,6 +43,7 @@ def _modules_mapping_impl(ctx):
 
         ctx.actions.run(
             inputs = [whl],
+            mnemonic = "PyModMapGen",
             outputs = [wheel_modules_mapping],
             executable = ctx.executable._generator,
             arguments = [args],
@@ -57,6 +58,7 @@ def _modules_mapping_impl(ctx):
 
     ctx.actions.run(
         inputs = per_wheel_outputs,
+        mnemonic = "PyModMapMerge",
         outputs = [modules_mapping],
         executable = ctx.executable._merger,
         arguments = [merge_args],
