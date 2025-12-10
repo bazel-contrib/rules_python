@@ -14,7 +14,6 @@
 
 "pip module extension for use with bzlmod"
 
-load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
@@ -385,13 +384,9 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    if bazel_features.external_deps.extension_metadata_has_reproducible:
-        # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
-        # results after calling the PyPI index should be reproducible on each
-        # machine.
-        return module_ctx.extension_metadata(reproducible = True)
-    else:
-        return None
+    return module_ctx.extension_metadata(
+        reproducible = True,
+    )
 
 _default_attrs = {
     "arch_name": attr.string(
