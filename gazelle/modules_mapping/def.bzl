@@ -43,7 +43,7 @@ def _modules_mapping_impl(ctx):
 
         ctx.actions.run(
             inputs = [whl],
-            mnemonic = "PyModMapGen",
+            mnemonic = "PyGazelleModMapGen",
             outputs = [wheel_modules_mapping],
             executable = ctx.executable._generator,
             arguments = [args],
