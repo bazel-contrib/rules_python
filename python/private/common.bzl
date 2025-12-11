@@ -490,6 +490,8 @@ def maybe_add_test_execution_info(providers, ctx):
     # TODO(b/176993122): Remove when bazel automatically knows to run on darwin.
     if target_platform_has_any_constraint(ctx, ctx.attr._apple_constraints):
         providers.append(_testing.ExecutionInfo({"requires-darwin": ""}))
+    if target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints):
+        providers.append(RunEnvironmentInfo(inherited_environment = ["PATH"]))
 
 _BOOL_TYPE = type(True)
 
