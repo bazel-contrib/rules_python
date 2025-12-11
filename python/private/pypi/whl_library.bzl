@@ -377,7 +377,9 @@ def _whl_library_impl(rctx):
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
-        # Extracting .whl files requires Bazel 8.3.0 or later.
+        # Extracting .whl files requires Bazel 8.3.0 or later, so require a
+        # minimum of Bazel 9.0.0 to ensure compatibilty with earlier versions
+        # of Bazel 8.
         if rp_config.bazel_9_or_later:
             extract_path = whl_path
         else:
