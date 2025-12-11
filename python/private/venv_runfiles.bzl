@@ -13,6 +13,7 @@ load(
     "VenvSymlinkEntry",
     "VenvSymlinkKind",
 )
+load(":py_internal.bzl", "py_internal")
 
 def create_venv_app_files(ctx, deps, venv_dir_map):
     """Creates the tree of app-specific files for a venv for a binary.
@@ -253,6 +254,9 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # List of (File, str venv_path) tuples
     files_left_to_link = []
 
+    # dict[str dirname, bool is_namespace_package]
+    namespace_package_dirs = {}
+
     # We want to minimize the number of files symlinked. Ideally, only the
     # top-level directories are symlinked. Unfortunately, shared libraries
     # complicate matters: if a shared library's directory is linked, then the
@@ -292,6 +296,29 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
                 parent = paths.dirname(parent)
         else:
             files_left_to_link.append((src, venv_path))
+
+        top_level_dirname, _, tail = venv_path.partition("/")
+        if (
+            # If it's already not directly linkable, nothing to do
+            not cannot_be_linked_directly.get(top_level_dirname, False) and
+            # If its already known to be non-implicit namespace, then skip
+            namespace_package_dirs.get(top_level_dirname, True) and
+            # It must be an importable name to be an implicit namespace package
+            py_internal.regex_match(top_level_dirname, "(?U)\\w+")
+        ):
+            namespace_package_dirs.setdefault(top_level_dirname, True)
+
+            # Looking for `__init__.` isn't 100% correct, as it'll match e.g.
+            # `__init__.pyi`, but it's close enough.
+            if "/" not in tail and tail.startswith("__init__."):
+                namespace_package_dirs[top_level_dirname] = False
+
+    # We treat namespace packages as a hint that other distributions may
+    # install into the same directory. As such, we avoid linking them directly
+    # to avoid conflict merging later.
+    for dirname, is_namespace_package in namespace_package_dirs.items():
+        if is_namespace_package:
+            cannot_be_linked_directly[dirname] = True
 
     # At this point, venv_symlinks has entries for the shared libraries
     # and cannot_be_linked_directly has the directories that cannot be
