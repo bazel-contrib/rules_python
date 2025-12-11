@@ -17,7 +17,9 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load(":attr_builders.bzl", "attrb")
 load(
@@ -33,7 +35,6 @@ load(
     "apply_config_settings_attr",
 )
 load(":builders.bzl", "builders")
-load(":cc_helper.bzl", "cc_helper")
 load(
     ":common.bzl",
     "collect_cc_info",
@@ -1435,7 +1436,7 @@ def _write_build_data(ctx, central_uncachable_version_file, extra_write_build_da
             # https://github.com/bazelbuild/bazel/issues/9363
             "INFO_FILE": ctx.info_file.path,
             "OUTPUT": build_data.path,
-            "PLATFORM": cc_helper.find_cpp_toolchain(ctx).toolchain_id,
+            "PLATFORM": find_cc_toolchain(ctx).toolchain_id,
             "TARGET": str(ctx.label),
             "VERSION_FILE": version_file.path,
         }, extra_write_build_data_env),

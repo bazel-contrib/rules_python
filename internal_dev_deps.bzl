@@ -238,9 +238,9 @@ def rules_python_internal_deps():
 
     http_archive(
         name = "rules_cc",
-        urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
-        sha256 = "b8b918a85f9144c01f6cfe0f45e4f2838c7413961a8ff23bc0c6cdf8bb07a3b6",
-        strip_prefix = "rules_cc-0.1.5",
+        sha256 = "ae244f400218f4a12ee81658ff246c0be5cb02c5ca2de5519ed505a6795431e9",
+        strip_prefix = "rules_cc-0.2.0",
+        url = "https://github.com/bazelbuild/rules_cc/releases/download/0.2.0/rules_cc-0.2.0.tar.gz",
     )
 
     http_archive(

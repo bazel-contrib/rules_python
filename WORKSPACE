@@ -68,6 +68,10 @@ load("//:internal_dev_setup.bzl", "rules_python_internal_setup")
 
 rules_python_internal_setup()
 
+load("@rules_cc//cc:extensions.bzl", _cc_compatibility_proxy_repo = "compatibility_proxy_repo")
+
+_cc_compatibility_proxy_repo()
+
 load("@pythons_hub//:versions.bzl", "PYTHON_VERSIONS")
 load("//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
 
