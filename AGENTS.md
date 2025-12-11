@@ -27,6 +27,19 @@ end of the documentation text.
 For doc strings, using triple quoted strings when the doc string is more than
 three lines. Do not use a trailing backslack (`\`) for the opening triple-quote.
 
+### Starlark Code
+
+Starlark does not support recursion. Use iterative algorithms instead.
+
+Starlark does not support `while` loops. Use `for` loop with an appropriately
+sized iterable instead.
+
+#### Repository rules
+
+The function argument `rctx` is a hint that the function is a repository rule.
+
+The `repository_ctx` API docs are at: https://bazel.build/rules/lib/builtins/repository_ctx
+
 ### bzl_library targets for bzl source files
 
 * A `bzl_library` target should be defined for every `.bzl` file outside

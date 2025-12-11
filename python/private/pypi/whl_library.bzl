@@ -18,7 +18,9 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
+load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
+load("//python/private:util.bzl", "is_importable_name")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
@@ -389,11 +391,13 @@ def _whl_library_impl(rctx):
         if not rp_config.supports_whl_extraction:
             rctx.delete(extract_path)
 
+        install_dir_path = whl_path.dirname.get_child("site-packages")
         metadata = whl_metadata(
-            install_dir = whl_path.dirname.get_child("site-packages"),
+            install_dir = install_dir_path,
             read_fn = rctx.read,
             logger = logger,
         )
+        namespace_package_files = _find_namespace_package_files(rctx, install_dir_path)
 
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
@@ -437,6 +441,7 @@ def _whl_library_impl(rctx):
             data_exclude = rctx.attr.pip_data_exclude,
             group_deps = rctx.attr.group_deps,
             group_name = rctx.attr.group_name,
+            namespace_package_files = namespace_package_files,
         )
     else:
         target_platforms = rctx.attr.experimental_target_platforms or []
@@ -496,6 +501,8 @@ def _whl_library_impl(rctx):
             )
             entry_points[entry_point_without_py] = entry_point_script_name
 
+        namespace_package_files = _find_namespace_package_files(rctx, rctx.path("site-packages"))
+
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
             sdist_filename = sdist_filename,
@@ -514,6 +521,7 @@ def _whl_library_impl(rctx):
                 "pypi_name={}".format(metadata["name"]),
                 "pypi_version={}".format(metadata["version"]),
             ],
+            namespace_package_files = namespace_package_files,
         )
 
     # Delete these in case the wheel had them. They generally don't cause
@@ -565,6 +573,45 @@ if __name__ == "__main__":
         attribute = attribute,
     )
     return contents
+
+def _find_namespace_package_files(rctx, install_dir):
+    """Finds all `__init__.py` files that belong to namespace packages.
+
+    A `__init__.py` file belongs to a namespace package if it contains `__path__ =`,
+    `pkgutil`, and `extend_path(`.
+
+    Args:
+        rctx (repository_ctx): The repository context.
+        install_dir (path): The path to the install directory.
+
+    Returns:
+        list[str]: A list of relative paths to `__init__.py` files that belong
+            to namespace packages.
+    """
+
+    repo_root = str(rctx.path(".")) + "/"
+    if "nvidia" in repo_root:
+        print("============== nvidia")
+    namespace_package_files = []
+    print("install_dir:", install_dir)
+    for top_level_dir in install_dir.readdir():
+        print("tld:", top_level_dir)
+        if not is_importable_name(top_level_dir.basename):
+            continue
+        init_py = top_level_dir.get_child("__init__.py")
+        if not init_py.exists:
+            continue
+        print("found tld init:", init_py)
+        content = rctx.read(init_py)
+
+        # Look for code resembling the pkgutil namespace setup code:
+        # __path__ = __import__("pkgutil").extend_path(__path__, __name__)
+        if ("__path__ =" in content and
+            "pkgutil" in content and
+            "extend_path(" in content):
+            namespace_package_files.append(str(init_py).removeprefix(repo_root))
+
+    return namespace_package_files
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
 whl_library_attrs = dict({

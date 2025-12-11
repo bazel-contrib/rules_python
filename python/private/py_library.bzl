@@ -59,6 +59,11 @@ LIBRARY_ATTRS = dicts.add(
     PY_SRCS_ATTRS,
     IMPORTS_ATTRS,
     {
+        "namespace_package_files": lambda: attrb.LabelList(
+            allow_empty = True,
+            allow_files = True,
+            doc = "The files that make up a namespace package.",
+        ),
         "experimental_venvs_site_packages": lambda: attrb.Label(
             doc = """
 **INTERNAL ATTRIBUTE. SHOULD ONLY BE SET BY rules_python-INTERNAL CODE.**
@@ -251,6 +256,7 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
             package,
             version_str,
             site_packages_root = imports[0],
+            namespace_package_files = ctx.files.namespace_package_files,
         )
     else:
         imports = collect_imports(ctx, semantics)

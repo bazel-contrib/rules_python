@@ -123,6 +123,7 @@ def whl_library_targets(
         entry_points = {},
         native = native,
         enable_implicit_namespace_pkgs = False,
+        namespace_package_files = [],
         rules = struct(
             copy_file = copy_file,
             py_binary = py_binary,
@@ -364,7 +365,7 @@ def whl_library_targets(
         )
 
         if not enable_implicit_namespace_pkgs:
-            srcs = srcs + select({
+            generated_namespace_package_files = select({
                 Label("//python/config_settings:is_venvs_site_packages"): [],
                 "//conditions:default": rules.create_inits(
                     srcs = srcs + data + pyi_srcs,
@@ -372,6 +373,8 @@ def whl_library_targets(
                     root = "site-packages",
                 ),
             })
+            namespace_package_files += generated_namespace_package_files
+            srcs = srcs + generated_namespace_package_files
 
         rules.py_library(
             name = py_library_label,
@@ -390,6 +393,7 @@ def whl_library_targets(
             tags = tags,
             visibility = impl_vis,
             experimental_venvs_site_packages = Label("@rules_python//python/config_settings:venvs_site_packages"),
+            namespace_package_files = namespace_package_files,
         )
 
 def _config_settings(dependencies_by_platform, dependencies_with_markers, rules, native = native, **kwargs):
