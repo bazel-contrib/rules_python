@@ -215,6 +215,21 @@ def _merge_venv_path_group(ctx, group, keep_map):
             if venv_path not in keep_map:
                 keep_map[venv_path] = file
 
+def _is_importable_name(name):
+    # Requires Bazel 8+
+    if hasattr(py_internal, "regex_match"):
+        # ?U means activates unicode matching (Python allows most unicode
+        # in module names / identifiers).
+        # \w matches alphanumeric and underscore.
+        # NOTE: regex_match has an implicit ^ and $
+        return py_internal.regex_match(name, "(?U)\\w+")
+    else:
+        # Otherwise, use a rough hueristic that should catch most cases.
+        return (
+            "." not in name and
+            "-" not in name
+        )
+
 def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     """Compute the VenvSymlinkEntry objects for a library.
 
@@ -304,7 +319,7 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
             # If its already known to be non-implicit namespace, then skip
             namespace_package_dirs.get(top_level_dirname, True) and
             # It must be an importable name to be an implicit namespace package
-            py_internal.regex_match(top_level_dirname, "(?U)\\w+")
+            _is_importable_name(top_level_dirname)
         ):
             namespace_package_dirs.setdefault(top_level_dirname, True)
 

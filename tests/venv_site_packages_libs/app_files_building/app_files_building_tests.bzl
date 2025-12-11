@@ -269,9 +269,11 @@ def _test_optimized_grouping_implicit_namespace_packages(name):
     empty_files(
         name = name + "_files",
         paths = [
-            "site-packages/namespace/part1/foo.py",
-            "site-packages/namespace/part2/bar.py",
-            "site-packages/namespace-1.0.dist-info/METADATA",
+            # NOTE: An alphanumeric name with underscores is used to verify
+            # name matching is correct.
+            "site-packages/name_space9/part1/foo.py",
+            "site-packages/name_space9/part2/bar.py",
+            "site-packages/name_space9-1.0.dist-info/METADATA",
         ],
     )
     analysis_test(
@@ -296,24 +298,24 @@ def _test_optimized_grouping_implicit_namespace_packages_impl(env, target):
     rr = "{}/{}/site-packages/".format(test_ctx.workspace_name, env.ctx.label.package)
     expected = [
         _venv_symlink(
-            "namespace/part1",
-            link_to_path = rr + "namespace/part1",
+            "name_space9/part1",
+            link_to_path = rr + "name_space9/part1",
             files = [
-                "tests/venv_site_packages_libs/app_files_building/site-packages/namespace/part1/foo.py",
+                "tests/venv_site_packages_libs/app_files_building/site-packages/name_space9/part1/foo.py",
             ],
         ),
         _venv_symlink(
-            "namespace/part2",
-            link_to_path = rr + "namespace/part2",
+            "name_space9/part2",
+            link_to_path = rr + "name_space9/part2",
             files = [
-                "tests/venv_site_packages_libs/app_files_building/site-packages/namespace/part2/bar.py",
+                "tests/venv_site_packages_libs/app_files_building/site-packages/name_space9/part2/bar.py",
             ],
         ),
         _venv_symlink(
-            "namespace-1.0.dist-info",
-            link_to_path = rr + "namespace-1.0.dist-info",
+            "name_space9-1.0.dist-info",
+            link_to_path = rr + "name_space9-1.0.dist-info",
             files = [
-                "tests/venv_site_packages_libs/app_files_building/site-packages/namespace-1.0.dist-info/METADATA",
+                "tests/venv_site_packages_libs/app_files_building/site-packages/name_space9-1.0.dist-info/METADATA",
             ],
         ),
     ]
