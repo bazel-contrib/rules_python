@@ -16,4 +16,5 @@ dependencies = [
     "pefile",
     "pyelftools",
     "macholib",
+    "torch",
 ]

@@ -47,6 +47,10 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
         ],
     ).to_list()
 
+    for e in entries:
+        if "nvidia/" in e.venv_path:
+            print(e.venv_path, e.link_to_path)
+
     link_map = build_link_map(ctx, entries)
     venv_files = []
     runfiles_symlinks = {}
@@ -55,6 +59,8 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
         base = venv_dir_map[kind]
         for venv_path, link_to in kind_map.items():
             bin_venv_path = paths.join(base, venv_path)
+            if "nvidia/__init__.py" in bin_venv_path:
+                fail("hit", venv_path, link_to)
             if is_file(link_to):
                 symlink_from = "{}/{}".format(ctx.label.package, bin_venv_path)
                 runfiles_symlinks[symlink_from] = link_to
@@ -160,6 +166,7 @@ def _group_venv_path_entries(entries):
     # `foo foo/bar foo-bar`
     entries = sorted(entries, key = lambda e: tuple(e.venv_path.split("/")))
 
+    print("==== grouping entries")
     groups = []
     current_group = None
     current_group_prefix = None
@@ -171,8 +178,12 @@ def _group_venv_path_entries(entries):
             current_group_prefix = anchored_prefix
             current_group = [entry]
             groups.append(current_group)
+            print("== start group:", current_group_prefix)
+            print("start on file?", entry.link_to_file)
+            print("add", entry.venv_path)
         else:
             current_group.append(entry)
+            print("add", entry.venv_path)
 
     return groups
 
