@@ -29,6 +29,7 @@ _ENABLE_DEPRECATION_WARNINGS_DEFAULT = "0"
 _CONFIG_TEMPLATE = """
 config = struct(
   build_python_zip_default = {build_python_zip_default},
+  supports_whl_extraction = {supports_whl_extraction},
   enable_pystar = True,
   enable_pipstar = {enable_pipstar},
   enable_deprecation_warnings = {enable_deprecation_warnings},
@@ -91,8 +92,20 @@ _TRANSITION_SETTINGS_DEBUG_TEMPLATE = """
 def _internal_config_repo_impl(rctx):
     # An empty version signifies a development build, which is treated as
     # the latest version.
-    bazel_major_version = int(native.bazel_version.split(".")[0]) if native.bazel_version else 99999
+    if native.bazel_version:
+        version_parts = native.bazel_version.split(".")
+        bazel_major_version = int(version_parts[0])
+        bazel_minor_version = int(version_parts[1])
+    else:
+        bazel_major_version = 99999
+        bazel_minor_version = 99999
+
+    supports_whl_extraction = False
     if bazel_major_version >= 8:
+        # Extracting .whl files requires Bazel 8.3.0 or later.
+        if bazel_major_version > 8 or bazel_minor_version >= 3:
+            supports_whl_extraction = True
+
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
@@ -107,6 +120,7 @@ def _internal_config_repo_impl(rctx):
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
+        supports_whl_extraction = str(supports_whl_extraction),
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
         bazel_8_or_later = str(bazel_major_version >= 8),
         bazel_9_or_later = str(bazel_major_version >= 9),
