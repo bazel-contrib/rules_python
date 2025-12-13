@@ -119,22 +119,16 @@ bzl_library(
 )
 
 bzl_library(
-    name = "cc_helper_bzl",
-    srcs = ["cc_helper.bzl"],
-    deps = [":py_internal_bzl"],
-)
-
-bzl_library(
     name = "common_bzl",
     srcs = ["common.bzl"],
     deps = [
-        ":cc_helper_bzl",
         ":py_cc_link_params_info_bzl",
         ":py_info_bzl",
         ":py_internal_bzl",
         ":reexports_bzl",
         ":rules_cc_srcs_bzl",
         "@bazel_skylib//lib:paths",
+        "@rules_cc//cc/common:cc_helper_bzl",
     ],
 )
 
@@ -404,7 +398,6 @@ bzl_library(
     srcs = ["py_executable.bzl"],
     deps = [
         ":attributes_bzl",
-        ":cc_helper_bzl",
         ":common_bzl",
         ":common_labels_bzl",
         ":flags_bzl",
@@ -422,6 +415,7 @@ bzl_library(
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:structs",
         "@bazel_skylib//rules:common_settings",
+        "@rules_cc//cc/common:cc_helper_bzl",
     ],
 )
 
