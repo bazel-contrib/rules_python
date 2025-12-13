@@ -163,8 +163,10 @@ def _group_venv_path_entries(entries):
     current_group = None
     current_group_prefix = None
     for entry in entries:
-        prefix = entry.venv_path
-        anchored_prefix = prefix + "/"
+        # NOTE: When a file is being directly linked, the anchored prefix can look
+        # odd, e.g. "foo/__init__.py/". This is OK; it's just used to prevent
+        # incorrect prefix substring matching.
+        anchored_prefix = entry.venv_path + "/"
         if (current_group_prefix == None or
             not anchored_prefix.startswith(current_group_prefix)):
             current_group_prefix = anchored_prefix
@@ -193,26 +195,41 @@ def _merge_venv_path_group(ctx, group, keep_map):
     # be symlinked directly, not the directory containing them, due to
     # dynamic linker symlink resolution semantics on Linux.
     for entry in group:
-        prefix = entry.venv_path
+        root_venv_path = entry.venv_path
+        anchored_link_to_path = entry.link_to_path + "/"
         for file in entry.files.to_list():
-            # Compute the file-specific venv path. i.e. the relative
-            # path of the file under entry.venv_path, joined with
-            # entry.venv_path
             rf_root_path = runfiles_root_path(ctx, file.short_path)
-            if not rf_root_path.startswith(entry.link_to_path):
-                # This generally shouldn't occur in practice, but just
-                # in case, skip them, for lack of a better option.
-                continue
-            venv_path = "{}/{}".format(
-                prefix,
-                rf_root_path.removeprefix(entry.link_to_path + "/"),
-            )
 
-            # For lack of a better option, first added wins. We happen to
-            # go in top-down prefix order, so the highest level namespace
-            # package typically wins.
-            if venv_path not in keep_map:
-                keep_map[venv_path] = file
+            # It's a file (or directory) being directly linked and
+            # must be directly linked.
+            if rf_root_path == entry.link_to_path:
+                # For lack of a better option, first added wins.
+                if entry.venv_path not in keep_map:
+                    keep_map[entry.venv_path] = file
+
+                # Skip anything remaining: anything left is either
+                # the same path (first set wins), a suffix (violates
+                # preconditions and can't link anyways), or not under
+                # the prefix (violates preconditions).
+                break
+            else:
+                # Compute the file-specific venv path. i.e. the relative
+                # path of the file under entry.venv_path, joined with
+                # entry.venv_path
+                head, match, rel_venv_path = rf_root_path.partition(anchored_link_to_path)
+                if not match or head:
+                    # If link_to_path didn't match, then obviously skip.
+                    # If head is non-empty, it means link_to_path wasn't
+                    # found at the start
+                    # This shouldn't occur in practice, but guard against it
+                    # just in case
+                    continue
+
+                venv_path = paths.join(root_venv_path, rel_venv_path)
+
+                # For lack of a better option, first added wins.
+                if venv_path not in keep_map:
+                    keep_map[venv_path] = file
 
 def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     """Compute the VenvSymlinkEntry objects for a library.

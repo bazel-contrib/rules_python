@@ -175,6 +175,9 @@ sphinx_build_binary(
         requirement("typing_extensions"),
         requirement("sphinx_autodoc2"),
         requirement("sphinx_reredirects"),
+        requirement("nvidia-cublas-cu12"),
+        requirement("nvidia-cuda-cupti-cu12"),
+        requirement("torch"),
         "//sphinxdocs/src/sphinx_bzl",
     ],
 )
