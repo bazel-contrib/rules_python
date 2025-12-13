@@ -28,6 +28,7 @@ def _directory_writer_impl(ctx):
 
     ctx.actions.run(
         outputs = [output],
+        mnemonic = "PyDirWriter",
         arguments = [args],
         executable = ctx.executable._writer,
     )
