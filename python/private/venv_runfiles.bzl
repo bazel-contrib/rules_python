@@ -13,6 +13,7 @@ load(
     "VenvSymlinkEntry",
     "VenvSymlinkKind",
 )
+load(":py_internal.bzl", "py_internal")
 
 def create_venv_app_files(ctx, deps, venv_dir_map):
     """Creates the tree of app-specific files for a venv for a binary.
@@ -163,8 +164,10 @@ def _group_venv_path_entries(entries):
     current_group = None
     current_group_prefix = None
     for entry in entries:
-        prefix = entry.venv_path
-        anchored_prefix = prefix + "/"
+        # NOTE: When a file is being directly linked, the anchored prefix can look
+        # odd, e.g. "foo/__init__.py/". This is OK; it's just used to prevent
+        # incorrect prefix substring matching.
+        anchored_prefix = entry.venv_path + "/"
         if (current_group_prefix == None or
             not anchored_prefix.startswith(current_group_prefix)):
             current_group_prefix = anchored_prefix
@@ -193,26 +196,56 @@ def _merge_venv_path_group(ctx, group, keep_map):
     # be symlinked directly, not the directory containing them, due to
     # dynamic linker symlink resolution semantics on Linux.
     for entry in group:
-        prefix = entry.venv_path
+        root_venv_path = entry.venv_path
+        anchored_link_to_path = entry.link_to_path + "/"
         for file in entry.files.to_list():
-            # Compute the file-specific venv path. i.e. the relative
-            # path of the file under entry.venv_path, joined with
-            # entry.venv_path
             rf_root_path = runfiles_root_path(ctx, file.short_path)
-            if not rf_root_path.startswith(entry.link_to_path):
-                # This generally shouldn't occur in practice, but just
-                # in case, skip them, for lack of a better option.
-                continue
-            venv_path = "{}/{}".format(
-                prefix,
-                rf_root_path.removeprefix(entry.link_to_path + "/"),
-            )
 
-            # For lack of a better option, first added wins. We happen to
-            # go in top-down prefix order, so the highest level namespace
-            # package typically wins.
-            if venv_path not in keep_map:
-                keep_map[venv_path] = file
+            # It's a file (or directory) being directly linked and
+            # must be directly linked.
+            if rf_root_path == entry.link_to_path:
+                # For lack of a better option, first added wins.
+                if entry.venv_path not in keep_map:
+                    keep_map[entry.venv_path] = file
+
+                # Skip anything remaining: anything left is either
+                # the same path (first set wins), a suffix (violates
+                # preconditions and can't link anyways), or not under
+                # the prefix (violates preconditions).
+                break
+            else:
+                # Compute the file-specific venv path. i.e. the relative
+                # path of the file under entry.venv_path, joined with
+                # entry.venv_path
+                head, match, rel_venv_path = rf_root_path.partition(anchored_link_to_path)
+                if not match or head:
+                    # If link_to_path didn't match, then obviously skip.
+                    # If head is non-empty, it means link_to_path wasn't
+                    # found at the start
+                    # This shouldn't occur in practice, but guard against it
+                    # just in case
+                    continue
+
+                venv_path = paths.join(root_venv_path, rel_venv_path)
+
+                # For lack of a better option, first added wins.
+                if venv_path not in keep_map:
+                    keep_map[venv_path] = file
+
+def _is_importable_name(name):
+    # Requires Bazel 8+
+    if hasattr(py_internal, "regex_match"):
+        # ?U means activates unicode matching (Python allows most unicode
+        # in module names / identifiers).
+        # \w matches alphanumeric and underscore.
+        # NOTE: regex_match has an implicit ^ and $
+        return py_internal.regex_match(name, "(?U)\\w+")
+    else:
+        # Otherwise, use a rough hueristic that should catch most cases.
+        return (
+            "." not in name and
+            "-" not in name
+        )
 
 def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     """Compute the VenvSymlinkEntry objects for a library.
@@ -253,6 +286,9 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # List of (File, str venv_path) tuples
     files_left_to_link = []
 
+    # dict[str dirname, bool is_namespace_package]
+    namespace_package_dirs = {}
+
     # We want to minimize the number of files symlinked. Ideally, only the
     # top-level directories are symlinked. Unfortunately, shared libraries
     # complicate matters: if a shared library's directory is linked, then the
@@ -292,6 +328,29 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
                 parent = paths.dirname(parent)
         else:
             files_left_to_link.append((src, venv_path))
+
+        top_level_dirname, _, tail = venv_path.partition("/")
+        if (
+            # If it's already not directly linkable, nothing to do
+            not cannot_be_linked_directly.get(top_level_dirname, False) and
+            # If its already known to be non-implicit namespace, then skip
+            namespace_package_dirs.get(top_level_dirname, True) and
+            # It must be an importable name to be an implicit namespace package
+            _is_importable_name(top_level_dirname)
+        ):
+            namespace_package_dirs.setdefault(top_level_dirname, True)
+
+            # Looking for `__init__.` isn't 100% correct, as it'll match e.g.
+            # `__init__.pyi`, but it's close enough.
+            if "/" not in tail and tail.startswith("__init__."):
+                namespace_package_dirs[top_level_dirname] = False
+
+    # We treat namespace packages as a hint that other distributions may
+    # install into the same directory. As such, we avoid linking them directly
+    # to avoid conflict merging later.
+    for dirname, is_namespace_package in namespace_package_dirs.items():
+        if is_namespace_package:
+            cannot_be_linked_directly[dirname] = True
 
     # At this point, venv_symlinks has entries for the shared libraries
     # and cannot_be_linked_directly has the directories that cannot be
