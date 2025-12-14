@@ -165,6 +165,8 @@ sphinx_build_binary(
     config_settings = {
         labels.BOOTSTRAP_IMPL: "script",
         labels.VENVS_SITE_PACKAGES: "yes",
+        labels.PY_FREETHREADED: "yes",
+        labels.PYTHON_VERSION: "3.14",
     },
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
