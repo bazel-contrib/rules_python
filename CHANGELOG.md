@@ -108,6 +108,8 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-added}
 ### Added
 * (toolchains) `3.9.25` Python toolchain from [20251031] release.
+* (toolchains) `3.13.10`, `3.14.1` Python toolchain from [20251202] release.
+* (toolchains) `3.13.11`, `3.14.2`, `3.15.0a2` Python toolchains from [20251209] release.
 * (pypi) API to tell `pip.parse` which platforms users care about. This is very useful to  ensure
   that when users do `bazel query` for their deps, they don't have to download all of the
   dependencies for all of the available wheels. Torch wheels can be up of 1GB and it takes a lot
@@ -118,6 +120,9 @@ END_UNRELEASED_TEMPLATE
   become mandatory if any cross-builds are required from the next release.
 
 [20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
+[20251202]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251202
+[20251209]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251209
+
 {#v1-7-0}
 ## [1.7.0] - 2025-10-11
 

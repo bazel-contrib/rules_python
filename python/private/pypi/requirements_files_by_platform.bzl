@@ -144,6 +144,8 @@ def requirements_files_by_platform(
 
     input_platforms = platforms
     default_platforms = [_platform(p, python_version) for p in platforms]
+    if logger:
+        logger.debug(lambda: "Input platforms: {}".format(input_platforms))
 
     if platforms_from_args:
         lock_files = [

@@ -374,7 +374,7 @@ def _test_malformed_entry_impl(env, _):
             [_file("../+pypi_a/site-packages/outside.txt")],
         ),
         # A second, conflicting, entry is added to force merging of the known
-        # files. Without this, there\'s no conflict, so files is never
+        # files. Without this, there's no conflict, so files is never
         # considered.
         _entry(
             "a",
