@@ -247,6 +247,7 @@ bzl_library(
     deps = [
         ":parse_whl_name_bzl",
         "//python/private:repo_utils_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
     ],
 )
 

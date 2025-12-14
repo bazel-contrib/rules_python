@@ -27,6 +27,8 @@ other patches ensures that the users have overview on exactly what has changed
 within the wheel.
 """
 
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("//python/private:repo_utils.bzl", "repo_utils")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 
@@ -84,16 +86,11 @@ def patch_whl(rctx, *, python_interpreter, whl_path, patches, **kwargs):
     # does not support patching in another directory.
     whl_input = rctx.path(whl_path)
 
-    # symlink to a zip file to use bazel's extract so that we can use bazel's
-    # repository_ctx patch implementation. The whl file may be in a different
-    # external repository.
-    #
-    # TODO @aignas 2025-11-24: remove this symlinking workaround when we drop support for bazel 7
-    whl_file_zip = whl_input.basename + ".zip"
-    rctx.symlink(whl_input, whl_file_zip)
-    rctx.extract(whl_file_zip)
-    if not rctx.delete(whl_file_zip):
-        fail("Failed to remove the symlink after extracting")
+    repo_utils.extract(
+        rctx,
+        archive = whl_input,
+        supports_whl_extraction = rp_config.supports_whl_extraction,
+    )
 
     if not patches:
         fail("Trying to patch wheel without any patches")

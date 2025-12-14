@@ -377,17 +377,12 @@ def _whl_library_impl(rctx):
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
-        if rp_config.supports_whl_extraction:
-            extract_path = whl_path
-        else:
-            extract_path = rctx.path(whl_path.basename + ".zip")
-            rctx.symlink(whl_path, extract_path)
-        rctx.extract(
-            archive = extract_path,
+        repo_utils.extract(
+            rctx,
+            archive = whl_path,
             output = "site-packages",
+            supports_whl_extraction = rp_config.supports_whl_extraction,
         )
-        if not rp_config.supports_whl_extraction:
-            rctx.delete(extract_path)
 
         metadata = whl_metadata(
             install_dir = whl_path.dirname.get_child("site-packages"),
