@@ -170,6 +170,8 @@ def whl_library_targets(
         enable_implicit_namespace_pkgs: {type}`boolean` generate __init__.py
             files for namespace pkgs.
         native: {type}`native` The native struct for overriding in tests.
+        namespace_package_files: {type}`list[str]` A list of labels of files whose
+            directories are namespace packages.
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
     dependencies = sorted([normalize_name(d) for d in dependencies])

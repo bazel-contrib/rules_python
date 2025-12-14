@@ -18,7 +18,6 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
-load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:util.bzl", "is_importable_name")
 load(":attrs.bzl", "ATTRS", "use_isolated")
@@ -590,18 +589,13 @@ def _find_namespace_package_files(rctx, install_dir):
     """
 
     repo_root = str(rctx.path(".")) + "/"
-    if "nvidia" in repo_root:
-        print("============== nvidia")
     namespace_package_files = []
-    print("install_dir:", install_dir)
     for top_level_dir in install_dir.readdir():
-        print("tld:", top_level_dir)
         if not is_importable_name(top_level_dir.basename):
             continue
         init_py = top_level_dir.get_child("__init__.py")
         if not init_py.exists:
             continue
-        print("found tld init:", init_py)
         content = rctx.read(init_py)
 
         # Look for code resembling the pkgutil namespace setup code:

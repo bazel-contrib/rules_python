@@ -59,11 +59,6 @@ LIBRARY_ATTRS = dicts.add(
     PY_SRCS_ATTRS,
     IMPORTS_ATTRS,
     {
-        "namespace_package_files": lambda: attrb.LabelList(
-            allow_empty = True,
-            allow_files = True,
-            doc = "The files that make up a namespace package.",
-        ),
         "experimental_venvs_site_packages": lambda: attrb.Label(
             doc = """
 **INTERNAL ATTRIBUTE. SHOULD ONLY BE SET BY rules_python-INTERNAL CODE.**
@@ -103,6 +98,20 @@ This attributes populates {obj}`PyInfo.venv_symlinks`.
 The topological order has been removed and if 2 different versions of the same PyPI
 package are observed, the behaviour has no guarantees except that it is deterministic
 and that only one package version will be included.
+:::
+""",
+        ),
+        "namespace_package_files": lambda: attrb.LabelList(
+            allow_empty = True,
+            allow_files = True,
+            doc = """
+Files whose directories are namespace packages.
+
+When {obj}`--venv_site_packages=yes` is set, this helps inform which directories should be
+treated as namespace packages and expect files from other targets to be contributed.
+This allows optimizing the generation of symlinks to be cheaper at analysis time.
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
         ),

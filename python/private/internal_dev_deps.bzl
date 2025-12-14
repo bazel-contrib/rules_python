@@ -68,18 +68,6 @@ def _internal_dev_deps_impl(mctx):
     )
 
     whl_from_dir_repo(
-        name = "pkgutil_namespace_whl",
-        root = "//tests/pkgutil_namespace:testdata/ns-sub2/__init__.py",
-        output = "my_pkgutil_ns-1.0-any-none-any.whl",
-    )
-    whl_library(
-        name = "pkgutil_namespace",
-        whl_file = "@pkgutil_namespace_whl//:my_pkgutil_ns-1.0-any-none-any.whl",
-        requirement = "my-pkgutil-ns",
-        enable_implicit_namespace_pkgs = False,
-    )
-
-    whl_from_dir_repo(
         name = "pkgutil_nspkg1_whl",
         root = "//tests/repos/pkgutil_nspkg1:BUILD.bazel",
         output = "pkgutil_nspkg1-1.0-any-none-any.whl",

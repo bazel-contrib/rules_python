@@ -13,7 +13,6 @@ load(
     "VenvSymlinkEntry",
     "VenvSymlinkKind",
 )
-load(":py_internal.bzl", "py_internal")
 load(":util.bzl", "is_importable_name")
 
 # List of top-level package names that are known to be namespace
@@ -140,8 +139,6 @@ def build_link_map(ctx, entries, return_conflicts = False):
                 else:
                     keep_kind_link_map[entry.venv_path] = entry.link_to_path
             else:
-                for v in group:
-                    print("conflict:", v.venv_path, v.link_to_path)
                 if return_conflicts:
                     conflicts.append(group)
 
@@ -313,17 +310,13 @@ def get_venv_symlinks(
         dirname: True
         for dirname in namespace_package_dirs.keys()
     }
-    print("npf:::", ctx.label, namespace_package_files)
     for f in namespace_package_files:
         venv_path, _ = _get_file_venv_path(ctx, f, site_packages_root)
         if venv_path == None:
             continue
         ns_dir = paths.dirname(venv_path)
-        print("nsdir:", ns_dir)
         namespace_package_dirs[ns_dir] = True
         cannot_be_linked_directly[ns_dir] = True
-
-    print("all npd:", namespace_package_dirs)
 
     # dict[str path, VenvSymlinkEntry]
     # Where path is the venv path (i.e. relative to site_packages_prefix)

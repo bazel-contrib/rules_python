@@ -4,7 +4,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
-load("//python/private:common_labels.bzl", "labels")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:py_info.bzl", "VenvSymlinkEntry", "VenvSymlinkKind")  # buildifier: disable=bzl-visibility
 load("//python/private:venv_runfiles.bzl", "build_link_map", "get_venv_symlinks")  # buildifier: disable=bzl-visibility
 
@@ -340,6 +340,9 @@ def _test_optimized_grouping_pkgutil_namespace_packages(name):
         paths = [
             "site-packages/pkgutilns/__init__.py",
             "site-packages/pkgutilns/foo.py",
+            # Special cases: These dirnames under site-packages are always
+            # treated as namespace packages
+            "site-packages/nvidia/whatever/w.py",
         ],
     )
     analysis_test(
@@ -353,7 +356,6 @@ _tests.append(_test_optimized_grouping_pkgutil_namespace_packages)
 def _test_optimized_grouping_pkgutil_namespace_packages_impl(env, target):
     test_ctx = _ctx(workspace_name = env.ctx.workspace_name)
     files = target.files.to_list()
-    pkgutilns_init_py = None
     ns_inits = [f for f in files if f.basename == "__init__.py"]
 
     entries = get_venv_symlinks(
@@ -380,6 +382,13 @@ def _test_optimized_grouping_pkgutil_namespace_packages_impl(env, target):
             link_to_path = rr + "pkgutilns/foo.py",
             files = [
                 "tests/venv_site_packages_libs/app_files_building/site-packages/pkgutilns/foo.py",
+            ],
+        ),
+        _venv_symlink(
+            "nvidia/whatever",
+            link_to_path = rr + "nvidia/whatever",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/nvidia/whatever/w.py",
             ],
         ),
     ]
