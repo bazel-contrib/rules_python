@@ -498,6 +498,7 @@ def _sphinx_inventory_impl(ctx):
     args.add(output)
     ctx.actions.run(
         executable = ctx.executable._builder,
+        mnemonic = "SphinxInventoryBuilder",
         arguments = [args],
         inputs = depset([ctx.file.src]),
         outputs = [output],

@@ -665,7 +665,7 @@ EXPERIMENTAL: this may be removed without notice.
 """,
         ),
         "target_platforms": attr.string_list(
-            default = ["{os}_{arch}"],
+            default = [],
             doc = """\
 The list of platforms for which we would evaluate the requirements files. If you need to be able to
 only evaluate for a particular platform (e.g. "linux_x86_64"), then put it in here.

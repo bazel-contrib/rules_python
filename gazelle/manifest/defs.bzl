@@ -184,6 +184,7 @@ def _sources_hash_impl(ctx):
     args.add_all(all_srcs)
     ctx.actions.run(
         outputs = [hash_file],
+        mnemonic = "PyGazelleManifestHash",
         inputs = all_srcs,
         arguments = [args],
         executable = ctx.executable._hasher,
