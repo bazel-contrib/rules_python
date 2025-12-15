@@ -7,6 +7,7 @@ load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:py_info.bzl", "VenvSymlinkEntry", "VenvSymlinkKind")  # buildifier: disable=bzl-visibility
 load("//python/private:venv_runfiles.bzl", "build_link_map", "get_venv_symlinks")  # buildifier: disable=bzl-visibility
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD_UNIXY")
 
 def _empty_files_impl(ctx):
     files = []
@@ -410,6 +411,7 @@ def _test_optimized_grouping_pkgutil_whls(name):
             "@pkgutil_nspkg1//:pkg",
             "@pkgutil_nspkg2//:pkg",
         ],
+        target_compatible_with = SUPPORTS_BZLMOD_UNIXY,
     )
     analysis_test(
         name = name,
@@ -418,6 +420,9 @@ def _test_optimized_grouping_pkgutil_whls(name):
         config_settings = {
             labels.VENVS_SITE_PACKAGES: "yes",
         },
+        attr_values = dict(
+            target_compatible_with = SUPPORTS_BZLMOD_UNIXY,
+        ),
     )
 
 _tests.append(_test_optimized_grouping_pkgutil_whls)
