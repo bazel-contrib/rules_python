@@ -401,7 +401,7 @@ def _whl_library_impl(rctx):
                 "scripts": "bin",
             }.items():
                 src = data_dir.get_child(prefix)
-                dest = install_prefix.get_child(dest).get_child(prefix)
+                dest = install_prefix.get_child(dest)
                 if src.exists:
                     rctx.rename(src, dest)
 
