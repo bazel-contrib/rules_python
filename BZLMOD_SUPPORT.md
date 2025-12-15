@@ -27,7 +27,7 @@ We have two examples that demonstrate how to configure `bzlmod`.
 The first example is in [examples/bzlmod](examples/bzlmod), and it demonstrates basic bzlmod configuration.
 A user does not use `local_path_override` stanza and would define the version in the `bazel_dep` line.
 
-A second example, in [examples/bzlmod_build_file_generation](examples/bzlmod_build_file_generation) demonstrates the use of `bzlmod` to configure `gazelle` support for `rules_python`.
+A second example, in [gazelle/examples/bzlmod_build_file_generation](gazelle/examples/bzlmod_build_file_generation) demonstrates the use of `bzlmod` to configure `gazelle` support for `rules_python`.
 
 ## Differences in behavior from WORKSPACE
 
