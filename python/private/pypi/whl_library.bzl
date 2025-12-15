@@ -25,7 +25,7 @@ load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel"
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
-load(":whl_metadata.bzl", "whl_metadata")
+load(":whl_metadata.bzl", "find_whl_metadata", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
@@ -383,6 +383,27 @@ def _whl_library_impl(rctx):
             output = "site-packages",
             supports_whl_extraction = rp_config.supports_whl_extraction,
         )
+        metadata_file = find_whl_metadata(
+            install_dir = whl_path.dirname.get_child("site-packages"),
+            logger = logger,
+        )
+        dist_info_dir = metadata_file.dirname
+        install_prefix = dist_info_dir.dirname.dirname
+        data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
+        if data_dir.exists:
+            for prefix, dest in {
+                "data": "data",
+                "headers": "include",
+                "platlib": "site-packages",
+                # https://docs.python.org/3/library/sysconfig.html#posix-prefix
+                # We are taking this from the legacy whl installer config
+                "purelib": "site-packages",
+                "scripts": "bin",
+            }.items():
+                src = data_dir.get_child(prefix)
+                dest = install_prefix.get_child(dest).get_child(prefix)
+                if src.exists:
+                    rctx.rename(src, dest)
 
         metadata = whl_metadata(
             install_dir = whl_path.dirname.get_child("site-packages"),
