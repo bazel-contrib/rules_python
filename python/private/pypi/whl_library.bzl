@@ -392,11 +392,11 @@ def _whl_library_impl(rctx):
         data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
         if data_dir.exists:
             for prefix, dest in {
+                # https://docs.python.org/3/library/sysconfig.html#posix-prefix
+                # We are taking this from the legacy whl installer config
                 "data": "data",
                 "headers": "include",
                 "platlib": "site-packages",
-                # https://docs.python.org/3/library/sysconfig.html#posix-prefix
-                # We are taking this from the legacy whl installer config
                 "purelib": "site-packages",
                 "scripts": "bin",
             }.items():
