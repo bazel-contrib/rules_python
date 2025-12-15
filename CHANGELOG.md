@@ -82,7 +82,7 @@ END_UNRELEASED_TEMPLATE
   is passed through a label or downloaded using the bazel downloader
   ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
 * (pypi) `pipstar` flag default has been flipped to be on by default.
-  It can be disabled through `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable. 
+  It can be disabled through `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable.
   If you do need to disable it, please add a comment to
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
 * (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
