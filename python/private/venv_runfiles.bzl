@@ -325,9 +325,6 @@ def get_venv_symlinks(
     # List of (File, str venv_path) tuples
     files_left_to_link = []
 
-    # dict[str venv-relative dirname, bool is_namespace_package]
-    namespace_package_dirs = {}
-
     # We want to minimize the number of files symlinked. Ideally, only the
     # top-level directories are symlinked. Unfortunately, shared libraries
     # complicate matters: if a shared library's directory is linked, then the
