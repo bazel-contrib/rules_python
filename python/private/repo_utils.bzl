@@ -429,11 +429,34 @@ def _get_platforms_cpu_name(mrctx):
         return "riscv64"
     return arch
 
+def _extract(mrctx, *, archive, supports_whl_extraction = False, **kwargs):
+    """Extract an archive
+
+    TODO: remove when the earliest supported bazel version is at least 8.3.
+
+    Note, we are using the parameter here because there is very little ways how we can detect
+    whether we can support just extracting the whl.
+    """
+    archive_original = None
+    if not supports_whl_extraction and archive.basename.endswith(".whl"):
+        archive_original = archive
+        archive = mrctx.path(archive.basename + ".zip")
+        mrctx.symlink(archive_original, archive)
+
+    mrctx.extract(
+        archive = archive,
+        **kwargs
+    )
+    if archive_original:
+        if not mrctx.delete(archive):
+            fail("Failed to remove the symlink after extracting")
+
 repo_utils = struct(
     # keep sorted
     execute_checked = _execute_checked,
     execute_checked_stdout = _execute_checked_stdout,
     execute_unchecked = _execute_unchecked,
+    extract = _extract,
     get_platforms_cpu_name = _get_platforms_cpu_name,
     get_platforms_os_name = _get_platforms_os_name,
     getenv = _getenv,
