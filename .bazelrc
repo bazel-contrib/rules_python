@@ -18,6 +18,8 @@ build --//python/config_settings:incompatible_default_to_explicit_init_py=True
 
 # Ensure ongoing compatibility with this flag.
 common --incompatible_disallow_struct_provider_syntax
+# Makes Bazel 7 act more like Bazel 8
+common --incompatible_use_plus_in_repo_names
 
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
