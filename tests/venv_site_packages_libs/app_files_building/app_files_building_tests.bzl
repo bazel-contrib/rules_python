@@ -219,6 +219,7 @@ def _test_optimized_grouping_single_toplevel(name):
     empty_files(
         name = name + "_files",
         paths = [
+            "site-packages/pkg2/__init__.py",
             "site-packages/pkg2/a.txt",
             "site-packages/pkg2/b_mod.so",
         ],
@@ -248,6 +249,7 @@ def _test_optimized_grouping_single_toplevel_impl(env, target):
             "pkg2",
             link_to_path = rr + "pkg2",
             files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/__init__.py",
                 "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/a.txt",
                 "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/b_mod.so",
             ],
@@ -255,6 +257,70 @@ def _test_optimized_grouping_single_toplevel_impl(env, target):
     ]
     expected = sorted(expected, key = lambda e: (e.link_to_path, e.venv_path))
 
+    env.expect.that_collection(
+        actual,
+    ).contains_exactly(expected)
+
+    _, conflicts = build_link_map(test_ctx, entries, return_conflicts = True)
+
+    # The point of the optimization is to avoid having to merge conflicts.
+    env.expect.that_collection(conflicts).contains_exactly([])
+
+def _test_optimized_grouping_implicit_namespace_packages(name):
+    empty_files(
+        name = name + "_files",
+        paths = [
+            # NOTE: An alphanumeric name with underscores is used to verify
+            # name matching is correct.
+            "site-packages/name_space9/part1/foo.py",
+            "site-packages/name_space9/part2/bar.py",
+            "site-packages/name_space9-1.0.dist-info/METADATA",
+        ],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_optimized_grouping_implicit_namespace_packages_impl,
+        target = name + "_files",
+    )
+
+_tests.append(_test_optimized_grouping_implicit_namespace_packages)
+
+def _test_optimized_grouping_implicit_namespace_packages_impl(env, target):
+    test_ctx = _ctx(workspace_name = env.ctx.workspace_name)
+    entries = get_venv_symlinks(
+        test_ctx,
+        target.files.to_list(),
+        package = "pkg3",
+        version_str = "1.0",
+        site_packages_root = env.ctx.label.package + "/site-packages",
+    )
+    actual = _venv_symlinks_from_entries(entries)
+
+    rr = "{}/{}/site-packages/".format(test_ctx.workspace_name, env.ctx.label.package)
+    expected = [
+        _venv_symlink(
+            "name_space9/part1",
+            link_to_path = rr + "name_space9/part1",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/name_space9/part1/foo.py",
+            ],
+        ),
+        _venv_symlink(
+            "name_space9/part2",
+            link_to_path = rr + "name_space9/part2",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/name_space9/part2/bar.py",
+            ],
+        ),
+        _venv_symlink(
+            "name_space9-1.0.dist-info",
+            link_to_path = rr + "name_space9-1.0.dist-info",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/name_space9-1.0.dist-info/METADATA",
+            ],
+        ),
+    ]
+    expected = sorted(expected, key = lambda e: (e.link_to_path, e.venv_path))
     env.expect.that_collection(
         actual,
     ).contains_exactly(expected)

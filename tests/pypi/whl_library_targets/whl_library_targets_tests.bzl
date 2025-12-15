@@ -275,6 +275,7 @@ def _test_whl_and_library_deps_from_requires(env):
                 "**/*.pyc.*",
                 "**/*.dist-info/RECORD",
             ],
+            allow_empty = True,
         ),
         # pyi call
         _glob_call(["site-packages/**/*.pyi"], allow_empty = True),
@@ -457,7 +458,7 @@ def _test_group(env):
             "**/*.pyc",
             "**/*.pyc.*",
             "**/*.dist-info/RECORD",
-        ]),
+        ], allow_empty = True),
         _glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
