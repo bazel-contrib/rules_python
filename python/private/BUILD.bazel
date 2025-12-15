@@ -724,6 +724,7 @@ bzl_library(
     deps = [
         ":common_bzl",
         ":py_info.bzl",
+        ":py_internal.bzl",
         "@bazel_skylib//lib:paths",
     ],
 )
