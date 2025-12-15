@@ -326,6 +326,7 @@ def _whl_library_impl(rctx):
 
     # also enable pipstar for any whls that are downloaded without `pip`
     enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
+
     if not whl_path:
         if rctx.attr.urls:
             op_tmpl = "whl_library.BuildWheelFromSource({name}, {requirement})"

@@ -116,7 +116,7 @@ def _internal_config_repo_impl(rctx):
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         build_python_zip_default = repo_utils.get_platforms_os_name(rctx) == "windows",
-        enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT),
+        enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT if bazel_major_version >= 8 else "0"),
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
