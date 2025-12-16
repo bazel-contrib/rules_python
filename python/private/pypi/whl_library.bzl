@@ -278,6 +278,10 @@ def _extract_whl_star(rctx, *, whl_path, logger):
 
     # Get the <prefix>.dist_info dir name
     dist_info_dir = metadata_file.dirname
+    rctx.file(
+        dist_info_dir.get_child("INSTALLER"),
+        "https://github.com/bazel-contrib/rules_python#pipstar",
+    )
     repo_root_dir = dist_info_dir.dirname.dirname
 
     # Get the <prefix>.dist_info dir name
