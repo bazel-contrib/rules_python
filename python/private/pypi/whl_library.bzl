@@ -305,12 +305,6 @@ def _extract_whl_star(rctx, *, whl_path, logger):
             # shebang to be something else, for inspiration look at the hermetic
             # toolchain wrappers
 
-    return whl_metadata(
-        install_dir = whl_path.dirname.get_child("site-packages"),
-        read_fn = rctx.read,
-        logger = logger,
-    )
-
 def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
     target_platforms = rctx.attr.experimental_target_platforms or []
     if target_platforms:
@@ -341,10 +335,6 @@ def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, lo
         timeout = rctx.attr.timeout,
         logger = logger,
     )
-
-    metadata = json.decode(rctx.read("metadata.json"))
-    rctx.delete("metadata.json")
-    return metadata
 
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -455,9 +445,9 @@ def _whl_library_impl(rctx):
             )
 
     if enable_pipstar and rp_config.bazel_8_or_later:
-        metadata = _extract_whl_star(rctx, whl_path = whl_path, logger = logger)
+        _extract_whl_star(rctx, whl_path = whl_path, logger = logger)
     else:
-        metadata = _extract_whl_py(
+        _extract_whl_py(
             rctx,
             python_interpreter = python_interpreter,
             args = args,
@@ -472,6 +462,12 @@ def _whl_library_impl(rctx):
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
+        metadata = whl_metadata(
+            install_dir = whl_path.dirname.get_child("site-packages"),
+            read_fn = rctx.read,
+            logger = logger,
+        )
+
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
         #
@@ -516,6 +512,9 @@ def _whl_library_impl(rctx):
             group_name = rctx.attr.group_name,
         )
     else:
+        metadata = json.decode(rctx.read("metadata.json"))
+        rctx.delete("metadata.json")
+
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
         #
