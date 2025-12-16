@@ -264,6 +264,35 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
+def _extract_whl(rctx, whl_path, logger):
+    repo_utils.extract(
+        rctx,
+        archive = whl_path,
+        output = "site-packages",
+        supports_whl_extraction = rp_config.supports_whl_extraction,
+    )
+    metadata_file = find_whl_metadata(
+        install_dir = whl_path.dirname.get_child("site-packages"),
+        logger = logger,
+    )
+    dist_info_dir = metadata_file.dirname
+    install_prefix = dist_info_dir.dirname.dirname
+    data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
+    if data_dir.exists:
+        for prefix, dest in {
+            # https://docs.python.org/3/library/sysconfig.html#posix-prefix
+            # We are taking this from the legacy whl installer config
+            "data": "data",
+            "headers": "include",
+            "platlib": "site-packages",
+            "purelib": "site-packages",
+            "scripts": "bin",
+        }.items():
+            src = data_dir.get_child(prefix)
+            dest = install_prefix.get_child(dest)
+            if src.exists:
+                rctx.rename(src, dest)
+
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
     python_interpreter = pypi_repo_utils.resolve_python_interpreter(
@@ -372,40 +401,45 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
+    if enable_pipstar and rp_config.bazel_8_or_later:
+        _extract_whl(rctx, whl_path, logger)
+    else:
+        target_platforms = rctx.attr.experimental_target_platforms or []
+        if target_platforms:
+            parsed_whl = parse_whl_name(whl_path.basename)
+
+            # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
+            # only include deps for that target platform
+            if parsed_whl.platform_tag != "any":
+                target_platforms = [
+                    p.target_platform
+                    for p in whl_target_platforms(
+                        platform_tag = parsed_whl.platform_tag,
+                        abi_tag = parsed_whl.abi_tag.strip("tm"),
+                    )
+                ]
+
+        pypi_repo_utils.execute_checked(
+            rctx,
+            op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
+            python = python_interpreter,
+            arguments = args + [
+                "--whl-file",
+                whl_path,
+            ] + ["--platform={}".format(p) for p in target_platforms],
+            srcs = rctx.attr._python_srcs,
+            environment = environment,
+            quiet = rctx.attr.quiet,
+            timeout = rctx.attr.timeout,
+            logger = logger,
+        )
+
     # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
     # dep_template set or the packages is not set either, we should still not break, best to
     # disable pipstar for that particular case.
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
-        repo_utils.extract(
-            rctx,
-            archive = whl_path,
-            output = "site-packages",
-            supports_whl_extraction = rp_config.supports_whl_extraction,
-        )
-        metadata_file = find_whl_metadata(
-            install_dir = whl_path.dirname.get_child("site-packages"),
-            logger = logger,
-        )
-        dist_info_dir = metadata_file.dirname
-        install_prefix = dist_info_dir.dirname.dirname
-        data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
-        if data_dir.exists:
-            for prefix, dest in {
-                # https://docs.python.org/3/library/sysconfig.html#posix-prefix
-                # We are taking this from the legacy whl installer config
-                "data": "data",
-                "headers": "include",
-                "platlib": "site-packages",
-                "purelib": "site-packages",
-                "scripts": "bin",
-            }.items():
-                src = data_dir.get_child(prefix)
-                dest = install_prefix.get_child(dest)
-                if src.exists:
-                    rctx.rename(src, dest)
-
         metadata = whl_metadata(
             install_dir = whl_path.dirname.get_child("site-packages"),
             read_fn = rctx.read,
@@ -456,36 +490,6 @@ def _whl_library_impl(rctx):
             group_name = rctx.attr.group_name,
         )
     else:
-        target_platforms = rctx.attr.experimental_target_platforms or []
-        if target_platforms:
-            parsed_whl = parse_whl_name(whl_path.basename)
-
-            # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
-            # only include deps for that target platform
-            if parsed_whl.platform_tag != "any":
-                target_platforms = [
-                    p.target_platform
-                    for p in whl_target_platforms(
-                        platform_tag = parsed_whl.platform_tag,
-                        abi_tag = parsed_whl.abi_tag.strip("tm"),
-                    )
-                ]
-
-        pypi_repo_utils.execute_checked(
-            rctx,
-            op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
-            python = python_interpreter,
-            arguments = args + [
-                "--whl-file",
-                whl_path,
-            ] + ["--platform={}".format(p) for p in target_platforms],
-            srcs = rctx.attr._python_srcs,
-            environment = environment,
-            quiet = rctx.attr.quiet,
-            timeout = rctx.attr.timeout,
-            logger = logger,
-        )
-
         metadata = json.decode(rctx.read("metadata.json"))
         rctx.delete("metadata.json")
 
