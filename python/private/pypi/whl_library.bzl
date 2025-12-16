@@ -264,7 +264,7 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
-def _extract_whl(rctx, whl_path, logger):
+def _extract_whl_star(rctx, *, whl_path, logger):
     repo_utils.extract(
         rctx,
         archive = whl_path,
@@ -275,8 +275,12 @@ def _extract_whl(rctx, whl_path, logger):
         install_dir = whl_path.dirname.get_child("site-packages"),
         logger = logger,
     )
+
+    # Get the <prefix>.dist_info dir name
     dist_info_dir = metadata_file.dirname
-    install_prefix = dist_info_dir.dirname.dirname
+    repo_root_dir = dist_info_dir.dirname.dirname
+
+    # Get the <prefix>.dist_info dir name
     data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
     if data_dir.exists:
         for prefix, dest in {
@@ -289,9 +293,54 @@ def _extract_whl(rctx, whl_path, logger):
             "scripts": "bin",
         }.items():
             src = data_dir.get_child(prefix)
-            dest = install_prefix.get_child(dest)
+            dest = repo_root_dir.get_child(dest)
             if src.exists:
                 rctx.rename(src, dest)
+
+            # TODO @aignas 2025-12-16: when moving scripts to `bin`, rewrite the #!python
+            # shebang to be something else, for inspiration look at the hermetic
+            # toolchain wrappers
+
+    return whl_metadata(
+        install_dir = whl_path.dirname.get_child("site-packages"),
+        read_fn = rctx.read,
+        logger = logger,
+    )
+
+def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
+    target_platforms = rctx.attr.experimental_target_platforms or []
+    if target_platforms:
+        parsed_whl = parse_whl_name(whl_path.basename)
+
+        # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
+        # only include deps for that target platform
+        if parsed_whl.platform_tag != "any":
+            target_platforms = [
+                p.target_platform
+                for p in whl_target_platforms(
+                    platform_tag = parsed_whl.platform_tag,
+                    abi_tag = parsed_whl.abi_tag.strip("tm"),
+                )
+            ]
+
+    pypi_repo_utils.execute_checked(
+        rctx,
+        op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
+        python = python_interpreter,
+        arguments = args + [
+            "--whl-file",
+            whl_path,
+        ] + ["--platform={}".format(p) for p in target_platforms],
+        srcs = rctx.attr._python_srcs,
+        environment = environment,
+        quiet = rctx.attr.quiet,
+        timeout = rctx.attr.timeout,
+        logger = logger,
+    )
+
+    metadata = json.decode(rctx.read("metadata.json"))
+    rctx.delete("metadata.json")
+    return metadata
 
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -402,35 +451,14 @@ def _whl_library_impl(rctx):
             )
 
     if enable_pipstar and rp_config.bazel_8_or_later:
-        _extract_whl(rctx, whl_path, logger)
+        metadata = _extract_whl_star(rctx, whl_path = whl_path, logger = logger)
     else:
-        target_platforms = rctx.attr.experimental_target_platforms or []
-        if target_platforms:
-            parsed_whl = parse_whl_name(whl_path.basename)
-
-            # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
-            # only include deps for that target platform
-            if parsed_whl.platform_tag != "any":
-                target_platforms = [
-                    p.target_platform
-                    for p in whl_target_platforms(
-                        platform_tag = parsed_whl.platform_tag,
-                        abi_tag = parsed_whl.abi_tag.strip("tm"),
-                    )
-                ]
-
-        pypi_repo_utils.execute_checked(
+        metadata = _extract_whl_py(
             rctx,
-            op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
-            python = python_interpreter,
-            arguments = args + [
-                "--whl-file",
-                whl_path,
-            ] + ["--platform={}".format(p) for p in target_platforms],
-            srcs = rctx.attr._python_srcs,
+            python_interpreter = python_interpreter,
+            args = args,
+            whl_path = whl_path,
             environment = environment,
-            quiet = rctx.attr.quiet,
-            timeout = rctx.attr.timeout,
             logger = logger,
         )
 
@@ -440,12 +468,6 @@ def _whl_library_impl(rctx):
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
-        metadata = whl_metadata(
-            install_dir = whl_path.dirname.get_child("site-packages"),
-            read_fn = rctx.read,
-            logger = logger,
-        )
-
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
         #
@@ -490,9 +512,6 @@ def _whl_library_impl(rctx):
             group_name = rctx.attr.group_name,
         )
     else:
-        metadata = json.decode(rctx.read("metadata.json"))
-        rctx.delete("metadata.json")
-
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
         #
