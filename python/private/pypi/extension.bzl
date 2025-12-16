@@ -70,13 +70,16 @@ def _configure(config, *, override = False, **kwargs):
 def build_config(
         *,
         module_ctx,
-        enable_pipstar):
+        enable_pipstar,
+        enable_pipstar_extract):
     """Parse 'configure' and 'default' extension tags
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
             evaluation of the extension.
+        enable_pipstar_extract: {type}`bool | None` a flag to also not pass Python
+            interpreter to `whl_library` when possible.
 
     Returns:
         A struct with the configuration.
@@ -127,6 +130,7 @@ def build_config(
             for name, values in defaults["platforms"].items()
         },
         enable_pipstar = enable_pipstar,
+        enable_pipstar_extract = enable_pipstar_extract,
     )
 
 def parse_modules(
@@ -134,6 +138,7 @@ def parse_modules(
         _fail = fail,
         simpleapi_download = simpleapi_download,
         enable_pipstar = False,
+        enable_pipstar_extract = False,
         **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
@@ -142,6 +147,8 @@ def parse_modules(
         simpleapi_download: Used for testing overrides
         enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
             evaluation of the extension.
+        enable_pipstar_extract: {type}`bool` a flag to enable dropping Python dependency for
+            extracting wheels.
         _fail: {type}`function` the failure function, mainly for testing.
         **kwargs: Extra arguments passed to the hub_builder.
 
@@ -179,7 +186,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar)
+    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar, enable_pipstar_extract = enable_pipstar_extract)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -362,7 +369,7 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar)
+    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar, enable_pipstar_extract = rp_config.enable_pipstar and rp_config.bazel_8_or_later)
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)

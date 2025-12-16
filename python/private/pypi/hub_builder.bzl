@@ -153,6 +153,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         module_ctx,
         pip_attr = pip_attr,
         enable_pipstar = self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version),
+        enable_pipstar_extract = self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version),
     )
 
 ### end of PUBLIC methods
@@ -407,7 +408,8 @@ def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
-        enable_pipstar = False):
+        enable_pipstar = False,
+        enable_pipstar_extract = False):
     """create all of the whl repositories
 
     Args:
@@ -415,6 +417,7 @@ def _create_whl_repos(
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
         enable_pipstar: {type}`bool` - enable the pipstar or not.
+        enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
@@ -479,6 +482,7 @@ def _create_whl_repos(
                 is_multiple_versions = whl.is_multiple_versions,
                 interpreter = interpreter,
                 enable_pipstar = enable_pipstar,
+                enable_pipstar_extract = enable_pipstar_extract,
             )
             _add_whl_library(
                 self,
@@ -555,7 +559,8 @@ def _whl_repo(
         python_version,
         use_downloader,
         interpreter,
-        enable_pipstar = False):
+        enable_pipstar = False,
+        enable_pipstar_extract = False):
     args = dict(whl_library_args)
     args["requirement"] = src.requirement_line
     is_whl = src.filename.endswith(".whl")
@@ -567,7 +572,7 @@ def _whl_repo(
         # need to pass the extra args there, so only pop this for whls
         args["extra_pip_args"] = src.extra_pip_args
 
-    if "whl_patches" in args or not (enable_pipstar and is_whl):
+    if "whl_patches" in args or not (enable_pipstar_extract and is_whl):
         if interpreter.path:
             args["python_interpreter"] = interpreter.path
         if interpreter.target:
