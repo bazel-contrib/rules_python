@@ -11,7 +11,7 @@ In general `bzlmod` has more features than `WORKSPACE` and users are encouraged 
 
 ## Configuration
 
-The releases page will give you the latest version number, and a basic example.  The release page is located [here](/bazel-contrib/rules_python/releases).
+The releases page will give you the latest version number, and a basic example.  The release page is located [here](https://github.com/bazel-contrib/rules_python/releases).
 
 ## What is bzlmod?
 
