@@ -16,6 +16,7 @@
 
 load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:util.bzl", "is_importable_name")
 
 def _get_python_interpreter_attr(mrctx, *, python_interpreter = None):
     """A helper function for getting the `python_interpreter` attribute or it's default
@@ -161,9 +162,44 @@ def _execute_checked_stdout(mrctx, *, python, srcs, **kwargs):
         **_execute_prep(mrctx, python = python, srcs = srcs, **kwargs)
     )
 
+def _find_namespace_package_files(rctx, install_dir):
+    """Finds all `__init__.py` files that belong to namespace packages.
+
+    A `__init__.py` file belongs to a namespace package if it contains `__path__ =`,
+    `pkgutil`, and `extend_path(`.
+
+    Args:
+        rctx (repository_ctx): The repository context.
+        install_dir (path): The path to the install directory.
+
+    Returns:
+        list[str]: A list of relative paths to `__init__.py` files that belong
+            to namespace packages.
+    """
+
+    repo_root = str(rctx.path(".")) + "/"
+    namespace_package_files = []
+    for top_level_dir in install_dir.readdir():
+        if not is_importable_name(top_level_dir.basename):
+            continue
+        init_py = top_level_dir.get_child("__init__.py")
+        if not init_py.exists:
+            continue
+        content = rctx.read(init_py)
+
+        # Look for code resembling the pkgutil namespace setup code:
+        # __path__ = __import__("pkgutil").extend_path(__path__, __name__)
+        if ("__path__ =" in content and
+            "pkgutil" in content and
+            "extend_path(" in content):
+            namespace_package_files.append(str(init_py).removeprefix(repo_root))
+
+    return namespace_package_files
+
 pypi_repo_utils = struct(
     construct_pythonpath = _construct_pypath,
     execute_checked = _execute_checked,
     execute_checked_stdout = _execute_checked_stdout,
+    find_namespace_package_files = _find_namespace_package_files,
     resolve_python_interpreter = _resolve_python_interpreter,
 )

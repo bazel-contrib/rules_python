@@ -19,7 +19,6 @@ load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
-load("//python/private:util.bzl", "is_importable_name")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
@@ -391,7 +390,7 @@ def _whl_library_impl(rctx):
             read_fn = rctx.read,
             logger = logger,
         )
-        namespace_package_files = _find_namespace_package_files(rctx, install_dir_path)
+        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
@@ -495,7 +494,7 @@ def _whl_library_impl(rctx):
             )
             entry_points[entry_point_without_py] = entry_point_script_name
 
-        namespace_package_files = _find_namespace_package_files(rctx, rctx.path("site-packages"))
+        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, rctx.path("site-packages"))
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
@@ -567,40 +566,6 @@ if __name__ == "__main__":
         attribute = attribute,
     )
     return contents
-
-def _find_namespace_package_files(rctx, install_dir):
-    """Finds all `__init__.py` files that belong to namespace packages.
-
-    A `__init__.py` file belongs to a namespace package if it contains `__path__ =`,
-    `pkgutil`, and `extend_path(`.
-
-    Args:
-        rctx (repository_ctx): The repository context.
-        install_dir (path): The path to the install directory.
-
-    Returns:
-        list[str]: A list of relative paths to `__init__.py` files that belong
-            to namespace packages.
-    """
-
-    repo_root = str(rctx.path(".")) + "/"
-    namespace_package_files = []
-    for top_level_dir in install_dir.readdir():
-        if not is_importable_name(top_level_dir.basename):
-            continue
-        init_py = top_level_dir.get_child("__init__.py")
-        if not init_py.exists:
-            continue
-        content = rctx.read(init_py)
-
-        # Look for code resembling the pkgutil namespace setup code:
-        # __path__ = __import__("pkgutil").extend_path(__path__, __name__)
-        if ("__path__ =" in content and
-            "pkgutil" in content and
-            "extend_path(" in content):
-            namespace_package_files.append(str(init_py).removeprefix(repo_root))
-
-    return namespace_package_files
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
 whl_library_attrs = dict({
