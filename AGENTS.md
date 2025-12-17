@@ -34,6 +34,51 @@ Starlark does not support recursion. Use iterative algorithms instead.
 Starlark does not support `while` loops. Use `for` loop with an appropriately
 sized iterable instead.
 
+#### Starlark testing
+
+For Starlark tests:
+
+* Use `rules_testing`, not `bazel_skylib`.
+* See https://rules-testing.readthedocs.io/en/latest/analysis_tests.html for
+  examples on using rules_testing.
+* See `tests/builders/builders_tests.bzl` for an example of using it in
+  this project.
+
+A test is defined in two parts:
+  * A setup function, e.g. `def _test_foo(name)`. This defines targets
+    and calls `analysis_test`.
+  * An implementation function, e.g. `def _test_foo_impl(env, target)`. This
+    contains asserts.
+
+Example:
+
+```
+# File: foo_tests.bzl
+
+load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
+load("@rules_testing//lib:test_suite.bzl", "test_suite")
+
+_tests = []
+
+def _test_foo(name):
+    foo_library(
+        name = name + "_subject",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_foo_impl,
+        target = name + "_subject",
+    )
+_tests.append(_test_foo)
+
+def _test_foo_impl(env, target):
+    env.expect.that_whatever(target[SomeInfo].whatever).equals(expected)
+
+def foo_test_suite(name):
+    test_suite(name=name, tests=_tests)
+```
+
+
 #### Repository rules
 
 The function argument `rctx` is a hint that the function is a repository rule.
