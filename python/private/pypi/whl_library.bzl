@@ -24,6 +24,7 @@ load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
+load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":whl_metadata.bzl", "find_whl_metadata", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
@@ -515,6 +516,7 @@ def _whl_library_impl(rctx):
             group_deps = rctx.attr.group_deps,
             group_name = rctx.attr.group_name,
             namespace_package_files = namespace_package_files,
+            extras = requirement(rctx.attr.requirement).extras,
         )
     else:
         metadata = json.decode(rctx.read("metadata.json"))
