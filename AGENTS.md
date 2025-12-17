@@ -81,7 +81,11 @@ def foo_test_suite(name):
 
 #### Repository rules
 
-The function argument `rctx` is a hint that the function is a repository rule.
+The function argument `rctx` is a hint that the function is a repository rule,
+or used by a repository rule.
+
+The function argument `mrctx` is a hint that the function can be used by a
+repository rule or module extension.
 
 The `repository_ctx` API docs are at: https://bazel.build/rules/lib/builtins/repository_ctx
 
