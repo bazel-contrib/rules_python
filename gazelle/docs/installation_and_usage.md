@@ -5,7 +5,7 @@
 Examples of using Gazelle with Python can be found in the `rules_python`
 repo:
 
-* bzlmod: {gh-path}`examples/bzlmod_build_file_generation`
+* bzlmod: {gh-path}`gazelle/examples/bzlmod_build_file_generation`
 * WORKSPACE: {gh-path}`examples/build_file_generation`
 
 :::{note}
