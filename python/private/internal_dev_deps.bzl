@@ -67,6 +67,30 @@ def _internal_dev_deps_impl(mctx):
         enable_implicit_namespace_pkgs = False,
     )
 
+    whl_from_dir_repo(
+        name = "pkgutil_nspkg1_whl",
+        root = "//tests/repos/pkgutil_nspkg1:BUILD.bazel",
+        output = "pkgutil_nspkg1-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "pkgutil_nspkg1",
+        whl_file = "@pkgutil_nspkg1_whl//:pkgutil_nspkg1-1.0-any-none-any.whl",
+        requirement = "pkgutil_nspkg1",
+        enable_implicit_namespace_pkgs = False,
+    )
+
+    whl_from_dir_repo(
+        name = "pkgutil_nspkg2_whl",
+        root = "//tests/repos/pkgutil_nspkg2:BUILD.bazel",
+        output = "pkgutil_nspkg2-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "pkgutil_nspkg2",
+        whl_file = "@pkgutil_nspkg2_whl//:pkgutil_nspkg2-1.0-any-none-any.whl",
+        requirement = "pkgutil_nspkg2",
+        enable_implicit_namespace_pkgs = False,
+    )
+
 internal_dev_deps = module_extension(
     implementation = _internal_dev_deps_impl,
     doc = "This extension creates internal rules_python dev dependencies.",

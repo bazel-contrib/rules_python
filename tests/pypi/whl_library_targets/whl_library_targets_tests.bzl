@@ -257,6 +257,10 @@ def _test_whl_and_library_deps_from_requires(env):
         "tags": ["pypi_name=Foo", "pypi_version=0"],
         "visibility": ["//visibility:public"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+        "namespace_package_files": [] + select({
+            Label("//python/config_settings:is_venvs_site_packages"): [],
+            "//conditions:default": ["_create_inits_target"],
+        }),
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(mock_glob.calls).contains_exactly([
@@ -380,6 +384,10 @@ def _test_whl_and_library_deps(env):
         "tags": ["tag1", "tag2"],
         "visibility": ["//visibility:public"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+        "namespace_package_files": [] + select({
+            Label("//python/config_settings:is_venvs_site_packages"): [],
+            "//conditions:default": ["_create_inits_target"],
+        }),
     })  # buildifier: @unsorted-dict-items
 
 _tests.append(_test_whl_and_library_deps)
@@ -449,6 +457,10 @@ def _test_group(env):
         "tags": [],
         "visibility": ["@pypi__config//_groups:__pkg__"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
+        "namespace_package_files": [] + select({
+            Label("//python/config_settings:is_venvs_site_packages"): [],
+            "//conditions:default": ["_create_inits_target"],
+        }),
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(mock_glob.calls, expr = "glob calls").contains_exactly([

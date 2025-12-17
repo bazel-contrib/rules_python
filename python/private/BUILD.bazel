@@ -675,6 +675,7 @@ bzl_library(
         "//:__subpackages__",
     ],
     deps = [
+        ":py_internal_bzl",
         "@bazel_skylib//lib:types",
     ],
 )

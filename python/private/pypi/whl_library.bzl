@@ -265,14 +265,15 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
     return env
 
 def _extract_whl_star(rctx, *, whl_path, logger):
+    install_dir_path = whl_path.dirname.get_child("site-packages")
     repo_utils.extract(
         rctx,
         archive = whl_path,
-        output = "site-packages",
+        output = install_dir_path,
         supports_whl_extraction = rp_config.supports_whl_extraction,
     )
     metadata_file = find_whl_metadata(
-        install_dir = whl_path.dirname.get_child("site-packages"),
+        install_dir = install_dir_path,
         logger = logger,
     )
 
@@ -282,7 +283,7 @@ def _extract_whl_star(rctx, *, whl_path, logger):
         dist_info_dir.get_child("INSTALLER"),
         "https://github.com/bazel-contrib/rules_python#pipstar",
     )
-    repo_root_dir = dist_info_dir.dirname.dirname
+    repo_root_dir = whl_path.dirname
 
     # Get the <prefix>.dist_info dir name
     data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
@@ -463,11 +464,13 @@ def _whl_library_impl(rctx):
     #
     # Remove non-pipstar and config_load check when we release rules_python 2.
     if enable_pipstar:
+        install_dir_path = whl_path.dirname.get_child("site-packages")
         metadata = whl_metadata(
-            install_dir = whl_path.dirname.get_child("site-packages"),
+            install_dir = install_dir_path,
             read_fn = rctx.read,
             logger = logger,
         )
+        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
         # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
         # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
@@ -511,6 +514,7 @@ def _whl_library_impl(rctx):
             data_exclude = rctx.attr.pip_data_exclude,
             group_deps = rctx.attr.group_deps,
             group_name = rctx.attr.group_name,
+            namespace_package_files = namespace_package_files,
         )
     else:
         metadata = json.decode(rctx.read("metadata.json"))
@@ -540,6 +544,8 @@ def _whl_library_impl(rctx):
             )
             entry_points[entry_point_without_py] = entry_point_script_name
 
+        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, rctx.path("site-packages"))
+
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
             sdist_filename = sdist_filename,
@@ -558,6 +564,7 @@ def _whl_library_impl(rctx):
                 "pypi_name={}".format(metadata["name"]),
                 "pypi_version={}".format(metadata["version"]),
             ],
+            namespace_package_files = namespace_package_files,
         )
 
     # Delete these in case the wheel had them. They generally don't cause

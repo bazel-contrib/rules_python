@@ -15,6 +15,7 @@
 """Functionality shared by multiple pieces of code."""
 
 load("@bazel_skylib//lib:types.bzl", "types")
+load("//python/private:py_internal.bzl", "py_internal")
 
 def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
     """Copies args that must be compatible between two targets with a dependency relationship.
@@ -69,3 +70,18 @@ def add_tag(attrs, tag):
             attrs["tags"] = tags + [tag]
     else:
         attrs["tags"] = [tag]
+
+def is_importable_name(name):
+    # Requires Bazel 8+
+    if hasattr(py_internal, "regex_match"):
+        # ?U means activates unicode matching (Python allows most unicode
+        # in module names / identifiers).
+        # \w matches alphanumeric and underscore.
+        # NOTE: regex_match has an implicit ^ and $
+        return py_internal.regex_match(name, "(?U)\\w+")
+    else:
+        # Otherwise, use a rough hueristic that should catch most cases.
+        return (
+            "." not in name and
+            "-" not in name
+        )

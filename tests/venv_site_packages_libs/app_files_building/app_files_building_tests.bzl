@@ -2,8 +2,12 @@
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//python:py_info.bzl", "PyInfo")
+load("//python:py_library.bzl", "py_library")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:py_info.bzl", "VenvSymlinkEntry", "VenvSymlinkKind")  # buildifier: disable=bzl-visibility
 load("//python/private:venv_runfiles.bzl", "build_link_map", "get_venv_symlinks")  # buildifier: disable=bzl-visibility
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD_UNIXY")
 
 def _empty_files_impl(ctx):
     files = []
@@ -33,6 +37,7 @@ _tests = []
 def _ctx(workspace_name = "_main"):
     return struct(
         workspace_name = workspace_name,
+        label = Label("@@FAKE-CTX//:fake_ctx"),
     )
 
 def _file(short_path):
@@ -329,6 +334,178 @@ def _test_optimized_grouping_implicit_namespace_packages_impl(env, target):
 
     # The point of the optimization is to avoid having to merge conflicts.
     env.expect.that_collection(conflicts).contains_exactly([])
+
+def _test_optimized_grouping_pkgutil_namespace_packages(name):
+    empty_files(
+        name = name + "_files",
+        paths = [
+            "site-packages/pkgutilns/__init__.py",
+            "site-packages/pkgutilns/foo.py",
+            # Special cases: These dirnames under site-packages are always
+            # treated as namespace packages
+            "site-packages/nvidia/whatever/w.py",
+        ],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_optimized_grouping_pkgutil_namespace_packages_impl,
+        target = name + "_files",
+    )
+
+_tests.append(_test_optimized_grouping_pkgutil_namespace_packages)
+
+def _test_optimized_grouping_pkgutil_namespace_packages_impl(env, target):
+    test_ctx = _ctx(workspace_name = env.ctx.workspace_name)
+    files = target.files.to_list()
+    ns_inits = [f for f in files if f.basename == "__init__.py"]
+
+    entries = get_venv_symlinks(
+        test_ctx,
+        files,
+        package = "pkgutilns",
+        version_str = "1.0",
+        site_packages_root = env.ctx.label.package + "/site-packages",
+        namespace_package_files = ns_inits,
+    )
+    actual = _venv_symlinks_from_entries(entries)
+
+    rr = "{}/{}/site-packages/".format(test_ctx.workspace_name, env.ctx.label.package)
+    expected = [
+        _venv_symlink(
+            "pkgutilns/__init__.py",
+            link_to_path = rr + "pkgutilns/__init__.py",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/pkgutilns/__init__.py",
+            ],
+        ),
+        _venv_symlink(
+            "pkgutilns/foo.py",
+            link_to_path = rr + "pkgutilns/foo.py",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/pkgutilns/foo.py",
+            ],
+        ),
+        _venv_symlink(
+            "nvidia/whatever",
+            link_to_path = rr + "nvidia/whatever",
+            files = [
+                "tests/venv_site_packages_libs/app_files_building/site-packages/nvidia/whatever/w.py",
+            ],
+        ),
+    ]
+    expected = sorted(expected, key = lambda e: (e.link_to_path, e.venv_path))
+    env.expect.that_collection(
+        actual,
+    ).contains_exactly(expected)
+
+    _, conflicts = build_link_map(test_ctx, entries, return_conflicts = True)
+
+    # The point of the optimization is to avoid having to merge conflicts.
+    env.expect.that_collection(conflicts).contains_exactly([])
+
+def _test_optimized_grouping_pkgutil_whls(name):
+    """Verify that the whl_library pkgutli style detection logic works."""
+    py_library(
+        name = name + "_lib",
+        deps = [
+            "@pkgutil_nspkg1//:pkg",
+            "@pkgutil_nspkg2//:pkg",
+        ],
+        target_compatible_with = SUPPORTS_BZLMOD_UNIXY,
+    )
+    analysis_test(
+        name = name,
+        impl = _test_optimized_grouping_pkgutil_whls_impl,
+        target = name + "_lib",
+        config_settings = {
+            labels.VENVS_SITE_PACKAGES: "yes",
+        },
+        attr_values = dict(
+            target_compatible_with = SUPPORTS_BZLMOD_UNIXY,
+        ),
+    )
+
+_tests.append(_test_optimized_grouping_pkgutil_whls)
+
+def _test_optimized_grouping_pkgutil_whls_impl(env, target):
+    test_ctx = _ctx(workspace_name = env.ctx.workspace_name)
+    actual_raw_entries = target[PyInfo].venv_symlinks.to_list()
+
+    actual = _venv_symlinks_from_entries(actual_raw_entries)
+
+    # The important condition is that the top-level 'nspkg' directory
+    # is NOT linked because it's a pkgutil namespace package.
+    env.expect.that_collection(actual).contains_exactly([
+        # Entries from pkgutil_ns1
+        _venv_symlink(
+            "nspkg/__init__.py",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
+            ],
+        ),
+        _venv_symlink(
+            "nspkg/one",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/one",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/one/a.txt",
+            ],
+        ),
+        _venv_symlink(
+            "pkgutil_nspkg1-1.0.dist-info",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/INSTALLER",
+                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/METADATA",
+                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/WHEEL",
+            ],
+        ),
+        # Entries from pkgutil_ns2
+        _venv_symlink(
+            "nspkg/__init__.py",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
+            ],
+        ),
+        _venv_symlink(
+            "nspkg/two",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/two",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/two/b.txt",
+            ],
+        ),
+        _venv_symlink(
+            "pkgutil_nspkg2-1.0.dist-info",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/INSTALLER",
+                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/METADATA",
+                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/WHEEL",
+            ],
+        ),
+    ])
+
+    # Verifying that the expected VenvSymlink structure is processed with minimal number
+    # of conflicts (Just the single pkgutil style __init__.py file)
+    _, conflicts = build_link_map(test_ctx, actual_raw_entries, return_conflicts = True)
+    env.expect.that_collection(_venv_symlinks_from_entries(conflicts[0])).contains_exactly([
+        _venv_symlink(
+            "nspkg/__init__.py",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
+            ],
+        ),
+        _venv_symlink(
+            "nspkg/__init__.py",
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
+            files = [
+                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
+            ],
+        ),
+    ])
+    env.expect.that_collection(conflicts).has_size(1)
 
 def _test_package_version_filtering(name):
     analysis_test(

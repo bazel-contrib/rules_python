@@ -101,6 +101,20 @@ and that only one package version will be included.
 :::
 """,
         ),
+        "namespace_package_files": lambda: attrb.LabelList(
+            allow_empty = True,
+            allow_files = True,
+            doc = """
+Files whose directories are namespace packages.
+
+When {obj}`--venv_site_packages=yes` is set, this helps inform which directories should be
+treated as namespace packages and expect files from other targets to be contributed.
+This allows optimizing the generation of symlinks to be cheaper at analysis time.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "_add_srcs_to_runfiles_flag": lambda: attrb.Label(
             default = labels.ADD_SRCS_TO_RUNFILES,
         ),
@@ -251,6 +265,7 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
             package,
             version_str,
             site_packages_root = imports[0],
+            namespace_package_files = ctx.files.namespace_package_files,
         )
     else:
         imports = collect_imports(ctx, semantics)
