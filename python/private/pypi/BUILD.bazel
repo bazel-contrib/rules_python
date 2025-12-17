@@ -433,6 +433,7 @@ bzl_library(
         ":generate_whl_library_build_bazel_bzl",
         ":parse_whl_name_bzl",
         ":patch_whl_bzl",
+        ":pep508_requirement_bzl",
         ":pypi_repo_utils_bzl",
         ":whl_metadata_bzl",
         ":whl_target_platforms_bzl",
