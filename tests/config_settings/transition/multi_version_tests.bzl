@@ -85,7 +85,7 @@ def _setup_py_binary_windows(name, *, impl, build_python_zip):
         name = name + "_subject",
         srcs = [name + "_subject.py"],
         python_version = _PYTHON_VERSION,
-i    )
+    )
 
     analysis_test(
         name = name,
