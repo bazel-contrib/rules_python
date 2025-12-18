@@ -81,6 +81,10 @@ END_UNRELEASED_TEMPLATE
 * (pip) `pipstar` has been enabled for all `whl_library` instances where the whl
   is passed through a label or downloaded using the bazel downloader
   ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
+* (pypi) `pipstar` flag default has been flipped to be on by default.
+  It can be disabled through `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable.
+  If you do need to disable it, please add a comment to
+  [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
 * (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
 * (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
 
@@ -118,6 +122,8 @@ END_UNRELEASED_TEMPLATE
   `RULES_PYTHON_ENABLE_PIPSTAR=1` by default. Users of `experimental_index_url` that perform
   cross-builds should add {obj}`target_platforms` to their `pip.parse` invocations, which will
   become mandatory if any cross-builds are required from the next release.
+* (py_library) Attribute {obj}`namespace_package_files` added. It is a hint for
+  optimizing venv creation.
 
 [20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
 [20251202]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251202

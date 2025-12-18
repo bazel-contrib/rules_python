@@ -13,6 +13,15 @@ load(
     "VenvSymlinkEntry",
     "VenvSymlinkKind",
 )
+load(":util.bzl", "is_importable_name")
+
+# List of top-level package names that are known to be namespace
+# packages, but cannot be detected as such automatically.
+_WELL_KNOWN_NAMESPACE_PACKAGES = [
+    # nvidia wheels incorrectly use an empty `__init__.py` file, even
+    # though multiple distributions install into the directory.
+    "nvidia",
+]
 
 def create_venv_app_files(ctx, deps, venv_dir_map):
     """Creates the tree of app-specific files for a venv for a binary.
@@ -231,7 +240,34 @@ def _merge_venv_path_group(ctx, group, keep_map):
                 if venv_path not in keep_map:
                     keep_map[venv_path] = file
 
-def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
+def _get_file_venv_path(ctx, f, site_packages_root):
+    """Computes a file's venv_path if it's under the site_packages_root.
+
+    Args:
+        ctx: The current ctx.
+        f: The file to compute the venv_path for.
+        site_packages_root: The site packages root path.
+
+    Returns:
+        A tuple `(venv_path, rf_root_path)` if the file is under
+        `site_packages_root`, otherwise `(None, None)`.
+    """
+    rf_root_path = runfiles_root_path(ctx, f.short_path)
+    _, _, repo_rel_path = rf_root_path.partition("/")
+    head, found_sp_root, venv_path = repo_rel_path.partition(site_packages_root)
+    if head or not found_sp_root:
+        # If head is set, then the path didn't start with site_packages_root
+        # if found_sp_root is empty, then it means it wasn't found at all.
+        return (None, None)
+    return (venv_path, rf_root_path)
+
+def get_venv_symlinks(
+        ctx,
+        files,
+        package,
+        version_str,
+        site_packages_root,
+        namespace_package_files = []):
     """Compute the VenvSymlinkEntry objects for a library.
 
     Args:
@@ -243,6 +279,9 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
         version_str: {type}`str` the distribution's version.
         site_packages_root: {type}`str` prefix under which files are
             considered to be part of the installed files.
+        namespace_package_files: {type}`list[File]` a list of files
+            that are pkgutil-style namespace packages and cannot be
+            directly linked.
 
     Returns:
         {type}`list[VenvSymlinkEntry]` the entries that describe how
@@ -260,8 +299,24 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
 
     all_files = sorted(files, key = lambda f: f.short_path)
 
+    # dict[str venv-relative dirname, bool is_namespace_package]
+    namespace_package_dirs = {
+        ns: True
+        for ns in _WELL_KNOWN_NAMESPACE_PACKAGES
+    }
+
     # venv paths that cannot be directly linked. Dict acting as set.
-    cannot_be_linked_directly = {}
+    cannot_be_linked_directly = {
+        dirname: True
+        for dirname in namespace_package_dirs.keys()
+    }
+    for f in namespace_package_files:
+        venv_path, _ = _get_file_venv_path(ctx, f, site_packages_root)
+        if venv_path == None:
+            continue
+        ns_dir = paths.dirname(venv_path)
+        namespace_package_dirs[ns_dir] = True
+        cannot_be_linked_directly[ns_dir] = True
 
     # dict[str path, VenvSymlinkEntry]
     # Where path is the venv path (i.e. relative to site_packages_prefix)
@@ -279,12 +334,8 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
     # all the parent directories of the shared library can't be linked
     # directly.
     for src in all_files:
-        rf_root_path = runfiles_root_path(ctx, src.short_path)
-        _, _, repo_rel_path = rf_root_path.partition("/")
-        head, found_sp_root, venv_path = repo_rel_path.partition(site_packages_root)
-        if head or not found_sp_root:
-            # If head is set, then the path didn't start with site_packages_root
-            # if found_sp_root is empty, then it means it wasn't found at all.
+        venv_path, rf_root_path = _get_file_venv_path(ctx, src, site_packages_root)
+        if venv_path == None:
             continue
 
         filename = paths.basename(venv_path)
@@ -309,6 +360,32 @@ def get_venv_symlinks(ctx, files, package, version_str, site_packages_root):
                 parent = paths.dirname(parent)
         else:
             files_left_to_link.append((src, venv_path))
+
+        top_level_dirname, _, tail = venv_path.partition("/")
+        if (
+            # If it's already not directly linkable, nothing to do
+            not cannot_be_linked_directly.get(top_level_dirname, False) and
+            # If its already known to be non-implicit namespace, then skip
+            namespace_package_dirs.get(top_level_dirname, True) and
+            # It must be an importable name to be an implicit namespace package
+            is_importable_name(top_level_dirname)
+        ):
+            namespace_package_dirs.setdefault(top_level_dirname, True)
+
+            # Looking for `__init__.` isn't 100% correct, as it'll match e.g.
+            # `__init__.pyi`, but it's close enough.
+            if "/" not in tail and tail.startswith("__init__."):
+                namespace_package_dirs[top_level_dirname] = False
+
+    # We treat namespace packages as a hint that other distributions may
+    # install into the same directory. As such, we avoid linking them directly
+    # to avoid conflict merging later.
+    for dirname, is_namespace_package in namespace_package_dirs.items():
+        if is_namespace_package:
+            # If it's already in cannot_be_linked_directly due to pkgutil_namespace_packages
+            # then we should not unset it.
+            if not cannot_be_linked_directly.get(dirname, False):
+                cannot_be_linked_directly[dirname] = True
 
     # At this point, venv_symlinks has entries for the shared libraries
     # and cannot_be_linked_directly has the directories that cannot be

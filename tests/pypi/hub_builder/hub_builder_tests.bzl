@@ -41,6 +41,7 @@ simple==0.0.1 \
 def hub_builder(
         env,
         enable_pipstar = True,
+        enable_pipstar_extract = True,
         debug = False,
         config = None,
         minor_mapping = {},
@@ -54,6 +55,7 @@ def hub_builder(
         config = config or struct(
             # no need to evaluate the markers with the interpreter
             enable_pipstar = enable_pipstar,
+            enable_pipstar_extract = enable_pipstar_extract,
             platforms = {
                 "{}_{}{}".format(os, cpu, freethreaded): _plat(
                     name = "{}_{}{}".format(os, cpu, freethreaded),
@@ -512,6 +514,7 @@ def _test_torch_experimental_index_url(env):
         config = struct(
             netrc = None,
             enable_pipstar = True,
+            enable_pipstar_extract = True,
             auth_patterns = {},
             platforms = {
                 "{}_{}".format(os, cpu): _plat(
@@ -1095,6 +1098,7 @@ def _test_pipstar_platforms(env):
         enable_pipstar = True,
         config = struct(
             enable_pipstar = True,
+            enable_pipstar_extract = True,
             netrc = None,
             auth_patterns = {},
             platforms = {
@@ -1179,6 +1183,7 @@ def _test_pipstar_platforms_limit(env):
         enable_pipstar = True,
         config = struct(
             enable_pipstar = True,
+            enable_pipstar_extract = True,
             netrc = None,
             auth_patterns = {},
             platforms = {

@@ -99,6 +99,7 @@ def _build_config(env, enable_pipstar = 0, **kwargs):
     return env.expect.that_struct(
         build_config(
             enable_pipstar = enable_pipstar,
+            enable_pipstar_extract = True,
             **kwargs
         ),
         attrs = dict(
