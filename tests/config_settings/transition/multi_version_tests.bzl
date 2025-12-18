@@ -85,14 +85,14 @@ def _setup_py_binary_windows(name, *, impl, build_python_zip):
         name = name + "_subject",
         srcs = [name + "_subject.py"],
         python_version = _PYTHON_VERSION,
-    )
+i    )
 
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = impl,
         config_settings = {
-            "@@//python/config_settings:build_python_zip": str(build_python_zip),
+            "//python/config_settings:build_python_zip": str(build_python_zip),
             labels.BUILD_PYTHON_ZIP: build_python_zip,
             "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
             "//command_line_option:platforms": str(platform_targets.WINDOWS_X86_64),
