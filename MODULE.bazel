@@ -459,7 +459,7 @@ uv_dev.configure(
     version = "0.6.2",
 )
 
-flag_alias("build_python_zip", "//python/config_settings:build_python_zip")
-flag_alias("incompatible_default_to_explicit_init_py", "//python/config_settings:incompatible_default_to_explicit_init_py")
-flag_alias("python_path", "//python/config_settings:python_path")
-flag_alias("experimental_python_import_all_repositories", "//python/config_settings:experimental_python_import_all_repositories")
+flag_alias(name = "build_python_zip", starlark_flag = "//python/config_settings:build_python_zip")
+flag_alias(name = "incompatible_default_to_explicit_init_py", starlark_flag = "//python/config_settings:incompatible_default_to_explicit_init_py")
+flag_alias(name = "python_path", starlark_flag = "//python/config_settings:python_path")
+flag_alias(name = "experimental_python_import_all_repositories", starlark_flag = "//python/config_settings:experimental_python_import_all_repositories")
