@@ -142,7 +142,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         python_version = full_python_version,
         config = self._config,
         # TODO @aignas 2025-12-09: flip or part to default to 'os_arch' after
-        # VERSION_NEXT_FEATURE is released and set the default of the `target_platforms` attribute
+        # 1.8.0 is released and set the default of the `target_platforms` attribute
         # to `{os}_{arch}`.
         target_platforms = pip_attr.target_platforms or ([] if default_cross_setup else ["{os}_{arch}"]),
     )

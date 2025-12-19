@@ -48,18 +48,18 @@ END_UNRELEASED_TEMPLATE
 -->
 
 
-{#v0-0-0}
-## Unreleased
+{#v1-8-0}
+## [1.8.0] - 2025-12-19
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[1.8.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.0
 
-{#v0-0-0-known-issues}
+{#v1-8-0-known-issues}
 ### Known Issues
 * (gazelle) Windows support for the Gazelle plugin may be broken. See
   [#3416](https://github.com/bazel-contrib/rules_python/issues/3416) for
   details and possible workarounds.
 
-{#v0-0-0-removed}
+{#v1-8-0-removed}
 ### Removed
 * (toolchain) Remove all of the python 3.8 toolchain support out of the box. Users need
   to pass the `TOOL_VERSIONS` that include 3.8 toolchains or use the `bzlmod` APIs to add
@@ -74,7 +74,7 @@ END_UNRELEASED_TEMPLATE
   the toolchains in the repository phase, ensure that you pass `-B` to the python interpreter.
   ([#2016](https://github.com/bazel-contrib/rules_python/issues/2016))
 
-{#v0-0-0-changed}
+{#v1-8-0-changed}
 ### Changed
 * (toolchains) Use toolchains from the [20251031] release.
 * (gazelle) Internally split modules mapping generation to be per-wheel for concurrency and caching.
@@ -88,7 +88,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
 * (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
 
-{#v0-0-0-fixed}
+{#v1-8-0-fixed}
 ### Fixed
 * (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
   that are not generated or regular files.
@@ -109,7 +109,7 @@ END_UNRELEASED_TEMPLATE
 * (core rules) For the system_python bootstrap, the runfiles root is added to
   sys.path.
 
-{#v0-0-0-added}
+{#v1-8-0-added}
 ### Added
 * (toolchains) `3.9.25` Python toolchain from [20251031] release.
 * (toolchains) `3.13.10`, `3.14.1` Python toolchain from [20251202] release.

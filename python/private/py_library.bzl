@@ -111,7 +111,7 @@ When {obj}`--venv_site_packages=yes` is set, this helps inform which directories
 treated as namespace packages and expect files from other targets to be contributed.
 This allows optimizing the generation of symlinks to be cheaper at analysis time.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.8.0
 :::
 """,
         ),

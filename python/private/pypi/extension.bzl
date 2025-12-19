@@ -687,7 +687,7 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
 :::{include} /_includes/experimental_api.md
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.8.0
 :::
 """,
         ),
