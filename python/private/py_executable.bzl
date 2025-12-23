@@ -47,7 +47,6 @@ load(
     "create_py_info",
     "csv",
     "filter_to_py_srcs",
-    "get_imports",
     "is_bool",
     "relative_path",
     "runfiles_root_path",
@@ -267,41 +266,17 @@ def py_executable_impl(ctx, *, is_test, inherited_environment):
 def create_binary_semantics():
     return create_binary_semantics_struct(
         # keep-sorted start
-        create_executable = _create_executable,
-        get_cc_details_for_binary = _get_cc_details_for_binary,
         get_central_uncachable_version_file = lambda ctx: None,
-        get_coverage_deps = _get_coverage_deps,
         get_debugger_deps = _get_debugger_deps,
-        get_extra_common_runfiles_for_binary = lambda ctx: ctx.runfiles(),
-        get_extra_providers = _get_extra_providers,
-        get_extra_write_build_data_env = lambda ctx: {},
-        get_imports = get_imports,
-        get_interpreter_path = _get_interpreter_path,
         get_native_deps_dso_name = _get_native_deps_dso_name,
-        get_native_deps_user_link_flags = _get_native_deps_user_link_flags,
-        get_stamp_flag = _get_stamp_flag,
-        maybe_precompile = maybe_precompile,
         should_build_native_deps_dso = lambda ctx: False,
-        should_create_init_files = _should_create_init_files,
         should_include_build_data = lambda ctx: False,
         # keep-sorted end
     )
 
-def _get_coverage_deps(ctx, runtime_details):
-    _ = ctx, runtime_details  # @unused
-    return []
-
 def _get_debugger_deps(ctx, runtime_details):
     _ = ctx, runtime_details  # @unused
     return []
-
-def _get_extra_providers(ctx, main_py, runtime_details):
-    _ = ctx, main_py, runtime_details  # @unused
-    return []
-
-def _get_stamp_flag(ctx):
-    # NOTE: Undocumented API; private to builtins
-    return ctx.configuration.stamp_binaries
 
 def _should_create_init_files(ctx):
     if ctx.attr.legacy_create_init == -1:
@@ -994,10 +969,6 @@ def _get_native_deps_dso_name(ctx):
     _ = ctx  # @unused
     fail("Building native deps DSO not supported.")
 
-def _get_native_deps_user_link_flags(ctx):
-    _ = ctx  # @unused
-    fail("Building native deps DSO not supported.")
-
 def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = []):
     """Base rule implementation for a Python executable.
 
@@ -1022,7 +993,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     else:
         main_py = None
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
-    precompile_result = semantics.maybe_precompile(ctx, direct_sources)
+    precompile_result = maybe_precompile(ctx, direct_sources)
 
     required_py_files = precompile_result.keep_srcs
     required_pyc_files = []
@@ -1046,20 +1017,17 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     default_outputs.add(precompile_result.keep_srcs)
     default_outputs.add(required_pyc_files)
 
-    imports = collect_imports(ctx, semantics)
+    imports = collect_imports(ctx)
 
-    runtime_details = _get_runtime_details(ctx, semantics)
-    if ctx.configuration.coverage_enabled:
-        extra_deps = semantics.get_coverage_deps(ctx, runtime_details)
-    else:
-        extra_deps = []
+    runtime_details = _get_runtime_details(ctx)
+    extra_deps = []
 
     # The debugger dependency should be prevented by select() config elsewhere,
     # but just to be safe, also guard against adding it to the output here.
     if not _is_tool_config(ctx):
         extra_deps.extend(semantics.get_debugger_deps(ctx, runtime_details))
 
-    cc_details = semantics.get_cc_details_for_binary(ctx, extra_deps = extra_deps)
+    cc_details = _get_cc_details_for_binary(ctx, extra_deps = extra_deps)
     native_deps_details = _get_native_deps_details(
         ctx,
         semantics = semantics,
@@ -1078,11 +1046,10 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
             runtime_details.runfiles,
             cc_details.extra_runfiles,
             native_deps_details.runfiles,
-            semantics.get_extra_common_runfiles_for_binary(ctx),
         ],
         semantics = semantics,
     )
-    exec_result = semantics.create_executable(
+    exec_result = _create_executable(
         ctx,
         executable = executable,
         main_py = main_py,
@@ -1122,7 +1089,6 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         runtime_details = runtime_details,
         cc_info = cc_details.cc_info_for_propagating,
         inherited_environment = inherited_environment,
-        semantics = semantics,
         output_groups = exec_result.output_groups,
     )
 
@@ -1154,7 +1120,7 @@ def _declare_executable_file(ctx):
 
     return executable
 
-def _get_runtime_details(ctx, semantics):
+def _get_runtime_details(ctx):
     """Gets various information about the Python runtime to use.
 
     While most information comes from the toolchain, various legacy and
@@ -1162,7 +1128,6 @@ def _get_runtime_details(ctx, semantics):
 
     Args:
         ctx: Rule ctx
-        semantics: A `BinarySemantics` struct; see `create_binary_semantics_struct`
 
     Returns:
         A struct; see inline-field comments of the return value for details.
@@ -1203,7 +1168,7 @@ def _get_runtime_details(ctx, semantics):
     else:
         runtime_files = depset()
 
-    executable_interpreter_path = semantics.get_interpreter_path(
+    executable_interpreter_path = _get_interpreter_path(
         ctx,
         runtime = effective_runtime,
         flag_interpreter_path = flag_interpreter_path,
@@ -1336,7 +1301,7 @@ def _get_base_runfiles_for_binary(
 
     common_runfiles = common_runfiles.build(ctx)
 
-    if semantics.should_create_init_files(ctx):
+    if _should_create_init_files(ctx):
         common_runfiles = _py_builtins.merge_runfiles_with_generated_inits_empty_files_supplier(
             ctx = ctx,
             runfiles = common_runfiles,
@@ -1352,11 +1317,10 @@ def _get_base_runfiles_for_binary(
     # removed and another way found to locate the underlying build data file.
     data_runfiles = runfiles_with_exe
 
-    if is_stamping_enabled(ctx, semantics) and semantics.should_include_build_data(ctx):
+    if is_stamping_enabled(ctx) and semantics.should_include_build_data(ctx):
         build_data_file, build_data_runfiles = _create_runfiles_with_build_data(
             ctx,
             semantics.get_central_uncachable_version_file(ctx),
-            semantics.get_extra_write_build_data_env(ctx),
         )
         default_runfiles = runfiles_with_exe.merge(build_data_runfiles)
     else:
@@ -1372,19 +1336,17 @@ def _get_base_runfiles_for_binary(
 
 def _create_runfiles_with_build_data(
         ctx,
-        central_uncachable_version_file,
-        extra_write_build_data_env):
+        central_uncachable_version_file):
     build_data_file = _write_build_data(
         ctx,
         central_uncachable_version_file,
-        extra_write_build_data_env,
     )
     build_data_runfiles = ctx.runfiles(files = [
         build_data_file,
     ])
     return build_data_file, build_data_runfiles
 
-def _write_build_data(ctx, central_uncachable_version_file, extra_write_build_data_env):
+def _write_build_data(ctx, central_uncachable_version_file):
     # TODO: Remove this logic when a central file is always available
     if not central_uncachable_version_file:
         version_file = ctx.actions.declare_file(ctx.label.name + "-uncachable_version_file.txt")
@@ -1430,7 +1392,7 @@ def _write_build_data(ctx, central_uncachable_version_file, extra_write_build_da
 
     ctx.actions.run(
         executable = ctx.executable._build_data_gen,
-        env = dicts.add({
+        env = {
             # NOTE: ctx.info_file is undocumented; see
             # https://github.com/bazelbuild/bazel/issues/9363
             "INFO_FILE": ctx.info_file.path,
@@ -1438,7 +1400,7 @@ def _write_build_data(ctx, central_uncachable_version_file, extra_write_build_da
             "PLATFORM": cc_helper.find_cpp_toolchain(ctx).toolchain_id,
             "TARGET": str(ctx.label),
             "VERSION_FILE": version_file.path,
-        }, extra_write_build_data_env),
+        },
         inputs = depset(
             direct = direct_inputs,
         ),
@@ -1489,12 +1451,9 @@ def _get_native_deps_details(ctx, *, semantics, cc_details, is_test):
         feature_configuration = cc_feature_config.feature_configuration,
         cc_toolchain = cc_details.cc_toolchain,
         test_only_target = is_test,  # private
-        stamp = 1 if is_stamping_enabled(ctx, semantics) else 0,
+        stamp = 1 if is_stamping_enabled(ctx) else 0,
         main_output = linked_lib,  # private
         use_shareable_artifact_factory = True,  # private
-        # NOTE: Only flags not captured by cc_info.linking_context need to
-        # be manually passed
-        user_link_flags = semantics.get_native_deps_user_link_flags(ctx),
     )
     return struct(
         dso = dso,
@@ -1634,12 +1593,11 @@ def _path_endswith(path, endswith):
     # "ab/c.py".endswith("b/c.py") from incorrectly matching.
     return ("/" + path).endswith("/" + endswith)
 
-def is_stamping_enabled(ctx, semantics):
+def is_stamping_enabled(ctx):
     """Tells if stamping is enabled or not.
 
     Args:
         ctx: The rule ctx
-        semantics: a semantics struct (see create_semantics_struct).
     Returns:
         bool; True if stamping is enabled, False if not.
     """
@@ -1652,7 +1610,8 @@ def is_stamping_enabled(ctx, semantics):
     elif stamp == 0:
         return False
     elif stamp == -1:
-        return semantics.get_stamp_flag(ctx)
+        # NOTE: Undocumented API; private to builtins
+        return ctx.configuration.stamp_binaries
     else:
         fail("Unsupported `stamp` value: {}".format(stamp))
 
@@ -1678,8 +1637,7 @@ def _create_providers(
         cc_info,
         inherited_environment,
         runtime_details,
-        output_groups,
-        semantics):
+        output_groups):
     """Creates the providers an executable should return.
 
     Args:
@@ -1708,7 +1666,6 @@ def _create_providers(
             is run within.
         runtime_details: struct of runtime information; see _get_runtime_details()
         output_groups: dict[str, depset[File]]; used to create OutputGroupInfo
-        semantics: BinarySemantics struct; see create_binary_semantics()
 
     Returns:
         A list of modern providers.
@@ -1783,13 +1740,6 @@ def _create_providers(
     if builtin_py_info:
         providers.append(builtin_py_info)
     providers.append(create_output_group_info(py_info.transitive_sources, output_groups))
-
-    extra_providers = semantics.get_extra_providers(
-        ctx,
-        main_py = main_py,
-        runtime_details = runtime_details,
-    )
-    providers.extend(extra_providers)
     return providers
 
 def _create_run_environment_info(ctx, inherited_environment):

@@ -43,22 +43,10 @@ PYTHON_FILE_EXTENSIONS = [
 
 def create_binary_semantics_struct(
         *,
-        create_executable,
-        get_cc_details_for_binary,
         get_central_uncachable_version_file,
-        get_coverage_deps,
         get_debugger_deps,
-        get_extra_common_runfiles_for_binary,
-        get_extra_providers,
-        get_extra_write_build_data_env,
-        get_interpreter_path,
-        get_imports,
         get_native_deps_dso_name,
-        get_native_deps_user_link_flags,
-        get_stamp_flag,
-        maybe_precompile,
         should_build_native_deps_dso,
-        should_create_init_files,
         should_include_build_data):
     """Helper to ensure a semantics struct has all necessary fields.
 
@@ -66,42 +54,15 @@ def create_binary_semantics_struct(
     the necessary functions are being correctly provided.
 
     Args:
-        create_executable: Callable; creates a binary's executable output. See
-            py_executable.bzl#py_executable_base_impl for details.
-        get_cc_details_for_binary: Callable that returns a `CcDetails` struct; see
-            `create_cc_detail_struct`.
         get_central_uncachable_version_file: Callable that returns an optional
             Artifact; this artifact is special: it is never cached and is a copy
             of `ctx.version_file`; see py_builtins.copy_without_caching
-        get_coverage_deps: Callable that returns a list of Targets for making
-            coverage work; only called if coverage is enabled.
         get_debugger_deps: Callable that returns a list of Targets that provide
             custom debugger support; only called for target-configuration.
-        get_extra_common_runfiles_for_binary: Callable that returns a runfiles
-            object of extra runfiles a binary should include.
-        get_extra_providers: Callable that returns extra providers; see
-            py_executable.bzl#_create_providers for details.
-        get_extra_write_build_data_env: Callable that returns a dict[str, str]
-            of additional environment variable to pass to build data generation.
-        get_interpreter_path: Callable that returns an optional string, which is
-            the path to the Python interpreter to use for running the binary.
-        get_imports: Callable that returns a list of the target's import
-            paths (from the `imports` attribute, so just the target's own import
-            path strings, not from dependencies).
         get_native_deps_dso_name: Callable that returns a string, which is the
             basename (with extension) of the native deps DSO library.
-        get_native_deps_user_link_flags: Callable that returns a list of strings,
-            which are any extra linker flags to pass onto the native deps DSO
-            linking action.
-        get_stamp_flag: Callable that returns bool of if the --stamp flag was
-            enabled or not.
-        maybe_precompile: Callable that may optional precompile the input `.py`
-            sources and returns the full set of desired outputs derived from
-            the source files (e.g., both py and pyc, only one of them, etc).
         should_build_native_deps_dso: Callable that returns bool; True if
             building a native deps DSO is supported, False if not.
-        should_create_init_files: Callable that returns bool; True if
-            `__init__.py` files should be generated, False if not.
         should_include_build_data: Callable that returns bool; True if
             build data should be generated, False if not.
     Returns:
@@ -109,48 +70,11 @@ def create_binary_semantics_struct(
     """
     return struct(
         # keep-sorted
-        create_executable = create_executable,
-        get_cc_details_for_binary = get_cc_details_for_binary,
         get_central_uncachable_version_file = get_central_uncachable_version_file,
-        get_coverage_deps = get_coverage_deps,
         get_debugger_deps = get_debugger_deps,
-        get_extra_common_runfiles_for_binary = get_extra_common_runfiles_for_binary,
-        get_extra_providers = get_extra_providers,
-        get_extra_write_build_data_env = get_extra_write_build_data_env,
-        get_imports = get_imports,
-        get_interpreter_path = get_interpreter_path,
         get_native_deps_dso_name = get_native_deps_dso_name,
-        get_native_deps_user_link_flags = get_native_deps_user_link_flags,
-        get_stamp_flag = get_stamp_flag,
-        maybe_precompile = maybe_precompile,
         should_build_native_deps_dso = should_build_native_deps_dso,
-        should_create_init_files = should_create_init_files,
         should_include_build_data = should_include_build_data,
-    )
-
-def create_library_semantics_struct(
-        *,
-        get_cc_info_for_library,
-        get_imports,
-        maybe_precompile):
-    """Create a `LibrarySemantics` struct.
-
-    Call this instead of a raw call to `struct(...)`; it'll help ensure all
-    the necessary functions are being correctly provided.
-
-    Args:
-        get_cc_info_for_library: Callable that returns a CcInfo for the library;
-            see py_library_impl for arg details.
-        get_imports: Callable; see create_binary_semantics_struct.
-        maybe_precompile: Callable; see create_binary_semantics_struct.
-    Returns:
-        a `LibrarySemantics` struct.
-    """
-    return struct(
-        # keep sorted
-        get_cc_info_for_library = get_cc_info_for_library,
-        get_imports = get_imports,
-        maybe_precompile = maybe_precompile,
     )
 
 def create_cc_details_struct(
@@ -255,12 +179,11 @@ def collect_cc_info(ctx, extra_deps = []):
 
     return cc_common.merge_cc_infos(cc_infos = cc_infos)
 
-def collect_imports(ctx, semantics):
+def collect_imports(ctx):
     """Collect the direct and transitive `imports` strings.
 
     Args:
         ctx: {type}`ctx` the current target ctx
-        semantics: semantics object for fetching direct imports.
 
     Returns:
         {type}`depset[str]` of import paths
@@ -271,12 +194,10 @@ def collect_imports(ctx, semantics):
             transitive.append(dep[PyInfo].imports)
         if BuiltinPyInfo != None and BuiltinPyInfo in dep:
             transitive.append(dep[BuiltinPyInfo].imports)
-    return depset(direct = semantics.get_imports(ctx), transitive = transitive)
+    return depset(direct = get_imports(ctx), transitive = transitive)
 
 def get_imports(ctx):
     """Gets the imports from a rule's `imports` attribute.
-
-    See create_binary_semantics_struct for details about this function.
 
     Args:
         ctx: Rule ctx.
