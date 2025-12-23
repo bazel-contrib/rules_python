@@ -19,6 +19,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
+load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
@@ -169,6 +170,44 @@ def _test_executable_in_runfiles_impl(env, target):
         "{workspace}/{package}/{test_name}_subject" + exe,
         "{workspace}/{package}/{test_name}_subject",
     ])
+
+def _test_debugger(name, config):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger",
+        srcs = [rt_util.empty_file(name + "_debugger.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        config_settings = {
+            # config_settings requires a fully qualified label
+            labels.DEBUGGER: "//{}:{}_debugger".format(native.package_name(), name),
+        },
+    )
+    analysis_test(
+        name = name,
+        impl = _test_debugger_impl,
+        targets = {
+            "exec_target": name + "_subject",
+            "target": name + "_subject",
+        },
+        attrs = {
+            "exec_target": attr.label(cfg = "exec"),
+        },
+    )
+
+_tests.append(_test_debugger)
+
+def _test_debugger_impl(env, targets):
+    env.expect.that_target(targets.target).runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_debugger.py",
+    ])
+    env.expect.that_target(targets.exec_target).runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_debugger.py",
+    )
 
 def _test_default_main_can_be_generated(name, config):
     rt_util.helper_target(

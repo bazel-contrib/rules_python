@@ -47,6 +47,27 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* (tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
+### Added
+* (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
+  to add to binaries/tests for custom debuggers.
 
 {#v1-8-0}
 ## [1.8.0] - 2025-12-19

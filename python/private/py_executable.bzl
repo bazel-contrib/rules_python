@@ -205,6 +205,10 @@ accepting arbitrary Python versions.
             allow_single_file = True,
             default = "@bazel_tools//tools/python:python_bootstrap_template.txt",
         ),
+        "_debugger_flag": lambda: attrb.Label(
+            default = "//python/private:debugger_if_target_config",
+            providers = [PyInfo],
+        ),
         "_launcher": lambda: attrb.Label(
             cfg = "target",
             # NOTE: This is an executable, but is only used for Windows. It
@@ -267,16 +271,11 @@ def create_binary_semantics():
     return create_binary_semantics_struct(
         # keep-sorted start
         get_central_uncachable_version_file = lambda ctx: None,
-        get_debugger_deps = _get_debugger_deps,
         get_native_deps_dso_name = _get_native_deps_dso_name,
         should_build_native_deps_dso = lambda ctx: False,
         should_include_build_data = lambda ctx: False,
         # keep-sorted end
     )
-
-def _get_debugger_deps(ctx, runtime_details):
-    _ = ctx, runtime_details  # @unused
-    return []
 
 def _should_create_init_files(ctx):
     if ctx.attr.legacy_create_init == -1:
@@ -1025,7 +1024,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     # The debugger dependency should be prevented by select() config elsewhere,
     # but just to be safe, also guard against adding it to the output here.
     if not _is_tool_config(ctx):
-        extra_deps.extend(semantics.get_debugger_deps(ctx, runtime_details))
+        extra_deps.append(ctx.attr._debugger_flag)
 
     cc_details = _get_cc_details_for_binary(ctx, extra_deps = extra_deps)
     native_deps_details = _get_native_deps_details(
@@ -1751,6 +1750,8 @@ def _create_run_environment_info(ctx, inherited_environment):
             expression = value,
             targets = ctx.attr.data,
         )
+    if "PYTHONBREAKPOINT" not in inherited_environment:
+        inherited_environment = inherited_environment + ["PYTHONBREAKPOINT"]
     return RunEnvironmentInfo(
         environment = expanded_env,
         inherited_environment = inherited_environment,

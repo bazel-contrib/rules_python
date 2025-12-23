@@ -16,6 +16,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_setting")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
+load(":bazel_config_mode.bzl", "bazel_config_mode")
 load(":print_toolchain_checksums.bzl", "print_toolchains_checksums")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":sentinel.bzl", "sentinel")
@@ -809,6 +810,23 @@ config_setting(
         "//python/config_settings:bootstrap_impl": "script",
     },
 )
+
+config_setting(
+    name = "is_bazel_config_mode_target",
+    flag_values = {
+        "//python/private:bazel_config_mode": "target",
+    },
+)
+
+alias(
+    name = "debugger_if_target_config",
+    actual = select({
+        ":is_bazel_config_mode_target": "//python/config_settings:debugger",
+        "//conditions:default": "//python/private:empty",
+    }),
+)
+
+bazel_config_mode(name = "bazel_config_mode")
 
 # This should only be set by analysis tests to expose additional metadata to
 # aid testing, so a setting instead of a flag.

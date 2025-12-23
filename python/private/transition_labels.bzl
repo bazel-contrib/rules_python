@@ -10,6 +10,7 @@ load(":common_labels.bzl", "labels")
 _BASE_TRANSITION_LABELS = [
     labels.ADD_SRCS_TO_RUNFILES,
     labels.BOOTSTRAP_IMPL,
+    labels.DEBUGGER,
     labels.EXEC_TOOLS_TOOLCHAIN,
     labels.PIP_ENV_MARKER_CONFIG,
     labels.PIP_WHL_MUSLC_VERSION,

@@ -30,6 +30,11 @@ def py_binary(**attrs):
 
     Args:
       **attrs: Rule attributes forwarded onto the underlying {rule}`py_binary`.
+
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    The `PYTHONBREAKPOINT` environment variable is inherited. Use in combination
+    with {obj}`--debugger` to customize the debugger available and used.
+    :::
     """
     if attrs.get("python_version") == "PY2":
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
