@@ -1,0 +1,9 @@
+load("//python:py_test.bzl", "py_test")
+
+py_test(
+    name = "whl_library_extras_test",
+    srcs = ["whl_library_extras_test.py"],
+    deps = [
+        "@whl_library_extras_direct_dep//:pkg",
+    ],
+)
