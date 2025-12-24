@@ -58,7 +58,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* (tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
+* (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 
 {#v0-0-0-fixed}
 ### Fixed
