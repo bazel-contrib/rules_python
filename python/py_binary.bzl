@@ -28,13 +28,13 @@ def py_binary(**attrs):
     * `srcs_version`: cannot be `PY2` or `PY2ONLY`
     * `tags`: May have special marker values added, if not already present.
 
-    Args:
-      **attrs: Rule attributes forwarded onto the underlying {rule}`py_binary`.
-
     :::{versionchanged} VERSION_NEXT_FEATURE
     The `PYTHONBREAKPOINT` environment variable is inherited. Use in combination
     with {obj}`--debugger` to customize the debugger available and used.
     :::
+
+    Args:
+      **attrs: Rule attributes forwarded onto the underlying {rule}`py_binary`.
     """
     if attrs.get("python_version") == "PY2":
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
