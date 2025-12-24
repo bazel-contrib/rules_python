@@ -21,6 +21,7 @@ load(":print_toolchain_checksums.bzl", "print_toolchains_checksums")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":sentinel.bzl", "sentinel")
 load(":stamp.bzl", "stamp_build_setting")
+load(":uncachable_version_file.bzl", "define_uncachable_version_file")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -95,6 +96,14 @@ bzl_library(
         "//python:py_runtime_bzl",
         "//python:py_runtime_pair_bzl",
     ],
+)
+
+filegroup(
+    name = "build_data_writer",
+    srcs = select({
+        "@platforms//os:windows": ["build_data_writer.ps1"],
+        "//conditions:default": ["build_data_writer.sh"],
+    }),
 )
 
 bzl_library(
@@ -679,6 +688,10 @@ bzl_library(
         ":py_internal_bzl",
         "@bazel_skylib//lib:types",
     ],
+)
+
+define_uncachable_version_file(
+    name = "uncachable_version_file",
 )
 
 bzl_library(

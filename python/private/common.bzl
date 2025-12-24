@@ -43,34 +43,25 @@ PYTHON_FILE_EXTENSIONS = [
 
 def create_binary_semantics_struct(
         *,
-        get_central_uncachable_version_file,
         get_native_deps_dso_name,
-        should_build_native_deps_dso,
-        should_include_build_data):
+        should_build_native_deps_dso):
     """Helper to ensure a semantics struct has all necessary fields.
 
     Call this instead of a raw call to `struct(...)`; it'll help ensure all
     the necessary functions are being correctly provided.
 
     Args:
-        get_central_uncachable_version_file: Callable that returns an optional
-            Artifact; this artifact is special: it is never cached and is a copy
-            of `ctx.version_file`; see py_builtins.copy_without_caching
         get_native_deps_dso_name: Callable that returns a string, which is the
             basename (with extension) of the native deps DSO library.
         should_build_native_deps_dso: Callable that returns bool; True if
             building a native deps DSO is supported, False if not.
-        should_include_build_data: Callable that returns bool; True if
-            build data should be generated, False if not.
     Returns:
         A "BinarySemantics" struct.
     """
     return struct(
         # keep-sorted
-        get_central_uncachable_version_file = get_central_uncachable_version_file,
         get_native_deps_dso_name = get_native_deps_dso_name,
         should_build_native_deps_dso = should_build_native_deps_dso,
-        should_include_build_data = should_include_build_data,
     )
 
 def create_cc_details_struct(
