@@ -27,7 +27,7 @@ _tests.append(_test_version_label_from_major_minor_version)
 
 def _test_version_label_from_major_minor_patch_version(env):
     actual = version_label("3.9.3")
-    env.expect.that_str(actual).equals("39")
+    env.expect.that_str(actual).equals("393")
 
 _tests.append(_test_version_label_from_major_minor_patch_version)
 
@@ -39,7 +39,10 @@ _tests.append(_test_version_label_from_major_minor_version_custom_sep)
 
 def _test_version_label_from_complex_version(env):
     actual = version_label("3.9.3-rc.0")
-    env.expect.that_str(actual).equals("39")
+    env.expect.that_str(actual).equals("393rc0")
+
+    actual = version_label("3.9.3-alpha1")
+    env.expect.that_str(actual).equals("393a1")
 
 _tests.append(_test_version_label_from_complex_version)
 

@@ -72,7 +72,7 @@ def config_settings(
             _dist_config_setting(
                 name = prefix + suffix,
                 flag_values = {
-                    Label("//python/config_settings:python_version_major_minor"): python_version,
+                    Label("//python/config_settings:python_version"): python_version,
                 },
                 config_settings = config_settings,
                 constraint_values = constraint_values,

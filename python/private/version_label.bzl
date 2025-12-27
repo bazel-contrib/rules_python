@@ -14,13 +14,18 @@
 
 ""
 
+load(":version.bzl", v = "version")
+
 def version_label(version, *, sep = ""):
-    """A version fragment derived from python minor version
+    """A version fragment derived from python minor version.
+
+    This replaces dots with the provided separator.
 
     Examples:
         version_label("3.9") == "39"
-        version_label("3.9.12", sep="_") == "3_9"
+        version_label("3.9.12", sep="_") == "3_9_12"
         version_label("3.11") == "311"
+        version_label("3.11.12") == "31112"
 
     Args:
         version: Python version.
@@ -30,7 +35,5 @@ def version_label(version, *, sep = ""):
     Returns:
         The fragment of the version.
     """
-    major, _, version = version.partition(".")
-    minor, _, _ = version.partition(".")
-
-    return major + sep + minor
+    parsed = v.parse(version)
+    return parsed.string.replace(".", sep)

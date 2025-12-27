@@ -184,6 +184,13 @@ def construct_config_settings(
 
 def _python_version_flag_impl(ctx):
     value = ctx.build_setting_value
+    if value:
+        # FIXME @aignas 2025-12-27: is this the right thing to do here? Should we do this only for
+        # the `FeatureFlagInfo`?
+        #
+        # ensure that the values here are normalized
+        value = version.parse(value).string
+
     return [
         # BuildSettingInfo is the original provider returned, so continue to
         # return it for compatibility
@@ -203,9 +210,9 @@ _python_version_flag = rule(
 )
 
 def _python_version_major_minor_flag_impl(ctx):
-    input = _flag_value(ctx.attr._python_version_flag)
-    if input:
-        ver = version.parse(input)
+    value = _flag_value(ctx.attr._python_version_flag)
+    if value:
+        ver = version.parse(value)
         value = "{}.{}".format(ver.release[0], ver.release[1])
     else:
         value = ""

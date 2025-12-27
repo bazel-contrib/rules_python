@@ -17,6 +17,8 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//python/private:version.bzl", _version = "version")  # buildifier: disable=bzl-visibility
+load("//python/private:version_label.bzl", "version_label")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
@@ -114,40 +116,58 @@ def hub_builder(
     return self
 
 def _test_simple(env):
-    builder = hub_builder(env)
-    builder.pip_parse(
-        _mock_mctx(
-            os_name = "osx",
-            arch_name = "aarch64",
-        ),
-        _parse(
-            hub_name = "pypi",
-            python_version = "3.15",
-            requirements_lock = "requirements.txt",
-        ),
-    )
-    pypi = builder.build()
+    for python_version, _ in {
+        "3.15": "315",
+        "3.15.0alpha2": "3150a2",
+        "3.15.0rc2": "3150rc2",
+        "3.15.2": "3152",
+    }.items():
+        # All of the versions should be normalized
+        normalized_python_version = _version.parse(python_version).string
 
-    pypi.exposed_packages().contains_exactly(["simple"])
-    pypi.group_map().contains_exactly({})
-    pypi.whl_map().contains_exactly({
-        "simple": {
-            "pypi_315_simple": [
-                whl_config_setting(
-                    version = "3.15",
-                ),
-            ],
-        },
-    })
-    pypi.whl_libraries().contains_exactly({
-        "pypi_315_simple": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
-        },
-    })
-    pypi.extra_aliases().contains_exactly({})
+        builder = hub_builder(
+            env,
+            available_interpreters = {
+                # We are using this instead of `version_label` to keep backwards compatibility
+                "python_{}_host".format(normalized_python_version.replace(".", "_")): "unit_test_interpreter_target",
+            },
+        )
+        builder.pip_parse(
+            _mock_mctx(
+                os_name = "osx",
+                arch_name = "aarch64",
+            ),
+            _parse(
+                hub_name = "pypi",
+                # the input version can be whatever
+                python_version = python_version,
+                requirements_lock = "requirements.txt",
+            ),
+        )
+        pypi = builder.build()
+
+        pypi.exposed_packages().contains_exactly(["simple"])
+        pypi.group_map().contains_exactly({})
+        pypi.whl_map().contains_exactly({
+            "simple": {
+                # this should normalize the version inside
+                "pypi_{}_simple".format(version_label(python_version)): [
+                    whl_config_setting(
+                        version = normalized_python_version,
+                    ),
+                ],
+            },
+        })
+        pypi.whl_libraries().contains_exactly({
+            # this should normalize the version inside
+            "pypi_{}_simple".format(version_label(python_version)): {
+                "config_load": "@pypi//:config.bzl",
+                "dep_template": "@pypi//{name}:{target}",
+                "python_interpreter_target": "unit_test_interpreter_target",
+                "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+            },
+        })
+        pypi.extra_aliases().contains_exactly({})
 
 _tests.append(_test_simple)
 

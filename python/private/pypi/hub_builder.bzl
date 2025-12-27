@@ -15,9 +15,9 @@ load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
-def _major_minor_version(version_str):
+def _normalize_version(version_str):
     ver = version.parse(version_str)
-    return "{}.{}".format(ver.release[0], ver.release[1])
+    return ver.string
 
 def hub_builder(
         *,
@@ -288,7 +288,8 @@ def _detect_interpreter(self, pip_attr):
     python_interpreter_target = pip_attr.python_interpreter_target
     if python_interpreter_target == None and not pip_attr.python_interpreter:
         python_name = "python_{}_host".format(
-            pip_attr.python_version.replace(".", "_"),
+            # normalize the version when getting the available interpreter
+            version.parse(pip_attr.python_version).string.replace(".", "_"),
         )
         if python_name not in self._available_interpreters:
             fail((
@@ -478,7 +479,8 @@ def _create_whl_repos(
                 netrc = self._config.netrc or pip_attr.netrc,
                 use_downloader = _use_downloader(self, pip_attr.python_version, whl.name),
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
-                python_version = _major_minor_version(pip_attr.python_version),
+                # TODO @aignas 2025-12-27: normalize version tests
+                python_version = _normalize_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
                 interpreter = interpreter,
                 enable_pipstar = enable_pipstar,
