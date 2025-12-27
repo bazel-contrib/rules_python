@@ -37,6 +37,7 @@ load(":cc_helper.bzl", "cc_helper")
 load(
     ":common.bzl",
     "collect_cc_info",
+    "collect_deps",
     "collect_imports",
     "collect_runfiles",
     "create_binary_semantics_struct",
@@ -293,7 +294,8 @@ def _create_executable(
         runtime_details,
         cc_details,
         native_deps_details,
-        runfiles_details):
+        runfiles_details,
+        extra_deps):
     _ = is_test, cc_details, native_deps_details  # @unused
 
     is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
@@ -323,6 +325,7 @@ def _create_executable(
             add_runfiles_root_to_sys_path = (
                 "1" if BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SYSTEM_PYTHON else "0"
             ),
+            extra_deps = extra_deps,
         )
 
         stage2_bootstrap = _create_stage2_bootstrap(
@@ -486,7 +489,7 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://snarky.ca/how-virtual-environments-work/
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
-def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path):
+def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps):
     create_full_venv = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     venv = "_{}.venv".format(output_prefix.lstrip("_"))
 
@@ -587,7 +590,11 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         VenvSymlinkKind.BIN: bin_dir,
         VenvSymlinkKind.LIB: site_packages,
     }
-    venv_app_files = create_venv_app_files(ctx, ctx.attr.deps, venv_dir_map)
+    venv_app_files = create_venv_app_files(
+        ctx,
+        deps = collect_deps(ctx, extra_deps),
+        venv_dir_map = venv_dir_map,
+    )
 
     files_without_interpreter = [pth, site_init] + venv_app_files.venv_files
     if pyvenv_cfg:
@@ -1016,9 +1023,6 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     default_outputs.add(precompile_result.keep_srcs)
     default_outputs.add(required_pyc_files)
 
-    imports = collect_imports(ctx)
-
-    runtime_details = _get_runtime_details(ctx)
     extra_deps = []
 
     # The debugger dependency should be prevented by select() config elsewhere,
@@ -1026,6 +1030,8 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     if not _is_tool_config(ctx):
         extra_deps.append(ctx.attr._debugger_flag)
 
+    imports = collect_imports(ctx, extra_deps = extra_deps)
+    runtime_details = _get_runtime_details(ctx)
     cc_details = _get_cc_details_for_binary(ctx, extra_deps = extra_deps)
     native_deps_details = _get_native_deps_details(
         ctx,
@@ -1058,6 +1064,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         cc_details = cc_details,
         native_deps_details = native_deps_details,
         runfiles_details = runfiles_details,
+        extra_deps = extra_deps,
     )
     default_outputs.add(exec_result.extra_files_to_build)
 

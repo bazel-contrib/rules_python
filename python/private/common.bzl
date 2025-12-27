@@ -161,12 +161,8 @@ def collect_cc_info(ctx, extra_deps = []):
     Returns:
         CcInfo provider of merged information.
     """
-    deps = ctx.attr.deps
-    if extra_deps:
-        deps = list(deps)
-        deps.extend(extra_deps)
     cc_infos = []
-    for dep in deps:
+    for dep in collect_deps(ctx, extra_deps):
         if CcInfo in dep:
             cc_infos.append(dep[CcInfo])
 
@@ -175,17 +171,19 @@ def collect_cc_info(ctx, extra_deps = []):
 
     return cc_common.merge_cc_infos(cc_infos = cc_infos)
 
-def collect_imports(ctx):
+def collect_imports(ctx, extra_deps = []):
     """Collect the direct and transitive `imports` strings.
 
     Args:
         ctx: {type}`ctx` the current target ctx
+        extra_deps: list of Target to also collect imports from.
 
     Returns:
         {type}`depset[str]` of import paths
     """
+
     transitive = []
-    for dep in ctx.attr.deps:
+    for dep in collect_deps(ctx, extra_deps):
         if PyInfo in dep:
             transitive.append(dep[PyInfo].imports)
         if BuiltinPyInfo != None and BuiltinPyInfo in dep:
@@ -479,3 +477,19 @@ def runfiles_root_path(ctx, short_path):
         return short_path[3:]
     else:
         return "{}/{}".format(ctx.workspace_name, short_path)
+
+def collect_deps(ctx, extra_deps = []):
+    """Collect the dependencies from the rule's context.
+
+    Args:
+        ctx: rule ctx
+        extra_deps: list of Target to also collect dependencies from.
+
+    Returns:
+        list of Target
+    """
+    deps = ctx.attr.deps
+    if extra_deps:
+        deps = list(deps)
+        deps.extend(extra_deps)
+    return deps
