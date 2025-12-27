@@ -19,6 +19,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
+load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
@@ -172,9 +173,11 @@ def _test_executable_in_runfiles_impl(env, target):
     ])
 
 def _test_debugger(name, config):
+    # Using imports
     rt_util.helper_target(
         py_library,
         name = name + "_debugger",
+        imports = ["."],
         srcs = [rt_util.empty_file(name + "_debugger.py")],
     )
 
@@ -187,24 +190,70 @@ def _test_debugger(name, config):
             labels.DEBUGGER: "//{}:{}_debugger".format(native.package_name(), name),
         },
     )
+
+    # Using venv
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger_venv",
+        imports = [native.package_name() + "/site-packages"],
+        experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
+        srcs = [rt_util.empty_file("site-packages/" + name + "_debugger_venv.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject_venv",
+        srcs = [rt_util.empty_file(name + "_subject_venv.py")],
+        config_settings = {
+            # config_settings requires a fully qualified label
+            labels.DEBUGGER: "//{}:{}_debugger_venv".format(native.package_name(), name),
+        },
+    )
+
     analysis_test(
         name = name,
         impl = _test_debugger_impl,
         targets = {
             "exec_target": name + "_subject",
             "target": name + "_subject",
+            "target_venv": name + "_subject_venv",
         },
         attrs = {
             "exec_target": attr.label(cfg = "exec"),
+        },
+        config_settings = {
+            labels.VENVS_SITE_PACKAGES: "yes",
+            labels.PYTHON_VERSION: "3.13",
         },
     )
 
 _tests.append(_test_debugger)
 
 def _test_debugger_impl(env, targets):
+    # 1. Subject
+
+    # Check the file from debugger dep is injected.
     env.expect.that_target(targets.target).runfiles().contains_at_least([
         "{workspace}/{package}/{test_name}_debugger.py",
     ])
+
+    # #3481: Ensure imports are setup correcty.
+    meta = env.expect.meta.derive(format_str_kwargs = {"package": targets.target.label.package})
+    env.expect.that_target(targets.target).has_provider(PyInfo)
+    imports = targets.target[PyInfo].imports.to_list()
+    env.expect.that_collection(imports).contains(meta.format_str("{workspace}/{package}"))
+
+    # 2. Subject venv
+
+    # #3481: Ensure that venv site-packages is setup correctly, if the dependency is coming
+    # from pip integration.
+    env.expect.that_target(targets.target_venv).runfiles().contains_at_least([
+        "{workspace}/{package}/_{name}.venv/lib/python3.13/site-packages/{test_name}_debugger_venv.py",
+    ])
+
+    # 3. Subject exec
+
+    # Ensure that tools don't inherit debugger.
     env.expect.that_target(targets.exec_target).runfiles().not_contains(
         "{workspace}/{package}/{test_name}_debugger.py",
     )
