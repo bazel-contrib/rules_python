@@ -144,12 +144,14 @@ def _major_minor(python_version):
     minor, _, _ = tail.partition(".")
     return "{}.{}".format(major, minor)
 
-def _major_minor_versions(python_versions):
+def _with_major_minor_versions(python_versions):
     if not python_versions:
         return []
 
     # Use a dict as a simple set
-    return sorted({_major_minor(v): None for v in python_versions})
+    ret = {_major_minor(v): None for v in python_versions}
+    ret.update({v: None for v in python_versions})
+    return sorted(ret)
 
 def render_multiplatform_pkg_aliases(*, aliases, platform_config_settings = {}, **kwargs):
     """Render the multi-platform pkg aliases.
@@ -178,7 +180,7 @@ def render_multiplatform_pkg_aliases(*, aliases, platform_config_settings = {}, 
         **kwargs
     )
     contents["_config/BUILD.bazel"] = _render_config_settings(
-        python_versions = _major_minor_versions(flag_versions.get("python_versions", [])) + flag_versions.get("python_versions", []),
+        python_versions = _with_major_minor_versions(flag_versions.get("python_versions", [])),
         platform_config_settings = platform_config_settings,
         visibility = ["//:__subpackages__"],
     )
