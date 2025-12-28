@@ -59,6 +59,8 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-changed}
 ### Changed
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
+* (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
+  {obj}`--stamp` flag.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -68,6 +70,9 @@ END_UNRELEASED_TEMPLATE
 ### Added
 * (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
   to add to binaries/tests for custom debuggers.
+* (binaries/tests) Build information is now included in binaries and tests.
+  Use the `bazel_binary_info` module to access it. The {flag}`--stamp` flag will
+  add {flag}`--workspace_status` information.
 
 {#v1-8-0}
 ## [1.8.0] - 2025-12-19

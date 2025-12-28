@@ -206,6 +206,11 @@ accepting arbitrary Python versions.
             allow_single_file = True,
             default = "@bazel_tools//tools/python:python_bootstrap_template.txt",
         ),
+        "_build_data_writer": lambda: attrb.Label(
+            default = "//python/private:build_data_writer",
+            executable = True,
+            cfg = "exec",
+        ),
         "_debugger_flag": lambda: attrb.Label(
             default = "//python/private:debugger_if_target_config",
             providers = [PyInfo],
@@ -225,6 +230,10 @@ accepting arbitrary Python versions.
         ),
         "_python_version_flag": lambda: attrb.Label(
             default = labels.PYTHON_VERSION,
+        ),
+        "_uncachable_version_file": lambda: attrb.Label(
+            default = "//python/private:uncachable_version_file",
+            allow_files = True,
         ),
         "_venvs_use_declare_symlink_flag": lambda: attrb.Label(
             default = labels.VENVS_USE_DECLARE_SYMLINK,
@@ -271,10 +280,8 @@ def py_executable_impl(ctx, *, is_test, inherited_environment):
 def create_binary_semantics():
     return create_binary_semantics_struct(
         # keep-sorted start
-        get_central_uncachable_version_file = lambda ctx: None,
         get_native_deps_dso_name = _get_native_deps_dso_name,
         should_build_native_deps_dso = lambda ctx: False,
-        should_include_build_data = lambda ctx: False,
         # keep-sorted end
     )
 
@@ -336,6 +343,7 @@ def _create_executable(
             imports = imports,
             runtime_details = runtime_details,
             venv = venv,
+            build_data_file = runfiles_details.build_data_file,
         )
         extra_runfiles = ctx.runfiles(
             [stage2_bootstrap] + (
@@ -648,6 +656,7 @@ def _create_stage2_bootstrap(
         main_py,
         imports,
         runtime_details,
+        build_data_file,
         venv):
     output = ctx.actions.declare_file(
         # Prepend with underscore to prevent pytest from trying to
@@ -668,6 +677,7 @@ def _create_stage2_bootstrap(
         template = template,
         output = output,
         substitutions = {
+            "%build_data_file%": runfiles_root_path(ctx, build_data_file.short_path),
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%imports%": ":".join(imports.to_list()),
@@ -1241,8 +1251,7 @@ def _get_base_runfiles_for_binary(
         required_pyc_files,
         implicit_pyc_files,
         implicit_pyc_source_files,
-        extra_common_runfiles,
-        semantics):
+        extra_common_runfiles):
     """Returns the set of runfiles necessary prior to executable creation.
 
     NOTE: The term "common runfiles" refers to the runfiles that are common to
@@ -1264,7 +1273,6 @@ def _get_base_runfiles_for_binary(
             files that are used when the implicit pyc files are not.
         extra_common_runfiles: List of runfiles; additional runfiles that
             will be added to the common runfiles.
-        semantics: A `BinarySemantics` struct; see `create_binary_semantics_struct`.
 
     Returns:
         struct with attributes:
@@ -1305,6 +1313,9 @@ def _get_base_runfiles_for_binary(
         common_runfiles.add_targets(extra_deps)
     common_runfiles.add(extra_common_runfiles)
 
+    build_data_file = _write_build_data(ctx)
+    common_runfiles.add(build_data_file)
+
     common_runfiles = common_runfiles.build(ctx)
 
     if _should_create_init_files(ctx):
@@ -1313,25 +1324,10 @@ def _get_base_runfiles_for_binary(
             runfiles = common_runfiles,
         )
 
-    # Don't include build_data.txt in the non-exe runfiles. The build data
-    # may contain program-specific content (e.g. target name).
     runfiles_with_exe = common_runfiles.merge(ctx.runfiles([executable]))
 
-    # Don't include build_data.txt in data runfiles. This allows binaries to
-    # contain other binaries while still using the same fixed location symlink
-    # for the build_data.txt file. Really, the fixed location symlink should be
-    # removed and another way found to locate the underlying build data file.
     data_runfiles = runfiles_with_exe
-
-    if is_stamping_enabled(ctx) and semantics.should_include_build_data(ctx):
-        build_data_file, build_data_runfiles = _create_runfiles_with_build_data(
-            ctx,
-            semantics.get_central_uncachable_version_file(ctx),
-        )
-        default_runfiles = runfiles_with_exe.merge(build_data_runfiles)
-    else:
-        build_data_file = None
-        default_runfiles = runfiles_with_exe
+    default_runfiles = runfiles_with_exe
 
     return struct(
         runfiles_without_exe = common_runfiles,
@@ -1340,31 +1336,18 @@ def _get_base_runfiles_for_binary(
         data_runfiles = data_runfiles,
     )
 
-def _create_runfiles_with_build_data(
-        ctx,
-        central_uncachable_version_file):
-    build_data_file = _write_build_data(
-        ctx,
-        central_uncachable_version_file,
-    )
-    build_data_runfiles = ctx.runfiles(files = [
-        build_data_file,
-    ])
-    return build_data_file, build_data_runfiles
-
-def _write_build_data(ctx, central_uncachable_version_file):
-    # TODO: Remove this logic when a central file is always available
-    if not central_uncachable_version_file:
-        version_file = ctx.actions.declare_file(ctx.label.name + "-uncachable_version_file.txt")
-        _py_builtins.copy_without_caching(
-            ctx = ctx,
-            read_from = ctx.version_file,
-            write_to = version_file,
-        )
+def _write_build_data(ctx):
+    inputs = []
+    if is_stamping_enabled(ctx):
+        # NOTE: ctx.info_file is undocumented; see
+        # https://github.com/bazelbuild/bazel/issues/9363
+        info_file = ctx.info_file
+        version_file = ctx.files._uncachable_version_file[0]
+        inputs = [info_file, version_file]
     else:
-        version_file = central_uncachable_version_file
-
-    direct_inputs = [ctx.info_file, version_file]
+        inputs = []
+        info_file = None
+        version_file = None
 
     # A "constant metadata" file is basically a special file that doesn't
     # support change detection logic and reports that it is unchanged. i.e., it
@@ -1397,19 +1380,23 @@ def _write_build_data(ctx, central_uncachable_version_file):
     )
 
     ctx.actions.run(
-        executable = ctx.executable._build_data_gen,
+        executable = ctx.executable._build_data_writer,
         env = {
-            # NOTE: ctx.info_file is undocumented; see
-            # https://github.com/bazelbuild/bazel/issues/9363
-            "INFO_FILE": ctx.info_file.path,
+            # Include config id so binaries can e.g. cache content based on how
+            # they were built.
+            "CONFIG_ID": ctx.configuration.short_id,
+            # Include config mode so that binaries can detect if they're
+            # being used as a build tool or not, allowing for runtime optimizations.
+            "CONFIG_MODE": "EXEC" if _is_tool_config(ctx) else "TARGET",
+            "INFO_FILE": info_file.path if info_file else "",
             "OUTPUT": build_data.path,
-            "PLATFORM": cc_helper.find_cpp_toolchain(ctx).toolchain_id,
+            # Include this so it's explicit, otherwise, one has to detect
+            # this by looking for the absense of info_file keys.
+            "STAMPED": "TRUE" if is_stamping_enabled(ctx) else "FALSE",
             "TARGET": str(ctx.label),
-            "VERSION_FILE": version_file.path,
+            "VERSION_FILE": version_file.path if version_file else "",
         },
-        inputs = depset(
-            direct = direct_inputs,
-        ),
+        inputs = depset(direct = inputs),
         outputs = [build_data],
         mnemonic = "PyWriteBuildData",
         progress_message = "Generating %{label} build_data.txt",
@@ -1607,6 +1594,9 @@ def is_stamping_enabled(ctx):
     Returns:
         bool; True if stamping is enabled, False if not.
     """
+
+    # Always ignore stamping for exec config. This mitigates stamping
+    # invalidating build action caching.
     if _is_tool_config(ctx):
         return False
 
@@ -1616,8 +1606,9 @@ def is_stamping_enabled(ctx):
     elif stamp == 0:
         return False
     elif stamp == -1:
-        # NOTE: Undocumented API; private to builtins
-        return ctx.configuration.stamp_binaries
+        # NOTE: ctx.configuration.stamp_binaries() exposes this, but that's
+        # a private API. To workaround, it'd been eposed via py_internal.
+        return py_internal.stamp_binaries(ctx)
     else:
         fail("Unsupported `stamp` value: {}".format(stamp))
 
@@ -1770,6 +1761,9 @@ def _transition_executable_impl(settings, attr):
 
     if attr.python_version and attr.python_version not in ("PY2", "PY3"):
         settings[labels.PYTHON_VERSION] = attr.python_version
+
+    if attr.stamp != -1:
+        settings["//command_line_option:stamp"] = str(attr.stamp)
     return settings
 
 def create_executable_rule(*, attrs, **kwargs):
@@ -1820,8 +1814,14 @@ def create_executable_rule_builder(implementation, **kwargs):
         ] + ([ruleb.ToolchainType(_LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(
             implementation = _transition_executable_impl,
-            inputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],
-            outputs = TRANSITION_LABELS + [labels.PYTHON_VERSION],
+            inputs = TRANSITION_LABELS + [
+                labels.PYTHON_VERSION,
+                "//command_line_option:stamp",
+            ],
+            outputs = TRANSITION_LABELS + [
+                labels.PYTHON_VERSION,
+                "//command_line_option:stamp",
+            ],
         ),
         **kwargs
     )

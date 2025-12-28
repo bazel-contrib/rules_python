@@ -20,6 +20,7 @@ import contextlib
 import os
 import re
 import runpy
+import types
 import uuid
 
 # ===== Template substitutions start =====
@@ -40,6 +41,27 @@ VENV_ROOT = "%venv_root%"
 # Only set when the toolchain doesn't support the build-time venv. Empty
 # string otherwise.
 VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
+
+# runfiles-root-relative path to a file with binary-specific build information
+BUILD_DATA_FILE = "%build_data_file%"
+
+
+class BazelBinaryInfoModule(types.ModuleType):
+    BUILD_DATA_FILE = BUILD_DATA_FILE
+
+    def get_build_data(self):
+        """Returns a string of the raw build data."""
+        try:
+            # Prefer dep via pypi
+            import runfiles
+        except ImportError:
+            from python.runfiles import runfiles
+        path = runfiles.Create().Rlocation(self.BUILD_DATA_FILE)
+        with open(path) as fp:
+            return fp.read()
+
+
+sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
 
 # ===== Template substitutions end =====
 
@@ -84,17 +106,6 @@ def get_windows_path_with_unc_prefix(path):
 
     # os.path.abspath returns a normalized absolute path
     return unicode_prefix + os.path.abspath(path)
-
-
-def search_path(name):
-    """Finds a file in a given search path."""
-    search_path = os.getenv("PATH", os.defpath).split(os.pathsep)
-    for directory in search_path:
-        if directory:
-            path = os.path.join(directory, name)
-            if os.path.isfile(path) and os.access(path, os.X_OK):
-                return path
-    return None
 
 
 def is_verbose():
