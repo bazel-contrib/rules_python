@@ -1062,7 +1062,6 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
             cc_details.extra_runfiles,
             native_deps_details.runfiles,
         ],
-        semantics = semantics,
     )
     exec_result = _create_executable(
         ctx,

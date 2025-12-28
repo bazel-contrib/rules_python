@@ -50,7 +50,7 @@ BUILD_DATA_FILE = "%build_data_file%"
 class BazelBinaryInfoModule(types.ModuleType):
     BUILD_DATA_FILE = BUILD_DATA_FILE
 
-    @cache()
+    @cache
     def get_build_data(self):
         """Returns a string of the raw build data."""
         try:
