@@ -62,7 +62,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (tests) No more coverage warnings are being printed if there are no sources.
+  ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
 
 {#v0-0-0-added}
 ### Added
