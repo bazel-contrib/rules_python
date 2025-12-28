@@ -661,6 +661,7 @@ def _create_stage2_bootstrap(
         template = template,
         output = output,
         substitutions = {
+            "%coverage_instrumented%": str(int(ctx.configuration.coverage_enabled and ctx.coverage_instrumented())),
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%imports%": ":".join(imports.to_list()),
@@ -670,7 +671,6 @@ def _create_stage2_bootstrap(
             "%venv_rel_site_packages%": venv.venv_site_packages,
             "%venv_root%": venv.venv_root,
             "%workspace_name%": ctx.workspace_name,
-            "%coverage_instrumented%": str(int(ctx.configuration.coverage_enabled and ctx.coverage_instrumented())),
         },
         is_executable = True,
     )
