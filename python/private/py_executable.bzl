@@ -1337,7 +1337,6 @@ def _get_base_runfiles_for_binary(
     )
 
 def _write_build_data(ctx):
-    inputs = []
     if is_stamping_enabled(ctx):
         # NOTE: ctx.info_file is undocumented; see
         # https://github.com/bazelbuild/bazel/issues/9363
@@ -1399,7 +1398,7 @@ def _write_build_data(ctx):
         inputs = depset(direct = inputs),
         outputs = [build_data],
         mnemonic = "PyWriteBuildData",
-        progress_message = "Generating %{label} build_data.txt",
+        progress_message = "Reticulating %{label} build data",
     )
     return build_data
 

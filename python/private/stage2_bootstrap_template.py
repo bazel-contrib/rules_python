@@ -22,6 +22,7 @@ import re
 import runpy
 import types
 import uuid
+from functools import cache
 
 # ===== Template substitutions start =====
 # We just put them in one place so its easy to tell which are used.
@@ -49,6 +50,7 @@ BUILD_DATA_FILE = "%build_data_file%"
 class BazelBinaryInfoModule(types.ModuleType):
     BUILD_DATA_FILE = BUILD_DATA_FILE
 
+    @cache()
     def get_build_data(self):
         """Returns a string of the raw build data."""
         try:
