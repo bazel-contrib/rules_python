@@ -43,9 +43,14 @@ VENV_ROOT = "%venv_root%"
 # string otherwise.
 VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 
+# Whether we should generate coverage data.
+# string, 1 or 0
+COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
+
 # runfiles-root-relative path to a file with binary-specific build information
 BUILD_DATA_FILE = "%build_data_file%"
 
+# ===== Template substitutions end =====
 
 class BazelBinaryInfoModule(types.ModuleType):
     BUILD_DATA_FILE = BUILD_DATA_FILE
@@ -64,8 +69,6 @@ class BazelBinaryInfoModule(types.ModuleType):
 
 
 sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
-
-# ===== Template substitutions end =====
 
 
 # Return True if running on Windows
@@ -332,11 +335,14 @@ def _maybe_collect_coverage(enable):
     # We need for coveragepy to use relative paths.  This can only be configured
     # using an rc file.
     rcfile_name = os.path.join(coverage_dir, ".coveragerc_{}".format(unique_id))
+    disable_warnings = ('disable_warnings = module-not-imported, no-data-collected'
+                        if COVERAGE_INSTRUMENTED else '')
     print_verbose_coverage("coveragerc file:", rcfile_name)
     with open(rcfile_name, "w") as rcfile:
         rcfile.write(
             f"""[run]
 relative_files = True
+{disable_warnings}
 source =
 \t{source}
 """

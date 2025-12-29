@@ -29,6 +29,8 @@ package(
 
 licenses(["notice"])
 
+exports_files(["runtime_env_toolchain_interpreter.sh"])
+
 filegroup(
     name = "distribution",
     srcs = glob(["**"]) + [
