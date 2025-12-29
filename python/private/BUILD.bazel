@@ -98,11 +98,11 @@ bzl_library(
     ],
 )
 
-filegroup(
+alias(
     name = "build_data_writer",
-    srcs = select({
-        "@platforms//os:windows": ["build_data_writer.ps1"],
-        "//conditions:default": ["build_data_writer.sh"],
+    actual = select({
+        "@platforms//os:windows": ":build_data_writer.ps1",
+        "//conditions:default": ":build_data_writer.sh",
     }),
 )
 

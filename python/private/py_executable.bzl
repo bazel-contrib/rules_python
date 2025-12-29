@@ -208,7 +208,7 @@ accepting arbitrary Python versions.
         ),
         "_build_data_writer": lambda: attrb.Label(
             default = "//python/private:build_data_writer",
-            executable = True,
+            allow_files = True,
             cfg = "exec",
         ),
         "_debugger_flag": lambda: attrb.Label(
@@ -1336,14 +1336,15 @@ def _get_base_runfiles_for_binary(
     )
 
 def _write_build_data(ctx):
+    inputs = builders.DepsetBuilder()
     if is_stamping_enabled(ctx):
         # NOTE: ctx.info_file is undocumented; see
         # https://github.com/bazelbuild/bazel/issues/9363
         info_file = ctx.info_file
         version_file = ctx.files._uncachable_version_file[0]
-        inputs = [info_file, version_file]
+        inputs.add(info_file)
+        inputs.add(version_file)
     else:
-        inputs = []
         info_file = None
         version_file = None
 
@@ -1377,8 +1378,19 @@ def _write_build_data(ctx):
         root = ctx.bin_dir,
     )
 
+    action_args = ctx.actions.args()
+    writer_file = ctx.files._build_data_writer[0]
+    if writer_file.path.endswith(".ps1"):
+        action_exe = "pwsh.exe"
+        action_args.add("-File")
+        action_args.add(writer_file)
+        inputs.add(writer_file)
+    else:
+        action_exe = ctx.attr._build_data_writer[DefaultInfo].files_to_run
+
     ctx.actions.run(
-        executable = ctx.executable._build_data_writer,
+        executable = action_exe,
+        arguments = [action_args],
         env = {
             # Include config mode so that binaries can detect if they're
             # being used as a build tool or not, allowing for runtime optimizations.
@@ -1391,10 +1403,11 @@ def _write_build_data(ctx):
             "TARGET": str(ctx.label),
             "VERSION_FILE": version_file.path if version_file else "",
         },
-        inputs = depset(direct = inputs),
+        inputs = inputs.build(),
         outputs = [build_data],
         mnemonic = "PyWriteBuildData",
         progress_message = "Reticulating %{label} build data",
+        toolchain = None,
     )
     return build_data
 
