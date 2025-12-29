@@ -52,6 +52,7 @@ BUILD_DATA_FILE = "%build_data_file%"
 
 # ===== Template substitutions end =====
 
+
 class BazelBinaryInfoModule(types.ModuleType):
     BUILD_DATA_FILE = BUILD_DATA_FILE
 
@@ -335,8 +336,11 @@ def _maybe_collect_coverage(enable):
     # We need for coveragepy to use relative paths.  This can only be configured
     # using an rc file.
     rcfile_name = os.path.join(coverage_dir, ".coveragerc_{}".format(unique_id))
-    disable_warnings = ('disable_warnings = module-not-imported, no-data-collected'
-                        if COVERAGE_INSTRUMENTED else '')
+    disable_warnings = (
+        "disable_warnings = module-not-imported, no-data-collected"
+        if COVERAGE_INSTRUMENTED
+        else ""
+    )
     print_verbose_coverage("coveragerc file:", rcfile_name)
     with open(rcfile_name, "w") as rcfile:
         rcfile.write(
