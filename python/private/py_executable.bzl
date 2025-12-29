@@ -1380,9 +1380,6 @@ def _write_build_data(ctx):
     ctx.actions.run(
         executable = ctx.executable._build_data_writer,
         env = {
-            # Include config id so binaries can e.g. cache content based on how
-            # they were built.
-            "CONFIG_ID": ctx.configuration.short_id,
             # Include config mode so that binaries can detect if they're
             # being used as a build tool or not, allowing for runtime optimizations.
             "CONFIG_MODE": "EXEC" if _is_tool_config(ctx) else "TARGET",
