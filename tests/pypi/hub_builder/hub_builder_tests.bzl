@@ -48,6 +48,7 @@ def hub_builder(
         whl_overrides = {},
         evaluate_markers_fn = None,
         simpleapi_download_fn = None,
+        log_printer = None,
         available_interpreters = {}):
     builder = _hub_builder(
         name = "pypi",
@@ -96,6 +97,7 @@ def hub_builder(
                 ),
             ),
             "unit-test",
+            printer = log_printer,
         ),
     )
     self = struct(
@@ -1244,6 +1246,63 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.extra_aliases().contains_exactly({})
 
 _tests.append(_test_pipstar_platforms_limit)
+
+def _test_err_duplicate_repos(env):
+    logs = {}
+    log_printer = lambda key, message: logs.setdefault(key.strip(), []).append(message)
+    builder = hub_builder(
+        env,
+        available_interpreters = {
+            "python_3_15_1_host": "unit_test_interpreter_target_1",
+            "python_3_15_2_host": "unit_test_interpreter_target_2",
+        },
+        log_printer = log_printer,
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15.1",
+            requirements_lock = "requirements.txt",
+        ),
+    )
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15.2",
+            requirements_lock = "requirements.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly([])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({})
+    pypi.whl_libraries().contains_exactly({})
+    pypi.extra_aliases().contains_exactly({})
+    env.expect.that_dict(logs).keys().contains_exactly(["rules_python:unit-test FAIL:"])
+    env.expect.that_collection(logs["rules_python:unit-test FAIL:"]).contains_exactly([
+        """\
+Attempting to create a duplicate library pypi_315_simple for simple with different arguments. Already existing declaration has:
+    common: {
+        "dep_template": "@pypi//{name}:{target}",
+        "config_load": "@pypi//:config.bzl",
+        "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+    }
+    different: {
+        "python_interpreter_target": ("unit_test_interpreter_target_1", "unit_test_interpreter_target_2"),
+    }\
+""",
+    ]).in_order()
+
+_tests.append(_test_err_duplicate_repos)
 
 def hub_builder_test_suite(name):
     """Create the test suite.
