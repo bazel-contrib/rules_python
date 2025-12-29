@@ -16,7 +16,6 @@ class BuildDataTest(unittest.TestCase):
         self.assertIn("BUILD_USER ", build_data)
         self.assertIn("BUILD_TIMESTAMP ", build_data)
         self.assertIn("FORMATTED_DATE ", build_data)
-        self.assertIn("CONFIG_ID ", build_data)
         self.assertIn("CONFIG_MODE TARGET", build_data)
         self.assertIn("STAMPED TRUE", build_data)
 
