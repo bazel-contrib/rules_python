@@ -11,6 +11,9 @@ from python.runfiles import Runfiles
 def main(argv):
     r = Runfiles.Create()
     serve_directory = r.Rlocation(argv[1])
+    if not serve_directory:
+        print(f"Error: could not find runfile for '{argv[1]}'", file=sys.stderr)
+        return 1
 
     class DirectoryHandler(server.SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
