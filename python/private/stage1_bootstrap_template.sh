@@ -7,7 +7,17 @@ if [[ -n "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
 fi
 
 # runfiles-relative path
+STAGE2_BOOTSTRAP_SENTINEL="%stage2""_bootstrap%"
+MAIN_SENTINEL="%main""%"
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
+MAIN="%main%"
+if [[ "$STAGE2_BOOTSTRAP" == "$STAGE2_BOOTSTRAP_SENTINEL" ]]; then
+  if [[ "$MAIN" != "$MAIN_SENTINEL" && -n "$MAIN" ]]; then
+    STAGE2_BOOTSTRAP="$MAIN"
+  else
+    STAGE2_BOOTSTRAP=""
+  fi
+fi
 
 # runfiles-relative path to python interpreter to use.
 # This is the `bin/python3` path in the binary's venv.
@@ -35,6 +45,16 @@ VENV_REL_SITE_PACKAGES="%venv_rel_site_packages%"
 declare -a INTERPRETER_ARGS_FROM_TARGET=(
 %interpreter_args%
 )
+INTERPRETER_ARGS_SENTINEL="%interpreter""_args%"
+if [[ "${#INTERPRETER_ARGS_FROM_TARGET[@]}" -eq 1 &&
+      "${INTERPRETER_ARGS_FROM_TARGET[0]}" == "$INTERPRETER_ARGS_SENTINEL" ]]; then
+  INTERPRETER_ARGS_FROM_TARGET=()
+fi
+
+if [[ -z "$STAGE2_BOOTSTRAP" ]]; then
+  echo >&2 "ERROR: %stage2_bootstrap% (or %main%) was not substituted."
+  exit 1
+fi
 
 if [[ "$IS_ZIPFILE" == "1" ]]; then
   # NOTE: Macs have an old version of mktemp, so we must use only the

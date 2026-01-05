@@ -1,0 +1,1 @@
+print("external-native-ok")

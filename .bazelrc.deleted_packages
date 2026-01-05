@@ -40,6 +40,7 @@ common --deleted_packages=gazelle/python/private
 common --deleted_packages=tests/integration/compile_pip_requirements
 common --deleted_packages=tests/integration/compile_pip_requirements_test_from_external_repo
 common --deleted_packages=tests/integration/custom_commands
+common --deleted_packages=tests/integration/external_native_py_binary
 common --deleted_packages=tests/integration/local_toolchains
 common --deleted_packages=tests/integration/pip_parse
 common --deleted_packages=tests/integration/pip_parse/empty

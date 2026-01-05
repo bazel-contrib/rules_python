@@ -10,9 +10,18 @@ import sys
 import os
 import subprocess
 import uuid
+import ast
 
 # runfiles-relative path
+_STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
+if STAGE2_BOOTSTRAP == _STAGE2_BOOTSTRAP_SENTINEL:
+  _MAIN_SENTINEL = "%main" + "%"
+  _main = "%main%"
+  if _main != _MAIN_SENTINEL and _main:
+    STAGE2_BOOTSTRAP = _main
+  else:
+    STAGE2_BOOTSTRAP = ""
 
 # runfiles-relative path to venv's python interpreter
 # Empty string if a venv is not setup.
@@ -35,9 +44,16 @@ RECREATE_VENV_AT_RUNTIME="%recreate_venv_at_runtime%"
 WORKSPACE_NAME = "%workspace_name%"
 
 # Target-specific interpreter args.
-INTERPRETER_ARGS = [
-%interpreter_args%
-]
+_INTERPRETER_ARGS_SENTINEL = "%interpreter" + "_args%"
+_INTERPRETER_ARGS_RAW = """%interpreter_args%""".strip()
+if _INTERPRETER_ARGS_RAW and _INTERPRETER_ARGS_RAW != _INTERPRETER_ARGS_SENTINEL:
+  INTERPRETER_ARGS = [
+    ast.literal_eval(line.strip())
+    for line in _INTERPRETER_ARGS_RAW.splitlines()
+    if line.strip()
+  ]
+else:
+  INTERPRETER_ARGS = []
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 

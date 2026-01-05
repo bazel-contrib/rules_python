@@ -48,6 +48,12 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
+    name = "external_native_py_binary_workspace_test",
+    bzlmod = False,
+    workspace_path = "external_native_py_binary",
+)
+
+rules_python_integration_test(
     name = "local_toolchains_test",
     env = {
         "RULES_PYTHON_BZLMOD_DEBUG": "1",

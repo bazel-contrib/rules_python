@@ -1,0 +1,35 @@
+workspace(name = "external_native_py_binary")
+
+load(
+    "@bazel_tools//tools/build_defs/repo:local.bzl",
+    "local_repository",
+    "new_local_repository",
+)
+
+local_repository(
+    name = "rules_python",
+    path = "../../..",
+)
+
+load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
+
+py_repositories()
+
+python_register_toolchains(
+    name = "python_3_11",
+    python_version = "3.11",
+)
+
+new_local_repository(
+    name = "native_py_binary_repo",
+    path = "external_repo",
+    build_file_content = """
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "external_native_py_binary",
+    srcs = ["main.py"],
+    main = "main.py",
+)
+""",
+)
