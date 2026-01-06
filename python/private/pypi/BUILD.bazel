@@ -23,6 +23,11 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+exports_files(
+    srcs = ["deps.bzl"],
+    visibility = ["//tools/private/update_deps:__pkg__"],
+)
+
 filegroup(
     name = "distribution",
     srcs = glob(
