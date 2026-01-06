@@ -49,6 +49,12 @@ rules_python_integration_test(
 
 rules_python_integration_test(
     name = "external_native_py_binary_workspace_test",
+    # Bazel 9+ removed native py_binary, so this test only works on older versions
+    bazel_versions = [
+        "7.4.1",
+        "8.0.0",
+        "self",
+    ],
     bzlmod = False,
     workspace_path = "external_native_py_binary",
 )
