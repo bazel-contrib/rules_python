@@ -2,14 +2,14 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 package(default_visibility = ["//visibility:public"])
 
+# Test that a native py_binary from an external repo works.
+# This exercises the bootstrap template's handling of unsubstituted placeholders.
 sh_test(
     name = "external_native_py_binary_test",
     srcs = ["external_native_py_binary_test.sh"],
-    data = [
-        "@bazel_tools//tools/bash/runfiles",
-        "@native_py_binary_repo//:external_native_py_binary",
-    ],
+    data = ["@native_py_binary_repo//:external_native_py_binary"],
     env = {
         "BIN_RLOCATION": "native_py_binary_repo/external_native_py_binary",
     },
+    deps = ["@bazel_tools//tools/bash/runfiles"],
 )
