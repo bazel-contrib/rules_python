@@ -22,7 +22,6 @@ python_register_toolchains(
 
 new_local_repository(
     name = "native_py_binary_repo",
-    path = "external_repo",
     build_file_content = """
 package(default_visibility = ["//visibility:public"])
 
@@ -32,4 +31,5 @@ py_binary(
     main = "main.py",
 )
 """,
+    path = "external_repo",
 )
