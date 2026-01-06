@@ -7,6 +7,11 @@ if [[ -n "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
 fi
 
 # runfiles-relative path
+# NOTE: The sentinel strings are split (e.g., "%stage2""_bootstrap%") so that
+# the substitution logic won't replace them. This allows runtime detection of
+# unsubstituted placeholders, which occurs when native py_binary is used in
+# external repositories. In that case, we fall back to %main% which Bazel's
+# native rule does substitute.
 STAGE2_BOOTSTRAP_SENTINEL="%stage2""_bootstrap%"
 MAIN_SENTINEL="%main""%"
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
@@ -45,6 +50,7 @@ VENV_REL_SITE_PACKAGES="%venv_rel_site_packages%"
 declare -a INTERPRETER_ARGS_FROM_TARGET=(
 %interpreter_args%
 )
+# Sentinel split to detect unsubstituted placeholder (see STAGE2_BOOTSTRAP above).
 INTERPRETER_ARGS_SENTINEL="%interpreter""_args%"
 if [[ "${#INTERPRETER_ARGS_FROM_TARGET[@]}" -eq 1 &&
       "${INTERPRETER_ARGS_FROM_TARGET[0]}" == "$INTERPRETER_ARGS_SENTINEL" ]]; then

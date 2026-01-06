@@ -14,4 +14,7 @@ set -euo pipefail
 
 bin=$(rlocation "$BIN_RLOCATION")
 output="$("$bin")"
-[[ "$output" == "external-native-ok" ]]
+if [[ "$output" != "external-native-ok" ]]; then
+  echo >&2 "Expected 'external-native-ok' but got: $output"
+  exit 1
+fi
