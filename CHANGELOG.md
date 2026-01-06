@@ -66,6 +66,8 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 * (tests) No more coverage warnings are being printed if there are no sources.
   ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
+* (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
+  ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497))
 
 {#v0-0-0-added}
 ### Added
