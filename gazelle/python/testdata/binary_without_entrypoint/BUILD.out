@@ -5,12 +5,12 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 # gazelle:resolve py pandas @pip//:pandas
 
 filegroup(
-    name = "collided_main",
+    name = "collided_main_bin",
     srcs = ["collided_main.py"],
 )
 
 py_binary(
-    name = "main",
+    name = "main_bin",
     srcs = ["main.py"],
     visibility = ["//:__subpackages__"],
     deps = [
@@ -20,7 +20,7 @@ py_binary(
 )
 
 py_binary(
-    name = "main2",
+    name = "main2_bin",
     srcs = ["main2.py"],
     visibility = ["//:__subpackages__"],
     deps = [":py_default_library"],
