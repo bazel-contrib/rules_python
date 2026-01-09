@@ -86,21 +86,24 @@ def merge_trees(src, dest):
             break
 
         tmp = []
-        for (src, dest) in remaining:
-            if not dest.exists:
-                ret.append((src, dest))
+        for (s, d) in remaining:
+            if not d.exists:
+                ret.append((s, d))
                 continue
 
-            if not src.is_dir:
-                collisions.append(src)
+            if not s.is_dir or not d.is_dir:
+                collisions.append(s)
                 continue
 
-            for f in src.readdir():
-                tmp.append((f, dest.get_child(f.basename)))
+            for file_or_dir in s.readdir():
+                tmp.append((file_or_dir, d.get_child(file_or_dir.basename)))
 
         remaining = tmp
 
+    if remaining:
+        fail("Exceeded maximum directory depth of 10000 during tree merge.")
+
     if collisions:
-        fail(lambda: "detected collisions between platlib and purelib data: {}".format(collisions))
+        fail("Detected collisions between {} and {}: {}".format(src, dest, collisions))
 
     return ret
