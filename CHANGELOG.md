@@ -87,6 +87,23 @@ END_UNRELEASED_TEMPLATE
   to pass the `TOOL_VERSIONS` that include 3.8 toolchains or use the `bzlmod` APIs to add
   them back. This means any hub `pip.parse` calls that target `3.8` will be ignored from
   now on. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
+  {object}`python.single_version_override`, like:
+
+  ```starlark
+  python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+
+  python.single_version_override(
+      python_version = "3.8.20",
+      sha256 = {
+          "aarch64-apple-darwin": "2ddfc04bdb3e240f30fb782fa1deec6323799d0e857e0b63fa299218658fd3d4",
+          "aarch64-unknown-linux-gnu": "9d8798f9e79e0fc0f36fcb95bfa28a1023407d51a8ea5944b4da711f1f75f1ed",
+          "x86_64-apple-darwin": "68d060cd373255d2ca5b8b3441363d5aa7cc45b0c11bbccf52b1717c2b5aa8bb",
+          "x86_64-pc-windows-msvc": "41b6709fec9c56419b7de1940d1f87fa62045aff81734480672dcb807eedc47e",
+          "x86_64-unknown-linux-gnu": "285e141c36f88b2e9357654c5f77d1f8fb29cc25132698fe35bb30d787f38e87",
+      },
+      urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20241002/cpython-{python_version}+20241002-{platform}-{build}.tar.gz"],
+  )
+  ```
 * (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
   This version has reached EOL and will no longer receive any security fixes, please update to
   `3.10` or above. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
