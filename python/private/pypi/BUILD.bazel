@@ -178,6 +178,7 @@ bzl_library(
         ":whl_repo_name_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
+        "//python/private:text_util_bzl",
         "//python/private:version_bzl",
         "//python/private:version_label_bzl",
     ],

@@ -3,6 +3,7 @@
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
@@ -86,6 +87,16 @@ def hub_builder(
 ### PUBLIC methods
 
 def _build(self):
+    ret = struct(
+        whl_map = {},
+        group_map = {},
+        extra_aliases = {},
+        exposed_packages = [],
+        whl_libraries = {},
+    )
+    if self._logger.failed():
+        return ret
+
     whl_map = {}
     for key, settings in self._whl_map.items():
         for setting, repo in settings.items():
@@ -196,6 +207,44 @@ def _add_extra_aliases(self, extra_hub_aliases):
             {alias: True for alias in aliases},
         )
 
+def _diff_dict(first, second):
+    """A simple utility to shallow compare dictionaries.
+
+    Args:
+        first: The first dictionary to compare.
+        second: The second dictionary to compare.
+
+    Returns:
+        A dictionary containing the differences, with keys "common", "different",
+        "extra", and "missing", or None if the dictionaries are identical.
+    """
+    missing = {}
+    extra = {
+        key: value
+        for key, value in second.items()
+        if key not in first
+    }
+    common = {}
+    different = {}
+
+    for key, value in first.items():
+        if key not in second:
+            missing[key] = value
+        elif value == second[key]:
+            common[key] = value
+        else:
+            different[key] = (value, second[key])
+
+    if missing or extra or different:
+        return {
+            "common": common,
+            "different": different,
+            "extra": extra,
+            "missing": missing,
+        }
+    else:
+        return None
+
 def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
     if repo == None:
         # NOTE @aignas 2025-07-07: we guard against an edge-case where there
@@ -207,13 +256,26 @@ def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
 
     # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
     # we are using pipstar and we are downloading the wheel using the downloader
+    #
+    # However, for that we should first have a different way to reference closures with
+    # extras. For example, if some package depends on `foo[extra]` and another depends on
+    # `foo`, we should have 2 py_library targets.
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
 
     if repo_name in self._whl_libraries:
-        fail("attempting to create a duplicate library {} for {}".format(
-            repo_name,
-            whl.name,
-        ))
+        diff = _diff_dict(self._whl_libraries[repo_name], repo.args)
+        if diff:
+            self._logger.fail(lambda: (
+                "Attempting to create a duplicate library {repo_name} for {whl_name} with different arguments. Already existing declaration has:\n".format(
+                    repo_name = repo_name,
+                    whl_name = whl.name,
+                ) + "\n".join([
+                    "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                    for key, value in diff.items()
+                    if value
+                ])
+            ))
+            return
     self._whl_libraries[repo_name] = repo.args
 
     if not enable_pipstar and "experimental_target_platforms" in repo.args:
