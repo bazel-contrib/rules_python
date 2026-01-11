@@ -65,7 +65,8 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
             bin_venv_path = paths.join(base, venv_path)
             if is_file(link_to):
                 # use paths.join to handle ctx.label.package = ""
-                symlink_from = paths.join(ctx.label.package, bin_venv_path)
+                # ctx.label.repo_name should be prepended as we use runfiles.root_symlinks
+                symlink_from = paths.join(ctx.label.repo_name, ctx.label.package, bin_venv_path)
                 runfiles_symlinks[symlink_from] = link_to
             else:
                 venv_link = ctx.actions.declare_symlink(bin_venv_path)

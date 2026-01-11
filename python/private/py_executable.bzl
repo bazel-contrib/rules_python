@@ -629,8 +629,10 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         ),
         # venv files for user library dependencies (files that are specific
         # to the executable bootstrap and python runtime aren't here).
+        # `root_symlinks` should be used, otherwise, with symlinks files always go
+        # to `_main` prefix, and binaries from non-root module become broken.
         lib_runfiles = ctx.runfiles(
-            symlinks = venv_app_files.runfiles_symlinks,
+            root_symlinks = venv_app_files.runfiles_symlinks,
         ),
     )
 
