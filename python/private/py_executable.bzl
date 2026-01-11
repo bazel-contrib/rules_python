@@ -1153,22 +1153,13 @@ def _get_runtime_details(ctx):
 
     # Bazel has --python_path. This flag has a computed default of "python" when
     # its actual default is null (see
-    # BazelPythonConfiguration.java#getPythonPath). This flag is only used if
-    # toolchains are not enabled and `--python_top` isn't set. Note that Google
-    # used to have a variant of this named --python_binary, but it has since
-    # been removed.
-    #
     # TOOD(bazelbuild/bazel#7901): Remove this once --python_path flag is removed.
 
     flag_interpreter_path = read_possibly_native_flag(ctx, "python_path")
     if not flag_interpreter_path.startswith("python") and not paths.is_absolute(flag_interpreter_path):
         fail("'python_path' must be an absolute path or a name to be resolved from the system PATH (e.g., 'python', 'python3').")
 
-    toolchain_runtime, effective_runtime = _maybe_get_runtime_from_ctx(ctx)
-    if not effective_runtime:
-        # Clear these just in case
-        toolchain_runtime = None
-        effective_runtime = None
+    effective_runtime = _maybe_get_runtime_from_ctx(ctx)
 
     if effective_runtime:
         direct = []  # List of files
@@ -1193,16 +1184,9 @@ def _get_runtime_details(ctx):
     )
 
     return struct(
-        # Optional PyRuntimeInfo: The runtime found from toolchain resolution.
-        # This may be None because, within Google, toolchain resolution isn't
-        # yet enabled.
-        toolchain_runtime = toolchain_runtime,
-        # Optional PyRuntimeInfo: The runtime that should be used. When
-        # toolchain resolution is enabled, this is the same as
-        # `toolchain_resolution`. Otherwise, this probably came from the
-        # `_python_top` attribute that the Google implementation still uses.
-        # This is separate from `toolchain_runtime` because toolchain_runtime
-        # is propagated as a provider, while non-toolchain runtimes are not.
+        # Optional PyRuntimeInfo: The runtime that should be used.
+        # If None, it's probably Windows using the legacy auto-detecting toolchain
+        # that acts as if no toolchain was found.
         effective_runtime = effective_runtime,
         # str; Path to the Python interpreter to use for running the executable
         # itself (not the bootstrap script). Either an absolute path (which
@@ -1219,7 +1203,7 @@ def _maybe_get_runtime_from_ctx(ctx):
     """Finds the PyRuntimeInfo from the toolchain or attribute, if available.
 
     Returns:
-        2-tuple of toolchain_runtime, effective_runtime
+        A PyRuntimeInfo provider, or None.
     """
     toolchain = ctx.toolchains[TOOLCHAIN_TYPE]
 
@@ -1236,13 +1220,13 @@ def _maybe_get_runtime_from_ctx(ctx):
     # TODO(#7844): Remove this hack when the autodetecting toolchain has a
     # Windows implementation.
     if py3_runtime.interpreter_path == "/_magic_pyruntime_sentinel_do_not_use":
-        return None, None
+        return None
 
     if py3_runtime.python_version != "PY3":
         fail("Python toolchain py3_runtime must be python_version=PY3, got {}".format(
             py3_runtime.python_version,
         ))
-    return py3_runtime, py3_runtime
+    return py3_runtime
 
 def _get_base_runfiles_for_binary(
         ctx,
@@ -1701,10 +1685,10 @@ def _create_providers(
         ),
     ]
 
-    # TODO(b/265840007): Make this non-conditional once Google enables
-    # --incompatible_use_python_toolchains.
-    if runtime_details.toolchain_runtime:
-        py_runtime_info = runtime_details.toolchain_runtime
+    # TODO - The effective runtime can be None for Windows + auto detecting toolchain.
+    # This can be removed once that's fixed; see maybe_get_runtime_from_ctx().
+    if runtime_details.effective_runtime:
+        py_runtime_info = runtime_details.effective_runtime
         providers.append(py_runtime_info)
 
         # Re-add the builtin PyRuntimeInfo for compatibility to make
