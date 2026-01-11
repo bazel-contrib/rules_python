@@ -28,6 +28,9 @@ sh_test(
     data = [
         "@other//:venv_bin",
     ],
+    env = {
+        "VENV_BIN": "$(rootpath @other//:venv_bin)",
+    },
     target_compatible_with = NOT_WINDOWS,
 )
 
