@@ -68,6 +68,8 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                 # runfile_prefix should be prepended as we use runfiles.root_symlinks
                 runfile_prefix = ctx.label.repo_name or ctx.workspace_name
                 symlink_from = paths.join(runfile_prefix, ctx.label.package, bin_venv_path)
+                ##symlink_from = paths.join(ctx.label.package, bin_venv_path)
+
                 runfiles_symlinks[symlink_from] = link_to
             else:
                 venv_link = ctx.actions.declare_symlink(bin_venv_path)

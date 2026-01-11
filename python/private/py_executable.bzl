@@ -633,6 +633,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         # to `_main` prefix, and binaries from non-root module become broken.
         lib_runfiles = ctx.runfiles(
             root_symlinks = venv_app_files.runfiles_symlinks,
+            ##symlinks = venv_app_files.runfiles_symlinks,
         ),
     )
 
