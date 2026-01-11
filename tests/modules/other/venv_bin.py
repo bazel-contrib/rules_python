@@ -3,4 +3,4 @@ import nspkg.subnspkg
 import nspkg.subnspkg.delta
 import nspkg.subnspkg.gamma
 
-print("hi")
+print("@other//:venv_bin ran successfully.")

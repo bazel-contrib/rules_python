@@ -18,8 +18,10 @@ py_binary(
     name = "venv_bin",
     srcs = ["venv_bin.py"],
     config_settings = {
-        "@rules_python//python/config_settings:venvs_site_packages": "yes",
         "@rules_python//python/config_settings:bootstrap_impl": "script",
+        # To make paths we are using in the test deterministic
+        "@rules_python//python/config_settings:python_version": "3.13",
+        "@rules_python//python/config_settings:venvs_site_packages": "yes",
     },
     deps = [
         # Add two packages that install into the same directory. This is
