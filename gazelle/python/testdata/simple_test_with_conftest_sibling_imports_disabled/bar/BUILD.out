@@ -22,6 +22,7 @@ py_test(
     main = "__test__.py",
     deps = [
         ":conftest",
+        "//:conftest",
         "//:simple_test_with_conftest_sibling_imports_disabled",
     ],
 )
