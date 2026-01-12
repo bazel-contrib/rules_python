@@ -359,7 +359,7 @@ def _whl_library_impl(rctx):
 
     # also enable pipstar for any whls that are downloaded without `pip`
     enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
-    enable_pipstar_extract = (rp_config.enable_pipstar and rp_config.bazel_8_or_later) and rctx.attr.config_load
+    enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
 
     if not whl_path:
         if rctx.attr.urls:

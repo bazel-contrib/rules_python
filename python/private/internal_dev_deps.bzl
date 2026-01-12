@@ -91,6 +91,36 @@ def _internal_dev_deps_impl(mctx):
         enable_implicit_namespace_pkgs = False,
     )
 
+    _whl_library_from_dir(
+        name = "whl_library_extras_direct_dep",
+        root = "//tests/pypi/whl_library/testdata/pkg:BUILD.bazel",
+        output = "pkg-1.0-any-none-any.whl",
+        requirement = "pkg[optional]",
+        # The following is necessary to enable pipstar and make tests faster
+        config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+        dep_template = "@whl_library_extras_{name}//:{target}",
+    )
+    _whl_library_from_dir(
+        name = "whl_library_extras_optional_dep",
+        root = "//tests/pypi/whl_library/testdata/optional_dep:BUILD.bazel",
+        output = "optional_dep-1.0-any-none-any.whl",
+        requirement = "optional_dep",
+        # The following is necessary to enable pipstar and make tests faster
+        config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+    )
+
+def _whl_library_from_dir(*, name, output, root, **kwargs):
+    whl_from_dir_repo(
+        name = "{}_whl".format(name),
+        root = root,
+        output = output,
+    )
+    whl_library(
+        name = name,
+        whl_file = "@{}_whl//:{}".format(name, output),
+        **kwargs
+    )
+
 internal_dev_deps = module_extension(
     implementation = _internal_dev_deps_impl,
     doc = "This extension creates internal rules_python dev dependencies.",
