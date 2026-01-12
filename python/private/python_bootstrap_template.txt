@@ -10,8 +10,6 @@ import sys
 import os
 import subprocess
 import uuid
-import ast
-
 # runfiles-relative path
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of
@@ -55,15 +53,11 @@ WORKSPACE_NAME = "%workspace_name%"
 # Target-specific interpreter args.
 # Sentinel split to detect unsubstituted placeholder (see STAGE2_BOOTSTRAP above).
 _INTERPRETER_ARGS_SENTINEL = "%interpreter" + "_args%"
-_INTERPRETER_ARGS_RAW = """%interpreter_args%""".strip()
-if _INTERPRETER_ARGS_RAW and _INTERPRETER_ARGS_RAW != _INTERPRETER_ARGS_SENTINEL:
-  INTERPRETER_ARGS = [
-    ast.literal_eval(line.strip())
-    for line in _INTERPRETER_ARGS_RAW.splitlines()
-    if line.strip()
-  ]
-else:
+_INTERPRETER_ARGS_RAW = "%interpreter_args%"
+if _INTERPRETER_ARGS_RAW == _INTERPRETER_ARGS_SENTINEL:
   INTERPRETER_ARGS = []
+else:
+  INTERPRETER_ARGS = [arg for arg in _INTERPRETER_ARGS_RAW.split("\n") if arg]
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 
