@@ -26,7 +26,8 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
-load(":whl_metadata.bzl", "find_whl_metadata", "whl_metadata")
+load(":whl_extract.bzl", "whl_extract")
+load(":whl_metadata.bzl", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
@@ -265,48 +266,6 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
-def _extract_whl_star(rctx, *, whl_path, logger):
-    install_dir_path = whl_path.dirname.get_child("site-packages")
-    repo_utils.extract(
-        rctx,
-        archive = whl_path,
-        output = install_dir_path,
-        supports_whl_extraction = rp_config.supports_whl_extraction,
-    )
-    metadata_file = find_whl_metadata(
-        install_dir = install_dir_path,
-        logger = logger,
-    )
-
-    # Get the <prefix>.dist_info dir name
-    dist_info_dir = metadata_file.dirname
-    rctx.file(
-        dist_info_dir.get_child("INSTALLER"),
-        "https://github.com/bazel-contrib/rules_python#pipstar",
-    )
-    repo_root_dir = whl_path.dirname
-
-    # Get the <prefix>.dist_info dir name
-    data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
-    if data_dir.exists:
-        for prefix, dest in {
-            # https://docs.python.org/3/library/sysconfig.html#posix-prefix
-            # We are taking this from the legacy whl installer config
-            "data": "data",
-            "headers": "include",
-            "platlib": "site-packages",
-            "purelib": "site-packages",
-            "scripts": "bin",
-        }.items():
-            src = data_dir.get_child(prefix)
-            dest = repo_root_dir.get_child(dest)
-            if src.exists:
-                rctx.rename(src, dest)
-
-            # TODO @aignas 2025-12-16: when moving scripts to `bin`, rewrite the #!python
-            # shebang to be something else, for inspiration look at the hermetic
-            # toolchain wrappers
-
 def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
     target_platforms = rctx.attr.experimental_target_platforms or []
     if target_platforms:
@@ -448,7 +407,7 @@ def _whl_library_impl(rctx):
             )
 
     if enable_pipstar_extract:
-        _extract_whl_star(rctx, whl_path = whl_path, logger = logger)
+        whl_extract(rctx, whl_path = whl_path, logger = logger)
     else:
         _extract_whl_py(
             rctx,

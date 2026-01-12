@@ -157,6 +157,7 @@ runfiles.merge bzl:type 1 rules/lib/builtins/runfiles#merge -
 runfiles.merge_all bzl:type 1 rules/lib/builtins/runfiles#merge_all -
 runfiles.root_symlinks bzl:type 1 rules/lib/builtins/runfiles#root_symlinks -
 runfiles.symlinks bzl:type 1 rules/lib/builtins/runfiles#symlinks -
+stamp bzl:flag 1 reference/command-line-reference#flag--stamp -
 str bzl:type 1 rules/lib/string -
 struct bzl:type 1 rules/lib/builtins/struct -
 target_compatible_with bzl:attr 1 reference/be/common-definitions#common.target_compatible_with -
@@ -171,3 +172,4 @@ toolchain.target_settings bzl:attr 1 reference/be/platforms-and-toolchains#toolc
 toolchain_type bzl:type 1 rules/lib/builtins/toolchain_type.html -
 transition bzl:type 1 rules/lib/builtins/transition -
 tuple bzl:type 1 rules/lib/core/tuple -
+workspace_status bzl:flag 1 reference/command-line-reference#build-flag--workspace_status_command -

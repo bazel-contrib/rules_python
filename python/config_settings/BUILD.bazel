@@ -102,6 +102,12 @@ rp_string_flag(
     visibility = ["//visibility:public"],
 )
 
+label_flag(
+    name = "debugger",
+    build_setting_default = "//python/private:empty",
+    visibility = ["//visibility:public"],
+)
+
 # For some reason, @platforms//os:windows can't be directly used
 # in the select() for the flag. But it can be used when put behind
 # a config_setting().

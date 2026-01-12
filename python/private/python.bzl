@@ -1065,7 +1065,7 @@ Then the python interpreter will be available as `my_python_name`.
         "ignore_root_user_error": attr.bool(
             default = True,
             doc = """\
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.8.0
 Noop, will be removed in the next major release.
 :::
 """,
