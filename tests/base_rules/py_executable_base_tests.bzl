@@ -26,7 +26,7 @@ load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: di
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "maybe_builtin_build_python_zip")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
@@ -49,14 +49,13 @@ def _test_basic_windows(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
-            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
-        },
+        } | maybe_builtin_build_python_zip("true"),
         attr_values = {},
     )
 
@@ -95,14 +94,13 @@ def _test_basic_zip(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
-            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
-        },
+        } | maybe_builtin_build_python_zip("true"),
         attr_values = {"target_compatible_with": target_compatible_with},
     )
 
