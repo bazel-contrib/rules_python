@@ -12,9 +12,6 @@ local_path_override(
     path = "../..",
 )
 
-# (py_proto_library specific) Add the protobuf library for well-known types (e.g. `Any`, `Timestamp`, etc)
-bazel_dep(name = "protobuf", version = "27.0", repo_name = "com_google_protobuf")
-
 # Only needed to make rules_python's CI happy. rules_java 8.3.0+ is needed so
 # that --java_runtime_version=remotejdk_11 works with Bazel 8.
 bazel_dep(name = "rules_java", version = "8.16.1")
@@ -289,12 +286,6 @@ bazel_dep(name = "other_module", version = "", repo_name = "our_other_module")
 local_path_override(
     module_name = "other_module",
     path = "other_module",
-)
-
-bazel_dep(name = "foo_external", version = "")
-local_path_override(
-    module_name = "foo_external",
-    path = "py_proto_library/foo_external",
 )
 
 # example test dependencies
