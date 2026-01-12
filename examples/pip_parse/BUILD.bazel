@@ -79,5 +79,8 @@ py_test(
         "WHEEL_DIST_INFO_CONTENTS": "$(rootpaths @pypi//requests:dist_info)",
         "YAMLLINT_ENTRY_POINT": "$(rlocationpath :yamllint)",
     },
-    deps = ["@rules_python//python/runfiles"],
+    deps = [
+        "@pypi//libclang",
+        "@rules_python//python/runfiles",
+    ],
 )

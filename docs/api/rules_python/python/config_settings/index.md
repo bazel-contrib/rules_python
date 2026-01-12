@@ -45,6 +45,27 @@ This flag replaces the Bazel builtin `--build_python_zip` flag.
 :::
 ::::
 
+::::{bzl:flag} debugger
+A target for providing a custom debugger dependency.
+
+This flag is roughly equivalent to putting a target in `deps`. It allows
+injecting a dependency into executables (`py_binary`, `py_test`) without having
+to modify their deps. The expectation is it points to a target that provides an
+alternative debugger (pudb, winpdb, debugpy, etc).
+
+* Must provide {obj}`PyInfo`.
+* This dependency is only used for the target config, i.e. build tools don't
+  have it added.
+
+:::{note}
+Setting this flag adds the debugger dependency, but doesn't automatically set
+`PYTHONBREAKPOINT` to change `breakpoint()` behavior.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} experimental_python_import_all_repositories
 Controls whether repository directories are added to the import path.
 

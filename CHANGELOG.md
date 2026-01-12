@@ -47,24 +47,68 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
-
 {#v0-0-0}
 ## Unreleased
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
-{#v0-0-0-known-issues}
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
+* (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
+  {obj}`--stamp` flag.
+
+{#v0-0-0-fixed}
+### Fixed
+* (tests) No more coverage warnings are being printed if there are no sources.
+  ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
+
+{#v0-0-0-added}
+### Added
+* (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
+  to add to binaries/tests for custom debuggers.
+* (binaries/tests) Build information is now included in binaries and tests.
+  Use the `bazel_binary_info` module to access it. The {flag}`--stamp` flag will
+  add {flag}`--workspace_status` information.
+
+{#v1-8-0}
+## [1.8.0] - 2025-12-19
+
+[1.8.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.0
+
+{#v1-8-0-known-issues}
 ### Known Issues
 * (gazelle) Windows support for the Gazelle plugin may be broken. See
   [#3416](https://github.com/bazel-contrib/rules_python/issues/3416) for
   details and possible workarounds.
 
-{#v0-0-0-removed}
+{#v1-8-0-removed}
 ### Removed
 * (toolchain) Remove all of the python 3.8 toolchain support out of the box. Users need
   to pass the `TOOL_VERSIONS` that include 3.8 toolchains or use the `bzlmod` APIs to add
   them back. This means any hub `pip.parse` calls that target `3.8` will be ignored from
   now on. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
+  {object}`python.single_version_override`, like:
+
+  ```starlark
+  python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+
+  python.single_version_override(
+      python_version = "3.8.20",
+      sha256 = {
+          "aarch64-apple-darwin": "2ddfc04bdb3e240f30fb782fa1deec6323799d0e857e0b63fa299218658fd3d4",
+          "aarch64-unknown-linux-gnu": "9d8798f9e79e0fc0f36fcb95bfa28a1023407d51a8ea5944b4da711f1f75f1ed",
+          "x86_64-apple-darwin": "68d060cd373255d2ca5b8b3441363d5aa7cc45b0c11bbccf52b1717c2b5aa8bb",
+          "x86_64-pc-windows-msvc": "41b6709fec9c56419b7de1940d1f87fa62045aff81734480672dcb807eedc47e",
+          "x86_64-unknown-linux-gnu": "285e141c36f88b2e9357654c5f77d1f8fb29cc25132698fe35bb30d787f38e87",
+      },
+      urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20241002/cpython-{python_version}+20241002-{platform}-{build}.tar.gz"],
+  )
+  ```
 * (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
   This version has reached EOL and will no longer receive any security fixes, please update to
   `3.10` or above. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
@@ -74,7 +118,7 @@ END_UNRELEASED_TEMPLATE
   the toolchains in the repository phase, ensure that you pass `-B` to the python interpreter.
   ([#2016](https://github.com/bazel-contrib/rules_python/issues/2016))
 
-{#v0-0-0-changed}
+{#v1-8-0-changed}
 ### Changed
 * (toolchains) Use toolchains from the [20251031] release.
 * (gazelle) Internally split modules mapping generation to be per-wheel for concurrency and caching.
@@ -88,7 +132,7 @@ END_UNRELEASED_TEMPLATE
 * (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
 * (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
 
-{#v0-0-0-fixed}
+{#v1-8-0-fixed}
 ### Fixed
 * (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
   that are not generated or regular files.
@@ -108,8 +152,10 @@ END_UNRELEASED_TEMPLATE
 * (gazelle) Fix `gazelle_python_manifest.test` so that it accesses manifest files via `runfile` path handling rather than directly ([#3397](https://github.com/bazel-contrib/rules_python/issues/3397)).
 * (core rules) For the system_python bootstrap, the runfiles root is added to
   sys.path.
+* (sphinxdocs) The sphinxdocs `.serve` target is now compatible with Bazel's `--symlink_prefix`
+  flag ([#3410](https://github.com/bazel-contrib/rules_python/issues/3410)).
 
-{#v0-0-0-added}
+{#v1-8-0-added}
 ### Added
 * (toolchains) `3.9.25` Python toolchain from [20251031] release.
 * (toolchains) `3.13.10`, `3.14.1` Python toolchain from [20251202] release.
