@@ -507,7 +507,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				pyTestTarget.addModuleDependency(
 					Module{
 						Name: importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp, 
-						Filepath: filepath.Join(conftestPkg, conftestFilename)
+						Filepath: filepath.Join(conftestPkg, conftestFilename),
 					},
 				)
 			}
