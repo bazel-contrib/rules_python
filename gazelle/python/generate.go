@@ -67,7 +67,7 @@ func matchesAnyGlob(s string, globs []string) bool {
 }
 
 // findConftestPaths returns package paths containing conftest.py, from currentPkg
-// up through ancestors, stopping at pythonProjectRoot (or repo root if empty).
+// up through ancestors, stopping at module root.
 func findConftestPaths(repoRoot, currentPkg, pythonProjectRoot string) []string {
 	var result []string
 	for pkg := currentPkg; ; pkg = filepath.Dir(pkg) {
@@ -77,7 +77,7 @@ func findConftestPaths(repoRoot, currentPkg, pythonProjectRoot string) []string 
 		if _, err := os.Stat(filepath.Join(repoRoot, pkg, conftestFilename)); err == nil {
 			result = append(result, pkg)
 		}
-		if pkg == "" || pkg == pythonProjectRoot {
+		if pkg == "" {
 			break
 		}
 	}
