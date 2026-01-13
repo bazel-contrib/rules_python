@@ -79,6 +79,7 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 * (runfiles) Fixed `CurrentRepository()` raising `ValueError` on Windows.
   ([#3579](https://github.com/bazel-contrib/rules_python/issues/3579))
+* (pip) Made `config_settings` optional in `pip.default()` when not using platform-specific configurations.
 * (tests) No more coverage warnings are being printed if there are no sources.
   ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
 * (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
@@ -95,6 +96,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (pip,python) Added `pyproject_toml` attribute to `pip.default()` and `python.defaults()`
+  to read Python version from pyproject.toml `requires-python` field (must be `==X.Y.Z` format).
 * (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
   to add to binaries/tests for custom debuggers.
 * (binaries/tests) Build information is now included in binaries and tests.

@@ -1,0 +1,16 @@
+"""Test that pyproject.toml takes priority over other version sources."""
+
+module(name = "priority_test")
+
+bazel_dep(name = "rules_python", version = "")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    pyproject_toml = "//:pyproject.toml",
+    python_version_file = "//:.python-version",
+)
+use_repo(python, "python_version_from_pyproject", "python_versions", "pythons_hub")

@@ -1,0 +1,14 @@
+load("@python_version_from_pyproject//:version.bzl", "PYTHON_VERSION")
+load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:pip.bzl", "compile_pip_requirements")
+
+compile_pip_requirements(
+    name = "requirements",
+    python_version = PYTHON_VERSION,
+    requirements_txt = "requirements_lock.txt",
+)
+
+py_test(
+    name = "test_compile_requirements",
+    srcs = ["test_compile_requirements.py"],
+)

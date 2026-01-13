@@ -19,6 +19,7 @@ load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load("//python/private:pyproject_utils.bzl", "read_pyproject_version")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
@@ -86,12 +87,23 @@ def build_config(
     """
     defaults = {
         "platforms": {},
+        "python_version": None,
     }
     for mod in module_ctx.modules:
         if not (mod.is_root or mod.name == "rules_python"):
             continue
 
         for tag in mod.tags.default:
+            pyproject_toml = getattr(tag, "pyproject_toml", None)
+            if pyproject_toml:
+                pyproject_version = read_pyproject_version(
+                    module_ctx,
+                    pyproject_toml,
+                    logger = None,
+                )
+                if pyproject_version:
+                    defaults["python_version"] = pyproject_version
+
             platform = tag.platform
             if platform:
                 specific_config = defaults["platforms"].setdefault(platform, {})
@@ -125,6 +137,7 @@ def build_config(
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
         netrc = defaults.get("netrc", None),
+        python_version = defaults.get("python_version", None),
         platforms = {
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
@@ -155,6 +168,8 @@ def parse_modules(
     Returns:
         A struct with the following attributes:
     """
+    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar, enable_pipstar_extract = enable_pipstar_extract)
+
     whl_mods = {}
     for mod in module_ctx.modules:
         for whl_mod in mod.tags.whl_mods:
@@ -185,8 +200,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 data_exclude_glob = whl_mod.data_exclude_glob,
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
-
-    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar, enable_pipstar_extract = enable_pipstar_extract)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -228,6 +241,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
+            python_version = pip_attr.python_version or config.python_version
+            if not python_version:
+                _fail("pip.parse() requires either python_version attribute or pip.default(pyproject_toml=...) to be set")
+
             hub_name = pip_attr.hub_name
             if hub_name not in pip_hub_map:
                 builder = hub_builder(
@@ -264,6 +281,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
+                python_version = python_version,
             )
 
     # Keeps track of all the hub's whl repos across the different versions.
@@ -409,7 +427,7 @@ Either this or {attr}`env` `platform_machine` key should be specified.
 """,
     ),
     "config_settings": attr.label_list(
-        mandatory = True,
+        mandatory = False,
         doc = """\
 The list of labels to `config_setting` targets that need to be matched for the platform to be
 selected.
@@ -471,6 +489,22 @@ If you are defining custom platforms in your project and don't want things to cl
 [isolation] feature.
 
 [isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
+""",
+    ),
+    "pyproject_toml": attr.label(
+        mandatory = False,
+        allow_single_file = True,
+        doc = """\
+Label pointing to pyproject.toml file to read the default Python version from.
+When specified, reads the `requires-python` field from pyproject.toml and uses
+it as the default python_version for all `pip.parse()` calls that don't
+explicitly specify one.
+
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+This is designed to work with dependency management tools like Renovate.
+
+:::{versionadded} 1.8.0
+:::
 """,
     ),
     "whl_abi_tags": attr.string_list(
@@ -651,7 +685,7 @@ find in case extra indexes are specified.
             default = True,
         ),
         "python_version": attr.string(
-            mandatory = True,
+            mandatory = False,
             doc = """
 The Python version the dependencies are targetting, in Major.Minor format
 (e.g., "3.11") or patch level granularity (e.g. "3.11.1").
