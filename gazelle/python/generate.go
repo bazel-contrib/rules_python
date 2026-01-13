@@ -504,10 +504,12 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 		if shouldAddConftest {
 			for _, conftestPkg := range findConftestPaths(args.Config.RepoRoot, args.Rel, pythonProjectRoot) {
-				conftestModule := Module{
-					Name: importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp,
-				}
-				pyTestTarget.deps.Add(conftestModule)
+				pyTestTarget.addModuleDependency(
+					Module{
+						Name: importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp, 
+						Filepath: filepath.Join(conftestPkg, conftestFilename)
+					},
+				)
 			}
 		}
 		pyTest := pyTestTarget.build()
