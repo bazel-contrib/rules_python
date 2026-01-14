@@ -81,6 +81,7 @@ def deps(
         deps_select = {
             d: markers
             for d, markers in sorted(deps_select.items())
+            if d not in deps
         },
     )
 
