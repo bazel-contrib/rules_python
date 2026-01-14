@@ -94,6 +94,7 @@ def _test_basic_zip(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
+            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
