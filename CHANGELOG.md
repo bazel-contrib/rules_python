@@ -216,7 +216,7 @@ END_UNRELEASED_TEMPLATE
   from the [20251014] release.
 * (deps) (bzlmod) Upgraded to `bazel-skylib` version
   [1.8.2](https://github.com/bazelbuild/bazel-skylib/releases/tag/1.8.2)
-* (gazelle) Gazelle will now delete targets that have invalid an invalid `srcs`
+* (gazelle) Gazelle will now delete targets that have an invalid `srcs`
   attribute (typically because the only `srcs` file was deleted).
   [#3046](https://github.com/bazel-contrib/rules_python/pull/3046)
 
