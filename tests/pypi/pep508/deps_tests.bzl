@@ -161,7 +161,7 @@ def test_all_markers_are_added(env):
 
 _tests.append(test_all_markers_are_added)
 
-def test_markers_with_extra(env):
+def test_extra_with_conditional_and_unconditional_markers(env):
     requires_dist = [
         "bar",
         'baz!=1.56.0; sys_platform == "darwin" and extra == "client"',
@@ -177,7 +177,7 @@ def test_markers_with_extra(env):
     env.expect.that_collection(got.deps).contains_exactly(["bar", "baz"])
     env.expect.that_dict(got.deps_select).contains_exactly({})
 
-_tests.append(test_markers_with_extra)
+_tests.append(test_extra_with_conditional_and_unconditional_markers)
 
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
