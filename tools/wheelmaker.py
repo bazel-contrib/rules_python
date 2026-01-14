@@ -228,14 +228,13 @@ class _WhlFile(zipfile.ZipFile):
 
     def _quote_filename(self, filename: str) -> str:
         """Return a possibly quoted filename for RECORD file."""
-        # Use csv writer to auto-quote the filename (may contain ",")
+        filename = filename.lstrip("/")
+        # Some RECORDs like torch have *all* filenames quoted and we must minimize diff.
+        # Otherwise, we quote only when necessary (e.g. for filenames with commas).
+        quoting = csv.QUOTE_ALL if self.quote_all_filenames else csv.QUOTE_MINIMAL
         with io.StringIO() as buf:
-            csv.writer(buf).writerow([filename.lstrip("/")])
-            filename = buf.getvalue().strip()
-        # Some RECORDs like torch have *all* filenames quoted and we must minimize diff
-        if self.quote_all_filenames and not filename.startswith('"'):
-            filename = f'"{filename}"'
-        return filename
+            csv.writer(buf, quoting=quoting).writerow([filename])
+            return buf.getvalue().strip()
 
     def add_recordfile(self) -> str:
         """Write RECORD file to the distribution."""
