@@ -151,17 +151,21 @@ def main(sys_argv):
         logging.debug(f"Found dist-info dir: {distinfo_dir}")
         record_path = distinfo_dir / "RECORD"
         record_contents = record_path.read_text() if record_path.exists() else ""
+        quote_files = all(line.startswith('"') for line in record_contents.splitlines())
         distribution_prefix = distinfo_dir.with_suffix("").name
 
         with _WhlFile(
-            args.output, mode="w", distribution_prefix=distribution_prefix
+            args.output,
+            mode="w",
+            distribution_prefix=distribution_prefix,
+            quote_all_filenames=quote_files,
         ) as out:
             for p in _files_to_pack(patched_wheel_dir, record_contents):
                 rel_path = p.relative_to(patched_wheel_dir)
                 out.add_file(str(rel_path), p)
 
             logging.debug(f"Writing RECORD file")
-            got_record = out.add_recordfile().decode("utf-8", "surrogateescape")
+            got_record = out.add_recordfile()
 
     if got_record == record_contents:
         logging.info(f"Created a whl file: {args.output}")
