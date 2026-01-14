@@ -178,6 +178,7 @@ bzl_library(
         ":whl_repo_name_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
+        "//python/private:text_util_bzl",
         "//python/private:version_bzl",
         "//python/private:version_label_bzl",
     ],
@@ -421,6 +422,16 @@ bzl_library(
 )
 
 bzl_library(
+    name = "whl_extract_bzl",
+    srcs = ["whl_extract.bzl"],
+    deps = [
+        ":whl_metadata_bzl",
+        "//python/private:repo_utils_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
+    ],
+)
+
+bzl_library(
     name = "whl_library_alias_bzl",
     srcs = ["whl_library_alias.bzl"],
     deps = [
@@ -440,6 +451,7 @@ bzl_library(
         ":patch_whl_bzl",
         ":pep508_requirement_bzl",
         ":pypi_repo_utils_bzl",
+        ":whl_extract_bzl",
         ":whl_metadata_bzl",
         ":whl_target_platforms_bzl",
         "//python/private:auth_bzl",

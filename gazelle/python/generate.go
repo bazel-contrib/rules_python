@@ -66,6 +66,24 @@ func matchesAnyGlob(s string, globs []string) bool {
 	return false
 }
 
+// findConftestPaths returns package paths containing conftest.py, from currentPkg
+// up through ancestors, stopping at module root.
+func findConftestPaths(repoRoot, currentPkg, pythonProjectRoot string) []string {
+	var result []string
+	for pkg := currentPkg; ; pkg = filepath.Dir(pkg) {
+		if pkg == "." {
+			pkg = ""
+		}
+		if _, err := os.Stat(filepath.Join(repoRoot, pkg, conftestFilename)); err == nil {
+			result = append(result, pkg)
+		}
+		if pkg == "" {
+			break
+		}
+	}
+	return result
+}
+
 // GenerateRules extracts build metadata from source files in a directory.
 // GenerateRules is called in each directory where an update is requested
 // in depth-first post-order.
@@ -481,14 +499,17 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	for _, pyTestTarget := range pyTestTargets {
-		if conftest != nil {
-			conftestModule := Module{Name: importSpecFromSrc(pythonProjectRoot, args.Rel, conftestFilename).Imp}
-			if pyTestTarget.annotations.includePytestConftest == nil {
-				// unset; default behavior
-				pyTestTarget.addModuleDependency(conftestModule)
-			} else if *pyTestTarget.annotations.includePytestConftest {
-				// set; add if true, do not add if false
-				pyTestTarget.addModuleDependency(conftestModule)
+		shouldAddConftest := pyTestTarget.annotations.includePytestConftest == nil ||
+		*pyTestTarget.annotations.includePytestConftest
+
+		if shouldAddConftest {
+			for _, conftestPkg := range findConftestPaths(args.Config.RepoRoot, args.Rel, pythonProjectRoot) {
+				pyTestTarget.addModuleDependency(
+					Module{
+						Name: importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp, 
+						Filepath: filepath.Join(conftestPkg, conftestFilename),
+					},
+				)
 			}
 		}
 		pyTest := pyTestTarget.build()

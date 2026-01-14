@@ -27,6 +27,10 @@ jobs:
       # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
       registry_fork: bazel-contrib/bazel-central-registry
       attest: false
+      # Create non-draft PRs so the BCR bazel-io bot processes them. Otherwise,
+      # since a bazel-contrib bot, we have to wait for BCR maintainers to mark it
+      # non-draft or approve it.
+      draft: false
     permissions:
       contents: write
     secrets:
