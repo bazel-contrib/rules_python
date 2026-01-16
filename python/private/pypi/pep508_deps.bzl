@@ -156,6 +156,7 @@ def _add_reqs(deps, deps_select, dep, reqs, *, extras):
             return
 
     markers = {}
+    found_unconditional = False
     for req in reqs:
         for x in extras:
             m = evaluate(req.marker, env = {"extra": x}, strict = False)
@@ -163,10 +164,13 @@ def _add_reqs(deps, deps_select, dep, reqs, *, extras):
                 continue
             elif m == True:
                 _add(deps, deps_select, dep)
+                found_unconditional = True
                 break
             else:
                 markers[m] = None
                 continue
+        if found_unconditional:
+            break
 
-    if markers:
+    if markers and not found_unconditional:
         _add(deps, deps_select, dep, sorted(markers))
