@@ -133,6 +133,9 @@ END_UNRELEASED_TEMPLATE
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
 * (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
 * (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
+* (gazelle) Gazelle will now delete targets that have an invalid `srcs`
+  attribute (typically because the only `srcs` file was deleted).
+  [#3046](https://github.com/bazel-contrib/rules_python/pull/3046)
 
 {#v1-8-0-fixed}
 ### Fixed
@@ -216,9 +219,6 @@ END_UNRELEASED_TEMPLATE
   from the [20251014] release.
 * (deps) (bzlmod) Upgraded to `bazel-skylib` version
   [1.8.2](https://github.com/bazelbuild/bazel-skylib/releases/tag/1.8.2)
-* (gazelle) Gazelle will now delete targets that have an invalid `srcs`
-  attribute (typically because the only `srcs` file was deleted).
-  [#3046](https://github.com/bazel-contrib/rules_python/pull/3046)
 
 [20251014]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251014
 
