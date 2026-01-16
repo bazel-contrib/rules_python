@@ -133,14 +133,12 @@ END_UNRELEASED_TEMPLATE
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
 * (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
 * (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
-* (gazelle) Gazelle will now delete targets that have an invalid `srcs`
-  attribute (typically because the only `srcs` file was deleted).
-  [#3046](https://github.com/bazel-contrib/rules_python/pull/3046)
 
 {#v1-8-0-fixed}
 ### Fixed
 * (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
   that are not generated or regular files.
+  [#3046](https://github.com/bazel-contrib/rules_python/pull/3046)
 * (runfiles) Fix incorrect Python runfiles path assumption - the existing
   implementation assumes that it is always four levels below the runfiles
   directory, leading to incorrect path checks
