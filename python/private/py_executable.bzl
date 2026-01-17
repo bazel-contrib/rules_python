@@ -728,10 +728,7 @@ def _create_stage1_bootstrap(
         resolve_python_binary_at_runtime = "1"
 
     subs = {
-        "%interpreter_args%": "\n".join([
-            '"{}"'.format(v)
-            for v in ctx.attr.interpreter_args
-        ]),
+        "%interpreter_args%": "\n".join(ctx.attr.interpreter_args),
         "%is_zipfile%": "1" if is_for_zip else "0",
         "%python_binary%": python_binary_path,
         "%python_binary_actual%": python_binary_actual,
