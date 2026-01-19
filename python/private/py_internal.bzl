@@ -18,8 +18,10 @@ Re-exports the restricted-use py_internal helper under its original name.
 These may change at any time and are closely coupled to the rule implementation.
 """
 
-# The py_internal object needs to be accessed only from "tools/build_defs/python", so
-# we need to first put it there with a different name.
+# The native `py_internal` object is only visible to Starlark files under
+# `tools/build_defs/python`. To access it from `//python/private`, we use an
+# indirection through `//tools/build_defs/python/private/py_internal_renamed.bzl`,
+# which re-exports it under a different name.
 load("//tools/build_defs/python/private:py_internal_renamed.bzl", "py_internal_renamed")  # buildifier: disable=bzl-visibility
 
 py_internal = py_internal_renamed
