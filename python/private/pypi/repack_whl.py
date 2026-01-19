@@ -44,6 +44,16 @@ _EXCLUDES = [
 _DISTINFO = "dist-info"
 
 
+def _has_all_quoted_filenames(record_contents: str) -> bool:
+    """Check if all filenames in the RECORD are quoted.
+
+    Some wheels (like torch) have all filenames quoted in their RECORD file.
+    We detect this to preserve the quoting style when repacking.
+    """
+    lines = record_contents.splitlines()
+    return all(line.startswith('"') for line in lines)
+
+
 def _unidiff_output(expected, actual, record):
     """
     Helper function. Returns a string containing the unified diff of two
@@ -151,7 +161,7 @@ def main(sys_argv):
         logging.debug(f"Found dist-info dir: {distinfo_dir}")
         record_path = distinfo_dir / "RECORD"
         record_contents = record_path.read_text() if record_path.exists() else ""
-        quote_files = all(line.startswith('"') for line in record_contents.splitlines())
+        quote_files = _has_all_quoted_filenames(record_contents)
         distribution_prefix = distinfo_dir.with_suffix("").name
 
         with _WhlFile(
