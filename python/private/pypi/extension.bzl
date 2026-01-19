@@ -223,6 +223,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # versions.
     pip_hub_map = {}
     simpleapi_cache = {}
+    facts = {}
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
@@ -240,6 +241,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     evaluate_markers_fn = kwargs.get("evaluate_markers", None),
                     available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
                     logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name),
+                    facts = facts,
                 )
                 pip_hub_map[pip_attr.hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
@@ -286,6 +288,25 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
 
+    facts = {
+        "fact_version": facts.get("fact_version"),
+    } | {
+        index_url: {
+            k: _sorted_dict(f.get(k))
+            for k in [
+                "dist_filenames",
+                "dist_hashes",
+                "dist_yanked",
+            ]
+            if f.get(k)
+        }
+        for index_url, f in facts.items()
+        if index_url not in ["fact_version"]
+    }
+    if len(facts) == 1:
+        # only version is present, skip writing
+        facts = None
+
     return struct(
         config = config,
         exposed_packages = exposed_packages,
@@ -294,6 +315,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
+        facts = facts,
         platform_config_settings = {
             hub_name: {
                 platform_name: sorted([str(Label(cv)) for cv in p.config_settings])
@@ -302,6 +324,12 @@ You cannot use both the additive_build_content and additive_build_content_file a
             for hub_name in hub_whl_map
         },
     )
+
+def _sorted_dict(d):
+    if not d:
+        return {}
+
+    return {k: v for k, v in sorted(d.items())}
 
 def _pip_impl(module_ctx):
     """Implementation of a class tag that creates the pip hub and corresponding pip spoke whl repositories.
@@ -391,9 +419,11 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    return module_ctx.extension_metadata(
-        reproducible = True,
-    )
+    kwargs = {"reproducible": True}
+    if mods.facts:
+        kwargs["facts"] = mods.facts
+
+    return module_ctx.extension_metadata(**kwargs)
 
 _default_attrs = {
     "arch_name": attr.string(

@@ -21,7 +21,9 @@ load("//python/private:auth.bzl", _get_auth = "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:text_util.bzl", "render")
-load(":parse_simpleapi_html.bzl", "parse_simpleapi_html")
+load(":parse_simpleapi_html.bzl", "absolute_url", "parse_simpleapi_html", "pkg_version")
+
+_FACT_VERSION = "v1"
 
 def simpleapi_download(
         ctx,
@@ -29,6 +31,7 @@ def simpleapi_download(
         attr,
         cache,
         parallel_download = True,
+        store_facts = True,
         read_simpleapi = None,
         get_auth = None,
         _fail = fail):
@@ -43,12 +46,13 @@ def simpleapi_download(
              separate packages.
            * extra_index_urls: Extra index URLs that will be looked up after
              the main is looked up.
-           * sources: list[str], the sources to download things for. Each value is
-             the contents of requirements files.
+           * sources: list[str] | dict[str, list[str]], the sources to download things for. Each
+               value is the contents of requirements files.
            * envsubst: list[str], the envsubst vars for performing substitution in index url.
            * netrc: The netrc parameter for ctx.download, see http_file for docs.
            * auth_patterns: The auth_patterns parameter for ctx.download, see
                http_file for docs.
+           * facts: The facts to write to if we support them.
         cache: A dictionary that can be used as a cache between calls during a
             single evaluation of the extension. We use a dictionary as a cache
             so that we can reuse calls to the simple API when evaluating the
@@ -58,6 +62,9 @@ def simpleapi_download(
             reflected when re-evaluating the extension unless we do
             `bazel clean --expunge`.
         parallel_download: A boolean to enable usage of bazel 7.1 non-blocking downloads.
+        store_facts: A boolean to enable usage of bazel 8.5 facts feature to store data in
+            MODULE.bazel.lock in between the runs. Can be disabled if urls contain sensitive
+            data and users would rather opt-out of the feature.
         read_simpleapi: a function for reading and parsing of the SimpleAPI contents.
             Used in tests.
         get_auth: A function to get auth information passed to read_simpleapi. Used in tests.
@@ -80,28 +87,36 @@ def simpleapi_download(
     contents = {}
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
+    if hasattr(ctx, "facts") and store_facts:
+        download_kwargs["facts"] = _facts(ctx, attr.facts)
+        read_simpleapi = _read_simpleapi_with_facts
+        ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
+    else:
+        ctx.report_progress("Fetch package lists from PyPI index")
 
     found_on_index = {}
     warn_overrides = False
-    ctx.report_progress("Fetch package lists from PyPI index")
+
+    # Normalize the inputs
+    input_sources = {pkg: [] for pkg in attr.sources} if type(attr.sources) == "list" else attr.sources
+
     for i, index_url in enumerate(index_urls):
         if i != 0:
             # Warn the user about a potential fix for the overrides
             warn_overrides = True
 
         async_downloads = {}
-        sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
-        for pkg in sources:
+        sources = {pkg: versions for pkg, versions in input_sources.items() if pkg not in found_on_index}
+        for pkg, versions in sources.items():
             pkg_normalized = normalize_name(pkg)
             result = read_simpleapi(
                 ctx = ctx,
-                url = "{}/{}/".format(
-                    index_url_overrides.get(pkg_normalized, index_url).rstrip("/"),
-                    pkg,
-                ),
                 attr = attr,
                 cache = cache,
+                index_url = index_url_overrides.get(pkg_normalized, index_url),
+                distribution = pkg,
                 get_auth = get_auth,
+                requested_versions = versions,
                 **download_kwargs
             )
             if hasattr(result, "wait"):
@@ -109,6 +124,7 @@ def simpleapi_download(
                 async_downloads[pkg] = struct(
                     pkg_normalized = pkg_normalized,
                     wait = result.wait,
+                    fns = result.fns,
                 )
             elif result.success:
                 contents[pkg_normalized] = result.output
@@ -164,49 +180,14 @@ If you would like to skip downloading metadata for these packages please add 'si
 
     return contents
 
-def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
-    """Read SimpleAPI.
-
-    Args:
-        ctx: The module_ctx or repository_ctx.
-        url: str, the url parameter that can be passed to ctx.download.
-        attr: The attribute that contains necessary info for downloading. The
-          following attributes must be present:
-           * envsubst: The envsubst values for performing substitutions in the URL.
-           * netrc: The netrc parameter for ctx.download, see http_file for docs.
-           * auth_patterns: The auth_patterns parameter for ctx.download, see
-               http_file for docs.
-        cache: A dict for storing the results.
-        get_auth: A function to get auth information. Used in tests.
-        **download_kwargs: Any extra params to ctx.download.
-            Note that output and auth will be passed for you.
-
-    Returns:
-        A similar object to what `download` would return except that in result.out
-        will be the parsed simple api contents.
-    """
-    # NOTE @aignas 2024-03-31: some of the simple APIs use relative URLs for
-    # the whl location and we cannot handle multiple URLs at once by passing
-    # them to ctx.download if we want to correctly handle the relative URLs.
-    # TODO: Add a test that env subbed index urls do not leak into the lock file.
-
-    real_url = strip_empty_path_segments(envsubst(
-        url,
-        attr.envsubst,
-        ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
-    ))
-
-    cache_key = real_url
-    if cache_key in cache:
-        return struct(success = True, output = cache[cache_key])
-
+def _download_simpleapi(*, ctx, url, real_url, attr_envsubst, get_auth, **kwargs):
     output_str = envsubst(
         url,
-        attr.envsubst,
+        attr_envsubst,
         # Use env names in the subst values - this will be unique over
         # the lifetime of the execution of this function and we also use
         # `~` as the separator to ensure that we don't get clashes.
-        {e: "~{}~".format(e) for e in attr.envsubst}.get,
+        {e: "~{}~".format(e) for e in attr_envsubst}.get,
     )
 
     # Transform the URL into a valid filename
@@ -217,22 +198,50 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
 
     get_auth = get_auth or _get_auth
 
-    # NOTE: this may have block = True or block = False in the download_kwargs
+    # NOTE: this may have block = True or block = False in the kwargs
     download = ctx.download(
         url = [real_url],
         output = output,
         auth = get_auth(ctx, [real_url], ctx_attr = attr),
         allow_fail = True,
-        **download_kwargs
+        **kwargs
     )
 
-    if download_kwargs.get("block") == False:
-        # Simulate the same API as ctx.download has
+    return _await(
+        download,
+        _read,
+        ctx = ctx,
+        output = output,
+    )
+
+def _await(download, fn, **kwargs):
+    if hasattr(download, "fns"):
+        download.fns.append(
+            lambda result: fn(result = result, **kwargs),
+        )
+        return download
+    elif hasattr(download, "wait"):
+        # Have a reference type which we can iterate later when aggregating the result
+        fns = [lambda result: fn(result = result, **kwargs)]
+
+        def wait():
+            result = download.wait()
+            for fn in fns:
+                result = fn(result = result)
+            return result
+
         return struct(
-            wait = lambda: _read_index_result(ctx, download.wait(), output, real_url, cache, cache_key),
+            wait = wait,
+            fns = fns,
         )
 
-    return _read_index_result(ctx, download, output, real_url, cache, cache_key)
+    return fn(result = download, **kwargs)
+
+def _read(ctx, result, output):
+    if not result.success:
+        return result
+
+    return struct(success = True, output = ctx.read(output))
 
 def strip_empty_path_segments(url):
     """Removes empty path segments from a URL. Does nothing for urls with no scheme.
@@ -255,15 +264,232 @@ def strip_empty_path_segments(url):
     else:
         return "{}://{}".format(scheme, stripped)
 
-def _read_index_result(ctx, result, output, url, cache, cache_key):
-    if not result.success:
+def _read_simpleapi(ctx, index_url, pkg, attr, cache, get_auth = None, return_absolute = True, **download_kwargs):
+    """Read SimpleAPI.
+
+    Args:
+        ctx: The module_ctx or repository_ctx.
+        index_url: str, the PyPI SimpleAPI index URL
+        pkg: str, the distribution to download
+        attr: The attribute that contains necessary info for downloading. The
+          following attributes must be present:
+           * envsubst: The envsubst values for performing substitutions in the URL.
+           * netrc: The netrc parameter for ctx.download, see http_file for docs.
+           * auth_patterns: The auth_patterns parameter for ctx.download, see
+               http_file for docs.
+        cache: A dict for storing the results.
+        get_auth: A function to get auth information. Used in tests.
+        return_absolute: TODO
+        **download_kwargs: Any extra params to ctx.download.
+            Note that output and auth will be passed for you.
+
+    Returns:
+        A similar object to what `download` would return except that in result.out
+        will be the parsed simple api contents.
+    """
+    # NOTE @aignas 2024-03-31: some of the simple APIs use relative URLs for
+    # the whl location and we cannot handle multiple URLs at once by passing
+    # them to ctx.download if we want to correctly handle the relative URLs.
+    # TODO: Add a test that env subbed index urls do not leak into the lock file.
+
+    url = "{}/{}/".format(index_url.rstrip("/"), pkg)
+
+    real_url = strip_empty_path_segments(envsubst(
+        url,
+        attr.envsubst,
+        ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
+    ))
+    cache_key = real_url
+
+    cached = cache.get(cache_key)
+    if cached:
+        return struct(success = True, output = cached)
+
+    download = _download_simpleapi(
+        ctx = ctx,
+        url = url,
+        real_url = real_url,
+        attr_envsubst = attr.envsubst,
+        get_auth = get_auth,
+        **download_kwargs
+    )
+
+    return _await(
+        download,
+        _read_index_result,
+        url = real_url,
+        cache = cache,
+        cache_key = cache_key,
+        return_absolute = return_absolute,
+    )
+
+def _read_index_result(*, result, url, cache, cache_key, return_absolute):
+    if not result.success or not result.output:
         return struct(success = False)
 
-    content = ctx.read(output)
-
-    output = parse_simpleapi_html(url = url, content = content)
-    if output:
-        cache.setdefault(cache_key, output)
-        return struct(success = True, output = output, cache_key = cache_key)
-    else:
+    output = parse_simpleapi_html(url = url, content = result.output, return_absolute = return_absolute)
+    if not output:
         return struct(success = False)
+
+    cache.setdefault(cache_key, output)
+    return struct(success = True, output = output)
+
+def _read_simpleapi_with_facts(ctx, index_url, distribution, facts = None, requested_versions = [], **download_kwargs):
+    """Read SimpleAPI or pull data from the known facts in the MODULE.bazel.lock file.
+
+    Args:
+        ctx: The module_ctx or repository_ctx.
+        index_url: TODO
+        distribution: TODO
+        requested_versions: the list of requested versions.
+        facts: Facts to write back if we support facts.
+        **download_kwargs: Params passed to the _read_simpleapi.
+
+    Returns:
+        A similar object to what `download` would return except that in result.out
+        will be the parsed simple api contents. We return only the `requested_versions` so that
+        the list of facts stored in the lock file is limited.
+    """
+    cached = facts.get(index_url, distribution, requested_versions)
+    if cached:
+        return struct(
+            success = True,
+            output = cached,
+        )
+
+    # Fallback to pulling data from memory or downloading from the SimpleAPI
+    download = _read_simpleapi(
+        ctx,
+        index_url = index_url,
+        distribution = distribution,
+        return_absolute = False,
+        **download_kwargs
+    )
+
+    return _await(
+        download,
+        _read_index_result_with_facts,
+        facts = facts,
+        requested_versions = requested_versions,
+        index_url = index_url,
+    )
+
+def _read_index_result_with_facts(*, result, facts, requested_versions, index_url):
+    if not result.success or not result.output:
+        return struct(success = False)
+
+    output = _filter_packages(result.output, requested_versions)
+    facts.setdefault(index_url, output)
+    return struct(success = True, output = output)
+
+def _filter_packages(dists, requested_versions):
+    sha256s_by_version = {}
+    whls = {}
+    sdists = {}
+    for sha256, d in (dists.sdists | dists.whls).items():
+        if d.version not in requested_versions:
+            continue
+
+        if d.filename.endswith(".whl"):
+            whls[sha256] = d
+        else:
+            sdists[sha256] = d
+
+        sha256s_by_version.setdefault(d.version, []).append(sha256)
+
+    return struct(
+        whls = whls,
+        sdists = sdists,
+        sha256s_by_version = sha256s_by_version,
+    )
+
+def _facts(ctx, store_facts, facts_version = _FACT_VERSION):
+    known_facts = getattr(ctx, "facts", None)
+    if not known_facts:
+        return {}
+
+    return struct(
+        get = lambda index_url, distribution, versions: _get_from_facts(
+            store_facts,
+            known_facts,
+            index_url,
+            distribution,
+            versions,
+            facts_version,
+        ),
+        setdefault = lambda url, value: _store_facts(store_facts, facts_version, url, value),
+    )
+
+def _get_from_facts(facts, known_facts, index_url, distribution, requested_versions, facts_version):
+    if known_facts.get("fact_version") != facts_version:
+        # cannot trust known facts, different version that we know how to parse
+        return None
+
+    known_sources = {}
+
+    known_facts = known_facts.get(index_url, {})
+
+    index_url_for_distro = "{}/{}/".format(index_url, distribution)
+    for url, sha256 in known_facts.get("dist_hashes", {}).items():
+        filename = known_facts.get("dist_filenames", {}).get(sha256)
+        if not filename:
+            _, _, filename = url.rpartition("/")
+
+        version = pkg_version(filename, distribution)
+        if version not in requested_versions:
+            # TODO @aignas 2026-01-21: do the check by requested shas at some point
+            # We don't have sufficient info in the lock file, need to call the API
+            #
+            continue
+
+        if filename.endswith(".whl"):
+            dists = known_sources.setdefault("whls", {})
+        else:
+            dists = known_sources.setdefault("sdists", {})
+
+        known_sources.setdefault("sha256s_by_version", {}).setdefault(version, []).append(sha256)
+
+        dists.setdefault(sha256, struct(
+            sha256 = sha256,
+            filename = filename,
+            version = version,
+            url = absolute_url(index_url = index_url_for_distro, url = url),
+            metadata_sha256 = "",
+            metadata_url = "",
+            yanked = known_facts.get("dist_yanked", {}).get(sha256, False),
+        ))
+
+    if not known_sources:
+        return None
+
+    output = struct(
+        whls = known_sources.get("whls", {}),
+        sdists = known_sources.get("sdists", {}),
+        sha256s_by_version = known_sources.get("sha256s_by_version", {}),
+    )
+    _store_facts(facts, facts_version, index_url, output)
+    return output
+
+def _store_facts(facts, fact_version, index_url, value):
+    """Store values as facts in the lock file.
+
+    The main idea is to ensure that the lock file is small and it is only storing what
+    we would need to fetch from the internet. Any derivative information we can
+    from this that can be achieved using pure Starlark functions should be done in
+    Starlark.
+    """
+
+    facts["fact_version"] = fact_version
+
+    # Store the distributions by index URL that we find them on.
+    facts = facts.setdefault(index_url, {})
+
+    for sha256, d in (value.sdists | value.whls).items():
+        facts.setdefault("dist_hashes", {}).setdefault(d.url, sha256)
+        if not d.url.endswith(d.filename):
+            facts.setdefault("dist_filenames", {}).setdefault(d.url, d.filename)
+        if d.yanked:
+            # TODO @aignas 2026-01-21: store yank reason
+            facts.setdefault("dist_yanked", {}).setdefault(sha256, True)
+
+    return value

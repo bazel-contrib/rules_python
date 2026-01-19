@@ -31,6 +31,7 @@ def hub_builder(
         simpleapi_download_fn,
         evaluate_markers_fn,
         logger,
+        facts = None,
         simpleapi_cache = {}):
     """Return a hub builder instance
 
@@ -47,6 +48,7 @@ def hub_builder(
             used during the `repository_rule` and must be always compatible with the host.
         simpleapi_download_fn: the function used to download from SimpleAPI.
         simpleapi_cache: the cache for the download results.
+        facts: the facts if they are available.
         logger: the logger for this builder.
     """
 
@@ -69,6 +71,7 @@ def hub_builder(
         _platforms = {},
         _group_name_by_whl = {},
         _get_index_urls = {},
+        _facts = facts,
         _use_downloader = {},
         _simpleapi_cache = simpleapi_cache,
         # instance constants
@@ -335,11 +338,16 @@ def _set_get_index_urls(self, pip_attr):
                 d
                 for d in distributions
                 if _use_downloader(self, python_version, d)
-            ],
+            ] if type(distributions) == "list" else {
+                d: versions
+                for d, versions in distributions.items()
+                if _use_downloader(self, python_version, d)
+            },
             envsubst = pip_attr.envsubst,
             # Auth related info
             netrc = pip_attr.netrc,
             auth_patterns = pip_attr.auth_patterns,
+            facts = self._facts,
         ),
         cache = self._simpleapi_cache,
         parallel_download = pip_attr.parallel_download,
