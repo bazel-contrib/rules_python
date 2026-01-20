@@ -50,7 +50,7 @@ def _test_basic_windows(name, config):
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
             "//command_line_option:build_python_zip": "true",
-            "@@rules_python+//python/config_settings:build_python_zip": True,
+            "@rules_python//python/config_settings:build_python_zip": True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
@@ -96,7 +96,7 @@ def _test_basic_zip(name, config):
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
             "//command_line_option:build_python_zip": "true",
-            "@@rules_python+//python/config_settings:build_python_zip": True,
+            "@rules_python//python/config_settings:build_python_zip": True,
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],
