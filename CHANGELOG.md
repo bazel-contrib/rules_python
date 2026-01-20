@@ -84,7 +84,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v1-8-1-fixed}
 ### Fixed
-* (pipstar) The extra resolution for complex packages is now handled again correctly.
+* (pipstar) Extra resolution that refers back to the package being resolved works again.
   Fixes [#3524](https://github.com/bazel-contrib/rules_python/issues/3524).
 
 {#v1-8-0}
