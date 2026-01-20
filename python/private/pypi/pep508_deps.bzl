@@ -117,7 +117,7 @@ def _resolve_extras(self_name, reqs, extras):
     # is equivalent to having {"foo"}.
     #
     # Use a dict as a set here to simplify operations.
-    extras = {x: None for x in extras or [""]}
+    extras = {x: None for x in (extras or [""])}
 
     self_reqs = []
     for req in reqs:
