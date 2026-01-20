@@ -61,6 +61,8 @@ END_UNRELEASED_TEMPLATE
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 * (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
   {obj}`--stamp` flag.
+* (pypi) Now the RECORD file patches will follow the quoted or unquoted filenames convention
+  in order to make `pytorch` and friends easier to patch.
 
 {#v0-0-0-fixed}
 ### Fixed
