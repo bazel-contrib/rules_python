@@ -77,6 +77,14 @@ END_UNRELEASED_TEMPLATE
   Use the `bazel_binary_info` module to access it. The {flag}`--stamp` flag will
   add {flag}`--workspace_status` information.
 
+{#v1-8-1}
+## [1.8.1] - 2026-01-20
+
+{#v1-8-1-fixed}
+### Fixed
+* (pipstar) The extra resolution for complex packages is now handled again correctly.
+  Fixes [#3524](https://github.com/bazel-contrib/rules_python/issues/3524).
+
 {#v1-8-0}
 ## [1.8.0] - 2025-12-19
 

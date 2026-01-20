@@ -135,7 +135,7 @@ def _resolve_extras(self_name, reqs, extras):
 
     # A double loop is not strictly optimal, but always correct without recursion
     for req in self_reqs:
-        if [True for extra in extras if evaluate(req.marker, env = {"extra": extra})]:
+        if _evaluate_any(req, extras):
             extras = extras + req.extras
         else:
             continue
@@ -143,11 +143,18 @@ def _resolve_extras(self_name, reqs, extras):
         # Iterate through all packages to ensure that we include all of the extras from previously
         # visited packages.
         for req_ in self_reqs:
-            if [True for extra in extras if evaluate(req.marker, env = {"extra": extra})]:
+            if _evaluate_any(req_, extras):
                 extras = extras + req_.extras
 
     # Poor mans set
     return sorted({x: None for x in extras})
+
+def _evaluate_any(req, extras):
+    for extra in extras:
+        if evaluate(req.marker, env = {"extra": extra}):
+            return True
+
+    return False
 
 def _add_reqs(deps, deps_select, dep, reqs, *, extras):
     for req in reqs:
