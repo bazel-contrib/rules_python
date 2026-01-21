@@ -269,6 +269,53 @@ available flags:
 [pep600]: https://peps.python.org/pep-0600/
 [pep656]: https://peps.python.org/pep-0656/
 
+## Internal dependencies and private repositories
+
+The `rules_python` Bazel module downloads Python interpreters and
+dependencies as part of its functionality. These artifacts are fetched
+using Bazel's internal HTTP downloader, not using the `pip` tool.
+
+If you are in a network-restricted environment and must use internal
+registries, you can configure the Bazel downloader to redirect all of
+these downloads to a different registry.
+
+Example of a `bazel_downloader.cfg`:
+```cfg
+all_blocked_message See internal.mirror.lan/registry/ for more information
+allow s3.amazon.com
+
+# Rewrite everything to files.pythonhosted to the internal mirror with two
+# capture groups: the first group matches the host and is appended first,
+# the second matches the entire path and is appended second
+rewrite (files.pythonhosted.org)/(.*) internal.mirror.lan/python/$1/$2
+rewrite (pypi.python.org)/(.*) internal.mirror.lan/python/$1/$2
+
+# Allow the internal mirror and block everything else
+allow internal.mirror.lan
+block *
+```
+
+Use the config file with `--experimental_downloader_config=bazel_downloader.cfg`.
+
+### How the config is parsed:
+
+* Uses Java regular expressions
+* Matching is performed only on host and path components of the URL, not the scheme
+* Directives are applied in the following order: `rewrite, allow, block`
+* Back references are numbered starting from `$1`
+* Expressions must match the entire string being tested, not just find a substring.
+
+If your patterns don't seem to match or rewrite:
+
+* Begin with simple patterns to ensure they match as expected.
+* Be cautious when using `block` statements to avoid unintentionally blocking necessary downloads. Add `block` statements incrementally and test thoroughly after each change.
+
+### References:
+
+* [Configuring Bazel's Downloader](https://blog.aspect.build/configuring-bazels-downloader)
+* [URLRewriterConfig.java Source Code](https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/bazel/repository/downloader/UrlRewriterConfig.java)
+* [Issue 3519](https://github.com/bazel-contrib/rules_python/issues/3519)
+
 (credential-helper)=
 ## Credential Helper
 
