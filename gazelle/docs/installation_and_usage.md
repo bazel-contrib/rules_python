@@ -61,8 +61,8 @@ bazel_dep(name = "rules_python_gazelle_plugin", version = "1.5.1")
 
 Next, we'll fetch metadata about your Python dependencies, so that gazelle can
 determine which package a given import statement comes from. This is provided
-by the `modules_mapping` rule. We'll make a target for consuming this
-`modules_mapping`, and writing it as a manifest file for Gazelle to read.
+by the {bzl:obj}`modules_mapping` rule. We'll make a target for consuming this
+{bzl:obj}`modules_mapping`, and writing it as a manifest file for Gazelle to read.
 This is checked into the repo for speed, as it takes some time to calculate
 in a large monorepo.
 
