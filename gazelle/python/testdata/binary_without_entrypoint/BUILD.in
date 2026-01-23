@@ -3,6 +3,6 @@
 # gazelle:resolve py pandas @pip//:pandas
 
 filegroup(
-    name = "collided_main",
+    name = "collided_main_bin",
     srcs = ["collided_main.py"],
 )

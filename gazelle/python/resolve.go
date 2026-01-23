@@ -55,6 +55,9 @@ func (*Resolver) Name() string { return languageName }
 // If nil is returned, the rule will not be indexed. If any non-nil slice is
 // returned, including an empty slice, the rule will be indexed.
 func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+	if r.Kind() == GetActualKindName(pyBinaryKind, c) {
+		return nil
+	}
 	cfgs := c.Exts[languageName].(pythonconfig.Configs)
 	cfg := cfgs[f.Pkg]
 	srcs := r.AttrStrings("srcs")
