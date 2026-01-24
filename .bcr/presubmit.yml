@@ -15,18 +15,19 @@
 bcr_test_module:
   module_path: "examples/bzlmod"
   matrix:
-    platform: ["debian11", "macos", "ubuntu2004", "windows"]
-    # last_rc is to get latest 8.x release. Replace with 8.x when available.
-    bazel: [7.x, last_rc]
+    platform: ["debian11", "macos", "ubuntu2204", "windows"]
+    bazel: [7.*, 8.*, 9.*]
   tasks:
     run_tests:
       name: "Run test module"
       platform: ${{ platform }}
       bazel: ${{ bazel }}
       test_flags:
+        # Minimum bazel supported C++
         - "--keep_going"
-          # Without these cxxopts, BCR's Mac builds fail
-        - '--cxxopt=-std=c++14'
-        - '--host_cxxopt=-std=c++14'
+        - '--cxxopt=-std=c++17'
+        - '--host_cxxopt=-std=c++17'
+      build_targets:
+        - "//..."
       test_targets:
         - "//..."

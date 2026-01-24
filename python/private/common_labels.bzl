@@ -8,6 +8,7 @@ labels = struct(
     ADD_SRCS_TO_RUNFILES = str(Label("//python/config_settings:add_srcs_to_runfiles")),
     BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl")),
     BUILD_PYTHON_ZIP = str(Label("//python/config_settings:build_python_zip")),
+    DEBUGGER = str(Label("//python/config_settings:debugger")),
     EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
     NONE = str(Label("//python:none")),

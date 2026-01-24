@@ -81,12 +81,14 @@ def _parse_whl_metadata(env, **kwargs):
             version = result.version,
             requires_dist = result.requires_dist,
             provides_extra = result.provides_extra,
+            entry_points = result.entry_points,
         ),
         attrs = dict(
             name = subjects.str,
             version = subjects.str,
             requires_dist = subjects.collection,
             provides_extra = subjects.collection,
+            entry_points = subjects.collection,
         ),
     )
 
@@ -170,6 +172,53 @@ Requires-Dist: this will be ignored
     ])
 
 _tests.append(_test_parse_metadata_multiline_license)
+
+def _test_parse_entry_points_txt(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = """\
+Name: foo
+Version: 0.0.1
+""",
+        entry_points_contents = """\
+[something]
+interesting # with comments
+
+[console_scripts]
+foo = foomod:main
+# One which depends on extras:
+foobar = importable.foomod:main_bar [bar, baz]
+
+  # With a comment at the end
+foobarbaz = foomod:main.attr # comment
+
+[something else]
+not very much interesting
+
+""",
+    )
+    got.entry_points().contains_exactly([
+        struct(
+            attribute = "main",
+            extras = "",
+            module = "foomod",
+            name = "foo",
+        ),
+        struct(
+            attribute = "main_bar",
+            extras = "[bar,baz]",
+            module = "importable.foomod",
+            name = "foobar",
+        ),
+        struct(
+            attribute = "main.attr",
+            extras = "",
+            module = "foomod",
+            name = "foobarbaz",
+        ),
+    ])
+
+_tests.append(_test_parse_entry_points_txt)
 
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(

@@ -32,11 +32,9 @@ load(
     "collect_imports",
     "collect_runfiles",
     "create_instrumented_files_info",
-    "create_library_semantics_struct",
     "create_output_group_info",
     "create_py_info",
     "filter_to_py_srcs",
-    "get_imports",
 )
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
@@ -101,35 +99,38 @@ and that only one package version will be included.
 :::
 """,
         ),
+        "namespace_package_files": lambda: attrb.LabelList(
+            allow_empty = True,
+            allow_files = True,
+            doc = """
+Files whose directories are namespace packages.
+
+When {obj}`--venv_site_packages=yes` is set, this helps inform which directories should be
+treated as namespace packages and expect files from other targets to be contributed.
+This allows optimizing the generation of symlinks to be cheaper at analysis time.
+
+:::{versionadded} 1.8.0
+:::
+""",
+        ),
         "_add_srcs_to_runfiles_flag": lambda: attrb.Label(
             default = labels.ADD_SRCS_TO_RUNFILES,
         ),
     },
 )
 
-def _py_library_impl_with_semantics(ctx):
-    return py_library_impl(
-        ctx,
-        semantics = create_library_semantics_struct(
-            get_imports = get_imports,
-            maybe_precompile = maybe_precompile,
-            get_cc_info_for_library = collect_cc_info,
-        ),
-    )
-
-def py_library_impl(ctx, *, semantics):
+def py_library_impl(ctx):
     """Abstract implementation of py_library rule.
 
     Args:
         ctx: The rule ctx
-        semantics: A `LibrarySemantics` struct; see `create_library_semantics_struct`
 
     Returns:
         A list of modern providers to propagate.
     """
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
 
-    precompile_result = semantics.maybe_precompile(ctx, direct_sources)
+    precompile_result = maybe_precompile(ctx, direct_sources)
 
     required_py_files = precompile_result.keep_srcs
     required_pyc_files = []
@@ -158,9 +159,9 @@ def py_library_impl(ctx, *, semantics):
     imports = []
     venv_symlinks = []
 
-    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx, semantics)
+    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx)
 
-    cc_info = semantics.get_cc_info_for_library(ctx)
+    cc_info = collect_cc_info(ctx)
     py_info, builtins_py_info = create_py_info(
         ctx,
         original_sources = direct_sources,
@@ -229,7 +230,7 @@ def _get_package_and_version(ctx):
         version.normalize(version_str),  # will have no dashes either
     )
 
-def _get_imports_and_venv_symlinks(ctx, semantics):
+def _get_imports_and_venv_symlinks(ctx):
     imports = depset()
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
@@ -251,9 +252,10 @@ def _get_imports_and_venv_symlinks(ctx, semantics):
             package,
             version_str,
             site_packages_root = imports[0],
+            namespace_package_files = ctx.files.namespace_package_files,
         )
     else:
-        imports = collect_imports(ctx, semantics)
+        imports = collect_imports(ctx)
     return imports, venv_symlinks
 
 _MaybeBuiltinPyInfo = [BuiltinPyInfo] if BuiltinPyInfo != None else []
@@ -273,7 +275,7 @@ def create_py_library_rule_builder():
         for creating a `py_library` rule.
     """
     builder = ruleb.Rule(
-        implementation = _py_library_impl_with_semantics,
+        implementation = py_library_impl,
         doc = _DEFAULT_PY_LIBRARY_DOC,
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),
         attrs = LIBRARY_ATTRS,

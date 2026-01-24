@@ -18,12 +18,14 @@
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
-def whl_repo_name(filename, sha256):
+def whl_repo_name(filename, sha256, *target_platforms):
     """Return a valid whl_library repo name given a distribution filename.
 
     Args:
         filename: {type}`str` the filename of the distribution.
         sha256: {type}`str` the sha256 of the distribution.
+        *target_platforms: {type}`list[str]` the extra suffixes to append.
+            Only used when we need to support different extras per version.
 
     Returns:
         a string that can be used in {obj}`whl_library`.
@@ -58,6 +60,8 @@ def whl_repo_name(filename, sha256):
         parts.append(sha256[:8])
     elif version:
         parts.insert(1, version)
+
+    parts.extend([p.partition("_")[-1] for p in target_platforms])
 
     return "_".join(parts)
 

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
+import pathlib
 import tempfile
 import unittest
 from typing import Any, List, Optional
@@ -62,6 +64,16 @@ class RunfilesTest(unittest.TestCase):
             "is absolute without a drive letter",
             lambda: r.Rlocation("\\foo"),
         )
+
+    def testRlocationWithData(self) -> None:
+        r = runfiles.Create()
+        assert r is not None  # mypy doesn't understand the unittest api.
+        settings_path = r.Rlocation(
+            "rules_python/tests/support/current_build_settings.json"
+        )
+        assert settings_path is not None
+        settings = json.loads(pathlib.Path(settings_path).read_text())
+        self.assertIn("bootstrap_impl", settings)
 
     def testCreatesManifestBasedRunfiles(self) -> None:
         with _MockFile(contents=["a/b c/d"]) as mf:
@@ -692,7 +704,7 @@ class RunfilesTest(unittest.TestCase):
             expected = ""
         else:
             expected = "rules_python"
-        r = runfiles.Create({"RUNFILES_DIR": "whatever"})
+        r = runfiles.Create()
         assert r is not None  # mypy doesn't understand the unittest api.
         self.assertEqual(r.CurrentRepository(), expected)
 

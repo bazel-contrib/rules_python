@@ -27,6 +27,7 @@ def pip_parse(
         requirements_linux = None,
         requirements_lock = None,
         requirements_windows = None,
+        target_platforms = [],
         simpleapi_skip = [],
         timeout = 600,
         whl_modifications = {},
@@ -41,7 +42,9 @@ def pip_parse(
         envsubst = envsubst,
         experimental_index_url = experimental_index_url,
         experimental_requirement_cycles = experimental_requirement_cycles,
+        # TODO @aignas 2025-12-02: decide on a single attr - should we reuse this?
         experimental_target_platforms = experimental_target_platforms,
+        target_platforms = target_platforms,
         extra_hub_aliases = extra_hub_aliases,
         extra_pip_args = extra_pip_args,
         hub_name = hub_name,

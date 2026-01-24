@@ -34,6 +34,9 @@ def _test_simple(env):
         "musllinux_1_1_ppc64le": [
             struct(os = "linux", cpu = "ppc64le", abi = None, target_platform = "linux_ppc64le", version = (1, 1)),
         ],
+        "musllinux_1_2_riscv64": [
+            struct(os = "linux", cpu = "riscv64", abi = None, target_platform = "linux_riscv64", version = (1, 2)),
+        ],
         "win_amd64": [
             struct(os = "windows", cpu = "x86_64", abi = None, target_platform = "windows_x86_64", version = (0, 0)),
         ],
@@ -65,6 +68,9 @@ def _test_with_abi(env):
         ],
         "musllinux_1_1_ppc64le": [
             struct(os = "linux", cpu = "ppc64le", abi = "cp311", target_platform = "cp311_linux_ppc64le", version = (1, 1)),
+        ],
+        "musllinux_1_2_riscv64": [
+            struct(os = "linux", cpu = "riscv64", abi = "cp311", target_platform = "cp311_linux_riscv64", version = (1, 2)),
         ],
         "win_amd64": [
             struct(os = "windows", cpu = "x86_64", abi = "cp311", target_platform = "cp311_windows_x86_64", version = (0, 0)),
@@ -103,6 +109,7 @@ def _can_parse_existing_tags(env):
         "manylinux_11_12_i686": 1,
         "manylinux_11_12_ppc64": 1,
         "manylinux_11_12_ppc64le": 1,
+        "manylinux_11_12_riscv64": 1,
         "manylinux_11_12_s390x": 1,
         "manylinux_11_12_x86_64": 1,
         "manylinux_1_2_aarch64": 1,
@@ -111,6 +118,7 @@ def _can_parse_existing_tags(env):
         "musllinux_11_12_armv7l": 1,
         "musllinux_11_12_i686": 1,
         "musllinux_11_12_ppc64le": 1,
+        "musllinux_11_12_riscv64": 1,
         "musllinux_11_12_s390x": 1,
         "musllinux_11_12_x86_64": 1,
         "win32": 1,

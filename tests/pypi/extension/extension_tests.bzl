@@ -22,12 +22,12 @@ load(":pip_parse.bzl", _parse = "pip_parse")
 
 _tests = []
 
-def _mock_mctx(*modules, environ = {}, read = None):
+def _mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
     return struct(
         os = struct(
             environ = environ,
-            name = "unittest",
-            arch = "exotic",
+            name = os_name,
+            arch = arch_name,
         ),
         read = read or (lambda _: """\
 simple==0.0.1 \
@@ -99,6 +99,7 @@ def _build_config(env, enable_pipstar = 0, **kwargs):
     return env.expect.that_struct(
         build_config(
             enable_pipstar = enable_pipstar,
+            enable_pipstar_extract = True,
             **kwargs
         ),
         attrs = dict(
@@ -148,6 +149,8 @@ def _test_simple(env):
                     ),
                 ],
             ),
+            os_name = "linux",
+            arch_name = "x86_64",
         ),
         available_interpreters = {
             "python_3_15_host": "unit_test_interpreter_target",

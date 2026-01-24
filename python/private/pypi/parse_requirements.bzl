@@ -88,6 +88,7 @@ def parse_requirements(
     evaluate_markers = evaluate_markers or (lambda _ctx, _requirements: {})
     options = {}
     requirements = {}
+    reqs_with_env_markers = {}
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -96,16 +97,41 @@ def parse_requirements(
         # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
 
+        tokenized_options = []
+        for opt in parse_result.options:
+            for p in opt.split(" "):
+                tokenized_options.append(p)
+
+        pip_args = tokenized_options + extra_pip_args
+        for plat in plats:
+            requirements[plat] = parse_result.requirements
+            for entry in parse_result.requirements:
+                requirement_line = entry[1]
+
+                # output all of the requirement lines that have a marker
+                if ";" in requirement_line:
+                    reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
+            options[plat] = pip_args
+
+    # This may call to Python, so execute it early (before calling to the
+    # internet below) and ensure that we call it only once.
+    resolved_marker_platforms = evaluate_markers(ctx, reqs_with_env_markers)
+    logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
+        reqs_with_env_markers,
+        resolved_marker_platforms,
+    ))
+
+    requirements_by_platform = {}
+    for plat, parse_results in requirements.items():
         # Replicate a surprising behavior that WORKSPACE builds allowed:
         # Defining a repo with the same name multiple times, but only the last
         # definition is respected.
         # The requirement lines might have duplicate names because lines for extras
         # are returned as just the base package name. e.g., `foo[bar]` results
         # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
-        # Lines with different markers are not condidered duplicates.
         requirements_dict = {}
         for entry in sorted(
-            parse_result.requirements,
+            parse_results,
             # Get the longest match and fallback to original WORKSPACE sorting,
             # which should get us the entry with most extras.
             #
@@ -114,32 +140,21 @@ def parse_requirements(
             # should do this now.
             key = lambda x: (len(x[1].partition("==")[0]), x),
         ):
-            req = requirement(entry[1])
-            requirements_dict[(req.name, req.version, req.marker)] = entry
+            req_line = entry[1]
+            req = requirement(req_line)
 
-        tokenized_options = []
-        for opt in parse_result.options:
-            for p in opt.split(" "):
-                tokenized_options.append(p)
+            if req.marker and plat not in resolved_marker_platforms.get(req_line, []):
+                continue
 
-        pip_args = tokenized_options + extra_pip_args
-        for plat in plats:
-            requirements[plat] = requirements_dict.values()
-            options[plat] = pip_args
+            requirements_dict[req.name] = entry
 
-    requirements_by_platform = {}
-    reqs_with_env_markers = {}
-    for target_platform, reqs_ in requirements.items():
-        extra_pip_args = options[target_platform]
+        extra_pip_args = options[plat]
 
-        for distribution, requirement_line in reqs_:
+        for distribution, requirement_line in requirements_dict.values():
             for_whl = requirements_by_platform.setdefault(
                 normalize_name(distribution),
                 {},
             )
-
-            if ";" in requirement_line:
-                reqs_with_env_markers.setdefault(requirement_line, []).append(target_platform)
 
             for_req = for_whl.setdefault(
                 (requirement_line, ",".join(extra_pip_args)),
@@ -151,20 +166,7 @@ def parse_requirements(
                     extra_pip_args = extra_pip_args,
                 ),
             )
-            for_req.target_platforms.append(target_platform)
-
-    # This may call to Python, so execute it early (before calling to the
-    # internet below) and ensure that we call it only once.
-    #
-    # NOTE @aignas 2024-07-13: in the future, if this is something that we want
-    # to do, we could use Python to parse the requirement lines and infer the
-    # URL of the files to download things from. This should be important for
-    # VCS package references.
-    env_marker_target_platforms = evaluate_markers(ctx, reqs_with_env_markers)
-    logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
-        reqs_with_env_markers,
-        env_marker_target_platforms,
-    ))
+            for_req.target_platforms.append(plat)
 
     index_urls = {}
     if get_index_urls:
@@ -183,24 +185,38 @@ def parse_requirements(
     for name, reqs in sorted(requirements_by_platform.items()):
         requirement_target_platforms = {}
         for r in reqs.values():
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, r.target_platforms)
-            for p in target_platforms:
+            for p in r.target_platforms:
                 requirement_target_platforms[p] = None
+
+        package_srcs = _package_srcs(
+            name = name,
+            reqs = reqs,
+            index_urls = index_urls,
+            platforms = platforms,
+            extract_url_srcs = extract_url_srcs,
+            logger = logger,
+        )
+
+        # FIXME @aignas 2025-11-24: we can get the list of target platforms here
+        #
+        # However it is likely that we may stop exposing packages like torch in here
+        # which do not have wheels for all osx platforms.
+        #
+        # If users specify the target platforms accurately, then it is a different
+        # (better) story, but we may not be able to guarantee this
+        #
+        # target_platforms = [
+        #     p
+        #     for dist in package_srcs
+        #     for p in dist.target_platforms
+        # ]
 
         item = struct(
             # Return normalized names
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,
-            srcs = _package_srcs(
-                name = name,
-                reqs = reqs,
-                index_urls = index_urls,
-                platforms = platforms,
-                env_marker_target_platforms = env_marker_target_platforms,
-                extract_url_srcs = extract_url_srcs,
-                logger = logger,
-            ),
+            srcs = package_srcs,
         )
         ret.append(item)
         if not item.is_exposed and logger:
@@ -221,25 +237,20 @@ def _package_srcs(
         index_urls,
         platforms,
         logger,
-        env_marker_target_platforms,
         extract_url_srcs):
     """A function to return sources for a particular package."""
     srcs = {}
     for r in sorted(reqs.values(), key = lambda r: r.requirement_line):
-        if ";" in r.requirement_line:
-            target_platforms = env_marker_target_platforms.get(r.requirement_line, [])
-        else:
-            target_platforms = r.target_platforms
         extra_pip_args = tuple(r.extra_pip_args)
 
-        for target_platform in target_platforms:
+        for target_platform in r.target_platforms:
             if platforms and target_platform not in platforms:
                 fail("The target platform '{}' could not be found in {}".format(
                     target_platform,
                     platforms.keys(),
                 ))
 
-            dist = _add_dists(
+            dist, can_fallback = _add_dists(
                 requirement = r,
                 target_platform = platforms.get(target_platform),
                 index_urls = index_urls.get(name),
@@ -249,7 +260,7 @@ def _package_srcs(
 
             if extract_url_srcs and dist:
                 req_line = r.srcs.requirement
-            else:
+            elif can_fallback:
                 dist = struct(
                     url = "",
                     filename = "",
@@ -257,6 +268,8 @@ def _package_srcs(
                     yanked = False,
                 )
                 req_line = r.srcs.requirement_line
+            else:
+                continue
 
             key = (
                 dist.filename,
@@ -342,6 +355,14 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         index_urls: The result of simpleapi_download.
         target_platform: The target_platform information.
         logger: A logger for printing diagnostic info.
+
+    Returns:
+        (dist, can_fallback_to_pip): a struct with distribution details and how to fetch
+        it and a boolean flag to tell the other layers if we should add an entry to
+        fallback for pip if there are no supported whls found - if there is an sdist, we
+        can attempt the fallback, otherwise better to not, because the pip command will
+        fail and the error message will be confusing. What is more that would lead to
+        breakage of the bazel query.
     """
 
     if requirement.srcs.url:
@@ -349,7 +370,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             logger.debug(lambda: "Could not detect the filename from the URL, falling back to pip: {}".format(
                 requirement.srcs.url,
             ))
-            return None
+            return None, True
 
         # Handle direct URLs in requirements
         dist = struct(
@@ -359,13 +380,10 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             yanked = False,
         )
 
-        if dist.filename.endswith(".whl"):
-            return dist
-        else:
-            return dist
+        return dist, False
 
     if not index_urls:
-        return None
+        return None, True
 
     whls = []
     sdist = None
@@ -408,7 +426,14 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
 
     if not target_platform:
         # The pipstar platforms are undefined here, so we cannot do any matching
-        return sdist
+        return sdist, True
+
+    if not whls and not sdist:
+        # If there are no suitable wheels to handle for now allow fallback to pip, it
+        # may be a little bit more helpful when debugging? Most likely something is
+        # going a bit wrong here, should we raise an error because the sha256 have most
+        # likely mismatched? We are already printing a warning above.
+        return None, True
 
     # Select a single wheel that can work on the target_platform
     return select_whl(
@@ -418,4 +443,4 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         whl_abi_tags = target_platform.whl_abi_tags,
         whl_platform_tags = target_platform.whl_platform_tags,
         logger = logger,
-    ) or sdist
+    ) or sdist, sdist != None

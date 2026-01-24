@@ -31,7 +31,7 @@ def _is_repo_debug_enabled(mrctx):
     """
     return _getenv(mrctx, REPO_DEBUG_ENV_VAR) == "1"
 
-def _logger(mrctx = None, name = None, verbosity_level = None):
+def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
     """Creates a logger instance for printing messages.
 
     Args:
@@ -39,7 +39,9 @@ def _logger(mrctx = None, name = None, verbosity_level = None):
             `_rule_name` is present, it will be included in log messages.
         name: name for the logger. Optional for repository_ctx usage.
         verbosity_level: {type}`int | None` verbosity level. If not set,
-            taken from `mrctx`
+            taken from `mrctx`.
+        printer: a function to use for printing. Defaults to `print` or `fail` depending
+            on the logging method.
 
     Returns:
         A struct with attributes logging: trace, debug, info, warn, fail.
@@ -70,9 +72,14 @@ def _logger(mrctx = None, name = None, verbosity_level = None):
     elif not name:
         fail("The name has to be specified when using the logger with `module_ctx`")
 
+    failures = []
+
     def _log(enabled_on_verbosity, level, message_cb_or_str, printer = print):
         if verbosity < enabled_on_verbosity:
             return
+
+        if level == "FAIL":
+            failures.append(None)
 
         if type(message_cb_or_str) == "string":
             message = message_cb_or_str
@@ -86,11 +93,12 @@ def _logger(mrctx = None, name = None, verbosity_level = None):
         ), message)  # buildifier: disable=print
 
     return struct(
-        trace = lambda message_cb: _log(3, "TRACE", message_cb),
-        debug = lambda message_cb: _log(2, "DEBUG", message_cb),
-        info = lambda message_cb: _log(1, "INFO", message_cb),
-        warn = lambda message_cb: _log(0, "WARNING", message_cb),
-        fail = lambda message_cb: _log(-1, "FAIL", message_cb, fail),
+        trace = lambda message_cb: _log(3, "TRACE", message_cb, printer or print),
+        debug = lambda message_cb: _log(2, "DEBUG", message_cb, printer or print),
+        info = lambda message_cb: _log(1, "INFO", message_cb, printer or print),
+        warn = lambda message_cb: _log(0, "WARNING", message_cb, printer or print),
+        fail = lambda message_cb: _log(-1, "FAIL", message_cb, printer or fail),
+        failed = lambda: len(failures) != 0,
     )
 
 def _execute_internal(
@@ -429,11 +437,34 @@ def _get_platforms_cpu_name(mrctx):
         return "riscv64"
     return arch
 
+def _extract(mrctx, *, archive, supports_whl_extraction = False, **kwargs):
+    """Extract an archive
+
+    TODO: remove when the earliest supported bazel version is at least 8.3.
+
+    Note, we are using the parameter here because there is very little ways how we can detect
+    whether we can support just extracting the whl.
+    """
+    archive_original = None
+    if not supports_whl_extraction and archive.basename.endswith(".whl"):
+        archive_original = archive
+        archive = mrctx.path(archive.basename + ".zip")
+        mrctx.symlink(archive_original, archive)
+
+    mrctx.extract(
+        archive = archive,
+        **kwargs
+    )
+    if archive_original:
+        if not mrctx.delete(archive):
+            fail("Failed to remove the symlink after extracting")
+
 repo_utils = struct(
     # keep sorted
     execute_checked = _execute_checked,
     execute_checked_stdout = _execute_checked_stdout,
     execute_unchecked = _execute_unchecked,
+    extract = _extract,
     get_platforms_cpu_name = _get_platforms_cpu_name,
     get_platforms_os_name = _get_platforms_os_name,
     getenv = _getenv,

@@ -10,10 +10,20 @@ from python.runfiles import runfiles
 class RunTest(unittest.TestCase):
     def test_ran(self):
         rf = runfiles.Create()
-        settings_path = rf.Rlocation(
-            "rules_python/tests/support/current_build_settings.json"
-        )
+        try:
+            settings_path = rf.Rlocation(
+                "rules_python/tests/support/current_build_settings.json"
+            )
+        except ValueError as e:
+            # The current toolchain being used has a buggy zip file bootstrap, which
+            # leaves RUNFILES_DIR pointing at the first stage path and not the module
+            # path.
+            if platform.system() != "Windows" or "does not lie under the runfiles root" not in str(e):
+                raise e
+            settings_path = "./tests/support/current_build_settings.json"
+
         settings = json.loads(pathlib.Path(settings_path).read_text())
+
         if platform.system() == "Windows":
             self.assertEqual(
                 "/_magic_pyruntime_sentinel_do_not_use", settings["interpreter_path"]

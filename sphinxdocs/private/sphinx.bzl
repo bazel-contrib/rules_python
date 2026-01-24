@@ -189,8 +189,9 @@ def sphinx_docs(
         srcs = [_SPHINX_SERVE_MAIN_SRC],
         main = _SPHINX_SERVE_MAIN_SRC,
         data = [html_name],
+        deps = [Label("//python/runfiles")],
         args = [
-            "$(execpath {})".format(html_name),
+            "$(rlocationpath {})".format(html_name),
         ],
         **common_kwargs_with_manual_tag
     )
@@ -498,6 +499,7 @@ def _sphinx_inventory_impl(ctx):
     args.add(output)
     ctx.actions.run(
         executable = ctx.executable._builder,
+        mnemonic = "SphinxInventoryBuilder",
         arguments = [args],
         inputs = depset([ctx.file.src]),
         outputs = [output],

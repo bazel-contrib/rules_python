@@ -123,45 +123,6 @@ def _python_repository_impl(rctx):
             logger = logger,
         )
 
-    # Make the Python installation read-only. This is to prevent issues due to
-    # pycs being generated at runtime:
-    # * The pycs are not deterministic (they contain timestamps)
-    # * Multiple processes trying to write the same pycs can result in errors.
-    #
-    # Note, when on Windows the `chmod` may not work
-    if "windows" not in platform and "windows" != repo_utils.get_platforms_os_name(rctx):
-        repo_utils.execute_checked(
-            rctx,
-            op = "python_repository.MakeReadOnly",
-            arguments = [repo_utils.which_checked(rctx, "chmod"), "-R", "ugo-w", "lib"],
-            logger = logger,
-        )
-
-        # If the user is not ignoring the warnings, then proceed to run a check,
-        # otherwise these steps can be skipped, as they both result in some warning.
-        if not rctx.attr.ignore_root_user_error:
-            exec_result = repo_utils.execute_unchecked(
-                rctx,
-                op = "python_repository.TestReadOnly",
-                arguments = [repo_utils.which_checked(rctx, "touch"), "lib/.test"],
-                logger = logger,
-            )
-
-            # The issue with running as root is the installation is no longer
-            # read-only, so the problems due to pyc can resurface.
-            if exec_result.return_code == 0:
-                stdout = repo_utils.execute_checked_stdout(
-                    rctx,
-                    op = "python_repository.GetUserId",
-                    arguments = [repo_utils.which_checked(rctx, "id"), "-u"],
-                    logger = logger,
-                )
-                uid = int(stdout.strip())
-                if uid == 0:
-                    logger.warn("The current user is root, which can cause spurious cache misses or build failures with the hermetic Python interpreter. See https://github.com/bazel-contrib/rules_python/pull/713.")
-                else:
-                    logger.warn("The current user has CAP_DAC_OVERRIDE set, which can cause spurious cache misses or build failures with the hermetic Python interpreter. See https://github.com/bazel-contrib/rules_python/pull/713.")
-
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
     if "linux" in platform:
@@ -186,17 +147,15 @@ def _python_repository_impl(rctx):
                 break
 
     glob_include = []
-    glob_exclude = []
-    if rctx.attr.ignore_root_user_error or "windows" in platform:
-        glob_exclude += [
-            # These pycache files are created on first use of the associated python files.
-            # Exclude them from the glob because otherwise between the first time and second time a python toolchain is used,"
-            # the definition of this filegroup will change, and depending rules will get invalidated."
-            # See https://github.com/bazel-contrib/rules_python/issues/1008 for unconditionally adding these to toolchains so we can stop ignoring them."
-            # pyc* is ignored because pyc creation creates temporary .pyc.NNNN files
-            "**/__pycache__/*.pyc*",
-            "**/__pycache__/*.pyo*",
-        ]
+    glob_exclude = [
+        # These pycache files are created on first use of the associated python files.
+        # Exclude them from the glob because otherwise between the first time and second time a python toolchain is used,"
+        # the definition of this filegroup will change, and depending rules will get invalidated."
+        # See https://github.com/bazel-contrib/rules_python/issues/1008 for unconditionally adding these to toolchains so we can stop ignoring them."
+        # pyc* is ignored because pyc creation creates temporary .pyc.NNNN files
+        "**/__pycache__/*.pyc*",
+        "**/__pycache__/*.pyo*",
+    ]
 
     if "windows" in platform:
         glob_include += [
@@ -249,7 +208,6 @@ define_hermetic_runtime_toolchain_impl(
         "coverage_tool": rctx.attr.coverage_tool,
         "distutils": rctx.attr.distutils,
         "distutils_content": rctx.attr.distutils_content,
-        "ignore_root_user_error": rctx.attr.ignore_root_user_error,
         "name": rctx.attr.name,
         "netrc": rctx.attr.netrc,
         "patch_strip": rctx.attr.patch_strip,
@@ -299,7 +257,7 @@ For more information see {attr}`py_runtime.coverage_tool`.
         ),
         "ignore_root_user_error": attr.bool(
             default = True,
-            doc = "Whether the check for root should be ignored or not. This causes cache misses with .pyc files.",
+            doc = "Noop, will be removed in the next major release",
             mandatory = False,
         ),
         "netrc": attr.string(

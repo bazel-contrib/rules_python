@@ -21,12 +21,16 @@ on:
         type: string
 jobs:
   publish:
-    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.0.0
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.1.0
     with:
       tag_name: ${{ inputs.tag_name }}
       # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
       registry_fork: bazel-contrib/bazel-central-registry
       attest: false
+      # Create non-draft PRs so the BCR bazel-io bot processes them. Otherwise,
+      # since a bazel-contrib bot, we have to wait for BCR maintainers to mark it
+      # non-draft or approve it.
+      draft: false
     permissions:
       contents: write
     secrets:

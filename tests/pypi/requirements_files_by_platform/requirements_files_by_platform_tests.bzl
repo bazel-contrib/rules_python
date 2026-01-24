@@ -115,6 +115,12 @@ def _test_simple_limited(env):
             },
             platforms = ["linux_x86_64", "osx_x86_64"],
         ),
+        requirements_files_by_platform(
+            requirements_by_platform = {
+                "requirements_lock": "linux_x86_64,osx_aarch64,osx_x86_64",
+            },
+            platforms = ["linux_x86_64", "osx_x86_64", "windows_x86_64"],
+        ),
     ]:
         env.expect.that_dict(got).contains_exactly({
             "requirements_lock": [
@@ -219,6 +225,17 @@ def _test_os_arch_requirements_with_default(env):
             "requirements_linux": "linux_x86_64,linux_aarch64",
         },
         requirements_lock = "requirements_lock",
+        platforms = [
+            "linux_super_exotic",
+            "linux_x86_64",
+            "linux_aarch64",
+            "linux_arm",
+            "linux_ppc",
+            "linux_s390x",
+            "osx_aarch64",
+            "osx_x86_64",
+            "windows_x86_64",
+        ],
     )
     env.expect.that_dict(got).contains_exactly({
         "requirements_exotic": ["linux_super_exotic"],

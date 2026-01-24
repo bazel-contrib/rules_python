@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_binaries//:defs.bzl", "bazel_binaries")
 load("@rules_bazel_integration_test//bazel_integration_test:defs.bzl", "default_test_runner")
 load("//python:py_library.bzl", "py_library")
 load(":integration_test.bzl", "rules_python_integration_test")
@@ -22,14 +21,6 @@ licenses(["notice"])
 _WORKSPACE_FLAGS = [
     "--noenable_bzlmod",
     "--enable_workspace",
-]
-
-_WORKSPACE_GAZELLE_PLUGIN_FLAGS = [
-    "--override_repository=rules_python_gazelle_plugin=../../../rules_python_gazelle_plugin",
-]
-
-_GAZELLE_PLUGIN_FLAGS = [
-    "--override_module=rules_python_gazelle_plugin=../../../rules_python_gazelle_plugin",
 ]
 
 default_test_runner(
@@ -42,29 +33,9 @@ default_test_runner(
 )
 
 default_test_runner(
-    name = "workspace_test_runner_gazelle_plugin",
-    bazel_cmds = [
-        "info {}".format(" ".join(_WORKSPACE_FLAGS + _WORKSPACE_GAZELLE_PLUGIN_FLAGS)),
-        "test {} //...".format(" ".join(_WORKSPACE_FLAGS + _WORKSPACE_GAZELLE_PLUGIN_FLAGS)),
-    ],
-    visibility = ["//visibility:public"],
-)
-
-default_test_runner(
     name = "test_runner",
     visibility = ["//visibility:public"],
 )
-
-default_test_runner(
-    name = "test_runner_gazelle_plugin",
-    bazel_cmds = [
-        "info {}".format(" ".join(_GAZELLE_PLUGIN_FLAGS)),
-        "test {} //...".format(" ".join(_GAZELLE_PLUGIN_FLAGS)),
-    ],
-    visibility = ["//visibility:public"],
-)
-
-# TODO: add compile_pip_requirements_test_from_external_repo
 
 rules_python_integration_test(
     name = "compile_pip_requirements_test",
@@ -77,32 +48,18 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
-    name = "ignore_root_user_error_test",
-)
-
-rules_python_integration_test(
-    name = "ignore_root_user_error_workspace_test",
-    bzlmod = False,
-    workspace_path = "ignore_root_user_error",
-)
-
-rules_python_integration_test(
     name = "local_toolchains_test",
-    bazel_versions = [
-        version
-        for version in bazel_binaries.versions.all
-        if not version.startswith("6.")
-    ],
+    env = {
+        "RULES_PYTHON_BZLMOD_DEBUG": "1",
+    },
 )
 
 rules_python_integration_test(
     name = "local_toolchains_workspace_test",
-    bazel_versions = [
-        version
-        for version in bazel_binaries.versions.all
-        if not version.startswith("6.")
-    ],
     bzlmod = False,
+    env = {
+        "RULES_PYTHON_BZLMOD_DEBUG": "1",
+    },
     workspace_path = "local_toolchains",
 )
 

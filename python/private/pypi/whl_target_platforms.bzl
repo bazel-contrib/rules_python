@@ -30,6 +30,7 @@ _CPU_ALIASES = {
     "ppc": "ppc",
     "ppc64": "ppc",
     "ppc64le": "ppc64le",
+    "riscv64": "riscv64",
     "s390x": "s390x",
     "arm": "arm",
     "armv6l": "arm",

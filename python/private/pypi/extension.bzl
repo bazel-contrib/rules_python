@@ -14,7 +14,6 @@
 
 "pip module extension for use with bzlmod"
 
-load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
@@ -71,13 +70,16 @@ def _configure(config, *, override = False, **kwargs):
 def build_config(
         *,
         module_ctx,
-        enable_pipstar):
+        enable_pipstar,
+        enable_pipstar_extract):
     """Parse 'configure' and 'default' extension tags
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
             evaluation of the extension.
+        enable_pipstar_extract: {type}`bool | None` a flag to also not pass Python
+            interpreter to `whl_library` when possible.
 
     Returns:
         A struct with the configuration.
@@ -128,6 +130,7 @@ def build_config(
             for name, values in defaults["platforms"].items()
         },
         enable_pipstar = enable_pipstar,
+        enable_pipstar_extract = enable_pipstar_extract,
     )
 
 def parse_modules(
@@ -135,6 +138,7 @@ def parse_modules(
         _fail = fail,
         simpleapi_download = simpleapi_download,
         enable_pipstar = False,
+        enable_pipstar_extract = False,
         **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
@@ -143,6 +147,8 @@ def parse_modules(
         simpleapi_download: Used for testing overrides
         enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
             evaluation of the extension.
+        enable_pipstar_extract: {type}`bool` a flag to enable dropping Python dependency for
+            extracting wheels.
         _fail: {type}`function` the failure function, mainly for testing.
         **kwargs: Extra arguments passed to the hub_builder.
 
@@ -180,7 +186,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar)
+    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar, enable_pipstar_extract = enable_pipstar_extract)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -363,7 +369,7 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar)
+    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar, enable_pipstar_extract = rp_config.enable_pipstar and rp_config.bazel_8_or_later)
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
@@ -385,13 +391,9 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    if bazel_features.external_deps.extension_metadata_has_reproducible:
-        # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
-        # results after calling the PyPI index should be reproducible on each
-        # machine.
-        return module_ctx.extension_metadata(reproducible = True)
-    else:
-        return None
+    return module_ctx.extension_metadata(
+        reproducible = True,
+    )
 
 _default_attrs = {
     "arch_name": attr.string(
@@ -666,6 +668,26 @@ to `rules_python` and use this attribute until the bug is fixed.
 EXPERIMENTAL: this may be removed without notice.
 
 :::{versionadded} 1.4.0
+:::
+""",
+        ),
+        "target_platforms": attr.string_list(
+            default = [],
+            doc = """\
+The list of platforms for which we would evaluate the requirements files. If you need to be able to
+only evaluate for a particular platform (e.g. "linux_x86_64"), then put it in here.
+
+If you want `freethreaded` variant, then you can use `_freethreaded` suffix as `rules_python` is
+defining target platforms for these variants in its `MODULE.bazel` file. The identifiers for this
+function in general are the same as used in the {obj}`pip.default.platform` attribute.
+
+If you only care for the host platform and do not have a usecase to cross-build, then you can put in
+a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
+
+:::{include} /_includes/experimental_api.md
+:::
+
+:::{versionadded} 1.8.0
 :::
 """,
         ),

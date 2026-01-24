@@ -113,6 +113,21 @@ This will not work for sdists with C extensions, but pure Python sdists may stil
 approach.
 :::
 
+By default, `rules_python` selects the host `{os}_{arch}` platform from its `MODULE.bazel`
+file. This means that `rules_python` by default does not provide cross-platform building support
+because some packages have very large wheels and users should be able to use `bazel query` with
+minimal overhead. As a result, users should configure their `pip.parse`
+calls and select which platforms they want to target via the
+{attr}`pip.parse.target_platforms` attribute:
+```starlark
+    # Example of enabling free threaded and non-freethreaded switching on the host platform:
+    target_platforms = ["{os}_{arch}", "{os}_{arch}_freethreaded"],
+
+    # As another example, to enable building for `linux_x86_64` containers and the host platform:
+    # target_platforms = ["{os}_{arch}", "linux_x86_64"],
+)
+```
+
 ### Using `download_only` attribute
 
 Let's say you have two requirements files:
@@ -253,6 +268,53 @@ available flags:
 [bazel_downloader]: https://bazel.build/rules/lib/builtins/repository_ctx#download
 [pep600]: https://peps.python.org/pep-0600/
 [pep656]: https://peps.python.org/pep-0656/
+
+## Internal dependencies and private repositories
+
+The `rules_python` Bazel module downloads Python interpreters and
+dependencies as part of its functionality. These artifacts are fetched
+using Bazel's internal HTTP downloader, not using the `pip` tool.
+
+If you are in a network-restricted environment and must use internal
+registries, you can configure the Bazel downloader to redirect all of
+these downloads to a different registry.
+
+Example of a `bazel_downloader.cfg`:
+```cfg
+all_blocked_message See internal.mirror.lan/registry/ for more information
+allow s3.amazon.com
+
+# Rewrite everything to files.pythonhosted to the internal mirror with two
+# capture groups: the first group matches the host and is appended first,
+# the second matches the entire path and is appended second
+rewrite (files.pythonhosted.org)/(.*) internal.mirror.lan/python/$1/$2
+rewrite (pypi.python.org)/(.*) internal.mirror.lan/python/$1/$2
+
+# Allow the internal mirror and block everything else
+allow internal.mirror.lan
+block *
+```
+
+Use the config file with `--experimental_downloader_config=bazel_downloader.cfg`.
+
+### How the config is parsed:
+
+* Uses Java regular expressions
+* Matching is performed only on host and path components of the URL, not the scheme
+* Directives are applied in the following order: `rewrite, allow, block`
+* Back references are numbered starting from `$1`
+* Expressions must match the entire string being tested, not just find a substring.
+
+If your patterns don't seem to match or rewrite:
+
+* Begin with simple patterns to ensure they match as expected.
+* Be cautious when using `block` statements to avoid unintentionally blocking necessary downloads. Add `block` statements incrementally and test thoroughly after each change.
+
+### References:
+
+* [Configuring Bazel's Downloader](https://blog.aspect.build/configuring-bazels-downloader)
+* [URLRewriterConfig.java Source Code](https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/bazel/repository/downloader/UrlRewriterConfig.java)
+* [Issue 3519](https://github.com/bazel-contrib/rules_python/issues/3519)
 
 (credential-helper)=
 ## Credential Helper

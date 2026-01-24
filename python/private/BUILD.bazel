@@ -16,16 +16,20 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_setting")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
+load(":bazel_config_mode.bzl", "bazel_config_mode")
 load(":print_toolchain_checksums.bzl", "print_toolchains_checksums")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":sentinel.bzl", "sentinel")
 load(":stamp.bzl", "stamp_build_setting")
+load(":uncachable_version_file.bzl", "define_uncachable_version_file")
 
 package(
     default_visibility = ["//:__subpackages__"],
 )
 
 licenses(["notice"])
+
+exports_files(["runtime_env_toolchain_interpreter.sh"])
 
 filegroup(
     name = "distribution",
@@ -94,6 +98,14 @@ bzl_library(
         "//python:py_runtime_bzl",
         "//python:py_runtime_pair_bzl",
     ],
+)
+
+alias(
+    name = "build_data_writer",
+    actual = select({
+        "@platforms//os:windows": ":build_data_writer.ps1",
+        "//conditions:default": ":build_data_writer.sh",
+    }),
 )
 
 bzl_library(
@@ -442,7 +454,7 @@ bzl_library(
 bzl_library(
     name = "py_internal_bzl",
     srcs = ["py_internal.bzl"],
-    deps = ["@rules_python_internal//:py_internal_bzl"],
+    deps = ["//tools/build_defs/python/private:py_internal_renamed_bzl"],
 )
 
 bzl_library(
@@ -675,8 +687,13 @@ bzl_library(
         "//:__subpackages__",
     ],
     deps = [
+        ":py_internal_bzl",
         "@bazel_skylib//lib:types",
     ],
+)
+
+define_uncachable_version_file(
+    name = "uncachable_version_file",
 )
 
 bzl_library(
@@ -724,6 +741,7 @@ bzl_library(
     deps = [
         ":common_bzl",
         ":py_info.bzl",
+        ":py_internal.bzl",
         "@bazel_skylib//lib:paths",
     ],
 )
@@ -807,6 +825,23 @@ config_setting(
         "//python/config_settings:bootstrap_impl": "script",
     },
 )
+
+config_setting(
+    name = "is_bazel_config_mode_target",
+    flag_values = {
+        "//python/private:bazel_config_mode": "target",
+    },
+)
+
+alias(
+    name = "debugger_if_target_config",
+    actual = select({
+        ":is_bazel_config_mode_target": "//python/config_settings:debugger",
+        "//conditions:default": "//python/private:empty",
+    }),
+)
+
+bazel_config_mode(name = "bazel_config_mode")
 
 # This should only be set by analysis tests to expose additional metadata to
 # aid testing, so a setting instead of a flag.

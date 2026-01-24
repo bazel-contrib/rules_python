@@ -16,7 +16,7 @@
 buildifier:
   # keep these arguments in sync with .pre-commit-config.yaml
   # Use a specific version to avoid skew issues when new versions are released.
-  version: 6.1.0
+  version: 8.2.1
   warnings: "all"
 # NOTE: Minimum supported version is 7.x
 .minimum_supported_version: &minimum_supported_version
@@ -81,13 +81,74 @@ buildifier:
   coverage_targets:
     - //tests:my_lib_3_10_test
     - //tests:my_lib_3_11_test
-    - //tests:my_lib_3_9_test
+    - //tests:my_lib_3_12_test
+    - //tests:my_lib_3_13_test
+    - //tests:my_lib_3_14_test
     - //tests:my_lib_default_test
     - //tests:version_3_10_test
     - //tests:version_3_11_test
-    - //tests:version_3_9_test
+    - //tests:version_3_12_test
+    - //tests:version_3_13_test
+    - //tests:version_3_14_test
     - //tests:version_default_test
+
+# Keep in sync with .bcr/gazelle/presubmit.yml
+.gazelle_common_bcr: &gazelle_common_bcr
+    bazel: ${{ bazel }}
+    working_directory: gazelle/examples/bzlmod_build_file_generation
+    shell_commands:
+      - "echo 'common --override_module=rules_python=' >> .bazelrc"
+      - "bazel run //:gazelle_python_manifest.update"
+      - "bazel run //:gazelle -- update"
+    batch_commands:
+      - "echo common --override_module=rules_python= >> .bazelrc "
+      - " bazel run //:gazelle_python_manifest.update "
+      - " bazel run //:gazelle -- update"
+    build_targets:
+      - "//..."
+      - ":modules_map"
+    test_targets:
+      - "//..."
+
+
+matrix:
+  platform:
+    - ubuntu2204
+    - debian11
+    - macos_arm64
+    - windows
+  bazel: [7.*, 8.*, 9.*]
+
 tasks:
+  # Keep in sync with .bcr/presubmit.yml
+  bcr_test:
+    name: "BCR: Bazel {bazel}"
+    platform: ${{ platform }}
+    working_directory: examples/bzlmod
+    bazel: ${{ bazel }}
+    build_flags:
+      - "--keep_going"
+    test_flags:
+      - "--keep_going"
+    build_targets:
+      - "//..."
+    test_targets:
+      - "//..."
+
+  # Keep in sync with .bcr/gazelle/presubmit.yml
+  gazelle_bcr_ubuntu:
+    <<: *gazelle_common_bcr
+    name: "Gazelle: BCR, Bazel {bazel}"
+    platform: ubuntu2204
+  gazelle_bcr_debian11:
+    <<: *gazelle_common_bcr
+    name: "Gazelle: BCR, Bazel {bazel}"
+    platform: debian11
+  gazelle_bcr_macos_arm64:
+    <<: *gazelle_common_bcr
+    name: "Gazelle: BCR, Bazel {bazel}"
+    platform: macos_arm64
+
   gazelle_extension_min:
     <<: *common_workspace_flags_min_bazel
     <<: *minimum_supported_version
@@ -155,7 +216,7 @@ tasks:
     <<: *reusable_config
     <<: *common_workspace_flags
     name: "Default: Mac, workspace"
-    platform: macos
+    platform: macos_arm64
   windows_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags
@@ -186,10 +247,10 @@ tasks:
     <<: *reusable_config
     name: "Default: Debian"
     platform: debian11
-  macos:
+  macos_arm64:
     <<: *reusable_config
     name: "Default: MacOS"
-    platform: macos
+    platform: macos_arm64
   windows:
     <<: *reusable_config
     name: "Default: Windows"
@@ -250,7 +311,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/build_file_generation: macOS, workspace"
     working_directory: examples/build_file_generation
-    platform: macos
+    platform: macos_arm64
   integration_test_build_file_generation_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -258,113 +319,15 @@ tasks:
     working_directory: examples/build_file_generation
     platform: windows
 
-  integration_test_bzlmod_ubuntu_min:
-    <<: *minimum_supported_version
-    <<: *reusable_build_test_all
-    coverage_targets: ["//:test"]
-    name: "examples/bzlmod: Ubuntu, minimum Bazel"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    bazel: 7.x
-  integration_test_bzlmod_ubuntu:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: Ubuntu"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    bazel: 7.x
-  integration_test_bzlmod_ubuntu_upcoming:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: Ubuntu, upcoming Bazel"
-    working_directory: examples/bzlmod
-    platform: ubuntu2204
-    bazel: last_rc
-  integration_test_bzlmod_debian:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: Debian"
-    working_directory: examples/bzlmod
-    platform: debian11
-    bazel: 7.x
   integration_test_bzlmod_ubuntu_vendor:
     <<: *reusable_build_test_all
     name: "examples/bzlmod: bazel vendor"
     working_directory: examples/bzlmod
     platform: ubuntu2204
     shell_commands:
-    - "bazel vendor --vendor_dir=./vendor //..."
-    - "bazel build --vendor_dir=./vendor //..."
-    - "rm -rf ./vendor"
-  integration_test_bzlmod_macos:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: macOS"
-    working_directory: examples/bzlmod
-    platform: macos
-    bazel: 7.x
-  integration_test_bzlmod_macos_upcoming:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod
-    name: "examples/bzlmod: macOS, upcoming Bazel"
-    working_directory: examples/bzlmod
-    platform: macos
-    bazel: last_rc
-  integration_test_bzlmod_windows:
-    <<: *reusable_build_test_all
-    # coverage is not supported on Windows
-    name: "examples/bzlmod: Windows"
-    working_directory: examples/bzlmod
-    platform: windows
-    bazel: 7.x
-  integration_test_bzlmod_windows_upcoming:
-    <<: *reusable_build_test_all
-    # coverage is not supported on Windows
-    name: "examples/bzlmod: Windows, upcoming Bazel"
-    working_directory: examples/bzlmod
-    platform: windows
-    bazel: last_rc
-
-  integration_test_bzlmod_generate_build_file_generation_ubuntu_min:
-    <<: *minimum_supported_version
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu, minimum Bazel"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: ubuntu2204
-    bazel: 7.x
-  integration_test_bzlmod_generation_build_files_ubuntu:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: ubuntu2204
-  integration_test_bzlmod_generation_build_files_ubuntu_run:
-    <<: *reusable_build_test_all
-    name: "gazelle/examples/bzlmod_build_file_generation: Ubuntu, Gazelle and pip"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: ubuntu2204
-    shell_commands:
-    - "bazel run //:gazelle_python_manifest.update"
-    - "bazel run //:gazelle -- update"
-  integration_test_bzlmod_build_file_generation_debian:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: Debian"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: debian11
-  integration_test_bzlmod_build_file_generation_macos:
-    <<: *reusable_build_test_all
-    <<: *coverage_targets_example_bzlmod_build_file_generation
-    name: "gazelle/examples/bzlmod_build_file_generation: MacOS"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: macos
-  integration_test_bzlmod_build_file_generation_windows:
-    <<: *reusable_build_test_all
-    # coverage is not supported on Windows
-    name: "gazelle/examples/bzlmod_build_file_generation: Windows"
-    working_directory: gazelle/examples/bzlmod_build_file_generation
-    platform: windows
+      - "bazel vendor --vendor_dir=./vendor //..."
+      - "bazel build --vendor_dir=./vendor //..."
+      - "rm -rf ./vendor"
 
   integration_test_multi_python_versions_ubuntu_workspace:
     <<: *reusable_build_test_all
@@ -386,7 +349,7 @@ tasks:
     <<: *coverage_targets_example_multi_python
     name: "examples/multi_python_versions: MacOS, workspace"
     working_directory: examples/multi_python_versions
-    platform: macos
+    platform: macos_arm64
   integration_test_multi_python_versions_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -423,7 +386,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: MacOS"
     working_directory: examples/pip_parse
-    platform: macos
+    platform: macos_arm64
   integration_test_pip_parse_windows:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Windows"
@@ -454,7 +417,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_parse_vendored: MacOS"
     working_directory: examples/pip_parse_vendored
-    platform: macos
+    platform: macos_arm64
   # We don't run pip_parse_vendored under Windows as the file checked in is
   # generated from a repository rule containing OS-specific rendered paths.
 
@@ -477,7 +440,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/py_proto_library: MacOS, workspace"
     working_directory: examples/py_proto_library
-    platform: macos
+    platform: macos_arm64
   integration_test_py_proto_library_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -502,7 +465,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_repository_annotations: macOS, workspace"
     working_directory: examples/pip_repository_annotations
-    platform: macos
+    platform: macos_arm64
   integration_test_pip_repository_annotations_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -524,7 +487,7 @@ tasks:
   integration_test_bazelinbazel_macos:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: macOS (subset)"
-    platform: macos
+    platform: macos_arm64
     build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
     test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
   # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
@@ -577,7 +540,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: MacOS"
     working_directory: tests/integration/compile_pip_requirements
-    platform: macos
+    platform: macos_arm64
     shell_commands:
     # Make a change to the locked requirements and then assert that //:requirements.update does the
     # right thing.
@@ -609,20 +572,6 @@ tasks:
     - "! git diff --exit-code"
     - "bazel run //:os_specific_requirements.update"
     - "git diff --exit-code"
-
-
-  integration_test_ignore_root_user_error_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "ignore_root_user_error: macOS, workspace"
-    working_directory: tests/integration/ignore_root_user_error
-    platform: macos
-  integration_test_ignore_root_user_error_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "ignore_root_user_error: Windows, workspace"
-    working_directory: tests/integration/ignore_root_user_error
-    platform: windows
 
   integration_compile_pip_requirements_test_from_external_repo_ubuntu_min_workspace:
     <<: *minimum_supported_version
@@ -659,7 +608,7 @@ tasks:
   integration_compile_pip_requirements_test_from_external_repo_macos:
     name: "compile_pip_requirements_test_from_external_repo: macOS"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: macos
+    platform: macos_arm64
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."
