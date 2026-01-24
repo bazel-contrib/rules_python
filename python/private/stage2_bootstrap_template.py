@@ -27,7 +27,7 @@ from functools import cache
 # ===== Template substitutions start =====
 # We just put them in one place so its easy to tell which are used.
 
-# Runfiles-relative path to the main Python source file.
+# Runfiles-root-relative path to the main Python source file.
 # Empty if MAIN_MODULE is used
 MAIN_PATH = "%main%"
 
