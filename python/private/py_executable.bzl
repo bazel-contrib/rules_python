@@ -42,7 +42,6 @@ load(
     "collect_runfiles",
     "create_binary_semantics_struct",
     "create_cc_details_struct",
-    "create_executable_result_struct",
     "create_instrumented_files_info",
     "create_output_group_info",
     "create_py_info",
@@ -459,9 +458,14 @@ def _create_executable(
     # added to the zipped files.
     if venv and venv.interpreter:
         extra_runfiles = extra_runfiles.merge(ctx.runfiles([venv.interpreter]))
-    return create_executable_result_struct(
+    return struct(
+        # depset[File] of additional files that should be included as default
+        # outputs.
         extra_files_to_build = depset(extra_files_to_build),
+        # dict[str, depset[File]]; additional output groups that should be
+        # returned.
         output_groups = {"python_zip_file": depset([zip_file])},
+        # runfiles; additional runfiles to include.
         extra_runfiles = extra_runfiles,
     )
 

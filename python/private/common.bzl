@@ -109,27 +109,6 @@ def create_cc_details_struct(
         **kwargs
     )
 
-def create_executable_result_struct(*, extra_files_to_build, output_groups, extra_runfiles = None):
-    """Creates a `CreateExecutableResult` struct.
-
-    This is the return value type of the semantics create_executable function.
-
-    Args:
-        extra_files_to_build: depset of File; additional files that should be
-            included as default outputs.
-        output_groups: dict[str, depset[File]]; additional output groups that
-            should be returned.
-        extra_runfiles: A runfiles object of additional runfiles to include.
-
-    Returns:
-        A `CreateExecutableResult` struct.
-    """
-    return struct(
-        extra_files_to_build = extra_files_to_build,
-        output_groups = output_groups,
-        extra_runfiles = extra_runfiles,
-    )
-
 def csv(values):
     """Convert a list of strings to comma separated value string."""
     return ", ".join(sorted(values))
