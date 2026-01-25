@@ -18,6 +18,11 @@ import uuid
 # native rule does substitute.
 _STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
+
+# NOTE: The fallback logic from stage2_bootstrap to main is only present
+# as a courtesy for an older, unsupported, configuration. It can be removed
+# when that case is unlikely to be a concern anymore.
+# See https://github.com/bazel-contrib/rules_python/pull/3495
 if STAGE2_BOOTSTRAP == _STAGE2_BOOTSTRAP_SENTINEL:
   _MAIN_SENTINEL = "%main" + "%"
   _main = "%main%"

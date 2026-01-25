@@ -1,1 +1,0 @@
-print("external-native-ok")
