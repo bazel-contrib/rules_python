@@ -376,7 +376,7 @@ def _create_executable(
         runfiles = runfiles_details.runfiles_without_exe.merge(extra_runfiles),
     )
 
-    extra_files_to_build = []
+    extra_default_outputs = []
 
     # NOTE: --build_python_zip defaults to true on Windows
     build_zip_enabled = read_possibly_native_flag(ctx, "build_python_zip")
@@ -384,7 +384,7 @@ def _create_executable(
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
     if build_zip_enabled:
-        extra_files_to_build.append(zip_file)
+        extra_default_outputs.append(zip_file)
 
     # The logic here is a bit convoluted. Essentially, there are 3 types of
     # executables produced:
@@ -416,7 +416,7 @@ def _create_executable(
 
             # The launcher looks for the non-zip executable next to
             # itself, so add it to the default outputs.
-            extra_files_to_build.append(bootstrap_output)
+            extra_default_outputs.append(bootstrap_output)
 
     if should_create_executable_zip:
         if bootstrap_output != None:
@@ -461,7 +461,7 @@ def _create_executable(
     return struct(
         # depset[File] of additional files that should be included as default
         # outputs.
-        extra_files_to_build = depset(extra_files_to_build),
+        extra_default_outputs = depset(extra_default_outputs),
         # dict[str, depset[File]]; additional output groups that should be
         # returned.
         output_groups = {"python_zip_file": depset([zip_file])},
@@ -1082,10 +1082,10 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         runfiles_details = runfiles_details,
         extra_deps = extra_deps,
     )
-    default_outputs.add(exec_result.extra_files_to_build)
+    default_outputs.add(exec_result.extra_default_outputs)
 
     extra_exec_runfiles = exec_result.extra_runfiles.merge(
-        ctx.runfiles(transitive_files = exec_result.extra_files_to_build),
+        ctx.runfiles(transitive_files = exec_result.extra_default_outputs),
     )
 
     # Copy any existing fields in case of company patches.
