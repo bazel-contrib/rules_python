@@ -35,17 +35,11 @@ config = struct(
   enable_deprecation_warnings = {enable_deprecation_warnings},
   bazel_8_or_later = {bazel_8_or_later},
   bazel_9_or_later = {bazel_9_or_later},
+  bazel_10_or_later = {bazel_10_or_later},
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
   BuiltinPyCcLinkParamsProvider = getattr(getattr(native, "legacy_globals", None), "PyCcLinkParamsProvider", {builtin_py_cc_link_params_provider}),
 )
-"""
-
-# The py_internal symbol is only accessible from within @rules_python, so we have to
-# load it from there and re-export it so that rules_python can later load it.
-_PY_INTERNAL_SHIM = """
-load("@rules_python//tools/build_defs/python/private:py_internal_renamed.bzl", "py_internal_renamed")
-py_internal_impl = py_internal_renamed
 """
 
 ROOT_BUILD_TEMPLATE = """
@@ -60,12 +54,6 @@ package(
 bzl_library(
     name = "rules_python_config_bzl",
     srcs = ["rules_python_config.bzl"]
-)
-
-bzl_library(
-    name = "py_internal_bzl",
-    srcs = ["py_internal.bzl"],
-    deps = [{py_internal_dep}],
 )
 
 bzl_library(
@@ -124,16 +112,12 @@ def _internal_config_repo_impl(rctx):
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
         bazel_8_or_later = str(bazel_major_version >= 8),
         bazel_9_or_later = str(bazel_major_version >= 9),
+        bazel_10_or_later = str(bazel_major_version > 9),
     ))
-
-    shim_content = _PY_INTERNAL_SHIM
-    py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"'
 
     rctx.file("BUILD", ROOT_BUILD_TEMPLATE.format(
-        py_internal_dep = py_internal_dep,
         visibility = "@rules_python//:__subpackages__",
     ))
-    rctx.file("py_internal.bzl", shim_content)
 
     rctx.file(
         "extra_transition_settings.bzl",

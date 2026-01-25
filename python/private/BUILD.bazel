@@ -454,7 +454,7 @@ bzl_library(
 bzl_library(
     name = "py_internal_bzl",
     srcs = ["py_internal.bzl"],
-    deps = ["@rules_python_internal//:py_internal_bzl"],
+    deps = ["//tools/build_defs/python/private:py_internal_renamed_bzl"],
 )
 
 bzl_library(

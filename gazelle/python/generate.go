@@ -273,6 +273,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					srcs.Remove(name)
 				}
 			}
+
 			sort.Strings(mainFileNames)
 			for _, filename := range mainFileNames {
 				pyBinaryTargetName := strings.TrimSuffix(filepath.Base(filename), ".py")
@@ -282,9 +283,15 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 						fqTarget.String(), actualPyBinaryKind, err)
 					continue
 				}
+
+				// Add any sibling .pyi files to pyi_srcs
+				filenames := treeset.NewWith(godsutils.StringComparator, filename)
+				pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
+
 				pyBinary := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 					addVisibility(visibility).
 					addSrc(filename).
+					addPyiSrcs(pyiSrcs).
 					addModuleDependencies(mainModules[filename]).
 					addResolvedDependencies(annotations.includeDeps).
 					generateImportsAttribute().
@@ -312,6 +319,9 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
+		// Add any sibling .pyi files to pyi_srcs
+		pyiSrcs, _ := getPyiFilenames(srcs, cfg.GeneratePyiSrcs(), args.Dir)
+
 		// Check if a target with the same name we are generating already
 		// exists, and if it is of a different kind from the one we are
 		// generating. If so, we have to throw an error since Gazelle won't
@@ -327,6 +337,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		pyLibrary := newTargetBuilder(pyLibraryKind, pyLibraryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 			addVisibility(visibility).
 			addSrcs(srcs).
+			addPyiSrcs(pyiSrcs).
 			addModuleDependencies(allDeps).
 			addResolvedDependencies(annotations.includeDeps).
 			generateImportsAttribute().
@@ -377,10 +388,15 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			collisionErrors.Add(err)
 		}
 
+		// Add any sibling .pyi files to pyi_srcs
+		filenames := treeset.NewWith(godsutils.StringComparator, pyBinaryEntrypointFilename)
+		pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
+
 		pyBinaryTarget := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 			setMain(pyBinaryEntrypointFilename).
 			addVisibility(visibility).
 			addSrc(pyBinaryEntrypointFilename).
+			addPyiSrcs(pyiSrcs).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
 			setAnnotations(*annotations).
@@ -411,8 +427,13 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			collisionErrors.Add(err)
 		}
 
+		// Add any sibling .pyi files to pyi_srcs
+		filenames := treeset.NewWith(godsutils.StringComparator, conftestFilename)
+		pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
+
 		conftestTarget := newTargetBuilder(pyLibraryKind, conftestTargetname, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 			addSrc(conftestFilename).
+			addPyiSrcs(pyiSrcs).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
 			setAnnotations(*annotations).
@@ -443,8 +464,13 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				fqTarget.String(), actualPyTestKind, err, pythonconfig.TestNamingConvention)
 			collisionErrors.Add(err)
 		}
+
+		// Add any sibling .pyi files to pyi_srcs
+		pyiSrcs, _ := getPyiFilenames(srcs, cfg.GeneratePyiSrcs(), args.Dir)
+
 		return newTargetBuilder(pyTestKind, pyTestTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 			addSrcs(srcs).
+			addPyiSrcs(pyiSrcs).
 			addModuleDependencies(deps).
 			addResolvedDependencies(annotations.includeDeps).
 			setAnnotations(*annotations).
@@ -690,4 +716,26 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 		res.Empty = append(res.Empty, emptyRule)
 	}
 
+}
+
+// getPyiFilenames returns a set of existing .pyi source file names for a given set of source
+// file names if GeneratePyiSrcs is set. Otherwise, returns an empty set.
+func getPyiFilenames(filenames *treeset.Set, generatePyiSrcs bool, basePath string) (*treeset.Set, error) {
+	pyiSrcs := treeset.NewWith(godsutils.StringComparator)
+	if !generatePyiSrcs {
+		return pyiSrcs, nil
+	}
+
+	it := filenames.Iterator()
+	for it.Next() {
+		pyiFilename := it.Value().(string) + "i" // foo.py --> foo.pyi
+
+		_, err := os.Stat(filepath.Join(basePath, pyiFilename))
+		// If the file DNE or there's some other error, there's nothing to do.
+		if err == nil {
+			// pyi file exists, add it
+			pyiSrcs.Add(pyiFilename)
+		}
+	}
+	return pyiSrcs, nil
 }

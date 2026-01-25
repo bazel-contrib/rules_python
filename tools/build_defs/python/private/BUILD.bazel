@@ -23,5 +23,5 @@ filegroup(
 bzl_library(
     name = "py_internal_renamed_bzl",
     srcs = ["py_internal_renamed.bzl"],
-    visibility = ["@rules_python_internal//:__subpackages__"],
+    visibility = ["//python/private:__pkg__"],
 )

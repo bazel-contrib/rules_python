@@ -115,7 +115,9 @@ def _resolve_extras(self_name, reqs, extras):
     # extras The empty string in the set is just a way to make the handling
     # of no extras and a single extra easier and having a set of {"", "foo"}
     # is equivalent to having {"foo"}.
-    extras = extras or [""]
+    #
+    # Use a dict as a set here to simplify operations.
+    extras = {x: None for x in (extras or [""])}
 
     self_reqs = []
     for req in reqs:
@@ -128,26 +130,36 @@ def _resolve_extras(self_name, reqs, extras):
             # easy to handle, lets do it.
             #
             # TODO @aignas 2023-12-08: add a test
-            extras = extras + req.extras
+            extras = extras | {x: None for x in req.extras}
         else:
             # process these in a separate loop
             self_reqs.append(req)
 
-    # A double loop is not strictly optimal, but always correct without recursion
-    for req in self_reqs:
-        if [True for extra in extras if evaluate(req.marker, env = {"extra": extra})]:
-            extras = extras + req.extras
-        else:
-            continue
+    for _ in range(10000):
+        # handles packages with up to 10000 recursive extras
+        new_extras = {}
+        for req in self_reqs:
+            if _evaluate_any(req, extras):
+                new_extras.update({x: None for x in req.extras})
+            else:
+                continue
 
-        # Iterate through all packages to ensure that we include all of the extras from previously
-        # visited packages.
-        for req_ in self_reqs:
-            if [True for extra in extras if evaluate(req.marker, env = {"extra": extra})]:
-                extras = extras + req_.extras
+        num_extras_before = len(extras)
+        extras = extras | new_extras
+        num_extras_after = len(new_extras)
+
+        if num_extras_before == num_extras_after:
+            break
 
     # Poor mans set
-    return sorted({x: None for x in extras})
+    return sorted(extras)
+
+def _evaluate_any(req, extras):
+    for extra in extras:
+        if evaluate(req.marker, env = {"extra": extra}):
+            return True
+
+    return False
 
 def _add_reqs(deps, deps_select, dep, reqs, *, extras):
     for req in reqs:
