@@ -297,6 +297,16 @@ def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, lo
         logger = logger,
     )
 
+def _to_purl(metadata):
+    """
+    Produce a PyPI PURL from the metadata.
+
+    https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md
+    """
+    # https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md#name-definition
+    name = metadata.name.replace("_", "-").lower()
+    return "pkg:pypi/{}@{}".format(name, metadata.version)
+
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
     python_interpreter = pypi_repo_utils.resolve_python_interpreter(
@@ -476,6 +486,7 @@ def _whl_library_impl(rctx):
             group_name = rctx.attr.group_name,
             namespace_package_files = namespace_package_files,
             extras = requirement(rctx.attr.requirement).extras,
+            purl = _to_purl(metadata),
         )
     else:
         metadata = json.decode(rctx.read("metadata.json"))
@@ -506,11 +517,6 @@ def _whl_library_impl(rctx):
             entry_points[entry_point_without_py] = entry_point_script_name
 
         namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, rctx.path("site-packages"))
-        purl = "pkg:pypi/{}@{}".format(
-            # https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md#name-definition
-            metadata["name"].replace("_", "-").lower(),
-            metadata["version"],
-        )
 
         build_file_contents = generate_whl_library_build_bazel(
             name = whl_path.basename,
@@ -531,7 +537,7 @@ def _whl_library_impl(rctx):
                 "pypi_version={}".format(metadata["version"]),
             ],
             namespace_package_files = namespace_package_files,
-            purl = purl,
+            purl = _to_purl(metadata),
         )
 
     # Delete these in case the wheel had them. They generally don't cause
