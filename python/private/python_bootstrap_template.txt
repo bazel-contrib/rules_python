@@ -10,9 +10,30 @@ import sys
 import os
 import subprocess
 import uuid
-
 # runfiles-relative path
+# NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
+# the substitution logic won't replace them. This allows runtime detection of
+# unsubstituted placeholders, which occurs when native py_binary is used in
+# external repositories. In that case, we fall back to %main% which Bazel's
+# native rule does substitute.
+_STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
+
+# NOTE: The fallback logic from stage2_bootstrap to main is only present
+# as a courtesy for an older, unsupported, configuration. It can be removed
+# when that case is unlikely to be a concern anymore.
+# See https://github.com/bazel-contrib/rules_python/pull/3495
+if STAGE2_BOOTSTRAP == _STAGE2_BOOTSTRAP_SENTINEL:
+  _MAIN_SENTINEL = "%main" + "%"
+  _main = "%main%"
+  if _main != _MAIN_SENTINEL and _main:
+    STAGE2_BOOTSTRAP = _main
+  else:
+    STAGE2_BOOTSTRAP = ""
+
+if not STAGE2_BOOTSTRAP:
+  print("ERROR: %stage2_bootstrap% (or %main%) was not substituted.", file=sys.stderr)
+  sys.exit(1)
 
 # runfiles-relative path to venv's python interpreter
 # Empty string if a venv is not setup.
@@ -35,9 +56,13 @@ RECREATE_VENV_AT_RUNTIME="%recreate_venv_at_runtime%"
 WORKSPACE_NAME = "%workspace_name%"
 
 # Target-specific interpreter args.
-INTERPRETER_ARGS = [
-%interpreter_args%
-]
+# Sentinel split to detect unsubstituted placeholder (see STAGE2_BOOTSTRAP above).
+_INTERPRETER_ARGS_SENTINEL = "%interpreter" + "_args%"
+_INTERPRETER_ARGS_RAW = "%interpreter_args%"
+if _INTERPRETER_ARGS_RAW == _INTERPRETER_ARGS_SENTINEL:
+  INTERPRETER_ARGS = []
+else:
+  INTERPRETER_ARGS = [arg for arg in _INTERPRETER_ARGS_RAW.split("\n") if arg]
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 

@@ -377,7 +377,7 @@ def _test_explicit_main_cannot_be_ambiguous_impl(env, target):
         matching.str_matches("foo.py*matches multiple"),
     )
 
-def _test_files_to_build(name, config):
+def _test_default_outputs(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -385,14 +385,14 @@ def _test_files_to_build(name, config):
     )
     analysis_test(
         name = name,
-        impl = _test_files_to_build_impl,
+        impl = _test_default_outputs_impl,
         target = name + "_subject",
         attrs = WINDOWS_ATTR,
     )
 
-_tests.append(_test_files_to_build)
+_tests.append(_test_default_outputs)
 
-def _test_files_to_build_impl(env, target):
+def _test_default_outputs_impl(env, target):
     default_outputs = env.expect.that_target(target).default_outputs()
     if pt_util.is_windows(env):
         default_outputs.contains("{package}/{test_name}_subject.exe")
