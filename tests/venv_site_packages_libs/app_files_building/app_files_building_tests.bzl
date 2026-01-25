@@ -136,7 +136,7 @@ def _test_optimized_grouping_complex(name):
         name = name + "_files",
         paths = [
             "site-packages/pkg1/a.txt",
-            "site-packages/pkg1/b/b_mod.so",
+            "site-packages/pkg1/b/b_mod_so",
             "site-packages/pkg1/c/c1.txt",
             "site-packages/pkg1/c/c2.txt",
             "site-packages/pkg1/d/d1.txt",
@@ -147,6 +147,10 @@ def _test_optimized_grouping_complex(name):
             "site-packages/pkg1/q1/q2a/q3/q3a.txt",
             "site-packages/pkg1/q1/q2a/q3/q3b.txt",
             "site-packages/pkg1/q1/q2b/q2b.txt",
+            "site-packages/pkg1/q1/q2c/c_mod.so",
+            "site-packages/pkg1/q1/q2c/q2.txt",
+            "site-packages/pkg1/q1/q2c/q3/q3a.txt",
+            "site-packages/pkg1/q1/q2c/q3/q3b.txt",
         ],
     )
     analysis_test(
@@ -181,7 +185,7 @@ def _test_optimized_grouping_complex_impl(env, target):
             "pkg1/b",
             link_to_path = rr + "pkg1/b",
             files = [
-                "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/b/b_mod.so",
+                "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/b/b_mod_so",
             ],
         ),
         _venv_symlink("pkg1/c", link_to_path = rr + "pkg1/c", files = [
@@ -210,6 +214,16 @@ def _test_optimized_grouping_complex_impl(env, target):
         _venv_symlink("pkg1/q1/q2b", link_to_path = rr + "pkg1/q1/q2b", files = [
             "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/q1/q2b/q2b.txt",
         ]),
+        _venv_symlink("pkg1/q1/q2c/c_mod.so", link_to_path = rr + "pkg1/q1/q2c/c_mod.so", files = [
+            "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/q1/q2c/c_mod.so",
+        ]),
+        _venv_symlink("pkg1/q1/q2c/q2.txt", link_to_path = rr + "pkg1/q1/q2c/q2.txt", files = [
+            "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/q1/q2c/q2.txt",
+        ]),
+        _venv_symlink("pkg1/q1/q2c/q3", link_to_path = rr + "pkg1/q1/q2c/q3", files = [
+            "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/q1/q2c/q3/q3a.txt",
+            "tests/venv_site_packages_libs/app_files_building/site-packages/pkg1/q1/q2c/q3/q3b.txt",
+        ]),
     ]
     expected = sorted(expected, key = lambda e: (e.link_to_path, e.venv_path))
     env.expect.that_collection(
@@ -226,7 +240,7 @@ def _test_optimized_grouping_single_toplevel(name):
         paths = [
             "site-packages/pkg2/__init__.py",
             "site-packages/pkg2/a.txt",
-            "site-packages/pkg2/b_mod.so",
+            "site-packages/pkg2/b_mod_so",
         ],
     )
     analysis_test(
@@ -256,7 +270,7 @@ def _test_optimized_grouping_single_toplevel_impl(env, target):
             files = [
                 "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/__init__.py",
                 "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/a.txt",
-                "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/b_mod.so",
+                "tests/venv_site_packages_libs/app_files_building/site-packages/pkg2/b_mod_so",
             ],
         ),
     ]
