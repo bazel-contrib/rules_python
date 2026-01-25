@@ -7,22 +7,7 @@ if [[ -n "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
 fi
 
 # runfiles-relative path
-# NOTE: The sentinel strings are split (e.g., "%stage2""_bootstrap%") so that
-# the substitution logic won't replace them. This allows runtime detection of
-# unsubstituted placeholders, which occurs when native py_binary is used in
-# external repositories. In that case, we fall back to %main% which Bazel's
-# native rule does substitute.
-STAGE2_BOOTSTRAP_SENTINEL="%stage2""_bootstrap%"
-MAIN_SENTINEL="%main""%"
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
-MAIN="%main%"
-if [[ "$STAGE2_BOOTSTRAP" == "$STAGE2_BOOTSTRAP_SENTINEL" ]]; then
-  if [[ "$MAIN" != "$MAIN_SENTINEL" && -n "$MAIN" ]]; then
-    STAGE2_BOOTSTRAP="$MAIN"
-  else
-    STAGE2_BOOTSTRAP=""
-  fi
-fi
 
 # runfiles-relative path to python interpreter to use.
 # This is the `bin/python3` path in the binary's venv.
@@ -50,17 +35,6 @@ VENV_REL_SITE_PACKAGES="%venv_rel_site_packages%"
 declare -a INTERPRETER_ARGS_FROM_TARGET=(
 %interpreter_args%
 )
-# Sentinel split to detect unsubstituted placeholder (see STAGE2_BOOTSTRAP above).
-INTERPRETER_ARGS_SENTINEL="%interpreter""_args%"
-if [[ "${#INTERPRETER_ARGS_FROM_TARGET[@]}" -eq 1 &&
-      "${INTERPRETER_ARGS_FROM_TARGET[0]}" == "$INTERPRETER_ARGS_SENTINEL" ]]; then
-  INTERPRETER_ARGS_FROM_TARGET=()
-fi
-
-if [[ -z "$STAGE2_BOOTSTRAP" ]]; then
-  echo >&2 "ERROR: %stage2_bootstrap% (or %main%) was not substituted."
-  exit 1
-fi
 
 if [[ "$IS_ZIPFILE" == "1" ]]; then
   # NOTE: Macs have an old version of mktemp, so we must use only the
