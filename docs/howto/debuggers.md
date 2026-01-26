@@ -140,9 +140,13 @@ For the remainder of this document, we assume you are using vscode.
         ]
 
         if bzl_args[1:]:
-            # Append extra arguments (only applicable for 'run' mode).
-            cmd.append("--")
-            cmd.extend(bzl_args[1:])
+            if args.mode == "run":
+                # Append extra arguments for 'run' mode.
+                cmd.append("--")
+                cmd.extend(bzl_args[1:])
+            elif args.mode == "test":
+                # Append extra arguments for 'test' mode.
+                cmd.extend([f"--test_arg={arg}" for arg in bzl_args[1:]])
 
         env = {
             **os.environ.copy(),
