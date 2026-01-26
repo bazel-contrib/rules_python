@@ -191,7 +191,7 @@ For the remainder of this document, we assume you are using vscode.
             {
                 "id": "BazelArgs",
                 "type": "promptString",
-                "description": "Optional args to pass to executable as single string"
+                "description": "Bazel target and arguments (e.g., //foo:bar --my-arg)"
             }
         ]
     }
