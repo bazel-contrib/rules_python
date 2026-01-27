@@ -30,7 +30,6 @@ def whl_extract(rctx, *, whl_path, logger):
         dist_info_dir.get_child("INSTALLER"),
         "https://github.com/bazel-contrib/rules_python#pipstar",
     )
-    repo_root_dir = install_dir_path.dirname
 
     # Get the <prefix>.dist_info dir name
     data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
@@ -54,7 +53,7 @@ def whl_extract(rctx, *, whl_path, logger):
                 # The prefix does not exist in the wheel, we can continue
                 continue
 
-            for (src, dest) in merge_trees(src, repo_root_dir.get_child(dest_prefix)):
+            for (src, dest) in merge_trees(src, rctx.path(dest_prefix)):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
                 rctx.rename(src, dest)
 
