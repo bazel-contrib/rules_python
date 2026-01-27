@@ -12,7 +12,7 @@ def whl_extract(rctx, *, whl_path, logger):
         whl_path: the whl path to extract.
         logger: The logger to use
     """
-    install_dir_path = whl_path.dirname.get_child("site-packages")
+    install_dir_path = rctx.path("site-packages")
     repo_utils.extract(
         rctx,
         archive = whl_path,
