@@ -421,33 +421,6 @@ tasks:
   # We don't run pip_parse_vendored under Windows as the file checked in is
   # generated from a repository rule containing OS-specific rendered paths.
 
-  # The proto example is workspace-only; bzlmod functionality is covered
-  # by examples/bzlmod/py_proto_library
-  integration_test_py_proto_library_ubuntu_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Ubuntu, workspace"
-    working_directory: examples/py_proto_library
-    platform: ubuntu2204
-  integration_test_py_proto_library_debian_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Debian, workspace"
-    working_directory: examples/py_proto_library
-    platform: debian11
-  integration_test_py_proto_library_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: MacOS, workspace"
-    working_directory: examples/py_proto_library
-    platform: macos_arm64
-  integration_test_py_proto_library_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Windows, workspace"
-    working_directory: examples/py_proto_library
-    platform: windows
-
   integration_test_pip_repository_annotations_ubuntu_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
