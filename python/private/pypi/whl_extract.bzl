@@ -30,7 +30,7 @@ def whl_extract(rctx, *, whl_path, logger):
         dist_info_dir.get_child("INSTALLER"),
         "https://github.com/bazel-contrib/rules_python#pipstar",
     )
-    repo_root_dir = whl_path.dirname
+    repo_root_dir = install_dir_path.dirname
 
     # Get the <prefix>.dist_info dir name
     data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
