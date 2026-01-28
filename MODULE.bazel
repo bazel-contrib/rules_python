@@ -356,7 +356,6 @@ bazel_binaries.local(
     name = "self",
     path = "tests/integration/bazel_from_env",
 )
-bazel_binaries.download(version = "7.4.1")
 bazel_binaries.download(version = "8.0.0")
 bazel_binaries.download(version = "9.0.0rc1")
 use_repo(
@@ -365,7 +364,6 @@ use_repo(
     # These don't appear necessary, but are reported as direct dependencies
     # that should be use_repo()'d, so we add them as requested
     "bazel_binaries_bazelisk",
-    "build_bazel_bazel_7_4_1",
     "build_bazel_bazel_8_0_0",
     "build_bazel_bazel_9_0_0rc1",
     # "build_bazel_bazel_rolling",
