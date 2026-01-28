@@ -53,6 +53,10 @@ sh_py_run_test(
     build_python_zip = False,
     py_src = "bin.py",
     sh_src = "run_binary_zip_no_test.sh",
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 sh_py_run_test(
