@@ -297,6 +297,16 @@ def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, lo
         logger = logger,
     )
 
+def _to_purl(metadata):
+    """
+    Produce a PyPI PURL from the metadata.
+
+    https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md
+    """
+    # https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md#name-definition
+    name = metadata.name.replace("_", "-").lower()
+    return "pkg:pypi/{}@{}".format(name, metadata.version)
+
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
     python_interpreter = pypi_repo_utils.resolve_python_interpreter(
@@ -476,6 +486,7 @@ def _whl_library_impl(rctx):
             group_name = rctx.attr.group_name,
             namespace_package_files = namespace_package_files,
             extras = requirement(rctx.attr.requirement).extras,
+            purl = _to_purl(metadata),
         )
     else:
         metadata = json.decode(rctx.read("metadata.json"))
@@ -526,6 +537,7 @@ def _whl_library_impl(rctx):
                 "pypi_version={}".format(metadata["version"]),
             ],
             namespace_package_files = namespace_package_files,
+            purl = _to_purl(metadata),
         )
 
     # Delete these in case the wheel had them. They generally don't cause
@@ -533,7 +545,13 @@ def _whl_library_impl(rctx):
     rctx.file("WORKSPACE")
     rctx.file("WORKSPACE.bazel")
     rctx.file("MODULE.bazel")
-    rctx.file("REPO.bazel")
+    rctx.file("REPO.bazel", """\
+repo(
+    default_package_metadata = [
+        "//:package_metadata",
+    ],
+)
+""")
 
     paths = list(rctx.path(".").readdir())
     for _ in range(10000000):
