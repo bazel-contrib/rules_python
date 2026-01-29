@@ -31,7 +31,7 @@ class ExeZipMakerTest(unittest.TestCase):
         expected_hash = hashlib.sha256(zip_content).hexdigest().encode("utf-8")
 
         # Create preamble with placeholder
-        preamble_text = b"#!/bin/bash\nEXPECTED_HASH='%ZIP_HASH%\'\n# ... logic ...\n"
+        preamble_text = b"#!/bin/bash\nEXPECTED_HASH='%ZIP_HASH%'\n# ... logic ...\n"
         self.preamble_path.write_bytes(preamble_text)
 
         # Call create_exe_zip directly
