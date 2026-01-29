@@ -82,6 +82,10 @@ END_UNRELEASED_TEMPLATE
   `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files
   that are associated with the target's `srcs` are present.
   ([#3354](https://github.com/bazel-contrib/rules_python/issues/3354)).
+* (zipapp) {obj}`py_zipapp_binary` and {obj}`py_zipapp_test` rules added. These
+  will replace `--build_python_zip` and the zip output group of
+  `py_binary/py_test`. The zipapp rules support more functionality, correctness,
+  and have better build performance.
 
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27
@@ -106,6 +110,7 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 * (pipstar) Extra resolution that refers back to the package being resolved works again.
   Fixes [#3524](https://github.com/bazel-contrib/rules_python/issues/3524).
+>>>>>>> b4ec825850fb27e5568165d0a388f5cc4b2b84a2
 
 {#v1-8-0}
 ## [1.8.0] - 2025-12-19

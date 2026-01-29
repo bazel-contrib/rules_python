@@ -16,6 +16,9 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_python_internal//:rules_python_config.bzl", "config")
+load("//python/private:py_interpreter_program.bzl", "PyInterpreterProgramInfo")
+load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")
 load(":cc_helper.bzl", "cc_helper")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "PyInfoBuilder")
@@ -40,6 +43,17 @@ PYTHON_FILE_EXTENSIONS = [
     "pyi",
     "so",  # Python C modules, usually Linux
 ]
+
+BUILTIN_BUILD_PYTHON_ZIP = [] if config.bazel_10_or_later else [
+    "//command_line_option:build_python_zip",
+]
+
+def maybe_builtin_build_python_zip(value, settings = None):
+    settings = settings or {}
+    if not config.bazel_10_or_later:
+        settings["//command_line_option:build_python_zip"] = value
+
+    return settings
 
 def create_binary_semantics_struct(
         *,
@@ -463,3 +477,136 @@ def collect_deps(ctx, extra_deps = []):
         deps = list(deps)
         deps.extend(extra_deps)
     return deps
+
+def maybe_create_repo_mapping(ctx, *, runfiles):
+    """Creates a repo mapping manifest if bzlmod is enabled.
+
+    There isn't a way to reference the repo mapping Bazel implicitly
+    creates, so we have to manually create it ourselves.
+
+    Args:
+        ctx: rule ctx.
+        runfiles: runfiles object to generate mapping for.
+
+    Returns:
+        File object if the repo mapping manifest was created, None otherwise.
+    """
+    if not py_internal.is_bzlmod_enabled(ctx):
+        return None
+
+    # We have to add `.custom` because `{name}.repo_mapping` is used by Bazel
+    # internally.
+    repo_mapping_manifest = ctx.actions.declare_file(ctx.label.name + ".custom.repo_mapping")
+    py_internal.create_repo_mapping_manifest(
+        ctx = ctx,
+        runfiles = runfiles,
+        output = repo_mapping_manifest,
+    )
+    return repo_mapping_manifest
+
+def actions_run(
+        ctx,
+        *,
+        executable,
+        toolchain = None,
+        **kwargs):
+    """Runs a tool as an action, supporting py_interpreter_program targets.
+
+    This is wrapper around `ctx.actions.run()` that sets some useful defaults,
+    supports handling `py_interpreter_program` targets, and some other features
+    to let the target being run influence the action invocation.
+
+    Args:
+        ctx: The rule context. The rule must have the
+            `//python:exec_tools_toolchain_type` toolchain available.
+        executable: The executable to run. This can be a target that provides
+            `PyInterpreterProgramInfo` or a regular executable target. If it
+            provides `testing.ExecutionInfo`, the requirements will be added to
+            the execution requirements.
+        toolchain: The toolchain type to use. Must be None or
+            `//python:exec_tools_toolchain_type`.
+        **kwargs: Additional arguments to pass to `ctx.actions.run()`.
+            `mnemonic` and `progress_message` are required.
+    """
+    mnemonic = kwargs.pop("mnemonic", None)
+    if not mnemonic:
+        fail("actions_run: missing required argument 'mnemonic'")
+
+    progress_message = kwargs.pop("progress_message", None)
+    if not progress_message:
+        fail("actions_run: missing required argument 'progress_message'")
+
+    tools = kwargs.pop("tools", None)
+    tools = list(tools) if tools else []
+    arguments = kwargs.pop("arguments", [])
+
+    action_arguments = []
+    action_env = {
+        "PYTHONHASHSEED": "0",  # Helps avoid non-deterministic behavior
+        "PYTHONNOUSERSITE": "1",  # Helps avoid non-deterministic behavior
+        "PYTHONSAFEPATH": "1",  # Helps avoid incorrect import issues
+    }
+    default_info = executable[DefaultInfo]
+    inputs = []
+    if PyInterpreterProgramInfo in executable:
+        if toolchain and toolchain != EXEC_TOOLS_TOOLCHAIN_TYPE:
+            fail(("Action {}: tool {} provides PyInterpreterProgramInfo, which " +
+                  "requires the `toolchain` arg be " +
+                  "None or {}, got: {}").format(
+                mnemonic,
+                executable,
+                EXEC_TOOLS_TOOLCHAIN_TYPE,
+                toolchain,
+            ))
+        tc = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
+        print("==== exec_tools tc:", tc)
+        exec_tools = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
+
+        ##action_exe = exec_tools.exec_interpreter[DefaultInfo].files_to_run
+        eitc = exec_tools.exec_interpreter[platform_common.ToolchainInfo]
+        print(dir(eitc.py3_runtime))
+        py3 = eitc.py3_runtime
+        action_exe = py3.interpreter
+        inputs.append(py3.files)
+
+        program_info = executable[PyInterpreterProgramInfo]
+
+        interpreter_args = ctx.actions.args()
+        interpreter_args.add_all(program_info.interpreter_args)
+        interpreter_args.add(default_info.files_to_run.executable)
+        action_arguments.append(interpreter_args)
+
+        action_env.update(program_info.env)
+
+        tools.append(default_info.files_to_run)
+        toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE
+    else:
+        action_exe = executable[DefaultInfo].files_to_run
+
+    execution_requirements = {}
+    if testing.ExecutionInfo in executable:
+        execution_requirements.update(executable[testing.ExecutionInfo].requirements)
+
+    # Give precedence to caller's execution requirements.
+    execution_requirements.update(kwargs.pop("execution_requirements", None) or {})
+
+    # Give precedence to caller's env.
+    action_env.update(kwargs.pop("env", None) or {})
+    action_arguments.extend(arguments)
+    print("==== actions_run: exe:", action_exe)
+    kw_inputs = kwargs.pop("inputs")
+    print(type(kw_inputs))
+    inputs.append(kw_inputs)
+    action_inputs = depset(transitive = inputs)
+    ctx.actions.run(
+        executable = action_exe,
+        arguments = action_arguments,
+        tools = tools,
+        env = action_env,
+        execution_requirements = execution_requirements,
+        toolchain = toolchain,
+        mnemonic = mnemonic,
+        progress_message = progress_message,
+        inputs = action_inputs,
+        **kwargs
+    )

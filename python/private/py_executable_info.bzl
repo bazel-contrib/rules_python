@@ -10,10 +10,24 @@ This provider is for executable-specific information (e.g. tests and binaries).
 :::
 """,
     fields = {
+        "app_runfiles": """
+:type: runfiles
+
+The runfiles for the executable's "user" dependencies. These are things in e.g.
+`deps` (or similar), but doesn't include "external" or "implicit" pieces,
+e.g. the Python runtime itself. It's roughly akin to the files a traditional
+venv would have installed into it.
+""",
         "build_data_file": """
 :type: None | File
 
 A symlink to build_data.txt if stamping is enabled, otherwise None.
+""",
+        "interpreter_args": """
+:type: list[str]
+
+Args that should be passed to the interpreter before regular args
+(e.g. `-X whatever`).
 """,
         "interpreter_path": """
 :type: None | str
@@ -28,6 +42,12 @@ should be within `runtime_files`)
 
 The user-level entry point file. Usually a `.py` file, but may also be `.pyc`
 file if precompiling is enabled.
+
+:::{seealso}
+
+The {obj}`stage2_bootstrap` attribute, which bootstraps an executable to run
+the user main file.
+:::
 """,
         "runfiles_without_exe": """
 :type: runfiles
@@ -35,6 +55,19 @@ file if precompiling is enabled.
 The runfiles the program needs, but without the original executable,
 files only added to support the original executable, or files specific to the
 original program.
+""",
+        "stage2_bootstrap": """
+:type: File | None
+
+The Bazel-executable-level entry point to the program, which handles Bazel-specific
+setup before running the file in {obj}`main`. May be None if a two-stage bootstrap
+implementation isn't being used.
+""",
+        "venv_python_exe": """
+:type: File | None
+
+The `bin/python3` file within the venv this binary uses. May be None if venv
+mode is not enabled.
 """,
     },
 )

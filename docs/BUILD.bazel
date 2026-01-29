@@ -125,10 +125,13 @@ sphinx_stardocs(
         "//python/private/pypi:pkg_aliases_bzl",
         "//python/private/pypi:whl_config_setting_bzl",
         "//python/private/pypi:whl_library_bzl",
+        "//python/private/zipapp:py_zipapp_rule_bzl",
         "//python/uv:lock_bzl",
         "//python/uv:uv_bzl",
         "//python/uv:uv_toolchain_bzl",
         "//python/uv:uv_toolchain_info_bzl",
+        "//python/zipapp:py_zipapp_binary_bzl",
+        "//python/zipapp:py_zipapp_test_bzl",
     ] + ([
         # This depends on @pythons_hub, which is only created under bzlmod,
         "//python/extensions:pip_bzl",

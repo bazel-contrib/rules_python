@@ -3,11 +3,15 @@
 # NOTE: This file is a "stage 1" bootstrap, so it's responsible for locating the
 # desired runtime and having it run the stage 2 bootstrap. This means it can't
 # assume much about the current runtime and environment. e.g., the current
-# runtime may not be the correct one, the zip may not have been extract, the
+# runtime may not be the correct one, the zip may not have been extracted, the
 # runfiles env vars may not be set, etc.
 #
 # NOTE: This program must retain compatibility with a wide variety of Python
 # versions since it is run by an unknown Python interpreter.
+#
+# NOTE: For a self-executable zip, this file may not be the entry point
+# for the program and may be skipped entirely; the self-executable zip
+# preamble may jump directly to the stage2 bootstrap.
 
 import sys
 
@@ -23,11 +27,11 @@ import subprocess
 import tempfile
 import zipfile
 
-# runfiles-relative path
+# runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
-# runfiles-relative path to venv's bin/python3. Empty if venv not being used.
+# runfiles-root-relative path to venv's bin/python3. Empty if venv not being used.
 _PYTHON_BINARY = "%python_binary%"
-# runfiles-relative path, absolute path, or single word. The actual Python
+# runfiles-root-relative path, absolute path, or single word. The actual Python
 # executable to use.
 _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 _WORKSPACE_NAME = "%workspace_name%"
