@@ -1369,7 +1369,9 @@ def _write_build_data(ctx):
     action_args = ctx.actions.args()
     writer_file = ctx.files._build_data_writer[0]
     if writer_file.path.endswith(".ps1"):
-        action_exe = "pwsh.exe"
+        action_exe = "powershell.exe"
+        action_args.add("-ExecutionPolicy")
+        action_args.add("Bypass")
         action_args.add("-File")
         action_args.add(writer_file)
         inputs.add(writer_file)
