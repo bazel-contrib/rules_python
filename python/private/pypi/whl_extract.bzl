@@ -26,7 +26,7 @@ def whl_extract(rctx, *, whl_path, logger):
     if os_name != "windows":
         # On Unix-like systems, recursively add read permissions to all files
         # and ensure directories are traversable (need execute permission)
-        result = rctx.execute(["chmod", "-R", "u+rX,go+rX", str(install_dir_path)])
+        result = rctx.execute(["chmod", "-R", "a+rX", str(install_dir_path)])
         if result.return_code != 0:
             logger.warn(lambda: "Failed to fix file permissions: {}".format(result.stderr))
     metadata_file = find_whl_metadata(
