@@ -23,7 +23,7 @@ def whl_extract(rctx, *, whl_path, logger):
     # Fix permissions on extracted files. Some wheels have files without read permissions set,
     # which causes errors when trying to read them later.
     os_name = repo_utils.get_platforms_os_name(rctx)
-    if "windows" not in os_name:
+    if os_name != "windows":
         # On Unix-like systems, recursively add read permissions to all files
         # and ensure directories are traversable (need execute permission)
         result = rctx.execute(["chmod", "-R", "u+rX,go+rX", str(install_dir_path)])
