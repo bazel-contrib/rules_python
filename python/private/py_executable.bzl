@@ -1370,10 +1370,12 @@ def _write_build_data(ctx):
     writer_file = ctx.files._build_data_writer[0]
     if writer_file.path.endswith(".ps1"):
         action_exe = "powershell.exe"
-        action_args.add("-ExecutionPolicy")
-        action_args.add("Bypass")
-        action_args.add("-File")
-        action_args.add(writer_file)
+        action_args.add_all([
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            writer_file,
+        ])
         inputs.add(writer_file)
     else:
         action_exe = ctx.attr._build_data_writer[DefaultInfo].files_to_run
