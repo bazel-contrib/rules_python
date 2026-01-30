@@ -1369,8 +1369,12 @@ def _write_build_data(ctx):
     action_args = ctx.actions.args()
     writer_file = ctx.files._build_data_writer[0]
     if writer_file.path.endswith(".ps1"):
+        # powershell.exe is used for broader compatibility
+        # It is installed by default on most Windows versions
         action_exe = "powershell.exe"
         action_args.add_all([
+            # Bypass execution policy is needed because,
+            # by default, Windows blocks ps1 scripts.
             "-ExecutionPolicy",
             "Bypass",
             "-File",
