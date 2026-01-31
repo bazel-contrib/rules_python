@@ -73,7 +73,7 @@ def _wheel_tags_setting_impl(ctx):
     if platform_tag == "any":
         platform_is_compatible = True
     else:
-        libc = "musl" if musl in platform_tag else "glibc"
+        libc = "musl" if "musl" in platform_tag else "glibc"
         if "linux" in platform_tag:
             os = "linux"
         else:

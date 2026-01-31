@@ -41,3 +41,29 @@ def define_targets(name, selectors):
         name = name,
         actual = select(select_map),
     )
+
+def define_wheel_tag_settings(settings):
+    """Defines the wheel tag settings and config settings.
+
+    Args:
+        settings: list of (repo_name, marker_expression).
+    """
+    for i, (repo, marker) in enumerate(settings):
+        # name for the marker rule
+        marker_name = "marker_{}".format(i)
+        # name for the config setting (used in select keys)
+        config_name = "pick_{}".format(i)
+
+        if marker:
+            env_marker_setting(
+                name = marker_name,
+                expression = marker,
+            )
+            native.config_setting(
+                 name = config_name,
+                 flag_values = { ":" + marker_name : "TRUE" }
+            )
+        else:
+            # If no marker, we can't create a config setting that matches "everything" easily 
+            # without a flag. But maybe we don't need to if we use //conditions:default in the select.
+            pass

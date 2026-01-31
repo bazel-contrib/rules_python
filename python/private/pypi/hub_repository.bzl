@@ -45,6 +45,68 @@ def _impl(rctx):
     # `requirement`, et al. macros.
     macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
 
+    if rctx.attr.uv_selectors:
+        for pkg_name, selectors_json in rctx.attr.uv_selectors.items():
+            settings = json.decode(selectors_json)
+            # settings is list of [repo, marker]
+            
+            select_dict = {}
+            for i, entry in enumerate(settings):
+                repo = entry[0]
+                marker = entry[1]
+                if marker:
+                    select_dict[":pick_{}".format(i)] = "@" + repo
+                else:
+                    select_dict["//conditions:default"] = "@" + repo
+
+            # We create aliases for pkg, whl, data, dist_info
+            # repo points to the whl_library which has these targets.
+            # So actual should be repo + "//:pkg" etc.
+            
+            def make_select(suffix):
+                d = {}
+                for k, v in select_dict.items():
+                    d[k] = v + suffix
+                return render.dict(d)
+
+            content = """
+load("@rules_python//python/private/pypi:uv_lock_targets.bzl", "define_wheel_tag_settings")
+
+package(default_visibility = ["//visibility:public"])
+
+define_wheel_tag_settings({settings})
+
+alias(
+    name = "{pkg_name}",
+    actual = ":pkg",
+)
+alias(
+    name = "pkg",
+    actual = select({select_pkg}),
+)
+alias(
+    name = "whl",
+    actual = select({select_whl}),
+)
+alias(
+    name = "data",
+    actual = select({select_data}),
+)
+alias(
+    name = "dist_info",
+    actual = select({select_dist_info}),
+)
+""".format(
+                pkg_name = pkg_name,
+                settings = render.list(settings),
+                select_pkg = make_select("//:pkg"),
+                select_whl = make_select("//:whl"),
+                select_data = make_select("//:data"),
+                select_dist_info = make_select("//:dist_info"),
+            )
+            rctx.file("{}/BUILD.bazel".format(pkg_name), content)
+
+
     rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
     rctx.template(
         "config.bzl",
@@ -98,6 +160,10 @@ The list of packages that will be exposed via all_*requirements macros. Defaults
 The wheel map where values are json.encoded strings of the whl_map constructed
 in the pip.parse tag class.
 """,
+        ),
+        "uv_selectors": attr.string_dict(
+            mandatory = False,
+            doc = "Map of package name to JSON list of (repo, marker) for uv.lock support",
         ),
         "_config_template": attr.label(
             default = ":config.bzl.tmpl",
