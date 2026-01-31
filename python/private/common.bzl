@@ -539,7 +539,6 @@ def actions_run(
 
     tools = kwargs.pop("tools", None)
     tools = list(tools) if tools else []
-    arguments = kwargs.pop("arguments", [])
 
     action_arguments = []
     action_env = {
@@ -596,7 +595,9 @@ def actions_run(
 
     # Give precedence to caller's env.
     action_env.update(kwargs.pop("env", None) or {})
-    action_arguments.extend(arguments)
+
+    # Handle arguments=None
+    action_arguments.extend(list(kwargs.pop("arguments", None) or []))
 
     ctx.actions.run(
         executable = action_exe,
