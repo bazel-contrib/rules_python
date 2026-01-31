@@ -51,7 +51,6 @@ else
   if [[ -n "$zip_dir" && -z "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
     trap 'rm -fr "$zip_dir"' EXIT
   fi
-  trap 'rm -rf "$zip_dir"' EXIT
 fi
 
 export RUNFILES_DIR="$zip_dir/runfiles"
