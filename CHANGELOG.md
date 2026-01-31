@@ -86,6 +86,8 @@ END_UNRELEASED_TEMPLATE
   will replace `--build_python_zip` and the zip output group of
   `py_binary/py_test`. The zipapp rules support more functionality, correctness,
   and have better build performance.
+* (toolchains) Added {obj}`PyExecToolsInfo.exec_runtime` for more easily
+  getting an RBE-compatible runtime to use for build actions.
 
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27
