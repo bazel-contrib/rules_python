@@ -31,7 +31,7 @@ def _py_exec_tools_toolchain_impl(ctx):
         exec_interpreter = None
 
     exec_runtime = None
-    if platform_common.ToolchainInfo in exec_interpreter:
+    if exec_interpreter != None and platform_common.ToolchainInfo in exec_interpreter:
         tc = exec_interpreter[platform_common.ToolchainInfo]
         exec_runtime = getattr(tc, "py3_runtime", None)
 
