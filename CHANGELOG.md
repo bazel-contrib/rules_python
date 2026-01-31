@@ -88,6 +88,11 @@ END_UNRELEASED_TEMPLATE
   and have better build performance.
 * (toolchains) Added {obj}`PyExecToolsInfo.exec_runtime` for more easily
   getting an RBE-compatible runtime to use for build actions.
+* (providers) {obj}`PyExecutableInfo` has several new fields to aid packaging
+  of binaries: {obj}`PyExecutableInfo.app_runfiles`,
+  {obj}`PyExecutableInfo.interpreter_args`,
+  {obj}`PyExecutableInfo.stage2_bootstrap`, and
+  {obj}`PyExecutableInfo.venv_python_exe`.
 
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27
@@ -112,7 +117,6 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 * (pipstar) Extra resolution that refers back to the package being resolved works again.
   Fixes [#3524](https://github.com/bazel-contrib/rules_python/issues/3524).
->>>>>>> b4ec825850fb27e5568165d0a388f5cc4b2b84a2
 
 {#v1-8-0}
 ## [1.8.0] - 2025-12-19

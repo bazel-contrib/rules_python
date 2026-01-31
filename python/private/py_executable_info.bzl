@@ -17,6 +17,9 @@ The runfiles for the executable's "user" dependencies. These are things in e.g.
 `deps` (or similar), but doesn't include "external" or "implicit" pieces,
 e.g. the Python runtime itself. It's roughly akin to the files a traditional
 venv would have installed into it.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "build_data_file": """
 :type: None | File
@@ -28,6 +31,9 @@ A symlink to build_data.txt if stamping is enabled, otherwise None.
 
 Args that should be passed to the interpreter before regular args
 (e.g. `-X whatever`).
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "interpreter_path": """
 :type: None | str
@@ -62,12 +68,18 @@ original program.
 The Bazel-executable-level entry point to the program, which handles Bazel-specific
 setup before running the file in {obj}`main`. May be None if a two-stage bootstrap
 implementation isn't being used.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "venv_python_exe": """
 :type: File | None
 
 The `bin/python3` file within the venv this binary uses. May be None if venv
 mode is not enabled.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
     },
 )
