@@ -3,33 +3,8 @@
 This extension allows users to define external dependencies using uv.
 """
 
-load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:text_util.bzl", "render")
-load("//python/private/pypi:env_marker_setting.bzl", "env_marker_setting")
-load("//python/private/pypi:pypi_repo_utils.bzl", "pypi_repo_utils")
-load("//python/private/pypi:wheel_tags_setting.bzl", "wheel_tags_setting")
-
-def _convert_uv_lock_to_json(mrctx, attr, logger):
-    python_interpreter = pypi_repo_utils.resolve_python_interpreter(
-        mrctx,
-        python_interpreter_target = attr._python_interpreter_target,
-    )
-    toml2json = mrctx.path(attr._toml2json)
-    src_path = mrctx.path(attr.srcs[0])
-
-    stdout = pypi_repo_utils.execute_checked_stdout(
-        mrctx,
-        logger = logger,
-        op = "toml2json",
-        python = python_interpreter,
-        arguments = [
-            str(toml2json),
-            str(src_path),
-        ],
-        srcs = [toml2json, src_path],
-    )
-    return stdout
 
 def _wheel_repo_impl(rctx):
     rctx.download(rctx.attr.urls, output = "output.zip")
@@ -44,7 +19,7 @@ wheel_repo = repository_rule(
 
 _PACKAGE_BUILD_TEMPLATE = """
 
-load("@rules_python//python/extensions:uv_external_deps.bzl", "define_targets")
+load("@rules_python//python/private/pypi:uv_lock_targets.bzl", "define_targets")
 
 package(
     default_visibility = ["//visibility:public"]
@@ -175,43 +150,3 @@ uv_external_deps = module_extension(
         }),
     },
 )
-
-def gen_package_config_settings(name, config_settings, marker, wheel_tags):
-    match_all = list(config_settings)
-    wt_name = name + "_wheeltags"
-    wheel_tags_setting(
-        name = wt_name,
-        **wheel_tags
-    )
-    match_all.append("is_{}_true".format(wt_name))
-    if marker:
-        em_name = name + "_marker"
-        env_marker_setting(
-            name = em_name,
-            expression = marker,
-        )
-        match_all("is_{}_true".format(em_name))
-
-    selects.config_setting_group(
-        name = name,
-        match_all = match_all,
-    )
-
-def define_targets(name, selectors):
-    select_map = {}
-    for i, selector in enumerate(selectors):
-        actual_repo = selector["actual_repo"]
-        actual = "@{}//:output.zip".format(actual_repo)
-        condition_name = "pick_{}_{}".format(i, actual_repo)
-        gen_package_config_settings(
-            name = condition_name,
-            config_settings = selector["config_settings"],
-            marker = selector["marker"],
-            wheel_tags = selector["wheel_tags"],
-        )
-        select_map[condition_name] = actual
-
-    native.alias(
-        name = name,
-        actual = select(select_map),
-    )
