@@ -1,6 +1,18 @@
 load("//python/private/pypi:pypi_repo_utils.bzl", "pypi_repo_utils")
 
-def _convert_uv_lock_to_json(mrctx, attr, logger):
+def convert_uv_lock_to_json(mrctx, attr, logger):
+    """Converts a uv.lock file to json.
+
+    Args:
+        mrctx: a module_ctx or repository_ctx object.
+        attr: The attribute struct for mrctx. It must have an
+            `_python_interpreter_target` attribute of the interpreter
+            to use.
+        logger: a logger object to use
+
+    Returns:
+        The command output, which is a json string.
+    """
     python_interpreter = pypi_repo_utils.resolve_python_interpreter(
         mrctx,
         python_interpreter_target = attr._python_interpreter_target,

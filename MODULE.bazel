@@ -348,7 +348,7 @@ dev_pip.parse(
 dev_pip.parse(
     hub_name = "uv_pypi",
     python_version = "3.12",
-    requirements_lock = "//tests/uv_pypi:uv.lock",
+    uv_lock = "//tests/uv_pypi:uv.lock",
 )
 use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver", "uv_pypi")
 
