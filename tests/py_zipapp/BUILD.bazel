@@ -45,6 +45,7 @@ py_binary(
         "//python/config_settings:venvs_site_packages": "no",
     },
     main = "main.py",
+    # TODO: #2586 - Add windows support
     target_compatible_with = NOT_WINDOWS,
     deps = ["@dev_pip//absl_py"],
 )
