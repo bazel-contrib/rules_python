@@ -5,7 +5,7 @@ import stat
 import tempfile
 import unittest
 
-from tools.zipapp import exe_zip_maker
+from tools.private.zipapp import exe_zip_maker
 
 
 class ExeZipMakerTest(unittest.TestCase):

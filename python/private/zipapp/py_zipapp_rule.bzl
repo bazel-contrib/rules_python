@@ -275,7 +275,7 @@ Whether the output should be an executable zip file.
     ),
     "_exe_zip_maker": attr.label(
         cfg = "exec",
-        default = "//tools/zipapp:exe_zip_maker",
+        default = "//tools/private/zipapp:exe_zip_maker",
     ),
     "_zip_shell_template": attr.label(
         default = ":zip_shell_template",
@@ -283,7 +283,7 @@ Whether the output should be an executable zip file.
     ),
     "_zipper": attr.label(
         cfg = "exec",
-        default = "//tools/zipapp:zipper",
+        default = "//tools/private/zipapp:zipper",
     ),
 }
 _TOOLCHAINS = [EXEC_TOOLS_TOOLCHAIN_TYPE]

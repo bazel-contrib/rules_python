@@ -6,7 +6,7 @@ import time
 import unittest
 import zipfile
 
-from tools.zipapp import zipper
+from tools.private.zipapp import zipper
 
 
 class ZipperTest(unittest.TestCase):
