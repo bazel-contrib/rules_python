@@ -243,7 +243,6 @@ use_repo(
     "rules_python_runtime_env_tc_info",
     "somepkg_with_build_files",
     "whl_library_extras_direct_dep",
-    "whl_perms_bad_perms_pkg",
     "whl_with_build_files",
 )
 
