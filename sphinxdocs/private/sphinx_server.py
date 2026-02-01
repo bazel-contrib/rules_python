@@ -5,11 +5,15 @@ import sys
 import time
 from http import server
 
+from python.runfiles import Runfiles
+
 
 def main(argv):
-    build_workspace_directory = os.environ["BUILD_WORKSPACE_DIRECTORY"]
-    docs_directory = argv[1]
-    serve_directory = os.path.join(build_workspace_directory, docs_directory)
+    r = Runfiles.Create()
+    serve_directory = r.Rlocation(argv[1])
+    if not serve_directory:
+        print(f"Error: could not find runfile for '{argv[1]}'", file=sys.stderr)
+        return 1
 
     class DirectoryHandler(server.SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):

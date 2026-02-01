@@ -27,7 +27,7 @@ def _test_py_runtime_info_not_present_impl(env, target):
 
 _tests.append(_test_py_runtime_info_not_present)
 
-def _test_files_to_build(name, config):
+def _test_default_outputs(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -36,15 +36,15 @@ def _test_files_to_build(name, config):
     analysis_test(
         name = name,
         target = name + "_subject",
-        impl = _test_files_to_build_impl,
+        impl = _test_default_outputs_impl,
     )
 
-def _test_files_to_build_impl(env, target):
+def _test_default_outputs_impl(env, target):
     env.expect.that_target(target).default_outputs().contains_exactly([
         "{package}/lib.py",
     ])
 
-_tests.append(_test_files_to_build)
+_tests.append(_test_default_outputs)
 
 def _test_srcs_can_contain_rule_generating_py_and_nonpy_files(name, config):
     rt_util.helper_target(

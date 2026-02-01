@@ -1,6 +1,43 @@
+import io
 import unittest
 
 import tools.wheelmaker as wheelmaker
+
+
+class QuoteAllFilenamesTest(unittest.TestCase):
+    """Tests for quote_all_filenames behavior in _WhlFile.
+
+    Some wheels (like torch) have all filenames quoted in their RECORD file.
+    When repacking, we preserve this style to minimize diffs.
+    """
+
+    def _make_whl_file(self, quote_all: bool) -> wheelmaker._WhlFile:
+        """Create a _WhlFile instance for testing."""
+        buf = io.BytesIO()
+        return wheelmaker._WhlFile(
+            buf,
+            mode="w",
+            distribution_prefix="test-1.0.0",
+            quote_all_filenames=quote_all,
+        )
+
+    def test_quote_all_quotes_simple_filenames(self) -> None:
+        """When quote_all_filenames=True, all filenames are quoted."""
+        whl = self._make_whl_file(quote_all=True)
+        self.assertEqual(whl._quote_filename("foo/bar.py"), '"foo/bar.py"')
+
+    def test_quote_all_false_leaves_simple_filenames_unquoted(self) -> None:
+        """When quote_all_filenames=False, simple filenames stay unquoted."""
+        whl = self._make_whl_file(quote_all=False)
+        self.assertEqual(whl._quote_filename("foo/bar.py"), "foo/bar.py")
+
+    def test_quote_all_quotes_filenames_with_commas(self) -> None:
+        """Filenames with commas are always quoted, regardless of quote_all_filenames."""
+        whl = self._make_whl_file(quote_all=True)
+        self.assertEqual(whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"')
+
+        whl = self._make_whl_file(quote_all=False)
+        self.assertEqual(whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"')
 
 
 class ArcNameFromTest(unittest.TestCase):

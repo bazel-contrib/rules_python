@@ -11,7 +11,7 @@ would be:
 python -Xaaa /path/to/file.py
 ```
 
-This feature is likely to be useful for the integration of debuggers. For example,
+This feature is useful for the integration of debuggers. For example,
 it would be possible to configure `RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` to
 be set to `/path/to/debugger.py --port 12344 --file`, resulting
 in the command executed being:
@@ -22,6 +22,8 @@ python /path/to/debugger.py --port 12345 --file /path/to/file.py
 
 :::{seealso}
 The {bzl:obj}`interpreter_args` attribute.
+
+The guide on {any}`How to integrate a debugger`
 :::
 
 :::{versionadded} 1.3.0

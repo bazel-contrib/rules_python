@@ -19,12 +19,14 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
+load("//python:py_info.bzl", "PyInfo")
+load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "maybe_builtin_build_python_zip")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
@@ -47,14 +49,13 @@ def _test_basic_windows(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
-            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
-        },
+        } | maybe_builtin_build_python_zip("true"),
         attr_values = {},
     )
 
@@ -93,14 +94,13 @@ def _test_basic_zip(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
-            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
-        },
+        } | maybe_builtin_build_python_zip("true"),
         attr_values = {"target_compatible_with": target_compatible_with},
     )
 
@@ -169,6 +169,92 @@ def _test_executable_in_runfiles_impl(env, target):
         "{workspace}/{package}/{test_name}_subject" + exe,
         "{workspace}/{package}/{test_name}_subject",
     ])
+
+def _test_debugger(name, config):
+    # Using imports
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger",
+        imports = ["."],
+        srcs = [rt_util.empty_file(name + "_debugger.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        config_settings = {
+            # config_settings requires a fully qualified label
+            labels.DEBUGGER: "//{}:{}_debugger".format(native.package_name(), name),
+        },
+    )
+
+    # Using venv
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger_venv",
+        imports = [native.package_name() + "/site-packages"],
+        experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
+        srcs = [rt_util.empty_file("site-packages/" + name + "_debugger_venv.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject_venv",
+        srcs = [rt_util.empty_file(name + "_subject_venv.py")],
+        config_settings = {
+            # config_settings requires a fully qualified label
+            labels.DEBUGGER: "//{}:{}_debugger_venv".format(native.package_name(), name),
+        },
+    )
+
+    analysis_test(
+        name = name,
+        impl = _test_debugger_impl,
+        targets = {
+            "exec_target": name + "_subject",
+            "target": name + "_subject",
+            "target_venv": name + "_subject_venv",
+        },
+        attrs = {
+            "exec_target": attr.label(cfg = "exec"),
+        },
+        config_settings = {
+            labels.VENVS_SITE_PACKAGES: "yes",
+            labels.PYTHON_VERSION: "3.13",
+        },
+    )
+
+_tests.append(_test_debugger)
+
+def _test_debugger_impl(env, targets):
+    # 1. Subject
+
+    # Check the file from debugger dep is injected.
+    env.expect.that_target(targets.target).runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_debugger.py",
+    ])
+
+    # #3481: Ensure imports are setup correcty.
+    meta = env.expect.meta.derive(format_str_kwargs = {"package": targets.target.label.package})
+    env.expect.that_target(targets.target).has_provider(PyInfo)
+    imports = targets.target[PyInfo].imports.to_list()
+    env.expect.that_collection(imports).contains(meta.format_str("{workspace}/{package}"))
+
+    # 2. Subject venv
+
+    # #3481: Ensure that venv site-packages is setup correctly, if the dependency is coming
+    # from pip integration.
+    env.expect.that_target(targets.target_venv).runfiles().contains_at_least([
+        "{workspace}/{package}/_{name}.venv/lib/python3.13/site-packages/{test_name}_debugger_venv.py",
+    ])
+
+    # 3. Subject exec
+
+    # Ensure that tools don't inherit debugger.
+    env.expect.that_target(targets.exec_target).runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_debugger.py",
+    )
 
 def _test_default_main_can_be_generated(name, config):
     rt_util.helper_target(
@@ -291,7 +377,7 @@ def _test_explicit_main_cannot_be_ambiguous_impl(env, target):
         matching.str_matches("foo.py*matches multiple"),
     )
 
-def _test_files_to_build(name, config):
+def _test_default_outputs(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -299,14 +385,14 @@ def _test_files_to_build(name, config):
     )
     analysis_test(
         name = name,
-        impl = _test_files_to_build_impl,
+        impl = _test_default_outputs_impl,
         target = name + "_subject",
         attrs = WINDOWS_ATTR,
     )
 
-_tests.append(_test_files_to_build)
+_tests.append(_test_default_outputs)
 
-def _test_files_to_build_impl(env, target):
+def _test_default_outputs_impl(env, target):
     default_outputs = env.expect.that_target(target).default_outputs()
     if pt_util.is_windows(env):
         default_outputs.contains("{package}/{test_name}_subject.exe")

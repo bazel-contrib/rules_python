@@ -1,5 +1,6 @@
 """Extension for configuring global settings of rules_python."""
 
+load("@bazel_features//:features.bzl", "bazel_features")
 load("//python/private:internal_config_repo.bzl", "internal_config_repo")
 load("//python/private/pypi:deps.bzl", "pypi_deps")
 
@@ -21,10 +22,10 @@ to repositories that are expensive to create or invalidate frequently.
     },
 )
 
-def _config_impl(mctx):
+def _config_impl(module_ctx):
     transition_setting_generators = {}
     transition_settings = []
-    for mod in mctx.modules:
+    for mod in module_ctx.modules:
         for tag in mod.tags.add_transition_setting:
             setting = str(tag.setting)
             if setting not in transition_setting_generators:
@@ -39,6 +40,11 @@ def _config_impl(mctx):
     )
 
     pypi_deps()
+
+    if bazel_features.external_deps.extension_metadata_has_reproducible:
+        return module_ctx.extension_metadata(reproducible = True)
+    else:
+        return None
 
 config = module_extension(
     doc = """Global settings for rules_python.

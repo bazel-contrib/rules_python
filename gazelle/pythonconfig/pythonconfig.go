@@ -104,6 +104,10 @@ const (
 	// separate pyi_deps attribute or merge type-checking dependencies into deps.
 	// Defaults to false for backward compatibility.
 	GeneratePyiDeps = "python_generate_pyi_deps"
+	// GeneratePyiSrcs represents the directive that controls whether to include
+	// a pyi_srcs attribute if a sibling .pyi file is found.
+	// Defaults to false for backward compatibility.
+	GeneratePyiSrcs = "python_generate_pyi_srcs"
 	// GenerateProto represents the directive that controls whether to generate
 	// python_generate_proto targets.
 	GenerateProto = "python_generate_proto"
@@ -202,6 +206,7 @@ type Config struct {
 	labelNormalization                        LabelNormalizationType
 	experimentalAllowRelativeImports          bool
 	generatePyiDeps                           bool
+	generatePyiSrcs                           bool
 	generateProto                             bool
 	resolveSiblingImports                     bool
 }
@@ -242,6 +247,7 @@ func New(
 		labelNormalization:                        DefaultLabelNormalizationType,
 		experimentalAllowRelativeImports:          false,
 		generatePyiDeps:                           false,
+		generatePyiSrcs:                           false,
 		generateProto:                             false,
 		resolveSiblingImports:                     false,
 	}
@@ -279,6 +285,7 @@ func (c *Config) NewChild() *Config {
 		labelNormalization:                        c.labelNormalization,
 		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
 		generatePyiDeps:                           c.generatePyiDeps,
+		generatePyiSrcs:                           c.generatePyiSrcs,
 		generateProto:                             c.generateProto,
 		resolveSiblingImports:                     c.resolveSiblingImports,
 	}
@@ -588,6 +595,18 @@ func (c *Config) SetGeneratePyiDeps(generatePyiDeps bool) {
 // or type-checking dependencies should be merged into the regular deps attribute.
 func (c *Config) GeneratePyiDeps() bool {
 	return c.generatePyiDeps
+}
+
+// SetGeneratePyiSrcs sets whether pyi_srcs attribute should be generated if a sibling
+// .pyi file is found.
+func (c *Config) SetGeneratePyiSrcs(generatePyiSrcs bool) {
+	c.generatePyiSrcs = generatePyiSrcs
+}
+
+// GeneratePyiSrcs returns whether pyi_srcs attribute should be generated if a sibling
+// .pyi file is found.
+func (c *Config) GeneratePyiSrcs() bool {
+	return c.generatePyiSrcs
 }
 
 // SetGenerateProto sets whether py_proto_library should be generated for proto_library.

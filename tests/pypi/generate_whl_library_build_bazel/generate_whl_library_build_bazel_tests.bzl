@@ -56,6 +56,11 @@ whl_library_targets(
     tags = ["tag1"],
 )
 
+exports_files(
+    srcs = ["bar.py"],
+    visibility = ["//visibility:public"],
+)
+
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
@@ -120,6 +125,11 @@ whl_library_targets_from_requires(
         "qux",
     ],
     srcs_exclude = ["srcs_exclude_all"],
+)
+
+exports_files(
+    srcs = ["bar.py"],
+    visibility = ["//visibility:public"],
 )
 
 # SOMETHING SPECIAL AT THE END
@@ -187,6 +197,11 @@ whl_library_targets_from_requires(
     srcs_exclude = ["srcs_exclude_all"],
 )
 
+exports_files(
+    srcs = ["bar.py"],
+    visibility = ["//visibility:public"],
+)
+
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
@@ -250,6 +265,11 @@ whl_library_targets_from_requires(
         "qux",
     ],
     srcs_exclude = ["srcs_exclude_all"],
+)
+
+exports_files(
+    srcs = ["bar.py"],
+    visibility = ["//visibility:public"],
 )
 
 # SOMETHING SPECIAL AT THE END

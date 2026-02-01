@@ -189,8 +189,9 @@ def sphinx_docs(
         srcs = [_SPHINX_SERVE_MAIN_SRC],
         main = _SPHINX_SERVE_MAIN_SRC,
         data = [html_name],
+        deps = [Label("//python/runfiles")],
         args = [
-            "$(execpath {})".format(html_name),
+            "$(rlocationpath {})".format(html_name),
         ],
         **common_kwargs_with_manual_tag
     )

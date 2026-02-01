@@ -450,8 +450,20 @@ Whether to encode build information into the binary. Possible values:
 
 Stamped binaries are not rebuilt unless their dependencies change.
 
-WARNING: Stamping can harm build performance by reducing cache hits and should
+Stamped build information can accessed using the `bazel_binary_info` module.
+See the [Accessing build information docs] for more information.
+
+:::{warning}
+Stamping can harm build performance by reducing cache hits and should
 be avoided if possible.
+
+In addition, this transitions the {obj}`--stamp` flag, which can additional
+config state overhead.
+:::
+
+:::{note}
+Stamping of build data output is always disabled for the exec config.
+:::
 """,
             default = -1,
         ),

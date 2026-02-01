@@ -20,12 +20,14 @@ import contextlib
 import os
 import re
 import runpy
+import types
 import uuid
+from functools import cache
 
 # ===== Template substitutions start =====
 # We just put them in one place so its easy to tell which are used.
 
-# Runfiles-relative path to the main Python source file.
+# Runfiles-root-relative path to the main Python source file.
 # Empty if MAIN_MODULE is used
 MAIN_PATH = "%main%"
 
@@ -41,7 +43,33 @@ VENV_ROOT = "%venv_root%"
 # string otherwise.
 VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 
+# Whether we should generate coverage data.
+# string, 1 or 0
+COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
+
+# runfiles-root-relative path to a file with binary-specific build information
+BUILD_DATA_FILE = "%build_data_file%"
+
 # ===== Template substitutions end =====
+
+
+class BazelBinaryInfoModule(types.ModuleType):
+    BUILD_DATA_FILE = BUILD_DATA_FILE
+
+    @cache
+    def get_build_data(self):
+        """Returns a string of the raw build data."""
+        try:
+            # Prefer dep via pypi
+            import runfiles
+        except ImportError:
+            from python.runfiles import runfiles
+        path = runfiles.Create().Rlocation(self.BUILD_DATA_FILE)
+        with open(path) as fp:
+            return fp.read()
+
+
+sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
 
 
 # Return True if running on Windows
@@ -84,17 +112,6 @@ def get_windows_path_with_unc_prefix(path):
 
     # os.path.abspath returns a normalized absolute path
     return unicode_prefix + os.path.abspath(path)
-
-
-def search_path(name):
-    """Finds a file in a given search path."""
-    search_path = os.getenv("PATH", os.defpath).split(os.pathsep)
-    for directory in search_path:
-        if directory:
-            path = os.path.join(directory, name)
-            if os.path.isfile(path) and os.access(path, os.X_OK):
-                return path
-    return None
 
 
 def is_verbose():
@@ -319,11 +336,17 @@ def _maybe_collect_coverage(enable):
     # We need for coveragepy to use relative paths.  This can only be configured
     # using an rc file.
     rcfile_name = os.path.join(coverage_dir, ".coveragerc_{}".format(unique_id))
+    disable_warnings = (
+        "disable_warnings = module-not-imported, no-data-collected"
+        if COVERAGE_INSTRUMENTED
+        else ""
+    )
     print_verbose_coverage("coveragerc file:", rcfile_name)
     with open(rcfile_name, "w") as rcfile:
         rcfile.write(
             f"""[run]
 relative_files = True
+{disable_warnings}
 source =
 \t{source}
 """

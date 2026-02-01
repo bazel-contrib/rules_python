@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_library.bzl", "py_library")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -21,6 +22,11 @@ licenses(["notice"])
 exports_files(
     srcs = ["namespace_pkg_tmpl.py"],
     visibility = ["//visibility:public"],
+)
+
+exports_files(
+    srcs = ["deps.bzl"],
+    visibility = ["//tools/private/update_deps:__pkg__"],
 )
 
 filegroup(
@@ -173,6 +179,7 @@ bzl_library(
         ":whl_repo_name_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
+        "//python/private:text_util_bzl",
         "//python/private:version_bzl",
         "//python/private:version_label_bzl",
     ],
@@ -371,6 +378,12 @@ bzl_library(
     ],
 )
 
+py_library(
+    name = "repack_whl",
+    srcs = ["repack_whl.py"],
+    deps = ["//tools:wheelmaker"],
+)
+
 bzl_library(
     name = "requirements_files_by_platform_bzl",
     srcs = ["requirements_files_by_platform.bzl"],
@@ -416,6 +429,16 @@ bzl_library(
 )
 
 bzl_library(
+    name = "whl_extract_bzl",
+    srcs = ["whl_extract.bzl"],
+    deps = [
+        ":whl_metadata_bzl",
+        "//python/private:repo_utils_bzl",
+        "@rules_python_internal//:rules_python_config_bzl",
+    ],
+)
+
+bzl_library(
     name = "whl_library_alias_bzl",
     srcs = ["whl_library_alias.bzl"],
     deps = [
@@ -435,6 +458,7 @@ bzl_library(
         ":patch_whl_bzl",
         ":pep508_requirement_bzl",
         ":pypi_repo_utils_bzl",
+        ":whl_extract_bzl",
         ":whl_metadata_bzl",
         ":whl_target_platforms_bzl",
         "//python/private:auth_bzl",

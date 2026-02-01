@@ -38,5 +38,6 @@ build:rtd --stamp
 build:rtd --enable_bzlmod
 
 common --incompatible_python_disallow_native_rules
+common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update

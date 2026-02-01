@@ -242,6 +242,7 @@ use_repo(
     "pkgutil_nspkg2",
     "rules_python_runtime_env_tc_info",
     "somepkg_with_build_files",
+    "whl_library_extras_direct_dep",
     "whl_with_build_files",
 )
 
