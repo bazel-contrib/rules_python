@@ -282,7 +282,7 @@ tasks:
     platform: rbe_ubuntu2204
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
-    bazel: 7.x
+    bazel: 8.x
     test_flags:
       - "--test_tag_filters=-integration-test,-acceptance-test"
       - "--extra_toolchains=@buildkite_config//config:cc-toolchain"

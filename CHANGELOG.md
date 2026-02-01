@@ -83,6 +83,14 @@ END_UNRELEASED_TEMPLATE
   that are associated with the target's `srcs` are present.
   ([#3354](https://github.com/bazel-contrib/rules_python/issues/3354)).
 
+{#v1-8-3}
+## [1.8.3] - 2026-01-27
+
+{#v1-8-3-fixed}
+### Fixed
+* (pipstar) Fix whl extraction on Windows when bazelrc has XX flags.
+  Fixes [#3543](https://github.com/bazel-contrib/rules_python/issues/3543).
+
 {#v1-8-2}
 ## [1.8.2] - 2026-01-24
 
