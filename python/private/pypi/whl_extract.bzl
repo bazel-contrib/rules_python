@@ -26,8 +26,15 @@ def whl_extract(rctx, *, whl_path, logger):
     if os_name != "windows":
         # On Unix-like systems, recursively add read permissions to all files
         # and ensure directories are traversable (need execute permission)
-        result = rctx.execute(["chmod", "-R", "a+rX", str(install_dir_path)])
+        result = repo_utils.execute_unchecked(
+            rctx,
+            op = "Fixing wheel permissions {}".format(whl_path),
+            arguments = ["chmod", "-R", "a+rX", str(install_dir_path)],
+            logger = logger,
+        )
         if result.return_code != 0:
+            # It's possible chmod is not available or the filesystem doesn't support it.
+            # This is fine, we just want to try to fix permissions if possible.
             logger.warn(lambda: "Failed to fix file permissions: {}".format(result.stderr))
     metadata_file = find_whl_metadata(
         install_dir = install_dir_path,
