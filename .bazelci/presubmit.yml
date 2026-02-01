@@ -34,6 +34,7 @@ buildifier:
   build_flags:
     - "--keep_going"
     - "--build_tag_filters=-integration-test"
+    - "--verbose_failures"
   test_targets:
     - "--"
     - "..."

@@ -82,6 +82,17 @@ END_UNRELEASED_TEMPLATE
   `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files
   that are associated with the target's `srcs` are present.
   ([#3354](https://github.com/bazel-contrib/rules_python/issues/3354)).
+* (zipapp) {obj}`py_zipapp_binary` and {obj}`py_zipapp_test` rules added. These
+  will replace `--build_python_zip` and the zip output group of
+  `py_binary/py_test`. The zipapp rules support more functionality, correctness,
+  and have better build performance.
+* (toolchains) Added {obj}`PyExecToolsInfo.exec_runtime` for more easily
+  getting an RBE-compatible runtime to use for build actions.
+* (providers) {obj}`PyExecutableInfo` has several new fields to aid packaging
+  of binaries: {obj}`PyExecutableInfo.app_runfiles`,
+  {obj}`PyExecutableInfo.interpreter_args`,
+  {obj}`PyExecutableInfo.stage2_bootstrap`, and
+  {obj}`PyExecutableInfo.venv_python_exe`.
 
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27
