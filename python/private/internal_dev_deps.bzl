@@ -109,14 +109,6 @@ def _internal_dev_deps_impl(mctx):
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
     )
 
-    # Setup for //tests/pypi/whl_permissions
-    # Test that wheels with bad file permissions can be extracted
-    whl_library(
-        name = "whl_perms_bad_perms_pkg",
-        whl_file = "//tests/pypi/whl_permissions:bad_perms_pkg-1.0-py3-none-any.whl",
-        requirement = "bad-perms-pkg==1.0",
-    )
-
 def _whl_library_from_dir(*, name, output, root, **kwargs):
     whl_from_dir_repo(
         name = "{}_whl".format(name),
