@@ -59,19 +59,42 @@ def hub_builder(
         build = lambda: _build(self),
         pip_parse = lambda *a, **k: _pip_parse(self, *a, **k),
 
-        # build output
+        # Build output related
+
+        # The set of package names to expose. Dict acting as set
+        # dict[str package, None]
         _exposed_packages = {},  # modified by _add_exposed_packages
+        # Map of the per-package aliases.
+        # The nested dict is a dict acting as a set.
+        # dict[str whl_name, dict[str alias_name, bool]]
         _extra_aliases = {},  # modified by _add_extra_aliases
+        # dict[str whl_name, list[str]]
         _group_map = {},  # modified by _add_group_map
+        # Mapping of whl_library repo names and their kwargs.
+        # dict[str repo_name, dict[str, object] kwargs]
         _whl_libraries = {},  # modified by _add_whl_library
+        # Map of repos and their config settings, and repo the config
+        # setting originated from.
+        # dict[str repo_name, dict[str config_setting, str repo_name]]
         _whl_map = {},  # modified by _add_whl_library
-        # internal
+
+        # Internal
+
+        # dict[str python_version, dict[str platform, PlatformInfo]]
+        # where `PlatformInfo` is from `_platforms()`
         _platforms = {},
+        # Supplemental index of `_group_map`
+        # dict[str whl_name, str group_name]
         _group_name_by_whl = {},
+        # Functions to download according to the config
+        # dict[str python_version, callable]
         _get_index_urls = {},
+        # Tells whether to use the downloader for a package.
+        # dict[str python_version, dict[str package_name, bool use_downloader]]
         _use_downloader = {},
         _simpleapi_cache = simpleapi_cache,
-        # instance constants
+
+        # Instance constants passed in by callers
         _config = config,
         _whl_overrides = whl_overrides,
         _evaluate_markers_fn = evaluate_markers_fn,
@@ -103,13 +126,24 @@ def _build(self):
             whl_map.setdefault(key, {}).setdefault(repo, []).append(setting)
 
     return struct(
+        # The config settings for matching repo spokes.
+        # dict[str repo_name, dict[str repo_name, list[str]]]
         whl_map = whl_map,
+        # Maps a wheel to a list of groups
+        # dict[str whl_name, list[str]]
         group_map = self._group_map,
+        # The per-package aliases for the hub to create.
+        # dict[str package, list[str]]
         extra_aliases = {
             whl: sorted(aliases)
             for whl, aliases in self._extra_aliases.items()
         },
+        # The list of exposed packages in the hub.
+        # list[str]
         exposed_packages = sorted(self._exposed_packages),
+
+        # Mapping of whl_library repo names and their kwargs.
+        # dict[str repo_name, dict[str, object] kwargs]
         whl_libraries = self._whl_libraries,
     )
 
@@ -171,6 +205,13 @@ def _pip_parse(self, module_ctx, pip_attr):
 ### setters for build outputs
 
 def _add_exposed_packages(self, exposed_packages):
+    """Add packages that are exposed.
+
+    Args:
+        self: implicitly added
+        exposed_packages: {type}`dict[str package, None]` a dict acting as
+            a set. The set of packages that should be exposed.
+    """
     if self._exposed_packages:
         intersection = {}
         for pkg in exposed_packages:
@@ -183,6 +224,13 @@ def _add_exposed_packages(self, exposed_packages):
     self._exposed_packages.update(exposed_packages)
 
 def _add_group_map(self, group_map):
+    """Adds a group mapping for cycle breaking.
+
+    Args:
+        self: implicitly added.
+        group_map: {type}`dict[str name, list[str]]`
+    """
+
     # TODO @aignas 2024-04-05: how do we support different requirement
     # cycles for different abis/oses? For now we will need the users to
     # assume the same groups across all versions/platforms until we start
@@ -202,6 +250,13 @@ def _add_group_map(self, group_map):
     })
 
 def _add_extra_aliases(self, extra_hub_aliases):
+    """Adds per-package aliases to the hub.
+
+    Args:
+        self: Implicitly added
+        extra_hub_aliases: {type}`dict[str package, list[str]]` Alias target
+            names to add to a package's hub BUILD file.
+    """
     for whl_name, aliases in extra_hub_aliases.items():
         self._extra_aliases.setdefault(whl_name, {}).update(
             {alias: True for alias in aliases},
@@ -246,6 +301,14 @@ def _diff_dict(first, second):
         return None
 
 def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
+    """Add a whl_library and kwargs to call it with for the hub.
+
+    Args:
+        python_version: {type}`str` the python version to assume
+        whl: struct from `_whl_library_args()`
+        repo: struct from `_whl_repo`
+        enable_pipstar: {type}`bool` if pipstar is enabled.
+    """
     if repo == None:
         # NOTE @aignas 2025-07-07: we guard against an edge-case where there
         # are more platforms defined than there are wheels for and users
