@@ -20,9 +20,10 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_test.bzl", "py_test")
+load("//python/private:common.bzl", "maybe_builtin_build_python_zip")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyInfo")  # buildifier: disable=bzl-visibility
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "maybe_builtin_build_python_zip")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 # NOTE @aignas 2024-06-04: we are using here something that is registered in the MODULE.Bazel

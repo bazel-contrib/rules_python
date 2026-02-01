@@ -361,7 +361,7 @@ See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
                 default = True,
             ),
             "zip_main_template": attr.label(
-                default = "//python/private:zip_main_template",
+                default = "//python/private/zipapp:zip_main_template",
                 allow_single_file = True,
                 doc = """
 The template to use for a zip's top-level `__main__.py` file.
