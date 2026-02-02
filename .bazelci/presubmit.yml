@@ -256,8 +256,14 @@ tasks:
     <<: *reusable_config
     name: "Default: Windows"
     platform: windows
+    build_targets:
+      - "--"
+      - "//tests/py_zipapp:system_python_zipapp_test"
     test_flags:
       - "--test_tag_filters=-integration-test,-fix-windows"
+    test_targets:
+      - "--"
+      - "//tests/py_zipapp:system_python_zipapp_test"
   rbe_min:
     <<: *minimum_supported_version
     <<: *reusable_config
