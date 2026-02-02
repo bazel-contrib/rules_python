@@ -272,6 +272,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     exposed_packages = {}
     extra_aliases = {}
     whl_libraries = {}
+    uv_selectors = {}
     for hub in pip_hub_map.values():
         out = hub.build()
 
@@ -285,6 +286,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         extra_aliases[hub.name] = out.extra_aliases
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
+        uv_selectors[hub.name] = out.uv_selectors
 
     return struct(
         config = config,
@@ -294,6 +296,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
+        uv_selectors = uv_selectors,
         platform_config_settings = {
             hub_name: {
                 platform_name: sorted([str(Label(cv)) for cv in p.config_settings])
@@ -386,6 +389,7 @@ def _pip_impl(module_ctx):
                 key: whl_config_settings_to_json(values)
                 for key, values in whl_map.items()
             },
+            uv_selectors = mods.uv_selectors.get(hub_name, {}),
             packages = mods.exposed_packages.get(hub_name, []),
             platform_config_settings = mods.platform_config_settings.get(hub_name, {}),
             groups = mods.hub_group_map.get(hub_name),

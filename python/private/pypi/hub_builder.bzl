@@ -11,8 +11,10 @@ load(":evaluate_markers.bzl", "evaluate_markers_py", evaluate_markers_star = "ev
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
+load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
+load(":uv_lock.bzl", "convert_uv_lock_to_json")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
@@ -65,6 +67,7 @@ def hub_builder(
         _group_map = {},  # modified by _add_group_map
         _whl_libraries = {},  # modified by _add_whl_library
         _whl_map = {},  # modified by _add_whl_library
+        _uv_selectors = {}, # modified by _process_uv_lock
         # internal
         _platforms = {},
         _group_name_by_whl = {},
@@ -111,6 +114,7 @@ def _build(self):
         },
         exposed_packages = sorted(self._exposed_packages),
         whl_libraries = self._whl_libraries,
+        uv_selectors = self._uv_selectors,
     )
 
 def _pip_parse(self, module_ctx, pip_attr):
@@ -157,6 +161,11 @@ def _pip_parse(self, module_ctx, pip_attr):
         # to `{os}_{arch}`.
         target_platforms = pip_attr.target_platforms or ([] if default_cross_setup else ["{os}_{arch}"]),
     )
+
+    if pip_attr.uv_lock:
+        _process_uv_lock(self, module_ctx, pip_attr)
+        return
+
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
     _create_whl_repos(
@@ -166,6 +175,97 @@ def _pip_parse(self, module_ctx, pip_attr):
         enable_pipstar = self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version),
         enable_pipstar_extract = self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version),
     )
+
+def _process_uv_lock(self, module_ctx, pip_attr):
+    interpreter = _detect_interpreter(self, pip_attr)
+
+    real_interpreter = pypi_repo_utils.resolve_python_interpreter(
+        module_ctx,
+        python_interpreter = interpreter.path,
+        python_interpreter_target = interpreter.target,
+    )
+
+    json_str = convert_uv_lock_to_json(module_ctx, pip_attr, self._logger, python_interpreter = real_interpreter)
+    lock_data = json.decode(json_str)
+
+    packages = lock_data.get("package", [])
+    packages_by_name = {}
+    for pkg in packages:
+        name = normalize_name(pkg["name"])
+        packages_by_name.setdefault(name, []).append(pkg)
+
+    # Common args logic
+    common_args = _common_args(
+        self,
+        module_ctx,
+        pip_attr = pip_attr,
+        enable_pipstar = False, # TODO: Support pipstar
+    )
+
+    for name, pkgs in packages_by_name.items():
+        package_settings = []
+        for pkg in pkgs:
+            version = pkg["version"]
+            wheels = pkg.get("wheels", [])
+            if not wheels:
+                continue
+
+            # Use first wheel
+            wheel = wheels[0]
+            wheel_url = wheel["url"]
+            wheel_hash = wheel.get("hash")
+
+            # Create repo
+            src = struct(
+                requirement_line = "{}=={}".format(name, version),
+                filename = wheel_url.split("/")[-1],
+                url = wheel_url,
+                sha256 = wheel_hash.replace("sha256:", "") if wheel_hash else None,
+                distribution = name,
+                target_platforms = [],
+                extra_pip_args = [],
+                is_multiple_versions = False,
+            )
+
+            whl_library_args = dict(common_args)
+            # Add extra args if needed
+            whl_library_args.update(dict(
+                dep_template = "@{}//{{name}}:{{target}}".format(self.name),
+            ))
+
+            repo = _whl_repo(
+                src = src,
+                whl_library_args = whl_library_args,
+                download_only = pip_attr.download_only,
+                netrc = self._config.netrc or pip_attr.netrc,
+                auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
+                python_version = _major_minor_version(pip_attr.python_version),
+                is_multiple_versions = False,
+                use_downloader = True,
+                interpreter = interpreter,
+                enable_pipstar = False,
+                enable_pipstar_extract = False,
+            )
+
+            repo_name = repo.repo_name
+            if repo_name not in self._whl_libraries:
+                self._whl_libraries[repo_name] = repo.args
+
+            markers = pkg.get("resolution-markers", [])
+            if not markers:
+                package_settings.append((repo_name, None))
+            else:
+                for m in markers:
+                    package_settings.append((repo_name, m))
+
+        if package_settings:
+            self._uv_selectors[name] = json.encode(package_settings)
+
+    # We also need to add exposed packages for the hub
+    _add_exposed_packages(self, {
+        name: None
+        for name in packages_by_name.keys()
+    })
 
 ### end of PUBLIC methods
 ### setters for build outputs

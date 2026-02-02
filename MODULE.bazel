@@ -50,9 +50,13 @@ python.defaults(
 python.toolchain(
     python_version = "3.11",
 )
+python.toolchain(
+    python_version = "3.14",
+)
 use_repo(
     python,
     "python_3_11",
+    "python_3_14_host",
     "pythons_hub",
     python = "python_versions",
 )
@@ -341,7 +345,12 @@ dev_pip.parse(
     python_version = "3.11",
     requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
 )
-use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver")
+dev_pip.parse(
+    hub_name = "uv_pypi",
+    python_version = "3.12",
+    uv_lock = "//tests/uv_pypi:uv.lock",
+)
+use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver", "uv_pypi")
 
 # Bazel integration test setup below
 

@@ -70,4 +70,20 @@ True will become default in a subsequent release.
     ),
 }
 
+UV_ATTRS = {
+    "uv_lock": attr.label(
+        allow_single_file = True,
+        doc = """\
+The uv.lock file to use for resolving dependencies.
+""",
+    ),
+    "_toml2json": attr.label(
+        default = Label("//tools/toml2json:toml2json.py"),
+        allow_single_file = True,
+        cfg = "exec",
+        executable = True,
+    ),
+}
+
+ATTRS.update(**UV_ATTRS)
 ATTRS.update(**COMMON_ATTRS)
