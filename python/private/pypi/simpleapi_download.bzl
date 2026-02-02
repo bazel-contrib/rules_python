@@ -264,13 +264,13 @@ def strip_empty_path_segments(url):
     else:
         return "{}://{}".format(scheme, stripped)
 
-def _read_simpleapi(ctx, index_url, pkg, attr, cache, get_auth = None, return_absolute = True, **download_kwargs):
+def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, return_absolute = True, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
         ctx: The module_ctx or repository_ctx.
         index_url: str, the PyPI SimpleAPI index URL
-        pkg: str, the distribution to download
+        distribution: str, the distribution to download
         attr: The attribute that contains necessary info for downloading. The
           following attributes must be present:
            * envsubst: The envsubst values for performing substitutions in the URL.
@@ -292,7 +292,7 @@ def _read_simpleapi(ctx, index_url, pkg, attr, cache, get_auth = None, return_ab
     # them to ctx.download if we want to correctly handle the relative URLs.
     # TODO: Add a test that env subbed index urls do not leak into the lock file.
 
-    url = "{}/{}/".format(index_url.rstrip("/"), pkg)
+    url = "{}/{}/".format(index_url.rstrip("/"), distribution)
 
     real_url = strip_empty_path_segments(envsubst(
         url,
