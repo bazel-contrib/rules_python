@@ -63,7 +63,7 @@ load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
-load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
+load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":venv_runfiles.bzl", "create_venv_app_files")
 
@@ -221,12 +221,6 @@ accepting arbitrary Python versions.
             # can't have executable=True because the backing target is an
             # empty target for other platforms.
             default = "//tools/launcher:launcher",
-        ),
-        # TODO: This appears to be vestigial. It's only added because
-        # GraphlessQueryTest.testLabelsOperator relies on it to test for
-        # query behavior of implicit dependencies.
-        "_py_toolchain_type": attr.label(
-            default = TARGET_TOOLCHAIN_TYPE,
         ),
         "_python_version_flag": lambda: attrb.Label(
             default = labels.PYTHON_VERSION,
