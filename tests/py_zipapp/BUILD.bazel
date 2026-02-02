@@ -16,14 +16,14 @@ py_binary(
         "//python/config_settings:venvs_site_packages": "yes",
     },
     main = "main.py",
-    target_compatible_with = NOT_WINDOWS,
+    ##target_compatible_with = NOT_WINDOWS,
     deps = ["@dev_pip//absl_py"],
 )
 
 py_zipapp_binary(
     name = "venv_zipapp",
     binary = ":venv_bin",
-    target_compatible_with = NOT_WINDOWS,
+    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_test(
@@ -34,7 +34,7 @@ py_test(
         "BZLMOD_ENABLED": str(int(BZLMOD_ENABLED)),
         "TEST_ZIPAPP": "$(location :venv_zipapp)",
     },
-    target_compatible_with = NOT_WINDOWS,
+    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_binary(
@@ -46,14 +46,14 @@ py_binary(
     },
     main = "main.py",
     # TODO: #2586 - Add windows support
-    target_compatible_with = NOT_WINDOWS,
-    deps = ["@dev_pip//absl_py"],
+    ##target_compatible_with = NOT_WINDOWS,
+    ##deps = ["@dev_pip//absl_py"],
 )
 
 py_zipapp_binary(
     name = "system_python_zipapp",
     binary = ":system_python_bin",
-    target_compatible_with = NOT_WINDOWS,
+    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_test(
@@ -63,5 +63,5 @@ py_test(
     env = {
         "TEST_ZIPAPP": "$(location :system_python_zipapp)",
     },
-    target_compatible_with = NOT_WINDOWS,
+    ##target_compatible_with = NOT_WINDOWS,
 )
