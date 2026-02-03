@@ -8,8 +8,6 @@ if [[ -z "${ZIPAPP:-}" ]]; then
   exit 1
 fi
 
-echo "Running zipapp: $ZIPAPP"
-# We use python3 to run the zipapp.
-# This ensures that the zipapp (which is a zip file with __main__.py)
-# is valid and executable by python.
-python3 "$ZIPAPP"
+# We're testing the invocation of `__main__.py`, so we have to
+# manually pass the zipapp to python.
+"$PYTHON" "$ZIPAPP"

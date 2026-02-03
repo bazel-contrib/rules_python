@@ -19,7 +19,7 @@ py_binary(
     },
     main = "main.py",
     ##target_compatible_with = NOT_WINDOWS,
-    deps = ["@dev_pip//absl_py"],
+    deps = [":some_dep"],
 )
 
 py_zipapp_binary(
@@ -34,6 +34,7 @@ py_test(
     data = [":venv_zipapp"],
     env = {
         "BZLMOD_ENABLED": str(int(BZLMOD_ENABLED)),
+        # todo: for windows, the output is (launcher.exe, zipapp.pyz)
         "TEST_ZIPAPP": "$(location :venv_zipapp)",
     },
     ##target_compatible_with = NOT_WINDOWS,
@@ -68,13 +69,19 @@ py_test(
     ##target_compatible_with = NOT_WINDOWS,
 )
 
+# todo: rename to system_python_zipapp_external_bootstrap_test
 sh_test(
     name = "system_python_zipapp_sh_test",
     srcs = ["system_python_zipapp_sh_test.sh"],
-    data = [":system_python_zipapp"],
+    data = [
+        ":system_python_zipapp",
+        "//python:current_py_toolchain",
+    ],
     env = {
         "ZIPAPP": "$(location :system_python_zipapp)",
+        "PYTHON": "$(PYTHON3_ROOTPATH)",
     },
+    toolchains = ["//python:current_py_toolchain"],
     ##target_compatible_with = NOT_WINDOWS,
 )
 
