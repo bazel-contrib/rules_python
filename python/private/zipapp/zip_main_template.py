@@ -38,7 +38,7 @@ _WORKSPACE_NAME = "%workspace_name%"
 
 
 def print_verbose(*args, mapping=None, values=None):
-    if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
+    if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")) or True:
         if mapping is not None:
             for key, value in sorted((mapping or {}).items()):
                 print(
@@ -124,6 +124,7 @@ def search_path(name):
     return None
 
 
+# todo: remove this function
 def find_python_binary(module_space):
     """Finds the real Python binary if it's not a normal absolute path."""
     if _PYTHON_BINARY_VENV:
@@ -140,7 +141,7 @@ def find_binary(module_space, bin_name):
     if bin_name.startswith("//"):
         # Case 1: Path is a label. Not supported yet.
         raise AssertionError(
-            "Bazel does not support execution of Python interpreters via labels yet"
+            "Bazel does not support execution of Python interpreters via labels"
         )
     elif os.path.isabs(bin_name):
         # Case 2: Absolute path.
@@ -242,8 +243,12 @@ def main():
     print_verbose("running zip main bootstrap")
     print_verbose("initial argv:", values=sys.argv)
     print_verbose("initial environ:", mapping=os.environ)
-    print_verbose("initial sys.executable", sys.executable)
-    print_verbose("initial sys.version", sys.version)
+    print_verbose("initial sys.executable:", sys.executable)
+    print_verbose("initial sys.version:", sys.version)
+    print_verbose("stage2_bootstrap:", _STAGE2_BOOTSTRAP)
+    print_verbose("python_binary_venv:", _PYTHON_BINARY_VENV)
+    print_verbose("python_binary_actual:", _PYTHON_BINARY_ACTUAL)
+    print_verbose("workspace_name:", _WORKSPACE_NAME)
 
     args = sys.argv[1:]
 
@@ -274,9 +279,24 @@ def main():
         "Cannot exec() %r: file not readable." % main_filename
     )
 
-    python_program = find_python_binary(module_space)
-    if python_program is None:
-        raise AssertionError("Could not find python binary: " + _PYTHON_BINARY_VENV)
+    if _PYTHON_BINARY_VENV:
+        python_program = os.path.join(module_space, _PYTHON_BINARY_VENV)
+        ##if not os.path.exists(python_program):
+        ##    symlink_to = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
+        ##    os.makedirs(os.path.dirname(python_program), exist_ok=True)
+        ##    if os.path.lexists(python_program):
+        ##        os.unlink(python_program)
+        ##    try:
+        ##        os.symlink(symlink_to, python_program)
+        ##    except OSError as e:
+        ##        raise Exception(
+        ##            f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
+        ##        ) from e
+
+    else:
+        python_program = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
+        if python_program is None:
+            raise AssertionError("Could not find python binary: " + _PYTHON_BINARY_ACTUAL)
 
     ### When a venv is used, the `bin/python3` symlink may need to be created.
     ##if _PYTHON_BINARY_VENV:
