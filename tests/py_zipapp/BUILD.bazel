@@ -1,4 +1,6 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
@@ -47,7 +49,7 @@ py_binary(
     main = "main.py",
     # TODO: #2586 - Add windows support
     ##target_compatible_with = NOT_WINDOWS,
-    ##deps = ["@dev_pip//absl_py"],
+    deps = [":some_dep"],
 )
 
 py_zipapp_binary(
@@ -64,4 +66,21 @@ py_test(
         "TEST_ZIPAPP": "$(location :system_python_zipapp)",
     },
     ##target_compatible_with = NOT_WINDOWS,
+)
+
+sh_test(
+    name = "system_python_zipapp_sh_test",
+    srcs = ["system_python_zipapp_sh_test.sh"],
+    data = [":system_python_zipapp"],
+    env = {
+        "ZIPAPP": "$(location :system_python_zipapp)",
+    },
+    ##target_compatible_with = NOT_WINDOWS,
+)
+
+# todo: add venv_site_packages settings to this
+py_library(
+    name = "some_dep",
+    srcs = ["some_dep.py"],
+    imports = ["."],
 )

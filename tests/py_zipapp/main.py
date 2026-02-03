@@ -3,9 +3,16 @@
 
 def main():
     print("Hello from zipapp")
-    import absl
-
-    print(f"absl: {absl}")
+    try:
+        import some_dep
+        print(f"absl: {some_dep}")
+    except ImportError:
+        import sys
+        print("Failed to import dependency", file=sys.stderr)
+        print("sys.path:", file=sys.stderr)
+        for i, x in enumerate(sys.path):
+            print(i, x, file=sys.stderr)
+        raise
 
 
 if __name__ == "__main__":
