@@ -264,7 +264,7 @@ def strip_empty_path_segments(url):
     else:
         return "{}://{}".format(scheme, stripped)
 
-def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, return_absolute = True, **download_kwargs):
+def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, return_absolute = True, requested_versions = [], **download_kwargs):
     """Read SimpleAPI.
 
     Args:
@@ -279,6 +279,7 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, 
                http_file for docs.
         cache: A dict for storing the results.
         get_auth: A function to get auth information. Used in tests.
+        requested_versions: the list of requested versions.
         return_absolute: TODO
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
@@ -303,6 +304,7 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, 
 
     cached = cache.get(cache_key)
     if cached:
+        cached = _filter_packages(cached, requested_versions)
         return struct(success = True, output = cached)
 
     download = _download_simpleapi(
@@ -321,9 +323,10 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, 
         cache = cache,
         cache_key = cache_key,
         return_absolute = return_absolute,
+        requested_versions = requested_versions,
     )
 
-def _read_index_result(*, result, url, cache, cache_key, return_absolute):
+def _read_index_result(*, result, url, cache, cache_key, return_absolute, requested_versions):
     if not result.success or not result.output:
         return struct(success = False)
 
@@ -332,6 +335,7 @@ def _read_index_result(*, result, url, cache, cache_key, return_absolute):
         return struct(success = False)
 
     cache.setdefault(cache_key, output)
+    output = _filter_packages(output, requested_versions)
     return struct(success = True, output = output)
 
 def _read_simpleapi_with_facts(ctx, index_url, distribution, facts = None, requested_versions = [], **download_kwargs):
