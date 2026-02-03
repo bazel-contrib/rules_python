@@ -30,7 +30,7 @@ import zipfile
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
 # runfiles-root-relative path to venv's bin/python3. Empty if venv not being used.
-_PYTHON_BINARY_VENV = "%python_binary_venv%"
+_PYTHON_BINARY_VENV = "%python_binary%"
 # runfiles-root-relative path, absolute path, or single word. The actual Python
 # executable to use.
 _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
