@@ -30,7 +30,7 @@ import zipfile
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
 # runfiles-root-relative path to venv's bin/python3. Empty if venv not being used.
-_PYTHON_BINARY = "%python_binary%"
+_PYTHON_BINARY_VENV = "%python_binary_venv%"
 # runfiles-root-relative path, absolute path, or single word. The actual Python
 # executable to use.
 _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
@@ -106,11 +106,11 @@ def has_windows_executable_extension(path):
 
 
 if (
-    _PYTHON_BINARY
+    _PYTHON_BINARY_VENV
     and is_windows()
-    and not has_windows_executable_extension(_PYTHON_BINARY)
+    and not has_windows_executable_extension(_PYTHON_BINARY_VENV)
 ):
-    _PYTHON_BINARY = _PYTHON_BINARY + ".exe"
+    _PYTHON_BINARY_VENV = _PYTHON_BINARY_VENV + ".exe"
 
 
 def search_path(name):
@@ -126,8 +126,9 @@ def search_path(name):
 
 def find_python_binary(module_space):
     """Finds the real Python binary if it's not a normal absolute path."""
-    if _PYTHON_BINARY:
-        return find_binary(module_space, _PYTHON_BINARY)
+    if _PYTHON_BINARY_VENV:
+        # todo: do join(module_space, PYTHON_BINARY_VENV) instead
+        return find_binary(module_space, _PYTHON_BINARY_VENV)
     else:
         return find_binary(module_space, _PYTHON_BINARY_ACTUAL)
 
@@ -221,7 +222,7 @@ def execute_file(
     # - On Windows, os.execv doesn't handle arguments with spaces
     #   correctly, and it actually starts a subprocess just like
     #   subprocess.call.
-    # - When running in a workspace or zip file, we need to clean up the
+    # - When running in a zip file, we need to clean up the
     #   workspace after the process finishes so control must return here.
     try:
         subprocess_argv = [python_program, main_filename] + args
@@ -275,36 +276,36 @@ def main():
 
     python_program = find_python_binary(module_space)
     if python_program is None:
-        raise AssertionError("Could not find python binary: " + _PYTHON_BINARY)
+        raise AssertionError("Could not find python binary: " + _PYTHON_BINARY_VENV)
 
-    # When a venv is used, the `bin/python3` symlink has to be recreated.
-    if _PYTHON_BINARY:
-        # The venv bin/python3 interpreter should always be under runfiles, but
-        # double check. We don't want to accidentally create symlinks elsewhere.
-        if not python_program.startswith(module_space):
-            raise AssertionError(
-                "Program's venv binary not under runfiles: {python_program}"
-            )
+    ### When a venv is used, the `bin/python3` symlink may need to be created.
+    ##if _PYTHON_BINARY_VENV:
+    ##    # The venv bin/python3 interpreter should always be under runfiles, but
+    ##    # double check. We don't want to accidentally create symlinks elsewhere.
+    ##    if not python_program.startswith(module_space):
+    ##        raise AssertionError(
+    ##            "Program's venv binary not under runfiles: {python_program}"
+    ##        )
 
-        if os.path.isabs(_PYTHON_BINARY_ACTUAL):
-            symlink_to = _PYTHON_BINARY_ACTUAL
-        elif "/" in _PYTHON_BINARY_ACTUAL:
-            symlink_to = os.path.join(module_space, _PYTHON_BINARY_ACTUAL)
-        else:
-            symlink_to = search_path(_PYTHON_BINARY_ACTUAL)
-            if not symlink_to:
-                raise AssertionError(
-                    f"Python interpreter to use not found on PATH: {_PYTHON_BINARY_ACTUAL}"
-                )
+    ##    if os.path.isabs(_PYTHON_BINARY_ACTUAL):
+    ##        symlink_to = _PYTHON_BINARY_ACTUAL
+    ##    elif "/" in _PYTHON_BINARY_ACTUAL:
+    ##        symlink_to = os.path.join(module_space, _PYTHON_BINARY_ACTUAL)
+    ##    else:
+    ##        symlink_to = search_path(_PYTHON_BINARY_ACTUAL)
+    ##        if not symlink_to:
+    ##            raise AssertionError(
+    ##                f"Python interpreter to use not found on PATH: {_PYTHON_BINARY_ACTUAL}"
+    ##            )
 
-        # The bin/ directory may not exist if it is empty.
-        os.makedirs(os.path.dirname(python_program), exist_ok=True)
-        try:
-            os.symlink(symlink_to, python_program)
-        except OSError as e:
-            raise Exception(
-                f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
-            ) from e
+    ##    # The bin/ directory may not exist if it is empty.
+    ##    os.makedirs(os.path.dirname(python_program), exist_ok=True)
+    ##    try:
+    ##        os.symlink(symlink_to, python_program)
+    ##    except OSError as e:
+    ##        raise Exception(
+    ##            f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
+    ##        ) from e
 
     # Some older Python versions on macOS (namely Python 3.7) may unintentionally
     # leave this environment variable set after starting the interpreter, which
