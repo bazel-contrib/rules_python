@@ -1,8 +1,8 @@
+import contextlib
 import os
 import subprocess
 import unittest
 import zipfile
-import contextlib
 
 
 class PyZipAppTest(unittest.TestCase):
@@ -18,14 +18,19 @@ class PyZipAppTest(unittest.TestCase):
         ##self.assertTrue(content.startswith(b"#!/usr/bin/env bash"))
 
         try:
-            output = subprocess.check_output(
-                [zipapp_path], stderr=subprocess.STDOUT
-            ).decode("utf-8").strip()
+            output = (
+                subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT)
+                .decode("utf-8")
+                .strip()
+            )
         except subprocess.CalledProcessError as e:
             self.fail(
-                "Zipapp execution failed with return code {}:\n{}".format(
-                    e.returncode, e.output.decode("utf-8")
-                )
+                (
+                    "exec failed: {}\n"
+                    + "exit code: {}\n"
+                    + "=== stdout/stderr start ===\n"
+                    "{}\n" + "=== stdout/stderr end ==="
+                ).format(zipapp_path, e.returncode, e.output.decode("utf-8"))
             )
         self.assertIn("Hello from zipapp", output)
         self.assertIn("dep:", output)

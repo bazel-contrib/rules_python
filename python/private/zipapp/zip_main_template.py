@@ -298,7 +298,9 @@ def main():
     else:
         python_program = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
         if python_program is None:
-            raise AssertionError("Could not find python binary: " + _PYTHON_BINARY_ACTUAL)
+            raise AssertionError(
+                "Could not find python binary: " + _PYTHON_BINARY_ACTUAL
+            )
 
     ### When a venv is used, the `bin/python3` symlink may need to be created.
     ##if _PYTHON_BINARY_VENV:

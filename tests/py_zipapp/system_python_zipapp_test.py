@@ -18,7 +18,7 @@ class SystemPythonZipAppTest(unittest.TestCase):
 
         output = subprocess.check_output([zipapp_path]).decode("utf-8").strip()
         self.assertIn("Hello from zipapp", output)
-        self.assertIn("absl", output)
+        self.assertIn("dep:", output)
 
 
 if __name__ == "__main__":

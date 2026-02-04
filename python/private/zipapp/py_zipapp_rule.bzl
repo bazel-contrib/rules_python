@@ -61,7 +61,7 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap):
     venv_python_exe = py_executable.venv_python_exe
     if venv_python_exe:
         venv_python_exe_path = runfiles_root_path(ctx, venv_python_exe.short_path)
-    if not py_executable.venv_python_exe:
+    else:
         venv_python_exe_path = ""
 
     if py_runtime.interpreter:
