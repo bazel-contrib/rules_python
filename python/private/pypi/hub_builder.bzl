@@ -68,14 +68,14 @@ def hub_builder(
         # The nested dict is a dict acting as a set.
         # dict[str whl_name, dict[str alias_name, bool]]
         _extra_aliases = {},  # modified by _add_extra_aliases
-        # dict[str whl_name, list[str]]
+        # dict[str group_name, list[str]]
         _group_map = {},  # modified by _add_group_map
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         _whl_libraries = {},  # modified by _add_whl_library
         # Map of repos and their config settings, and repo the config
         # setting originated from.
-        # dict[str repo_name, dict[str config_setting, str repo_name]]
+        # dict[str whl_name, dict[str config_setting, str repo_name]]
         _whl_map = {},  # modified by _add_whl_library
 
         # Internal
@@ -130,7 +130,7 @@ def _build(self):
         # dict[str repo_name, dict[str repo_name, list[str]]]
         whl_map = whl_map,
         # Maps a wheel to a list of groups
-        # dict[str whl_name, list[str]]
+        # dict[str group_name, list[str]]
         group_map = self._group_map,
         # The per-package aliases for the hub to create.
         # dict[str package, list[str]]
