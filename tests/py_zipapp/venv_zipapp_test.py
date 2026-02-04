@@ -60,13 +60,13 @@ class PyZipAppTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def _open_zipapp(self, path):
-        # On windows, the main output is the launcher .exe file, and the zip
-        # file is a sibling file.
         zf = None
         try:
             try:
                 zf = zipfile.ZipFile(path, "r")
             except zipfile.BadZipFile:
+                # On windows, the main output is the launcher .exe file, and the
+                # zip file is a sibling file.
                 path = path.replace(".exe", ".zip")
                 zf = zipfile.ZipFile(path, "r")
             if zf:
