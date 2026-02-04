@@ -38,7 +38,7 @@ _WORKSPACE_NAME = "%workspace_name%"
 
 
 def print_verbose(*args, mapping=None, values=None):
-    if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")) or True:
+    if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
         if mapping is not None:
             for key, value in sorted((mapping or {}).items()):
                 print(
@@ -122,16 +122,6 @@ def search_path(name):
             if os.path.isfile(path) and os.access(path, os.X_OK):
                 return path
     return None
-
-
-# todo: remove this function
-def find_python_binary(module_space):
-    """Finds the real Python binary if it's not a normal absolute path."""
-    if _PYTHON_BINARY_VENV:
-        # todo: do join(module_space, PYTHON_BINARY_VENV) instead
-        return find_binary(module_space, _PYTHON_BINARY_VENV)
-    else:
-        return find_binary(module_space, _PYTHON_BINARY_ACTUAL)
 
 
 def find_binary(module_space, bin_name):
@@ -257,8 +247,6 @@ def main():
     new_env = {}
 
     # The main Python source file.
-    # The magic string percent-main-percent is replaced with the runfiles-relative
-    # filename of the main file of the Python binary in BazelPythonSemantics.java.
     main_rel_path = _STAGE2_BOOTSTRAP
     if is_windows():
         main_rel_path = main_rel_path.replace("/", os.sep)
@@ -283,17 +271,25 @@ def main():
 
     if _PYTHON_BINARY_VENV:
         python_program = os.path.join(module_space, _PYTHON_BINARY_VENV)
-        ##if not os.path.exists(python_program):
-        ##    symlink_to = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
-        ##    os.makedirs(os.path.dirname(python_program), exist_ok=True)
-        ##    if os.path.lexists(python_program):
-        ##        os.unlink(python_program)
-        ##    try:
-        ##        os.symlink(symlink_to, python_program)
-        ##    except OSError as e:
-        ##        raise Exception(
-        ##            f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
-        ##        ) from e
+        # When a venv is used, the `bin/python3` symlink may need to be created.
+        # This case occurs when "create venv at runtime" or "resolve python at
+        # runtime" modes are enabled.
+        if not os.path.lexists(python_program):
+            # The venv bin/python3 interpreter should always be under runfiles, but
+            # double check. We don't want to accidentally create symlinks elsewhere
+            # or unlink outside our tree.
+            if not python_program.startswith(module_space):
+                raise AssertionError(
+                    "Program's venv binary not under runfiles: {python_program}"
+                )
+            symlink_to = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
+            os.makedirs(os.path.dirname(python_program), exist_ok=True)
+            try:
+                os.symlink(symlink_to, python_program)
+            except OSError as e:
+                raise Exception(
+                    f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
+                ) from e
 
     else:
         python_program = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
@@ -301,35 +297,6 @@ def main():
             raise AssertionError(
                 "Could not find python binary: " + _PYTHON_BINARY_ACTUAL
             )
-
-    ### When a venv is used, the `bin/python3` symlink may need to be created.
-    ##if _PYTHON_BINARY_VENV:
-    ##    # The venv bin/python3 interpreter should always be under runfiles, but
-    ##    # double check. We don't want to accidentally create symlinks elsewhere.
-    ##    if not python_program.startswith(module_space):
-    ##        raise AssertionError(
-    ##            "Program's venv binary not under runfiles: {python_program}"
-    ##        )
-
-    ##    if os.path.isabs(_PYTHON_BINARY_ACTUAL):
-    ##        symlink_to = _PYTHON_BINARY_ACTUAL
-    ##    elif "/" in _PYTHON_BINARY_ACTUAL:
-    ##        symlink_to = os.path.join(module_space, _PYTHON_BINARY_ACTUAL)
-    ##    else:
-    ##        symlink_to = search_path(_PYTHON_BINARY_ACTUAL)
-    ##        if not symlink_to:
-    ##            raise AssertionError(
-    ##                f"Python interpreter to use not found on PATH: {_PYTHON_BINARY_ACTUAL}"
-    ##            )
-
-    ##    # The bin/ directory may not exist if it is empty.
-    ##    os.makedirs(os.path.dirname(python_program), exist_ok=True)
-    ##    try:
-    ##        os.symlink(symlink_to, python_program)
-    ##    except OSError as e:
-    ##        raise Exception(
-    ##            f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
-    ##        ) from e
 
     # Some older Python versions on macOS (namely Python 3.7) may unintentionally
     # leave this environment variable set after starting the interpreter, which
