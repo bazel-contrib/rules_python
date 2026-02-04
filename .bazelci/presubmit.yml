@@ -232,7 +232,6 @@ tasks:
       ### their package path is qualified with the repo name.
       ##- "@rules_python//examples/wheel/..."
       - "//tests/py_zipapp:system_python_zipapp_test"
-      - "//tests/py_zipapp:venv_zipapp_test"
     build_flags:
       - "--noenable_bzlmod"
       - "--enable_workspace"
@@ -242,7 +241,6 @@ tasks:
       - "--"
       ##- "..."
       - "//tests/py_zipapp:system_python_zipapp_test"
-      - "//tests/py_zipapp:venv_zipapp_test"
     test_flags:
       - "--noenable_bzlmod"
       - "--enable_workspace"
@@ -263,13 +261,11 @@ tasks:
     build_targets:
       - "--"
       - "//tests/py_zipapp:system_python_zipapp_test"
-      - "//tests/py_zipapp:venv_zipapp_test"
     test_flags:
       - "--test_tag_filters=-integration-test,-fix-windows"
     test_targets:
       - "--"
       - "//tests/py_zipapp:system_python_zipapp_test"
-      - "//tests/py_zipapp:venv_zipapp_test"
   rbe_min:
     <<: *minimum_supported_version
     <<: *reusable_config

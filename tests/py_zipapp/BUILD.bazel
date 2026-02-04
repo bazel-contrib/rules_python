@@ -4,7 +4,7 @@ load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
-
+load("//tests/support:support.bzl", "NOT_WINDOWS")
 # todo: add windows support. Windows support will be a bit odd.
 # It previously worked by having special logic in the exe launcher
 # that knew to look for .zip and running that through python
