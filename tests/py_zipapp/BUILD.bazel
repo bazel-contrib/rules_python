@@ -82,5 +82,5 @@ py_library(
     name = "some_dep",
     srcs = ["some_dep.py"],
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
-    imports = ["."],
+    imports = ["tests/py_zipapp"],
 )
