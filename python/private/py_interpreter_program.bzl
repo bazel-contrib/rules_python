@@ -15,6 +15,7 @@
 """Internal only bootstrap level binary-like rule."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("//python/private:sentinel.bzl", "SentinelInfo")
 
 PyInterpreterProgramInfo = provider(
     doc = "Information about how to run a program with an external interpreter.",
@@ -28,14 +29,20 @@ PyInterpreterProgramInfo = provider(
 
 def _py_interpreter_program_impl(ctx):
     # Bazel requires the executable file to be an output created by this target.
-    executable = ctx.actions.declare_file(ctx.label.name)
+    # To avoid colliding with the source file (e.g. target=foo, main=foo.py),
+    # we append an underscore to the name, but keep the extension so that
+    # the original extension is preserved.
+    extension = ctx.file.main.extension
+    executable_name = "{}_.{}".format(ctx.label.name, extension)
+    executable = ctx.actions.declare_file(executable_name)
     ctx.actions.symlink(output = executable, target_file = ctx.file.main)
     execution_requirements = {}
-    execution_requirements.update([
-        value.split("=", 1)
-        for value in ctx.attr.execution_requirements[BuildSettingInfo].value
-        if value.strip()
-    ])
+    if BuildSettingInfo in ctx.attr.execution_requirements:
+        execution_requirements.update([
+            value.split("=", 1)
+            for value in ctx.attr.execution_requirements[BuildSettingInfo].value
+            if value.strip()
+        ])
 
     return [
         DefaultInfo(
@@ -85,8 +92,9 @@ ctx.actions.run(
             doc = "Environment variables that should set prior to running.",
         ),
         "execution_requirements": attr.label(
+            default = "//python:none",
             doc = "Execution requirements to set when running it as an action",
-            providers = [BuildSettingInfo],
+            providers = [[BuildSettingInfo], [SentinelInfo]],
         ),
         "interpreter_args": attr.string_list(
             doc = "Args that should be passed to the interpreter.",

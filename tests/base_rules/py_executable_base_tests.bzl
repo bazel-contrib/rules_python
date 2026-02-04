@@ -21,12 +21,13 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
+load("//python/private:common.bzl", "maybe_builtin_build_python_zip")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "maybe_builtin_build_python_zip")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []

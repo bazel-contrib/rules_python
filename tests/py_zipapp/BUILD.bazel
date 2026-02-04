@@ -1,0 +1,67 @@
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_test.bzl", "py_test")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
+load("//tests/support:support.bzl", "NOT_WINDOWS")
+
+# todo: add windows support. Windows support will be a bit odd.
+# It previously worked by having special logic in the exe launcher
+# that knew to look for .zip and running that through python
+
+py_binary(
+    name = "venv_bin",
+    srcs = ["main.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "script",
+        "//python/config_settings:venvs_site_packages": "yes",
+    },
+    main = "main.py",
+    target_compatible_with = NOT_WINDOWS,
+    deps = ["@dev_pip//absl_py"],
+)
+
+py_zipapp_binary(
+    name = "venv_zipapp",
+    binary = ":venv_bin",
+    target_compatible_with = NOT_WINDOWS,
+)
+
+py_test(
+    name = "venv_zipapp_test",
+    srcs = ["venv_zipapp_test.py"],
+    data = [":venv_zipapp"],
+    env = {
+        "BZLMOD_ENABLED": str(int(BZLMOD_ENABLED)),
+        "TEST_ZIPAPP": "$(location :venv_zipapp)",
+    },
+    target_compatible_with = NOT_WINDOWS,
+)
+
+py_binary(
+    name = "system_python_bin",
+    srcs = ["main.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "system_python",
+        "//python/config_settings:venvs_site_packages": "no",
+    },
+    main = "main.py",
+    # TODO: #2586 - Add windows support
+    target_compatible_with = NOT_WINDOWS,
+    deps = ["@dev_pip//absl_py"],
+)
+
+py_zipapp_binary(
+    name = "system_python_zipapp",
+    binary = ":system_python_bin",
+    target_compatible_with = NOT_WINDOWS,
+)
+
+py_test(
+    name = "system_python_zipapp_test",
+    srcs = ["system_python_zipapp_test.py"],
+    data = [":system_python_zipapp"],
+    env = {
+        "TEST_ZIPAPP": "$(location :system_python_zipapp)",
+    },
+    target_compatible_with = NOT_WINDOWS,
+)
