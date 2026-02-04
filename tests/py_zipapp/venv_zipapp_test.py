@@ -37,7 +37,11 @@ class PyZipAppTest(unittest.TestCase):
 
     def assertHasPathMatchingSuffix(self, namelist, suffix, msg=None):
         if not any(name.endswith(suffix) for name in namelist):
-            self.fail(msg or f"No path in zipapp matching suffix '{suffix}'")
+            self.fail(
+                (msg or f"No path in zipapp matching suffix '{suffix}'")
+                + "\nAvailable paths:\n"
+                + "\n".join(namelist)
+            )
 
     def assertZipEntryIsSymlink(self, zip_file, path, msg=None):
         try:
