@@ -58,16 +58,18 @@ class PyZipAppTest(unittest.TestCase):
     def _open_zipapp(self, path):
         # On windows, the main output is the launcher .exe file, and the zip
         # file is a sibling file.
+        zf = None
         try:
-            zf = zipfile.ZipFile(path, "r")
-        except zipfile.BadZipFile:
-            path = path.replace(".exe", ".zip")
-            zf = zipfile.ZipFile(path, "r")
-            yield zf
-        else:
-            yield zf
+            try:
+                zf = zipfile.ZipFile(path, "r")
+            except zipfile.BadZipFile:
+                path = path.replace(".exe", ".zip")
+                zf = zipfile.ZipFile(path, "r")
+            if zf:
+                yield zf
         finally:
-            zf.close()
+            if zf:
+                zf.close()
 
     def test_zipapp_structure(self):
         zipapp_path = os.environ["TEST_ZIPAPP"]
