@@ -239,22 +239,22 @@ def _py_zipapp_executable_impl(ctx):
                 python_binary_path = python_exe_path,
                 use_zip_file = True,
             )
-            default_output = depset([executable, zip_file])
+            default_outputs = [executable, zip_file]
         else:
             preamble = _create_shell_bootstrap(ctx, py_runtime, py_executable, stage2_bootstrap)
             executable = _create_self_executable_zip(ctx, preamble, zip_file)
-            default_output = depset([executable])
+            default_outputs = [executable]
     else:
         # Bazel requires executable=True rules to have an executable given, so give
         # a fake one to satisfy that.
-        default_output = depset([zip_file])
+        default_outputs = [zip_file]
         executable = ctx.actions.declare_file(ctx.label.name + "-not-executable")
         ctx.actions.write(executable, "echo 'ERROR: Non executable zip file'; exit 1")
 
     return [
         DefaultInfo(
-            files = default_output,
-            runfiles = ctx.runfiles(files = default_output.to_list()),
+            files = depset(default_outputs),
+            runfiles = ctx.runfiles(files = default_outputs),
             executable = executable,
         ),
     ]

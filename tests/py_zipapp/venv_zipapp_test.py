@@ -61,7 +61,7 @@ class PyZipAppTest(unittest.TestCase):
         try:
             zf = zipfile.ZipFile(path, "r")
         except zipfile.BadZipFile:
-            path = path.replace(".exe", ".pyz")
+            path = path.replace(".exe", ".zip")
             zf = zipfile.ZipFile(path, "r")
             yield zf
         else:
