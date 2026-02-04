@@ -223,12 +223,10 @@ def execute_file(
         ret_code = subprocess.call(subprocess_argv, env=env, cwd=workspace)
         sys.exit(ret_code)
     finally:
-        pass
         # NOTE: dirname() is called because create_module_space() creates a
         # sub-directory within a temporary directory, and we want to remove the
         # whole temporary directory.
-        ## todo: re-enable this
-        ##shutil.rmtree(os.path.dirname(module_space), True)
+        shutil.rmtree(os.path.dirname(module_space), True)
 
 
 def main():

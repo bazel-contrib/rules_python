@@ -67,6 +67,14 @@ def create_windows_exe_launcher(
         output,
         python_binary_path,
         use_zip_file):
+    """Creates a Windows exe launcher.
+
+    Args:
+        ctx: The rule context.
+        output: The output file for the launcher.
+        python_binary_path: The path to the Python binary.
+        use_zip_file: Whether to use a zip file.
+    """
     launch_info = ctx.actions.args()
     launch_info.use_param_file("%s", use_always = True)
     launch_info.set_param_file_format("multiline")

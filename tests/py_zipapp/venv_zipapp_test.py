@@ -9,14 +9,6 @@ class PyZipAppTest(unittest.TestCase):
     def test_zipapp_runnable(self):
         zipapp_path = os.environ["TEST_ZIPAPP"]
 
-        ##self.assertTrue(os.path.exists(zipapp_path))
-        ##self.assertTrue(os.path.isfile(zipapp_path))
-
-        # The zipapp itself is a shell script prepended to the zip file.
-        ##with open(zipapp_path, "rb") as f:
-        ##    content = f.read()
-        ##self.assertTrue(content.startswith(b"#!/usr/bin/env bash"))
-
         try:
             output = (
                 subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT)
