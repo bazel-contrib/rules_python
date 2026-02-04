@@ -18,7 +18,7 @@ load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("//python/private:py_interpreter_program.bzl", "PyInterpreterProgramInfo")
-load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
 load(":builders.bzl", "builders")
 load(":cc_helper.bzl", "cc_helper")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
@@ -55,6 +55,43 @@ def maybe_builtin_build_python_zip(value, settings = None):
         settings["//command_line_option:build_python_zip"] = value
 
     return settings
+
+def _find_launcher_maker(ctx):
+    if config.bazel_9_or_later:
+        return (ctx.toolchains[LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary, LAUNCHER_MAKER_TOOLCHAIN_TYPE)
+    return (ctx.executable._windows_launcher_maker, None)
+
+def create_windows_exe_launcher(
+        ctx,
+        *,
+        output,
+        python_binary_path,
+        use_zip_file):
+    launch_info = ctx.actions.args()
+    launch_info.use_param_file("%s", use_always = True)
+    launch_info.set_param_file_format("multiline")
+    launch_info.add("binary_type=Python")
+    launch_info.add(ctx.workspace_name, format = "workspace_name=%s")
+    launch_info.add(
+        "1" if py_internal.runfiles_enabled(ctx) else "0",
+        format = "symlink_runfiles_enabled=%s",
+    )
+    launch_info.add(python_binary_path, format = "python_bin_path=%s")
+    launch_info.add("1" if use_zip_file else "0", format = "use_zip_file=%s")
+
+    launcher = ctx.attr._launcher[DefaultInfo].files_to_run.executable
+    executable, toolchain = _find_launcher_maker(ctx)
+    ctx.actions.run(
+        executable = executable,
+        arguments = [launcher.path, launch_info, output.path],
+        inputs = [launcher],
+        outputs = [output],
+        mnemonic = "PyBuildLauncher",
+        progress_message = "Creating launcher for %{label}",
+        # Needed to inherit PATH when using non-MSVC compilers like MinGW
+        use_default_shell_env = True,
+        toolchain = toolchain,
+    )
 
 def create_binary_semantics_struct(
         *,
