@@ -221,6 +221,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     # Used to track all the different pip hubs and the spoke pip Python
     # versions.
+    # dict[str repo, HubBuilder]
+    # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
     simpleapi_cache = {}
 
