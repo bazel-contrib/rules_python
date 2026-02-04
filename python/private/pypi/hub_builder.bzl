@@ -304,6 +304,7 @@ def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
     """Add a whl_library and kwargs to call it with for the hub.
 
     Args:
+        self: implicitly added
         python_version: {type}`str` the python version to assume
         whl: struct from `_whl_library_args()`
         repo: struct from `_whl_repo`
