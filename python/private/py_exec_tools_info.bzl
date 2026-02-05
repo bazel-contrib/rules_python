@@ -26,7 +26,7 @@ e.g. if all the exec tools are prebuilt binaries.
 
 :::{note}
 this interpreter is really only for use when a build tool cannot use
-the Python toolchain itself. When possible, prefeer to define a `py_binary`
+the Python toolchain itself. When possible, prefer to define a `py_binary`
 instead and use it via a `cfg=exec` attribute; this makes it much easier
 to setup the runtime environment for the binary. See also:
 `py_interpreter_program` rule.
@@ -39,10 +39,26 @@ toolchain.
 :::
 
 :::{warning}
-This does not work correctly in case of RBE, please use exec_runtime instead.
+This does not work correctly with RBE. Use {obj}`exec_runtime` instead.
 
 Once https://github.com/bazelbuild/bazel/issues/23620 is resolved this warning
 may be removed.
+:::
+""",
+        "exec_runtime": """
+:type: PyRuntimeInfo | None
+
+The Python runtime to use for the exec configuration.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+
+In prior versions, the equivalent can be obtained using:
+```
+exec_runtime = (
+    ctx.toolchains["@rules_python//python:exec_tools_toolchain_type"].
+        exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime
+    )
+```
 :::
 """,
         "precompiler": """
