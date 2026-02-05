@@ -22,12 +22,15 @@ _tests = []
 def _test_simple(env):
     calls = []
 
-    def read_simpleapi(ctx, url, attr, cache, get_auth, block):
+    def read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth, requested_versions, block):
         _ = ctx  # buildifier: disable=unused-variable
+        _ = distribution
+        _ = requested_versions
         _ = attr
         _ = cache
         _ = get_auth
         env.expect.that_bool(block).equals(False)
+        url = "{}/{}/".format(index_url, distribution)
         calls.append(url)
         if "foo" in url and "main" in url:
             return struct(
@@ -75,11 +78,14 @@ def _test_fail(env):
     calls = []
     fails = []
 
-    def read_simpleapi(ctx, url, attr, cache, get_auth, block):
+    def read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth, requested_versions, block):
         _ = ctx  # buildifier: disable=unused-variable
+        _ = distribution
+        _ = requested_versions
         _ = attr
         _ = cache
         _ = get_auth
+        url = "{}/{}/".format(index_url, distribution)
         env.expect.that_bool(block).equals(False)
         calls.append(url)
         if "foo" in url:
