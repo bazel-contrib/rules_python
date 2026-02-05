@@ -275,7 +275,6 @@ def main():
         if not os.path.lexists(python_program):
             # The venv bin/python3 interpreter should always be under runfiles, but
             # double check. We don't want to accidentally create symlinks elsewhere
-            # or unlink outside our tree.
             if not python_program.startswith(module_space):
                 raise AssertionError(
                     "Program's venv binary not under runfiles: {python_program}"

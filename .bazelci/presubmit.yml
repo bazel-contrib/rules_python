@@ -227,11 +227,10 @@ tasks:
     # for now until we can look into it.
     build_targets:
       - "--"
-      ##- "..."
-      ### As a regression test for #225, check that wheel targets still build when
-      ### their package path is qualified with the repo name.
-      ##- "@rules_python//examples/wheel/..."
-      - "//tests/py_zipapp:system_python_zipapp_test"
+      - "..."
+      # As a regression test for #225, check that wheel targets still build when
+      # their package path is qualified with the repo name.
+      - "@rules_python//examples/wheel/..."
     build_flags:
       - "--noenable_bzlmod"
       - "--enable_workspace"
@@ -239,8 +238,7 @@ tasks:
       - "--build_tag_filters=-integration-test"
     test_targets:
       - "--"
-      ##- "..."
-      - "//tests/py_zipapp:system_python_zipapp_test"
+      - "..."
     test_flags:
       - "--noenable_bzlmod"
       - "--enable_workspace"
@@ -258,14 +256,8 @@ tasks:
     <<: *reusable_config
     name: "Default: Windows"
     platform: windows
-    build_targets:
-      - "--"
-      - "//tests/py_zipapp:system_python_zipapp_test"
     test_flags:
       - "--test_tag_filters=-integration-test,-fix-windows"
-    test_targets:
-      - "--"
-      - "//tests/py_zipapp:system_python_zipapp_test"
   rbe_min:
     <<: *minimum_supported_version
     <<: *reusable_config
