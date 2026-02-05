@@ -116,7 +116,7 @@ def simpleapi_download(
                 index_url = index_url_overrides.get(pkg_normalized, index_url),
                 distribution = pkg,
                 get_auth = get_auth,
-                requested_versions = versions,
+                requested_versions = {v: None for v in versions},
                 **download_kwargs
             )
             if hasattr(result, "wait"):
@@ -264,7 +264,7 @@ def strip_empty_path_segments(url):
     else:
         return "{}://{}".format(scheme, stripped)
 
-def _read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth = None, return_absolute = True, requested_versions = [], **download_kwargs):
+def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_versions, get_auth = None, return_absolute = True, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
@@ -366,6 +366,7 @@ def _read_simpleapi_with_facts(ctx, index_url, distribution, facts = None, reque
         ctx,
         index_url = index_url,
         distribution = distribution,
+        requested_versions = requested_versions,
         return_absolute = False,
         **download_kwargs
     )
