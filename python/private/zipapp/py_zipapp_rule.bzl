@@ -1,14 +1,15 @@
 """Implementation of the zipapp rules."""
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:attributes.bzl", "apply_config_settings_attr")
 load("//python/private:builders.bzl", "builders")
-load("//python/private:common.bzl", "BUILTIN_BUILD_PYTHON_ZIP", "actions_run", "maybe_builtin_build_python_zip", "maybe_create_repo_mapping", "runfiles_root_path")
+load("//python/private:common.bzl", "BUILTIN_BUILD_PYTHON_ZIP", "actions_run", "create_windows_exe_launcher", "maybe_builtin_build_python_zip", "maybe_create_repo_mapping", "runfiles_root_path", "target_platform_has_any_constraint")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:py_runtime_info.bzl", "PyRuntimeInfo")
-load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
 load("//python/private:transition_labels.bzl", "TRANSITION_LABELS")
 
 def _is_symlink(f):
@@ -18,13 +19,11 @@ def _is_symlink(f):
         return "-1"
 
 def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap):
-    python_exe = py_executable.venv_python_exe
-    if python_exe:
-        python_exe_path = runfiles_root_path(ctx, python_exe.short_path)
-    elif py_runtime.interpreter:
-        python_exe_path = runfiles_root_path(ctx, py_runtime.interpreter.short_path)
+    venv_python_exe = py_executable.venv_python_exe
+    if venv_python_exe:
+        venv_python_exe_path = runfiles_root_path(ctx, venv_python_exe.short_path)
     else:
-        python_exe_path = py_runtime.interpreter_path
+        venv_python_exe_path = ""
 
     if py_runtime.interpreter:
         python_binary_actual_path = runfiles_root_path(ctx, py_runtime.interpreter.short_path)
@@ -36,7 +35,7 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap):
         template = py_runtime.zip_main_template,
         output = zip_main_py,
         substitutions = {
-            "%python_binary%": python_exe_path,
+            "%python_binary%": venv_python_exe_path,
             "%python_binary_actual%": python_binary_actual_path,
             "%stage2_bootstrap%": runfiles_root_path(ctx, stage2_bootstrap.short_path),
             "%workspace_name%": ctx.workspace_name,
@@ -184,20 +183,39 @@ def _py_zipapp_executable_impl(ctx):
 
     zip_file = _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap)
     if ctx.attr.executable:
-        preamble = _create_shell_bootstrap(ctx, py_runtime, py_executable, stage2_bootstrap)
-        executable = _create_self_executable_zip(ctx, preamble, zip_file)
-        default_output = executable
+        if target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints):
+            executable = ctx.actions.declare_file(ctx.label.name + ".exe")
+
+            python_exe = py_executable.venv_python_exe
+            if python_exe:
+                python_exe_path = runfiles_root_path(ctx, python_exe.short_path)
+            elif py_runtime.interpreter:
+                python_exe_path = runfiles_root_path(ctx, py_runtime.interpreter.short_path)
+            else:
+                python_exe_path = py_runtime.interpreter_path
+
+            create_windows_exe_launcher(
+                ctx,
+                output = executable,
+                python_binary_path = python_exe_path,
+                use_zip_file = True,
+            )
+            default_outputs = [executable, zip_file]
+        else:
+            preamble = _create_shell_bootstrap(ctx, py_runtime, py_executable, stage2_bootstrap)
+            executable = _create_self_executable_zip(ctx, preamble, zip_file)
+            default_outputs = [executable]
     else:
         # Bazel requires executable=True rules to have an executable given, so give
         # a fake one to satisfy that.
-        default_output = zip_file
+        default_outputs = [zip_file]
         executable = ctx.actions.declare_file(ctx.label.name + "-not-executable")
         ctx.actions.write(executable, "echo 'ERROR: Non executable zip file'; exit 1")
 
     return [
         DefaultInfo(
-            files = depset([default_output]),
-            runfiles = ctx.runfiles(files = [default_output]),
+            files = depset(default_outputs),
+            runfiles = ctx.runfiles(files = default_outputs),
             executable = executable,
         ),
     ]
@@ -277,6 +295,18 @@ Whether the output should be an executable zip file.
         cfg = "exec",
         default = "//tools/private/zipapp:exe_zip_maker",
     ),
+    "_launcher": attr.label(
+        cfg = "target",
+        # NOTE: This is an executable, but is only used for Windows. It
+        # can't have executable=True because the backing target is an
+        # empty target for other platforms.
+        default = "//tools/launcher:launcher",
+    ),
+    "_windows_constraints": attr.label_list(
+        default = [
+            "@platforms//os:windows",
+        ],
+    ),
     "_zip_shell_template": attr.label(
         default = ":zip_shell_template",
         allow_single_file = True,
@@ -285,8 +315,15 @@ Whether the output should be an executable zip file.
         cfg = "exec",
         default = "//tools/private/zipapp:zipper",
     ),
-}
-_TOOLCHAINS = [EXEC_TOOLS_TOOLCHAIN_TYPE]
+} | ({
+    "_windows_launcher_maker": attr.label(
+        default = "@bazel_tools//tools/launcher:launcher_maker",
+        cfg = "exec",
+        executable = True,
+    ),
+} if not rp_config.bazel_9_or_later else {})
+
+_TOOLCHAINS = [EXEC_TOOLS_TOOLCHAIN_TYPE] + ([LAUNCHER_MAKER_TOOLCHAIN_TYPE] if rp_config.bazel_9_or_later else [])
 
 py_zipapp_binary = rule(
     doc = """
