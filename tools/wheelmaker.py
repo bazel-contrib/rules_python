@@ -364,6 +364,7 @@ def get_files_to_package(input_files):
 
 
 def get_new_requirement_line(reqs_text, extra):
+    """Formats a requirement text into a Requires-Dist metadata line."""
     from packaging.requirements import Requirement
 
     req = Requirement(reqs_text.strip())
