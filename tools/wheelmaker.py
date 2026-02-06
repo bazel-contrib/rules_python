@@ -330,9 +330,7 @@ class WheelMaker(object):
 Wheel-Version: 1.0
 Generator: bazel-wheelmaker 1.0
 Root-Is-Purelib: {}
-""".format(
-            "true" if self._platform == "any" else "false"
-        )
+""".format("true" if self._platform == "any" else "false")
         for tag in self.disttags():
             wheel_contents += "Tag: %s\n" % tag
         self._whlfile.add_string(self.distinfo_path("WHEEL"), wheel_contents)
@@ -363,6 +361,24 @@ def get_files_to_package(input_files):
     for package_path, real_path in input_files:
         files[package_path] = real_path
     return files
+
+
+def get_new_requirement_line(reqs_text, extra):
+    from packaging.requirements import Requirement
+
+    req = Requirement(reqs_text.strip())
+    req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
+    if req.marker:
+        if extra:
+            return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; ({req.marker}) and {extra}"
+        else:
+            return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
+    else:
+        return (
+            f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
+                " ;"
+            )
+        )
 
 
 def resolve_argument_stamp(
@@ -430,7 +446,7 @@ def parse_args() -> argparse.Namespace:
     output_group.add_argument(
         "--name_file",
         type=Path,
-        help="A file where the canonical name of the " "wheel will be written",
+        help="A file where the canonical name of the wheel will be written",
     )
 
     output_group.add_argument(
@@ -577,19 +593,6 @@ def main() -> None:
 
         # Search for any `Requires-Dist` entries that refer to other files and
         # expand them.
-
-        def get_new_requirement_line(reqs_text, extra):
-            req = Requirement(reqs_text.strip())
-            req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
-            if req.marker:
-                if extra:
-                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; ({req.marker}) and {extra}"
-                else:
-                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
-            else:
-                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
-                    " ;"
-                )
 
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):

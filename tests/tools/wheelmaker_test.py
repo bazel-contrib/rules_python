@@ -71,5 +71,15 @@ class ArcNameFromTest(unittest.TestCase):
                 self.assertEqual(got, want)
 
 
+class GetNewRequirementLineTest(unittest.TestCase):
+    def test_requirement(self):
+        result = wheelmaker.get_new_requirement_line("requests>=2.0", "")
+        self.assertEqual(result, "Requires-Dist: requests>=2.0")
+
+    def test_requirement_and_extra(self):
+        result = wheelmaker.get_new_requirement_line("requests>=2.0", "extra=='dev'")
+        self.assertEqual(result, "Requires-Dist: requests>=2.0; extra=='dev'")
+
+
 if __name__ == "__main__":
     unittest.main()
