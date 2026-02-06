@@ -376,15 +376,17 @@ def get_new_requirement_line(reqs_text, extra):
     else:
         req_spec = str(req.specifier)
 
+    base = f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}"
+
     if req.marker:
         if extra:
-            return f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}; ({req.marker}) and {extra}"
+            return f"{base}; ({req.marker}) and {extra}"
         else:
-            return f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}; {req.marker}"
+            return f"{base}; {req.marker}"
+    elif extra:
+        return f"{base}; {extra}"
     else:
-        return f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}; {extra}".strip(
-            " ;"
-        )
+        return base
 
 
 def resolve_argument_stamp(
