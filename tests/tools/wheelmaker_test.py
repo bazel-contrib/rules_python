@@ -80,6 +80,15 @@ class GetNewRequirementLineTest(unittest.TestCase):
         result = wheelmaker.get_new_requirement_line("requests>=2.0", "extra=='dev'")
         self.assertEqual(result, "Requires-Dist: requests>=2.0; extra=='dev'")
 
+    def test_requirement_with_url(self):
+        result = wheelmaker.get_new_requirement_line(
+            "requests @ git+https://github.com/psf/requests.git@3aa6386c3", ""
+        )
+        self.assertEqual(
+            result,
+            "Requires-Dist: requests @ git+https://github.com/psf/requests.git@3aa6386c3",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
