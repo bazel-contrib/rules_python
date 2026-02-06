@@ -368,16 +368,21 @@ def get_new_requirement_line(reqs_text, extra):
 
     req = Requirement(reqs_text.strip())
     req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
+
+    # Handle URL requirements (PEP 508)
+    if req.url:
+        req_spec = f" @ {req.url}"
+    else:
+        req_spec = str(req.specifier)
+
     if req.marker:
         if extra:
-            return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; ({req.marker}) and {extra}"
+            return f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}; ({req.marker}) and {extra}"
         else:
-            return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
+            return f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}; {req.marker}"
     else:
-        return (
-            f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
-                " ;"
-            )
+        return f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}; {extra}".strip(
+            " ;"
         )
 
 
