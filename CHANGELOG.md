@@ -58,6 +58,15 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* **DEPRECATED: implicit zipapp support**
+  * Implicit zipapp output of `py_binary`/`py_test` has been deprecated and
+    replaced by separate {obj}`py_zipapp_binary` and {obj}`py_zipapp_test`
+    rules. See
+    [#3567](https://github.com/bazel-contrib/rules_python/issues/3567)
+    for a detailed migration guide.
+* (toolchains) stop exposing config settings in python toolchain alias repos.
+  Please consider depending on the flags defined in
+  `//python/config_setting/...` and the `@platforms` package instead.
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 * (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
   {obj}`--stamp` flag.
