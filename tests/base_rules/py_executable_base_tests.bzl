@@ -194,7 +194,7 @@ def _test_debugger(name, config):
     rt_util.helper_target(
         py_library,
         name = name + "_debugger_venv",
-        imports = [native.package_name() + "/site-packages"],
+        imports = ["site-packages"],
         experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
         srcs = [rt_util.empty_file("site-packages/" + name + "_debugger_venv.py")],
     )
