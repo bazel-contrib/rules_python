@@ -386,7 +386,7 @@ def _create_executable(
             "WARNING: Target: {}\n" +
             "The --build_python_zip flag is deprecated and will be removed " +
             "in a future release. Switch to py_zipapp_binary or " +
-            " py_zipapp_test. See\n" +
+            "py_zipapp_test. See\n" +
             "https://github.com/bazel-contrib/rules_python/issues/3567\n" +
             "for migration instructions.\n" +
             "============================================================"
