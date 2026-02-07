@@ -248,7 +248,7 @@ def _get_imports_and_venv_symlinks(ctx):
                  "value must be specified, got {}".format(imports))
 
         site_packages_root = paths.normalize(paths.join(
-            py_internal.get_label_repo_runfiles_path(ctx.label),
+            ctx.label.package,
             imports[0],
         ))
         venv_symlinks = get_venv_symlinks(
