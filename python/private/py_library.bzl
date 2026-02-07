@@ -42,6 +42,7 @@ load(":normalize_name.bzl", "normalize_name")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo")
+load(":py_internal.bzl", "py_internal")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
 load(
@@ -246,6 +247,10 @@ def _get_imports_and_venv_symlinks(ctx):
             fail("When venvs_site_packages is enabled, exactly one `imports` " +
                  "value must be specified, got {}".format(imports))
 
+        site_packages_root = paths.normalize(paths.join(
+            py_internal.get_label_repo_runfiles_path(ctx.label),
+            imports[0],
+        ))
         venv_symlinks = get_venv_symlinks(
             ctx,
             ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
