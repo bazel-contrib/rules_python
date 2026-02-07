@@ -81,15 +81,5 @@ py_library(
     name = "some_dep",
     srcs = ["some_dep.py"],
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
-    imports = select({
-        ":is_venvs_site_packages_enabled": ["tests/py_zipapp"],
-        "//conditions:default": ["."],
-    }),
-)
-
-config_setting(
-    name = "is_venvs_site_packages_enabled",
-    flag_values = {
-        "//python/config_settings:venvs_site_packages": "yes",
-    },
+    imports = ["."],
 )
