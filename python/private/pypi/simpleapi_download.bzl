@@ -371,7 +371,7 @@ def _cache_get(cache, facts, index_url, distribution, versions):
     if facts:
         # Ensure that we write back to the facts, this happens if we request versions that
         # we don't have facts for but we have in-memory cache of SimpleAPI query results
-        facts.setdefault(index_url, distribution, versions, cached)
+        facts.setdefault(index_url, distribution, cached)
     return cached
 
 def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
