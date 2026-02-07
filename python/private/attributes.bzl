@@ -196,6 +196,7 @@ The values are target-directory-relative runfiles-root paths. e.g. given target
 * `a/b` adds `$runfilesRoot/$repo/foo/bar/a/b`
 * `../sibling` adds `$runfilesRoot/$repo/foo/sibling`
 * `../../` adds `$runfilesRoot/$repo`
+(where `$repo` is the name of the repository containing the target).
 
 Absolute paths (paths that start with `/`) and paths that references a path
 above the execution root are not allowed and will result in an error.
