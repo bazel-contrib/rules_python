@@ -83,18 +83,16 @@ def simpleapi_download(
     contents = {}
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
-    if hasattr(ctx, "facts"):
-        download_kwargs["facts"] = _facts(ctx, attr.facts)
-        read_simpleapi = _read_simpleapi_with_facts
-        ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
-    else:
-        ctx.report_progress("Fetch package lists from PyPI index")
+    cache = _cache(ctx, cache, attr.facts)
 
     found_on_index = {}
     warn_overrides = False
 
     # Normalize the inputs
-    input_sources = {pkg: [] for pkg in attr.sources} if type(attr.sources) == "list" else attr.sources
+    if type(attr.sources) == "list":
+        fail("TODO")
+    else:
+        input_sources = attr.sources
 
     for i, index_url in enumerate(index_urls):
         if i != 0:
@@ -284,24 +282,24 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
         A similar object to what `download` would return except that in result.out
         will be the parsed simple api contents.
     """
+
+    index_url = index_url.rstrip("/")
+
     # NOTE @aignas 2024-03-31: some of the simple APIs use relative URLs for
     # the whl location and we cannot handle multiple URLs at once by passing
     # them to ctx.download if we want to correctly handle the relative URLs.
     # TODO: Add a test that env subbed index urls do not leak into the lock file.
 
-    url = "{}/{}/".format(index_url.rstrip("/"), distribution)
+    cached = cache.get(index_url, distribution, requested_versions)
+    if cached:
+        return struct(success = True, output = cached)
 
+    url = "{}/{}/".format(index_url, distribution)
     real_url = strip_empty_path_segments(envsubst(
         url,
         attr.envsubst,
         ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
     ))
-    cache_key = real_url
-
-    cached = cache.get(cache_key)
-    if cached:
-        cached = _filter_packages(cached, requested_versions)
-        return struct(success = True, output = cached)
 
     download = _download_simpleapi(
         ctx = ctx,
@@ -315,75 +313,78 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
     return _await(
         download,
         _read_index_result,
-        url = real_url,
+        index_url = index_url,
+        distribution = distribution,
+        real_url = real_url,
         cache = cache,
-        cache_key = cache_key,
         return_absolute = return_absolute,
         requested_versions = requested_versions,
     )
 
-def _read_index_result(*, result, url, cache, cache_key, return_absolute, requested_versions):
+def _read_index_result(*, result, index_url, distribution, real_url, cache, return_absolute, requested_versions):
     if not result.success or not result.output:
         return struct(success = False)
 
-    output = parse_simpleapi_html(url = url, content = result.output, return_absolute = return_absolute)
+    output = parse_simpleapi_html(url = real_url, content = result.output, return_absolute = return_absolute)
     if not output:
         return struct(success = False)
 
-    cache.setdefault(cache_key, output)
-    output = _filter_packages(output, requested_versions)
+    cache.setdefault(index_url, distribution, requested_versions, output)
     return struct(success = True, output = output)
 
-def _read_simpleapi_with_facts(ctx, index_url, distribution, facts = None, requested_versions = [], **download_kwargs):
-    """Read SimpleAPI or pull data from the known facts in the MODULE.bazel.lock file.
+def _cache(ctx, cache, facts):
+    if hasattr(ctx, "facts"):
+        facts = _facts(ctx, facts)
+        ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
+    else:
+        ctx.report_progress("Fetch package lists from PyPI index")
 
-    Args:
-        ctx: The module_ctx or repository_ctx.
-        index_url: TODO
-        distribution: TODO
-        requested_versions: the list of requested versions.
-        facts: Facts to write back if we support facts.
-        **download_kwargs: Params passed to the _read_simpleapi.
-
-    Returns:
-        A similar object to what `download` would return except that in result.out
-        will be the parsed simple api contents. We return only the `requested_versions` so that
-        the list of facts stored in the lock file is limited.
-    """
-    cached = facts.get(index_url, distribution, requested_versions)
-    if cached:
-        return struct(
-            success = True,
-            output = cached,
-        )
-
-    # Fallback to pulling data from memory or downloading from the SimpleAPI
-    download = _read_simpleapi(
-        ctx,
-        index_url = index_url,
-        distribution = distribution,
-        requested_versions = requested_versions,
-        return_absolute = False,
-        **download_kwargs
+    return struct(
+        get = lambda index_url, distribution, versions: _cache_get(
+            cache,
+            facts,
+            index_url,
+            distribution,
+            versions,
+        ),
+        setdefault = lambda index_url, distribution, versions, value: _cache_setdefault(
+            cache,
+            facts,
+            index_url,
+            distribution,
+            versions,
+            value,
+        ),
     )
 
-    return _await(
-        download,
-        _read_index_result_with_facts,
-        facts = facts,
-        requested_versions = requested_versions,
-        index_url = index_url,
-    )
+def _cache_get(cache, facts, index_url, distribution, versions):
+    if facts:
+        cached = facts.get(index_url, distribution, versions)
+        if cached:
+            return cached
 
-def _read_index_result_with_facts(*, result, facts, requested_versions, index_url):
-    if not result.success or not result.output:
-        return struct(success = False)
+    cached = cache.get((index_url, distribution))
+    if not cached:
+        return None
 
-    output = _filter_packages(result.output, requested_versions)
-    facts.setdefault(index_url, output)
-    return struct(success = True, output = output)
+    cached = _filter_packages(cached, versions)
+    if facts:
+        # Ensure that we write back to the facts, this happens if we request versions that
+        # we don't have facts for but we have in-memory cache of SimpleAPI query results
+        facts.setdefault(index_url, distribution, versions, cached)
+    return cached
+
+def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
+    cache.setdefault((index_url, distribution), value)
+    value = _filter_packages(value, versions)
+
+    if facts:
+        facts.setdefault(index_url, distribution, value)
 
 def _filter_packages(dists, requested_versions):
+    if dists == None:
+        return None
+
     sha256s_by_version = {}
     whls = {}
     sdists = {}
@@ -404,21 +405,21 @@ def _filter_packages(dists, requested_versions):
         sha256s_by_version = sha256s_by_version,
     )
 
-def _facts(ctx, store_facts, facts_version = _FACT_VERSION):
+def _facts(ctx, facts, facts_version = _FACT_VERSION):
     known_facts = getattr(ctx, "facts", None)
     if not known_facts:
         return {}
 
     return struct(
         get = lambda index_url, distribution, versions: _get_from_facts(
-            store_facts,
+            facts,
             known_facts,
             index_url,
             distribution,
             versions,
             facts_version,
         ),
-        setdefault = lambda url, value: _store_facts(store_facts, facts_version, url, value),
+        setdefault = lambda url, distribution, value: _store_facts(facts, facts_version, url, value),
     )
 
 def _get_from_facts(facts, known_facts, index_url, distribution, requested_versions, facts_version):
