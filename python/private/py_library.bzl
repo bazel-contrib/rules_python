@@ -256,7 +256,7 @@ def _get_imports_and_venv_symlinks(ctx):
             ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
             package,
             version_str,
-            site_packages_root = imports[0],
+            site_packages_root = site_packages_root,
             namespace_package_files = ctx.files.namespace_package_files,
         )
     else:
