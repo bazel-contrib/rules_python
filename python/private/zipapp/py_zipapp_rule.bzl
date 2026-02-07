@@ -218,6 +218,9 @@ def _py_zipapp_executable_impl(ctx):
             runfiles = ctx.runfiles(files = default_outputs),
             executable = executable,
         ),
+        OutputGroupInfo(
+            python_zip_file = depset([zip_file]),
+        ),
     ]
 
 def _transition_zipapp_impl(settings, attr):
@@ -325,10 +328,25 @@ Whether the output should be an executable zip file.
 
 _TOOLCHAINS = [EXEC_TOOLS_TOOLCHAIN_TYPE] + ([LAUNCHER_MAKER_TOOLCHAIN_TYPE] if rp_config.bazel_9_or_later else [])
 
+_COMMON_RULE_DOC = """
+
+Output groups:
+
+* `python_zip_file`: (*deprecated*) The plain, non-self-executable zipapp zipfile.
+  *This output group is deprecated and retained for compatibility with
+  the previous implicit zipapp functionality. Set `executable=False`
+  and use the default output of the target instead.*
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""".lstrip()
+
 py_zipapp_binary = rule(
     doc = """
 Packages a `py_binary` as a Python zipapp.
-""",
+
+{}
+""".format(_COMMON_RULE_DOC),
     implementation = _py_zipapp_executable_impl,
     attrs = _ATTRS,
     # NOTE: While this is marked executable, it is conditionally executable
@@ -343,7 +361,9 @@ py_zipapp_test = rule(
 Packages a `py_test` as a Python zipapp.
 
 This target is also a valid test target to run.
-""",
+
+{}
+""".format(_COMMON_RULE_DOC),
     implementation = _py_zipapp_executable_impl,
     attrs = _ATTRS,
     # NOTE: While this is marked as a test, it is conditionally executable
