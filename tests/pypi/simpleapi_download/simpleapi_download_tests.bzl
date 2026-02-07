@@ -324,22 +324,38 @@ _tests.append(_test_cache_without_facts)
 
 def _test_cache_with_facts(env):
     facts = {}
+    cache_storage = {}
+    known_facts = {}
     cache = simpleapi_cache(
-        cache = {},
-        known_facts = {},
+        cache = cache_storage,
+        known_facts = known_facts,
         facts = facts,
+    )
+
+    sdists = struct(
+        a = struct(version = "1.0", url = "https://index_url/distro/a-1.0.tgz", filename = "a-1.0.tgz", yanked = False, sha256 = "a"),
+    )
+
+    # TODO @aignas 2026-02-08: url is relative
+    # TODO @aignas 2026-02-08: url starts with `/`
+    # TODO @aignas 2026-02-08: url is absolute
+    whls = struct(
+        b = struct(version = "1.0", url = "https://index_url/distro/b-1.0-tail.whl", filename = "b-1.0-tail.whl", yanked = False, sha256 = "b"),
+        c = struct(version = "1.1", url = "https://index_url/distro/c-1.1-tail.whl", filename = "c-1.1-tail.whl", yanked = False, sha256 = "c"),
+        d = struct(version = "1.1", url = "https://index_url/distro/d-1.1-tail.whl", filename = "d-1.1-tail.whl", yanked = False, sha256 = "d"),
+        e = struct(version = "1.0", url = "https://index_url/distro/e-1.0-tail.whl", filename = "e-1.0-tail.whl", yanked = False, sha256 = "e"),
     )
 
     env.expect.that_str(cache.get("index_url", "distro", ["1.0"])).equals(None)
     cache.setdefault("index_url", "distro", ["1.0"], struct(
         sdists = {
-            "a": struct(version = "1.0", url = "url//a.tgz", filename = "a.tgz", yanked = False),
+            "a": sdists.a,
         },
         whls = {
-            "b": struct(version = "1.0", url = "url//b.whl", filename = "b.whl", yanked = False),
-            "c": struct(version = "1.1", url = "url//c.whl", filename = "c.whl", yanked = False),
-            "d": struct(version = "1.1", url = "url//d.whl", filename = "d.whl", yanked = False),
-            "e": struct(version = "1.0", url = "url//e.whl", filename = "e.whl", yanked = False),
+            "b": whls.b,
+            "c": whls.c,
+            "d": whls.d,
+            "e": whls.e,
         },
     ))
     _expect_cache_result(
@@ -347,11 +363,11 @@ def _test_cache_with_facts(env):
         cache,
         key = ("index_url", "distro", ["1.0"]),
         sdists = {
-            "a": struct(version = "1.0", url = "url//a.tgz", filename = "a.tgz", yanked = False),
+            "a": sdists.a,
         },
         whls = {
-            "b": struct(version = "1.0", url = "url//b.whl", filename = "b.whl", yanked = False),
-            "e": struct(version = "1.0", url = "url//e.whl", filename = "e.whl", yanked = False),
+            "b": whls.b,
+            "e": whls.e,
         },
     )
     env.expect.that_str(cache.get("index_url", "distro", ["1.2"])).equals(None)
@@ -359,9 +375,9 @@ def _test_cache_with_facts(env):
         "fact_version": "v1",
         "index_url": {
             "dist_hashes": {
-                "url//a.tgz": "a",
-                "url//b.whl": "b",
-                "url//e.whl": "e",
+                sdists.a.url: "a",
+                whls.b.url: "b",
+                whls.e.url: "e",
             },
         },
     })
@@ -372,19 +388,44 @@ def _test_cache_with_facts(env):
         key = ("index_url", "distro", ["1.1"]),
         sdists = {},
         whls = {
-            "c": struct(version = "1.1", url = "url//c.whl", filename = "c.whl", yanked = False),
-            "d": struct(version = "1.1", url = "url//d.whl", filename = "d.whl", yanked = False),
+            "c": whls.c,
+            "d": whls.d,
         },
     )
     env.expect.that_dict(facts).contains_exactly({
         "fact_version": "v1",
         "index_url": {
             "dist_hashes": {
-                "url//a.tgz": "a",
-                "url//b.whl": "b",
-                "url//c.whl": "c",
-                "url//d.whl": "d",
-                "url//e.whl": "e",
+                sdists.a.url: "a",
+                whls.b.url: "b",
+                whls.c.url: "c",
+                whls.d.url: "d",
+                whls.e.url: "e",
+            },
+        },
+    })
+
+    # simulate write to MODULE.bazel.lock
+    known_facts.update(facts)
+    facts.clear()
+    cache_storage.clear()
+
+    _expect_cache_result(
+        env,
+        cache,
+        key = ("index_url", "distro", ["1.1"]),
+        sdists = {},
+        whls = {
+            "c": whls.c,
+            "d": whls.d,
+        },
+    )
+    env.expect.that_dict(facts).contains_exactly({
+        "fact_version": "v1",
+        "index_url": {
+            "dist_hashes": {
+                whls.c.url: "c",
+                whls.d.url: "d",
             },
         },
     })

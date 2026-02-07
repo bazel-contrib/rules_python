@@ -264,7 +264,7 @@ def strip_empty_path_segments(url):
     else:
         return "{}://{}".format(scheme, stripped)
 
-def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_versions, get_auth = None, return_absolute = True, **download_kwargs):
+def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_versions, get_auth = None, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
@@ -280,7 +280,6 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
         cache: A dict for storing the results.
         get_auth: A function to get auth information. Used in tests.
         requested_versions: the list of requested versions.
-        return_absolute: TODO
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
 
@@ -323,15 +322,15 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
         distribution = distribution,
         real_url = real_url,
         cache = cache,
-        return_absolute = return_absolute,
         requested_versions = requested_versions,
     )
 
-def _read_index_result(*, result, index_url, distribution, real_url, cache, return_absolute, requested_versions):
+def _read_index_result(*, result, index_url, distribution, real_url, cache, requested_versions):
     if not result.success or not result.output:
         return struct(success = False)
 
-    output = parse_simpleapi_html(url = real_url, content = result.output, return_absolute = return_absolute)
+    # TODO @aignas 2026-02-08: make this the only behaviour, maybe can get rid of `real_url
+    output = parse_simpleapi_html(url = real_url, content = result.output, return_absolute = False)
     if not output:
         return struct(success = False)
 
@@ -382,7 +381,7 @@ def _cache_get(cache, facts, index_url, distribution, versions):
     if not cached:
         return None
 
-    cached = _filter_packages(cached, versions)
+    cached = _filter_packages(cached, versions, index_url, distribution)
     if facts:
         # Ensure that we write back to the facts, this happens if we request versions that
         # we don't have facts for but we have in-memory cache of SimpleAPI query results
@@ -391,12 +390,12 @@ def _cache_get(cache, facts, index_url, distribution, versions):
 
 def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
     cache.setdefault((index_url, distribution), value)
-    value = _filter_packages(value, versions)
+    value = _filter_packages(value, versions, index_url, distribution)
 
     if facts:
         facts.setdefault(index_url, distribution, value)
 
-def _filter_packages(dists, requested_versions):
+def _filter_packages(dists, requested_versions, index_url, distribution):
     if dists == None:
         return None
 
@@ -407,14 +406,14 @@ def _filter_packages(dists, requested_versions):
         if d.version not in requested_versions:
             continue
 
-        sdists[sha256] = d
+        sdists[sha256] = _with_absolute_url(d, index_url, distribution)
         sha256s_by_version.setdefault(d.version, []).append(sha256)
 
     for sha256, d in dists.whls.items():
         if d.version not in requested_versions:
             continue
 
-        whls[sha256] = d
+        whls[sha256] = _with_absolute_url(d, index_url, distribution)
         sha256s_by_version.setdefault(d.version, []).append(sha256)
 
     if not whls and not sdists:
@@ -440,6 +439,8 @@ def _facts(known_facts, facts, facts_version = _FACT_VERSION):
             facts_version,
         ),
         setdefault = lambda url, distribution, value: _store_facts(facts, facts_version, url, value),
+        known_facts = known_facts,
+        facts = facts,
     )
 
 def _get_from_facts(facts, known_facts, index_url, distribution, requested_versions, facts_version):
@@ -476,8 +477,6 @@ def _get_from_facts(facts, known_facts, index_url, distribution, requested_versi
             filename = filename,
             version = version,
             url = absolute_url(index_url = index_url_for_distro, url = url),
-            metadata_sha256 = "",
-            metadata_url = "",
             yanked = known_facts.get("dist_yanked", {}).get(sha256, False),
         ))
 
@@ -491,6 +490,27 @@ def _get_from_facts(facts, known_facts, index_url, distribution, requested_versi
     )
     _store_facts(facts, facts_version, index_url, output)
     return output
+
+def _with_absolute_url(d, index_url, distribution):
+    index_url_for_distro = "{}/{}/".format(index_url.rstrip("/"), distribution)
+
+    # TODO @aignas 2026-02-08: think of a better way to do this
+    kwargs = dict()
+    for attr in [
+        "sha256",
+        "filename",
+        "version",
+        "metadata_sha256",
+        "metadata_url",
+        "yanked",
+        "url",
+    ]:
+        if hasattr(d, attr):
+            kwargs[attr] = getattr(d, attr)
+            if attr == "url":
+                kwargs[attr] = absolute_url(index_url = index_url_for_distro, url = kwargs[attr])
+
+    return struct(**kwargs)
 
 def _store_facts(facts, fact_version, index_url, value):
     """Store values as facts in the lock file.
