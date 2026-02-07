@@ -381,10 +381,15 @@ def _create_executable(
     if build_zip_enabled:
         # buildifier: disable=print
         print((
-            "WARNING: --build_python_zip is deprecated and will be removed " +
-            "in a future release. Affected target: {}. See " +
-            "https://github.com/bazel-contrib/rules_python/issues/3567. " +
-            "Please switch to py_zipapp_binary or py_zipapp_test."
+            "\n" +
+            "============================================================" +
+            "WARNING: Target: {}\n" +
+            "The --build_python_zip flag is deprecated and will be removed " +
+            "in a future release. Switch to py_zipapp_binary or " +
+            " py_zipapp_test. See\n" +
+            "https://github.com/bazel-contrib/rules_python/issues/3567\n" +
+            "for migration instructions."
+            "============================================================"
         ).format(ctx.label))
         extra_default_outputs.append(zip_file)
 
