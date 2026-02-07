@@ -1,4 +1,10 @@
-"""`py_zipapp_test` macro."""
+"""`py_zipapp_test` macro.
+
+:::{seealso}
+
+{obj}`features.zipapp_rules` to detect if this rule is available.
+:::
+"""
 
 load("//python/private:util.bzl", "add_tag")
 load("//python/private/zipapp:py_zipapp_rule.bzl", _py_zipapp_test = "py_zipapp_test")
