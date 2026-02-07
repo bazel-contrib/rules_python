@@ -83,7 +83,13 @@ def simpleapi_download(
     contents = {}
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
-    cache = _cache(ctx, cache, attr.facts)
+
+    if attr.facts:
+        ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
+    else:
+        ctx.report_progress("Fetch package lists from PyPI index")
+
+    cache = simpleapi_cache(cache, getattr(ctx, "facts", None), attr.facts)
 
     found_on_index = {}
     warn_overrides = False
@@ -332,12 +338,21 @@ def _read_index_result(*, result, index_url, distribution, real_url, cache, retu
     cache.setdefault(index_url, distribution, requested_versions, output)
     return struct(success = True, output = output)
 
-def _cache(ctx, cache, facts):
-    if hasattr(ctx, "facts"):
-        facts = _facts(ctx, facts)
-        ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
-    else:
-        ctx.report_progress("Fetch package lists from PyPI index")
+def simpleapi_cache(cache = None, known_facts = None, facts = None):
+    """SimpleAPI cache for making fewer calls.
+
+    Args:
+        cache: the storage to store things in memory.
+        known_facts: the storage to retrieve known facts.
+        facts: the storage to store things in the lock file after we evaluate the extension.
+
+    Returns:
+        struct with 2 methods, `get` and `setdefault`.
+    """
+    if cache == None:
+        cache = {}
+    if facts != None:
+        facts = _facts(known_facts, facts)
 
     return struct(
         get = lambda index_url, distribution, versions: _cache_get(
@@ -388,16 +403,22 @@ def _filter_packages(dists, requested_versions):
     sha256s_by_version = {}
     whls = {}
     sdists = {}
-    for sha256, d in (dists.sdists | dists.whls).items():
+    for sha256, d in dists.sdists.items():
         if d.version not in requested_versions:
             continue
 
-        if d.filename.endswith(".whl"):
-            whls[sha256] = d
-        else:
-            sdists[sha256] = d
-
+        sdists[sha256] = d
         sha256s_by_version.setdefault(d.version, []).append(sha256)
+
+    for sha256, d in dists.whls.items():
+        if d.version not in requested_versions:
+            continue
+
+        whls[sha256] = d
+        sha256s_by_version.setdefault(d.version, []).append(sha256)
+
+    if not whls and not sdists:
+        return None
 
     return struct(
         whls = whls,
@@ -405,10 +426,9 @@ def _filter_packages(dists, requested_versions):
         sha256s_by_version = sha256s_by_version,
     )
 
-def _facts(ctx, facts, facts_version = _FACT_VERSION):
-    known_facts = getattr(ctx, "facts", None)
-    if not known_facts:
-        return {}
+def _facts(known_facts, facts, facts_version = _FACT_VERSION):
+    if known_facts == None:
+        return None
 
     return struct(
         get = lambda index_url, distribution, versions: _get_from_facts(
@@ -480,6 +500,8 @@ def _store_facts(facts, fact_version, index_url, value):
     from this that can be achieved using pure Starlark functions should be done in
     Starlark.
     """
+    if not value:
+        return value
 
     facts["fact_version"] = fact_version
 

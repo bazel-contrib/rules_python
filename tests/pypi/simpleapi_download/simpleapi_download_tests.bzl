@@ -15,7 +15,13 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download", "strip_empty_path_segments")  # buildifier: disable=bzl-visibility
+load("@rules_testing//lib:truth.bzl", "subjects")
+load(
+    "//python/private/pypi:simpleapi_download.bzl",
+    "simpleapi_cache",
+    "simpleapi_download",
+    "strip_empty_path_segments",
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -52,8 +58,9 @@ def _test_simple(env):
             index_url_overrides = {},
             index_url = "main",
             extra_index_urls = ["extra"],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = True,
@@ -115,8 +122,9 @@ def _test_fail(env):
             },
             index_url = "main",
             extra_index_urls = ["extra"],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = True,
@@ -168,8 +176,9 @@ def _test_download_url(env):
             index_url_overrides = {},
             index_url = "https://example.com/main/simple/",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = False,
@@ -204,8 +213,9 @@ def _test_download_url_parallel(env):
             index_url_overrides = {},
             index_url = "https://example.com/main/simple/",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = True,
@@ -240,8 +250,9 @@ def _test_download_envsubst_url(env):
             index_url_overrides = {},
             index_url = "$INDEX_URL",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = ["INDEX_URL"],
+            facts = None,
         ),
         cache = {},
         parallel_download = False,
@@ -265,6 +276,120 @@ def _test_strip_empty_path_segments(env):
     env.expect.that_str(strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
 
 _tests.append(_test_strip_empty_path_segments)
+
+def _expect_cache_result(env, cache, key, sdists, whls):
+    got = env.expect.that_struct(
+        cache.get(*key),
+        attrs = dict(
+            whls = subjects.dict,
+            sdists = subjects.dict,
+        ),
+    )
+    got.whls().contains_exactly(whls)
+    got.sdists().contains_exactly(sdists)
+
+def _test_cache_without_facts(env):
+    cache = simpleapi_cache()
+
+    env.expect.that_str(cache.get("index_url", "distro", ["1.0"])).equals(None)
+    cache.setdefault("index_url", "distro", ["1.0"], struct(
+        sdists = {
+            "a": struct(version = "1.0"),
+        },
+        whls = {
+            "b": struct(version = "1.0"),
+            "c": struct(version = "1.1"),
+            "d": struct(version = "1.1"),
+            "e": struct(version = "1.0"),
+        },
+    ))
+    _expect_cache_result(
+        env,
+        cache,
+        key = ("index_url", "distro", ["1.0"]),
+        sdists = {"a": struct(version = "1.0")},
+        whls = {"b": struct(version = "1.0"), "e": struct(version = "1.0")},
+    )
+    env.expect.that_str(cache.get("index_url", "distro", ["1.2"])).equals(None)
+
+    _expect_cache_result(
+        env,
+        cache,
+        key = ("index_url", "distro", ["1.1"]),
+        sdists = {},
+        whls = {"c": struct(version = "1.1"), "d": struct(version = "1.1")},
+    )
+
+_tests.append(_test_cache_without_facts)
+
+def _test_cache_with_facts(env):
+    facts = {}
+    cache = simpleapi_cache(
+        cache = {},
+        known_facts = {},
+        facts = facts,
+    )
+
+    env.expect.that_str(cache.get("index_url", "distro", ["1.0"])).equals(None)
+    cache.setdefault("index_url", "distro", ["1.0"], struct(
+        sdists = {
+            "a": struct(version = "1.0", url = "url//a.tgz", filename = "a.tgz", yanked = False),
+        },
+        whls = {
+            "b": struct(version = "1.0", url = "url//b.whl", filename = "b.whl", yanked = False),
+            "c": struct(version = "1.1", url = "url//c.whl", filename = "c.whl", yanked = False),
+            "d": struct(version = "1.1", url = "url//d.whl", filename = "d.whl", yanked = False),
+            "e": struct(version = "1.0", url = "url//e.whl", filename = "e.whl", yanked = False),
+        },
+    ))
+    _expect_cache_result(
+        env,
+        cache,
+        key = ("index_url", "distro", ["1.0"]),
+        sdists = {
+            "a": struct(version = "1.0", url = "url//a.tgz", filename = "a.tgz", yanked = False),
+        },
+        whls = {
+            "b": struct(version = "1.0", url = "url//b.whl", filename = "b.whl", yanked = False),
+            "e": struct(version = "1.0", url = "url//e.whl", filename = "e.whl", yanked = False),
+        },
+    )
+    env.expect.that_str(cache.get("index_url", "distro", ["1.2"])).equals(None)
+    env.expect.that_dict(facts).contains_exactly({
+        "fact_version": "v1",
+        "index_url": {
+            "dist_hashes": {
+                "url//a.tgz": "a",
+                "url//b.whl": "b",
+                "url//e.whl": "e",
+            },
+        },
+    })
+
+    _expect_cache_result(
+        env,
+        cache,
+        key = ("index_url", "distro", ["1.1"]),
+        sdists = {},
+        whls = {
+            "c": struct(version = "1.1", url = "url//c.whl", filename = "c.whl", yanked = False),
+            "d": struct(version = "1.1", url = "url//d.whl", filename = "d.whl", yanked = False),
+        },
+    )
+    env.expect.that_dict(facts).contains_exactly({
+        "fact_version": "v1",
+        "index_url": {
+            "dist_hashes": {
+                "url//a.tgz": "a",
+                "url//b.whl": "b",
+                "url//c.whl": "c",
+                "url//d.whl": "d",
+                "url//e.whl": "e",
+            },
+        },
+    })
+
+_tests.append(_test_cache_with_facts)
 
 def simpleapi_download_test_suite(name):
     """Create the test suite.
