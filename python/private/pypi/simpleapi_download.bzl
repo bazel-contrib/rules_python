@@ -31,7 +31,6 @@ def simpleapi_download(
         attr,
         cache,
         parallel_download = True,
-        store_facts = True,
         read_simpleapi = None,
         get_auth = None,
         _fail = fail):
@@ -62,9 +61,6 @@ def simpleapi_download(
             reflected when re-evaluating the extension unless we do
             `bazel clean --expunge`.
         parallel_download: A boolean to enable usage of bazel 7.1 non-blocking downloads.
-        store_facts: A boolean to enable usage of bazel 8.5 facts feature to store data in
-            MODULE.bazel.lock in between the runs. Can be disabled if urls contain sensitive
-            data and users would rather opt-out of the feature.
         read_simpleapi: a function for reading and parsing of the SimpleAPI contents.
             Used in tests.
         get_auth: A function to get auth information passed to read_simpleapi. Used in tests.
@@ -87,7 +83,7 @@ def simpleapi_download(
     contents = {}
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
-    if hasattr(ctx, "facts") and store_facts:
+    if hasattr(ctx, "facts"):
         download_kwargs["facts"] = _facts(ctx, attr.facts)
         read_simpleapi = _read_simpleapi_with_facts
         ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
