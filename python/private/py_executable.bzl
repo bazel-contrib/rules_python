@@ -379,6 +379,7 @@ def _create_executable(
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
     if build_zip_enabled:
+        # buildifier: disable=print
         print((
             "WARNING: --build_python_zip is deprecated and will be removed " +
             "in a future release. Affected target: {}. See " +
