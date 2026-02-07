@@ -251,6 +251,14 @@ def _get_imports_and_venv_symlinks(ctx):
             ctx.label.package,
             imports[0],
         ))
+
+        # Prevent escaping out of the repo root.
+        if site_packages_root.startswith("../") or site_packages_root == "..":
+            fail(("Invalid `imports` value '{}': resolves to '{}' which is " +
+                  "above the repo root").format(
+                imports[0],
+                site_packages_root,
+            ))
         venv_symlinks = get_venv_symlinks(
             ctx,
             ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
