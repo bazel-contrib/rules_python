@@ -19,8 +19,9 @@ e.g. the Python runtime itself. It's roughly akin to the files a traditional
 venv would have installed into it.
 
 :::{seealso}
-{obj}`PyRuntimeInfo` for the Python runtime files, which is available from
-{obj}`py_binary` et al rules.
+{obj}`PyRuntimeInfo` for the Python runtime files. The {obj}`py_binary` et al
+rules provide it directly so that the runtime the binary original chose
+can be accessed.
 :::
 
 :::{versionadded} VERSION_NEXT_FEATURE
