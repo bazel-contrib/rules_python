@@ -250,7 +250,8 @@ def _get_file_venv_path(ctx, f, site_packages_root):
     Args:
         ctx: The current ctx.
         f: The file to compute the venv_path for.
-        site_packages_root: The site packages root path.
+        site_packages_root: The site packages root path; repo-relative
+            path.
 
     Returns:
         A tuple `(venv_path, rf_root_path)` if the file is under
