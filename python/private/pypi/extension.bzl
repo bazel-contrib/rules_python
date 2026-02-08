@@ -493,7 +493,6 @@ If you are defining custom platforms in your project and don't want things to cl
     ),
     "pyproject_toml": attr.label(
         mandatory = False,
-        allow_single_file = True,
         doc = """\
 Label pointing to pyproject.toml file to read the default Python version from.
 When specified, reads the `requires-python` field from pyproject.toml and uses
@@ -503,7 +502,7 @@ explicitly specify one.
 The version must be specified as `==X.Y.Z` (exact version with full semver).
 This is designed to work with dependency management tools like Renovate.
 
-:::{versionadded} 1.8.0
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
     ),
@@ -693,6 +692,10 @@ The Python version the dependencies are targetting, in Major.Minor format
 If an interpreter isn't explicitly provided (using `python_interpreter` or
 `python_interpreter_target`), then the version specified here must have
 a corresponding `python.toolchain()` configured.
+
+:::{seealso}
+The {obj}`pyproject_toml` attribute for getting the version from a project file.
+:::
 """,
         ),
         "simpleapi_skip": attr.string_list(
