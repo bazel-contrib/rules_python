@@ -19,6 +19,8 @@ load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VER
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
 load(":platform_info.bzl", "platform_info")
+load(":pyproject_repo.bzl", "pyproject_version_repo")
+load(":pyproject_utils.bzl", "read_pyproject_version")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
@@ -87,6 +89,8 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
             mod = mod,
             seen_versions = seen_versions,
             config = config,
+            module_ctx = module_ctx,
+            logger = logger,
         )
 
         for toolchain_attr in toolchain_attr_structs:
@@ -215,6 +219,20 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
 def _python_impl(module_ctx):
     logger = repo_utils.logger(module_ctx, "python")
     py = parse_modules(module_ctx = module_ctx, logger = logger)
+
+    # Create pyproject version repo if pyproject.toml is used
+    created_pyproject_repo = False
+    for mod in module_ctx.modules:
+        if mod.is_root:
+            for tag in mod.tags.defaults:
+                if tag.pyproject_toml:
+                    pyproject_version_repo(
+                        name = "python_version_from_pyproject",
+                        pyproject_toml = tag.pyproject_toml,
+                    )
+                    created_pyproject_repo = True
+                    break
+            break
 
     # Host compatible runtime repos
     # dict[str version, struct] where struct has:
@@ -455,7 +473,16 @@ def _python_impl(module_ctx):
         )
 
     if bazel_features.external_deps.extension_metadata_has_reproducible:
-        return module_ctx.extension_metadata(reproducible = True)
+        # Build the list of direct dependencies
+        root_direct_deps = ["pythons_hub", "python_versions"]
+        if created_pyproject_repo:
+            root_direct_deps.append("python_version_from_pyproject")
+
+        return module_ctx.extension_metadata(
+            root_module_direct_deps = root_direct_deps,
+            root_module_direct_dev_deps = [],
+            reproducible = True,
+        )
     else:
         return None
 
@@ -852,8 +879,15 @@ def _compute_default_python_version(mctx):
         defaults_attr_structs = _create_defaults_attr_structs(mod = mod)
         default_python_version_env = None
         default_python_version_file = None
+        pyproject_toml_label = None
 
         for defaults_attr in defaults_attr_structs:
+            pyproject_toml_label = _one_or_the_same(
+                pyproject_toml_label,
+                defaults_attr.pyproject_toml,
+                onerror = lambda: fail("Multiple pyproject.toml files specified in defaults"),
+            )
+
             default_python_version = _one_or_the_same(
                 default_python_version,
                 defaults_attr.python_version,
@@ -869,12 +903,22 @@ def _compute_default_python_version(mctx):
                 defaults_attr.python_version_file,
                 onerror = _fail_multiple_defaults_python_version_file,
             )
-        if default_python_version_file:
+
+        # Priority order: pyproject_toml > python_version_file > python_version_env > python_version
+        if pyproject_toml_label:
+            pyproject_version = read_pyproject_version(
+                mctx,
+                pyproject_toml_label,
+                logger = None,
+            )
+            if pyproject_version:
+                default_python_version = pyproject_version
+        elif default_python_version_file:
             default_python_version = _one_or_the_same(
                 default_python_version,
                 mctx.read(default_python_version_file, watch = "yes").strip(),
             )
-        if default_python_version_env:
+        elif default_python_version_env:
             default_python_version = mctx.getenv(
                 default_python_version_env,
                 default_python_version,
@@ -915,10 +959,28 @@ def _create_defaults_attr_struct(*, tag):
         python_version = getattr(tag, "python_version", None),
         python_version_env = getattr(tag, "python_version_env", None),
         python_version_file = getattr(tag, "python_version_file", None),
+        pyproject_toml = getattr(tag, "pyproject_toml", None),
     )
 
-def _create_toolchain_attr_structs(*, mod, config, seen_versions):
+def _create_toolchain_attr_structs(*, mod, config, seen_versions, module_ctx, logger):
     arg_structs = []
+
+    # Check if pyproject_toml was specified in defaults
+    # If so, register a toolchain for it
+    for tag in mod.tags.defaults:
+        pyproject_toml = getattr(tag, "pyproject_toml", None)
+        if pyproject_toml:
+            pyproject_version = read_pyproject_version(
+                module_ctx,
+                pyproject_toml,
+                logger,
+            )
+            if pyproject_version and pyproject_version not in seen_versions:
+                arg_structs.append(_create_toolchain_attrs_struct(
+                    python_version = pyproject_version,
+                    toolchain_tag_count = 1,
+                ))
+                seen_versions[pyproject_version] = True
 
     for tag in mod.tags.toolchain:
         arg_structs.append(_create_toolchain_attrs_struct(
@@ -959,6 +1021,18 @@ def _create_toolchain_attrs_struct(
 _defaults = tag_class(
     doc = """Tag class to specify the default Python version.""",
     attrs = {
+        "pyproject_toml": attr.label(
+            mandatory = False,
+            allow_single_file = True,
+            doc = """\
+Label pointing to pyproject.toml file to read the default Python version from.
+When specified, reads the `requires-python` field from pyproject.toml.
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+
+:::{versionadded} 1.8.0
+:::
+""",
+        ),
         "python_version": attr.string(
             mandatory = False,
             doc = """\
