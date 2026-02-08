@@ -333,7 +333,11 @@ def _read_index_result(*, result, index_url, distribution, real_url, cache, requ
         return struct(success = False)
 
     # TODO @aignas 2026-02-08: make this the only behaviour, maybe can get rid of `real_url
-    output = parse_simpleapi_html(url = real_url, content = result.output, return_absolute = False)
+    output = parse_simpleapi_html(
+        url = real_url,
+        content = result.output,
+        return_absolute = False,
+    )
     if not output:
         return struct(success = False)
 
@@ -372,9 +376,10 @@ def _cache_get(cache, facts, index_url, distribution, versions):
     if not facts:
         return cache.get(index_url, distribution, versions)
 
-    cached = facts.get(index_url, distribution, versions)
-    if cached:
-        return cached
+    if versions:
+        cached = facts.get(index_url, distribution, versions)
+        if cached:
+            return cached
 
     cached = cache.get(index_url, distribution, versions)
     if not cached:
@@ -382,14 +387,15 @@ def _cache_get(cache, facts, index_url, distribution, versions):
 
     # Ensure that we write back to the facts, this happens if we request versions that
     # we don't have facts for but we have in-memory cache of SimpleAPI query results
-    facts.setdefault(index_url, distribution, versions, cached)
+    if versions:
+        facts.setdefault(index_url, distribution, cached)
     return cached
 
 def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
     filtered = cache.setdefault(index_url, distribution, versions, value)
 
     if facts and versions:
-        facts.setdefault(index_url, distribution, versions, filtered)
+        facts.setdefault(index_url, distribution, filtered)
 
     return filtered
 
