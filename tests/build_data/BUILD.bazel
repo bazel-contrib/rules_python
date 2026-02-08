@@ -21,5 +21,6 @@ genrule(
     name = "tool_build_data",
     outs = ["tool_build_data.txt"],
     cmd = "$(location :print_build_data) > $(OUTS)",
+    tags = ["manual"],
     tools = [":print_build_data"],
 )
