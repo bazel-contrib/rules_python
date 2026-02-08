@@ -379,6 +379,21 @@ def _create_executable(
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
     if build_zip_enabled:
+        # buildifier: disable=print
+        print(
+            """
+======================================================================
+WARNING: Target: {}
+  The `--build_python_zip` flag and implicit zipapp output of `py_binary`
+  and `py_test` is deprecated and will be removed in a future release.
+  Switch to `py_zipapp_binary` or `py_zipapp_test`. For migration
+  instructions and guide, see:
+
+  https://github.com/bazel-contrib/rules_python/issues/3567
+======================================================================
+               """.rstrip().format(ctx.label),
+        )
+
         extra_default_outputs.append(zip_file)
 
     # The logic here is a bit convoluted. Essentially, there are 3 types of
