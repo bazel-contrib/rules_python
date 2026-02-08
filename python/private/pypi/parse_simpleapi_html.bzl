@@ -16,12 +16,14 @@
 Parse SimpleAPI HTML in Starlark.
 """
 
-def parse_simpleapi_html(*, url, content):
+def parse_simpleapi_html(*, url, content, distribution = None, return_absolute = True):
     """Get the package URLs for given shas by parsing the Simple API HTML.
 
     Args:
         url(str): The URL that the HTML content can be downloaded from.
+        distribution(str): TODO
         content(str): The Simple API HTML content.
+        return_absolute: {type}`bool` TODO
 
     Returns:
         A list of structs with:
@@ -33,6 +35,9 @@ def parse_simpleapi_html(*, url, content):
           present, then the 'metadata_url' is also present. Defaults to "".
         * metadata_url: The URL for the METADATA if we can download it. Defaults to "".
     """
+    if not distribution:
+        _, _, distribution = url.strip("/").rpartition("/")
+
     sdists = {}
     whls = {}
     lines = content.split("<a href=\"")
@@ -55,7 +60,8 @@ def parse_simpleapi_html(*, url, content):
     sha256s_by_version = {}
     for line in lines[1:]:
         dist_url, _, tail = line.partition("#sha256=")
-        dist_url = _absolute_url(url, dist_url)
+        if return_absolute:
+            dist_url = absolute_url(index_url = url, url = dist_url)
 
         sha256, _, tail = tail.partition("\"")
 
@@ -64,7 +70,7 @@ def parse_simpleapi_html(*, url, content):
 
         head, _, _ = tail.rpartition("</a>")
         maybe_metadata, _, filename = head.rpartition(">")
-        version = _version(filename)
+        version = pkg_version(filename, distribution)
         sha256s_by_version.setdefault(version, []).append(sha256)
 
         metadata_sha256 = ""
@@ -79,13 +85,17 @@ def parse_simpleapi_html(*, url, content):
                 break
 
         if filename.endswith(".whl"):
+            metadata_url = metadata_url or ""
+            if return_absolute and metadata_url:
+                metadata_url = absolute_url(index_url = url, url = metadata_url)
+
             whls[sha256] = struct(
                 filename = filename,
                 version = version,
                 url = dist_url,
                 sha256 = sha256,
                 metadata_sha256 = metadata_sha256,
-                metadata_url = _absolute_url(url, metadata_url) if metadata_url else "",
+                metadata_url = metadata_url,
                 yanked = yanked,
             )
         else:
@@ -110,18 +120,36 @@ _SDIST_EXTS = [
     ".zip",
 ]
 
-def _version(filename):
+def pkg_version(filename, distribution = None):
+    """pkg_version extracts the version from the filename.
+
+    TODO: move this to a different location
+
+    Args:
+        filename: TODO
+        distribution: TODO
+
+    Returns:
+        version string
+    """
     # See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#binary-distribution-format
 
-    _, _, tail = filename.partition("-")
-    version, _, _ = tail.partition("-")
-    if version != tail:
-        # The format is {name}-{version}-{whl_specifiers}.whl
-        return version
+    if filename.endswith(".whl"):
+        _, _, tail = filename.partition("-")
+        version, _, _ = tail.partition("-")
+        if version != tail:
+            # The format is {name}-{version}-{whl_specifiers}.whl
+            return version
+
+    if not distribution:
+        fail("for parsing sdists passing 'distribution' is mandatory")
 
     # NOTE @aignas 2025-03-29: most of the files are wheels, so this is not the common path
 
     # {name}-{version}.{ext}
+    # TODO @aignas 2026-01-20: test for handling dashes in names, can't think of any other way to
+    # get the version from the filename but to pass in the distribution name to this function.
+    version = filename[len(distribution) + 1:]
     for ext in _SDIST_EXTS:
         version, _, _ = version.partition(ext)  # build or name
 
@@ -147,21 +175,30 @@ def _is_downloadable(url):
     """
     return url.startswith("http://") or url.startswith("https://") or url.startswith("file://")
 
-def _absolute_url(index_url, candidate):
-    if candidate == "":
-        return candidate
+def absolute_url(*, index_url, url):
+    """Return an absolute URL in case the url is not absolute.
 
-    if _is_downloadable(candidate):
-        return candidate
+    Args:
+        index_url: {type}`str` The index_url.
+        url: {type}`str` The url of the artifact.
 
-    if candidate.startswith("/"):
+    Returns:
+        `url` if it is absolute, or absolute URL based on the `index_url`.
+    """
+    if url == "":
+        return url
+
+    if _is_downloadable(url):
+        return url
+
+    if url.startswith("/"):
         # absolute path
         root_directory = _get_root_directory(index_url)
-        return "{}{}".format(root_directory, candidate)
+        return "{}{}".format(root_directory, url)
 
-    if candidate.startswith(".."):
+    if url.startswith(".."):
         # relative path with up references
-        candidate_parts = candidate.split("..")
+        candidate_parts = url.split("..")
         last = candidate_parts[-1]
         for _ in range(len(candidate_parts) - 1):
             index_url, _, _ = index_url.rstrip("/").rpartition("/")
@@ -169,4 +206,4 @@ def _absolute_url(index_url, candidate):
         return "{}/{}".format(index_url, last.strip("/"))
 
     # relative path without up-references
-    return "{}/{}".format(index_url.rstrip("/"), candidate)
+    return "{}/{}".format(index_url.rstrip("/"), url)
