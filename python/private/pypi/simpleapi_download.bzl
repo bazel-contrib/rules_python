@@ -89,7 +89,10 @@ def simpleapi_download(
     else:
         ctx.report_progress("Fetch package lists from PyPI index")
 
-    cache = simpleapi_cache(cache, getattr(ctx, "facts", None), attr.facts)
+    cache = simpleapi_cache(
+        memory_cache = memory_cache(cache),
+        facts_cache = facts_cache(getattr(ctx, "facts", None), attr.facts),
+    )
 
     found_on_index = {}
     warn_overrides = False
@@ -337,33 +340,27 @@ def _read_index_result(*, result, index_url, distribution, real_url, cache, requ
     cache.setdefault(index_url, distribution, requested_versions, output)
     return struct(success = True, output = output)
 
-def simpleapi_cache(cache = None, known_facts = None, facts = None):
+def simpleapi_cache(memory_cache, facts_cache):
     """SimpleAPI cache for making fewer calls.
 
     Args:
-        cache: the storage to store things in memory.
-        known_facts: the storage to retrieve known facts.
-        facts: the storage to store things in the lock file after we evaluate the extension.
+        memory_cache: the storage to store things in memory.
+        facts_cache: the storage to retrieve known facts.
 
     Returns:
         struct with 2 methods, `get` and `setdefault`.
     """
-    if cache == None:
-        cache = {}
-    if facts != None:
-        facts = _facts(known_facts, facts)
-
     return struct(
         get = lambda index_url, distribution, versions: _cache_get(
-            cache,
-            facts,
+            memory_cache,
+            facts_cache,
             index_url,
             distribution,
             versions,
         ),
         setdefault = lambda index_url, distribution, versions, value: _cache_setdefault(
-            cache,
-            facts,
+            memory_cache,
+            facts_cache,
             index_url,
             distribution,
             versions,
@@ -372,20 +369,20 @@ def simpleapi_cache(cache = None, known_facts = None, facts = None):
     )
 
 def _cache_get(cache, facts, index_url, distribution, versions):
-    if facts:
-        cached = facts.get(index_url, distribution, versions)
-        if cached:
-            return cached
+    if not facts:
+        return cache.get(index_url, distribution, versions)
 
-    cached = cache.get((index_url, distribution))
+    cached = facts.get(index_url, distribution, versions)
+    if cached:
+        return cached
+
+    cached = cache.get(index_url, distribution, versions)
     if not cached:
         return None
 
-    cached = _filter_packages(cached, versions, index_url, distribution)
-    if facts:
-        # Ensure that we write back to the facts, this happens if we request versions that
-        # we don't have facts for but we have in-memory cache of SimpleAPI query results
-        facts.setdefault(index_url, distribution, cached)
+    # Ensure that we write back to the facts, this happens if we request versions that
+    # we don't have facts for but we have in-memory cache of SimpleAPI query results
+    facts.setdefault(index_url, distribution, cached)
     return cached
 
 def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
@@ -395,9 +392,77 @@ def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
     if facts:
         facts.setdefault(index_url, distribution, value)
 
+def memory_cache(cache = None):
+    """SimpleAPI cache for making fewer calls.
+
+    Args:
+        cache: the storage to store things in memory.
+
+    Returns:
+        struct with 2 methods, `get` and `setdefault`.
+    """
+    if cache == None:
+        cache = {}
+
+    return struct(
+        get = lambda index_url, distribution, versions: _memcache_get(
+            cache,
+            index_url,
+            distribution,
+            versions,
+        ),
+        setdefault = lambda index_url, distribution, versions, value: _memcache_setdefault(
+            cache,
+            index_url,
+            distribution,
+            versions,
+            value,
+        ),
+    )
+
+def _vkey(versions):
+    if not versions:
+        return ""
+
+    if len(versions) == 1:
+        return versions[0]
+
+    return ",".join(sorted(versions))
+
+def _memcache_get(cache, index_url, distribution, versions):
+    if not versions:
+        return cache.get((index_url, distribution, ""))
+
+    vkey = _vkey(versions)
+    filtered = cache.get((index_url, distribution, vkey))
+    if filtered:
+        return filtered
+
+    unfiltered = cache.get((index_url, distribution, ""))
+    if not unfiltered:
+        return None
+
+    filtered = _filter_packages(unfiltered, versions, index_url, distribution)
+    cache.setdefault((index_url, distribution, vkey), filtered)
+    return filtered
+
+def _memcache_setdefault(cache, index_url, distribution, versions, value):
+    cache.setdefault((index_url, distribution, ""), value)
+    if not versions:
+        return value
+
+    filtered = _filter_packages(value, versions, index_url, distribution)
+
+    vkey = _vkey(versions)
+    cache.setdefault((index_url, distribution, vkey), filtered)
+    return filtered
+
 def _filter_packages(dists, requested_versions, index_url, distribution):
     if dists == None:
         return None
+
+    if not requested_versions:
+        return dists
 
     sha256s_by_version = {}
     whls = {}
@@ -425,7 +490,7 @@ def _filter_packages(dists, requested_versions, index_url, distribution):
         sha256s_by_version = sha256s_by_version,
     )
 
-def _facts(known_facts, facts, facts_version = _FACT_VERSION):
+def facts_cache(known_facts, facts, facts_version = _FACT_VERSION):
     if known_facts == None:
         return None
 
@@ -495,6 +560,7 @@ def _with_absolute_url(d, index_url, distribution):
     index_url_for_distro = "{}/{}/".format(index_url.rstrip("/"), distribution)
 
     # TODO @aignas 2026-02-08: think of a better way to do this
+    # TODO @aignas 2026-02-08: if the url is absolute, return d
     kwargs = dict()
     for attr in [
         "sha256",
