@@ -102,6 +102,8 @@ END_UNRELEASED_TEMPLATE
   {obj}`PyExecutableInfo.interpreter_args`,
   {obj}`PyExecutableInfo.stage2_bootstrap`, and
   {obj}`PyExecutableInfo.venv_python_exe`.
+* (tools/wheelmaker.py) Added support for URL requirements according to PEP 508
+  in Requires-Dist metadata. ([#3569](https://github.com/bazel-contrib/rules_python/pull/3569))
 
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27
