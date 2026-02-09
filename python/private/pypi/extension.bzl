@@ -744,6 +744,12 @@ The list of labels to use as SRCS for the marker evaluation code. This ensures t
 code will be re-evaluated when any of files in the default changes.
 """,
         ),
+        "_toml2json": attr.label(
+            default = "//tools/private/toml2json:toml2json.py",
+        ),
+        "_tool_python_interpreter": attr.label(
+            default = "@python_3_14_host//:BUILD.bazel",
+        ),
     }, **ATTRS)
     attrs.update(AUTH_ATTRS)
 

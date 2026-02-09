@@ -162,6 +162,45 @@ def _execute_checked_stdout(mrctx, *, python, srcs, **kwargs):
         **_execute_prep(mrctx, python = python, srcs = srcs, **kwargs)
     )
 
+def _run_toml2json(mrctx, toml_label, attr, logger = None):
+    """Parses a TOML file into a dictionary using toml2json tool.
+
+    Args:
+        mrctx: The module_ctx or repository_ctx object.
+        toml_label: Label pointing to the TOML file.
+        attr: Attributes struct (e.g. from a repository rule). Must contain
+            `_tool_python_interpreter` and `_toml2json`.
+        logger: Optional logger instance for informational messages.
+
+    Returns:
+        A dictionary representation of the TOML file content.
+    """
+    if not toml_label:
+        fail("toml_label cannot be None")
+
+    python_interpreter = _resolve_python_interpreter(
+        mrctx,
+        python_interpreter_target = attr._tool_python_interpreter,
+    )
+
+    toml_path = mrctx.path(toml_label)
+    if not toml_path.exists:
+        fail("toml file does not exist: {} (from label {})".format(toml_path, toml_label))
+
+    # Use the shared toml2json tool
+    toml2json_tool = mrctx.path(ctx.attr._toml2json)
+
+    stdout = _execute_checked_stdout(
+        mrctx,
+        logger = logger,
+        op = "Toml2Json: {}".format(toml_label),
+        python = python_interpreter,
+        arguments = [str(toml2json_tool), str(toml_path)],
+        srcs = [toml2json_tool, toml_path],
+    )
+
+    return json.decode(stdout)
+
 def _find_namespace_package_files(rctx, install_dir):
     """Finds all `__init__.py` files that belong to namespace packages.
 
@@ -202,4 +241,5 @@ pypi_repo_utils = struct(
     execute_checked_stdout = _execute_checked_stdout,
     find_namespace_package_files = _find_namespace_package_files,
     resolve_python_interpreter = _resolve_python_interpreter,
+    run_toml2json = _run_toml2json,
 )
