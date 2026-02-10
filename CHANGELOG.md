@@ -79,6 +79,9 @@ END_UNRELEASED_TEMPLATE
   ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
 * (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
   ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497))
+* (pypi) `pip_parse` no longer silently drops PEP 508 URL-based requirements
+  (`pkg @ https://...`) when `extract_url_srcs=False` (the default for
+  `pip_repository`).
 
 {#v0-0-0-added}
 ### Added

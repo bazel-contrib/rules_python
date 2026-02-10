@@ -192,6 +192,47 @@ def _test_direct_urls_integration(env):
 
 _tests.append(_test_direct_urls_integration)
 
+def _test_direct_urls_no_extract(env):
+    """Check that URL requirements are not dropped when extract_url_srcs=False."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_direct": ["linux_x86_64"],
+            "requirements_direct_sdist": ["osx_x86_64"],
+        },
+        extract_url_srcs = False,
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "",
+                    requirement_line = "foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz",
+                    sha256 = "",
+                    target_platforms = ["osx_x86_64"],
+                    url = "",
+                    yanked = False,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "",
+                    requirement_line = "foo[extra] @ https://some-url/package.whl",
+                    sha256 = "",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    yanked = False,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_direct_urls_no_extract)
+
 def _test_extra_pip_args(env):
     got = parse_requirements(
         requirements_by_platform = {
