@@ -71,5 +71,41 @@ class ArcNameFromTest(unittest.TestCase):
                 self.assertEqual(got, want)
 
 
+class GetNewRequirementLineTest(unittest.TestCase):
+    def test_requirement(self):
+        result = wheelmaker.get_new_requirement_line("requests>=2.0", "")
+        self.assertEqual(result, "Requires-Dist: requests>=2.0")
+
+    def test_requirement_and_extra(self):
+        result = wheelmaker.get_new_requirement_line("requests>=2.0", "extra=='dev'")
+        self.assertEqual(result, "Requires-Dist: requests>=2.0; extra=='dev'")
+
+    def test_requirement_with_url(self):
+        result = wheelmaker.get_new_requirement_line(
+            "requests @ git+https://github.com/psf/requests.git@3aa6386c3", ""
+        )
+        self.assertEqual(
+            result,
+            "Requires-Dist: requests @ git+https://github.com/psf/requests.git@3aa6386c3",
+        )
+
+    def test_requirement_with_marker(self):
+        result = wheelmaker.get_new_requirement_line(
+            "requests>=2.0; python_version>='3.6'", ""
+        )
+        self.assertEqual(
+            result, 'Requires-Dist: requests>=2.0; python_version >= "3.6"'
+        )
+
+    def test_requirement_with_marker_and_extra(self):
+        result = wheelmaker.get_new_requirement_line(
+            "requests>=2.0; python_version>='3.6'", "extra=='dev'"
+        )
+        self.assertEqual(
+            result,
+            "Requires-Dist: requests>=2.0; (python_version >= \"3.6\") and extra=='dev'",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

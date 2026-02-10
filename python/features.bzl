@@ -63,6 +63,14 @@ def _features_typedef():
     optional trailing `-rcN`. For unreleased versions, it is an empty string.
     :::{versionadded} 0.38.0
     ::::
+
+    ::::{field} zipapp_rules
+    :type: bool
+
+    Whether the rules_python version has the `py_zipapp_*` rules
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    ::::
     """
 
 features = struct(
@@ -73,4 +81,5 @@ features = struct(
     py_info_venv_symlinks = True,
     uses_builtin_rules = False,
     version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
+    zipapp_rules = True,
 )
