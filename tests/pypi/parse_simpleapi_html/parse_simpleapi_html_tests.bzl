@@ -110,6 +110,8 @@ _tests.append(_test_sdist)
 
 def _test_whls(env):
     # buildifier: disable=unsorted-dict-items
+    # TODO @aignas 2026-02-11: remove some tests
+    # TODO @aignas 2026-02-11: add tests for absolute URLs
     tests = [
         (
             struct(
