@@ -350,10 +350,11 @@ def simpleapi_cache(ctx, *, mcache = None, fcache = None):
     Args:
         ctx: the context to get the facts.
         mcache: the storage to store things in memory.
-        fcache: the storage to retrieve known facts.
+        fcache: the storage to retrieve known facts from the lock file.
 
     Returns:
-        struct with 2 methods, `get` and `setdefault` and a facts dictionary.
+        struct with 3 methods, `get`, `setdefault`, `get_facts` for writing
+        back to the lock file.
     """
     mcache = mcache or memory_cache({})
     facts = {}
