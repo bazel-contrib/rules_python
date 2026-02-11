@@ -341,6 +341,10 @@ def _read_index_result(*, result, index_url, distribution, cache, requested_vers
     if not output:
         return struct(success = False)
 
+    # Set the value for no versions
+    cache.setdefault(index_url, distribution, None, output)
+
+    # Set the value for requested versions as well
     cache.setdefault(index_url, distribution, requested_versions, output)
     return struct(success = True, output = output)
 
