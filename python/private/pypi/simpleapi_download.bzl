@@ -570,6 +570,10 @@ def _get_from_facts(facts, known_facts, index_url, distribution, requested_versi
     return output
 
 def _with_absolute_url(d, index_url, distribution):
+    if not hasattr(d, "url"):
+        # NOTE @aignas 2026-02-11: This is normally used in tests
+        return d
+
     index_url_for_distro = "{}/{}/".format(index_url.rstrip("/"), distribution)
     url = absolute_url(index_url = index_url_for_distro, url = d.url)
     if d.url == url:
