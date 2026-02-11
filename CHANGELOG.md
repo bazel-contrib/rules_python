@@ -108,6 +108,17 @@ END_UNRELEASED_TEMPLATE
 * (tools/wheelmaker.py) Added support for URL requirements according to PEP 508
   in Requires-Dist metadata. ([#3569](https://github.com/bazel-contrib/rules_python/pull/3569))
 
+{#v1-8-4}
+## [1.8.4] - 2026-02-10
+
+### Fixed
+* (pipstar): A corner case of evaluation of version specifiers (`"1.2" ~= "1.2.0"`)
+  has been fixed improving compatibility with the PEP440 standard.
+  Fixes [#3580](https://github.com/bazel-contrib/rules_python/issues/3580).
+* (pipstar): We now add read permissions after extracting wheels for the cases
+  where the `whl` file is missing them.
+  Fixes [#3554](https://github.com/bazel-contrib/rules_python/issues/3554).
+
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27
 
