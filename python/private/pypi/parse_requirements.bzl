@@ -260,7 +260,7 @@ def _package_srcs(
 
             if extract_url_srcs and dist:
                 req_line = r.srcs.requirement
-            elif can_fallback:
+            elif can_fallback or (not extract_url_srcs and dist):
                 dist = struct(
                     url = "",
                     filename = "",
