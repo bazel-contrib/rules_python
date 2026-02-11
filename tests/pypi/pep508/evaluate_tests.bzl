@@ -312,9 +312,10 @@ _MISC_EXPRESSIONS = [
     # https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release
     _expr_case('python_version ~= "2.2"', True, {"python_version": "2.3"}),
     _expr_case('python_version ~= "2.2"', False, {"python_version": "2.1"}),
+    _expr_case('python_version ~= "2.2.0"', True, {"python_version": "2.2"}),
     _expr_case('python_version ~= "2.2.post3"', False, {"python_version": "2.2"}),
-    _expr_case('python_version ~= "2.2.post3"', True, {"python_version": "2.3"}),
     _expr_case('python_version ~= "2.2.post3"', False, {"python_version": "3.0"}),
+    _expr_case('python_version ~= "2.2.post3"', True, {"python_version": "2.3"}),
     _expr_case('python_version ~= "1!2.2"', False, {"python_version": "2.7"}),
     _expr_case('python_version ~= "0!2.2"', True, {"python_version": "2.7"}),
     _expr_case('python_version ~= "1!2.2"', True, {"python_version": "1!2.7"}),
