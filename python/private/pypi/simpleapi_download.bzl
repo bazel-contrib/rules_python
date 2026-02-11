@@ -256,7 +256,11 @@ def _read(ctx, result, output):
     if not result.success:
         return result
 
-    return struct(success = True, output = ctx.read(output))
+    contents = ctx.read(output)
+
+    # NOTE @aignas 2026-02-11: we are leaving the files there for debugging purposes. Usually
+    # after the module extension is finished evaluating, the files will be deleted anyway.
+    return struct(success = True, output = contents)
 
 def strip_empty_path_segments(url):
     """Removes empty path segments from a URL. Does nothing for urls with no scheme.
