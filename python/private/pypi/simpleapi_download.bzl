@@ -184,6 +184,12 @@ If you would like to skip downloading metadata for these packages please add 'si
     return contents
 
 def _download_simpleapi(*, ctx, url, attr_envsubst, get_auth, **kwargs):
+    # NOTE @aignas 2026-02-11: If we return the `real_url` outside this function
+    # we may leak credentials to the lock file if the PyPI extension that this code
+    # is used in is not marked as `reproducible = True` or if we write facts.
+    #
+    # For this reason consider never doing `envsubst` outside this function or return
+    # `real_url`. If needed, do `envsubst` where you use the url to download stuff.
     real_url = strip_empty_path_segments(envsubst(
         url,
         attr_envsubst,
@@ -302,7 +308,6 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
     # NOTE @aignas 2024-03-31: some of the simple APIs use relative URLs for
     # the whl location and we cannot handle multiple URLs at once by passing
     # them to ctx.download if we want to correctly handle the relative URLs.
-    # TODO: Add a test that env subbed index urls do not leak into the lock file.
 
     cached = cache.get(index_url, distribution, requested_versions)
     if cached:
