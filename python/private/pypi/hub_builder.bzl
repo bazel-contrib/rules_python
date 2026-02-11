@@ -31,7 +31,6 @@ def hub_builder(
         simpleapi_download_fn,
         evaluate_markers_fn,
         logger,
-        facts = None,
         simpleapi_cache = {}):
     """Return a hub builder instance
 
@@ -48,7 +47,6 @@ def hub_builder(
             used during the `repository_rule` and must be always compatible with the host.
         simpleapi_download_fn: the function used to download from SimpleAPI.
         simpleapi_cache: the cache for the download results.
-        facts: the facts if they are available.
         logger: the logger for this builder.
     """
 
@@ -91,10 +89,6 @@ def hub_builder(
         # Functions to download according to the config
         # dict[str python_version, callable]
         _get_index_urls = {},
-        # Contains the dict to store the facts to be written to the lockfile that
-        # can be safely cached for future invocations.
-        # dict[str, dict[str, str]]
-        _facts = facts,
         # Tells whether to use the downloader for a package.
         # dict[str python_version, dict[str package_name, bool use_downloader]]
         _use_downloader = {},
@@ -414,7 +408,6 @@ def _set_get_index_urls(self, pip_attr):
             # Auth related info
             netrc = pip_attr.netrc,
             auth_patterns = pip_attr.auth_patterns,
-            facts = self._facts,
         ),
         cache = self._simpleapi_cache,
         parallel_download = pip_attr.parallel_download,

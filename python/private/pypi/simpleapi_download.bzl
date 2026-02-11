@@ -84,15 +84,11 @@ def simpleapi_download(
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
 
-    if attr.facts:
-        ctx.report_progress("Fetch package lists from PyPI index or read from MODULE.bazel.lock")
-    else:
-        ctx.report_progress("Fetch package lists from PyPI index")
+    ctx.report_progress("Fetch package lists from PyPI index")
 
-    cache = simpleapi_cache(
-        memory_cache = memory_cache(cache),
-        facts_cache = facts_cache(getattr(ctx, "facts", None), attr.facts),
-    )
+    if type(cache) == "dict":
+        # compatibility with some tests
+        cache = memory_cache(cache)
 
     found_on_index = {}
     warn_overrides = False
@@ -348,33 +344,67 @@ def _read_index_result(*, result, index_url, distribution, cache, requested_vers
     cache.setdefault(index_url, distribution, requested_versions, output)
     return struct(success = True, output = output)
 
-def simpleapi_cache(memory_cache, facts_cache):
+def simpleapi_cache(ctx, *, mcache = None, fcache = None):
     """SimpleAPI cache for making fewer calls.
 
     Args:
-        memory_cache: the storage to store things in memory.
-        facts_cache: the storage to retrieve known facts.
+        ctx: the context to get the facts.
+        mcache: the storage to store things in memory.
+        fcache: the storage to retrieve known facts.
 
     Returns:
-        struct with 2 methods, `get` and `setdefault`.
+        struct with 2 methods, `get` and `setdefault` and a facts dictionary.
     """
+    mcache = mcache or memory_cache({})
+    facts = {}
+    fcache = fcache or facts_cache(getattr(ctx, "facts", None), facts)
+
     return struct(
         get = lambda index_url, distribution, versions: _cache_get(
-            memory_cache,
-            facts_cache,
+            mcache,
+            fcache,
             index_url,
             distribution,
             versions,
         ),
         setdefault = lambda index_url, distribution, versions, value: _cache_setdefault(
-            memory_cache,
-            facts_cache,
+            mcache,
+            fcache,
             index_url,
             distribution,
             versions,
             value,
         ),
+        get_facts = lambda: _get_facts(facts),
     )
+
+def _get_facts(facts):
+    facts = {
+        "fact_version": facts.get("fact_version"),
+    } | {
+        index_url: {
+            k: _sorted_dict(f.get(k))
+            for k in [
+                "dist_filenames",
+                "dist_hashes",
+                "dist_yanked",
+            ]
+            if f.get(k)
+        }
+        for index_url, f in facts.items()
+        if index_url not in ["fact_version"]
+    }
+    if len(facts) == 1:
+        # only version is present, skip writing
+        facts = None
+
+    return facts
+
+def _sorted_dict(d):
+    if not d:
+        return {}
+
+    return {k: v for k, v in sorted(d.items())}
 
 def _cache_get(cache, facts, index_url, distribution, versions):
     if not facts:
