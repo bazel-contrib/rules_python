@@ -218,6 +218,37 @@ def test_span_all_python_versions(env):
 
 _tests.append(test_span_all_python_versions)
 
+def test_extras_with_hyphens_are_normalized(env):
+    """Test that extras with hyphens are correctly matched after normalization.
+
+    When requirements.txt specifies extras with hyphens (e.g., foo[db-backend])
+    but wheel METADATA uses underscores in marker expressions
+    (e.g., extra == "db_backend") per PEP 685, the deps should still resolve.
+
+    Args:
+        env: the test environment.
+    """
+    requires_dist = [
+        "bar",
+        'baz-lib; extra == "db_backend"',
+        'qux-async; extra == "async_driver"',
+    ]
+
+    got = deps(
+        "foo",
+        extras = ["db_backend", "async_driver"],
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([
+        "bar",
+        "baz_lib",
+        "qux_async",
+    ])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_extras_with_hyphens_are_normalized)
+
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,
