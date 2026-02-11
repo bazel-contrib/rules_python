@@ -26,12 +26,12 @@ def _test_requirement_line_parsing(env):
         "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [], None, "(os_name=='a' or os_name=='b') and os_name=='c'"),
         "name@http://foo.com": ("name", [], None, ""),
         "name[ Foo123 ]": ("name", ["foo123"], None, ""),
+        "name[extra-one,extra-two.three]==1.0": ("name", ["extra_one", "extra_two_three"], "1.0", ""),
         "name[extra]@http://foo.com": ("name", ["extra"], None, ""),
         "name[foo]": ("name", ["foo"], None, ""),
         "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], None, "python_version<'2.7' and platform_version=='2'"),
         "name_foo[bar]": ("name-foo", ["bar"], None, ""),
         "name_foo[bar]==0.25": ("name-foo", ["bar"], "0.25", ""),
-        "name[extra-one,extra-two.three]==1.0": ("name", ["extra_one", "extra_two_three"], "1.0", ""),
     }
 
     got = {
