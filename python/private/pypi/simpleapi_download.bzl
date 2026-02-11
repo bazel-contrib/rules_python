@@ -183,7 +183,13 @@ If you would like to skip downloading metadata for these packages please add 'si
 
     return contents
 
-def _download_simpleapi(*, ctx, url, real_url, attr_envsubst, get_auth, **kwargs):
+def _download_simpleapi(*, ctx, url, attr_envsubst, get_auth, **kwargs):
+    real_url = strip_empty_path_segments(envsubst(
+        url,
+        attr_envsubst,
+        ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
+    ))
+
     output_str = envsubst(
         url,
         attr_envsubst,
@@ -302,17 +308,9 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
     if cached:
         return struct(success = True, output = cached)
 
-    url = "{}/{}/".format(index_url, distribution)
-    real_url = strip_empty_path_segments(envsubst(
-        url,
-        attr.envsubst,
-        ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
-    ))
-
     download = _download_simpleapi(
         ctx = ctx,
-        url = url,
-        real_url = real_url,
+        url = "{}/{}/".format(index_url, distribution),
         attr_envsubst = attr.envsubst,
         get_auth = get_auth,
         **download_kwargs
@@ -323,20 +321,17 @@ def _read_simpleapi(ctx, index_url, distribution, attr, cache, requested_version
         _read_index_result,
         index_url = index_url,
         distribution = distribution,
-        real_url = real_url,
         cache = cache,
         requested_versions = requested_versions,
     )
 
-def _read_index_result(*, result, index_url, distribution, real_url, cache, requested_versions):
+def _read_index_result(*, result, index_url, distribution, cache, requested_versions):
     if not result.success or not result.output:
         return struct(success = False)
 
-    # TODO @aignas 2026-02-08: make this the only behaviour, maybe can get rid of `real_url
     output = parse_simpleapi_html(
-        url = real_url,
         content = result.output,
-        return_absolute = False,
+        distribution = distribution,
     )
     if not output:
         return struct(success = False)

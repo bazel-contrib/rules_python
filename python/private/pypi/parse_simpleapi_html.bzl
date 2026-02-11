@@ -16,14 +16,12 @@
 Parse SimpleAPI HTML in Starlark.
 """
 
-def parse_simpleapi_html(*, url, content, distribution = None, return_absolute = True):
+def parse_simpleapi_html(*, content, distribution):
     """Get the package URLs for given shas by parsing the Simple API HTML.
 
     Args:
-        url(str): The URL that the HTML content can be downloaded from.
-        distribution(str): TODO
+        distribution(str): Distribution name for which we are parsing the HTML.
         content(str): The Simple API HTML content.
-        return_absolute: {type}`bool` TODO
 
     Returns:
         A list of structs with:
@@ -35,9 +33,6 @@ def parse_simpleapi_html(*, url, content, distribution = None, return_absolute =
           present, then the 'metadata_url' is also present. Defaults to "".
         * metadata_url: The URL for the METADATA if we can download it. Defaults to "".
     """
-    if not distribution:
-        _, _, distribution = url.strip("/").rpartition("/")
-
     sdists = {}
     whls = {}
     lines = content.split("<a href=\"")
@@ -60,9 +55,6 @@ def parse_simpleapi_html(*, url, content, distribution = None, return_absolute =
     sha256s_by_version = {}
     for line in lines[1:]:
         dist_url, _, tail = line.partition("#sha256=")
-        if return_absolute:
-            dist_url = absolute_url(index_url = url, url = dist_url)
-
         sha256, _, tail = tail.partition("\"")
 
         # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
@@ -86,9 +78,6 @@ def parse_simpleapi_html(*, url, content, distribution = None, return_absolute =
 
         if filename.endswith(".whl"):
             metadata_url = metadata_url or ""
-            if return_absolute and metadata_url:
-                metadata_url = absolute_url(index_url = url, url = metadata_url)
-
             whls[sha256] = struct(
                 filename = filename,
                 version = version,
