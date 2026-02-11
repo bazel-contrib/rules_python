@@ -376,19 +376,18 @@ def _cache_get(cache, facts, index_url, distribution, versions):
     if not facts:
         return cache.get(index_url, distribution, versions)
 
-    if versions:
-        cached = facts.get(index_url, distribution, versions)
-        if cached:
-            return cached
-
     cached = cache.get(index_url, distribution, versions)
-    if not cached:
-        return None
+    if not cached and versions:
+        # Could not get from in-memory, read from lockfile facts
+        cached = facts.get(index_url, distribution, versions)
 
-    # Ensure that we write back to the facts, this happens if we request versions that
-    # we don't have facts for but we have in-memory cache of SimpleAPI query results
-    if versions:
+        # and write to in-memory if we need to access the same info in the future
+        cache.setdefault(index_url, distribution, versions, cached)
+
+    if versions and cached:
+        # Write to facts so that all *used* data is in the lock file
         facts.setdefault(index_url, distribution, cached)
+
     return cached
 
 def _cache_setdefault(cache, facts, index_url, distribution, versions, value):
@@ -568,9 +567,11 @@ def _get_from_facts(facts, known_facts, index_url, distribution, requested_versi
 
 def _with_absolute_url(d, index_url, distribution):
     index_url_for_distro = "{}/{}/".format(index_url.rstrip("/"), distribution)
+    url = absolute_url(index_url = index_url_for_distro, url = d.url)
+    if d.url == url:
+        return d
 
     # TODO @aignas 2026-02-08: think of a better way to do this
-    # TODO @aignas 2026-02-08: if the url is absolute, return d
     kwargs = dict()
     for attr in [
         "sha256",
@@ -584,7 +585,7 @@ def _with_absolute_url(d, index_url, distribution):
         if hasattr(d, attr):
             kwargs[attr] = getattr(d, attr)
             if attr == "url":
-                kwargs[attr] = absolute_url(index_url = index_url_for_distro, url = kwargs[attr])
+                kwargs[attr] = url
 
     return struct(**kwargs)
 
