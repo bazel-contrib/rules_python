@@ -16,7 +16,6 @@
 """
 
 load("//python/private:enum.bzl", "enum")
-load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
 
 # The expression parsing and resolution for the PEP508 is below
@@ -301,18 +300,10 @@ def marker_expr(left, op, right, *, env, strict = True):
         left = left.strip("\"")
 
         if _ENV_ALIASES in env:
-            # On Windows, Linux, OSX different values may mean the same hardware,
-            # e.g. Python on Windows returns arm64, but on Linux returns aarch64.
-            # e.g. Python on Windows returns amd64, but on Linux returns x86_64.
-            #
-            # The following normalizes the values
-            left = env.get(_ENV_ALIASES, {}).get(var_name, {}).get(left, left)
-
-        # Normalize the extra value per PEP 685 so that hyphens, dots,
-        # and case differences in wheel METADATA marker expressions
-        # still match the normalized extras from requirement parsing.
-        if var_name == "extra":
-            left = normalize_name(left)
+            # Normalize the literal value using per-variable normalization
+            # functions. This handles platform aliases (e.g. arm64 -> aarch64)
+            # and PEP 685 extra name normalization (e.g. db-backend -> db_backend).
+            left = env.get(_ENV_ALIASES, {}).get(var_name, lambda x: x)(left)
 
     else:
         var_name = left
@@ -321,11 +312,7 @@ def marker_expr(left, op, right, *, env, strict = True):
 
         if _ENV_ALIASES in env:
             # See the note above on normalization
-            right = env.get(_ENV_ALIASES, {}).get(var_name, {}).get(right, right)
-
-        # See the note above on PEP 685 normalization
-        if var_name == "extra":
-            right = normalize_name(right)
+            right = env.get(_ENV_ALIASES, {}).get(var_name, lambda x: x)(right)
 
     if var_name in _NON_VERSION_VAR_NAMES:
         return _env_expr(left, op, right)
