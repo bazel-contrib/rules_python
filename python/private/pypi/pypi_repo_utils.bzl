@@ -188,7 +188,7 @@ def _run_toml2json(mrctx, toml_label, attr, logger = None):
         fail("toml file does not exist: {} (from label {})".format(toml_path, toml_label))
 
     # Use the shared toml2json tool
-    toml2json_tool = mrctx.path(ctx.attr._toml2json)
+    toml2json_tool = mrctx.path(attr._toml2json)
 
     stdout = _execute_checked_stdout(
         mrctx,
