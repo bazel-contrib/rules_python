@@ -58,6 +58,15 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* **DEPRECATED: implicit zipapp support**
+  * Implicit zipapp output of `py_binary`/`py_test` has been deprecated and
+    replaced by separate {obj}`py_zipapp_binary` and {obj}`py_zipapp_test`
+    rules. See
+    [#3567](https://github.com/bazel-contrib/rules_python/issues/3567)
+    for a detailed migration guide.
+* (toolchains) stop exposing config settings in python toolchain alias repos.
+  Please consider depending on the flags defined in
+  `//python/config_setting/...` and the `@platforms` package instead.
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 * (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
   {obj}`--stamp` flag.
@@ -70,6 +79,9 @@ END_UNRELEASED_TEMPLATE
   ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
 * (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
   ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497))
+* (pypi) `pip_parse` no longer silently drops PEP 508 URL-based requirements
+  (`pkg @ https://...`) when `extract_url_srcs=False` (the default for
+  `pip_repository`).
 
 {#v0-0-0-added}
 ### Added
@@ -93,6 +105,19 @@ END_UNRELEASED_TEMPLATE
   {obj}`PyExecutableInfo.interpreter_args`,
   {obj}`PyExecutableInfo.stage2_bootstrap`, and
   {obj}`PyExecutableInfo.venv_python_exe`.
+* (tools/wheelmaker.py) Added support for URL requirements according to PEP 508
+  in Requires-Dist metadata. ([#3569](https://github.com/bazel-contrib/rules_python/pull/3569))
+
+{#v1-8-4}
+## [1.8.4] - 2026-02-10
+
+### Fixed
+* (pipstar): A corner case of evaluation of version specifiers (`"1.2" ~= "1.2.0"`)
+  has been fixed improving compatibility with the PEP440 standard.
+  Fixes [#3580](https://github.com/bazel-contrib/rules_python/issues/3580).
+* (pipstar): We now add read permissions after extracting wheels for the cases
+  where the `whl` file is missing them.
+  Fixes [#3554](https://github.com/bazel-contrib/rules_python/issues/3554).
 
 {#v1-8-3}
 ## [1.8.3] - 2026-01-27

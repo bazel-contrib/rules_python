@@ -198,6 +198,26 @@ def test_extra_with_conditional_and_unconditional_markers(env):
 
 _tests.append(test_extra_with_conditional_and_unconditional_markers)
 
+def test_span_all_python_versions(env):
+    requires_dist = [
+        "bar>=0.4.0; python_version >= \"3.13.0\"",
+        "bar>=0.3.0; python_version ~= \"3.12.0\"",
+        "bar>=0.2.0; python_version ~= \"3.11.0\"",
+        "bar>=0.1.0; python_version < \"3.11\"",
+    ]
+
+    got = deps(
+        "foo",
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([])
+    env.expect.that_dict(got.deps_select).contains_exactly({
+        "bar": "(python_version < \"3.11\") or (python_version >= \"3.13.0\") or (python_version ~= \"3.11.0\") or (python_version ~= \"3.12.0\")",
+    })
+
+_tests.append(test_span_all_python_versions)
+
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,

@@ -285,8 +285,14 @@ fi
 
 export RUNFILES_DIR
 
+if command -v env >/dev/null 2>&1; then
+  ENV_CMD="env"
+else
+  ENV_CMD="/usr/bin/env"
+fi
+
 command=(
-  env
+  "$ENV_CMD"
   "${interpreter_env[@]}"
   "$python_exe"
   "${interpreter_args[@]}"
