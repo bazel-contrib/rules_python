@@ -93,11 +93,7 @@ def simpleapi_download(
     found_on_index = {}
     warn_overrides = False
 
-    # Normalize the inputs
-    if type(attr.sources) == "list":
-        fail("TODO")
-    else:
-        input_sources = attr.sources
+    input_sources = attr.sources
 
     for i, index_url in enumerate(index_urls):
         if i != 0:

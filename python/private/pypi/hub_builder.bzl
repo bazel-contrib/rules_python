@@ -395,11 +395,7 @@ def _set_get_index_urls(self, pip_attr):
             index_url = pip_attr.experimental_index_url,
             extra_index_urls = pip_attr.experimental_extra_index_urls or [],
             index_url_overrides = pip_attr.experimental_index_url_overrides or {},
-            sources = [
-                d
-                for d in distributions
-                if _use_downloader(self, python_version, d)
-            ] if type(distributions) == "list" else {
+            sources = {
                 d: versions
                 for d, versions in distributions.items()
                 if _use_downloader(self, python_version, d)
