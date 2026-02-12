@@ -45,7 +45,3 @@ common --deleted_packages=tests/modules/other/nspkg_single
 common --deleted_packages=tests/modules/other/simple_v1
 common --deleted_packages=tests/modules/other/simple_v2
 common --deleted_packages=tests/modules/other/with_external_data
-common --deleted_packages=tests/pyproject/compile_requirements_test
-common --deleted_packages=tests/pyproject/pip_integration_test
-common --deleted_packages=tests/pyproject/priority_test
-common --deleted_packages=tests/pyproject/python_toolchain_test
