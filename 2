@@ -904,7 +904,6 @@ def _compute_default_python_version(mctx):
                 onerror = _fail_multiple_defaults_python_version_file,
             )
 
-        # Priority order: ENV > pyproject_toml >  python_version_file > python_version
         if default_python_version_file:
             default_python_version = _one_or_the_same(
                 default_python_version,
