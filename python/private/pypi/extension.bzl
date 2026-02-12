@@ -747,8 +747,10 @@ code will be re-evaluated when any of files in the default changes.
         "_toml2json": attr.label(
             default = "//tools/private/toml2json:toml2json.py",
         ),
+        # TODO: Set a proper default once interpreter bootstrapping is resolved.
+        # See https://github.com/bazel-contrib/rules_python/pull/3557
         "_tool_python_interpreter": attr.label(
-            default = "@python_3_14_host//:BUILD.bazel",
+            default = None,
         ),
     }, **ATTRS)
     attrs.update(AUTH_ATTRS)

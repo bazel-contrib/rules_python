@@ -1023,13 +1023,12 @@ _defaults = tag_class(
     attrs = {
         "pyproject_toml": attr.label(
             mandatory = False,
-            allow_single_file = True,
             doc = """\
 Label pointing to pyproject.toml file to read the default Python version from.
 When specified, reads the `requires-python` field from pyproject.toml.
 The version must be specified as `==X.Y.Z` (exact version with full semver).
 
-:::{versionadded} 1.8.0
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
         ),

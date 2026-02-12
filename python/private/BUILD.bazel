@@ -31,7 +31,6 @@ licenses(["notice"])
 
 exports_files([
     "runtime_env_toolchain_interpreter.sh",
-    "pyproject_version_extractor.py",
 ])
 
 filegroup(
