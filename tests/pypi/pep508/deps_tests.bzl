@@ -219,19 +219,20 @@ def test_span_all_python_versions(env):
 _tests.append(test_span_all_python_versions)
 
 def test_extras_with_hyphens_are_normalized(env):
-    """Test that extras with hyphens are correctly matched after normalization.
+    """Test that extras with hyphens in marker expressions are normalized.
 
-    When requirements.txt specifies extras with hyphens (e.g., foo[db-backend])
-    but wheel METADATA uses underscores in marker expressions
-    (e.g., extra == "db_backend") per PEP 685, the deps should still resolve.
+    When wheel METADATA uses hyphens in marker expressions
+    (e.g., extra == "db-backend") but the extras from requirement parsing
+    are already normalized (e.g., "db_backend"), the deps should still
+    resolve because marker evaluation normalizes per PEP 685.
 
     Args:
         env: the test environment.
     """
     requires_dist = [
         "bar",
-        'baz-lib; extra == "db_backend"',
-        'qux-async; extra == "async_driver"',
+        'baz-lib; extra == "db-backend"',
+        'qux-async; extra == "async-driver"',
     ]
 
     got = deps(

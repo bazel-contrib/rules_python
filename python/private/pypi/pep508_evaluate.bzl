@@ -16,6 +16,7 @@
 """
 
 load("//python/private:enum.bzl", "enum")
+load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
 
 # The expression parsing and resolution for the PEP508 is below
@@ -307,6 +308,12 @@ def marker_expr(left, op, right, *, env, strict = True):
             # The following normalizes the values
             left = env.get(_ENV_ALIASES, {}).get(var_name, {}).get(left, left)
 
+        # Normalize the extra value per PEP 685 so that hyphens, dots,
+        # and case differences in wheel METADATA marker expressions
+        # still match the normalized extras from requirement parsing.
+        if var_name == "extra":
+            left = normalize_name(left)
+
     else:
         var_name = left
         left = env[left]
@@ -315,6 +322,10 @@ def marker_expr(left, op, right, *, env, strict = True):
         if _ENV_ALIASES in env:
             # See the note above on normalization
             right = env.get(_ENV_ALIASES, {}).get(var_name, {}).get(right, right)
+
+        # See the note above on PEP 685 normalization
+        if var_name == "extra":
+            right = normalize_name(right)
 
     if var_name in _NON_VERSION_VAR_NAMES:
         return _env_expr(left, op, right)
