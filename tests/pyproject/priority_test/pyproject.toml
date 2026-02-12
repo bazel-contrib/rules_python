@@ -1,4 +1,0 @@
-[project]
-name = "priority-test"
-dynamic = ["version"]
-requires-python = "==3.11.7"

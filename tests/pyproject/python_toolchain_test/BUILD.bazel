@@ -1,7 +1,0 @@
-load("@rules_python//python:defs.bzl", "py_test")
-
-py_test(
-    name = "test_version",
-    srcs = ["test_version.py"],
-    main = "test_version.py",
-)
