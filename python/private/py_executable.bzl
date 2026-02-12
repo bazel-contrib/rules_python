@@ -379,9 +379,10 @@ def _create_executable(
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
     if build_zip_enabled:
-        # buildifier: disable=print
-        print(
-            """
+        if not is_windows:
+            # buildifier: disable=print
+            print(
+                """
 ======================================================================
 WARNING: Target: {}
   The `--build_python_zip` flag and implicit zipapp output of `py_binary`
@@ -392,7 +393,7 @@ WARNING: Target: {}
   https://github.com/bazel-contrib/rules_python/issues/3567
 ======================================================================
                """.rstrip().format(ctx.label),
-        )
+            )
 
         extra_default_outputs.append(zip_file)
 
