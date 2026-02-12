@@ -1,8 +1,0 @@
-[project]
-name = "pip-integration-test"
-dynamic = ["version"]
-requires-python = "==3.11.7"
-
-dependencies = [
-  "requests==2.32.5"
-]
