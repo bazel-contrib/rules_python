@@ -84,6 +84,10 @@ END_UNRELEASED_TEMPLATE
 * (pypi) `pip_parse` no longer silently drops PEP 508 URL-based requirements
   (`pkg @ https://...`) when `extract_url_srcs=False` (the default for
   `pip_repository`).
+* (pypi) Extras in requirement strings are now normalized per PEP 685,
+  fixing missing transitive dependencies when extras contain hyphens
+  (e.g., `sqlalchemy[postgresql-psycopg2binary]`).
+  ([#3587](https://github.com/bazel-contrib/rules_python/issues/3587))
 
 {#v0-0-0-added}
 ### Added
