@@ -79,6 +79,8 @@ END_UNRELEASED_TEMPLATE
   ([#3579](https://github.com/bazel-contrib/rules_python/issues/3579))
 * (tests) No more coverage warnings are being printed if there are no sources.
   ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
+* (coverage) Bump `coverage.py` to 7.10.7 so Python 3.14 coverage is supported
+  while keeping compatibility with Python 3.9.
 * (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
   ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497))
 * (pypi) `pip_parse` no longer silently drops PEP 508 URL-based requirements
