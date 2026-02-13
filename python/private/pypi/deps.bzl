@@ -81,8 +81,8 @@ _RULE_DEPS = [
     ),
     (
         "pypi__tomli",
-        "https://files.pythonhosted.org/packages/51/32/ef9f6845e6b9ca392cd3f64f9ec185cc6f09f0a2df3db08cbe8809d1d435/tomli-2.4.0-cp311-cp311-macosx_11_0_arm64.whl",
-        "5572e41282d5268eb09a697c89a7bee84fae66511f87533a6f88bd2f7b652da9",
+        "https://files.pythonhosted.org/packages/23/d1/136eb2cb77520a31e1f64cbae9d33ec6df0d78bdf4160398e86eec8a8754/tomli-2.4.0-py3-none-any.whl",
+        "1f776e7d669ebceb01dee46484485f43a4048746235e683bcdffacdf1fb4785a",
     ),
     (
         "pypi__wheel",
