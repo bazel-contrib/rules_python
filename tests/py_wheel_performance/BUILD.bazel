@@ -1,0 +1,76 @@
+"""Performance test for py_wheel analysis-time scaling.
+
+Verifies that py_wheel analysis time scales linearly with dep count,
+not quadratically (as it would if inputs_to_package.to_list() were
+called during analysis).
+"""
+
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:packaging.bzl", "py_wheel")
+load("//python:py_test.bzl", "py_test")
+load(":gen_py_libs.bzl", "gen_py_libs")
+
+package(default_visibility = ["//visibility:private"])
+
+# Two py_wheel targets at different sizes to measure scaling behavior.
+# If analysis is linear, 10k should take ~2x as long as 5k.
+# If analysis is quadratic (the old to_list() bug), 10k takes ~4x as long.
+
+SMALL_DEPS = gen_py_libs(
+    name = "small",
+    count = 5000,
+)
+
+LARGE_DEPS = gen_py_libs(
+    name = "large",
+    count = 10000,
+)
+
+py_wheel(
+    name = "small_wheel",
+    distribution = "small_wheel",
+    python_tag = "py3",
+    version = "0.0.1",
+    deps = SMALL_DEPS,
+)
+
+py_wheel(
+    name = "large_wheel",
+    distribution = "large_wheel",
+    python_tag = "py3",
+    version = "0.0.1",
+    deps = LARGE_DEPS,
+)
+
+# Smaller wheel (100 deps) for correctness verification.
+VERIFY_DEPS = gen_py_libs(
+    name = "verify",
+    count = 100,
+)
+
+py_wheel(
+    name = "verify_wheel",
+    distribution = "verify_wheel",
+    python_tag = "py3",
+    version = "0.0.1",
+    deps = VERIFY_DEPS,
+)
+
+py_test(
+    name = "py_wheel_contents_test",
+    srcs = ["py_wheel_contents_test.py"],
+    data = [":verify_wheel"],
+    deps = ["//python/runfiles"],
+)
+
+sh_test(
+    name = "py_wheel_analysis_scaling_test",
+    srcs = ["py_wheel_analysis_scaling_test.sh"],
+    tags = [
+        "exclusive",
+        "integration-test",
+        "manual",
+        "no-remote-exec",
+        "no-sandbox",
+    ],
+)
