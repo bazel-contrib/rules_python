@@ -224,7 +224,15 @@ define_hermetic_runtime_toolchain_impl(
     else:
         attrs["urls"] = urls
 
-    return attrs
+    # Bazel <8.3.0 lacks repository_ctx.repo_metadata
+    if not hasattr(rctx, "repo_metadata"):
+        return attrs
+
+    reproducible = rctx.attr.sha256 != ""
+    return rctx.repo_metadata(
+        reproducible = reproducible,
+        attrs_for_reproducibility = {} if reproducible else attrs,
+    )
 
 python_repository = repository_rule(
     _python_repository_impl,
