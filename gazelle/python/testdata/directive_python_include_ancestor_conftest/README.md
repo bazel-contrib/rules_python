@@ -9,14 +9,14 @@ child levels will inherit the value:
 
 + The root level does not set the directive (it defaults to True).
 + The next level, `one/`, inherits that value.
-+ The next level, `one/two/`, sets the directive to False and thus the
++ The next level, `one/two/`, sets the directive to False; consequently the
   `py_test` target only includes the sibling `:conftest` target.
-  + The `one/two/no_conftest` directory does not contain a `conftest.py` file
-    and thus asserts that we correctly do not include any `conftest` targets
+  + The `one/two/no_conftest/` directory does not contain a `conftest.py` file
+    thereby asserting that we correctly do not include any `conftest` targets
     whatsoever.
-+ The final level, `one/two/three`, sets the directive back to True and thus
++ The final level, `one/two/three/`, sets the directive back to True, meaning
   the `py_test` target includes a total of 4 `conftest` targets.
-  + The `one/two/three/no_conftest` directory does not contain a `conftest.py`
+  + The `one/two/three/no_conftest/` directory does not contain a `conftest.py`
     file and thus asserts that the code includes _only_ ancestor `conftest`
     targets.
 

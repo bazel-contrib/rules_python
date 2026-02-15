@@ -762,7 +762,7 @@ py_test(
     name = "foo_test",
     srcs = ["foo_test.py"],
     deps = [
-        ":conftest",
+        ":conftest",            # same as "//one:two/three:conftest"
         "//:conftest",
         "//one:conftest",
         "//one/two:conftest",
