@@ -269,7 +269,7 @@ function cmd_push() {
   local local_branch=$(git rev-parse --abbrev-ref HEAD)
   local pr_branch=$(git config get branch.$local_branch.prPushRemoteBranch)
   local pr_remote=$(git config get branch.$local_branch.pushRemote)
-  (set -x; git push $pr_remote $local_branch:$pr_branch)
+  (set -x; git push "$pr_remote" "$local_branch:$pr_branch")
 }
 
 function cmd_pull() {
@@ -280,7 +280,7 @@ function cmd_pull() {
   local local_branch=$(git rev-parse --abbrev-ref HEAD)
   local pr_branch=$(git config get branch.$local_branch.prPushRemoteBranch)
   local pr_remote=$(git config get branch.$local_branch.pushRemote)
-  (set -x; git pull $pr_remote $pr_branch "$@")
+  (set -x; git pull "$pr_remote" "$pr_branch" "$@")
 }
 
 function usage() {
