@@ -80,7 +80,9 @@ END_UNRELEASED_TEMPLATE
 * (tests) No more coverage warnings are being printed if there are no sources.
   ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
 * (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
-  ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497))
+  ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497)) Note
+  that this behavior can be reverted to the <= 1.8 behavior by setting the new
+  `python_include_ancestor_conftest` directive to `false`.
 * (pypi) `pip_parse` no longer silently drops PEP 508 URL-based requirements
   (`pkg @ https://...`) when `extract_url_srcs=False` (the default for
   `pip_repository`).
@@ -113,6 +115,12 @@ END_UNRELEASED_TEMPLATE
   {obj}`PyExecutableInfo.venv_python_exe`.
 * (tools/wheelmaker.py) Added support for URL requirements according to PEP 508
   in Requires-Dist metadata. ([#3569](https://github.com/bazel-contrib/rules_python/pull/3569))
+* (gazelle) A new directive `python_include_ancestor_conftest` has been added.
+  When `false`, ancestor `conftest` targets are not automatically added to
+  {bzl:obj}`py_test` target dependencies. This `false` behavior is how things
+  were in `rules_python` <= 1.8. The default is `true`, as the prior behavior
+  was technically incorrect.
+  ([#3596](https://github.com/bazel-contrib/rules_python/pull/3596))
 
 {#v1-8-4}
 ## [1.8.4] - 2026-02-10
