@@ -72,6 +72,8 @@ END_UNRELEASED_TEMPLATE
   {obj}`--stamp` flag.
 * (pypi) Now the RECORD file patches will follow the quoted or unquoted filenames convention
   in order to make `pytorch` and friends easier to patch.
+* (wheel) `py_wheel` no longer expands the input depset during analysis,
+  improving analysis performance for targets with large dependency trees.
 
 {#v0-0-0-fixed}
 ### Fixed
