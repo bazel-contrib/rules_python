@@ -89,8 +89,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
             mod = mod,
             seen_versions = seen_versions,
             config = config,
-            module_ctx = module_ctx,
-            logger = logger,
+            default_python_version = default_python_version,
         )
 
         for toolchain_attr in toolchain_attr_structs:
@@ -962,25 +961,25 @@ def _create_defaults_attr_struct(*, tag):
         pyproject_toml = getattr(tag, "pyproject_toml", None),
     )
 
-def _create_toolchain_attr_structs(*, mod, config, seen_versions, module_ctx, logger):
+def _create_toolchain_attr_structs(*, mod, config, seen_versions, default_python_version):
     arg_structs = []
 
-    # Check if pyproject_toml was specified in defaults
-    # If so, register a toolchain for it
-    for tag in mod.tags.defaults:
-        pyproject_toml = getattr(tag, "pyproject_toml", None)
-        if pyproject_toml:
-            pyproject_version = read_pyproject_version(
-                module_ctx,
-                pyproject_toml,
-                logger,
-            )
-            if pyproject_version and pyproject_version not in seen_versions:
-                arg_structs.append(_create_toolchain_attrs_struct(
-                    python_version = pyproject_version,
-                    toolchain_tag_count = 1,
-                ))
-                seen_versions[pyproject_version] = True
+    # Auto-register a toolchain for the default version if not already
+    # registered via an explicit python.toolchain() call.
+    # This works for any default source: pyproject_toml, python_version_file,
+    # python_version_env, or python_version.
+    has_explicit_toolchain = default_python_version and any([
+        tag.python_version == default_python_version
+        for tag in mod.tags.toolchain
+    ])
+    if (default_python_version and
+        default_python_version not in seen_versions and
+        mod.is_root and not has_explicit_toolchain):
+        arg_structs.append(_create_toolchain_attrs_struct(
+            python_version = default_python_version,
+            toolchain_tag_count = 1,
+        ))
+        seen_versions[default_python_version] = True
 
     for tag in mod.tags.toolchain:
         arg_structs.append(_create_toolchain_attrs_struct(
