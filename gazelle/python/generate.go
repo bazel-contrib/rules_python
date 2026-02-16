@@ -68,7 +68,7 @@ func matchesAnyGlob(s string, globs []string) bool {
 
 // findConftestPaths returns package paths containing conftest.py, from currentPkg
 // up through ancestors, stopping at module root.
-func findConftestPaths(repoRoot, currentPkg, pythonProjectRoot string) []string {
+func findConftestPaths(repoRoot, currentPkg, pythonProjectRoot string, includeAncestorConftest bool) []string {
 	var result []string
 	for pkg := currentPkg; ; pkg = filepath.Dir(pkg) {
 		if pkg == "." {
@@ -76,6 +76,12 @@ func findConftestPaths(repoRoot, currentPkg, pythonProjectRoot string) []string 
 		}
 		if _, err := os.Stat(filepath.Join(repoRoot, pkg, conftestFilename)); err == nil {
 			result = append(result, pkg)
+		}
+		// We traverse up the tree to find conftest files and we start in
+		// the current package. Thus if we find one in the current package
+		// and do not want ancestors, we break early.
+		if !includeAncestorConftest {
+			break
 		}
 		if pkg == "" {
 			break
@@ -402,7 +408,6 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			setAnnotations(*annotations).
 			generateImportsAttribute()
 
-
 		pyBinary := pyBinaryTarget.build()
 
 		result.Gen = append(result.Gen, pyBinary)
@@ -526,13 +531,13 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	for _, pyTestTarget := range pyTestTargets {
 		shouldAddConftest := pyTestTarget.annotations.includePytestConftest == nil ||
-		*pyTestTarget.annotations.includePytestConftest
+			*pyTestTarget.annotations.includePytestConftest
 
 		if shouldAddConftest {
-			for _, conftestPkg := range findConftestPaths(args.Config.RepoRoot, args.Rel, pythonProjectRoot) {
+			for _, conftestPkg := range findConftestPaths(args.Config.RepoRoot, args.Rel, pythonProjectRoot, cfg.IncludeAncestorConftest()) {
 				pyTestTarget.addModuleDependency(
 					Module{
-						Name: importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp, 
+						Name:     importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp,
 						Filepath: filepath.Join(conftestPkg, conftestFilename),
 					},
 				)

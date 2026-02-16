@@ -116,6 +116,7 @@ deps = [
 ```
 
 
+(annotation-include-pytest-conftest)=
 ## `include_pytest_conftest`
 
 :::{versionadded} 1.6.0

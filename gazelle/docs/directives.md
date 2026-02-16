@@ -175,6 +175,11 @@ The Python-specific directives are:
   * Default: `false`
   * Allowed Values: `true`, `false`
 
+[`# gazelle:python_include_ancestor_conftest bool`](#python-include-ancestor-conftest)
+: Controls whether ancestor conftest targets are added to {bzl:obj}`py_test` target
+  dependencies.
+  * Default: `true`
+  * Allowed Values: `true`, `false`
 
 ## `python_extension`
 
@@ -720,3 +725,67 @@ previously-generated or hand-created rules.
 :::{error}
 Detailed docs are not yet written.
 :::
+
+## `python_include_ancestor_conftest`
+
+Version VERSION_NEXT_FEATURE includes a fix ({gh-pr}`3498`) for a long-standing issue
+({gh-issue}`3497`) where ancestor `conftest.py` files were not automatically
+added as dependencies of {bzl:obj}`py_test` targets.
+
+However, some people may not want this behavior (see https://xkcd.com/1172/).
+Thus the `python_include_ancestor_conftest` directive controls this behavior.
+It defaults to `true`, which causes all ancestor `conftest.py` files to be
+included as dependencies for {bzl:obj}`py_test` targets.
+
+Setting the directive to `false` reverts to the pre-VERSION_NEXT_FEATURE behavior.
+
+For example, given this directory tree (not shown: intermediary `BUILD.bazel`
+files)
+
+```
+./
+├── conftest.py
+└── one/
+    ├── conftest.py
+    └── two/
+        ├── conftest.py
+        └── three/
+            ├── BUILD.bazel
+            ├── conftest.py
+            └── my_test.py
+```
+
+Gazelle will generate this target for `foo_test.py` by default:
+
+```starlark
+py_test(
+    name = "foo_test",
+    srcs = ["foo_test.py"],
+    deps = [
+        ":conftest",            # same as "//one:two/three:conftest"
+        "//:conftest",
+        "//one:conftest",
+        "//one/two:conftest",
+    ],
+)
+```
+
+But when `python_include_ancestor_conftest` is `false`, only the sibling
+`:conftest` target will be included as a dependency:
+
+:::{tip}
+The [`include_pytest_conftest` annotation](annotation-include-pytest-conftest)
+controls whether the sibling `:conftest` target is added to {bzl:obj}`py_test`
+target dependency list.
+:::
+
+```starlark
+# gazelle:python_include_ancestor_conftest false
+py_test(
+    name = "foo_test",
+    srcs = ["foo_test.py"],
+    deps = [
+        ":conftest",
+    ],
+)
+```
