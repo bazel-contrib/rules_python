@@ -846,3 +846,24 @@ The [`//python/bin:repl` target](repl) provides an environment identical to
 what `py_binary` provides. That means it handles things like the
 [`PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSAFEPATH)
 environment variable automatically. The `//python/bin:python` target will not.
+## Consuming Python C headers and libraries
+
+The following targets expose the headers and libraries from the
+currently selected Python C toolchain:
+
+- `@rules_python//python/cc:current_py_cc_headers`
+- `@rules_python//python/cc:current_py_cc_headers_abi3`
+- `@rules_python//python/cc:current_py_cc_libs`
+
+These targets behave similarly to a `cc_library`, but instead of defining
+their own sources, they forward providers from the underlying toolchain-
+selected `cc_library`.
+
+A Python C toolchain must be registered for these targets to work.
+Under bzlmod, a toolchain is registered automatically. In non-bzlmod
+setups, users must ensure that a toolchain is explicitly registered.
+
+Users should depend on these targets instead of legacy alias targets
+when embedding Python or building C extensions, as this ensures
+compatibility across different toolchain configurations.
+
