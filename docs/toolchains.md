@@ -555,18 +555,18 @@ Python is used to run a program but also makes it easy to use a Python version
 that isn't compatible with build-time assumptions.
 
 ```
-register_toolchains("@rules_python//python/runtime_env_toolchains:all")
+`register_toolchains`("@rules_python//python/runtime_env_toolchains:all")
 ```
 
-Note that this toolchain has no constraints, i.e. it will match any platform,
+Note that this `toolchain` has no constraints, i.e. it will match any platform,
 Python version, etc.
 
 :::{seealso}
-[Local toolchain], which creates a more full featured toolchain from a
+[Local `toolchain`], which creates a more full featured toolchain from a
 locally installed Python.
 :::
 
-### Autodetecting toolchain
+### Autodetecting `toolchain`
 
 The autodetecting toolchain is a deprecated toolchain that is built into Bazel.
 **Its name is a bit misleading: it doesn't autodetect anything.** All it does is
@@ -851,7 +851,8 @@ environment variable automatically. The `//python/bin:python` target will not.
 The following targets expose the headers and libraries from the
 currently selected Python C toolchain:
 
-- `@rules_python//python/cc:current_py_cc_headers`
+- `@rules_python//python/cc:`
+`current_py_cc_headers`
 - `@rules_python//python/cc:current_py_cc_headers_abi3`
 - `@rules_python//python/cc:current_py_cc_libs`
 
