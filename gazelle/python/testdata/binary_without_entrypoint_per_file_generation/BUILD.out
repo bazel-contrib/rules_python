@@ -26,12 +26,25 @@ py_library(
 )
 
 py_binary(
+    name = "lib_and_main_bin",
+    srcs = ["lib_and_main.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
     name = "lib_and_main",
     srcs = ["lib_and_main.py"],
     visibility = ["//:__subpackages__"],
 )
 
 py_binary(
+    name = "main_bin",
+    srcs = ["main.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@pip//:pandas"],
+)
+
+py_library(
     name = "main",
     srcs = ["main.py"],
     visibility = ["//:__subpackages__"],
@@ -39,6 +52,13 @@ py_binary(
 )
 
 py_binary(
+    name = "main2_bin",
+    srcs = ["main2.py"],
+    visibility = ["//:__subpackages__"],
+    deps = [":lib2"],
+)
+
+py_library(
     name = "main2",
     srcs = ["main2.py"],
     visibility = ["//:__subpackages__"],
