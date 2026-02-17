@@ -108,6 +108,7 @@ whl_library_targets_from_requires(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
+    enable_implicit_namespace_pkgs = True,
     entry_points = {
         "foo": "bar.py",
     },
@@ -149,6 +150,7 @@ exports_files(
             data_exclude_glob = ["data_exclude_all"],
             srcs_exclude_glob = ["srcs_exclude_all"],
             additive_build_content = """# SOMETHING SPECIAL AT THE END""",
+            enable_implicit_namespace_pkgs = True,
         ),
         config_load = "@pypi//:config.bzl",
         group_name = "qux",
@@ -297,6 +299,7 @@ exports_files(
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
 _tests.append(_test_all_with_loads)
+
 
 def generate_whl_library_build_bazel_test_suite(name):
     """Create the test suite.
