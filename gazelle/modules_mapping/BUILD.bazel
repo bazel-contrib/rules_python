@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 
@@ -55,4 +56,10 @@ filegroup(
     name = "distribution",
     srcs = glob(["**"]),
     visibility = ["//:__pkg__"],
+)
+
+bzl_library(
+    name = "def_bzl",
+    srcs = ["def.bzl"],
+    visibility = ["//visibility:public"],
 )

@@ -82,9 +82,15 @@ build_test(
     targets = [":docs"],
 )
 
+alias(
+    name = "gazelle_modules_mapping_def_bzl",
+    actual = "@rules_python_gazelle_plugin//modules_mapping:def_bzl",
+)
+
 sphinx_stardocs(
     name = "bzl_api_docs",
     srcs = [
+        ":gazelle_modules_mapping_def_bzl",
         "//python:defs_bzl",
         "//python:features_bzl",
         "//python:packaging_bzl",
