@@ -107,15 +107,11 @@ templates_path = ["_templates"]
 primary_domain = None  # The default is 'py', which we don't make much use of
 nitpicky = True
 
-nitpick_ignore_regex = [
-    # External xrefs aren't setup: ignore missing xref warnings
-    # External xrefs to sphinx isn't setup: ignore missing xref warnings
-    ("py:.*", "(sphinx|docutils|ast|enum|collections|typing_extensions).*"),
-]
-
 # --- Intersphinx configuration
 
 intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master", None),
     "bazel": ("https://bazel.build/", "bazel_inventory.inv"),
 }
 
