@@ -69,7 +69,7 @@ END_UNRELEASED_TEMPLATE
   `//python/config_setting/...` and the `@platforms` package instead.
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 * (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
-  {obj}`--stamp` flag.
+  `--stamp` flag.
 * (pypi) Now the RECORD file patches will follow the quoted or unquoted filenames convention
   in order to make `pytorch` and friends easier to patch.
 * (wheel) `py_wheel` no longer expands the input depset during analysis,
@@ -294,7 +294,7 @@ END_UNRELEASED_TEMPLATE
   `pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
   vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
   when the APIs get removed. If you need to customize the way the dependencies get
-  evaluated, see [our docs](/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
+  evaluated, see [our docs](https://rules-python.readthedocs.io/en/latest/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
 * (toolchains) Added Python versions 3.15.0a1, 3.14.0, 3.13.9, 3.12.12, 3.11.14, 3.10.19, and 3.9.24
   from the [20251014] release.
 * (deps) (bzlmod) Upgraded to `bazel-skylib` version
