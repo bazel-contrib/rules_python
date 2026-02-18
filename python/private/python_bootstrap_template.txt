@@ -10,13 +10,13 @@ import sys
 import os
 import subprocess
 import uuid
-# runfiles-relative path
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of
 # unsubstituted placeholders, which occurs when native py_binary is used in
 # external repositories. In that case, we fall back to %main% which Bazel's
 # native rule does substitute.
 _STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
+# runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
 # NOTE: The fallback logic from stage2_bootstrap to main is only present
@@ -165,6 +165,29 @@ def print_verbose(*args, mapping=None, values=None):
         else:
             print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
+def maybe_find_in_manifest(rf_root_path, show_lines=False):
+    if not os.environ.get("RUNFILES_MANIFEST_FILE"):
+        return None
+    if not os.path.exists(os.environ["RUNFILES_MANIFEST_FILE"]):
+        return None
+    manifest_path = os.environ["RUNFILES_MANIFEST_FILE"]
+    print_verbose("search manifest for:",  rf_root_path)
+
+    # Add trailing space to avoid suffix-string matching
+    search_for_prefix = rf_root_path.encode("utf8") + b" "
+    # Use binary to avoid BOM issues on Windows
+    with open(manifest_path, 'rb') as fp:
+      for line in fp:
+        if show_lines:
+          print_verbose("manifest line:", repr(line))
+        # NOTE: This doesn't handle escaped manifest lines
+        if line.startswith(search_for_prefix):
+          _, _, main_filename = line.partition(b" ")
+          return main_filename.strip().decode("utf8")
+
+    return None
+
+
 def FindBinary(module_space, bin_name):
   """Finds the real binary if it's not a normal absolute path."""
   if not bin_name:
@@ -180,7 +203,13 @@ def FindBinary(module_space, bin_name):
   # Use normpath() to convert slashes to os.sep on Windows.
   elif os.sep in os.path.normpath(bin_name):
     # Case 3: Path is relative to the repo root.
-    return os.path.join(module_space, bin_name)
+    full_path = os.path.join(module_space, bin_name)
+    if os.path.exists(full_path):
+        return full_path
+    full_path = maybe_find_in_manifest(bin_name, True)
+    if not full_path:
+        raise AssertionError(f"Unable to find Python: {bin_name}")
+    return full_path
   else:
     # Case 4: Path has to be looked up in the search path.
     return SearchPath(bin_name)
@@ -232,6 +261,19 @@ def FindModuleSpace(main_rel_path):
       stub_filename = os.path.join(os.path.dirname(stub_filename), target)
 
   raise AssertionError('Cannot find .runfiles directory for %s' % sys.argv[0])
+
+def find_main_file(module_space, main_rel_path):
+  main_filename = os.path.join(module_space, main_rel_path)
+  main_filename = GetWindowsPathWithUNCPrefix(main_filename)
+
+  if os.path.exists(main_filename):
+      return main_filename
+
+  main_filename = maybe_find_in_manifest(STAGE2_BOOTSTRAP)
+  if main_filename:
+      return main_filename
+  raise AssertionError(f"Cannot find main filename: {main_rel_path}")
+
 
 def ExtractZip(zip_path, dest_dir):
   """Extracts the contents of a zip file, preserving the unix file mode bits.
@@ -420,8 +462,7 @@ def Main():
   # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
   new_env['PYTHONSAFEPATH'] = '1'
 
-  main_filename = os.path.join(module_space, main_rel_path)
-  main_filename = GetWindowsPathWithUNCPrefix(main_filename)
+  main_filename = find_main_file(module_space, main_rel_path)
   assert os.path.exists(main_filename), \
          'Cannot exec() %r: file not found.' % main_filename
   assert os.access(main_filename, os.R_OK), \
