@@ -1,0 +1,28 @@
+# Aliases for Bazel builtin //command_line_option psuedo-targets
+#
+# These are alias to use with `py_binary.config_settings` that are treated
+# as aliases for `//command_line_option:XXX` psuedo-targets.
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# todo: add docs, xref with config_settings
+# rules_python target, config_setting processing code converts it to the
+# Bazel-builtin //command_line_label:build_runfile_links psuedo-target
+alias(
+    name = "build_runfile_links",
+    actual = "//python:none",
+)
+
+# todo: add docs
+alias(
+    name = "enable_runfiles",
+    actual = "//python:none",
+)
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**"]),
+    visibility = ["//:__subpackages__"],
+)

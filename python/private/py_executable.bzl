@@ -1768,6 +1768,32 @@ def _create_run_environment_info(ctx, inherited_environment):
         inherited_environment = inherited_environment,
     )
 
+def add_config_setting_defaults(kwargs):
+    config_settings = kwargs.get("config_settings", None)
+    if config_settings == None:
+        config_settings = {}
+
+    # NOTE: This code runs in loading phase within the context of the caller.
+    # Label() must be used to resolve repo names within rules_python's
+    # context to avoid unknown repo name errors.
+    default = select({
+        labels.PLATFORMS_OS_WINDOWS: {
+            ##labels.BUILD_RUNFILE_LINKS: "true",
+            labels.ENABLE_RUNFILES: "true",
+        },
+        "//conditions:default": {
+            ##labels.BUILD_RUNFILE_LINKS: "true",
+        },
+    })
+
+    # Let user-provided settings have precedence
+    config_settings = default | config_settings
+    kwargs["config_settings"] = config_settings
+
+def common_executable_macro_kwargs_setup(kwargs):
+    convert_legacy_create_init_to_int(kwargs)
+    add_config_setting_defaults(kwargs)
+
 def _transition_executable_impl(settings, attr):
     settings = dict(settings)
     apply_config_settings_attr(settings, attr)
@@ -1777,6 +1803,7 @@ def _transition_executable_impl(settings, attr):
 
     if attr.stamp != -1:
         settings["//command_line_option:stamp"] = str(attr.stamp)
+
     return settings
 
 def create_executable_rule(*, attrs, **kwargs):
@@ -1830,10 +1857,14 @@ def create_executable_rule_builder(implementation, **kwargs):
             inputs = TRANSITION_LABELS + [
                 labels.PYTHON_VERSION,
                 "//command_line_option:stamp",
+                "//command_line_option:build_runfile_links",
+                "//command_line_option:enable_runfiles",
             ],
             outputs = TRANSITION_LABELS + [
                 labels.PYTHON_VERSION,
                 "//command_line_option:stamp",
+                "//command_line_option:build_runfile_links",
+                "//command_line_option:enable_runfiles",
             ],
         ),
         **kwargs
