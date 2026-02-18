@@ -1771,7 +1771,7 @@ def _create_run_environment_info(ctx, inherited_environment):
         inherited_environment = inherited_environment,
     )
 
-def add_config_setting_defaults(kwargs):
+def _add_config_setting_defaults(kwargs):
     config_settings = kwargs.get("config_settings", None)
     if config_settings == None:
         config_settings = {}
@@ -1795,7 +1795,7 @@ def add_config_setting_defaults(kwargs):
 
 def common_executable_macro_kwargs_setup(kwargs):
     convert_legacy_create_init_to_int(kwargs)
-    add_config_setting_defaults(kwargs)
+    _add_config_setting_defaults(kwargs)
 
 def _transition_executable_impl(settings, attr):
     settings = dict(settings)
