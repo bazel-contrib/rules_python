@@ -283,7 +283,7 @@ def create_py_library_rule_builder():
     :::
 
     Returns:
-        {type}`ruleb.Rule` with the necessary settings
+        `ruleb.Rule` with the necessary settings
         for creating a `py_library` rule.
     """
     builder = ruleb.Rule(

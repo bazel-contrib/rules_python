@@ -823,7 +823,7 @@ the BUILD files for wheels.
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
 
-:::{include} /_includes/experimtal_api.md
+:::{include} /_includes/experimental_api.md
 :::
 
 :::{seealso}

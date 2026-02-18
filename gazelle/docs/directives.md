@@ -16,58 +16,58 @@ the Python-specific directives in use can be found in the
 The Python-specific directives are:
 
 {.glossary}
-[`# gazelle:python_extension value`](#python-extension)
+[`# gazelle:python_extension value`](#directive-python-extension)
 : Controls whether the Python extension is enabled or not. Sub-packages
   inherit this value.
   * Default: `enabled`
   * Allowed Values: `enabled`, `disabled`
 
-[`# gazelle:python_root`](#python-root)
+[`# gazelle:python_root`](#directive-python-root)
 : Sets a Bazel package as a Python root. This is used on monorepos with
   multiple Python projects that don't share the top-level of the workspace
   as the root.
   * Default: n/a
   * Allowed Values: None. This direcive does not consume values.
 
-[`# gazelle:python_manifest_file_name value`](#python-manifest-file-name)
+[`# gazelle:python_manifest_file_name value`](#directive-python-manifest-file-name)
 : Overrides the default manifest file name.
   * Default: `gazelle_python.yaml`
   * Allowed Values: A string
 
-[`# gazelle:python_ignore_files value`](#python-ignore-files)
+[`# gazelle:python_ignore_files value`](#directive-python-ignore-files)
 : Controls the files which are ignored from the generated targets.
   * Default: n/a
   * Allowed Values: A comma-separated list of strings.
 
-[`# gazelle:python_ignore_dependencies value`](#python-ignore-dependencies)
+[`# gazelle:python_ignore_dependencies value`](#directive-python-ignore-dependencies)
 : Controls the ignored dependencies from the generated targets.
   * Default: n/a
   * Allowed Values: A comma-separated list of strings.
 
-[`# gazelle:python_validate_import_statements bool`](#python-validate-import-statements)
+[`# gazelle:python_validate_import_statements bool`](#directive-python-validate-import-statements)
 : Controls whether the Python import statements should be validated.
   * Default: `true`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_generation_mode value`](#python-generation-mode)
+[`# gazelle:python_generation_mode value`](#directive-python-generation-mode)
 : Controls the target generation mode.
   * Default: `package`
   * Allowed Values: `file`, `package`, `project`
 
-[`# gazelle:python_generation_mode_per_file_include_init bool`](#python-generation-mode-per-file-include-init)
+[`# gazelle:python_generation_mode_per_file_include_init bool`](#directive-python-generation-mode-per-file-include-init)
 : Controls whether `__init__.py` files are included as srcs in each
   generated target when target generation mode is "file".
   * Default: `false`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_generation_mode_per_package_require_test_entry_point bool`](python-generation-mode-per-package-require-test-entry-point)
+[`# gazelle:python_generation_mode_per_package_require_test_entry_point bool`](#directive-python-generation-mode-per-package-require-test-entry-point)
 : Controls whether a file called `__test__.py` or a target called
   `__test__` is required to generate one test target per package in
   package mode.
   * Default: `true`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_library_naming_convention value`](#python-library-naming-convention)
+[`# gazelle:python_library_naming_convention value`](#directive-python-library-naming-convention)
 : Controls the {bzl:obj}`py_library` naming convention. It interpolates
   `$package_name$` with the Bazel package name. E.g. if the Bazel package
   name is `foo`, setting this to `$package_name$_my_lib` would result in a
@@ -75,19 +75,19 @@ The Python-specific directives are:
   * Default: `$package_name$`
   * Allowed Values: A string containing `"$package_name$"`
 
-[`# gazelle:python_binary_naming_convention value`](#python-binary-naming-convention)
+[`# gazelle:python_binary_naming_convention value`](#directive-python-binary-naming-convention)
 : Controls the {bzl:obj}`py_binary` naming convention. Follows the same interpolation
   rules as `python_library_naming_convention`.
   * Default: `$package_name$_bin`
   * Allowed Values: A string containing `"$package_name$"`
 
-[`# gazelle:python_test_naming_convention value`](#python-test-naming-convention)
+[`# gazelle:python_test_naming_convention value`](#directive-python-test-naming-convention)
 : Controls the {bzl:obj}`py_test` naming convention. Follows the same interpolation
   rules as `python_library_naming_convention`.
   * Default: `$package_name$_test`
   * Allowed Values: A string containing `"$package_name$"`
 
-[`# gazelle:python_proto_naming_convention value`](#python-proto-naming-convention)
+[`# gazelle:python_proto_naming_convention value`](#directive-python-proto-naming-convention)
 : Controls the {bzl:obj}`py_proto_library` naming convention. It interpolates
   `$proto_name$` with the {bzl:obj}`proto_library` rule name, minus any trailing
   `_proto`. E.g. if the {bzl:obj}`proto_library` name is `foo_proto`, setting this
@@ -95,7 +95,7 @@ The Python-specific directives are:
   * Default: `$proto_name$_py_pb2`
   * Allowed Values: A string containing `"$proto_name$"`
 
-[`# gazelle:resolve py import-lang import-string label`](#resolve-py)
+[`# gazelle:resolve py import-lang import-string label`](#directive-resolve-py)
 : Instructs the plugin what target to add as a dependency to satisfy a given
   import statement. The syntax is `# gazelle:resolve py import-string label`
   where `import-string` is the symbol in the python `import` statement,
@@ -103,25 +103,25 @@ The Python-specific directives are:
   * Default: n/a
   * Allowed Values: See the [bazel-gazelle docs][gazelle-directives]
 
-[`# gazelle:python_default_visibility labels`](python-default-visibility)
+[`# gazelle:python_default_visibility labels`](#directive-python-default-visibility)
 : Instructs gazelle to use these visibility labels on all python targets.
   `labels` is a comma-separated list of labels (without spaces).
   * Default: `//$python_root$:__subpackages__`
   * Allowed Values: A string
 
-[`# gazelle:python_visibility label`](python-visibility)
+[`# gazelle:python_visibility label`](#directive-python-visibility)
 : Appends additional visibility labels to each generated target. This r
   directive can be set multiple times.
   * Default: n/a
   * Allowed Values: A string
 
-[`# gazelle:python_test_file_pattern value`](python-test-file-pattern)
+[`# gazelle:python_test_file_pattern value`](#directive-python-test-file-pattern)
 : Filenames matching these comma-separated {command}`glob`s will be mapped to
   {bzl:obj}`py_test` targets.
   * Default: `*_test.py,test_*.py`
   * Allowed Values: A glob string
 
-[`# gazelle:python_label_convention value`](#python-label-convention)
+[`# gazelle:python_label_convention value`](#directive-python-label-convention)
 : Defines the format of the distribution name in labels to third-party deps.
   Useful for using Gazelle plugin with other rules with different repository
   conventions (e.g. `rules_pycross`). Full label is always prepended with
@@ -131,20 +131,20 @@ The Python-specific directives are:
   * Default: `$distribution_name$`
   * Allowed Values: A string
 
-[`# gazelle:python_label_normalization value`](#python-label-normalization)
+[`# gazelle:python_label_normalization value`](#directive-python-label-normalization)
 : Controls how distribution names in labels to third-party deps are
   normalized. Useful for using Gazelle plugin with other rules with different
   label conventions (e.g. `rules_pycross` uses PEP-503).
   * Default: `snake_case`
   * Allowed Values: `snake_case`, `none`, `pep503`
 
-[`# gazelle:python_experimental_allow_relative_imports bool`](#python-experimental-allow-relative-imports)
+[`# gazelle:python_experimental_allow_relative_imports bool`](#directive-python-experimental-allow-relative-imports)
 : Controls whether Gazelle resolves dependencies for import statements that
   use paths relative to the current package.
   * Default: `false`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_generate_pyi_deps bool`](#python-generate-pyi-deps)
+[`# gazelle:python_generate_pyi_deps bool`](#directive-python-generate-pyi-deps)
 : Controls whether to generate a separate `pyi_deps` attribute for
   type-checking dependencies or merge them into the regular `deps`
   attribute. When `false` (default), type-checking dependencies are
@@ -155,13 +155,13 @@ The Python-specific directives are:
   * Default: `false`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_generate_pyi_srcs bool`](#python-generate-pyi-srcs)
+[`# gazelle:python_generate_pyi_srcs bool`](#directive-python-generate-pyi-srcs)
 : Controls whether to generate a `pyi_srcs` attribute if a sibling `.pyi` file
   is found. When `false` (default), the `pyi_srcs` attribute is not added.
   * Default: `false`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_generate_proto bool`](#python-generate-proto)
+[`# gazelle:python_generate_proto bool`](#directive-python-generate-proto)
 : Controls whether to generate a {bzl:obj}`py_proto_library` for each
   {bzl:obj}`proto_library` in the package. By default we load this rule from the
   `@protobuf` repository; use `gazelle:map_kind` if you need to load this
@@ -169,18 +169,19 @@ The Python-specific directives are:
   * Default: `false`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_resolve_sibling_imports bool`](#python-resolve-sibling-imports)
+[`# gazelle:python_resolve_sibling_imports bool`](#directive-python-resolve-sibling-imports)
 : Allows absolute imports to be resolved to sibling modules (Python 2's
   behavior without `absolute_import`).
   * Default: `false`
   * Allowed Values: `true`, `false`
 
-[`# gazelle:python_include_ancestor_conftest bool`](#python-include-ancestor-conftest)
+[`# gazelle:python_include_ancestor_conftest bool`](#directive-python-include-ancestor-conftest)
 : Controls whether ancestor conftest targets are added to {bzl:obj}`py_test` target
   dependencies.
   * Default: `true`
   * Allowed Values: `true`, `false`
 
+(directive-python-extension)=
 ## `python_extension`
 
 :::{error}
@@ -188,6 +189,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-root)=
 ## `python_root`
 
 Set this directive within the Bazel package that you want to use as the Python root.
@@ -224,6 +226,7 @@ py_libary(
 [python-packaging-user-guide]: https://github.com/pypa/packaging.python.org/blob/4c86169a/source/tutorials/packaging-projects.rst
 
 
+(directive-python-manifest-file-name)=
 ## `python_manifest_file_name`
 
 :::{error}
@@ -231,6 +234,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-ignore-files)=
 ## `python_ignore_files`
 
 :::{error}
@@ -238,6 +242,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-ignore-dependencies)=
 ## `python_ignore_dependencies`
 
 :::{error}
@@ -245,6 +250,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-validate-import-statements)=
 ## `python_validate_import_statements`
 
 :::{error}
@@ -252,6 +258,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-generation-mode)=
 ## `python_generation_mode`
 
 :::{error}
@@ -259,6 +266,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-generation-mode-per-file-include-init)=
 ## `python_generation_mode_per_file_include_init`
 
 :::{error}
@@ -266,6 +274,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-generation-mode-per-package-require-test-entry-point)=
 ## `python_generation_mode_per_package_require_test_entry_point`
 
 When `# gazelle:python_generation_mode package`, whether a file called
@@ -307,6 +316,7 @@ def py_test(name, main=None, **kwargs):
 ```
 
 
+(directive-python-library-naming-convention)=
 ## `python_library_naming_convention`
 
 :::{error}
@@ -314,6 +324,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-binary-naming-convention)=
 ## `python_binary_naming_convention`
 
 :::{error}
@@ -321,6 +332,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-test-naming-convention)=
 ## `python_test_naming_convention`
 
 :::{error}
@@ -328,6 +340,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-proto-naming-convention)=
 ## `python_proto_naming_convention`
 
 Set this directive to a string pattern to control how the generated
@@ -369,6 +382,7 @@ not able to map said imports, e.g. `import foo_pb2`, to fill in
 {gh-issue}`1703`.
 
 
+(directive-resolve-py)=
 ## `resolve py`
 
 :::{error}
@@ -376,6 +390,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-default-visibility)=
 ## `python_default_visibility`
 
 Instructs gazelle to use these visibility labels on all _python_ targets
@@ -451,6 +466,7 @@ py_library(
 These special values can be useful for sub-packages.
 
 
+(directive-python-visibility)=
 ## `python_visibility`
 
 Appends additional `visibility` labels to each generated target.
@@ -508,6 +524,7 @@ py_library(
 ```
 
 
+(directive-python-test-file-pattern)=
 ## `python_test_file_pattern`
 
 This directive adjusts which python files will be mapped to the {bzl:obj}`py_test` rule.
@@ -570,6 +587,7 @@ py_library(
 ```
 
 
+(directive-python-label-convention)=
 ## `python_label_convention`
 
 :::{error}
@@ -577,6 +595,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-label-normalization)=
 ## `python_label_normalization`
 
 :::{error}
@@ -584,6 +603,7 @@ Detailed docs are not yet written.
 :::
 
 
+(directive-python-experimental-allow-relative-imports)=
 ## `python_experimental_allow_relative_imports`
 
 Enables experimental support for resolving relative imports in
@@ -630,6 +650,7 @@ If the directive is set to `true`, gazelle will resolve imports
 that are relative to the current package.
 
 
+(directive-python-generate-pyi-deps)=
 ## `python_generate_pyi_deps`
 
 :::{error}
@@ -637,7 +658,8 @@ Detailed docs are not yet written.
 :::
 
 
-## `python_generate_pyi_deps`
+(directive-python-generate-pyi-srcs)=
+## `python_generate_pyi_srcs`
 
 When `true`, include any sibling `.pyi` files in the `pyi_srcs` target attribute.
 
@@ -659,6 +681,7 @@ py_library(
 ```
 
 
+(directive-python-generate-proto)=
 ## `python_generate_proto`
 
 When `# gazelle:python_generate_proto true`, Gazelle will generate one
@@ -720,12 +743,14 @@ When `false`, Gazelle will ignore any {bzl:obj}`py_proto_library`, including
 previously-generated or hand-created rules.
 
 
+(directive-python-resolve-sibling-imports)=
 ## `python_resolve_sibling_imports`
 
 :::{error}
 Detailed docs are not yet written.
 :::
 
+(directive-python-include-ancestor-conftest)=
 ## `python_include_ancestor_conftest`
 
 Version VERSION_NEXT_FEATURE includes a fix ({gh-pr}`3498`) for a long-standing issue

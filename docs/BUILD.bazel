@@ -60,6 +60,10 @@ sphinx_docs(
     formats = [
         "html",
     ],
+    extra_opts = [
+        "-W",  # Treat warnings as errors
+        "--keep-going",  # Don't stop on the first error
+    ],
     renamed_srcs = {
         "//:CHANGELOG.md": "changelog.md",
         "//:CONTRIBUTING.md": "contributing.md",

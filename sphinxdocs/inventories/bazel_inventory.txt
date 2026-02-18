@@ -42,6 +42,7 @@ config.target bzl:function 1 rules/lib/toplevel/config#target -
 config_common.FeatureFlagInfo bzl:type 1 rules/lib/toplevel/config_common#FeatureFlagInfo -
 config_common.toolchain_type bzl:function 1 rules/lib/toplevel/config_common#toolchain_type -
 config_setting bzl:rule 1 reference/be/general#config_setting -
+configuration_field bzl:type 1 rules/lib/builtins/configuration_field -
 ctx bzl:type 1 rules/lib/builtins/repository_ctx -
 ctx.actions bzl:obj 1 rules/lib/builtins/ctx#actions -
 ctx.aspect_ids bzl:obj 1 rules/lib/builtins/ctx#aspect_ids -
