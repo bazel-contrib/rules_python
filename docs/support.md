@@ -28,7 +28,7 @@ template][patch-release-issue] or by sending a pull request performing the backp
 See the dev guide for [how to create a backport PR][backport-pr].
 
 [patch-release-issue]: https://github.com/bazelbuild/rules_python/issues/new?template=patch_release_request.md
-[backport-pr]: {ref}`devguide:Creating Backport PRs`
+[backport-pr]: {ref}`creating-backport-prs`
 
 ## Supported Bazel Versions
 
