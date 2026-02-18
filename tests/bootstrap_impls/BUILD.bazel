@@ -13,6 +13,8 @@
 # limitations under the License.
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_test.bzl", "py_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
@@ -188,6 +190,14 @@ sh_test(
         "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
     }),
+)
+
+py_test(
+    name = "system_python_nodeps_test",
+    srcs = ["system_python_nodeps_test.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "system_python",
+    },
 )
 
 relative_path_test_suite(name = "relative_path_tests")
