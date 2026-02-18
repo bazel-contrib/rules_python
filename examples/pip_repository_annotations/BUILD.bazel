@@ -18,11 +18,21 @@ py_test(
     env = {
         "REQUESTS_PKG_DIR": "pip_requests",
         "WHEEL_PKG_DIR": "pip_wheel",
-    },
+    } | select({
+        ":is_enable_runfiles_true": {"ENABLE_RUNFILES": "1"},
+        "//conditions:default": {"ENABLE_RUNFILES": "0"},
+    }),
     main = "pip_repository_annotations_test.py",
     deps = [
         "@pip_requests//:pkg",
         "@pip_wheel//:pkg",
         "@rules_python//python/runfiles",
     ],
+)
+
+config_setting(
+    name = "is_enable_runfiles_true",
+    values = {
+        "enable_runfiles": True,
+    },
 )

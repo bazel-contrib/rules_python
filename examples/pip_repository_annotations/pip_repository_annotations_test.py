@@ -89,7 +89,7 @@ class PipRepositoryAnnotationsTest(unittest.TestCase):
         # Because windows does not have `--enable_runfiles` on by default, the
         # `runfiles.Rlocation` results will be different on this platform vs
         # unix platforms. See `@rules_python//python/runfiles` for more details.
-        if platform.system() == "Windows":
+        if os.environ["ENABLE_RUNFILES"] == "1":
             self.assertIsNotNone(metadata_path)
             self.assertIsNone(wheel_path)
         else:
