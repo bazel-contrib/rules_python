@@ -402,14 +402,19 @@ versions of a library] for a more concrete example.
 
 :::{important}
 Labels with package `command_line_option` are handled specially: they are treated
-as aliases for the Bazel-builtin `//command_line_option:<name>` psuedo-targets.
+as the Bazel-builtin `//command_line_option:<name>` psuedo-targets.
 
 e.g. `@foo//command_line_option:NAME` will attempt to transition
 the Bazel-builtin `//command_line_option:NAME` setting.
 
 See the {obj}`@rules_python//command_line_option` package for some predefined
-aliases, or define your own by putting them in your own `command_line_option`
+special targets, or define your own by putting them in your own `command_line_option`
 directory.
+:::
+
+:::{seealso}
+* {obj}`//command_line_option:build_runfile_links`
+* {obj}`//command_line_option:enable_runfiles`
 :::
 
 :::{note}
