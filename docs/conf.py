@@ -108,8 +108,8 @@ primary_domain = None  # The default is 'py', which we don't make much use of
 nitpicky = True
 
 nitpick_ignore_regex = [
-    ("py:class", "docutils\..*"),
-    ("py:obj", "sphinx\.util\.docutils\..*"),
+    ("py:class", r"docutils\..*"),
+    ("py:obj", r"sphinx\.util\.docutils\..*"),
 ]
 
 # --- Intersphinx configuration
