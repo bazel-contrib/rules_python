@@ -181,7 +181,7 @@ def multiplatform_whl_aliases(
         aliases: {type}`str | dict[struct | str, str]`: The aliases
             to process. Any aliases that have the filename set will be
             converted to a dict of config settings to repo names. The
-            struct is created by {bzl:function}`whl_config_setting`.
+            struct is created by {bzl:obj}`whl_config_setting`.
 
     Returns:
         A dict with of config setting labels to repo names or the repo name itself.

@@ -110,6 +110,21 @@ nitpicky = True
 nitpick_ignore_regex = [
     ("py:class", r"docutils\..*"),
     ("py:obj", r"sphinx\.util\.docutils\..*"),
+    ("py:obj", r"sphinx\.util\.docfields\..*"),
+    ("py:class", r"sphinx\.util\.typing\..*"),
+    ("py:class", r"sphinx_bzl\.bzl\..*"),
+    ("py:class", r"typing_extensions\.TypeAlias"),
+    ("bzl:obj", r"config_setting\(\)"),
+    ("bzl:obj", r":current_py_cc_headers_abi3"),
+    ("bzl:obj", r":python"),
+    ("bzl:type", r"T"),
+    ("bzl:type", r"collection"),
+    ("bzl:type", r"input_value"),
+    ("bzl:type", r"DepsetBuilder"),
+    ("bzl:type", r"BuiltinPyInfo"),
+    ("bzl:type", r".*SentinelInfo"),
+    ("bzl:type", r".*SphinxDocsLibraryInfo"),
+    ("bzl:type", r".*_SphinxRunInfo"),
 ]
 
 # --- Intersphinx configuration
