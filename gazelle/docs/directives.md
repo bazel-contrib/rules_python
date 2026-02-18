@@ -89,8 +89,8 @@ The Python-specific directives are:
 
 [`# gazelle:python_proto_naming_convention value`](#directive-python-proto-naming-convention)
 : Controls the {bzl:obj}`py_proto_library` naming convention. It interpolates
-  `$proto_name$` with the {bzl:obj}`proto_library` rule name, minus any trailing
-  `_proto`. E.g. if the {bzl:obj}`proto_library` name is `foo_proto`, setting this
+  `$proto_name$` with the `proto_library` rule name, minus any trailing
+  `_proto`. E.g. if the `proto_library` name is `foo_proto`, setting this
   to `$proto_name$_my_lib` would render to `foo_my_lib`.
   * Default: `$proto_name$_py_pb2`
   * Allowed Values: A string containing `"$proto_name$"`
@@ -163,7 +163,7 @@ The Python-specific directives are:
 
 [`# gazelle:python_generate_proto bool`](#directive-python-generate-proto)
 : Controls whether to generate a {bzl:obj}`py_proto_library` for each
-  {bzl:obj}`proto_library` in the package. By default we load this rule from the
+  `proto_library` in the package. By default we load this rule from the
   `@protobuf` repository; use `gazelle:map_kind` if you need to load this
   from somewhere else.
   * Default: `false`
@@ -346,7 +346,7 @@ Detailed docs are not yet written.
 Set this directive to a string pattern to control how the generated
 {bzl:obj}`py_proto_library` targets are named. When generating new
 {bzl:obj}`py_proto_library` rules, Gazelle will replace `$proto_name$` in the
-pattern with the name of the {bzl:obj}`proto_library` rule, stripping out a
+pattern with the name of the `proto_library` rule, stripping out a
 trailing `_proto`. For example:
 
 ```starlark
@@ -685,7 +685,7 @@ py_library(
 ## `python_generate_proto`
 
 When `# gazelle:python_generate_proto true`, Gazelle will generate one
-{bzl:obj}`py_proto_library` for each {bzl:obj}`proto_library`, generating Python clients for
+{bzl:obj}`py_proto_library` for each `proto_library`, generating Python clients for
 protobuf in each package. By default this is turned off. Gazelle will also
 generate a load statement for the {bzl:obj}`py_proto_library` - attempting to detect
 the configured name for the `@protobuf` / `@com_google_protobuf` repo in your
