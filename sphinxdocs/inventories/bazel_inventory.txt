@@ -173,4 +173,4 @@ toolchain.target_settings bzl:attr 1 reference/be/platforms-and-toolchains#toolc
 toolchain_type bzl:type 1 rules/lib/builtins/toolchain_type.html -
 transition bzl:type 1 rules/lib/builtins/transition -
 tuple bzl:type 1 rules/lib/core/tuple -
-workspace_status bzl:flag 1 reference/command-line-reference#build-flag--workspace_status_command -
+workspace_status_command bzl:flag 1 reference/command-line-reference#build-flag--workspace_status_command -

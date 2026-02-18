@@ -69,7 +69,7 @@ END_UNRELEASED_TEMPLATE
   `//python/config_setting/...` and the `@platforms` package instead.
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 * (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
-  `--stamp` flag.
+  {obj}`--stamp` flag.
 * (pypi) Now the RECORD file patches will follow the quoted or unquoted filenames convention
   in order to make `pytorch` and friends easier to patch.
 * (wheel) `py_wheel` no longer expands the input depset during analysis,
@@ -98,8 +98,8 @@ END_UNRELEASED_TEMPLATE
 * (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
   to add to binaries/tests for custom debuggers.
 * (binaries/tests) Build information is now included in binaries and tests.
-  Use the `bazel_binary_info` module to access it. The `--stamp` flag will
-  add `--workspace_status` information.
+  Use the `bazel_binary_info` module to access it. The {obj}`--stamp` flag will
+  add {obj}`--workspace_status_command` information.
 * (gazelle) A new directive `python_generate_pyi_deps` has been added. When
   `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files
   that are associated with the target's `srcs` are present.
@@ -374,7 +374,7 @@ END_UNRELEASED_TEMPLATE
   the right wheel when there are multiple wheels for the target platform
   (e.g. `musllinux_1_1_x86_64` and `musllinux_1_2_x86_64`). If the user
   wants to set the minimum version for the selection algorithm, use the
-  `pip.defaults.whl_platform_tags` attribute to configure that. If
+  {obj}`pip.default.whl_platform_tags` attribute to configure that. If
   `musllinux_*_x86_64` is specified, we will choose the lowest available
   wheel version. Fixes [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
 
