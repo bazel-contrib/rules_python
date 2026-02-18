@@ -558,7 +558,7 @@ that isn't compatible with build-time assumptions.
 `register_toolchains`("@rules_python//python/runtime_env_toolchains:all")
 ```
 
-Note that this `toolchain` has no constraints, i.e. it will match any platform,
+Note that this toolchain has no constraints, i.e. it will match any platform,
 Python version, etc.
 
 :::{seealso}
@@ -566,7 +566,7 @@ Python version, etc.
 locally installed Python.
 :::
 
-### Autodetecting `toolchain`
+### Autodetecting toolchain
 
 The autodetecting toolchain is a deprecated toolchain that is built into Bazel.
 **Its name is a bit misleading: it doesn't autodetect anything.** All it does is
@@ -846,15 +846,16 @@ The [`//python/bin:repl` target](repl) provides an environment identical to
 what `py_binary` provides. That means it handles things like the
 [`PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSAFEPATH)
 environment variable automatically. The `//python/bin:python` target will not.
+
 ## Consuming Python C headers and libraries
 
 The following targets expose the headers and libraries from the
 currently selected Python C toolchain:
 
-- `@rules_python//python/cc:`
+- {obj}`@rules_python//python/cc:`
 `current_py_cc_headers`
-- `@rules_python//python/cc:current_py_cc_headers_abi3`
-- `@rules_python//python/cc:current_py_cc_libs`
+- {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
+- {obj}`@rules_python//python/cc:current_py_cc_libs`
 
 These targets behave similarly to a `cc_library`, but instead of defining
 their own sources, they forward providers from the underlying toolchain-
@@ -868,3 +869,8 @@ Users should depend on these targets instead of legacy alias targets
 when embedding Python or building C extensions, as this ensures
 compatibility across different toolchain configurations.
 
+
+:::{seealso}
+The _How to get Python headres for C extensions_ how-to guide, and the
+{obj}`@rules_python//python/cc` package API documentation.
+:::
