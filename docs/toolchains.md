@@ -871,5 +871,5 @@ compatibility across different toolchain configurations.
 
 :::{seealso}
 The _How to get Python headres for C extensions_ how-to guide, and the
-{obj}`@rules_python//python/cc` package API documentation.
+`@rules_python//python/cc` package API documentation.
 :::

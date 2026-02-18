@@ -99,7 +99,7 @@ END_UNRELEASED_TEMPLATE
   to add to binaries/tests for custom debuggers.
 * (binaries/tests) Build information is now included in binaries and tests.
   Use the `bazel_binary_info` module to access it. The {flag}`--stamp` flag will
-  add {flag}`--workspace_status` information.
+  add `--workspace_status` information.
 * (gazelle) A new directive `python_generate_pyi_deps` has been added. When
   `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files
   that are associated with the target's `srcs` are present.
@@ -291,7 +291,7 @@ END_UNRELEASED_TEMPLATE
   [#2949](https://github.com/bazel-contrib/rules_python/issues/2949) if you run into any
   problems.
   With this release we are deprecating {obj}`pip.parse.experimental_target_platforms` and
-  {obj}`pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
+  `pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
   vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
   when the APIs get removed. If you need to customize the way the dependencies get
   evaluated, see [our docs](/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
@@ -374,7 +374,7 @@ END_UNRELEASED_TEMPLATE
   the right wheel when there are multiple wheels for the target platform
   (e.g. `musllinux_1_1_x86_64` and `musllinux_1_2_x86_64`). If the user
   wants to set the minimum version for the selection algorithm, use the
-  {attr}`pip.defaults.whl_platform_tags` attribute to configure that. If
+  `pip.defaults.whl_platform_tags` attribute to configure that. If
   `musllinux_*_x86_64` is specified, we will choose the lowest available
   wheel version. Fixes [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
 
