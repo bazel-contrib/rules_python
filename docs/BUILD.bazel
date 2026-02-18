@@ -61,6 +61,7 @@ sphinx_docs(
         "html",
     ],
     extra_opts = [
+        "-n",  # Nitpicky mode
         "-W",  # Treat warnings as errors
         "--keep-going",  # Don't stop on the first error
     ],
@@ -93,6 +94,7 @@ sphinx_stardocs(
         "//python:features_bzl",
         "//python:packaging_bzl",
         "//python:pip_bzl",
+        "//python:proto_bzl",
         "//python:py_binary_bzl",
         "//python:py_cc_link_params_info_bzl",
         "//python:py_exec_tools_info_bzl",

@@ -852,8 +852,7 @@ environment variable automatically. The `//python/bin:python` target will not.
 The following targets expose the headers and libraries from the
 currently selected Python C toolchain:
 
-- {obj}`@rules_python//python/cc:`
-`current_py_cc_headers`
+- {obj}`@rules_python//python/cc:current_py_cc_headers`
 - {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
 - {obj}`@rules_python//python/cc:current_py_cc_libs`
 
