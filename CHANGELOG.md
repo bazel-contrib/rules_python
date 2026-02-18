@@ -74,6 +74,8 @@ END_UNRELEASED_TEMPLATE
   in order to make `pytorch` and friends easier to patch.
 * (wheel) `py_wheel` no longer expands the input depset during analysis,
   improving analysis performance for targets with large dependency trees.
+* (binaries/tests) (Windows) `--enable_runfiles=true` is the default for
+  py_binary/py_test.
 
 {#v0-0-0-fixed}
 ### Fixed
