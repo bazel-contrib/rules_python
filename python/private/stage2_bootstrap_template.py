@@ -194,6 +194,8 @@ def find_runfiles_root(main_rel_path):
         else:
             stub_filename = os.path.join(os.path.dirname(stub_filename), target)
 
+    # The `--enable_runfiles=false` flag is likely set, which isn't fully
+    # supported.
     raise AssertionError("Cannot find .runfiles directory for %s" % sys.argv[0])
 
 
