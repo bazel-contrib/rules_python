@@ -11,7 +11,7 @@ bazel_dep(name = "platforms", version = "0.0.11")
 
 # Those are loaded only when using py_proto_library
 # Use py_proto_library directly from protobuf repository
-bazel_dep(name = "protobuf", version = "29.0-rc2", repo_name = "com_google_protobuf")
+bazel_dep(name = "protobuf", version = "31.0", repo_name = "com_google_protobuf")
 
 rules_python_config = use_extension("//python/extensions:config.bzl", "config")
 use_repo(
