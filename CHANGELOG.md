@@ -69,7 +69,7 @@ END_UNRELEASED_TEMPLATE
   `//python/config_setting/...` and the `@platforms` package instead.
 * (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
 * (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
-  {obj}`--stamp` flag.
+  {flag}`--stamp` flag.
 * (pypi) Now the RECORD file patches will follow the quoted or unquoted filenames convention
   in order to make `pytorch` and friends easier to patch.
 * (wheel) `py_wheel` no longer expands the input depset during analysis,
@@ -98,7 +98,7 @@ END_UNRELEASED_TEMPLATE
 * (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
   to add to binaries/tests for custom debuggers.
 * (binaries/tests) Build information is now included in binaries and tests.
-  Use the `bazel_binary_info` module to access it. The {obj}`--stamp` flag will
+  Use the `bazel_binary_info` module to access it. The {flag}`--stamp` flag will
   add {obj}`--workspace_status_command` information.
 * (gazelle) A new directive `python_generate_pyi_deps` has been added. When
   `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files

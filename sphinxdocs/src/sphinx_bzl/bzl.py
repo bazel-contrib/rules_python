@@ -1786,19 +1786,43 @@ class _BzlDomain(domains.Domain):
 
 
 def _on_missing_reference(app, env: environment.BuildEnvironment, node, contnode):
+    """Handle missing references
+
+    There are two main cases this is designed to handle:
+    1. Psuedo-types, like None
+    2. External references that aren't exact matches, e.g. using
+       `--stamp=true` to refer to the Bazel builtin stamp flag.
+    """
+    target = node["reftarget"]
     if node["refdomain"] != "bzl":
         return None
-    if node["reftype"] != "type":
+    if node["reftype"] not in ("type", "flag", "obj"):
         return None
 
     # There's no Bazel docs for None, so prevent missing xrefs warning
-    if node["reftarget"] == "None":
+    if target == "None":
         return contnode
 
-    # Any and object are just conventions from Python, but useful for
-    # indicating what something is in Starlark, so treat them specially.
-    if node["reftarget"] in ("Any", "object"):
+    # Useful psuedo-types
+    if target in ("Any", "object", "collection"):
         return contnode
+
+    original_target = target
+    new_target = target
+
+    # Normalize --foo flag references
+    new_target = new_target.lstrip("-")
+    # Allow foo() style references
+    new_target, _, _ = new_target.partition("(")
+    # Allow --foo=bar references
+    new_target, _, _ = new_target.partition("=")
+
+    if new_target != original_target:
+        # Access the intersphinx extension's internal mapping
+        # we try to resolve the reference again with the stripped name
+        from sphinx.ext.intersphinx import missing_reference
+        node["reftarget"] = new_target
+        return missing_reference(app, env, node, contnode)
     return None
 
 
