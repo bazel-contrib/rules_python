@@ -1,0 +1,330 @@
+#!/bin/bash
+
+set -e
+set -u
+set -o pipefail
+
+RED_BOLD='\033[1;31m'
+NC='\033[0m' # No Color
+
+function die() {
+  echo "$@" >&2
+  exit 1
+}
+
+function cmd_checkout_usage() {
+  cat <<EOF
+Usage: $0 checkout <pr_ref> [--replace-remote]
+
+Checks out a Pull Request locally.
+
+Arguments:
+  <pr_ref>          The Pull Request number or URL (e.g., 123 or https://github.com/owner/repo/pull/123).
+
+Options:
+  --replace-remote  If the remote already exists but points to a different URL, update it.
+  --help            Show this help message.
+EOF
+}
+
+function cmd_pull_usage() {
+  cat <<EOF
+Usage: $0 pull [args]
+
+Pulls updates from the Pull Request's remote branch into the current branch.
+
+Arguments:
+  [args]            Additional arguments to pass to 'git pull'.
+
+Options:
+  --help            Show this help message.
+EOF
+}
+
+function cmd_push_usage() {
+  cat <<EOF
+Usage: $0 push [args]
+
+Pushes updates from the current branch to the Pull Request's remote branch.
+
+Arguments:
+  [args]            Additional arguments to pass to 'git push'.
+
+Options:
+  --help            Show this help message.
+EOF
+}
+
+function cmd_checkout () {
+  if ! command -v gh &> /dev/null; then
+    die "ERROR: 'gh' (GitHub CLI) is not installed. Please install it to use this feature."
+  fi
+
+  if ! command -v jq &> /dev/null; then
+    die "ERROR: 'jq' is not installed. Please install it to use this feature."
+  fi
+
+  local replace_remote=0
+  local pr_ref=""
+  local short_opts=""
+  local long_opts="replace-remote,help"
+
+  local parsed_options=$(getopt --options "$short_opts" --longoptions "$long_opts" --name "$0" -- "$@")
+  if [ $? -ne 0 ]; then
+    cmd_checkout_usage >&2
+    exit 1
+  fi
+
+  eval set -- "$parsed_options"
+
+  while true; do
+    case "$1" in
+      --replace-remote)
+        replace_remote=1
+        shift
+        ;;
+      --help)
+        cmd_checkout_usage
+        exit 0
+        ;;
+      --)
+        shift
+        break
+        ;;
+      *)
+        die "Unknown option: $1"
+        ;;
+    esac
+  done
+
+  if [ $# -gt 0 ]; then
+    pr_ref="$1"
+    shift
+  fi
+
+  if [ -z "$pr_ref" ]; then
+    cmd_checkout_usage >&2
+    exit 1
+  fi
+
+  if [ $# -gt 0 ]; then
+    echo "ERROR: Unexpected arguments: $@" >&2
+    cmd_checkout_usage >&2
+    exit 1
+  fi
+
+  local pr_json=$(
+    gh pr view   \
+    --json headRepositoryOwner,headRepository,headRefName,maintainerCanModify,baseRefName,number   \
+    "$pr_ref"
+  )
+
+  mapfile -t pr_info < <(
+    echo "$pr_json" | jq -r '
+  .headRepositoryOwner.login,
+  .headRepository.name,
+  .headRefName,
+  .maintainerCanModify,
+  .baseRefName,
+  .number
+  ')
+  local pr_repo_owner="${pr_info[0]}"
+  local pr_repo_name="${pr_info[1]}"
+  local pr_branch="${pr_info[2]}"
+  local pr_maintainer_can_modify="${pr_info[3]}"
+  local pr_base_branch="${pr_info[4]}"
+  local pr_number="${pr_info[5]}"
+
+  if [[ "$pr_maintainer_can_modify" != "true" ]]; then
+    echo -e "${RED_BOLD}WARNING${NC}: Maintainer write access not granted!"
+  fi
+
+  local pr_remote_url="https://github.com/$pr_repo_owner/$pr_repo_name"
+  local pr_remote_name=$(find_matching_remote "$pr_remote_url")
+
+  # No remote for this url already, so create one
+  if [[ -z "$pr_remote_name" ]]; then
+    local pr_remote_name="${pr_repo_owner}-${pr_repo_name}"
+
+    local pr_remote_readable=$(can_access_remote "$pr_remote_url")
+
+    if [[ "$pr_remote_readable" -ne "1" ]]; then
+      echo "WARNING: https access to remote failed, trying ssh"
+      pr_remote_url="ssh://github.com/$pr_repo_owner/$pr_repo_name"
+      pr_remote_readable=$(can_access_remote "$pr_remote_url")
+    fi
+
+    if [[ "$pr_remote_readable" -ne "1" ]]; then
+      echo "ERROR: Unable to access remote via https or ssh"
+      echo "       Check the URL, ssh agent, and access settings"
+      return 1
+    fi
+
+    if git remote | grep -q "^$pr_remote_name$"; then
+      local existing_url=$(git remote get-url "$pr_remote_name")
+      if [[ "$existing_url" != "$pr_remote_url" ]]; then
+        if [ "$replace_remote" -eq 1 ]; then
+          git remote set-url "$pr_remote_name" "$pr_remote_url"
+        else
+          echo "ERROR: Remote '$pr_remote_name' already exists but points to a different URL." >&2
+          echo "  Existing: $existing_url" >&2
+          echo "  New:      $pr_remote_url" >&2
+          echo "Use the --replace-remote flag to update it." >&2
+          return 1
+        fi
+      fi
+    else
+      git remote add "$pr_remote_name" "$pr_remote_url"
+    fi
+  fi
+
+  GIT_TERMINAL_PROMPT=0   \
+    git fetch "$pr_remote_name"
+
+  local pr_base_remote
+  # todo: upstream won't exist if you're not doing the triangle workflow
+  if ! git remote | grep -q "^upstream$"; then
+    local pr_repo_branch_lines=$(
+      gh repo view "$pr_repo_owner/$pr_repo_name" --branch "$pr_branch"   \
+        --json parent --jq ".parent.owner.login,.parent.name"
+      )
+    # NOTE: The above command will print two lines when run directly, however,
+    # command substitution, $(...), will strips trailing newlines.
+    if [[ -z "$pr_repo_branch_lines" ]]; then
+      # If there was no parent, the PR is from from the same repo as it's
+      # being merged into, so use the same remote name.
+      pr_base_remote=$pr_remote_name
+    else
+      readarray -t pr_repo_branch_info <<< "$pr_repo_branch_lines"
+      local pr_repo_branch_owner="${pr_repo_branch_info[0]}"
+      local pr_repo_branch_name="${pr_repo_branch_info[1]}"
+      # TODO: the PR is coming from another repo. We know the github owner and
+      # repo name, but need to find our local remote for that repo.
+      echo "TODO: FIND REMOTE FOR: $pr_repo_branch_owner/$pr_repo_branch_name"
+      return 1
+    fi
+  else
+    pr_base_remote=upstream
+  fi
+
+  # Name the local branch after the pr number so its clear it's a PR checkout
+  local local_branch="pr-$pr_number"
+
+  git branch "$local_branch" "$pr_remote_name/$pr_branch"
+  git checkout "$local_branch"
+  git branch --set-upstream-to="$pr_base_remote/$pr_base_branch" "$local_branch"
+  git config set "branch.$local_branch.pushRemote" "$pr_remote_name"
+
+  # Unfortunately, git's support for customizing the branch that is pushed
+  # to is rather limited. `push.default` and `branch.$name.merge` control this,
+  # but both assume some matching between the local, upstream, and push branch
+  # names. But in our triangle workflow, the three are all different.
+  git config set "branch.$local_branch.prPushRemoteBranch" "$pr_branch"
+
+  echo "NOTE: You must explicitly specify remote and branch for push/pull
+These commands will do it for you:
+  tools/git-pr push
+  tools/git-pr pull
+"
+}
+
+function can_access_remote() {
+  GIT_TERMINAL_PROMPT=0   \
+    git ls-remote "$1" BOGUS 2>/dev/null && status=$?   \
+      || status=$?
+  if [[ $status -eq 0 ]]; then
+    echo "1"
+  else
+    echo "0"
+  fi
+}
+
+function find_matching_remote() {
+  local url=$1
+  # Normalize the URL for comparison. This handles https://, ssh://, and git@
+  # style URLs, with or without a .git suffix.
+  local normalized_url
+  normalized_url=$(echo "$url" | sed -e 's,^.*://,,' -e 's,^.*@,,' -e 's,\.git$,,' -e 's,:,/,')
+
+  local remote
+  for remote in $(git remote); do
+    local remote_url
+    remote_url=$(git remote get-url "$remote")
+    local normalized_remote_url
+    normalized_remote_url=$(echo "$remote_url" | sed -e 's,^.*://,,' -e 's,^.*@,,' -e 's,\.git$,,' -e 's,:,/,')
+
+    if [[ "$normalized_url" == "$normalized_remote_url" ]]; then
+      echo "$remote"
+      return 0
+    fi
+  done
+  return 1
+}
+
+function cmd_push() {
+  if [[ "${1:-}" == "--help" ]]; then
+    cmd_push_usage
+    exit 0
+  fi
+  local local_branch=$(git rev-parse --abbrev-ref HEAD)
+  local pr_branch=$(git config get branch.$local_branch.prPushRemoteBranch)
+  local pr_remote=$(git config get branch.$local_branch.pushRemote)
+  (set -x; git push "$pr_remote" "$local_branch:$pr_branch")
+}
+
+function cmd_pull() {
+  if [[ "${1:-}" == "--help" ]]; then
+    cmd_pull_usage
+    exit 0
+  fi
+  local local_branch=$(git rev-parse --abbrev-ref HEAD)
+  local pr_branch=$(git config get branch.$local_branch.prPushRemoteBranch)
+  local pr_remote=$(git config get branch.$local_branch.pushRemote)
+  (set -x; git pull "$pr_remote" "$pr_branch" "$@")
+}
+
+function usage() {
+  cat <<EOF
+Usage: $0 <command> [args]
+
+Commands:
+  checkout <pr_ref>  Checkout a PR locally
+  pull [args]        Pull updates from the PR's remote branch
+  push               Push updates to the PR's remote branch
+
+Options:
+  --help             Show this help message.
+EOF
+}
+
+function git-pr-main() {
+  if [[ $# -eq 0 ]]; then
+    usage
+    exit 1
+  fi
+
+  cmd=$1
+  shift
+
+  case "$cmd" in
+    checkout)
+      cmd_checkout "$@"
+      ;;
+    pull)
+      cmd_pull "$@"
+      ;;
+    push)
+      cmd_push "$@"
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+git-pr-main "$@"
