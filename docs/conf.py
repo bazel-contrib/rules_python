@@ -119,6 +119,7 @@ nitpick_ignore_regex = [
     ("bzl:type", r"T"),
     ("bzl:type", r"input_value"),
     ("bzl:type", r"DepsetBuilder"),
+    ("bzl:type", r"RunfilesBuilder"),
     ("bzl:type", r"BuiltinPyInfo"),
     ("bzl:type", r".*SentinelInfo"),
     ("bzl:type", r".*SphinxDocsLibraryInfo"),
