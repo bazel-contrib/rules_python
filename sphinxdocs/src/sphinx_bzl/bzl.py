@@ -1821,6 +1821,7 @@ def _on_missing_reference(app, env: environment.BuildEnvironment, node, contnode
         # Access the intersphinx extension's internal mapping
         # we try to resolve the reference again with the stripped name
         from sphinx.ext.intersphinx import missing_reference
+
         node["reftarget"] = new_target
         return missing_reference(app, env, node, contnode)
     return None
