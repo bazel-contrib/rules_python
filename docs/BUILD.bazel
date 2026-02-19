@@ -117,6 +117,7 @@ sphinx_stardocs(
         "//python/extensions:python_bzl",
         "//python/local_toolchains:repos_bzl",
         "//python/private:attr_builders_bzl",
+        "//python/private:builders_bzl",
         "//python/private:builders_util_bzl",
         "//python/private:py_binary_rule_bzl",
         "//python/private:py_cc_toolchain_rule_bzl",

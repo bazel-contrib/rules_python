@@ -114,6 +114,7 @@ nitpick_ignore_regex = [
     ("py:class", r"sphinx\.util\.typing\..*"),
     ("py:class", r"sphinx_bzl\.bzl\..*"),
     ("py:class", r"typing_extensions\.TypeAlias"),
+    ("bzl:obj", r":current_py_cc_headers_abi3"),
     ("bzl:obj", r":python"),
     ("bzl:type", r"T"),
     ("bzl:type", r"input_value"),
