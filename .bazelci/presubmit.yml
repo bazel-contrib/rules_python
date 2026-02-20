@@ -18,12 +18,12 @@ buildifier:
   # Use a specific version to avoid skew issues when new versions are released.
   version: 8.2.1
   warnings: "all"
-# NOTE: Minimum supported version is 7.x
+# NOTE: Minimum supported version is 8.x
 .minimum_supported_version: &minimum_supported_version
   # For testing minimum supported version.
   # NOTE: Keep in sync with //:version.bzl
-  bazel: 7.x
-  skip_in_bazel_downstream_pipeline: "Bazel 7 required"
+  bazel: 8.x
+  skip_in_bazel_downstream_pipeline: "Bazel 8 required"
 .reusable_config: &reusable_config
   build_targets:
     - "--"
@@ -57,7 +57,7 @@ buildifier:
     - "--noenable_bzlmod"
     - "--enable_workspace"
     - "--build_tag_filters=-integration-test"
-  bazel: 7.x
+  bazel: 8.x
 # NOTE: The Mac and Windows bazelinbazel jobs override parts of this config.
 .common_bazelinbazel_config: &common_bazelinbazel_config
     build_flags:
@@ -118,7 +118,7 @@ matrix:
     - debian11
     - macos_arm64
     - windows
-  bazel: [7.*, 8.*, 9.*]
+  bazel: [8.*, 9.*]
 
 tasks:
   # Keep in sync with .bcr/presubmit.yml
@@ -184,7 +184,7 @@ tasks:
     <<: *reusable_config
     name: "Default: Ubuntu, bzlmod, minimum Bazel"
     platform: ubuntu2204
-    bazel: 7.x
+    bazel: 8.x
   ubuntu:
     <<: *reusable_config
     name: "Default: Ubuntu"
@@ -372,7 +372,7 @@ tasks:
     name: "examples/pip_parse: Ubuntu, bzlmod, minimum supported Bazel version"
     working_directory: examples/pip_parse
     platform: ubuntu2204
-    bazel: 7.x
+    bazel: 8.x
   integration_test_pip_parse_ubuntu:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Ubuntu"
@@ -561,7 +561,7 @@ tasks:
     name: "compile_pip_requirements_test_from_external_repo: Ubuntu, bzlmod, minimum Bazel"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
     platform: ubuntu2204
-    bazel: 7.x
+    bazel: 8.x
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."
