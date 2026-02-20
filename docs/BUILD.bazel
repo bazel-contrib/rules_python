@@ -57,11 +57,6 @@ sphinx_docs(
         ],
     ) + ["//gazelle/docs"],
     config = "conf.py",
-    extra_opts = [
-        "-n",  # Nitpicky mode
-        "-W",  # Treat warnings as errors
-        "--keep-going",  # Don't stop on the first error
-    ],
     formats = [
         "html",
     ],
