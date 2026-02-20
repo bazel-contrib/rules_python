@@ -852,8 +852,7 @@ environment variable automatically. The `//python/bin:python` target will not.
 The following targets expose the headers and libraries from the
 currently selected Python C toolchain:
 
-- {obj}`@rules_python//python/cc:`
-`current_py_cc_headers`
+- {obj}`@rules_python//python/cc:current_py_cc_headers`
 - {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
 - {obj}`@rules_python//python/cc:current_py_cc_libs`
 
@@ -872,5 +871,5 @@ compatibility across different toolchain configurations.
 
 :::{seealso}
 The _How to get Python headres for C extensions_ how-to guide, and the
-{obj}`@rules_python//python/cc` package API documentation.
+{obj}`//python/cc:BUILD.bazel` package API documentation.
 :::

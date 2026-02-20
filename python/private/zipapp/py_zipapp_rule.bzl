@@ -266,7 +266,7 @@ obtained by calling `str(Label(...))`).
 
 Most `@rules_python//python/config_setting` settings can be used here, which
 allows, for example, making only a certain `py_binary` use
-{obj}`--boostrap_impl=script`.
+{obj}`--bootstrap_impl=script`.
 
 Additional or custom config settings can be registered using the
 {obj}`add_transition_setting` API. This allows, for example, forcing a
