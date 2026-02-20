@@ -25,10 +25,9 @@ patch 1.4, version 1.5 must be patched first.
 
 Backports can be requested by [creating an issue with the patch release
 template][patch-release-issue] or by sending a pull request performing the backport.
-See the dev guide for [how to create a backport PR][backport-pr].
+See the dev guide for [how to create a backport PR](creating-backport-prs).
 
 [patch-release-issue]: https://github.com/bazelbuild/rules_python/issues/new?template=patch_release_request.md
-[backport-pr]: devguide.html#creating-backport-prs
 
 ## Supported Bazel Versions
 

@@ -1814,7 +1814,7 @@ def create_executable_rule_builder(implementation, **kwargs):
     :::
 
     Returns:
-        {type}`ruleb.Rule` with the necessary settings
+        {obj}`ruleb.Rule` with the necessary settings
         for creating an executable Python rule.
     """
     builder = ruleb.Rule(

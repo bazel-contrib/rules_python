@@ -1,6 +1,7 @@
 :::{default-domain} bzl
 :::
 
+(pypi-dependencies)=
 # Using PyPI
 
 Using PyPI packages (aka "pip install") involves the following main steps:
