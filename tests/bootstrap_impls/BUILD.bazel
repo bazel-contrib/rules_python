@@ -13,7 +13,6 @@
 # limitations under the License.
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
-load("//python:py_binary.bzl", "py_binary")
 load("//python:py_test.bzl", "py_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
