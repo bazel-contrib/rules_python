@@ -107,6 +107,9 @@ templates_path = ["_templates"]
 primary_domain = None  # The default is 'py', which we don't make much use of
 nitpicky = True
 
+# Ignore nitpicks for missing cross-references to external objects.
+# These are typically objects that aren't documented or aren't easily linked
+# via intersphinx mapping, so we suppress warnings for them to keep the build clean.
 nitpick_ignore_regex = [
     ("py:class", r"docutils\..*"),
     ("py:obj", r"sphinx\.util\.docutils\..*"),

@@ -1748,25 +1748,26 @@ class _BzlDomain(domains.Domain):
 
     @override
     def clear_doc(self, docname: str) -> None:
-        if docname in self.data["doc_names"]:
-            for base_name, entry in self.data["doc_names"][docname].items():
-                if entry.full_id in self.data["objects"]:
-                    del self.data["objects"][entry.full_id]
+        if docname not in self.data["doc_names"]:
+            return
+        for base_name, entry in self.data["doc_names"][docname].items():
+            if entry.full_id in self.data["objects"]:
+                del self.data["objects"][entry.full_id]
 
-                if entry.full_id in self.data["objects_by_type"].get(
-                    entry.object_type, {}
-                ):
-                    del self.data["objects_by_type"][entry.object_type][entry.full_id]
+            if entry.full_id in self.data["objects_by_type"].get(
+                entry.object_type, {}
+            ):
+                del self.data["objects_by_type"][entry.object_type][entry.full_id]
 
-                # We can't easily reverse the mapping for alt_names, so we have
-                # to iterate over all of them. This is potentially slow, but
-                # clear_doc isn't called often.
-                for alt_name, entries in list(self.data["alt_names"].items()):
-                    if entry.full_id in entries:
-                        del entries[entry.full_id]
-                    if not entries:
-                        del self.data["alt_names"][alt_name]
-            del self.data["doc_names"][docname]
+            # We can't easily reverse the mapping for alt_names, so we have
+            # to iterate over all of them. This is potentially slow, but
+            # clear_doc isn't called often.
+            for alt_name, entries in list(self.data["alt_names"].items()):
+                if entry.full_id in entries:
+                    del entries[entry.full_id]
+                if not entries:
+                    del self.data["alt_names"][alt_name]
+        del self.data["doc_names"][docname]
 
     def merge_domaindata(
         self, docnames: list[str], otherdata: dict[str, typing.Any]
