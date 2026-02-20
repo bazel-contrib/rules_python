@@ -8,15 +8,18 @@ from __future__ import print_function
 import sys
 
 import os
+from os.path import dirname, join, basename
 import subprocess
 import uuid
-# runfiles-relative path
+import shutil
+
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of
 # unsubstituted placeholders, which occurs when native py_binary is used in
 # external repositories. In that case, we fall back to %main% which Bazel's
 # native rule does substitute.
 _STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
+# runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
 # NOTE: The fallback logic from stage2_bootstrap to main is only present
@@ -35,13 +38,13 @@ if not STAGE2_BOOTSTRAP:
   print("ERROR: %stage2_bootstrap% (or %main%) was not substituted.", file=sys.stderr)
   sys.exit(1)
 
-# runfiles-relative path to venv's python interpreter
+# runfiles-root-relative path to venv's python interpreter
 # Empty string if a venv is not setup.
 PYTHON_BINARY = '%python_binary%'
 
 # The path to the actual interpreter that is used.
 # Typically PYTHON_BINARY is a symlink pointing to this.
-# runfiles-relative path, absolute path, or single word.
+# runfiles-root-relative path, absolute path, or single word.
 # Used to create a venv at runtime, or when a venv isn't setup.
 PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 
@@ -51,7 +54,14 @@ IS_ZIPFILE = "%is_zipfile%" == "1"
 # 0 or 1.
 # If 1, then a venv will be created at runtime that replicates what would have
 # been the build-time structure.
-RECREATE_VENV_AT_RUNTIME="%recreate_venv_at_runtime%"
+RECREATE_VENV_AT_RUNTIME = "%recreate_venv_at_runtime%" == "1"
+# 0 or 1
+# If 1, then the path to python will be resolved by running
+# PYTHON_BINARY_ACTUAL to determine the actual underlying interpreter.
+RESOLVE_PYTHON_BINARY_AT_RUNTIME = "%resolve_python_binary_at_runtime%" == "1"
+# venv-relative path to the site-packages
+# e.g. lib/python3.12t/site-packages
+VENV_REL_SITE_PACKAGES = "%venv_rel_site_packages%"
 
 WORKSPACE_NAME = "%workspace_name%"
 
@@ -65,6 +75,7 @@ else:
   INTERPRETER_ARGS = [arg for arg in _INTERPRETER_ARGS_RAW.split("\n") if arg]
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
+EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
 def IsRunningFromZip():
   return IS_ZIPFILE
@@ -136,12 +147,12 @@ def SearchPath(name):
         return path
   return None
 
-def FindPythonBinary(module_space):
+def FindPythonBinary(runfiles_root):
   """Finds the real Python binary if it's not a normal absolute path."""
   if PYTHON_BINARY:
-    return FindBinary(module_space, PYTHON_BINARY)
+    return FindBinary(runfiles_root, PYTHON_BINARY)
   else:
-    return FindBinary(module_space, PYTHON_BINARY_ACTUAL)
+    return FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -149,7 +160,7 @@ def print_verbose(*args, mapping=None, values=None):
         if mapping is not None:
             for key, value in sorted((mapping or {}).items()):
                 print(
-                    "bootstrap: stage 1: ",
+                    "bootstrap: stage 1:",
                     *(list(args) + ["{}={}".format(key, repr(value))]),
                     file=sys.stderr,
                     flush=True
@@ -165,7 +176,7 @@ def print_verbose(*args, mapping=None, values=None):
         else:
             print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
-def FindBinary(module_space, bin_name):
+def FindBinary(runfiles_root, bin_name):
   """Finds the real binary if it's not a normal absolute path."""
   if not bin_name:
     return None
@@ -180,7 +191,7 @@ def FindBinary(module_space, bin_name):
   # Use normpath() to convert slashes to os.sep on Windows.
   elif os.sep in os.path.normpath(bin_name):
     # Case 3: Path is relative to the repo root.
-    return os.path.join(module_space, bin_name)
+    return os.path.join(runfiles_root, bin_name)
   else:
     # Case 4: Path has to be looked up in the search path.
     return SearchPath(bin_name)
@@ -214,9 +225,9 @@ def FindModuleSpace(main_rel_path):
     stub_filename = os.path.join(os.getcwd(), stub_filename)
 
   while True:
-    module_space = stub_filename + ('.exe' if IsWindows() else '') + '.runfiles'
-    if os.path.isdir(module_space):
-      return module_space
+    runfiles_root = stub_filename + ('.exe' if IsWindows() else '') + '.runfiles'
+    if os.path.isdir(runfiles_root):
+      return runfiles_root
 
     runfiles_pattern = r'(.*\.runfiles)' + (r'\\' if IsWindows() else '/') + '.*'
     matchobj = re.match(runfiles_pattern, stub_filename)
@@ -264,11 +275,62 @@ def ExtractZip(zip_path, dest_dir):
 def CreateModuleSpace():
   temp_dir = tempfile.mkdtemp('', 'Bazel.runfiles_')
   ExtractZip(os.path.dirname(__file__), temp_dir)
-  # IMPORTANT: Later code does `rm -fr` on dirname(module_space) -- it's
+  # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
   # important that deletion code be in sync with this directory structure
   return os.path.join(temp_dir, 'runfiles')
 
-def RunfilesEnvvar(module_space):
+def _create_venv(runfiles_root):
+    runfiles_venv = join(runfiles_root, dirname(dirname(PYTHON_BINARY)))
+    if EXTRACT_ROOT:
+      venv = join(EXTRACT_ROOT, runfiles_venv)
+      os.makedirs(venv, exist_ok=True)
+      cleanup_dir = None
+    else:
+      import tempfile
+      venv = tempfile.mkdtemp("", f"bazel.{basename(runfiles_venv)}.")
+      cleanup_dir = venv
+
+    python_exe_actual = FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
+
+    # See stage1_bootstrap_template.sh for details on this code path. In short,
+    # this handles when the build-time python version doesn't match runtime
+    # and if the initially resolved python_exe_actual is a wrapper script.
+    if RESOLVE_PYTHON_BINARY_AT_RUNTIME:
+        src = f"""
+import sys, site
+print(sys.executable)
+print(site.getsitepackages(["{venv}"])[-1])
+        """
+        output = subprocess.check_output([python_exe_actual, "-I"], shell=True,
+                                         encoding = "utf8", input=src)
+        output = output.strip().split("\n")
+        python_exe_actual = output[0]
+        venv_site_packages = output[1]
+        os.makedirs(dirname(venv_site_packages), exist_ok=True)
+        runfiles_venv_site_packages = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
+    else:
+        python_exe_actual = FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
+        venv_site_packages = join(venv, "lib")
+        runfiles_venv_site_packages = join(runfiles_venv, "lib")
+
+    if python_exe_actual is None:
+        raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY_ACTUAL))
+
+    venv_bin = join(venv, "bin")
+    try:
+      os.mkdir(venv_bin)
+    except FileExistsError as e:
+      pass
+
+    # Match the basename; some tools, e.g. pyvenv key off the executable name
+    venv_python_exe = join(venv_bin, os.path.basename(python_exe_actual))
+    _symlink_exist_ok(from_=venv_python_exe, to=python_exe_actual)
+    _symlink_exist_ok(from_=join(venv, "lib"), to=join(runfiles_venv, "lib"))
+    _symlink_exist_ok(from_=venv_site_packages, to=runfiles_venv_site_packages)
+    _symlink_exist_ok(from_=join(venv, "pyvenv.cfg"), to=join(runfiles_venv, "pyvenv.cfg"))
+    return cleanup_dir, venv_python_exe
+
+def RunfilesEnvvar(runfiles_root):
   """Finds the runfiles manifest or the runfiles directory.
 
   Returns:
@@ -288,10 +350,10 @@ def RunfilesEnvvar(module_space):
 
   # If running from a zip, there's no manifest file.
   if IsRunningFromZip():
-    return ('RUNFILES_DIR', module_space)
+    return ('RUNFILES_DIR', runfiles_root)
 
   # Look for the runfiles "output" manifest, argv[0] + ".runfiles_manifest"
-  runfiles = module_space + '_manifest'
+  runfiles = runfiles_root + '_manifest'
   if os.path.exists(runfiles):
     return ('RUNFILES_MANIFEST_FILE', runfiles)
 
@@ -299,19 +361,19 @@ def RunfilesEnvvar(module_space):
   # Normally .runfiles_manifest and MANIFEST are both present, but the
   # former will be missing for zip-based builds or if someone copies the
   # runfiles tree elsewhere.
-  runfiles = os.path.join(module_space, 'MANIFEST')
+  runfiles = os.path.join(runfiles_root, 'MANIFEST')
   if os.path.exists(runfiles):
     return ('RUNFILES_MANIFEST_FILE', runfiles)
 
   # If running in a sandbox and no environment variables are set, then
   # Look for the runfiles  next to the binary.
-  if module_space.endswith('.runfiles') and os.path.isdir(module_space):
-    return ('RUNFILES_DIR', module_space)
+  if runfiles_root.endswith('.runfiles') and os.path.isdir(runfiles_root):
+    return ('RUNFILES_DIR', runfiles_root)
 
   return (None, None)
 
-def ExecuteFile(python_program, main_filename, args, env, module_space,
-                workspace, delete_module_space):
+def ExecuteFile(python_program, main_filename, args, env, runfiles_root,
+                workspace, delete_dirs):
   # type: (str, str, list[str], dict[str, str], str, str|None, str|None) -> ...
   """Executes the given Python file using the various environment settings.
 
@@ -323,11 +385,11 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
     main_filename: (str) The Python file to execute
     args: (list[str]) Additional args to pass to the Python file
     env: (dict[str, str]) A dict of environment variables to set for the execution
-    module_space: (str) Path to the module space/runfiles tree directory
+    runfiles_root: (str) Path to the module space/runfiles tree directory
     workspace: (str|None) Name of the workspace to execute in. This is expected to be a
         directory under the runfiles tree.
-    delete_module_space: (bool), True if the module space should be deleted
-        after a successful (exit code zero) program run, False if not.
+    delete_dirs: (list[str]) directories that should be deleted after the user
+        program has finished running.
   """
   argv = [python_program]
   argv.extend(INTERPRETER_ARGS)
@@ -351,20 +413,22 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
   #   can't execv because we need control to return here. This only
   #   happens for targets built in the host config.
   #
-  if not (IsWindows() or workspace or delete_module_space):
+  if not (IsWindows() or workspace or delete_dirs):
     _RunExecv(python_program, argv, env)
 
+  print_verbose("run: subproc: environ:", mapping=os.environ)
+  print_verbose("run: subproc: cwd:", workspace)
+  print_verbose("run: subproc: argv:", values=argv)
   ret_code = subprocess.call(
     argv,
     env=env,
     cwd=workspace
   )
 
-  if delete_module_space:
-    # NOTE: dirname() is called because CreateModuleSpace() creates a
-    # sub-directory within a temporary directory, and we want to remove the
-    # whole temporary directory.
-    shutil.rmtree(os.path.dirname(module_space), True)
+  if delete_dirs:
+    for delete_dir in delete_dirs:
+      print_verbose("rmtree:", delete_dir)
+      shutil.rmtree(delete_dir, True)
   sys.exit(ret_code)
 
 def _RunExecv(python_program, argv, env):
@@ -374,9 +438,32 @@ def _RunExecv(python_program, argv, env):
   print_verbose("RunExecv: environ:", mapping=os.environ)
   print_verbose("RunExecv: python:", python_program)
   print_verbose("RunExecv: argv:", values=argv)
-  os.execv(python_program, argv)
+  try:
+    os.execv(python_program, argv)
+  except:
+    with open(python_program, 'rb') as f:
+      print_verbose("pyprog head:" + str(f.read(50)))
+    raise
+
+def _symlink_exist_ok(*, from_, to):
+  try:
+    os.symlink(to, from_)
+  except FileExistsError:
+    pass
+
+
 
 def Main():
+  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
+  print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
+  print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
+  print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
+  print_verbose("RESOLVE_PYTHON_BINARY_AT_RUNTIME:", RESOLVE_PYTHON_BINARY_AT_RUNTIME)
+  print_verbose("bootstrap sys.executable:", sys.executable)
+  print_verbose("bootstrap sys._base_executable:", sys._base_executable)
+  print_verbose("bootstrap sys.version:", sys.version)
+
+  print_verbose("sys.version:", sys.version)
   print_verbose("initial argv:", values=sys.argv)
   print_verbose("initial cwd:", os.getcwd())
   print_verbose("initial environ:", mapping=os.environ)
@@ -392,17 +479,21 @@ def Main():
   #    is packaged and needs no artifacts from the main repo)
   main_rel_path = os.path.normpath(STAGE2_BOOTSTRAP)
 
+  delete_dirs = []
+
   if IsRunningFromZip():
-    module_space = CreateModuleSpace()
-    delete_module_space = True
+    runfiles_root = CreateModuleSpace()
+    # NOTE: dirname() is called because CreateModuleSpace() creates a
+    # sub-directory within a temporary directory, and we want to remove the
+    # whole temporary directory.
+    delete_dirs.append(dirname(runfiles_root))
   else:
-    module_space = FindModuleSpace(main_rel_path)
-    delete_module_space = False
+    runfiles_root = FindModuleSpace(main_rel_path)
 
   if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
-    new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = module_space
+    new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = runfiles_root
 
-  runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(module_space)
+  runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(runfiles_root)
   if runfiles_envkey:
     new_env[runfiles_envkey] = runfiles_envvalue
 
@@ -410,16 +501,24 @@ def Main():
   # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
   new_env['PYTHONSAFEPATH'] = '1'
 
-  main_filename = os.path.join(module_space, main_rel_path)
+  main_filename = os.path.join(runfiles_root, main_rel_path)
   main_filename = GetWindowsPathWithUNCPrefix(main_filename)
   assert os.path.exists(main_filename), \
          'Cannot exec() %r: file not found.' % main_filename
   assert os.access(main_filename, os.R_OK), \
          'Cannot exec() %r: file not readable.' % main_filename
 
-  program = python_program = FindPythonBinary(module_space)
-  if python_program is None:
+  python_exe = FindPythonBinary(runfiles_root)
+  if python_exe is None:
     raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY))
+
+  if RECREATE_VENV_AT_RUNTIME:
+    # When the venv is created at runtime, python_exe is PYTHON_BINARY_ACTUAL
+    # so we have to re-point it to the symlink in the venv
+    venv, python_exe = _create_venv(runfiles_root)
+    delete_dirs.append(venv)
+  else:
+    python_exe = FindPythonBinary(runfiles_root)
 
   # Some older Python versions on macOS (namely Python 3.7) may unintentionally
   # leave this environment variable set after starting the interpreter, which
@@ -436,15 +535,15 @@ def Main():
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
     if os.environ.get('RUN_UNDER_RUNFILES') == '1':
-      workspace = os.path.join(module_space, WORKSPACE_NAME)
+      workspace = os.path.join(runfiles_root, WORKSPACE_NAME)
 
   try:
     sys.stdout.flush()
     # NOTE: ExecuteFile may call execve() and lines after this will never run.
     ExecuteFile(
-      python_program, main_filename, args, new_env, module_space,
+      python_exe, main_filename, args, new_env, runfiles_root,
       workspace,
-      delete_module_space = delete_module_space,
+      delete_dirs = delete_dirs,
     )
 
   except EnvironmentError:
@@ -452,7 +551,7 @@ def Main():
     e = sys.exc_info()[1]
     # This exception occurs when os.execv() fails for some reason.
     if not getattr(e, 'filename', None):
-      e.filename = program  # Add info to error message
+      e.filename = python_program  # Add info to error message
     raise
 
 if __name__ == '__main__':

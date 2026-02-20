@@ -526,17 +526,13 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
 def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps):
-    create_full_venv = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     venv = "_{}.venv".format(output_prefix.lstrip("_"))
 
-    if create_full_venv:
-        # The pyvenv.cfg file must be present to trigger the venv site hooks.
-        # Because it's paths are expected to be absolute paths, we can't reliably
-        # put much in it. See https://github.com/python/cpython/issues/83650
-        pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv))
-        ctx.actions.write(pyvenv_cfg, "")
-    else:
-        pyvenv_cfg = None
+    # The pyvenv.cfg file must be present to trigger the venv site hooks.
+    # Because it's paths are expected to be absolute paths, we can't reliably
+    # put much in it. See https://github.com/python/cpython/issues/83650
+    pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv))
+    ctx.actions.write(pyvenv_cfg, "")
 
     runtime = runtime_details.effective_runtime
 
@@ -552,40 +548,38 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
 
     bin_dir = "{}/bin".format(venv)
 
-    if create_full_venv:
-        # Some wrappers around the interpreter (e.g. pyenv) use the program
-        # name to decide what to do, so preserve the name.
-        py_exe_basename = paths.basename(interpreter_actual_path)
+    # Some wrappers around the interpreter (e.g. pyenv) use the program
+    # name to decide what to do, so preserve the name.
+    py_exe_basename = paths.basename(interpreter_actual_path)
 
-        if not venvs_use_declare_symlink_enabled or not runtime.supports_build_time_venv:
-            recreate_venv_at_runtime = True
+    if not venvs_use_declare_symlink_enabled or not runtime.supports_build_time_venv:
+        recreate_venv_at_runtime = True
 
-            # When the venv symlinks are disabled, the $venv/bin/python3 file isn't
-            # needed or used at runtime. However, the zip code uses the interpreter
-            # File object to figure out some paths.
-            interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
-            ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
+        # When the venv symlinks are disabled, the $venv/bin/python3 file isn't
+        # needed or used at runtime. However, the zip code uses the interpreter
+        # File object to figure out some paths.
+        interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
 
-        elif runtime.interpreter:
-            # Even though ctx.actions.symlink() is used, using
-            # declare_symlink() is required to ensure that the resulting file
-            # in runfiles is always a symlink. An RBE implementation, for example,
-            # may choose to write what symlink() points to instead.
-            interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+        ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
-            rel_path = relative_path(
-                # dirname is necessary because a relative symlink is relative to
-                # the directory the symlink resides within.
-                from_ = paths.dirname(runfiles_root_path(ctx, interpreter.short_path)),
-                to = interpreter_actual_path,
-            )
+    elif runtime.interpreter:
+        # Even though ctx.actions.symlink() is used, using
+        # declare_symlink() is required to ensure that the resulting file
+        # in runfiles is always a symlink. An RBE implementation, for example,
+        # may choose to write what symlink() points to instead.
+        interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
 
-            ctx.actions.symlink(output = interpreter, target_path = rel_path)
-        else:
-            interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
-            ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
+        rel_path = relative_path(
+            # dirname is necessary because a relative symlink is relative to
+            # the directory the symlink resides within.
+            from_ = paths.dirname(runfiles_root_path(ctx, interpreter.short_path)),
+            to = interpreter_actual_path,
+        )
+
+        ctx.actions.symlink(output = interpreter, target_path = rel_path)
     else:
-        interpreter = None
+        interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+        ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
 
     if runtime.interpreter_version_info:
         version = "{}.{}".format(
