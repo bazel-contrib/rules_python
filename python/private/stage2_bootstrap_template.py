@@ -66,8 +66,6 @@ class BazelBinaryInfoModule(types.ModuleType):
         except ImportError:
             from python.runfiles import runfiles
         rlocation_path = self.BUILD_DATA_FILE
-        if is_windows():
-            rlocation_path = rlocation_path.replace("/", "\\")
         path = runfiles.Create().Rlocation(rlocation_path)
         if is_windows():
             path = os.path.normpath(path)
