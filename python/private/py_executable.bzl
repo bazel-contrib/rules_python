@@ -1778,12 +1778,9 @@ def _add_config_setting_defaults(kwargs):
     # context to avoid unknown repo name errors.
     default = select({
         labels.PLATFORMS_OS_WINDOWS: {
-            ##labels.BUILD_RUNFILE_LINKS: "true",
             labels.ENABLE_RUNFILES: "true",
         },
-        "//conditions:default": {
-            ##labels.BUILD_RUNFILE_LINKS: "true",
-        },
+        "//conditions:default": {},
     })
 
     # Let user-provided settings have precedence
