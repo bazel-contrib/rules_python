@@ -84,8 +84,8 @@ def _features_typedef():
     """
 
 _TARGETS = {
-    "//command_line_option:enable_runfiles": True,
     "//command_line_option:build_runfile_links": True,
+    "//command_line_option:enable_runfiles": True,
     "//python/cc:current_py_cc_headers_abi3": True,
 }
 

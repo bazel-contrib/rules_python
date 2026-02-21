@@ -71,7 +71,7 @@ class BazelBinaryInfoModule(types.ModuleType):
             path = os.path.normpath(path)
         try:
             # Use utf-8-sig to handle Windows BOM
-            with open(path, encoding='utf-8-sig') as fp:
+            with open(path, encoding="utf-8-sig") as fp:
                 return fp.read()
         except Exception as exc:
             if hasattr(exc, "add_note"):
