@@ -343,6 +343,10 @@ Detailed docs are not yet written.
 (directive-python-proto-naming-convention)=
 ## `python_proto_naming_convention`
 
+:::{versionadded} 1.6.0
+{gh-pr}`3093`
+:::
+
 Set this directive to a string pattern to control how the generated
 {bzl:obj}`py_proto_library` targets are named. When generating new
 {bzl:obj}`py_proto_library` rules, Gazelle will replace `$proto_name$` in the
@@ -653,6 +657,10 @@ that are relative to the current package.
 (directive-python-generate-pyi-deps)=
 ## `python_generate_pyi_deps`
 
+:::{versionadded} 1.6.0
+{gh-pr}`3014`
+:::
+
 :::{error}
 Detailed docs are not yet written.
 :::
@@ -660,6 +668,10 @@ Detailed docs are not yet written.
 
 (directive-python-generate-pyi-srcs)=
 ## `python_generate_pyi_srcs`
+
+:::{versionadded} 1.6.0
+{gh-pr}`3356`
+:::
 
 When `true`, include any sibling `.pyi` files in the `pyi_srcs` target attribute.
 
@@ -683,6 +695,10 @@ py_library(
 
 (directive-python-generate-proto)=
 ## `python_generate_proto`
+
+:::{versionadded} 1.6.0
+{gh-pr}`3057`
+:::
 
 When `# gazelle:python_generate_proto true`, Gazelle will generate one
 {bzl:obj}`py_proto_library` for each `proto_library`, generating Python clients for
@@ -746,12 +762,20 @@ previously-generated or hand-created rules.
 (directive-python-resolve-sibling-imports)=
 ## `python_resolve_sibling_imports`
 
+:::{versionadded} 1.6.0
+{gh-pr}`3106`
+:::
+
 :::{error}
 Detailed docs are not yet written.
 :::
 
 (directive-python-include-ancestor-conftest)=
 ## `python_include_ancestor_conftest`
+
+:::{versionadded} 1.9.0
+{gh-pr}`3596`
+:::
 
 Version VERSION_NEXT_FEATURE includes a fix ({gh-pr}`3498`) for a long-standing issue
 ({gh-issue}`3497`) where ancestor `conftest.py` files were not automatically
