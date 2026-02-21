@@ -6,8 +6,9 @@ module(
 
 bazel_dep(name = "bazel_features", version = "1.21.0")
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
-bazel_dep(name = "rules_cc", version = "0.1.5")
+bazel_dep(name = "package_metadata", version = "0.0.6")
 bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "rules_cc", version = "0.1.5")
 
 # Those are loaded only when using py_proto_library
 # Use py_proto_library directly from protobuf repository
