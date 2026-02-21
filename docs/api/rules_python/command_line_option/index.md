@@ -30,7 +30,7 @@ Special target for the Bazel-builtin `//command_line_option:build_runfile_links`
 
 See the [Bazel documentation for --build_runfile_links](https://bazel.build/reference/command-line-reference#flag--build_runfile_links).
 
-The special value `INHERIT` can specified to use the existing flag value.
+The special value `INHERIT` can be specified to use the existing flag value.
 :::
 
 ## enable_runfiles
@@ -41,5 +41,5 @@ Special target for the Bazel-builtin `//command_line_option:enable_runfiles` fla
 
 See the [Bazel documentation for --enable_runfiles](https://bazel.build/reference/command-line-reference#flag--enable_runfiles).
 
-The special value `INHERIT` can specified to use the existing flag value.
+The special value `INHERIT` can be specified to use the existing flag value.
 :::
