@@ -10,11 +10,19 @@ This package provides special targets that correspond to the Bazel-builtin
 attribute on Python rules to transition specific command line flags for a target.
 
 :::{note}
-These targets are not actual `alias()` targets, nor are they the actual builtin
-command line flags. They are regular targets that the `config_settings` transition
-logic specially recognizes and handles as if they were the builtin `//command_line_option`
-psuedo-targets.
+These targets are not actual `alias()` targets, Starlark flags, nor are they the
+actual builtin command line flags. They are regular targets that the
+`config_settings` transition logic specially recognizes and handles as if they
+were the builtin `//command_line_option` psuedo-targets.
 :::
+
+While this package only provides a subset of builtin Bazel flags, additional
+ones can be introduced by:
+
+* Define your own `@foo//command_line_flag:<name>` target. It **must** be
+  in a top-level `command_line_flag` directory.
+* Use {obj}`config.add_transition_setting` to make the rules transition on
+  the corresponding `//command_line_option:<name>` builtin Bazel psuedo-target.
 
 :::{seealso}
 The `config_settings` attribute documentation on:
