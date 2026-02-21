@@ -266,8 +266,7 @@ pip_repository = repository_rule(
             doc = """\
 Optional annotations to apply to packages. Keys should be package names, with
 capitalization matching the input requirements file, and values should be
-generated using the `package_name` macro. For example usage, see [this WORKSPACE
-file](https://github.com/bazel-contrib/rules_python/blob/main/examples/pip_repository_annotations/WORKSPACE).
+generated using the `package_name` macro.
 """,
         ),
         _config_template = attr.label(

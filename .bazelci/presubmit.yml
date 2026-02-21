@@ -422,31 +422,6 @@ tasks:
   # We don't run pip_parse_vendored under Windows as the file checked in is
   # generated from a repository rule containing OS-specific rendered paths.
 
-  integration_test_pip_repository_annotations_ubuntu_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: Ubuntu, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: ubuntu2204
-  integration_test_pip_repository_annotations_debian_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: Debian, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: debian11
-  integration_test_pip_repository_annotations_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: macOS, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: macos_arm64
-  integration_test_pip_repository_annotations_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: Windows, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: windows
-
   integration_test_bazelinbazel_ubuntu:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Ubuntu"
