@@ -11,7 +11,7 @@ documentation. It comes with:
 While it is primarily oriented towards docgen for Starlark code, the core of it
 is agnostic as to what is being documented.
 
-### Optimization
+## Optimization
 
 Normally, Sphinx keeps various cache files to improve incremental building.
 Unfortunately, programs performing their own caching don't interact well

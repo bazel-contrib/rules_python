@@ -48,6 +48,7 @@ VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
 
 # runfiles-root-relative path to a file with binary-specific build information
+# It uses forward slashes, so must be converted for proper usage on Windows.
 BUILD_DATA_FILE = "%build_data_file%"
 
 # ===== Template substitutions end =====
@@ -64,9 +65,21 @@ class BazelBinaryInfoModule(types.ModuleType):
             import runfiles
         except ImportError:
             from python.runfiles import runfiles
-        path = runfiles.Create().Rlocation(self.BUILD_DATA_FILE)
-        with open(path) as fp:
-            return fp.read()
+        rlocation_path = self.BUILD_DATA_FILE
+        path = runfiles.Create().Rlocation(rlocation_path)
+        if is_windows():
+            path = os.path.normpath(path)
+        try:
+            # Use utf-8-sig to handle Windows BOM
+            with open(path, encoding='utf-8-sig') as fp:
+                return fp.read()
+        except Exception as exc:
+            if hasattr(exc, "add_note"):
+                exc.add_note(f"runfiles lookup path: {rlocation_path}")
+                exc.add_note(f"exists: {os.path.exists(path)}")
+                can_read = os.access(path, os.R_OK)
+                exc.add_note(f"readable: {can_read}")
+            raise
 
 
 sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")

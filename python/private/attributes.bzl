@@ -392,7 +392,7 @@ obtained by calling `str(Label(...))`).
 
 Most `@rules_python//python/config_setting` settings can be used here, which
 allows, for example, making only a certain `py_binary` use
-{obj}`--boostrap_impl=script`.
+{obj}`--bootstrap_impl=script`.
 
 Additional or custom config settings can be registered using the
 {obj}`add_transition_setting` API. This allows, for example, forcing a
@@ -488,7 +488,7 @@ See the [Accessing build information docs] for more information.
 Stamping can harm build performance by reducing cache hits and should
 be avoided if possible.
 
-In addition, this transitions the {obj}`--stamp` flag, which can additional
+In addition, this transitions the {flag}`--stamp <stamp>` flag, which can additional
 config state overhead.
 :::
 

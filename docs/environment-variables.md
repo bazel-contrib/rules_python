@@ -29,7 +29,7 @@ The guide on {any}`How to integrate a debugger`
 :::{versionadded} 1.3.0
 :::
 :::{versionchanged} 1.7.0
-Support added for {obj}`--bootstrap_impl=system_python`.
+Support added for {bzl:flag}`--bootstrap_impl=system_python`.
 :::
 
 ::::

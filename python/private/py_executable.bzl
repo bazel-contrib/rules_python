@@ -768,10 +768,7 @@ def _create_stage1_bootstrap(
     }
 
     if stage2_bootstrap:
-        subs["%stage2_bootstrap%"] = "{}/{}".format(
-            ctx.workspace_name,
-            stage2_bootstrap.short_path,
-        )
+        subs["%stage2_bootstrap%"] = runfiles_root_path(ctx, stage2_bootstrap.short_path)
         template = runtime.bootstrap_template
         subs["%shebang%"] = runtime.stub_shebang
     elif not ctx.files.srcs:
@@ -1841,7 +1838,7 @@ def create_executable_rule_builder(implementation, **kwargs):
     :::
 
     Returns:
-        {type}`ruleb.Rule` with the necessary settings
+        {obj}`ruleb.Rule` with the necessary settings
         for creating an executable Python rule.
     """
     builder = ruleb.Rule(
