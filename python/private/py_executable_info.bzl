@@ -24,7 +24,7 @@ rules provide it directly so that the runtime the binary original chose
 can be accessed.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 """,
         "build_data_file": """
@@ -38,7 +38,7 @@ A symlink to build_data.txt if stamping is enabled, otherwise None.
 Args that should be passed to the interpreter before regular args
 (e.g. `-X whatever`).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 """,
         "interpreter_path": """
@@ -75,7 +75,7 @@ The Bazel-executable-level entry point to the program, which handles Bazel-speci
 setup before running the file in {obj}`main`. May be None if a two-stage bootstrap
 implementation isn't being used.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 """,
         "venv_python_exe": """
@@ -84,7 +84,7 @@ implementation isn't being used.
 The `bin/python3` file within the venv this binary uses. May be None if venv
 mode is not enabled.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 """,
     },

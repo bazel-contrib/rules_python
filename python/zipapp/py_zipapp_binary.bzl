@@ -12,7 +12,7 @@ load("//python/private/zipapp:py_zipapp_rule.bzl", _py_zipapp_binary_rule = "py_
 def py_zipapp_binary(**kwargs):
     """Builds a Python zipapp from a py_binary/py_test target.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.9.0
     :::
 
     Args:

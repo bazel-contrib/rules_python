@@ -69,7 +69,7 @@ def _features_typedef():
 
     Whether the rules_python version has the `py_zipapp_*` rules
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.9.0
     ::::
     """
 

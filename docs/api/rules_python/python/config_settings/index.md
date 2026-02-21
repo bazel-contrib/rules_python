@@ -62,7 +62,7 @@ Setting this flag adds the debugger dependency, but doesn't automatically set
 `PYTHONBREAKPOINT` to change `breakpoint()` behavior.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 ::::
 

@@ -337,7 +337,7 @@ Output groups:
   the previous implicit zipapp functionality. Set `executable=False`
   and use the default output of the target instead.*
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 """.lstrip()
 
