@@ -33,6 +33,6 @@ py_test(
 config_setting(
     name = "is_enable_runfiles_true",
     values = {
-        "enable_runfiles": True,
+        "enable_runfiles": "true",
     },
 )
