@@ -75,7 +75,11 @@ END_UNRELEASED_TEMPLATE
 * (wheel) `py_wheel` no longer expands the input depset during analysis,
   improving analysis performance for targets with large dependency trees.
 * (binaries/tests) (Windows) `--enable_runfiles=true` is the default for
-  py_binary/py_test.
+  `py_binary/py_test`. Prior behavior can be restored by adding
+  `@rules_python//command_line_option:enable_runfiles=false` or
+  `@rules_python//command_line_option:enable_runfiles=INHERIT` to the
+  `config_settings` attribute. NOTE: `enable_runfiles=true` will
+  soon become **required for Windows**.
 
 {#v0-0-0-fixed}
 ### Fixed

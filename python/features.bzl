@@ -20,6 +20,15 @@ _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 def _features_typedef():
     """Information about features rules_python has implemented.
 
+    ::::{field} clo_package
+    :type: bool
+
+    True if the {obj}`@rules_python//command_line_option` package is available.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
+
     ::::{field} headers_abi3
     :type: bool
 
@@ -76,6 +85,7 @@ def _features_typedef():
 features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
+    clo_package = True,
     headers_abi3 = True,
     precompile = True,
     py_info_venv_symlinks = True,
