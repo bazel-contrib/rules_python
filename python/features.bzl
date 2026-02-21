@@ -20,10 +20,11 @@ _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 def _features_typedef():
     """Information about features rules_python has implemented.
 
-    ::::{field} clo_package
-    :type: bool
+    ::::{field} targets
+    :type: dict[str, bool]
 
-    True if the {obj}`@rules_python//command_line_option` package is available.
+    A map of public API targets available in rules_python for feature detection
+    purposes.
 
     :::{versionadded} VERSION_NEXT_FEATURE
     :::
@@ -82,13 +83,19 @@ def _features_typedef():
     ::::
     """
 
+_TARGETS = {
+    "//command_line_option:enable_runfiles": True,
+    "//command_line_option:build_runfile_links": True,
+    "//python/cc:current_py_cc_headers_abi3": True,
+}
+
 features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
-    clo_package = True,
     headers_abi3 = True,
     precompile = True,
     py_info_venv_symlinks = True,
+    targets = _TARGETS,
     uses_builtin_rules = False,
     version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
     zipapp_rules = True,
