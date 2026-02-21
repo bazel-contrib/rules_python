@@ -444,7 +444,10 @@ def apply_config_settings_attr(settings, attr):
     """
     for key, value in attr.config_settings.items():
         if key.package == "command_line_option":
-            str_key = "//command_line_option:" + key.name
+            if value == "INHERIT":
+                continue
+            else:
+                str_key = "//command_line_option:" + key.name
         else:
             str_key = str(key)
         settings[str_key] = value
