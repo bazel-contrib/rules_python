@@ -48,8 +48,8 @@ var (
 	buildFilenames = []string{"BUILD", "BUILD.bazel"}
 )
 
-func GetActualKindName(kind string, args language.GenerateArgs) string {
-	if kindOverride, ok := args.Config.KindMap[kind]; ok {
+func GetActualKindName(kind string, c *config.Config) string {
+	if kindOverride, ok := c.KindMap[kind]; ok {
 		return kindOverride.KindName
 	}
 	return kind
@@ -112,9 +112,9 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	actualPyBinaryKind := GetActualKindName(pyBinaryKind, args)
-	actualPyLibraryKind := GetActualKindName(pyLibraryKind, args)
-	actualPyTestKind := GetActualKindName(pyTestKind, args)
+	actualPyBinaryKind := GetActualKindName(pyBinaryKind, args.Config)
+	actualPyLibraryKind := GetActualKindName(pyLibraryKind, args.Config)
+	actualPyTestKind := GetActualKindName(pyTestKind, args.Config)
 
 	pythonProjectRoot := cfg.PythonProjectRoot()
 
