@@ -154,6 +154,14 @@ def pkg_aliases(
         if target_name.startswith("_"):
             kwargs["visibility"] = ["//_groups:__subpackages__"]
 
+        if type(actual) == type({}):
+            kwargs["target_compatible_with"] = select({
+                k: []
+                for k in actual.keys()
+            } | {
+                "//conditions:default": ["@platforms//:incompatible"],
+            })
+
         alias(
             name = target_name,
             actual = _actual,
