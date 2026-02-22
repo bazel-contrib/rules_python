@@ -91,6 +91,10 @@ class BazelBinaryInfoModule(types.ModuleType):
                 exc.add_note(f"readable: {can_read}")
                 exc.add_note(f"stat: {os.stat(path)}")
                 exc.add_note(f"lstat: {os.lstat(path)}")
+                try:
+                    exc.add_note(f"dir: {os.listdir(os.path.dirname(path))}")
+                except Exception:
+                    pass
             raise
 
 
