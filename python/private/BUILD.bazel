@@ -272,6 +272,8 @@ bzl_library(
     deps = [
         ":full_version_bzl",
         ":platform_info_bzl",
+        ":pyproject_repo_bzl",
+        ":pyproject_utils_bzl",
         ":python_register_toolchains_bzl",
         ":pythons_hub_bzl",
         ":repo_utils_bzl",
@@ -750,6 +752,16 @@ bzl_library(
         ":py_internal_bzl",
         "@bazel_skylib//lib:paths",
     ],
+)
+
+bzl_library(
+    name = "pyproject_repo_bzl",
+    srcs = ["pyproject_repo.bzl"],
+)
+
+bzl_library(
+    name = "pyproject_utils_bzl",
+    srcs = ["pyproject_utils.bzl"],
 )
 
 # Needed to define bzl_library targets for docgen. (We don't define the

@@ -1,0 +1,9 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+exports_files(["toml2json.py"])
+
+py_binary(
+    name = "toml2json",
+    srcs = ["toml2json.py"],
+    visibility = ["//visibility:public"],
+)

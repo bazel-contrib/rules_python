@@ -48,8 +48,10 @@ user.bazelrc
 # CLion
 .clwb
 
-# Python cache
+# Python artifacts
 **/__pycache__/
+*.egg
+*.egg-info
 
 # MODULE.bazel.lock is ignored for now as per recommendation from upstream.
 # See https://github.com/bazelbuild/bazel/issues/20369
