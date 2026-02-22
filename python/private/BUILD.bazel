@@ -24,7 +24,10 @@ load(":stamp.bzl", "stamp_build_setting")
 load(":uncachable_version_file.bzl", "define_uncachable_version_file")
 
 package(
-    default_visibility = ["//:__subpackages__"],
+    default_visibility = [
+        "//:__subpackages__",
+        "@sphinxdocs//:__subpackages__",
+    ],
 )
 
 licenses(["notice"])
@@ -689,9 +692,7 @@ bzl_library(
 bzl_library(
     name = "util_bzl",
     srcs = ["util.bzl"],
-    visibility = [
-        "//:__subpackages__",
-    ],
+    visibility = ["//visibility:public"],
     deps = [
         ":py_internal_bzl",
         "@bazel_skylib//lib:types",

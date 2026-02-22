@@ -13,6 +13,6 @@
 # limitations under the License.
 """Starlark rules for integrating Sphinx and Readthedocs."""
 
-load("//sphinxdocs/private:readthedocs.bzl", _readthedocs_install = "readthedocs_install")
+load("//private:readthedocs.bzl", _readthedocs_install = "readthedocs_install")
 
 readthedocs_install = _readthedocs_install

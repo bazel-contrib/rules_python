@@ -16,12 +16,12 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("//python:py_binary.bzl", "py_binary")
-load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
 load(":sphinx_docs_library_info.bzl", "SphinxDocsLibraryInfo")
 
-_SPHINX_BUILD_MAIN_SRC = Label("//sphinxdocs/private:sphinx_build.py")
-_SPHINX_SERVE_MAIN_SRC = Label("//sphinxdocs/private:sphinx_server.py")
+_SPHINX_BUILD_MAIN_SRC = Label("//private:sphinx_build.py")
+_SPHINX_SERVE_MAIN_SRC = Label("//private:sphinx_server.py")
 
 _SphinxSourceTreeInfo = provider(
     doc = "Information about source tree for Sphinx to build.",
@@ -83,7 +83,7 @@ def sphinx_build_binary(name, py_binary_rule = py_binary, **kwargs):
         **kwargs: {type}`dict` Additional kwargs to pass onto `py_binary`. The `srcs` and
             `main` attributes must not be specified.
     """
-    add_tag(kwargs, "@rules_python//sphinxdocs:sphinx_build_binary")
+    add_tag(kwargs, "//:sphinx_build_binary")
     py_binary_rule(
         name = name,
         srcs = [_SPHINX_BUILD_MAIN_SRC],
@@ -148,7 +148,7 @@ def sphinx_docs(
             This can improve incremental building of docs.
         **kwargs: {type}`dict` Common attributes to pass onto rules.
     """
-    add_tag(kwargs, "@rules_python//sphinxdocs:sphinx_docs")
+    add_tag(kwargs, "//:sphinx_docs")
     common_kwargs = copy_propagating_kwargs(kwargs)
 
     internal_name = "_{}".format(name.lstrip("_"))
@@ -189,7 +189,7 @@ def sphinx_docs(
         srcs = [_SPHINX_SERVE_MAIN_SRC],
         main = _SPHINX_SERVE_MAIN_SRC,
         data = [html_name],
-        deps = [Label("//python/runfiles")],
+        deps = [Label("@rules_python//python/runfiles")],
         args = [
             "$(rlocationpath {})".format(html_name),
         ],
@@ -259,9 +259,9 @@ _sphinx_docs = rule(
             cfg = "exec",
             doc = "Additional tools that are used by Sphinx and its plugins.",
         ),
-        "_extra_defines_flag": attr.label(default = "//sphinxdocs:extra_defines"),
-        "_extra_env_flag": attr.label(default = "//sphinxdocs:extra_env"),
-        "_quiet_flag": attr.label(default = "//sphinxdocs:quiet"),
+        "_extra_defines_flag": attr.label(default = "//:extra_defines"),
+        "_extra_env_flag": attr.label(default = "//:extra_env"),
+        "_quiet_flag": attr.label(default = "//:quiet"),
     },
 )
 
@@ -482,7 +482,7 @@ def sphinx_inventory(*, name, src, **kwargs):
         the value `-` to indicate it is the same as `name`
 
     :::{seealso}
-    {bzl:obj}`//sphinxdocs/inventories` for inventories of Bazel objects.
+    {bzl:obj}`//inventories` for inventories of Bazel objects.
     :::
 
     Args:
@@ -511,7 +511,7 @@ _sphinx_inventory = rule(
     attrs = {
         "src": attr.label(allow_single_file = True),
         "_builder": attr.label(
-            default = "//sphinxdocs/private:inventory_builder",
+            default = "//private:inventory_builder",
             executable = True,
             cfg = "exec",
         ),
@@ -594,7 +594,7 @@ inspected without Bazel interference.
         ),
         "_template": attr.label(
             allow_single_file = True,
-            default = "//sphinxdocs/private:sphinx_run_template.sh",
+            default = "//private:sphinx_run_template.sh",
         ),
     },
     executable = True,

@@ -1,8 +1,8 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("//python:py_test.bzl", "py_test")
-load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
-load("//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
+load("@rules_python//python:py_test.bzl", "py_test")
+load("//:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
+load("//:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
 
 # We only build for Linux and Mac because:
 # 1. The actual doc process only runs on Linux
@@ -28,7 +28,7 @@ sphinx_docs(
         "html",
     ],
     renamed_srcs = {
-        "//sphinxdocs/inventories:bazel_inventory": "bazel_inventory.inv",
+        "//inventories:bazel_inventory": "bazel_inventory.inv",
     },
     sphinx = ":sphinx-build",
     strip_prefix = package_name() + "/",
@@ -93,7 +93,7 @@ sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building
     deps = [
-        "//sphinxdocs/src/sphinx_bzl",
+        "//src/sphinx_bzl",
         "@dev_pip//myst_parser",
         "@dev_pip//sphinx",
         "@dev_pip//typing_extensions",  # Needed by sphinx_stardoc

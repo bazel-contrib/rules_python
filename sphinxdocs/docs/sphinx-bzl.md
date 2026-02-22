@@ -11,7 +11,7 @@ a well known target.
 ## Configuring Sphinx
 
 To enable the plugin in Sphinx, depend on
-`@rules_python//sphinxdocs/src/sphinx_bzl` and enable it in `conf.py`:
+`//src/sphinx_bzl` and enable it in `conf.py`:
 
 ```
 extensions = [

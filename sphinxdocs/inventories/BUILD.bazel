@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//sphinxdocs:sphinx.bzl", "sphinx_inventory")
+load("//:sphinx.bzl", "sphinx_inventory")
 
 # Inventory for the current Bazel version
 sphinx_inventory(

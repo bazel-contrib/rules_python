@@ -28,7 +28,7 @@ The Sphinx integration is still experimental.
 """
 
 load(
-    "//sphinxdocs/private:sphinx.bzl",
+    "//private:sphinx.bzl",
     _sphinx_build_binary = "sphinx_build_binary",
     _sphinx_docs = "sphinx_docs",
     _sphinx_inventory = "sphinx_inventory",

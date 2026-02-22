@@ -1,6 +1,6 @@
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
-load("//sphinxdocs:sphinx_docs_library.bzl", "sphinx_docs_library")
-load("//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardocs")
+load("@rules_python//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//:sphinx_docs_library.bzl", "sphinx_docs_library")
+load("//:sphinx_stardoc.bzl", "sphinx_stardocs")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -18,6 +18,7 @@ _TARGET_COMPATIBLE_WITH = select({
 
 sphinx_docs_library(
     name = "docs_lib",
+    visibility = ["//visibility:public"],
     deps = [
         ":artisian_api_docs",
         ":bzl_docs",
@@ -47,11 +48,11 @@ sphinx_docs_library(
 sphinx_stardocs(
     name = "bzl_docs",
     srcs = [
-        "//sphinxdocs:readthedocs_bzl",
-        "//sphinxdocs:sphinx_bzl",
-        "//sphinxdocs:sphinx_docs_library_bzl",
-        "//sphinxdocs:sphinx_stardoc_bzl",
-        "//sphinxdocs/private:sphinx_docs_library_bzl",
+        "//:readthedocs_bzl",
+        "//:sphinx_bzl",
+        "//:sphinx_docs_library_bzl",
+        "//:sphinx_stardoc_bzl",
+        "//private:sphinx_docs_library_bzl",
     ],
     prefix = "api/sphinxdocs/",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
@@ -59,6 +60,6 @@ sphinx_stardocs(
 
 sphinx_docs_library(
     name = "py_api_srcs",
-    srcs = ["//sphinxdocs/src/sphinx_bzl"],
+    srcs = ["//src/sphinx_bzl"],
     strip_prefix = "sphinxdocs/src/",
 )

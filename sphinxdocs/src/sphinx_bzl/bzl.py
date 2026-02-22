@@ -57,7 +57,7 @@ _RoleRunResult: TypeAlias = tuple[
 def _log_debug(message, *args):
     # NOTE: Non-warning log messages go to stdout and are only
     # visible when -q isn't passed to Sphinx. Note that the sphinx_docs build
-    # rule passes -q by default; use --//sphinxdocs:quiet=false to disable it.
+    # rule passes -q by default; use --//:quiet=false to disable it.
     _logger.debug("%s" + message, _LOG_PREFIX, *args)
 
 
