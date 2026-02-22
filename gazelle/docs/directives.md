@@ -806,7 +806,7 @@ Thus the `python_include_ancestor_conftest` directive controls this behavior.
 It defaults to `true`, which causes all ancestor `conftest.py` files to be
 included as dependencies for {bzl:obj}`py_test` targets.
 
-Setting the directive to `false` reverts to the pre-VERSION_NEXT_FEATURE behavior.
+Setting the directive to `false` reverts to the pre-1.9.0 behavior.
 
 For example, given this directory tree (not shown: intermediary `BUILD.bazel`
 files)
