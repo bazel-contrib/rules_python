@@ -84,6 +84,7 @@ class BazelBinaryInfoModule(types.ModuleType):
                     exc.add_note(f"isjunction: {os.path.isjunction(path)}")
                 can_read = os.access(path, os.R_OK)
                 exc.add_note(f"readable: {can_read}")
+                exc.add_note(f"version: {sys.version}")
             raise
 
 
