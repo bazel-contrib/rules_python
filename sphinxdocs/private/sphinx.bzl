@@ -17,7 +17,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_python//python:py_binary.bzl", "py_binary")
-load("@rules_python//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
+load("//private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
 load(":sphinx_docs_library_info.bzl", "SphinxDocsLibraryInfo")
 
 _SPHINX_BUILD_MAIN_SRC = Label("//private:sphinx_build.py")

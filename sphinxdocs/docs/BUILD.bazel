@@ -1,4 +1,4 @@
-load("@rules_python//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//private:util.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//:sphinx_docs_library.bzl", "sphinx_docs_library")
 load("//:sphinx_stardoc.bzl", "sphinx_stardocs")
 

@@ -35,11 +35,19 @@ exports_files(
 )
 
 bzl_library(
+    name = "util_bzl",
+    srcs = ["util.bzl"],
+    deps = [
+        "@bazel_skylib//lib:types",
+    ],
+)
+
+bzl_library(
     name = "sphinx_docs_library_macro_bzl",
     srcs = ["sphinx_docs_library_macro.bzl"],
     deps = [
         ":sphinx_docs_library_bzl",
-        "@rules_python//python/private:util_bzl",
+        "//private:util_bzl",
     ],
 )
 
@@ -58,6 +66,7 @@ bzl_library(
     name = "sphinx_bzl",
     srcs = ["sphinx.bzl"],
     deps = [
+        ":util_bzl",
         ":sphinx_docs_library_info_bzl",
         "@rules_python//python:py_binary_bzl",
         "@bazel_skylib//:bzl_library",
@@ -74,7 +83,7 @@ bzl_library(
     srcs = ["sphinx_stardoc.bzl"],
     deps = [
         ":sphinx_docs_library_macro_bzl",
-        "@rules_python//python/private:util_bzl",
+        "//private:util_bzl",
         "//:sphinx_bzl",
         "@bazel_skylib//:bzl_library",
         "@bazel_skylib//lib:paths",
@@ -87,7 +96,10 @@ bzl_library(
 bzl_library(
     name = "readthedocs_bzl",
     srcs = ["readthedocs.bzl"],
-    deps = ["@rules_python//python:py_binary_bzl"],
+    deps = [
+        ":util_bzl",
+        "@rules_python//python:py_binary_bzl",
+    ],
 )
 
 py_binary(

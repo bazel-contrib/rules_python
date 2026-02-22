@@ -1,6 +1,6 @@
 """Implementation of sphinx_docs_library macro."""
 
-load("@rules_python//python/private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
+load("//private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
 load(":sphinx_docs_library.bzl", _sphinx_docs_library = "sphinx_docs_library")
 
 def sphinx_docs_library(**kwargs):

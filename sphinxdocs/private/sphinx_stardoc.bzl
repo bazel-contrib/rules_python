@@ -19,7 +19,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
-load("@rules_python//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
+load("//private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
 load("//private:sphinx_docs_library_macro.bzl", "sphinx_docs_library")
 
 _StardocInputHelperInfo = provider(

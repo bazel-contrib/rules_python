@@ -14,7 +14,7 @@
 """Starlark rules for integrating Sphinx and Readthedocs."""
 
 load("@rules_python//python:py_binary.bzl", "py_binary")
-load("@rules_python//python/private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
+load("//private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
 
 _INSTALL_MAIN_SRC = Label("//private:readthedocs_install.py")
 
