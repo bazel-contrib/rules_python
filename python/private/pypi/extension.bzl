@@ -27,7 +27,7 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
-load(":simpleapi_download.bzl", "simpleapi_download")
+load(":simpleapi_download.bzl", "simpleapi_download", _simpleapi_cache = "simpleapi_cache")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):
@@ -224,7 +224,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # dict[str repo, HubBuilder]
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = {}
+    simpleapi_cache = _simpleapi_cache(module_ctx)
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
@@ -296,6 +296,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
+        facts = simpleapi_cache.get_facts(),
         platform_config_settings = {
             hub_name: {
                 platform_name: sorted([str(Label(cv)) for cv in p.config_settings])
@@ -393,9 +394,11 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    return module_ctx.extension_metadata(
-        reproducible = True,
-    )
+    kwargs = {"reproducible": True}
+    if mods.facts:
+        kwargs["facts"] = mods.facts
+
+    return module_ctx.extension_metadata(**kwargs)
 
 _default_attrs = {
     "arch_name": attr.string(

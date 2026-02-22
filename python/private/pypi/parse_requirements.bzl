@@ -170,16 +170,15 @@ def parse_requirements(
 
     index_urls = {}
     if get_index_urls:
-        index_urls = get_index_urls(
-            ctx,
-            # Use list({}) as a way to have a set
-            list({
-                req.distribution: None
-                for reqs in requirements_by_platform.values()
-                for req in reqs.values()
-                if not req.srcs.url
-            }),
-        )
+        distributions = {}
+        for reqs in requirements_by_platform.values():
+            for req in reqs.values():
+                if req.srcs.url:
+                    continue
+
+                distributions.setdefault(req.distribution, []).append(req.srcs.version)
+
+        index_urls = get_index_urls(ctx, distributions)
 
     ret = []
     for name, reqs in sorted(requirements_by_platform.items()):

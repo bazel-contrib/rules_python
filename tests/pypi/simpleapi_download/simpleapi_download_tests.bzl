@@ -15,19 +15,28 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download", "strip_empty_path_segments")  # buildifier: disable=bzl-visibility
+load("@rules_testing//lib:truth.bzl", "subjects")
+load(
+    "//python/private/pypi:simpleapi_download.bzl",
+    "memory_cache",
+    "simpleapi_download",
+    "strip_empty_path_segments",
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 
 def _test_simple(env):
     calls = []
 
-    def read_simpleapi(ctx, url, attr, cache, get_auth, block):
+    def read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth, requested_versions, block):
         _ = ctx  # buildifier: disable=unused-variable
+        _ = distribution
+        _ = requested_versions
         _ = attr
         _ = cache
         _ = get_auth
         env.expect.that_bool(block).equals(False)
+        url = "{}/{}/".format(index_url, distribution)
         calls.append(url)
         if "foo" in url and "main" in url:
             return struct(
@@ -49,8 +58,9 @@ def _test_simple(env):
             index_url_overrides = {},
             index_url = "main",
             extra_index_urls = ["extra"],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = True,
@@ -75,11 +85,14 @@ def _test_fail(env):
     calls = []
     fails = []
 
-    def read_simpleapi(ctx, url, attr, cache, get_auth, block):
+    def read_simpleapi(ctx, index_url, distribution, attr, cache, get_auth, requested_versions, block):
         _ = ctx  # buildifier: disable=unused-variable
+        _ = distribution
+        _ = requested_versions
         _ = attr
         _ = cache
         _ = get_auth
+        url = "{}/{}/".format(index_url, distribution)
         env.expect.that_bool(block).equals(False)
         calls.append(url)
         if "foo" in url:
@@ -109,8 +122,9 @@ def _test_fail(env):
             },
             index_url = "main",
             extra_index_urls = ["extra"],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = True,
@@ -122,13 +136,13 @@ def _test_fail(env):
         """
 Failed to download metadata of the following packages from urls:
 {
-    "foo": "invalid",
     "bar": ["main", "extra"],
+    "foo": "invalid",
 }
 
 If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=[
-    "foo",
     "bar",
+    "foo",
 ]' to your 'pip.parse' call.
 """,
     ])
@@ -162,8 +176,9 @@ def _test_download_url(env):
             index_url_overrides = {},
             index_url = "https://example.com/main/simple/",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = False,
@@ -198,8 +213,9 @@ def _test_download_url_parallel(env):
             index_url_overrides = {},
             index_url = "https://example.com/main/simple/",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = [],
+            facts = None,
         ),
         cache = {},
         parallel_download = True,
@@ -234,8 +250,9 @@ def _test_download_envsubst_url(env):
             index_url_overrides = {},
             index_url = "$INDEX_URL",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": ["1.0"], "baz": ["1.0"], "foo": ["1.0"]},
             envsubst = ["INDEX_URL"],
+            facts = None,
         ),
         cache = {},
         parallel_download = False,
@@ -259,6 +276,68 @@ def _test_strip_empty_path_segments(env):
     env.expect.that_str(strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
 
 _tests.append(_test_strip_empty_path_segments)
+
+def _expect_cache_result(env, cache, key, sdists, whls):
+    got = env.expect.that_struct(
+        cache.get(*key),
+        attrs = dict(
+            whls = subjects.dict,
+            sdists = subjects.dict,
+        ),
+    )
+    got.whls().contains_exactly(whls)
+    got.sdists().contains_exactly(sdists)
+
+def _test_memory_cache(env):
+    memory = {}
+    cache = memory_cache(memory)
+    all_packages = struct(
+        sdists = {
+            "aa": struct(version = "1.0"),
+            "ab": struct(version = "1.1"),
+        },
+        whls = {
+            "ba": struct(version = "1.0"),
+            "bb": struct(version = "1.1"),
+        },
+    )
+    cache.setdefault("index", "distro", None, all_packages)
+    env.expect.that_dict(memory).contains_exactly({
+        ("index", "distro", ""): all_packages,
+    })
+    _expect_cache_result(
+        env,
+        cache,
+        ("index", "distro", ["1.0"]),
+        sdists = {
+            "aa": struct(version = "1.0"),
+        },
+        whls = {
+            "ba": struct(version = "1.0"),
+        },
+    )
+    env.expect.that_dict(memory).keys().contains_exactly([
+        ("index", "distro", ""),
+        ("index", "distro", "1.0"),
+    ])
+    _expect_cache_result(
+        env,
+        cache,
+        ("index", "distro", ["1.1"]),
+        sdists = {
+            "ab": struct(version = "1.1"),
+        },
+        whls = {
+            "bb": struct(version = "1.1"),
+        },
+    )
+    env.expect.that_dict(memory).keys().contains_exactly([
+        ("index", "distro", ""),
+        ("index", "distro", "1.0"),
+        ("index", "distro", "1.1"),
+    ])
+
+_tests.append(_test_memory_cache)
 
 def simpleapi_download_test_suite(name):
     """Create the test suite.
