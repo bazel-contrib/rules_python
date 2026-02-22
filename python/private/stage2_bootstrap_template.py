@@ -70,12 +70,16 @@ class BazelBinaryInfoModule(types.ModuleType):
         if is_windows():
             path = os.path.normpath(path)
         try:
+            path = os.path.dirname(__file__)
+            path = os.path.join(path, "print_build_data.build_data.txt")
             # Use utf-8-sig to handle Windows BOM
             with open(path, 'rb') as fp:
                 data = fp.read()
             return data.decode('utf-8-sig')
         except Exception as exc:
             if hasattr(exc, "add_note"):
+                exc.add_note(f"version: {sys.version}")
+                exc.add_note(f"path: {path}")
                 exc.add_note(f"runfiles lookup path: {rlocation_path}")
                 exc.add_note(f"exists: {os.path.exists(path)}")
                 exc.add_note(f"lexists: {os.path.lexists(path)}")
@@ -87,7 +91,6 @@ class BazelBinaryInfoModule(types.ModuleType):
                 exc.add_note(f"readable: {can_read}")
                 exc.add_note(f"stat: {os.stat(path)}")
                 exc.add_note(f"lstat: {os.lstat(path)}")
-                exc.add_note(f"version: {sys.version}")
             raise
 
 
