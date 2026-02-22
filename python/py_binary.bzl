@@ -28,7 +28,7 @@ def py_binary(**attrs):
     * `srcs_version`: cannot be `PY2` or `PY2ONLY`
     * `tags`: May have special marker values added, if not already present.
 
-    :::{versionchanged} VERSION_NEXT_FEATURE
+    :::{versionchanged} 1.9.0
     The `PYTHONBREAKPOINT` environment variable is inherited. Use in combination
     with {obj}`--debugger` to customize the debugger available and used.
     :::
