@@ -89,12 +89,20 @@ class BazelBinaryInfoModule(types.ModuleType):
                     exc.add_note(f"isjunction: {os.path.isjunction(path)}")
                 can_read = os.access(path, os.R_OK)
                 exc.add_note(f"readable: {can_read}")
-                exc.add_note(f"stat: {os.stat(path)}")
-                exc.add_note(f"lstat: {os.lstat(path)}")
                 try:
-                    exc.add_note(f"dir: {os.listdir(os.path.dirname(path))}")
-                except Exception:
-                    pass
+                    exc.add_note(f"stat: {os.stat(path)}")
+                except Exception as e:
+                    exc.add_note(f"stat error: {e}")
+                try:
+                    exc.add_note(f"lstat: {os.lstat(path)}")
+                except Exception as e:
+                    exc.add_note(f"lstat error: {e}")
+                try:
+                    import subprocess
+                    out = subprocess.check_output(f'dir "{os.path.dirname(path)}"', shell=True)
+                    exc.add_note(f"dir: {out.decode('utf-8', 'replace')}")
+                except Exception as e:
+                    exc.add_note(f"dir error: {e}")
             raise
 
 
