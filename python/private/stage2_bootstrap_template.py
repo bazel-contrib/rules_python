@@ -70,15 +70,39 @@ class BazelBinaryInfoModule(types.ModuleType):
         if is_windows():
             path = os.path.normpath(path)
         try:
+            path = os.path.dirname(__file__)
+            path = os.path.join(path, "print_build_data.build_data.txt")
             # Use utf-8-sig to handle Windows BOM
-            with open(path, encoding="utf-8-sig") as fp:
-                return fp.read()
+            with open(path, 'rb') as fp:
+                data = fp.read()
+            return data.decode('utf-8-sig')
         except Exception as exc:
             if hasattr(exc, "add_note"):
+                exc.add_note(f"version: {sys.version}")
+                exc.add_note(f"path: {path}")
                 exc.add_note(f"runfiles lookup path: {rlocation_path}")
                 exc.add_note(f"exists: {os.path.exists(path)}")
+                exc.add_note(f"lexists: {os.path.lexists(path)}")
+                exc.add_note(f"islink: {os.path.islink(path)}")
+                exc.add_note(f"isfile: {os.path.isfile(path)}")
+                if hasattr(os.path, "isjunction"):
+                    exc.add_note(f"isjunction: {os.path.isjunction(path)}")
                 can_read = os.access(path, os.R_OK)
                 exc.add_note(f"readable: {can_read}")
+                try:
+                    exc.add_note(f"stat: {os.stat(path)}")
+                except Exception as e:
+                    exc.add_note(f"stat error: {e}")
+                try:
+                    exc.add_note(f"lstat: {os.lstat(path)}")
+                except Exception as e:
+                    exc.add_note(f"lstat error: {e}")
+                try:
+                    import subprocess
+                    out = subprocess.check_output(f'dir "{os.path.dirname(path)}"', shell=True)
+                    exc.add_note(f"dir: {out.decode('utf-8', 'replace')}")
+                except Exception as e:
+                    exc.add_note(f"dir error: {e}")
             raise
 
 

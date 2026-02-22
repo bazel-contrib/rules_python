@@ -1,3 +1,7 @@
 # This aids debugging on failure
 build --toolchain_resolution_debug=python
 common:bazel7.x --incompatible_python_disallow_native_rules
+
+# See issue 3567. Disable implicit python zip creation.
+common --build_python_zip=false
+common --@rules_python//python/config_settings:build_python_zip=false
