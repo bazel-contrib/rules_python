@@ -14,6 +14,7 @@ py_test(
 py_binary(
     name = "print_build_data",
     srcs = ["print_build_data.py"],
+    python_version = "3.14",
     deps = ["//python/runfiles"],
 )
 
