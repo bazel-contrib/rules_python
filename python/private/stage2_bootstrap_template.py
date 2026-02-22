@@ -77,6 +77,8 @@ class BazelBinaryInfoModule(types.ModuleType):
             if hasattr(exc, "add_note"):
                 exc.add_note(f"runfiles lookup path: {rlocation_path}")
                 exc.add_note(f"exists: {os.path.exists(path)}")
+                exc.add_note(f"lexists: {os.path.lexists(path)}")
+                exc.add_note(f"islink: {os.path.islink(path)}")
                 can_read = os.access(path, os.R_OK)
                 exc.add_note(f"readable: {can_read}")
             raise
