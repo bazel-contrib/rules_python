@@ -90,6 +90,7 @@ def test_self_dependencies_can_come_in_any_order(env):
             "baz; extra == 'feat'",
             "foo[feat2]; extra == 'all'",
             "foo[feat]; extra == 'feat2'",
+            "foo[feat3]; extra == 'all'",
             "zdep; extra == 'all'",
         ],
         extras = ["all"],
@@ -99,6 +100,24 @@ def test_self_dependencies_can_come_in_any_order(env):
     env.expect.that_dict(got.deps_select).contains_exactly({})
 
 _tests.append(test_self_dependencies_can_come_in_any_order)
+
+def test_self_include_deps_from_previously_visited(env):
+    got = deps(
+        "foo",
+        requires_dist = [
+            "bar",
+            "baz; extra == 'feat'",
+            "foo[dev]; extra == 'all'",
+            "foo[feat]; extra == 'feat2'",
+            "dev_dep; extra == 'dev'",
+        ],
+        extras = ["feat2"],
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar", "baz"])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_self_include_deps_from_previously_visited)
 
 def _test_can_get_deps_based_on_specific_python_version(env):
     requires_dist = [
@@ -160,6 +179,76 @@ def test_all_markers_are_added(env):
     })
 
 _tests.append(test_all_markers_are_added)
+
+def test_extra_with_conditional_and_unconditional_markers(env):
+    requires_dist = [
+        "bar",
+        'baz!=1.56.0; sys_platform == "darwin" and extra == "client"',
+        'baz; extra == "client"',
+    ]
+
+    got = deps(
+        "foo",
+        extras = ["client"],
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar", "baz"])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_extra_with_conditional_and_unconditional_markers)
+
+def test_span_all_python_versions(env):
+    requires_dist = [
+        "bar>=0.4.0; python_version >= \"3.13.0\"",
+        "bar>=0.3.0; python_version ~= \"3.12.0\"",
+        "bar>=0.2.0; python_version ~= \"3.11.0\"",
+        "bar>=0.1.0; python_version < \"3.11\"",
+    ]
+
+    got = deps(
+        "foo",
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([])
+    env.expect.that_dict(got.deps_select).contains_exactly({
+        "bar": "(python_version < \"3.11\") or (python_version >= \"3.13.0\") or (python_version ~= \"3.11.0\") or (python_version ~= \"3.12.0\")",
+    })
+
+_tests.append(test_span_all_python_versions)
+
+def test_extras_with_hyphens_are_normalized(env):
+    """Test that extras with hyphens in marker expressions are normalized.
+
+    When wheel METADATA uses hyphens in marker expressions
+    (e.g., extra == "db-backend") but the extras from requirement parsing
+    are already normalized (e.g., "db_backend"), the deps should still
+    resolve because marker evaluation normalizes per PEP 685.
+
+    Args:
+        env: the test environment.
+    """
+    requires_dist = [
+        "bar",
+        'baz-lib; extra == "db-backend"',
+        'qux-async; extra == "async-driver"',
+    ]
+
+    got = deps(
+        "foo",
+        extras = ["db_backend", "async_driver"],
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([
+        "bar",
+        "baz_lib",
+        "qux_async",
+    ])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_extras_with_hyphens_are_normalized)
 
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(

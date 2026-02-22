@@ -15,6 +15,7 @@
 """This module is for implementing PEP508 environment definition.
 """
 
+load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
 
 _DEFAULT = "//conditions:default"
@@ -215,9 +216,11 @@ def env(*, env = None, os, arch, python_version = "", extra = None):
 
 def create_env():
     return {
-        # This is split by topic
+        # Per-variable normalization functions. Each entry maps a marker
+        # variable name to a function (value) -> normalized_value.
         "_aliases": {
-            "platform_machine": platform_machine_aliases,
+            "extra": normalize_name,
+            "platform_machine": lambda x: platform_machine_aliases.get(x, x),
         },
     }
 

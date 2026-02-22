@@ -34,6 +34,7 @@ buildifier:
   build_flags:
     - "--keep_going"
     - "--build_tag_filters=-integration-test"
+    - "--verbose_failures"
   test_targets:
     - "--"
     - "..."
@@ -282,7 +283,7 @@ tasks:
     platform: rbe_ubuntu2204
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
-    bazel: 7.x
+    bazel: 8.x
     test_flags:
       - "--test_tag_filters=-integration-test,-acceptance-test"
       - "--extra_toolchains=@buildkite_config//config:cc-toolchain"
@@ -420,33 +421,6 @@ tasks:
     platform: macos_arm64
   # We don't run pip_parse_vendored under Windows as the file checked in is
   # generated from a repository rule containing OS-specific rendered paths.
-
-  # The proto example is workspace-only; bzlmod functionality is covered
-  # by examples/bzlmod/py_proto_library
-  integration_test_py_proto_library_ubuntu_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Ubuntu, workspace"
-    working_directory: examples/py_proto_library
-    platform: ubuntu2204
-  integration_test_py_proto_library_debian_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Debian, workspace"
-    working_directory: examples/py_proto_library
-    platform: debian11
-  integration_test_py_proto_library_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: MacOS, workspace"
-    working_directory: examples/py_proto_library
-    platform: macos_arm64
-  integration_test_py_proto_library_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Windows, workspace"
-    working_directory: examples/py_proto_library
-    platform: windows
 
   integration_test_pip_repository_annotations_ubuntu_workspace:
     <<: *reusable_build_test_all

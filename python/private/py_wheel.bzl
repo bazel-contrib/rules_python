@@ -344,12 +344,13 @@ def _py_wheel_impl(ctx):
     # Currently this is only the description file (if used).
     other_inputs = []
 
-    # Wrap the inputs into a file to reduce command line length.
+    # Wrap the inputs into a file to reduce command line length, deferring
+    # depset expansion to execution time via Args.add_all with map_each.
     packageinputfile = ctx.actions.declare_file(ctx.attr.name + "_target_wrapped_inputs.txt")
-    content = ""
-    for input_file in inputs_to_package.to_list():
-        content += _input_file_to_arg(input_file) + "\n"
-    ctx.actions.write(output = packageinputfile, content = content)
+    package_args = ctx.actions.args()
+    package_args.set_param_file_format("multiline")
+    package_args.add_all(inputs_to_package, map_each = _input_file_to_arg)
+    ctx.actions.write(output = packageinputfile, content = package_args)
     other_inputs.append(packageinputfile)
 
     args = ctx.actions.args()

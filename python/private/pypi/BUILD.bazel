@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_library.bzl", "py_library")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -261,6 +262,7 @@ bzl_library(
     name = "pep508_deps_bzl",
     srcs = ["pep508_deps.bzl"],
     deps = [
+        ":pep508_env_bzl",
         ":pep508_evaluate_bzl",
         ":pep508_requirement_bzl",
         "//python/private:normalize_name_bzl",
@@ -271,6 +273,7 @@ bzl_library(
     name = "pep508_env_bzl",
     srcs = ["pep508_env.bzl"],
     deps = [
+        "//python/private:normalize_name_bzl",
         "//python/private:version_bzl",
     ],
 )
@@ -375,6 +378,12 @@ bzl_library(
         "//python/private:normalize_name_bzl",
         "//python/private:text_util_bzl",
     ],
+)
+
+py_library(
+    name = "repack_whl",
+    srcs = ["repack_whl.py"],
+    deps = ["//tools:wheelmaker"],
 )
 
 bzl_library(

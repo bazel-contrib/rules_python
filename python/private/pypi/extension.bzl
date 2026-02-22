@@ -221,6 +221,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     # Used to track all the different pip hubs and the spoke pip Python
     # versions.
+    # dict[str repo, HubBuilder]
+    # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
     simpleapi_cache = {}
 
@@ -821,7 +823,7 @@ the BUILD files for wheels.
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
 
-:::{include} /_includes/experimtal_api.md
+:::{include} /_includes/experimental_api.md
 :::
 
 :::{seealso}

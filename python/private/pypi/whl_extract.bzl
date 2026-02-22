@@ -12,13 +12,30 @@ def whl_extract(rctx, *, whl_path, logger):
         whl_path: the whl path to extract.
         logger: The logger to use
     """
-    install_dir_path = whl_path.dirname.get_child("site-packages")
+    install_dir_path = rctx.path("site-packages")
     repo_utils.extract(
         rctx,
         archive = whl_path,
         output = install_dir_path,
         supports_whl_extraction = rp_config.supports_whl_extraction,
     )
+
+    # Fix permissions on extracted files. Some wheels have files without read permissions set,
+    # which causes errors when trying to read them later.
+    os_name = repo_utils.get_platforms_os_name(rctx)
+    if os_name != "windows":
+        # On Unix-like systems, recursively add read permissions to all files
+        # and ensure directories are traversable (need execute permission)
+        result = repo_utils.execute_unchecked(
+            rctx,
+            op = "Fixing wheel permissions {}".format(whl_path),
+            arguments = ["chmod", "-R", "a+rX", str(install_dir_path)],
+            logger = logger,
+        )
+        if result.return_code != 0:
+            # It's possible chmod is not available or the filesystem doesn't support it.
+            # This is fine, we just want to try to fix permissions if possible.
+            logger.warn(lambda: "Failed to fix file permissions: {}".format(result.stderr))
     metadata_file = find_whl_metadata(
         install_dir = install_dir_path,
         logger = logger,
@@ -30,7 +47,6 @@ def whl_extract(rctx, *, whl_path, logger):
         dist_info_dir.get_child("INSTALLER"),
         "https://github.com/bazel-contrib/rules_python#pipstar",
     )
-    repo_root_dir = whl_path.dirname
 
     # Get the <prefix>.dist_info dir name
     data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
@@ -54,7 +70,7 @@ def whl_extract(rctx, *, whl_path, logger):
                 # The prefix does not exist in the wheel, we can continue
                 continue
 
-            for (src, dest) in merge_trees(src, repo_root_dir.get_child(dest_prefix)):
+            for (src, dest) in merge_trees(src, rctx.path(dest_prefix)):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
                 rctx.rename(src, dest)
 

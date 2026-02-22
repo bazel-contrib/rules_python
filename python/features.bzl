@@ -20,6 +20,16 @@ _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 def _features_typedef():
     """Information about features rules_python has implemented.
 
+    ::::{field} targets
+    :type: dict[str, bool]
+
+    A map of public API targets available in rules_python for feature detection
+    purposes.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
+
     ::::{field} headers_abi3
     :type: bool
 
@@ -63,7 +73,21 @@ def _features_typedef():
     optional trailing `-rcN`. For unreleased versions, it is an empty string.
     :::{versionadded} 0.38.0
     ::::
+
+    ::::{field} zipapp_rules
+    :type: bool
+
+    Whether the rules_python version has the `py_zipapp_*` rules
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    ::::
     """
+
+_TARGETS = {
+    "//command_line_option:build_runfile_links": True,
+    "//command_line_option:enable_runfiles": True,
+    "//python/cc:current_py_cc_headers_abi3": True,
+}
 
 features = struct(
     TYPEDEF = _features_typedef,
@@ -71,6 +95,8 @@ features = struct(
     headers_abi3 = True,
     precompile = True,
     py_info_venv_symlinks = True,
+    targets = _TARGETS,
     uses_builtin_rules = False,
     version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
+    zipapp_rules = True,
 )

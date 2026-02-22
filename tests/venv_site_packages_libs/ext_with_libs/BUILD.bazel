@@ -89,6 +89,6 @@ py_library(
         ":relocate_increment",
     ],
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
-    imports = [package_name() + "/site-packages"],
+    imports = ["site-packages"],
     tags = ["manual"],
 )

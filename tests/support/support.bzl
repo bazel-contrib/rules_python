@@ -19,6 +19,7 @@
 # rules_testing or as config_setting values, which don't support Label in some
 # places.
 
+load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
 PY_TOOLCHAINS = str(Label("//tests/support/py_toolchains:all"))
@@ -43,3 +44,5 @@ NOT_WINDOWS = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
 })
+
+BAZEL_8_OR_LATER = [] if config.bazel_8_or_later else ["@platforms//:incompatible"]

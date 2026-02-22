@@ -21,6 +21,7 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
+load("//python/private:common.bzl", "maybe_builtin_build_python_zip")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
@@ -49,14 +50,13 @@ def _test_basic_windows(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
-            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
-        },
+        } | maybe_builtin_build_python_zip("true"),
         attr_values = {},
     )
 
@@ -95,14 +95,13 @@ def _test_basic_zip(name, config):
             # platforms.
             # Pass value to both native and starlark versions of the flag until
             # the native one is removed.
-            "//command_line_option:build_python_zip": "true",
             labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "linux_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
-        },
+        } | maybe_builtin_build_python_zip("true"),
         attr_values = {"target_compatible_with": target_compatible_with},
     )
 
@@ -195,7 +194,7 @@ def _test_debugger(name, config):
     rt_util.helper_target(
         py_library,
         name = name + "_debugger_venv",
-        imports = [native.package_name() + "/site-packages"],
+        imports = ["site-packages"],
         experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
         srcs = [rt_util.empty_file("site-packages/" + name + "_debugger_venv.py")],
     )
@@ -379,7 +378,7 @@ def _test_explicit_main_cannot_be_ambiguous_impl(env, target):
         matching.str_matches("foo.py*matches multiple"),
     )
 
-def _test_files_to_build(name, config):
+def _test_default_outputs(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -387,14 +386,14 @@ def _test_files_to_build(name, config):
     )
     analysis_test(
         name = name,
-        impl = _test_files_to_build_impl,
+        impl = _test_default_outputs_impl,
         target = name + "_subject",
         attrs = WINDOWS_ATTR,
     )
 
-_tests.append(_test_files_to_build)
+_tests.append(_test_default_outputs)
 
-def _test_files_to_build_impl(env, target):
+def _test_default_outputs_impl(env, target):
     default_outputs = env.expect.that_target(target).default_outputs()
     if pt_util.is_windows(env):
         default_outputs.contains("{package}/{test_name}_subject.exe")

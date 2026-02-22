@@ -30,6 +30,7 @@ type targetBuilder struct {
 	pythonProjectRoot     string
 	bzlPackage            string
 	srcs                  *treeset.Set
+	pyiSrcs               *treeset.Set
 	siblingSrcs           *treeset.Set
 	deps                  *treeset.Set
 	resolvedDeps          *treeset.Set
@@ -49,6 +50,7 @@ func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingS
 		pythonProjectRoot:     pythonProjectRoot,
 		bzlPackage:            bzlPackage,
 		srcs:                  treeset.NewWith(godsutils.StringComparator),
+		pyiSrcs:               treeset.NewWith(godsutils.StringComparator),
 		siblingSrcs:           siblingSrcs,
 		deps:                  treeset.NewWith(moduleComparator),
 		resolvedDeps:          treeset.NewWith(godsutils.StringComparator),
@@ -69,6 +71,21 @@ func (t *targetBuilder) addSrcs(srcs *treeset.Set) *targetBuilder {
 	it := srcs.Iterator()
 	for it.Next() {
 		t.srcs.Add(it.Value().(string))
+	}
+	return t
+}
+
+// addPyiSrc adds a single pyi_src to the target.
+func (t *targetBuilder) addPyiSrc(pyiSrc string) *targetBuilder {
+	t.pyiSrcs.Add(pyiSrc)
+	return t
+}
+
+// addPyiSrcs adds multiple pyi_srcs to the target.
+func (t *targetBuilder) addPyiSrcs(pyiSrcs *treeset.Set) *targetBuilder {
+	it := pyiSrcs.Iterator()
+	for it.Next() {
+		t.pyiSrcs.Add(it.Value().(string))
 	}
 	return t
 }
@@ -164,6 +181,9 @@ func (t *targetBuilder) build() *rule.Rule {
 	r := rule.NewRule(t.kind, t.name)
 	if !t.srcs.Empty() {
 		r.SetAttr("srcs", t.srcs.Values())
+	}
+	if !t.pyiSrcs.Empty() {
+		r.SetAttr("pyi_srcs", t.pyiSrcs.Values())
 	}
 	if !t.visibility.Empty() {
 		r.SetAttr("visibility", t.visibility.Values())

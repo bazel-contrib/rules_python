@@ -1127,6 +1127,14 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "aarch64",
         ),
+        "arm64e-apple-darwin": platform_info(
+            compatible_with = [
+                "@platforms//os:macos",
+                "@platforms//cpu:arm64e",
+            ],
+            os_name = MACOS_NAME,
+            arch = "aarch64",
+        ),
         "armv7-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",

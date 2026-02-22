@@ -20,6 +20,7 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_test.bzl", "py_test")
+load("//python/private:common.bzl", "maybe_builtin_build_python_zip")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyInfo")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "CC_TOOLCHAIN")
@@ -92,11 +93,10 @@ def _setup_py_binary_windows(name, *, impl, build_python_zip):
         target = name + "_subject",
         impl = impl,
         config_settings = {
-            "//command_line_option:build_python_zip": str(build_python_zip),
             labels.BUILD_PYTHON_ZIP: build_python_zip,
             "//command_line_option:extra_toolchains": CC_TOOLCHAIN,
             "//command_line_option:platforms": str(platform_targets.WINDOWS_X86_64),
-        },
+        } | maybe_builtin_build_python_zip(str(build_python_zip)),
     )
 
 def _test_py_binary_windows_build_python_zip_false(name):

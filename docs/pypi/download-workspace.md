@@ -41,7 +41,6 @@ re-executed to pick up a non-hermetic change to your environment (e.g., updating
 your system `python` interpreter), you can force it to re-execute by running
 `bazel sync --only [pip_parse name]`.
 
-(per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
 
 In some cases, you may need to use different requirements files for different OS and architecture combinations.

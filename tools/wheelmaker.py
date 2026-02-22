@@ -132,13 +132,17 @@ class _WhlFile(zipfile.ZipFile):
         distribution_prefix: str,
         strip_path_prefixes=None,
         compression=zipfile.ZIP_DEFLATED,
+        quote_all_filenames: bool = False,
         **kwargs,
     ):
         self._distribution_prefix = distribution_prefix
 
         self._strip_path_prefixes = strip_path_prefixes or []
-        # Entries for the RECORD file as (filename, hash, size) tuples.
-        self._record = []
+        # Entries for the RECORD file as (filename, digest, size) tuples.
+        self._record: list[tuple[str, str, str]] = []
+        # Whether to quote filenames in the RECORD file (for compatibility with
+        # some wheels like torch that have quoted filenames in their RECORD).
+        self.quote_all_filenames = quote_all_filenames
 
         super().__init__(filename, mode=mode, compression=compression, **kwargs)
 
@@ -192,16 +196,15 @@ class _WhlFile(zipfile.ZipFile):
         hash.update(contents)
         self._add_to_record(filename, self._serialize_digest(hash), len(contents))
 
-    def _serialize_digest(self, hash):
+    def _serialize_digest(self, hash) -> str:
         # https://www.python.org/dev/peps/pep-0376/#record
         # "base64.urlsafe_b64encode(digest) with trailing = removed"
         digest = base64.urlsafe_b64encode(hash.digest())
         digest = b"sha256=" + digest.rstrip(b"=")
-        return digest
+        return digest.decode("utf-8", "surrogateescape")
 
-    def _add_to_record(self, filename, hash, size):
-        size = str(size).encode("ascii")
-        self._record.append((filename, hash, size))
+    def _add_to_record(self, filename: str, hash: str, size: int) -> None:
+        self._record.append((filename, hash, str(size)))
 
     def _zipinfo(self, filename):
         """Construct deterministic ZipInfo entry for a file named filename"""
@@ -223,29 +226,27 @@ class _WhlFile(zipfile.ZipFile):
         zinfo.compress_type = self.compression
         return zinfo
 
-    def add_recordfile(self):
+    def _quote_filename(self, filename: str) -> str:
+        """Return a possibly quoted filename for RECORD file."""
+        filename = filename.lstrip("/")
+        # Some RECORDs like torch have *all* filenames quoted and we must minimize diff.
+        # Otherwise, we quote only when necessary (e.g. for filenames with commas).
+        quoting = csv.QUOTE_ALL if self.quote_all_filenames else csv.QUOTE_MINIMAL
+        with io.StringIO() as buf:
+            csv.writer(buf, quoting=quoting).writerow([filename])
+            return buf.getvalue().strip()
+
+    def add_recordfile(self) -> str:
         """Write RECORD file to the distribution."""
         record_path = self.distinfo_path("RECORD")
-        entries = self._record + [(record_path, b"", b"")]
-        with io.StringIO() as contents_io:
-            writer = csv.writer(contents_io, lineterminator="\n")
-            for filename, digest, size in entries:
-                if isinstance(filename, str):
-                    filename = filename.lstrip("/")
-                writer.writerow(
-                    (
-                        (
-                            c
-                            if isinstance(c, str)
-                            else c.decode("utf-8", "surrogateescape")
-                        )
-                        for c in (filename, digest, size)
-                    )
-                )
-
-            contents = contents_io.getvalue()
-            self.add_string(record_path, contents)
-            return contents.encode("utf-8", "surrogateescape")
+        entries = self._record + [(record_path, "", "")]
+        entries = [
+            (self._quote_filename(fname), digest, size)
+            for fname, digest, size in entries
+        ]
+        contents = "\n".join(",".join(entry) for entry in entries) + "\n"
+        self.add_string(record_path, contents)
+        return contents
 
 
 class WheelMaker(object):
@@ -329,9 +330,7 @@ class WheelMaker(object):
 Wheel-Version: 1.0
 Generator: bazel-wheelmaker 1.0
 Root-Is-Purelib: {}
-""".format(
-            "true" if self._platform == "any" else "false"
-        )
+""".format("true" if self._platform == "any" else "false")
         for tag in self.disttags():
             wheel_contents += "Tag: %s\n" % tag
         self._whlfile.add_string(self.distinfo_path("WHEEL"), wheel_contents)
@@ -362,6 +361,32 @@ def get_files_to_package(input_files):
     for package_path, real_path in input_files:
         files[package_path] = real_path
     return files
+
+
+def get_new_requirement_line(reqs_text: str, extra: str) -> str:
+    """Formats a requirement text into a Requires-Dist metadata line."""
+    from packaging.requirements import Requirement
+
+    req = Requirement(reqs_text.strip())
+    req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
+
+    # Handle URL requirements (PEP 508)
+    if req.url:
+        req_spec = f" @ {req.url}"
+    else:
+        req_spec = str(req.specifier)
+
+    base = f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}"
+
+    if req.marker:
+        if extra:
+            return f"{base}; ({req.marker}) and {extra}"
+        else:
+            return f"{base}; {req.marker}"
+    elif extra:
+        return f"{base}; {extra}"
+    else:
+        return base
 
 
 def resolve_argument_stamp(
@@ -429,7 +454,7 @@ def parse_args() -> argparse.Namespace:
     output_group.add_argument(
         "--name_file",
         type=Path,
-        help="A file where the canonical name of the " "wheel will be written",
+        help="A file where the canonical name of the wheel will be written",
     )
 
     output_group.add_argument(
@@ -576,19 +601,6 @@ def main() -> None:
 
         # Search for any `Requires-Dist` entries that refer to other files and
         # expand them.
-
-        def get_new_requirement_line(reqs_text, extra):
-            req = Requirement(reqs_text.strip())
-            req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
-            if req.marker:
-                if extra:
-                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; ({req.marker}) and {extra}"
-                else:
-                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
-            else:
-                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
-                    " ;"
-                )
 
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):

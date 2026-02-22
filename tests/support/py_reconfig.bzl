@@ -31,7 +31,9 @@ def _perform_transition_impl(input_settings, attr, base_impl):
     settings.update(base_impl(input_settings, attr))
 
     settings[labels.VISIBLE_FOR_TESTING] = True
-    settings["//command_line_option:build_python_zip"] = str(attr.build_python_zip)
+
+    if _BUILTIN_BUILD_PYTHON_ZIP:
+        settings["//command_line_option:build_python_zip"] = str(attr.build_python_zip)
     settings[labels.BUILD_PYTHON_ZIP] = attr.build_python_zip
     if attr.bootstrap_impl:
         settings[labels.BOOTSTRAP_IMPL] = attr.bootstrap_impl
@@ -45,12 +47,16 @@ def _perform_transition_impl(input_settings, attr, base_impl):
         settings[labels.VENVS_USE_DECLARE_SYMLINK] = attr.venvs_use_declare_symlink
     if attr.venvs_site_packages:
         settings[labels.VENVS_SITE_PACKAGES] = attr.venvs_site_packages
-    for key, value in attr.config_settings.items():
-        settings[str(key)] = value
     return settings
 
+_BUILTIN_BUILD_PYTHON_ZIP = [] if config.bazel_10_or_later else [
+    "//command_line_option:build_python_zip",
+]
+
 _RECONFIG_INPUTS = [
+    "//command_line_option:build_runfile_links",
     "//command_line_option:extra_toolchains",
+    "//command_line_option:stamp",
     CUSTOM_RUNTIME,
     labels.BOOTSTRAP_IMPL,
     labels.PYTHON_SRC,
@@ -59,10 +65,9 @@ _RECONFIG_INPUTS = [
     labels.VENVS_USE_DECLARE_SYMLINK,
 ]
 _RECONFIG_OUTPUTS = _RECONFIG_INPUTS + [
-    "//command_line_option:build_python_zip",
     labels.BUILD_PYTHON_ZIP,
     labels.VISIBLE_FOR_TESTING,
-]
+] + _BUILTIN_BUILD_PYTHON_ZIP
 _RECONFIG_INHERITED_OUTPUTS = [v for v in _RECONFIG_OUTPUTS if v in _RECONFIG_INPUTS]
 
 _RECONFIG_ATTRS = {

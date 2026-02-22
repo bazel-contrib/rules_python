@@ -250,7 +250,8 @@ def _get_file_venv_path(ctx, f, site_packages_root):
     Args:
         ctx: The current ctx.
         f: The file to compute the venv_path for.
-        site_packages_root: The site packages root path.
+        site_packages_root: The site packages root path; repo-relative
+            path.
 
     Returns:
         A tuple `(venv_path, rf_root_path)` if the file is under
@@ -452,18 +453,11 @@ def get_venv_symlinks(
 def _is_linker_loaded_library(filename):
     """Tells if a filename is one that `dlopen()` or the runtime linker handles.
 
-    This should return true for regular C libraries, but false for Python
-    C extension modules.
-
-    Python extensions: .so (linux, mac), .pyd (windows)
-
-    C libraries: lib*.so (linux), lib*.so.* (linux), lib*.dylib (mac), .dll (windows)
+    C libraries: *.so (linux), *.so.* (linux), *.dylib (mac), .dll (windows)
     """
     if filename.endswith(".dll"):
         return True
-    if filename.startswith("lib") and (
-        filename.endswith((".so", ".dylib")) or ".so." in filename
-    ):
+    if filename.endswith((".so", ".dylib")) or ".so." in filename:
         return True
     return False
 

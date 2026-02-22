@@ -19,5 +19,5 @@ py_library(
     srcs = ["site-packages/with_external_data.py"],
     data = [":external_data"],
     experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
-    imports = [package_name() + "/site-packages"],
+    imports = ["site-packages"],
 )
