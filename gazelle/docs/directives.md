@@ -797,7 +797,7 @@ Detailed docs are not yet written.
 {gh-pr}`3596`
 :::
 
-Version VERSION_NEXT_FEATURE includes a fix ({gh-pr}`3498`) for a long-standing issue
+Version 1.9.0 includes a fix ({gh-pr}`3498`) for a long-standing issue
 ({gh-issue}`3497`) where ancestor `conftest.py` files were not automatically
 added as dependencies of {bzl:obj}`py_test` targets.
 
