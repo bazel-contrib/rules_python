@@ -381,6 +381,13 @@ def Main():
   print_verbose("initial cwd:", os.getcwd())
   print_verbose("initial environ:", mapping=os.environ)
   print_verbose("initial sys.path:", values=sys.path)
+  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
+  print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
+  print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
+  print_verbose("IS_ZIPFILE:", IS_ZIPFILE)
+  print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
+  print_verbose("WORKSPACE_NAME :", WORKSPACE_NAME )
+
   args = sys.argv[1:]
 
   new_env = {}
@@ -391,6 +398,7 @@ def Main():
   #    matters if `_main` doesn't exist (which can occur if a binary
   #    is packaged and needs no artifacts from the main repo)
   main_rel_path = os.path.normpath(STAGE2_BOOTSTRAP)
+  print_verbose("main_rel_path:", main_rel_path)
 
   if IsRunningFromZip():
     module_space = CreateModuleSpace()
@@ -398,6 +406,8 @@ def Main():
   else:
     module_space = FindModuleSpace(main_rel_path)
     delete_module_space = False
+
+  print_verbose("runfiles root:", module_space)
 
   if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
     new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = module_space
@@ -419,7 +429,10 @@ def Main():
 
   program = python_program = FindPythonBinary(module_space)
   if python_program is None:
-    raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY))
+    raise AssertionError("Could not find python binary: {} or {}".format(
+        repr(PYTHON_BINARY),
+        repr(PYTHON_BINARY_ACTUAL)
+    ))
 
   # Some older Python versions on macOS (namely Python 3.7) may unintentionally
   # leave this environment variable set after starting the interpreter, which

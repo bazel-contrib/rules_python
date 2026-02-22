@@ -43,6 +43,7 @@ filegroup(
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
         "version.bzl",
+        "//command_line_option:distribution",
         "//python:distribution",
         "//tools:distribution",
     ],

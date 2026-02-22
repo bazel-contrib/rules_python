@@ -1249,7 +1249,7 @@ The values should be one of the values in `@platforms//cpu`
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} 1.5.0
+:::{versionadded} 1.5.0
 :::
 """,
         ),
@@ -1274,7 +1274,7 @@ The values should be one of the values in `@platforms//os`
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} 1.5.0
+:::{versionadded} 1.5.0
 :::
 """,
         ),
@@ -1329,7 +1329,7 @@ If set, `target_settings`, `os_name`, and `arch` should also be set.
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} 1.5.0
+:::{versionadded} 1.5.0
 :::
 """,
         ),
@@ -1343,7 +1343,7 @@ If set, `target_compatible_with`, `os_name`, and `arch` should also be set.
 Docs for [Registering custom runtimes]
 :::
 
-:::{{versionadded}} 1.5.0
+:::{versionadded} 1.5.0
 :::
 """,
         ),

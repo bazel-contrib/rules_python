@@ -392,13 +392,30 @@ obtained by calling `str(Label(...))`).
 
 Most `@rules_python//python/config_setting` settings can be used here, which
 allows, for example, making only a certain `py_binary` use
-{obj}`--boostrap_impl=script`.
+{obj}`--bootstrap_impl=script`.
 
 Additional or custom config settings can be registered using the
 {obj}`add_transition_setting` API. This allows, for example, forcing a
 particular CPU, or defining a custom setting that `select()` uses elsewhere
 to pick between `pip.parse` hubs. See the [How to guide on multiple
 versions of a library] for a more concrete example.
+
+:::{important}
+Labels with package `command_line_option` are handled specially: they are treated
+as the Bazel-builtin `//command_line_option:<name>` psuedo-targets.
+
+e.g. `@foo//command_line_option:NAME` will attempt to transition
+the Bazel-builtin `//command_line_option:NAME` setting.
+
+See the {obj}`@rules_python//command_line_option` package for some predefined
+special targets, or define your own by putting them in your own `command_line_option`
+directory.
+:::
+
+:::{seealso}
+* {obj}`//command_line_option:build_runfile_links`
+* {obj}`//command_line_option:enable_runfiles`
+:::
 
 :::{note}
 These values are transitioned on, so will affect the analysis graph and the
@@ -426,7 +443,14 @@ def apply_config_settings_attr(settings, attr):
         {type}`dict[str, object]` the input `settings` value.
     """
     for key, value in attr.config_settings.items():
-        settings[str(key)] = value
+        if key.package == "command_line_option":
+            if value == "INHERIT":
+                continue
+            else:
+                str_key = "//command_line_option:" + key.name
+        else:
+            str_key = str(key)
+        settings[str_key] = value
     return settings
 
 AGNOSTIC_EXECUTABLE_ATTRS = dicts.add(
@@ -464,7 +488,7 @@ See the [Accessing build information docs] for more information.
 Stamping can harm build performance by reducing cache hits and should
 be avoided if possible.
 
-In addition, this transitions the {obj}`--stamp` flag, which can additional
+In addition, this transitions the {flag}`--stamp <stamp>` flag, which can additional
 config state overhead.
 :::
 
