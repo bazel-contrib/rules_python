@@ -80,10 +80,13 @@ class BazelBinaryInfoModule(types.ModuleType):
                 exc.add_note(f"exists: {os.path.exists(path)}")
                 exc.add_note(f"lexists: {os.path.lexists(path)}")
                 exc.add_note(f"islink: {os.path.islink(path)}")
+                exc.add_note(f"isfile: {os.path.isfile(path)}")
                 if hasattr(os.path, "isjunction"):
                     exc.add_note(f"isjunction: {os.path.isjunction(path)}")
                 can_read = os.access(path, os.R_OK)
                 exc.add_note(f"readable: {can_read}")
+                exc.add_note(f"stat: {os.stat(path)}")
+                exc.add_note(f"lstat: {os.lstat(path)}")
                 exc.add_note(f"version: {sys.version}")
             raise
 
