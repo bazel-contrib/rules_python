@@ -73,7 +73,6 @@ class BazelBinaryInfoModule(types.ModuleType):
             # Use utf-8-sig to handle Windows BOM
             with open(path, 'rb') as fp:
                 data = fp.read()
-            raise Exception("bogus")
             return data.decode('utf-8-sig')
         except Exception as exc:
             if hasattr(exc, "add_note"):
