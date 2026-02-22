@@ -3,6 +3,7 @@ module(
     version = "0.0.0",
     compatibility_level = 1,
 )
+
 bazel_dep(name = "bazel_features", version = "1.21.0")
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "rules_cc", version = "0.1.5")
@@ -355,7 +356,6 @@ bazel_binaries.local(
     name = "self",
     path = "tests/integration/bazel_from_env",
 )
-
 bazel_binaries.download(version = "7.7.0")
 bazel_binaries.download(version = "8.5.1")
 bazel_binaries.download(version = "9.0.0rc1")
@@ -460,7 +460,22 @@ uv_dev.configure(
     version = "0.6.2",
 )
 
-flag_alias(name = "build_python_zip", starlark_flag = "//python/config_settings:build_python_zip")
-flag_alias(name = "incompatible_default_to_explicit_init_py", starlark_flag = "//python/config_settings:incompatible_default_to_explicit_init_py")
-flag_alias(name = "python_path", starlark_flag = "//python/config_settings:python_path")
-flag_alias(name = "experimental_python_import_all_repositories", starlark_flag = "//python/config_settings:experimental_python_import_all_repositories")
+flag_alias(
+    name = "build_python_zip",
+    starlark_flag = "//python/config_settings:build_python_zip",
+)
+
+flag_alias(
+    name = "incompatible_default_to_explicit_init_py",
+    starlark_flag = "//python/config_settings:incompatible_default_to_explicit_init_py",
+)
+
+flag_alias(
+    name = "python_path",
+    starlark_flag = "//python/config_settings:python_path",
+)
+
+flag_alias(
+    name = "experimental_python_import_all_repositories",
+    starlark_flag = "//python/config_settings:experimental_python_import_all_repositories",
+)
