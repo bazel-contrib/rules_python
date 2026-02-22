@@ -14,11 +14,11 @@
 """Implementation of macro-half of py_binary rule."""
 
 load(":py_binary_rule.bzl", py_binary_rule = "py_binary")
-load(":py_executable.bzl", "convert_legacy_create_init_to_int")
+load(":py_executable.bzl", "common_executable_macro_kwargs_setup")
 
 def py_binary(**kwargs):
     py_binary_macro(py_binary_rule, **kwargs)
 
 def py_binary_macro(py_rule, **kwargs):
-    convert_legacy_create_init_to_int(kwargs)
+    common_executable_macro_kwargs_setup(kwargs)
     py_rule(**kwargs)
