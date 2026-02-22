@@ -1,0 +1,16 @@
+module(
+    name = "sphinxdocs_example",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "sphinxdocs", version = "0.0.0")
+local_path_override(
+    module_name = "sphinxdocs",
+    path = "../..",
+)
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
