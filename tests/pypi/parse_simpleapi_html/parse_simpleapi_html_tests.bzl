@@ -52,7 +52,7 @@ def _test_sdist(env):
                     'data-requires-python="&gt;=3.7"',
                 ],
                 filename = "foo-0.0.1.tar.gz",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
@@ -69,7 +69,7 @@ def _test_sdist(env):
                     'data-requires-python=">=3.7"',
                 ],
                 filename = "foo-0.0.1.tar.gz",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
@@ -83,7 +83,7 @@ def _test_sdist(env):
 
     for (input, want) in tests:
         html = _generate_html(input)
-        got = parse_simpleapi_html(url = input.url, content = html)
+        got = parse_simpleapi_html(distribution = input.distribution, content = html)
         env.expect.that_collection(got.sdists).has_size(1)
         env.expect.that_collection(got.whls).has_size(0)
         env.expect.that_collection(got.sha256s_by_version).has_size(1)
@@ -110,6 +110,8 @@ _tests.append(_test_sdist)
 
 def _test_whls(env):
     # buildifier: disable=unsorted-dict-items
+    # TODO @aignas 2026-02-11: remove some tests
+    # TODO @aignas 2026-02-11: add tests for absolute URLs
     tests = [
         (
             struct(
@@ -120,7 +122,7 @@ def _test_whls(env):
                     'data-core-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -141,7 +143,7 @@ def _test_whls(env):
                     'data-core-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -161,7 +163,7 @@ def _test_whls(env):
                     'data-core-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -181,7 +183,7 @@ def _test_whls(env):
                     'data-dist-info-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -200,7 +202,7 @@ def _test_whls(env):
                     'data-requires-python="&gt;=3.7"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "foo",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
@@ -220,15 +222,15 @@ def _test_whls(env):
                     'data-dist-info-metadata="sha256=deadb00f"',
                 ],
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                url = "https://example.org/python-wheels/bar/foo/",
+                distribution = "foo",
             ),
             struct(
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
-                metadata_url = "https://example.org/python-wheels/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
+                metadata_url = "../../foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
                 sha256 = "deadbeef",
                 version = "0.0.2",
-                url = "https://example.org/python-wheels/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+                url = "../../foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 yanked = False,
             ),
         ),
@@ -238,14 +240,14 @@ def _test_whls(env):
                     'href="/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl#sha256=deadbeef"',
                 ],
                 filename = "torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
-                url = "https://download.pytorch.org/whl/cpu/torch",
+                distribution = "torch",
             ),
             struct(
                 filename = "torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
                 metadata_sha256 = "",
                 metadata_url = "",
                 sha256 = "deadbeef",
-                url = "https://download.pytorch.org/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
+                url = "/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
                 version = "2.0.0",
                 yanked = False,
             ),
@@ -256,14 +258,14 @@ def _test_whls(env):
                     'href="/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl#sha256=notdeadbeef"',
                 ],
                 filename = "torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
-                url = "http://download.pytorch.org/whl/cpu/torch",
+                distribution = "torch",
             ),
             struct(
                 filename = "torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
                 metadata_sha256 = "",
                 metadata_url = "",
                 sha256 = "notdeadbeef",
-                url = "http://download.pytorch.org/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
+                url = "/whl/torch-2.0.0-cp38-cp38-manylinux2014_aarch64.whl",
                 version = "2.0.0",
                 yanked = False,
             ),
@@ -274,7 +276,7 @@ def _test_whls(env):
                     'href="1.0.0/mypy_extensions-1.0.0-py3-none-any.whl#sha256=deadbeef"',
                 ],
                 filename = "mypy_extensions-1.0.0-py3-none-any.whl",
-                url = "https://example.org/simple/mypy_extensions",
+                distribution = "mypy_extensions",
             ),
             struct(
                 filename = "mypy_extensions-1.0.0-py3-none-any.whl",
@@ -282,7 +284,7 @@ def _test_whls(env):
                 metadata_url = "",
                 version = "1.0.0",
                 sha256 = "deadbeef",
-                url = "https://example.org/simple/mypy_extensions/1.0.0/mypy_extensions-1.0.0-py3-none-any.whl",
+                url = "1.0.0/mypy_extensions-1.0.0-py3-none-any.whl",
                 yanked = False,
             ),
         ),
@@ -292,7 +294,7 @@ def _test_whls(env):
                     'href="unknown://example.com/mypy_extensions-1.0.0-py3-none-any.whl#sha256=deadbeef"',
                 ],
                 filename = "mypy_extensions-1.0.0-py3-none-any.whl",
-                url = "https://example.org/simple/mypy_extensions",
+                distribution = "mypy_extensions",
             ),
             struct(
                 filename = "mypy_extensions-1.0.0-py3-none-any.whl",
@@ -300,7 +302,7 @@ def _test_whls(env):
                 metadata_url = "",
                 sha256 = "deadbeef",
                 version = "1.0.0",
-                url = "https://example.org/simple/mypy_extensions/unknown://example.com/mypy_extensions-1.0.0-py3-none-any.whl",
+                url = "unknown://example.com/mypy_extensions-1.0.0-py3-none-any.whl",
                 yanked = False,
             ),
         ),
@@ -310,7 +312,7 @@ def _test_whls(env):
                     'href="/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl#sha256=deadbeef"',
                 ],
                 filename = "torch-2.6.0+cpu-cp39-cp39-manylinux_2_28_aarch64.whl",
-                url = "https://example.org/",
+                distribution = "torch",
             ),
             struct(
                 filename = "torch-2.6.0+cpu-cp39-cp39-manylinux_2_28_aarch64.whl",
@@ -319,7 +321,7 @@ def _test_whls(env):
                 sha256 = "deadbeef",
                 version = "2.6.0+cpu",
                 # A URL with % could occur if directly written in requirements.
-                url = "https://example.org/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl",
+                url = "/whl/cpu/torch-2.6.0%2Bcpu-cp39-cp39-manylinux_2_28_aarch64.whl",
                 yanked = False,
             ),
         ),
@@ -327,7 +329,7 @@ def _test_whls(env):
 
     for (input, want) in tests:
         html = _generate_html(input)
-        got = parse_simpleapi_html(url = input.url, content = html)
+        got = parse_simpleapi_html(distribution = input.distribution, content = html)
         env.expect.that_collection(got.sdists).has_size(0)
         env.expect.that_collection(got.whls).has_size(1)
         if not got:
