@@ -41,3 +41,7 @@ common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
+
+# Suppress sign-compare warnings from external dependencies like protobuf
+build --copt=-Wno-sign-compare
+build --host_copt=-Wno-sign-compare
