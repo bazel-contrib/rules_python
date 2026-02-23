@@ -66,15 +66,15 @@ bzl_library(
     name = "sphinx_bzl",
     srcs = ["sphinx.bzl"],
     deps = [
-        ":util_bzl",
         ":sphinx_docs_library_info_bzl",
-        "@rules_python//python:py_binary_bzl",
+        ":util_bzl",
         "@bazel_skylib//:bzl_library",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:types",
         "@bazel_skylib//rules:build_test",
         "@bazel_skylib//rules:common_settings",
         "@io_bazel_stardoc//stardoc:stardoc_lib",
+        "@rules_python//python:py_binary_bzl",
     ],
 )
 
@@ -83,8 +83,8 @@ bzl_library(
     srcs = ["sphinx_stardoc.bzl"],
     deps = [
         ":sphinx_docs_library_macro_bzl",
-        "//private:util_bzl",
         "//:sphinx_bzl",
+        "//private:util_bzl",
         "@bazel_skylib//:bzl_library",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:types",

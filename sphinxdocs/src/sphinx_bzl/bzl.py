@@ -1754,9 +1754,7 @@ class _BzlDomain(domains.Domain):
             if entry.full_id in self.data["objects"]:
                 del self.data["objects"][entry.full_id]
 
-            if entry.full_id in self.data["objects_by_type"].get(
-                entry.object_type, {}
-            ):
+            if entry.full_id in self.data["objects_by_type"].get(entry.object_type, {}):
                 del self.data["objects_by_type"][entry.object_type][entry.full_id]
 
             # We can't easily reverse the mapping for alt_names, so we have

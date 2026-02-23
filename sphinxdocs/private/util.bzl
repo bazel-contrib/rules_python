@@ -1,3 +1,5 @@
+"""Utility functions used by sphinxdocs."""
+
 load("@bazel_skylib//lib:types.bzl", "types")
 
 # When bzlmod is enabled, canonical repos names have @@ in them, while under

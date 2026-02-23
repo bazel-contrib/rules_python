@@ -14,13 +14,13 @@
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@dev_pip//:requirements.bzl", "requirement")
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
-load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
-load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 load("@sphinxdocs//:readthedocs.bzl", "readthedocs_install")
 load("@sphinxdocs//:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load("@sphinxdocs//:sphinx_docs_library.bzl", "sphinx_docs_library")
 load("@sphinxdocs//:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
+load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 package(default_visibility = ["//:__subpackages__"])
 

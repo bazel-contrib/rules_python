@@ -1,6 +1,6 @@
-load("//private:util.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//:sphinx_docs_library.bzl", "sphinx_docs_library")
 load("//:sphinx_stardoc.bzl", "sphinx_stardocs")
+load("//private:util.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
 package(default_visibility = ["//:__subpackages__"])
 
