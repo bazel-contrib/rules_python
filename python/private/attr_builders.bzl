@@ -592,7 +592,7 @@ def _Label_new(**kwargs):
     """Creates a builder for `attr.label`.
 
     Args:
-        **kwargs: The same as {obj}`attr.label()`.
+        **kwargs: The same as {obj}`attr.label`.
 
     Returns:
         {type}`Label`

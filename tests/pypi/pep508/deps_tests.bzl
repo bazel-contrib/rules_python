@@ -218,6 +218,38 @@ def test_span_all_python_versions(env):
 
 _tests.append(test_span_all_python_versions)
 
+def test_extras_with_hyphens_are_normalized(env):
+    """Test that extras with hyphens in marker expressions are normalized.
+
+    When wheel METADATA uses hyphens in marker expressions
+    (e.g., extra == "db-backend") but the extras from requirement parsing
+    are already normalized (e.g., "db_backend"), the deps should still
+    resolve because marker evaluation normalizes per PEP 685.
+
+    Args:
+        env: the test environment.
+    """
+    requires_dist = [
+        "bar",
+        'baz-lib; extra == "db-backend"',
+        'qux-async; extra == "async-driver"',
+    ]
+
+    got = deps(
+        "foo",
+        extras = ["db_backend", "async_driver"],
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([
+        "bar",
+        "baz_lib",
+        "qux_async",
+    ])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_extras_with_hyphens_are_normalized)
+
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,

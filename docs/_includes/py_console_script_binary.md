@@ -12,7 +12,8 @@ py_console_script_binary(
 )
 ```
 
-#### Specifying extra dependencies
+:::{rubric} Specifying extra dependencies
+:::
 You can also specify extra dependencies and the
 exact script name you want to call. This is useful for tools like `flake8`,
 `pylint`, and `pytest`, which have plugin discovery methods and discover
@@ -36,7 +37,8 @@ py_console_script_binary(
 )
 ```
 
-#### Using a specific Python version
+:::{rubric} Using a specific Python version
+:::
 
 A specific Python version can be forced by passing the desired Python version, e.g. to force Python 3.9:
 ```starlark
@@ -49,7 +51,8 @@ py_console_script_binary(
 )
 ```
 
-#### Adding a Shebang Line
+:::{rubric} Adding a Shebang Line
+:::
 
 You can specify a shebang line for the generated binary. This is useful for Unix-like
 systems where the shebang line determines which interpreter is used to execute
@@ -69,7 +72,8 @@ Note that to execute via the shebang line, you need to ensure the specified
 Python interpreter is available in the environment.
 
 
-#### Using a specific Python Version directly from a Toolchain
+:::{rubric} Using a specific Python Version directly from a Toolchain
+:::
 :::{deprecated} 1.1.0
 The toolchain-specific `py_binary` and `py_test` symbols are aliases to the regular rules.
 For example, `load("@python_versions//3.11:defs.bzl", "py_binary")` and `load("@python_versions//3.11:defs.bzl", "py_test")` are deprecated.

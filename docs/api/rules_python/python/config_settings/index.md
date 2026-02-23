@@ -62,7 +62,7 @@ Setting this flag adds the debugger dependency, but doesn't automatically set
 `PYTHONBREAKPOINT` to change `breakpoint()` behavior.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 :::
 ::::
 
@@ -169,7 +169,7 @@ If you need to match a version that isn't present, then you have two options:
    )
    ```
 
-2. Use {obj}`python.single_override` to re-introduce the desired version so
+2. Use {obj}`python.single_version_override` to re-introduce the desired version so
    that the corresponding `//python/config_setting:is_python_XXX` target is
    generated.
 :::

@@ -105,10 +105,9 @@ and that only one package version will be included.
             doc = """
 Files whose directories are namespace packages.
 
-When {obj}`--venv_site_packages=yes` is set, this helps inform which directories should be
+When {obj}`--venvs_site_packages=yes` is set, this helps inform which directories should be
 treated as namespace packages and expect files from other targets to be contributed.
 This allows optimizing the generation of symlinks to be cheaper at analysis time.
-
 :::{versionadded} 1.8.0
 :::
 """,
@@ -283,7 +282,7 @@ def create_py_library_rule_builder():
     :::
 
     Returns:
-        {type}`ruleb.Rule` with the necessary settings
+        {obj}`ruleb.Rule` with the necessary settings
         for creating a `py_library` rule.
     """
     builder = ruleb.Rule(

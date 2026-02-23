@@ -1,11 +1,13 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
-    name = "keep_library",
+    name = "remove_invalid_binary",
+    srcs = ["__init__.py"],
     deps = ["//keep_binary:foo"],
 )
+
 py_binary(
-    name = "remove_invalid_binary",
+    name = "remove_invalid_binary_bin",
     srcs = ["__main__.py"],
     data = ["testdata/test.txt"],
     visibility = ["//:__subpackages__"],

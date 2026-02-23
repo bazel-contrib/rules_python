@@ -81,7 +81,7 @@ still possible to create such objects using `struct` and lambdas. For the
 purposes of documentation, they can be documented by creating a module-level
 `struct` with matching fields *and* also a field named `TYPEDEF`. When the
 `sphinx_stardoc` rule sees a struct with a `TYPEDEF` field, it generates doc
-using the {rst:directive}`bzl:typedef` directive and puts all the struct's fields
+using the {rst:dir}`bzl:typedef` directive and puts all the struct's fields
 within the typedef. The net result is the rendered docs look similar to how
 a class would be documented in other programming languages.
 

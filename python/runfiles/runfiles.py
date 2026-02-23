@@ -389,11 +389,15 @@ class Runfiles:
             # located in the main repository.
             # With Python 3.11 and higher, the Python launcher sets
             # PYTHONSAFEPATH, which prevents this behavior.
+            # On Windows, the current toolchain being used has a buggy zip file
+            # bootstrap, which leaves RUNFILES_DIR pointing at the first stage
+            # path and not the module path. In this case too, assume that the
+            # module is located in the main repository.
             # TODO: This doesn't cover the case of a script being run from an
             #       external repository, which could be heuristically detected
             #       by parsing the script's path.
             if (
-                sys.version_info.minor <= 10
+                (sys.version_info.minor <= 10 or sys.platform == "win32")
                 and sys.path[0] != self._python_runfiles_root
             ):
                 return ""
