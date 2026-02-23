@@ -43,6 +43,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.ref_name }}
+      - name: Check version markers
+        run: .github/workflows/check_version_markers.sh ${{ inputs.tag_name || github.ref_name }}
       - name: Create release archive and notes
         run: .github/workflows/create_archive_and_notes.sh ${{ inputs.tag_name || github.ref_name }}
       - name: Release
