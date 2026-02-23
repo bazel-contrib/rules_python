@@ -145,6 +145,7 @@ END_UNRELEASED_TEMPLATE
 
 [1.8.4]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.4
 
+{#v1-8-4-fixed}
 ### Fixed
 * (pipstar): A corner case of evaluation of version specifiers (`"1.2" ~= "1.2.0"`)
   has been fixed improving compatibility with the PEP440 standard.
