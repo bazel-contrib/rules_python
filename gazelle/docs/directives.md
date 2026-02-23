@@ -343,6 +343,10 @@ Detailed docs are not yet written.
 (directive-python-proto-naming-convention)=
 ## `python_proto_naming_convention`
 
+:::{versionadded} 1.6.0
+{gh-pr}`3093`
+:::
+
 Set this directive to a string pattern to control how the generated
 {bzl:obj}`py_proto_library` targets are named. When generating new
 {bzl:obj}`py_proto_library` rules, Gazelle will replace `$proto_name$` in the
@@ -392,6 +396,10 @@ Detailed docs are not yet written.
 
 (directive-python-default-visibility)=
 ## `python_default_visibility`
+
+:::{versionadded} 0.32.0
+{gh-pr}`1787`
+:::
 
 Instructs gazelle to use these visibility labels on all _python_ targets
 (typically `py_*`, but can be modified via the `map_kind` directive). The arg
@@ -469,6 +477,10 @@ These special values can be useful for sub-packages.
 (directive-python-visibility)=
 ## `python_visibility`
 
+:::{versionadded} 0.32.0
+{gh-pr}`1784`
+:::
+
 Appends additional `visibility` labels to each generated target.
 
 This directive can be set multiple times. The generated `visibility` attribute
@@ -526,6 +538,10 @@ py_library(
 
 (directive-python-test-file-pattern)=
 ## `python_test_file_pattern`
+
+:::{versionadded} 0.32.0
+{gh-pr}`1819`
+:::
 
 This directive adjusts which python files will be mapped to the {bzl:obj}`py_test` rule.
 
@@ -590,6 +606,10 @@ py_library(
 (directive-python-label-convention)=
 ## `python_label_convention`
 
+:::{versionadded} 0.34.0
+{gh-pr}`1976`
+:::
+
 :::{error}
 Detailed docs are not yet written.
 :::
@@ -597,6 +617,10 @@ Detailed docs are not yet written.
 
 (directive-python-label-normalization)=
 ## `python_label_normalization`
+
+:::{versionadded} 0.34.0
+{gh-pr}`1976`
+:::
 
 :::{error}
 Detailed docs are not yet written.
@@ -653,6 +677,10 @@ that are relative to the current package.
 (directive-python-generate-pyi-deps)=
 ## `python_generate_pyi_deps`
 
+:::{versionadded} 1.6.0
+{gh-pr}`3014`
+:::
+
 :::{error}
 Detailed docs are not yet written.
 :::
@@ -660,6 +688,10 @@ Detailed docs are not yet written.
 
 (directive-python-generate-pyi-srcs)=
 ## `python_generate_pyi_srcs`
+
+:::{versionadded} 1.6.0
+{gh-pr}`3356`
+:::
 
 When `true`, include any sibling `.pyi` files in the `pyi_srcs` target attribute.
 
@@ -683,6 +715,10 @@ py_library(
 
 (directive-python-generate-proto)=
 ## `python_generate_proto`
+
+:::{versionadded} 1.6.0
+{gh-pr}`3057`
+:::
 
 When `# gazelle:python_generate_proto true`, Gazelle will generate one
 {bzl:obj}`py_proto_library` for each `proto_library`, generating Python clients for
@@ -746,12 +782,20 @@ previously-generated or hand-created rules.
 (directive-python-resolve-sibling-imports)=
 ## `python_resolve_sibling_imports`
 
+:::{versionadded} 1.6.0
+{gh-pr}`3106`
+:::
+
 :::{error}
 Detailed docs are not yet written.
 :::
 
 (directive-python-include-ancestor-conftest)=
 ## `python_include_ancestor_conftest`
+
+:::{versionadded} 1.9.0
+{gh-pr}`3596`
+:::
 
 Version 1.9.0 includes a fix ({gh-pr}`3498`) for a long-standing issue
 ({gh-issue}`3497`) where ancestor `conftest.py` files were not automatically
