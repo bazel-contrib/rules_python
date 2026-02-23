@@ -697,7 +697,7 @@ whl_library = repository_rule(
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
 Instantiated from pip_repository and inherits config options from there.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 1.9.0
 The `whl_library` is marked as reproducible if using starlark to extract and parse the
 wheel contents without building an `sdist` first.
 :::
