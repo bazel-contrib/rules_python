@@ -3,7 +3,7 @@ import %workspace%/.bazelrc.deleted_packages
 test --test_output=errors
 
 build --incompatible_default_to_explicit_init_py
-build --//python/config_settings:incompatible_default_to_explicit_init_py=True
+build --@rules_python//python/config_settings:incompatible_default_to_explicit_init_py=True
 
 # Ensure ongoing compatibility with this flag.
 common --incompatible_disallow_struct_provider_syntax
