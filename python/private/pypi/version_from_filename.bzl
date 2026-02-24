@@ -5,7 +5,7 @@ _SDIST_EXTS = [
     ".zip",
 ]
 
-def version_from_filename(filename, _fail=None):
+def version_from_filename(filename, _fail = None):
     """Parse the version of the filename.
 
     Args:
@@ -34,7 +34,7 @@ def version_from_filename(filename, _fail=None):
 
     if not head:
         if _fail:
-            _fail("Unsupported sdist extension: {filename}".format(filename=filename))
+            _fail("Unsupported sdist extension: {filename}".format(filename = filename))
         return None
 
     # Based on PEP440 the version number cannot include dashes
