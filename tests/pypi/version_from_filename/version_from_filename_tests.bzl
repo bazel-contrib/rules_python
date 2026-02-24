@@ -6,7 +6,7 @@ load("//python/private/pypi:version_from_filename.bzl", "version_from_filename")
 _tests = []
 
 def _test_wheel_version_extraction(env):
-    # Case 1: Standard sdist
+    # Case 1: wheel
     env.expect.that_str(version_from_filename("foo-1.2.3-py3-none-any.whl")).equals("1.2.3")
 
 _tests.append(_test_wheel_version_extraction)
@@ -36,9 +36,16 @@ _tests.append(_test_sdist_version_extraction)
 
 def _test_sdist_version_extraction_fail(env):
     failures = []
-    # Case 1: Standard sdist
+
+    # Case 1: 7z
+    env.expect.that_str(version_from_filename("foo-1.2.3.7z")).equals(None)
     env.expect.that_str(version_from_filename("foo-1.2.3.7z", _fail=failures.append)).equals(None)
     env.expect.that_collection(failures).contains_exactly(["Unsupported sdist extension: foo-1.2.3.7z"])
+
+    # Case 2: egg
+    failures.clear()
+    env.expect.that_str(version_from_filename("foo-1.2.3-py3.egg", _fail=failures.append)).equals(None)
+    env.expect.that_collection(failures).contains_exactly(["Unsupported sdist extension: foo-1.2.3-py3.egg"])
 
 _tests.append(_test_sdist_version_extraction_fail)
 
