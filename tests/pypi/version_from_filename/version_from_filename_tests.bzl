@@ -1,7 +1,7 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:version_from_filename.bzl", "version_from_filename")
+load("//python/private/pypi:version_from_filename.bzl", "version_from_filename")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
