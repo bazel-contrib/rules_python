@@ -3,7 +3,7 @@
 This is a community maintained project run by volunteers. What that means in
 practice is:
 
-* Responses to issues and PRs depends on available time and energy.
+* Responses to issues and PRs depend on available time and energy.
 * If you care, contribute (see <project:#contributing>) and get involved.
 
 ## Supported rules_python Versions
