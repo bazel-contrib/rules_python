@@ -548,7 +548,12 @@ def _whl_library_impl(rctx):
             paths.extend(path.readdir())
 
     rctx.file("BUILD.bazel", build_file_contents)
-    return
+
+    if enable_pipstar and enable_pipstar_extract:
+        if hasattr(rctx, "repo_metadata"):
+            return rctx.repo_metadata(reproducible = True)
+
+    return None
 
 def _generate_entry_point_contents(
         module,
@@ -690,7 +695,13 @@ whl_library = repository_rule(
     attrs = whl_library_attrs,
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
-Instantiated from pip_repository and inherits config options from there.""",
+Instantiated from pip_repository and inherits config options from there.
+
+:::{versionchanged} 1.9.0
+The `whl_library` is marked as reproducible if using starlark to extract and parse the
+wheel contents without building an `sdist` first.
+:::
+""",
     implementation = _whl_library_impl,
     environ = [
         "RULES_PYTHON_PIP_ISOLATED",

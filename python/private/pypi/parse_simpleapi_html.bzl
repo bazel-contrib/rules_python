@@ -16,6 +16,8 @@
 Parse SimpleAPI HTML in Starlark.
 """
 
+load(":version_from_filename.bzl", "version_from_filename")
+
 def parse_simpleapi_html(*, url, content):
     """Get the package URLs for given shas by parsing the Simple API HTML.
 
@@ -64,7 +66,7 @@ def parse_simpleapi_html(*, url, content):
 
         head, _, _ = tail.rpartition("</a>")
         maybe_metadata, _, filename = head.rpartition(">")
-        version = _version(filename)
+        version = version_from_filename(filename)
         sha256s_by_version.setdefault(version, []).append(sha256)
 
         metadata_sha256 = ""
@@ -104,28 +106,6 @@ def parse_simpleapi_html(*, url, content):
         whls = whls,
         sha256s_by_version = sha256s_by_version,
     )
-
-_SDIST_EXTS = [
-    ".tar",  # handles any compression
-    ".zip",
-]
-
-def _version(filename):
-    # See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#binary-distribution-format
-
-    _, _, tail = filename.partition("-")
-    version, _, _ = tail.partition("-")
-    if version != tail:
-        # The format is {name}-{version}-{whl_specifiers}.whl
-        return version
-
-    # NOTE @aignas 2025-03-29: most of the files are wheels, so this is not the common path
-
-    # {name}-{version}.{ext}
-    for ext in _SDIST_EXTS:
-        version, _, _ = version.partition(ext)  # build or name
-
-    return version
 
 def _get_root_directory(url):
     scheme_end = url.find("://")

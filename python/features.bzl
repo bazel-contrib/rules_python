@@ -26,7 +26,7 @@ def _features_typedef():
     A map of public API targets available in rules_python for feature detection
     purposes.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.9.0
     :::
     ::::
 
@@ -79,7 +79,7 @@ def _features_typedef():
 
     Whether the rules_python version has the `py_zipapp_*` rules
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.9.0
     ::::
     """
 
