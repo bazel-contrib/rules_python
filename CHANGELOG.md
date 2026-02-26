@@ -80,6 +80,7 @@ END_UNRELEASED_TEMPLATE
   `@rules_python//command_line_option:enable_runfiles=INHERIT` to the
   `config_settings` attribute. NOTE: `enable_runfiles=true` will
   soon become **required for Windows**.
+* (pypi) Updated the pypi tooling dependencies.
 
 {#v0-0-0-fixed}
 ### Fixed
