@@ -123,6 +123,7 @@ bzl_library(
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
         ":platform_bzl",
+        ":pypi_cache_bzl",
         ":simpleapi_download_bzl",
         ":whl_library_bzl",
         "//python/private:auth_bzl",
@@ -353,6 +354,11 @@ bzl_library(
 bzl_library(
     name = "platform_bzl",
     srcs = ["platform.bzl"],
+)
+
+bzl_library(
+    name = "pypi_cache_bzl",
+    srcs = ["pypi_cache.bzl"],
 )
 
 bzl_library(

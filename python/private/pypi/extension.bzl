@@ -27,6 +27,7 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
+load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_library.bzl", "whl_library")
 
@@ -224,7 +225,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # dict[str repo, HubBuilder]
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = {}
+    simpleapi_cache = pypi_cache()
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
