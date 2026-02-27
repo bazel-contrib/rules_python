@@ -58,7 +58,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* (pypi) Updated the pypi tooling dependencies.
+* (pypi) Update dependencies used for `compile_pip_requirements`, building
+  sdists in the `whl_library` rule and fetching wheels using `pip`.
 
 {#v0-0-0-fixed}
 ### Fixed
