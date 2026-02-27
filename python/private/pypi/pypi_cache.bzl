@@ -8,16 +8,18 @@ In the future the same will be used to:
 - Store PyPI index query results as facts in the MODULE.bazel.lock file
 """
 
-def pypi_cache():
+def pypi_cache(store = None):
     """The cache for PyPI index queries."""
-    self = struct(
-        store = {},
-    )
 
-    return struct(
+    # buildifier: disable=uninitialized
+    self = struct(
+        _store = store or {},
         setdefault = lambda key, parsed_result: _pypi_cache_setdefault(self, key, parsed_result),
         get = lambda key: _pypi_cache_get(self, key),
     )
+
+    # buildifier: enable=uninitialized
+    return self
 
 def _pypi_cache_setdefault(self, key, parsed_result):
     """Store the value if not yet cached.
@@ -30,7 +32,7 @@ def _pypi_cache_setdefault(self, key, parsed_result):
     Returns:
         The `parse_result`.
     """
-    return self.store.setdefault(key, parsed_result)
+    return self._store.setdefault(key, parsed_result)
 
 def _pypi_cache_get(self, key):
     """Return the parsed result from the cache.
@@ -42,4 +44,4 @@ def _pypi_cache_get(self, key):
     Returns:
         The {type}`struct` or `None` based on if the result is in the cache or not.
     """
-    return self.store.get(key)
+    return self._store.get(key)

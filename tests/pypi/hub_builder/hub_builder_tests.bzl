@@ -99,6 +99,7 @@ def hub_builder(
             "unit-test",
             printer = log_printer,
         ),
+        simpleapi_cache = {},
     )
     self = struct(
         build = lambda: env.expect.that_struct(
