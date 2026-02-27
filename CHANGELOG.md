@@ -47,6 +47,27 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* (pypi) Updated the pypi tooling dependencies.
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21
 
@@ -80,7 +101,6 @@ END_UNRELEASED_TEMPLATE
   `@rules_python//command_line_option:enable_runfiles=INHERIT` to the
   `config_settings` attribute. NOTE: `enable_runfiles=true` will
   soon become **required for Windows**.
-* (pypi) Updated the pypi tooling dependencies.
 
 {#v1-9-0-fixed}
 ### Fixed
