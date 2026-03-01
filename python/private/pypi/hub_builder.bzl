@@ -599,6 +599,7 @@ def _create_whl_repos(
         for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
+                index_url = whl.index_url,
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,
@@ -678,6 +679,7 @@ def _whl_repo(
         *,
         src,
         whl_library_args,
+        index_url,
         is_multiple_versions,
         download_only,
         netrc,
@@ -731,6 +733,8 @@ def _whl_repo(
         args["netrc"] = netrc
     if auth_patterns:
         args["auth_patterns"] = auth_patterns
+    if index_url:
+        args["index_url"] = index_url
 
     args["urls"] = [src.url]
     args["sha256"] = src.sha256

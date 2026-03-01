@@ -188,10 +188,11 @@ def parse_requirements(
             for p in r.target_platforms:
                 requirement_target_platforms[p] = None
 
+        pkg_sources = index_urls.get(name)
         package_srcs = _package_srcs(
             name = name,
             reqs = reqs,
-            index_urls = index_urls,
+            pkg_sources = pkg_sources,
             platforms = platforms,
             extract_url_srcs = extract_url_srcs,
             logger = logger,
@@ -216,6 +217,7 @@ def parse_requirements(
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,
+            index_url = pkg_sources.index_url if pkg_sources else "",
             srcs = package_srcs,
         )
         ret.append(item)
@@ -234,7 +236,7 @@ def _package_srcs(
         *,
         name,
         reqs,
-        index_urls,
+        pkg_sources,
         platforms,
         logger,
         extract_url_srcs):
@@ -253,7 +255,7 @@ def _package_srcs(
             dist, can_fallback = _add_dists(
                 requirement = r,
                 target_platform = platforms.get(target_platform),
-                index_urls = index_urls.get(name),
+                index_urls = pkg_sources,
                 logger = logger,
             )
             logger.debug(lambda: "The whl dist is: {}".format(dist.filename if dist else dist))
