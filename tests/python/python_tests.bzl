@@ -26,7 +26,6 @@ def _mock_mctx(*modules, environ = {}, mocked_files = {}):
         path = lambda x: struct(exists = x in mocked_files, _file = x),
         read = lambda x, watch = None: mocked_files[x._file if "_file" in dir(x) else x],
         getenv = environ.get,
-        os = struct(environ = environ),
         modules = [
             struct(
                 name = modules[0].name,

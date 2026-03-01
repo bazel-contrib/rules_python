@@ -95,11 +95,7 @@ def get_auth(ctx, urls, ctx_attr = None):
     if ctx_attr.netrc:
         netrc = read_netrc(ctx, ctx_attr.netrc)
     elif "NETRC" in ctx.os.environ:
-        # This can be used on newer bazel versions
-        if hasattr(ctx, "getenv"):
-            netrc = read_netrc(ctx, ctx.getenv("NETRC"))
-        else:
-            netrc = read_netrc(ctx, ctx.os.environ["NETRC"])
+        netrc = read_netrc(ctx, ctx.getenv("NETRC"))
     else:
         netrc = read_user_netrc(ctx)
 
