@@ -63,7 +63,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (toolchain) Also set Make variables for local toolchains.
 
 {#v0-0-0-added}
 ### Added
