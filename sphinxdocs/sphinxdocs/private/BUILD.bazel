@@ -21,9 +21,9 @@ package(
     default_visibility = ["//sphinxdocs:__subpackages__"],
 )
 
-# These are only exported because they're passed as files to the //
+# These are only exported because they're passed as files to the @sphinxdocs
 # macros, and thus must be visible to other packages. They should only be
-# referenced by the // macros.
+# referenced by the @sphinxdocs macros.
 exports_files(
     [
         "readthedocs_install.py",

@@ -26,8 +26,8 @@ In the example below, `npm` is used to install Bazelisk and a helper shell
 script, `readthedocs_build.sh` is used to construct the Bazel invocation.
 
 The key purpose of the shell script it to set the
-`--//:extra_env` and
-`--//:extra_defines` flags. These are used to communicate
+`@sphinxdocs//sphinxdocs::extra_env` and
+`@sphinxdocs//sphinxdocs::extra_defines` flags. These are used to communicate
 `READTHEDOCS*` environment variables and settings to the Bazel invocation.
 
 ## BUILD config
@@ -73,7 +73,7 @@ build:
 ```
 # File: docs/BUILD
 
-load("//:readthedocs.bzl.bzl", "readthedocs_install")
+load("//:readthedocs.bzl", "readthedocs_install")
 readthedocs_install(
     name = "readthedocs_install",
     docs = [":docs"],
@@ -90,17 +90,17 @@ set -eou pipefail
 declare -a extra_env
 while IFS='=' read -r -d '' name value; do
   if [[ "$name" == READTHEDOCS* ]]; then
-    extra_env+=("--//:extra_env=$name=$value")
+    extra_env+=("--@sphinxdocs//sphinxdocs:extra_env=$name=$value")
   fi
 done < <(env -0)
 
 # In order to get the build number, we extract it from the host name
-extra_env+=("--//:extra_env=HOSTNAME=$HOSTNAME")
+extra_env+=("--@sphinxdocs//sphinxdocs:extra_env=HOSTNAME=$HOSTNAME")
 
 set -x
 bazel run \
   --stamp \
-  "--//:extra_defines=version=$READTHEDOCS_VERSION" \
+  "--@sphinxdocs//sphinxdocs:extra_defines=version=$READTHEDOCS_VERSION" \
   "${extra_env[@]}" \
   //docs:readthedocs_install
 ```

@@ -26,7 +26,6 @@ load(":uncachable_version_file.bzl", "define_uncachable_version_file")
 package(
     default_visibility = [
         "//:__subpackages__",
-        "@sphinxdocs//sphinxdocs:__subpackages__",
     ],
 )
 
@@ -692,7 +691,6 @@ bzl_library(
 bzl_library(
     name = "util_bzl",
     srcs = ["util.bzl"],
-    visibility = ["//visibility:public"],
     deps = [
         ":py_internal_bzl",
         "@bazel_skylib//lib:types",
