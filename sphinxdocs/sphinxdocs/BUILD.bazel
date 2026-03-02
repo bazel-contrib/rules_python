@@ -14,10 +14,10 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-load("//private:sphinx.bzl", "repeated_string_list_flag")
+load("//sphinxdocs/private:sphinx.bzl", "repeated_string_list_flag")
 
 package(
-    default_visibility = ["//:__subpackages__"],
+    default_visibility = ["//sphinxdocs:__subpackages__"],
 )
 
 # Additional -D values to add to every Sphinx build.
@@ -44,23 +44,23 @@ bool_flag(
 bzl_library(
     name = "sphinx_bzl",
     srcs = ["sphinx.bzl"],
-    deps = ["//private:sphinx_bzl"],
+    deps = ["//sphinxdocs/private:sphinx_bzl"],
 )
 
 bzl_library(
     name = "sphinx_docs_library_bzl",
     srcs = ["sphinx_docs_library.bzl"],
-    deps = ["//private:sphinx_docs_library_macro_bzl"],
+    deps = ["//sphinxdocs/private:sphinx_docs_library_macro_bzl"],
 )
 
 bzl_library(
     name = "sphinx_stardoc_bzl",
     srcs = ["sphinx_stardoc.bzl"],
-    deps = ["//private:sphinx_stardoc_bzl"],
+    deps = ["//sphinxdocs/private:sphinx_stardoc_bzl"],
 )
 
 bzl_library(
     name = "readthedocs_bzl",
     srcs = ["readthedocs.bzl"],
-    deps = ["//private:readthedocs_bzl"],
+    deps = ["//sphinxdocs/private:readthedocs_bzl"],
 )

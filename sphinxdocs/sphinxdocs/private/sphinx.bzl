@@ -17,11 +17,11 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_python//python:py_binary.bzl", "py_binary")
-load("//private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
+load("//sphinxdocs/private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
 load(":sphinx_docs_library_info.bzl", "SphinxDocsLibraryInfo")
 
-_SPHINX_BUILD_MAIN_SRC = Label("//private:sphinx_build.py")
-_SPHINX_SERVE_MAIN_SRC = Label("//private:sphinx_server.py")
+_SPHINX_BUILD_MAIN_SRC = Label("//sphinxdocs/private:sphinx_build.py")
+_SPHINX_SERVE_MAIN_SRC = Label("//sphinxdocs/private:sphinx_server.py")
 
 _SphinxSourceTreeInfo = provider(
     doc = "Information about source tree for Sphinx to build.",
@@ -83,7 +83,7 @@ def sphinx_build_binary(name, py_binary_rule = py_binary, **kwargs):
         **kwargs: {type}`dict` Additional kwargs to pass onto `py_binary`. The `srcs` and
             `main` attributes must not be specified.
     """
-    add_tag(kwargs, "//:sphinx_build_binary")
+    add_tag(kwargs, "//sphinxdocs:sphinx_build_binary")
     py_binary_rule(
         name = name,
         srcs = [_SPHINX_BUILD_MAIN_SRC],
@@ -134,7 +134,7 @@ def sphinx_docs(
         formats: (list of str) the formats (`-b` flag) to generate documentation
             in. Each format will become an output group.
         strip_prefix: {type}`str` A prefix to remove from the file paths of the
-            source files. e.g., given `//docs:foo.md`, stripping `docs/` makes
+            source files. e.g., given `//sphinxdocs/docs:foo.md`, stripping `docs/` makes
             Sphinx see `foo.md` in its generated source directory. If not
             specified, then {any}`native.package_name` is used.
         extra_opts: {type}`list[str]` Additional options to pass onto Sphinx building.
@@ -148,7 +148,7 @@ def sphinx_docs(
             This can improve incremental building of docs.
         **kwargs: {type}`dict` Common attributes to pass onto rules.
     """
-    add_tag(kwargs, "//:sphinx_docs")
+    add_tag(kwargs, "//sphinxdocs:sphinx_docs")
     common_kwargs = copy_propagating_kwargs(kwargs)
 
     internal_name = "_{}".format(name.lstrip("_"))
@@ -259,9 +259,9 @@ _sphinx_docs = rule(
             cfg = "exec",
             doc = "Additional tools that are used by Sphinx and its plugins.",
         ),
-        "_extra_defines_flag": attr.label(default = "//:extra_defines"),
-        "_extra_env_flag": attr.label(default = "//:extra_env"),
-        "_quiet_flag": attr.label(default = "//:quiet"),
+        "_extra_defines_flag": attr.label(default = "//sphinxdocs:extra_defines"),
+        "_extra_env_flag": attr.label(default = "//sphinxdocs:extra_env"),
+        "_quiet_flag": attr.label(default = "//sphinxdocs:quiet"),
     },
 )
 
@@ -511,7 +511,7 @@ _sphinx_inventory = rule(
     attrs = {
         "src": attr.label(allow_single_file = True),
         "_builder": attr.label(
-            default = "//private:inventory_builder",
+            default = "//sphinxdocs/private:inventory_builder",
             executable = True,
             cfg = "exec",
         ),
@@ -594,7 +594,7 @@ inspected without Bazel interference.
         ),
         "_template": attr.label(
             allow_single_file = True,
-            default = "//private:sphinx_run_template.sh",
+            default = "//sphinxdocs/private:sphinx_run_template.sh",
         ),
     },
     executable = True,

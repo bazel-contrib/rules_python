@@ -14,9 +14,9 @@
 """Starlark rules for integrating Sphinx and Readthedocs."""
 
 load("@rules_python//python:py_binary.bzl", "py_binary")
-load("//private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
+load("//sphinxdocs/private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
 
-_INSTALL_MAIN_SRC = Label("//private:readthedocs_install.py")
+_INSTALL_MAIN_SRC = Label("//sphinxdocs/private:readthedocs_install.py")
 
 def readthedocs_install(name, docs, **kwargs):
     """Run a program to copy Sphinx doc files into readthedocs output directories.
@@ -33,7 +33,7 @@ def readthedocs_install(name, docs, **kwargs):
             is typically a single {obj}`sphinx_stardocs` target.
         **kwargs: {type}`dict` additional kwargs to pass onto the installer
     """
-    add_tag(kwargs, "//:readthedocs_install")
+    add_tag(kwargs, "//sphinxdocs:readthedocs_install")
     py_binary(
         name = name,
         srcs = [_INSTALL_MAIN_SRC],

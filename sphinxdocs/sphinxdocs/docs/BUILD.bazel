@@ -1,8 +1,8 @@
-load("//:sphinx_docs_library.bzl", "sphinx_docs_library")
-load("//:sphinx_stardoc.bzl", "sphinx_stardocs")
-load("//private:util.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//sphinxdocs:sphinx_docs_library.bzl", "sphinx_docs_library")
+load("//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardocs")
+load("//sphinxdocs/private:util.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
-package(default_visibility = ["//:__subpackages__"])
+package(default_visibility = ["//sphinxdocs:__subpackages__"])
 
 # We only build for Linux and Mac because:
 # 1. The actual doc process only runs on Linux
@@ -48,11 +48,11 @@ sphinx_docs_library(
 sphinx_stardocs(
     name = "bzl_docs",
     srcs = [
-        "//:readthedocs_bzl",
-        "//:sphinx_bzl",
-        "//:sphinx_docs_library_bzl",
-        "//:sphinx_stardoc_bzl",
-        "//private:sphinx_docs_library_bzl",
+        "//sphinxdocs:readthedocs_bzl",
+        "//sphinxdocs:sphinx_bzl",
+        "//sphinxdocs:sphinx_docs_library_bzl",
+        "//sphinxdocs:sphinx_stardoc_bzl",
+        "//sphinxdocs/private:sphinx_docs_library_bzl",
     ],
     prefix = "api/sphinxdocs/",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
@@ -60,6 +60,6 @@ sphinx_stardocs(
 
 sphinx_docs_library(
     name = "py_api_srcs",
-    srcs = ["//src/sphinx_bzl"],
+    srcs = ["//sphinxdocs/src/sphinx_bzl"],
     strip_prefix = "sphinxdocs/src/",
 )

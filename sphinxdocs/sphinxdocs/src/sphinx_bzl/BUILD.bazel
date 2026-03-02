@@ -1,7 +1,7 @@
 load("@rules_python//python:py_library.bzl", "py_library")
 
 package(
-    default_visibility = ["//:__subpackages__"],
+    default_visibility = ["//sphinxdocs:__subpackages__"],
 )
 
 # NOTE: This provides the library on its own, not its dependencies.

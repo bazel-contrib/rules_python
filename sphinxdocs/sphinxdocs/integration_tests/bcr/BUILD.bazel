@@ -1,4 +1,4 @@
-load("@sphinxdocs//:sphinx.bzl", "sphinx_docs")
+load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_docs")
 
 sphinx_docs(
     name = "docs",

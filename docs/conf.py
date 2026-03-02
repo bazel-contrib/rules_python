@@ -7,7 +7,7 @@ project = "rules_python"
 copyright = "2023, The Bazel Authors"
 author = "Bazel"
 
-# NOTE: These are overriden by -D flags via --@sphinxdocs//:extra_defines
+# NOTE: These are overriden by -D flags via --@sphinxdocs//sphinxdocs:extra_defines
 version = "0.0.0"
 release = version
 

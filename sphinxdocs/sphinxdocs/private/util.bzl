@@ -4,7 +4,7 @@ load("@bazel_skylib//lib:types.bzl", "types")
 
 # When bzlmod is enabled, canonical repos names have @@ in them, while under
 # workspace builds, there is never a @@ in labels.
-BZLMOD_ENABLED = "@@" in str(Label("//:unused"))
+BZLMOD_ENABLED = "@@" in str(Label("//sphinxdocs:unused"))
 
 def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
     """Copies args that must be compatible between two targets with a dependency relationship.

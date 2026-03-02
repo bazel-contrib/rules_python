@@ -14,10 +14,10 @@
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@dev_pip//:requirements.bzl", "requirement")
-load("@sphinxdocs//:readthedocs.bzl", "readthedocs_install")
-load("@sphinxdocs//:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
-load("@sphinxdocs//:sphinx_docs_library.bzl", "sphinx_docs_library")
-load("@sphinxdocs//:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
+load("@sphinxdocs//sphinxdocs:readthedocs.bzl", "readthedocs_install")
+load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
+load("@sphinxdocs//sphinxdocs:sphinx_docs_library.bzl", "sphinx_docs_library")
+load("@sphinxdocs//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
@@ -63,7 +63,7 @@ sphinx_docs(
     renamed_srcs = {
         "//:CHANGELOG.md": "changelog.md",
         "//:CONTRIBUTING.md": "contributing.md",
-        "@sphinxdocs//inventories:bazel_inventory": "bazel_inventory.inv",
+        "@sphinxdocs//sphinxdocs/inventories:bazel_inventory": "bazel_inventory.inv",
     },
     sphinx = ":sphinx-build",
     strip_prefix = package_name() + "/",
@@ -73,7 +73,7 @@ sphinx_docs(
         ":bzl_api_docs",
         ":py_api_srcs",
         ":py_runtime_pair",
-        "@sphinxdocs//docs:docs_lib",
+        "@sphinxdocs//sphinxdocs/docs:docs_lib",
     ],
 )
 
@@ -182,7 +182,7 @@ sphinx_build_binary(
         requirement("typing_extensions"),
         requirement("sphinx_autodoc2"),
         requirement("sphinx_reredirects"),
-        "@sphinxdocs//src/sphinx_bzl",
+        "@sphinxdocs//sphinxdocs/src/sphinx_bzl",
     ],
 )
 

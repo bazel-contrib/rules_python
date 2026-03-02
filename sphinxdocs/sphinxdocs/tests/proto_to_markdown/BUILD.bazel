@@ -1,4 +1,4 @@
-# Copyright 2024 The Bazel Authors. All rights reserved.
+# Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//:sphinx.bzl", "sphinx_inventory")
+load("@rules_python//python:py_test.bzl", "py_test")
 
-# Inventory for the current Bazel version
-sphinx_inventory(
-    name = "bazel_inventory",
-    src = "bazel_inventory.txt",
-    visibility = ["//visibility:public"],
+py_test(
+    name = "proto_to_markdown_test",
+    srcs = ["proto_to_markdown_test.py"],
+    deps = [
+        "//sphinxdocs/private:proto_to_markdown_lib",
+        "@dev_pip//absl_py",
+    ],
 )

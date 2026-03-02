@@ -19,8 +19,8 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
-load("//private:sphinx_docs_library_macro.bzl", "sphinx_docs_library")
-load("//private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
+load("//sphinxdocs/private:sphinx_docs_library_macro.bzl", "sphinx_docs_library")
+load("//sphinxdocs/private:util.bzl", "add_tag", "copy_propagating_kwargs")  # buildifier: disable=bzl-visibility
 
 _StardocInputHelperInfo = provider(
     doc = "Extracts the single source file from a bzl library.",
@@ -73,7 +73,7 @@ def sphinx_stardocs(
         **kwargs: Additional kwargs to pass onto each `sphinx_stardoc` target
     """
     internal_name = "_{}".format(name)
-    add_tag(kwargs, "//:sphinx_stardocs")
+    add_tag(kwargs, "//sphinxdocs:sphinx_stardocs")
     common_kwargs = copy_propagating_kwargs(kwargs)
     common_kwargs["target_compatible_with"] = kwargs.get("target_compatible_with")
 
@@ -160,7 +160,7 @@ def sphinx_stardoc(
         **kwargs: {type}`dict` common args passed onto rules.
     """
     internal_name = "_{}".format(name.lstrip("_"))
-    add_tag(kwargs, "//:sphinx_stardoc")
+    add_tag(kwargs, "//sphinxdocs:sphinx_stardoc")
     common_kwargs = copy_propagating_kwargs(kwargs)
     common_kwargs["target_compatible_with"] = kwargs.get("target_compatible_with")
 
@@ -287,7 +287,7 @@ _stardoc_proto_to_markdown = rule(
         "src": attr.label(allow_single_file = True, mandatory = True),
         "strip_prefix": attr.string(),
         "_proto_to_markdown": attr.label(
-            default = "//private:proto_to_markdown",
+            default = "//sphinxdocs/private:proto_to_markdown",
             executable = True,
             cfg = "exec",
         ),

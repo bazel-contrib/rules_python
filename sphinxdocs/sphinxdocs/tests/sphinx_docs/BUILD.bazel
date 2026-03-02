@@ -1,5 +1,5 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("//:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
+load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load(":defs.bzl", "gen_directory")
 
 # We only build for Linux and Mac because:

@@ -14,7 +14,7 @@
 
 """Rules to generate Sphinx-compatible documentation for bzl files."""
 
-load("//private:sphinx_stardoc.bzl", _sphinx_stardoc = "sphinx_stardoc", _sphinx_stardocs = "sphinx_stardocs")
+load("//sphinxdocs/private:sphinx_stardoc.bzl", _sphinx_stardoc = "sphinx_stardoc", _sphinx_stardocs = "sphinx_stardocs")
 
 sphinx_stardocs = _sphinx_stardocs
 sphinx_stardoc = _sphinx_stardoc

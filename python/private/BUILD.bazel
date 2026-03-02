@@ -26,7 +26,7 @@ load(":uncachable_version_file.bzl", "define_uncachable_version_file")
 package(
     default_visibility = [
         "//:__subpackages__",
-        "@sphinxdocs//:__subpackages__",
+        "@sphinxdocs//sphinxdocs:__subpackages__",
     ],
 )
 

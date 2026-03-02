@@ -1,6 +1,6 @@
 """Implementation of sphinx_docs_library macro."""
 
-load("//private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
+load("//sphinxdocs/private:util.bzl", "add_tag")  # buildifier: disable=bzl-visibility
 load(":sphinx_docs_library.bzl", _sphinx_docs_library = "sphinx_docs_library")
 
 def sphinx_docs_library(**kwargs):
@@ -9,5 +9,5 @@ def sphinx_docs_library(**kwargs):
     Args:
         **kwargs: Args passed onto underlying {bzl:rule}`sphinx_docs_library` rule
     """
-    add_tag(kwargs, "//:sphinx_docs_library")
+    add_tag(kwargs, "//sphinxdocs:sphinx_docs_library")
     _sphinx_docs_library(**kwargs)

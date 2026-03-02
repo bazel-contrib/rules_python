@@ -18,7 +18,7 @@ load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 
 package(
-    default_visibility = ["//:__subpackages__"],
+    default_visibility = ["//sphinxdocs:__subpackages__"],
 )
 
 # These are only exported because they're passed as files to the //
@@ -47,7 +47,7 @@ bzl_library(
     srcs = ["sphinx_docs_library_macro.bzl"],
     deps = [
         ":sphinx_docs_library_bzl",
-        "//private:util_bzl",
+        "//sphinxdocs/private:util_bzl",
     ],
 )
 
@@ -83,8 +83,8 @@ bzl_library(
     srcs = ["sphinx_stardoc.bzl"],
     deps = [
         ":sphinx_docs_library_macro_bzl",
-        "//:sphinx_bzl",
-        "//private:util_bzl",
+        "//sphinxdocs:sphinx_bzl",
+        "//sphinxdocs/private:util_bzl",
         "@bazel_skylib//:bzl_library",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:types",
