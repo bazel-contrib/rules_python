@@ -15,6 +15,7 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download", "strip_empty_path_segments")  # buildifier: disable=bzl-visibility
 
 _tests = []
@@ -52,7 +53,7 @@ def _test_simple(env):
             sources = ["foo", "bar", "baz"],
             envsubst = [],
         ),
-        cache = {},
+        cache = pypi_cache(),
         parallel_download = True,
         read_simpleapi = read_simpleapi,
     )
@@ -112,7 +113,7 @@ def _test_fail(env):
             sources = ["foo", "bar", "baz"],
             envsubst = [],
         ),
-        cache = {},
+        cache = pypi_cache(),
         parallel_download = True,
         read_simpleapi = read_simpleapi,
         _fail = fails.append,
@@ -165,7 +166,7 @@ def _test_download_url(env):
             sources = ["foo", "bar", "baz"],
             envsubst = [],
         ),
-        cache = {},
+        cache = pypi_cache(),
         parallel_download = False,
         get_auth = lambda ctx, urls, ctx_attr: struct(),
     )
@@ -201,7 +202,7 @@ def _test_download_url_parallel(env):
             sources = ["foo", "bar", "baz"],
             envsubst = [],
         ),
-        cache = {},
+        cache = pypi_cache(),
         parallel_download = True,
         get_auth = lambda ctx, urls, ctx_attr: struct(),
     )
@@ -237,7 +238,7 @@ def _test_download_envsubst_url(env):
             sources = ["foo", "bar", "baz"],
             envsubst = ["INDEX_URL"],
         ),
-        cache = {},
+        cache = pypi_cache(),
         parallel_download = False,
         get_auth = lambda ctx, urls, ctx_attr: struct(),
     )

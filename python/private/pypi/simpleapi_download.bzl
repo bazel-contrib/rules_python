@@ -49,14 +49,13 @@ def simpleapi_download(
            * netrc: The netrc parameter for ctx.download, see http_file for docs.
            * auth_patterns: The auth_patterns parameter for ctx.download, see
                http_file for docs.
-        cache: A dictionary that can be used as a cache between calls during a
-            single evaluation of the extension. We use a dictionary as a cache
-            so that we can reuse calls to the simple API when evaluating the
-            extension. Using the canonical_id parameter of the module_ctx would
-            deposit the simple API responses to the bazel cache and that is
-            undesirable because additions to the PyPI index would not be
-            reflected when re-evaluating the extension unless we do
-            `bazel clean --expunge`.
+        cache: An opaque object used to cache call results. For implementation
+            see ./pypi_cache.bzl file. We use the canonical_id parameter for the key
+            value to ensure that distribution fetches from different indexes do not cause
+            cache collisions, because the index may return different locations from where
+            the files should be downloaded. We are not using the built-in cache in the
+            `download` function because the index may get updated at any time and we need
+            to be able to refresh the data.
         parallel_download: A boolean to enable usage of bazel 7.1 non-blocking downloads.
         read_simpleapi: a function for reading and parsing of the SimpleAPI contents.
             Used in tests.
@@ -197,8 +196,9 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
     ))
 
     cache_key = real_url
-    if cache_key in cache:
-        return struct(success = True, output = cache[cache_key])
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return struct(success = True, output = cached_result)
 
     output_str = envsubst(
         url,

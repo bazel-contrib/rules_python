@@ -31,7 +31,7 @@ def hub_builder(
         simpleapi_download_fn,
         evaluate_markers_fn,
         logger,
-        simpleapi_cache = {}):
+        simpleapi_cache):
     """Return a hub builder instance
 
     Args:
