@@ -185,6 +185,13 @@ def find_runfiles_root(main_rel_path):
     if runfiles_dir and os.path.exists(os.path.join(runfiles_dir, main_rel_path)):
         return runfiles_dir
 
+    # Clear RUNFILES_DIR & RUNFILES_MANIFEST_FILE since the runfiles dir was
+    # not found. These can be correctly set for a parent Python process, but
+    # inherited by the child, and not correct for it. Later bootstrap code
+    # assumes they're are correct if set.
+    os.environ.pop('RUNFILES_DIR', None)
+    os.environ.pop('RUNFILES_MANIFEST_FILE', None)
+
     stub_filename = sys.argv[0]
     if not os.path.isabs(stub_filename):
         stub_filename = os.path.join(os.getcwd(), stub_filename)

@@ -1,6 +1,13 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BOOTSTRAP_SCRIPT")
+load("//python:py_library.bzl", "py_library")
+
+py_library(
+    name = "inner_lib",
+    srcs = ["inner_lib.py"],
+    tags = ["manual"],
+)
 
 # =====
 # bootstrap_impl=system_python testing
@@ -16,6 +23,7 @@ py_reconfig_binary(
 py_reconfig_binary(
     name = "inner_bootstrap_system_python",
     srcs = ["inner.py"],
+    deps = [":inner_lib"],
     bootstrap_impl = "system_python",
     main = "inner.py",
     tags = ["manual"],
@@ -51,6 +59,7 @@ sh_test(
 py_reconfig_binary(
     name = "inner_bootstrap_script",
     srcs = ["inner.py"],
+    deps = [":inner_lib"],
     bootstrap_impl = "script",
     main = "inner.py",
     tags = ["manual"],

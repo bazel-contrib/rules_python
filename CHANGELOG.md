@@ -97,6 +97,9 @@ Other changes:
 * (bootstrap) Fixed incorrect runfiles path construction in bootstrap
   scripts when binary is defined in another bazel module
   ([#3563](https://github.com/bazel-contrib/rules_python/issues/3563)).
+* (bootstrap) Resolve `RUNFILES_DIR` inheritance issues, which lead to a child
+  Python binary incorrectly using it's parent's Python binary environment
+  ([#3518](https://github.com/bazel-contrib/rules_python/issues/3518)).
 
 {#v0-0-0-added}
 ### Added
