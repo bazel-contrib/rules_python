@@ -18,12 +18,14 @@ buildifier:
   # Use a specific version to avoid skew issues when new versions are released.
   version: 8.2.1
   warnings: "all"
-# NOTE: Minimum supported version is 7.x
+# NOTE: Minimum supported version is 8.x
 .minimum_supported_version: &minimum_supported_version
   # For testing minimum supported version.
   # NOTE: Keep in sync with //:version.bzl
-  bazel: 7.x
-  skip_in_bazel_downstream_pipeline: "Bazel 7 required"
+  bazel: 8.x
+  skip_in_bazel_downstream_pipeline: "Bazel 8 required"
+.latest_supported_bazel: &latest_supported_bazel
+  baze: 9.x
 .reusable_config: &reusable_config
   build_targets:
     - "--"
@@ -43,9 +45,11 @@ buildifier:
 .common_workspace_flags_min_bazel: &common_workspace_flags_min_bazel
   build_flags:
     - "--noenable_bzlmod"
+    - "--enable_workspace"
     - "--build_tag_filters=-integration-test"
   test_flags:
     - "--noenable_bzlmod"
+    - "--enable_workspace"
     - "--test_tag_filters=-integration-test"
 .common_workspace_flags: &common_workspace_flags
   skip_in_bazel_downstream_pipeline: "Bazel 9 doesn't support workspace"
@@ -57,7 +61,7 @@ buildifier:
     - "--noenable_bzlmod"
     - "--enable_workspace"
     - "--build_tag_filters=-integration-test"
-  bazel: 7.x
+  bazel: 8.x
 # NOTE: The Mac and Windows bazelinbazel jobs override parts of this config.
 .common_bazelinbazel_config: &common_bazelinbazel_config
     build_flags:
@@ -118,7 +122,7 @@ matrix:
     - debian11
     - macos_arm64
     - windows
-  bazel: [7.*, 8.*, 9.*]
+  bazel: [8.*, 9.*]
 
 tasks:
   # Keep in sync with .bcr/presubmit.yml
@@ -184,30 +188,30 @@ tasks:
     <<: *reusable_config
     name: "Default: Ubuntu, bzlmod, minimum Bazel"
     platform: ubuntu2204
-    bazel: 7.x
+    bazel: 8.x
   ubuntu:
     <<: *reusable_config
     name: "Default: Ubuntu"
     platform: ubuntu2204
-  ubuntu_upcoming:
+  ubuntu_latest:
     <<: *reusable_config
-    name: "Default: Ubuntu, upcoming Bazel"
+    <<: *latest_supported_bazel
+    name: "Default: Ubuntu, latest Bazel"
     platform: ubuntu2204
-    bazel: last_rc
-  ubuntu_rolling:
-    name: "Default: Ubuntu, rolling Bazel"
-    platform: ubuntu2204
-    bazel: rolling
-    # This is an advisory job; doesn't block merges
-    soft_fail:
-      - exit_status: 1
-      - exit_status: 3
-    test_targets:
-      - "--"
-      - "//tests/..."
-    test_flags:
-      - "--keep_going"
-      - "--test_tag_filters=-integration-test"
+  # ubuntu_rolling:
+  #   name: "Default: Ubuntu, rolling Bazel"
+  #   platform: ubuntu2204
+  #   bazel: rolling
+  #   # This is an advisory job; doesn't block merges
+  #   soft_fail:
+  #     - exit_status: 1
+  #     - exit_status: 3
+  #   test_targets:
+  #     - "--"
+  #     - "//tests/..."
+  #   test_flags:
+  #     - "--keep_going"
+  #     - "--test_tag_filters=-integration-test"
   ubuntu_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags
@@ -281,8 +285,6 @@ tasks:
     <<: *reusable_config
     name: "RBE: Ubuntu"
     platform: rbe_ubuntu2204
-    # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
-    # See https://github.com/bazelbuild/rules_python/issues/2499
     bazel: 8.x
     test_flags:
       - "--test_tag_filters=-integration-test,-acceptance-test"
@@ -372,7 +374,7 @@ tasks:
     name: "examples/pip_parse: Ubuntu, bzlmod, minimum supported Bazel version"
     working_directory: examples/pip_parse
     platform: ubuntu2204
-    bazel: 7.x
+    bazel: 8.x
   integration_test_pip_parse_ubuntu:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Ubuntu"
@@ -561,7 +563,7 @@ tasks:
     name: "compile_pip_requirements_test_from_external_repo: Ubuntu, bzlmod, minimum Bazel"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
     platform: ubuntu2204
-    bazel: 7.x
+    bazel: 8.x
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."

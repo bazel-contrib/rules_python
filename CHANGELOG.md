@@ -54,7 +54,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
-* Nothing removed.
+* Bazel 7 is not supported or tested with.
 
 {#v0-0-0-changed}
 ### Changed

@@ -20,7 +20,7 @@ bcr_test_module:
       "macos",
       "ubuntu2204",
     ]
-    bazel: [7.*, 8.*, 9.*]
+    bazel: [8.*, 9.*]
   tasks:
     run_tests:
       name: "Run test module"
