@@ -27,8 +27,8 @@ _tests = []
 
 def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
     return struct(
+        getenv = environ.get,
         os = struct(
-            environ = environ,
             name = os_name,
             arch = arch_name,
         ),
@@ -89,12 +89,10 @@ def hub_builder(
         evaluate_markers_fn = evaluate_markers_fn,
         logger = repo_utils.logger(
             struct(
-                os = struct(
-                    environ = {
-                        REPO_DEBUG_ENV_VAR: "1",
-                        REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "FAIL",
-                    },
-                ),
+                getenv = {
+                    REPO_DEBUG_ENV_VAR: "1",
+                    REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "FAIL",
+                }.get,
             ),
             "unit-test",
             printer = log_printer,

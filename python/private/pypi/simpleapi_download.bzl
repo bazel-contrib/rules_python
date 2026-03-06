@@ -189,11 +189,7 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
     # them to ctx.download if we want to correctly handle the relative URLs.
     # TODO: Add a test that env subbed index urls do not leak into the lock file.
 
-    real_url = strip_empty_path_segments(envsubst(
-        url,
-        attr.envsubst,
-        ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
-    ))
+    real_url = strip_empty_path_segments(envsubst(url, attr.envsubst, ctx.getenv))
 
     cache_key = real_url
     cached_result = cache.get(cache_key)

@@ -147,4 +147,4 @@ internal_config_repo = repository_rule(
 )
 
 def _bool_from_environ(rctx, key, default):
-    return bool(int(repo_utils.getenv(rctx, key, default)))
+    return bool(int(rctx.getenv(key, default)))

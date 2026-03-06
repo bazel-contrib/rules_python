@@ -151,21 +151,13 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
     if use_isolated(rctx, rctx.attr):
         args.append("--isolated")
 
-    # Bazel version 7.1.0 and later (and rolling releases from version 8.0.0-pre.20240128.3)
-    # support rctx.getenv(name, default): When building incrementally, any change to the value of
-    # the variable named by name will cause this repository to be re-fetched.
-    if "getenv" in dir(rctx):
-        getenv = rctx.getenv
-    else:
-        getenv = rctx.os.environ.get
-
     # Check for None so we use empty default types from our attrs.
     # Some args want to be list, and some want to be dict.
     if extra_pip_args != None:
         args += [
             "--extra_pip_args",
             json.encode(struct(arg = [
-                envsubst(pip_arg, rctx.attr.envsubst, getenv)
+                envsubst(pip_arg, rctx.attr.envsubst, rctx.getenv)
                 for pip_arg in extra_pip_args
             ])),
         ]
