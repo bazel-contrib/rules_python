@@ -84,12 +84,10 @@ def _select_whl(whls, debug = False, **kwargs):
             for f in whls
         ],
         logger = repo_utils.logger(struct(
-            os = struct(
-                environ = {
-                    REPO_DEBUG_ENV_VAR: "1",
-                    REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
-                },
-            ),
+            getenv = {
+                REPO_DEBUG_ENV_VAR: "1",
+                REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
+            }.get,
         ), "unit-test"),
         **kwargs
     )

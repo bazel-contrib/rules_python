@@ -111,12 +111,10 @@ def parse_requirements(debug = False, **kwargs):
     return _parse_requirements(
         ctx = _mock_ctx(),
         logger = repo_utils.logger(struct(
-            os = struct(
-                environ = {
-                    REPO_DEBUG_ENV_VAR: "1",
-                    REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
-                },
-            ),
+            getenv = {
+                REPO_DEBUG_ENV_VAR: "1",
+                REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
+            }.get,
         ), "unit-test"),
         **kwargs
     )

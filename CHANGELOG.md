@@ -64,6 +64,9 @@ END_UNRELEASED_TEMPLATE
 {#v0-0-0-fixed}
 ### Fixed
 * (toolchain) Also set Make variables for local toolchains.
+* (zipapp) Resolve issue passing through compression settings in
+  `py_zippapp_binary` targets
+  ([#3646](https://github.com/bazel-contrib/rules_python/issues/3646)).
 
 {#v0-0-0-added}
 ### Added

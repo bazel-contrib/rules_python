@@ -56,7 +56,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
               platform suffix.
             * register_coverage_tool: bool
     """
-    if module_ctx.os.environ.get("RULES_PYTHON_BZLMOD_DEBUG", "0") == "1":
+    if module_ctx.getenv("RULES_PYTHON_BZLMOD_DEBUG", "0") == "1":
         debug_info = {
             "toolchains_registered": [],
         }

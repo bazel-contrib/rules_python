@@ -460,22 +460,25 @@ uv_dev.configure(
     version = "0.6.2",
 )
 
-flag_alias(
-    name = "build_python_zip",
-    starlark_flag = "//python/config_settings:build_python_zip",
-)
+# Temporarily comment out these flag aliases because they break Bazel 9
+# when transitions are also used with a target.
+#
+# flag_alias(
+#     name = "build_python_zip",
+#     starlark_flag = "//python/config_settings:build_python_zip",
+# )
 
-flag_alias(
-    name = "incompatible_default_to_explicit_init_py",
-    starlark_flag = "//python/config_settings:incompatible_default_to_explicit_init_py",
-)
+# flag_alias(
+#     name = "incompatible_default_to_explicit_init_py",
+#     starlark_flag = "//python/config_settings:incompatible_default_to_explicit_init_py",
+# )
 
-flag_alias(
-    name = "python_path",
-    starlark_flag = "//python/config_settings:python_path",
-)
+# flag_alias(
+#     name = "python_path",
+#     starlark_flag = "//python/config_settings:python_path",
+# )
 
-flag_alias(
-    name = "experimental_python_import_all_repositories",
-    starlark_flag = "//python/config_settings:experimental_python_import_all_repositories",
-)
+# flag_alias(
+#     name = "experimental_python_import_all_repositories",
+#     starlark_flag = "//python/config_settings:experimental_python_import_all_repositories",
+# )
