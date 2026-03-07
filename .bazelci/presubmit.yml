@@ -194,6 +194,10 @@ tasks:
     name: "Default: Ubuntu, upcoming Bazel"
     platform: ubuntu2204
     bazel: last_rc
+    # RCs may have regressions, so don't fail our CI on them
+    soft_fail:
+      - exit_status: 1
+      - exit_status: 3
   ubuntu_rolling:
     name: "Default: Ubuntu, rolling Bazel"
     platform: ubuntu2204
