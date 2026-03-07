@@ -72,7 +72,7 @@ class PyZipAppTest(unittest.TestCase):
 
         with self._open_zipapp(zipapp_path) as zf:
             info = zf.infolist()[0]
-            if int(os.getenv("COMPRESSED", 0)):
+            if os.getenv("COMPRESSED", "0") == "1":
                 self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
             else:
                 self.assertEqual(info.compress_type, zipfile.ZIP_STORED)
