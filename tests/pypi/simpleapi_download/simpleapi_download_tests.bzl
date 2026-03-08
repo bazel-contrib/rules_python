@@ -17,7 +17,6 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:urllib.bzl", "urllib")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -274,17 +273,6 @@ def _test_download_envsubst_url(env):
     })
 
 _tests.append(_test_download_envsubst_url)
-
-# TODO @aignas 2026-03-01: move to a separate file
-def _test_strip_empty_path_segments(env):
-    env.expect.that_str(urllib.strip_empty_path_segments("no/scheme//is/unchanged")).equals("no/scheme//is/unchanged")
-    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with/no/empty/segments")).equals("scheme://with/no/empty/segments")
-    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with//empty/segments")).equals("scheme://with/empty/segments")
-    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with///multiple//empty/segments")).equals("scheme://with/multiple/empty/segments")
-    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with//trailing/slash/")).equals("scheme://with/trailing/slash/")
-    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
-
-_tests.append(_test_strip_empty_path_segments)
 
 def simpleapi_download_test_suite(name):
     """Create the test suite.

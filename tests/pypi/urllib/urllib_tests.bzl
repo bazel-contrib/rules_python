@@ -21,6 +21,16 @@ def _test_absolute_url(env):
 
 _tests.append(_test_absolute_url)
 
+def _test_strip_empty_path_segments(env):
+    env.expect.that_str(urllib.strip_empty_path_segments("no/scheme//is/unchanged")).equals("no/scheme//is/unchanged")
+    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with/no/empty/segments")).equals("scheme://with/no/empty/segments")
+    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with//empty/segments")).equals("scheme://with/empty/segments")
+    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with///multiple//empty/segments")).equals("scheme://with/multiple/empty/segments")
+    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with//trailing/slash/")).equals("scheme://with/trailing/slash/")
+    env.expect.that_str(urllib.strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
+
+_tests.append(_test_strip_empty_path_segments)
+
 def urllib_test_suite(name):
     """Create the test suite.
 
