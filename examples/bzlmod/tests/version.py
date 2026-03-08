@@ -13,5 +13,5 @@
 # limitations under the License.
 
 import sys
-
+import importlib
 print(f"{sys.version_info.major}.{sys.version_info.minor}")

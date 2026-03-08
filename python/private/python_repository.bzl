@@ -52,6 +52,52 @@ def is_standalone_interpreter(rctx, python_interpreter_path, *, logger = None):
         logger = logger,
     ).return_code == 0
 
+def _create_pycache_symlinks(rctx, logger):
+    """Finds all directories with a .py file and creates __pycache__ symlinks.
+
+    Args:
+        rctx: {type}`repository_ctx` The repository rule's context object.
+        logger: Optional logger to use for operations.
+    """
+    volatile_dir = repo_utils.mkdir(rctx, "_VOLATILE")
+    ##volatile_dir = rctx.path("/tmp/volatile")
+    volatile_dir_str = str(volatile_dir)
+
+    root = rctx.path(".")
+    root_str = str(root)
+
+    queue = [root]
+
+    # Starlark doesn't support recursion, use a loop with a queue.
+    # Using a large range as a safeguard.
+    for _ in range(1000000):
+        if not queue:
+            break
+        p = queue.pop()
+
+        has_py = False
+        for child in p.readdir():
+            # Skip hidden files and directories
+            if child.basename.startswith("."):
+                continue
+
+            if child.is_dir:
+                if child.basename == "__pycache__" or str(child) == volatile_dir_str:
+                    continue
+                queue.append(child)
+            elif child.basename.endswith(".py"):
+                has_py = True
+
+        if has_py:
+            pycache_dir = p.get_child("__pycache__")
+            pycache_relative = repo_utils.repo_root_relative_path(rctx, pycache_dir)
+            target_dir = volatile_dir.get_child(pycache_relative)
+
+            repo_utils.mkdir(rctx, target_dir)
+            rctx.delete(pycache_dir)
+            rctx.symlink(target_dir, pycache_dir)
+            ##rctx.symlink("/tmp/pycache/" + pycache_relative, pycache_dir)
+
 def _python_repository_impl(rctx):
     if rctx.attr.distutils and rctx.attr.distutils_content:
         fail("Only one of (distutils, distutils_content) should be set.")
@@ -123,6 +169,12 @@ def _python_repository_impl(rctx):
             logger = logger,
         )
 
+    # Do bazel clean, then run repro.sh -> no invalidation
+    # Modify this line (or something in this repo rule) -> invalidation
+    #   happens on every subsequent invocation, even if repo rule is unmodified
+    #   between invocations.
+    print("==== init python_repository", 8)
+    _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
     if "linux" in platform:
@@ -224,11 +276,15 @@ define_hermetic_runtime_toolchain_impl(
     else:
         attrs["urls"] = urls
 
+    ##return attrs
+
+    # after 1.8.5
     # Bazel <8.3.0 lacks repository_ctx.repo_metadata
     if not hasattr(rctx, "repo_metadata"):
         return attrs
 
     reproducible = rctx.attr.sha256 != ""
+    reproducible = False
     return rctx.repo_metadata(
         reproducible = reproducible,
         attrs_for_reproducibility = {} if reproducible else attrs,

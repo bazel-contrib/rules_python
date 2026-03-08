@@ -319,6 +319,36 @@ def _which_describe_failure(binary_name, path):
         path = path,
     )
 
+def _mkdir(mrctx, path):
+    path = mrctx.path(path)
+    if path.exists:
+        return path
+    placeholder = path.get_child(".placeholder")
+    mrctx.file(placeholder)
+    mrctx.delete(placeholder)
+    return path
+
+def _repo_root_relative_path(mrctx, path):
+    """Takes a path object and returns a repo-relative path string.
+
+    Args:
+        mrctx: module_ctx or repository_ctx
+        path: {type}`path` a path within `mrctx`
+
+    Returns:
+        {type}`str` a repo-root-relative path string.
+    """
+    repo_root = str(mrctx.path("."))
+    path_str = str(path)
+    relative_path = path_str[len(repo_root):]
+    if relative_path[0] != "/":
+        fail("{path} not under {repo_root}".format(
+                path = path,
+                repo_root = repo_root
+        ))
+    relative_path = relative_path[1:]
+    return relative_path
+
 def _args_to_str(arguments):
     return " ".join([_arg_repr(a) for a in arguments])
 
@@ -465,6 +495,8 @@ repo_utils = struct(
     get_platforms_os_name = _get_platforms_os_name,
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
+    mkdir = _mkdir,
+    repo_root_relative_path = _repo_root_relative_path,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,
 )
