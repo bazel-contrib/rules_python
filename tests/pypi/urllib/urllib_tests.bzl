@@ -19,6 +19,14 @@ def _test_absolute_url(env):
     env.expect.that_str(urllib.absolute_url("https://example.com//a/b//", "../../file.whl")).equals("https://example.com/file.whl")
     env.expect.that_str(urllib.absolute_url("https://example.com//a/b//", "/file.whl")).equals("https://example.com/file.whl")
 
+    # Relative URLs
+    env.expect.that_str(urllib.absolute_url("https://example.com/relative", "file.whl")).equals("https://example.com/relative/file.whl")
+    env.expect.that_str(urllib.absolute_url("https://example.com/relative/", "file.whl")).equals("https://example.com/relative/file.whl")
+    env.expect.that_str(urllib.absolute_url("https://example.com/relative/", "../relative/file.whl")).equals("https://example.com/relative/file.whl")
+
+    # Relative URL for files
+    env.expect.that_str(urllib.absolute_url("file://{PYPI_BAZEL_WORKSPACE_ROOT}", "vendor/distro/file.whl")).equals("file://{PYPI_BAZEL_WORKSPACE_ROOT}/vendor/distro/file.whl")
+
 _tests.append(_test_absolute_url)
 
 def _test_strip_empty_path_segments(env):
