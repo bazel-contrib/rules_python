@@ -112,7 +112,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         format = "--legacy-external-runfiles=%s",
     )
     if ctx.attr.compression:
-        zipper_args.add(ctx.attr.compression, "--compression=%s")
+        zipper_args.add(ctx.attr.compression, format = "--compression=%s")
     zipper_args.add("--runfiles-dir=runfiles")
 
     actions_run(

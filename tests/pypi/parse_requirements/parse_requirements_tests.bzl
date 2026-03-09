@@ -128,6 +128,7 @@ def _test_simple(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -161,6 +162,7 @@ def _test_direct_urls_integration(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -202,6 +204,7 @@ def _test_direct_urls_no_extract(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -241,6 +244,7 @@ def _test_extra_pip_args(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -271,6 +275,7 @@ def _test_dupe_requirements(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -301,6 +306,7 @@ def _test_multi_os(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
             srcs = [
@@ -318,6 +324,7 @@ def _test_multi_os(env):
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -364,6 +371,7 @@ def _test_multi_os_legacy(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
             srcs = [
@@ -381,6 +389,7 @@ def _test_multi_os_legacy(env):
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -443,6 +452,7 @@ def _test_env_marker_resolution(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -460,6 +470,7 @@ def _test_env_marker_resolution(env):
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
             srcs = [
@@ -489,6 +500,7 @@ def _test_different_package_version(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -528,6 +540,7 @@ def _test_different_package_extras(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -566,6 +579,7 @@ def _test_optional_hash(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -583,6 +597,7 @@ def _test_optional_hash(env):
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -611,6 +626,7 @@ def _test_git_sources(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -658,6 +674,7 @@ def _test_overlapping_shas_with_index_results(env):
         },
         get_index_urls = lambda _, __: {
             "foo": struct(
+                index_url = "https://example.com",
                 sdists = {
                     "5d15t": struct(
                         url = "sdist",
@@ -686,9 +703,10 @@ def _test_overlapping_shas_with_index_results(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "foo",
+            index_url = "https://example.com",
             is_exposed = True,
             is_multiple_versions = True,
-            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",
@@ -746,6 +764,7 @@ def _test_get_index_urls_different_versions(env):
         },
         get_index_urls = lambda _, __: {
             "foo": struct(
+                index_url = "",
                 sdists = {},
                 whls = {
                     "deadb11f": struct(
@@ -778,9 +797,10 @@ def _test_get_index_urls_different_versions(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
-            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",
@@ -828,6 +848,7 @@ def _test_get_index_urls_single_py_version(env):
         },
         get_index_urls = lambda _, __: {
             "foo": struct(
+                index_url = "",
                 sdists = {},
                 whls = {
                     "deadb11f": struct(
@@ -851,9 +872,10 @@ def _test_get_index_urls_single_py_version(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
-            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",

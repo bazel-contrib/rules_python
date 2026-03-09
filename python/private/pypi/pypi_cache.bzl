@@ -9,7 +9,11 @@ In the future the same will be used to:
 """
 
 def pypi_cache(store = None):
-    """The cache for PyPI index queries."""
+    """The cache for PyPI index queries.
+
+    Currently the key is of the following structure:
+    (url, real_url)
+    """
 
     # buildifier: disable=uninitialized
     self = struct(
@@ -28,6 +32,10 @@ def _pypi_cache_setdefault(self, key, parsed_result):
         self: {type}`struct` The self of this implementation.
         key: {type}`str` The cache key, can be any string.
         parsed_result: {type}`struct` The result of `parse_simpleapi_html` function.
+
+    index_url and distribution is used to write to the MODULE.bazel.lock file as facts
+    real_index_url and distribution is used to write to in-memory cache to ensure that there are
+    no duplicate calls to the PyPI indexes
 
     Returns:
         The `parse_result`.

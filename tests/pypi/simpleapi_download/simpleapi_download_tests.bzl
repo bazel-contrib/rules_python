@@ -16,7 +16,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download", "strip_empty_path_segments")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -37,7 +37,11 @@ def _test_simple(env):
             )
         else:
             return struct(
-                output = "data from {}".format(url),
+                output = struct(
+                    sdists = {"deadbeef": url.strip("/").split("/")[-1]},
+                    whls = {"deadb33f": url.strip("/").split("/")[-1]},
+                    sha256s_by_version = {"fizz": url.strip("/").split("/")[-1]},
+                ),
                 success = True,
             )
 
@@ -65,9 +69,24 @@ def _test_simple(env):
         "main/foo/",
     ])
     env.expect.that_dict(contents).contains_exactly({
-        "bar": "data from main/bar/",
-        "baz": "data from main/baz/",
-        "foo": "data from extra/foo/",
+        "bar": struct(
+            index_url = "main/bar/",
+            sdists = {"deadbeef": "bar"},
+            sha256s_by_version = {"fizz": "bar"},
+            whls = {"deadb33f": "bar"},
+        ),
+        "baz": struct(
+            index_url = "main/baz/",
+            sdists = {"deadbeef": "baz"},
+            sha256s_by_version = {"fizz": "baz"},
+            whls = {"deadb33f": "baz"},
+        ),
+        "foo": struct(
+            index_url = "extra/foo/",
+            sdists = {"deadbeef": "foo"},
+            sha256s_by_version = {"fizz": "foo"},
+            whls = {"deadb33f": "foo"},
+        ),
     })
 
 _tests.append(_test_simple)
@@ -95,7 +114,11 @@ def _test_fail(env):
             )
         else:
             return struct(
-                output = "data from {}".format(url),
+                output = struct(
+                    sdists = {},
+                    whls = {},
+                    sha256s_by_version = {},
+                ),
                 success = True,
             )
 
@@ -250,16 +273,6 @@ def _test_download_envsubst_url(env):
     })
 
 _tests.append(_test_download_envsubst_url)
-
-def _test_strip_empty_path_segments(env):
-    env.expect.that_str(strip_empty_path_segments("no/scheme//is/unchanged")).equals("no/scheme//is/unchanged")
-    env.expect.that_str(strip_empty_path_segments("scheme://with/no/empty/segments")).equals("scheme://with/no/empty/segments")
-    env.expect.that_str(strip_empty_path_segments("scheme://with//empty/segments")).equals("scheme://with/empty/segments")
-    env.expect.that_str(strip_empty_path_segments("scheme://with///multiple//empty/segments")).equals("scheme://with/multiple/empty/segments")
-    env.expect.that_str(strip_empty_path_segments("scheme://with//trailing/slash/")).equals("scheme://with/trailing/slash/")
-    env.expect.that_str(strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
-
-_tests.append(_test_strip_empty_path_segments)
 
 def simpleapi_download_test_suite(name):
     """Create the test suite.

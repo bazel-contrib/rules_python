@@ -20,6 +20,7 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_EN
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
 
@@ -36,6 +37,7 @@ def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = 
 simple==0.0.1 \
     --hash=sha256:deadbeef \
     --hash=sha256:deadbaaf"""),
+        report_progress = lambda _: None,
     )
 
 def hub_builder(
@@ -245,19 +247,23 @@ def _test_simple_extras_vs_no_extras(env):
 _tests.append(_test_simple_extras_vs_no_extras)
 
 def _test_simple_extras_vs_no_extras_simpleapi(env):
-    def mocksimpleapi_download(*_, **__):
-        return {
-            "simple": parse_simpleapi_html(
-                url = "https://example.com",
+    def mockread_simpleapi(*_, **__):
+        return struct(
+            output = parse_simpleapi_html(
                 content = """\
     <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
 """,
             ),
-        }
+            success = True,
+        )
 
     builder = hub_builder(
         env,
-        simpleapi_download_fn = mocksimpleapi_download,
+        simpleapi_download_fn = lambda *args, **kwargs: simpleapi_download(
+            read_simpleapi = mockread_simpleapi,
+            *args,
+            **kwargs
+        ),
     )
     builder.pip_parse(
         _mock_mctx(
@@ -271,7 +277,7 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             python_version = "3.15",
             requirements_darwin = "darwin.txt",
             requirements_windows = "win.txt",
-            experimental_index_url = "example.com",
+            experimental_index_url = "https://example.com",
         ),
     )
     pypi = builder.build()
@@ -303,17 +309,19 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": "https://example.com/simple/",
             "requirement": "simple[foo]==0.0.1",
             "sha256": "deadbeef",
-            "urls": ["https://example.com/simple-0.0.1-py3-none-any.whl"],
+            "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": "https://example.com/simple/",
             "requirement": "simple==0.0.1",
             "sha256": "deadbeef",
-            "urls": ["https://example.com/simple-0.0.1-py3-none-any.whl"],
+            "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -481,10 +489,9 @@ def _test_simple_with_markers(env):
 _tests.append(_test_simple_with_markers)
 
 def _test_torch_experimental_index_url(env):
-    def mocksimpleapi_download(*_, **__):
-        return {
-            "torch": parse_simpleapi_html(
-                url = "https://torch.index",
+    def mockread_simpleapi(*_, **__):
+        return struct(
+            output = parse_simpleapi_html(
                 content = """\
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-linux_x86_64.whl#sha256=833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6">torch-2.4.1+cpu-cp310-cp310-linux_x86_64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-win_amd64.whl#sha256=1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202">torch-2.4.1+cpu-cp310-cp310-win_amd64.whl</a><br/>
@@ -508,7 +515,8 @@ def _test_torch_experimental_index_url(env):
     <a href="/whl/cpu/torch-2.4.1-cp39-none-macosx_11_0_arm64.whl#sha256=a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec">torch-2.4.1-cp39-none-macosx_11_0_arm64.whl</a><br/>
 """,
             ),
-        }
+            success = True,
+        )
 
     builder = hub_builder(
         env,
@@ -544,7 +552,11 @@ def _test_torch_experimental_index_url(env):
             "python_3_12_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.12": "3.12.19"},
-        simpleapi_download_fn = mocksimpleapi_download,
+        simpleapi_download_fn = lambda *args, **kwargs: simpleapi_download(
+            read_simpleapi = mockread_simpleapi,
+            *args,
+            **kwargs
+        ),
     )
     builder.pip_parse(
         _mock_mctx(
@@ -621,33 +633,37 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
+            "index_url": "https://torch.index/torch/",
             "requirement": "torch==2.4.1+cpu",
             "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
-            "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
+            "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+            "index_url": "https://torch.index/torch/",
             "requirement": "torch==2.4.1",
             "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
-            "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
+            "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
+            "index_url": "https://torch.index/torch/",
             "requirement": "torch==2.4.1+cpu",
             "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
-            "urls": ["https://torch.index/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
+            "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
+            "index_url": "https://torch.index/torch/",
             "requirement": "torch==2.4.1",
             "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
-            "urls": ["https://torch.index/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
+            "urls": ["/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -771,6 +787,7 @@ def _test_simple_get_index(env):
                 sha256s_by_version = {
                     "0.0.4": ["deadb44f"],
                 },
+                index_url = "",
             ),
             "simple": struct(
                 whls = {
@@ -789,6 +806,7 @@ def _test_simple_get_index(env):
                         url = "example.org",
                     ),
                 },
+                index_url = "",
             ),
             "some_other_pkg": struct(
                 whls = {
@@ -804,6 +822,7 @@ def _test_simple_get_index(env):
                     "0.0.1": ["deadb33f"],
                     "0.0.3": ["deadbeef"],
                 },
+                index_url = "https://with_index_url",
             ),
         }
 
@@ -973,9 +992,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "requirement": "direct_without_sha==0.0.1",
             "sha256": "",
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
-            # NOTE @aignas 2025-11-24: any patching still requires the python interpreter from the
-            # hermetic toolchain or the system. This is so that we can rezip it back to a wheel and
-            # verify the metadata so that it is installable by any installer out there.
             "whl_patches": {"my_patch": "1"},
         },
         "pypi_315_git_dep": {
@@ -1020,6 +1036,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
+            "index_url": "https://with_index_url",
             "requirement": "some_other_pkg==0.0.1",
             "sha256": "deadb33f",
             "urls": ["example2.org/index/some_other_pkg/"],

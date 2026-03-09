@@ -26,6 +26,7 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
+load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
 load(":whl_metadata.bzl", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
@@ -320,6 +321,13 @@ def _whl_library_impl(rctx):
     elif rctx.attr.urls and rctx.attr.filename:
         filename = rctx.attr.filename
         urls = rctx.attr.urls
+        urls = [
+            urllib.absolute_url(
+                envsubst(rctx.attr.index_url, rctx.attr.envsubst, rctx.getenv),
+                url,
+            )
+            for url in urls
+        ]
         result = rctx.download(
             url = urls,
             output = filename,
@@ -606,6 +614,9 @@ For example if your whl depends on `numpy` and your Python package repo is named
     ),
     "group_name": attr.string(
         doc = "Name of the group, if any.",
+    ),
+    "index_url": attr.string(
+        doc = "The index_url that the package will be downloaded from.",
     ),
     "repo": attr.string(
         doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",
