@@ -57,7 +57,7 @@ def _test_sdist(env):
                 filename = "foo-0.0.1.tar.gz",
                 sha256 = "deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
-                yanked = False,
+                yanked = None,
                 version = "0.0.1",
             ),
         ),
@@ -65,7 +65,8 @@ def _test_sdist(env):
             struct(
                 attrs = [
                     'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
-                    'data-requires-python=">=3.7"',
+                    'data-requires-python="&gt;=3.7"',
+                    "data-yanked",
                 ],
                 filename = "foo-0.0.1.tar.gz",
             ),
@@ -74,7 +75,42 @@ def _test_sdist(env):
                 sha256 = "deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
                 version = "0.0.1",
-                yanked = False,
+                yanked = "",
+            ),
+        ),
+        (
+            struct(
+                attrs = [
+                    'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
+                    'data-requires-python="&gt;=3.7"',
+                    "data-yanked=\"Something &#10;with &quot;quotes&quot;&#10;over two lines\"",
+                ],
+                filename = "foo-0.0.1.tar.gz",
+            ),
+            struct(
+                filename = "foo-0.0.1.tar.gz",
+                sha256 = "deadbeefasource",
+                url = "https://example.org/full-url/foo-0.0.1.tar.gz",
+                version = "0.0.1",
+                # NOTE @aignas 2026-03-09: we preserve the white space
+                yanked = "Something \nwith \"quotes\"\nover two lines",
+            ),
+        ),
+        (
+            struct(
+                attrs = [
+                    'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
+                    'data-requires-python="&gt;=3.7"',
+                    'data-yanked=""',
+                ],
+                filename = "foo-0.0.1.tar.gz",
+            ),
+            struct(
+                filename = "foo-0.0.1.tar.gz",
+                sha256 = "deadbeefasource",
+                url = "https://example.org/full-url/foo-0.0.1.tar.gz",
+                version = "0.0.1",
+                yanked = "",
             ),
         ),
     ]
@@ -94,7 +130,7 @@ def _test_sdist(env):
                 filename = subjects.str,
                 sha256 = subjects.str,
                 url = subjects.str,
-                yanked = subjects.bool,
+                yanked = subjects.str,
                 version = subjects.str,
             ),
         )
@@ -126,14 +162,14 @@ def _test_whls(env):
                 sha256 = "deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 version = "0.0.2",
-                yanked = False,
+                yanked = None,
             ),
         ),
         (
             struct(
                 attrs = [
                     'href="https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl#sha256=deadbeef"',
-                    'data-requires-python=">=3.7"',
+                    'data-requires-python="&gt;=3.7"',
                     'data-dist-info-metadata="sha256=deadb00f"',
                     'data-core-metadata="sha256=deadb00f"',
                 ],
@@ -146,7 +182,7 @@ def _test_whls(env):
                 sha256 = "deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 version = "0.0.2",
-                yanked = False,
+                yanked = None,
             ),
         ),
         (
@@ -165,7 +201,7 @@ def _test_whls(env):
                 sha256 = "deadbeef",
                 version = "0.0.2",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                yanked = False,
+                yanked = None,
             ),
         ),
         (
@@ -184,7 +220,7 @@ def _test_whls(env):
                 sha256 = "deadbeef",
                 version = "0.0.2",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-                yanked = False,
+                yanked = None,
             ),
         ),
         (
@@ -202,7 +238,7 @@ def _test_whls(env):
                 sha256 = "deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 version = "0.0.2",
-                yanked = False,
+                yanked = None,
             ),
         ),
     ]
@@ -223,7 +259,7 @@ def _test_whls(env):
                 metadata_url = subjects.str,
                 sha256 = subjects.str,
                 url = subjects.str,
-                yanked = subjects.bool,
+                yanked = subjects.str,
                 version = subjects.str,
             ),
         )
