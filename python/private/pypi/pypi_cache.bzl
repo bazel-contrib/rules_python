@@ -60,6 +60,7 @@ def _pypi_cache_setdefault(self, key, parsed_result):
     if not versions or not self._facts:
         return parsed_result
 
+    # Filter the packages to only what is needed before writing to the facts cache
     filtered = _filter_packages(parsed_result, versions)
     return self._facts.setdefault(index_url, filtered)
 
@@ -74,6 +75,10 @@ def _pypi_cache_get(self, key):
         The {type}`struct` or `None` based on if the result is in the cache or not.
     """
     index_url, real_url, versions = key
+
+    # When retrieving from memory cache, filter down to only what is needed. If the
+    # cache is empty, we will attempt to read from facts, however, reading from memory
+    # first allows us to not parse the contents of the lock file that may add up.
     cached = _filter_packages(self._mcache.get(real_url), versions)
     if not self._facts:
         return cached
