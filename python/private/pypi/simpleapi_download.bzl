@@ -16,7 +16,6 @@
 A file that houses private functions used in the `bzlmod` extension with the same name.
 """
 
-load("@bazel_features//:features.bzl", "bazel_features")
 load("//python/private:auth.bzl", _get_auth = "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:normalize_name.bzl", "normalize_name")
@@ -34,6 +33,11 @@ def simpleapi_download(
         get_auth = None,
         _fail = fail):
     """Download Simple API HTML.
+
+    First it queries all of the indexes for available packages and then it downloads the contents of
+    the per-package URLs and sha256 values. This is to enable us to use bazel_downloader with
+    `requirements.txt` files. As a side effect we also are able to "cross-compile" by fetching the
+    right wheel for the right target platform through the information that we retrieve here.
 
     Args:
         ctx: The module_ctx or repository_ctx.
@@ -77,66 +81,105 @@ def simpleapi_download(
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
 
-    download_kwargs = {}
-    if bazel_features.external_deps.download_has_block_param:
-        download_kwargs["block"] = not parallel_download
+    dist_urls = _get_dist_urls(
+        ctx,
+        index_urls,
+        index_url_overrides,
+        read_simpleapi = read_simpleapi,
+        cache = cache,
+        get_auth = get_auth,
+        attr = attr,
+        block = not parallel_download,
+        _fail = _fail,
+    )
 
-    if len(index_urls) == 1 or index_url_overrides:
-        download_kwargs["allow_fail"] = False
-    else:
-        download_kwargs["allow_fail"] = True
-
-    input_sources = attr.sources
-
-    found_on_index = {}
-    warn_overrides = False
     ctx.report_progress("Fetch package lists from PyPI index")
-    for i, index_url in enumerate(index_urls):
-        if i != 0:
-            # Warn the user about a potential fix for the overrides
-            warn_overrides = True
 
-        async_downloads = {}
-        sources = {pkg: versions for pkg, versions in input_sources.items() if pkg not in found_on_index}
-        for pkg, versions in sources.items():
-            pkg_normalized = normalize_name(pkg)
-            url = urllib.strip_empty_path_segments("{index_url}/{distribution}/".format(
-                index_url = index_url_overrides.get(pkg_normalized, index_url).rstrip("/"),
-                distribution = pkg,
-            ))
-            result = read_simpleapi(
-                ctx = ctx,
-                attr = attr,
-                versions = versions,
-                url = url,
-                cache = cache,
-                get_auth = get_auth,
-                **download_kwargs
-            )
-            if hasattr(result, "wait"):
-                # We will process it in a separate loop:
-                async_downloads[pkg] = struct(
-                    pkg_normalized = pkg_normalized,
-                    wait = result.wait,
-                    url = url,
-                )
-            elif result.success:
-                contents[pkg_normalized] = _with_index_url(url, result.output)
-                found_on_index[pkg] = index_url
+    sources = {
+        normalize_name(pkg): versions
+        for pkg, versions in attr.sources.items()
+    }
 
-        if not async_downloads:
-            continue
+    downloads = {}
+    contents = {}
+    for pkg, url in dist_urls.items():
+        result = read_simpleapi(
+            ctx = ctx,
+            attr = attr,
+            url = url,
+            cache = cache,
+            versions = sources[pkg],
+            get_auth = get_auth,
+            block = not parallel_download,
+        )
+        if hasattr(result, "wait"):
+            # We will process it in a separate loop:
+            downloads[pkg] = result
+        else:
+            contents[pkg] = _with_index_url(url, result.output)
 
+    for pkg, d in downloads.items():
         # If we use `block` == False, then we need to have a second loop that is
         # collecting all of the results as they were being downloaded in parallel.
-        for pkg, download in async_downloads.items():
-            result = download.wait()
+        contents[pkg] = _with_index_url(dist_urls[pkg], d.wait().output)
 
-            if result.success:
-                contents[download.pkg_normalized] = _with_index_url(download.url, result.output)
-                found_on_index[pkg] = index_url
+    return contents
 
-    failed_sources = [pkg for pkg in input_sources if pkg not in found_on_index]
+def _get_dist_urls(ctx, index_urls, index_url_overrides, read_simpleapi, *, attr, block, _fail = fail, **kwargs):
+    if index_url_overrides:
+        first_index = index_urls[0]
+        return {
+            pkg: urllib.strip_empty_path_segments("{index_url}/{distribution}/".format(
+                index_url = index_url_overrides.get(normalize_name(pkg), first_index).rstrip("/"),
+                distribution = pkg,
+            ))
+            for pkg in attr.sources
+        }
+
+    downloads = {}
+    results = {}
+    for index_url in index_urls:
+        # TODO @aignas 2026-03-20: pull from the cache/facts
+        # we can store the following schema:
+        # facts: {
+        #   "index_urls": {
+        #       "<index_url>": {
+        #           "<pkg_normalized>": "<dist_url>",
+        #       }
+        #   }
+        # }
+        download = read_simpleapi(
+            ctx = ctx,
+            attr = attr,
+            url = urllib.strip_empty_path_segments("{index_url}/".format(
+                index_url = index_url,
+            )),
+            parse_index = True,
+            versions = None,
+            block = block,
+            allow_fail = False,
+            **kwargs
+        )
+        if hasattr(download, "wait"):
+            downloads[index_url] = download
+        else:
+            results[index_url] = download
+
+    for index_url, download in downloads.items():
+        results[index_url] = download.wait()
+
+    found_on_index = {}
+    for index_url, result in results.items():
+        sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
+
+        available_packages = result.output
+        sources = [pkg for pkg in sources if normalize_name(pkg) in available_packages]
+        found_on_index.update({
+            pkg: urllib.absolute_url(index_url, available_packages[normalize_name(pkg)])
+            for pkg in sources
+        })
+
+    failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
     if failed_sources:
         pkg_index_urls = {
             pkg: index_url_overrides.get(
@@ -148,7 +191,7 @@ def simpleapi_download(
 
         _fail(
             """
-Failed to download metadata of the following packages from urls:
+Failed to find packages on PyPI of the following packages from urls:
 {pkg_index_urls}
 
 If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={failed_sources}' to your 'pip.parse' call.
@@ -159,22 +202,9 @@ If you would like to skip downloading metadata for these packages please add 'si
         )
         return None
 
-    if warn_overrides:
-        index_url_overrides = {
-            pkg: found_on_index[pkg]
-            for pkg in attr.sources
-            if found_on_index[pkg] != attr.index_url
-        }
+    return {normalize_name(pkg): url for pkg, url in found_on_index.items()}
 
-        if index_url_overrides:
-            # buildifier: disable=print
-            print("You can use the following `index_url_overrides` to avoid the 404 warnings:\n{}".format(
-                render.dict(index_url_overrides),
-            ))
-
-    return contents
-
-def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download_kwargs):
+def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, parse_index = False, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
@@ -189,6 +219,7 @@ def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download
         cache: {type}`struct` the `pypi_cache` instance.
         versions: {type}`list[str] The versions that have been requested.
         get_auth: A function to get auth information. Used in tests.
+        parse_index: TODO
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
 
@@ -242,6 +273,7 @@ def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download
                 output = output,
                 cache = cache,
                 cache_key = cache_key,
+                parse_index = parse_index,
             ),
         )
 
@@ -251,15 +283,16 @@ def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download
         output = output,
         cache = cache,
         cache_key = cache_key,
+        parse_index = parse_index,
     )
 
-def _read_index_result(ctx, *, result, output, cache, cache_key):
+def _read_index_result(ctx, *, result, output, cache, cache_key, parse_index):
     if not result.success:
         return struct(success = False)
 
     content = ctx.read(output)
 
-    output = parse_simpleapi_html(content = content)
+    output = parse_simpleapi_html(content = content, parse_index = parse_index)
     if output:
         cache.setdefault(cache_key, output)
         return struct(success = True, output = output)

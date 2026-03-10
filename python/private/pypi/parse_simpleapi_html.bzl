@@ -16,16 +16,20 @@
 Parse SimpleAPI HTML in Starlark.
 """
 
+load("//python/private:normalize_name.bzl", "normalize_name")
 load(":version_from_filename.bzl", "version_from_filename")
 
-def parse_simpleapi_html(*, content):
+def parse_simpleapi_html(*, content, parse_index = False):
     """Get the package URLs for given shas by parsing the Simple API HTML.
 
     Args:
-        content(str): The Simple API HTML content.
+        content: {type}`str` The Simple API HTML content.
+        parse_index: {type}`bool` whether to parse the content as the index page of the PyPI index,
+            e.g. the `https://pypi.org/simple/`. This only has the URLs for the individual package.
 
     Returns:
-        A list of structs with:
+        If it is the index page, return the map of package to URL it can be queried from.
+        Otherwise, a list of structs with:
           * filename: {type}`str` The filename of the artifact.
           * version: {type}`str` The version of the artifact.
           * url: {type}`str` The URL to download the artifact.
@@ -59,6 +63,8 @@ def parse_simpleapi_html(*, content):
         # https://packaging.python.org/en/latest/specifications/simple-repository-api/#versioning-pypi-s-simple-api
         fail("Unsupported API version: {}".format(api_version))
 
+    packages = {}
+
     # 2. Iterate using find() to avoid huge list allocations from .split("<a ")
     cursor = 0
     for _ in range(1000000):  # Safety break for Starlark
@@ -73,18 +79,23 @@ def parse_simpleapi_html(*, content):
             break
 
         # Extract only the necessary slices
-        attr_part = content[start_tag + 3:tag_end]
         filename = content[tag_end + 1:end_tag].strip()
+        attr_part = content[start_tag + 3:tag_end]
 
         # Update cursor for next iteration
         cursor = end_tag + 4
 
-        # 3. Efficient Attribute Parsing
         attrs = _parse_attrs(attr_part)
         href = attrs.get("href", "")
         if not href:
             continue
 
+        if parse_index:
+            pkg_name = filename
+            packages[normalize_name(pkg_name)] = href
+            continue
+
+        # 3. Efficient Attribute Parsing
         dist_url, _, sha256 = href.partition("#sha256=")
 
         # Handle Yanked status
@@ -120,6 +131,9 @@ def parse_simpleapi_html(*, content):
             whls[sha256] = dist
         else:
             sdists[sha256] = dist
+
+    if packages:
+        return packages
 
     return struct(
         sdists = sdists,
