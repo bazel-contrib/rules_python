@@ -31,6 +31,7 @@ def _cache(env, **kwargs):
         get = lambda *args, **kwargs: _expect(
             cache.get(*args, **kwargs),
         ),
+        get_facts = lambda: env.expect.that_dict(cache.get_facts()),
     )
 
 def _test_memory_cache_hit(env):
@@ -81,6 +82,70 @@ def _test_memory_cache_hit(env):
     cache.get(key).equals(None)
 
 _tests.append(_test_memory_cache_hit)
+
+def _test_pypi_cache_writes_to_facts(env):
+    """Verifies that setting a value in the cache also populates the facts store."""
+    store = {}
+
+    # 1. Setup a mock module_ctx with an empty facts dict
+    # Your implementation looks for getattr(module_ctx, "facts", None)
+    mock_facts = {}
+    mock_ctx = struct(facts = mock_facts)
+
+    cache = _cache(env, module_ctx = mock_ctx, store = store)
+
+    fake_result = struct(
+        sdists = {
+            "sha_sdist": struct(
+                version = "1.0.0",
+                filename = "pkg-1.0.0.tar.gz",
+                url = "https://pypi.org/files/pkg-1.0.0.tar.gz",
+                yanked = "",
+            ),
+        },
+        whls = {
+            "sha_whl": struct(
+                version = "1.0.0",
+                filename = "pkg-1.0.0-py3-none-any.whl",
+                url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+                yanked = "Security issue",
+            ),
+        },
+    )
+
+    # Key format: (index_url, real_url, versions)
+    # The facts logic uses index_url to derive the root_url and distribution
+    index_url = "https://pypi.org/simple/pkg"
+    key = (index_url, "https://pypi.org/simple/pkg", ["1.0.0"])
+
+    # 2. When we set the cache
+    cache.setdefault(key, fake_result)
+
+    # 3. Retrieve the internal facts dictionary
+    # Based on your _pypi_cache_get_facts implementation
+    facts = cache.get_facts()
+
+    # 4. Assertions on the facts schema
+    facts.contains_exactly({
+        "dist_hashes": {
+            "https://pypi.org/simple": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha_whl",
+                    "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha_sdist",
+                },
+            },
+        },
+        "dist_yanked": {
+            "https://pypi.org/simple": {
+                "pkg": {
+                    "sha_whl": "Security issue",
+                },
+            },
+        },
+        "fact_version": "v1",  # Facts version
+    })
+
+_tests.append(_test_pypi_cache_writes_to_facts)
 
 def pypi_cache_test_suite(name):
     test_suite(

@@ -85,10 +85,10 @@ def _pypi_cache_get(self, key):
     return cached
 
 def _pypi_cache_get_facts(self):
-    if not self._fcache:
+    if not self._facts:
         return {}
 
-    return self._fcache.facts
+    return self._facts.facts
 
 def memory_cache(cache = None):
     """SimpleAPI cache for making fewer calls.
