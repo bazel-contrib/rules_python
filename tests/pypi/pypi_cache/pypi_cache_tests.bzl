@@ -157,6 +157,81 @@ def _test_pypi_cache_writes_to_facts(env):
 
 _tests.append(_test_pypi_cache_writes_to_facts)
 
+def _test_pypi_cache_reads_from_facts(env):
+    """Verifies that setting a value in the cache also populates the facts store."""
+    mock_ctx = struct(facts = {
+        "dist_hashes": {
+            # We are not using the real index URL, because we may have credentials in here
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha_whl",
+                    "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha_sdist",
+                },
+            },
+        },
+        "dist_yanked": {
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "sha_sdist": "",
+                    "sha_whl": "Security issue",
+                },
+            },
+        },
+        "fact_version": "v1",  # Facts version
+    })
+    cache = _cache(env, module_ctx = mock_ctx)
+
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+
+    # Then we would get empty facts because we haven't accessed any of the known facts.
+    # This simulates the dropping of the facts of requirements that are no longer needed.
+    cache.get_facts().contains_exactly({})
+
+    # When we get the
+    got = cache.get(key)
+
+    expected_result = struct(
+        sdists = {
+            "sha_sdist": struct(
+                sha256 = "sha_sdist",
+                version = "1.0.0",
+                filename = "pkg-1.0.0.tar.gz",
+                metadata_url = "",
+                metadata_sha256 = "",
+                url = "https://pypi.org/files/pkg-1.0.0.tar.gz",
+                yanked = "",
+            ),
+        },
+        whls = {
+            "sha_whl": struct(
+                sha256 = "sha_whl",
+                version = "1.0.0",
+                filename = "pkg-1.0.0-py3-none-any.whl",
+                url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+                metadata_url = "",
+                metadata_sha256 = "",
+                yanked = "Security issue",
+            ),
+        },
+        sha256s_by_version = {
+            "1.0.0": ["sha_sdist", "sha_whl"],
+        },
+    )
+
+    got.whls().contains_exactly(expected_result.whls)
+    got.sdists().contains_exactly(expected_result.sdists)
+    got.sha256s_by_version().contains_exactly(expected_result.sha256s_by_version)
+
+    # Then when we store the same facts back again, because we accessed the cached keys.
+    cache.get_facts().contains_exactly(mock_ctx.facts)
+
+    # When we request more than what we have, we will return nothing
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0", "1.1.0"])
+    got = cache.get(key)
+    got.equals(None)
+
+_tests.append(_test_pypi_cache_reads_from_facts)
+
 def pypi_cache_test_suite(name):
     test_suite(
         name = name,

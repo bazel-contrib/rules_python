@@ -140,7 +140,10 @@ def _filter_packages(dists, requested_versions):
     return struct(
         whls = whls,
         sdists = sdists,
-        sha256s_by_version = sha256s_by_version,
+        sha256s_by_version = {
+            k: sorted(v)
+            for k, v in sha256s_by_version.items()
+        },
     )
 
 def facts_cache(known_facts, facts_version = _FACT_VERSION):
@@ -188,6 +191,8 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     distribution = distribution.rstrip("/")
     root_url = root_url.rstrip("/")
 
+    retrieved_versions = {}
+
     for url, sha256 in known_facts.get("dist_hashes", {}).get(root_url, {}).get(distribution, {}).items():
         filename = known_facts.get("dist_filenames", {}).get(root_url, {}).get(distribution, {}).get(sha256)
         if not filename:
@@ -200,6 +205,8 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             #
             continue
 
+        retrieved_versions[version] = True
+
         if filename.endswith(".whl"):
             dists = known_sources.setdefault("whls", {})
         else:
@@ -211,18 +218,28 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             sha256 = sha256,
             filename = filename,
             version = version,
+            metadata_url = "",
+            metadata_sha256 = "",
             url = url,
-            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(sha256, ""),
+            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(sha256),
         ))
 
     if not known_sources:
         # We found nothing in facts
         return None
 
+    if len(requested_versions) != len(retrieved_versions):
+        # If the results are incomplete, then return None, so that we can fetch sources from the
+        # internet again.
+        return None
+
     output = struct(
         whls = known_sources.get("whls", {}),
         sdists = known_sources.get("sdists", {}),
-        sha256s_by_version = known_sources.get("sha256s_by_version", {}),
+        sha256s_by_version = {
+            k: sorted(v)
+            for k, v in known_sources.get("sha256s_by_version", {}).items()
+        },
     )
 
     # Persist these facts for the next run because we have used them.
