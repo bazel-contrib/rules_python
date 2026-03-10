@@ -26,8 +26,7 @@ def pypi_cache(module_ctx = None, store = None):
         A cache struct
     """
     mcache = memory_cache(store)
-    facts = {}
-    fcache = facts_cache(getattr(module_ctx, "facts", None), facts)
+    fcache = facts_cache(getattr(module_ctx, "facts", None))
 
     # buildifier: disable=uninitialized
     self = struct(
@@ -35,7 +34,7 @@ def pypi_cache(module_ctx = None, store = None):
         _facts = fcache,
         setdefault = lambda key, parsed_result: _pypi_cache_setdefault(self, key, parsed_result),
         get = lambda key: _pypi_cache_get(self, key),
-        get_facts = lambda: _get_facts(facts),
+        get_facts = lambda: _pypi_cache_get_facts(self),
     )
 
     # buildifier: enable=uninitialized
@@ -57,7 +56,7 @@ def _pypi_cache_setdefault(self, key, parsed_result):
         The `parse_result`.
     """
     index_url, real_url, versions = key
-    self._mcache.setdefault(real_url, None, parsed_result)
+    self._mcache.setdefault(real_url, parsed_result)
     if not versions or not self._facts:
         return parsed_result
 
@@ -75,7 +74,7 @@ def _pypi_cache_get(self, key):
         The {type}`struct` or `None` based on if the result is in the cache or not.
     """
     index_url, real_url, versions = key
-    cached = self._mcache.get(real_url, versions)
+    cached = _filter_packages(self._mcache.get(real_url), versions)
     if not self._facts:
         return cached
 
@@ -85,11 +84,17 @@ def _pypi_cache_get(self, key):
 
     return cached
 
-def _get_facts(facts):
-    return facts
+def _pypi_cache_get_facts(self):
+    if not self._fcache:
+        return {}
+
+    return self._fcache.facts
 
 def memory_cache(cache = None):
     """SimpleAPI cache for making fewer calls.
+
+    We are using the `real_url` as the key in the cache functions on purpose in order to get the
+    best possible cache hits.
 
     Args:
         cache: the storage to store things in memory.
@@ -101,15 +106,12 @@ def memory_cache(cache = None):
         cache = {}
 
     return struct(
-        get = lambda real_url, versions: _filter_packages(cache.get(real_url), versions),
-        setdefault = lambda real_url, versions, value: _filter_packages(cache.get(real_url), versions),
+        get = lambda real_url: cache.get(real_url),
+        setdefault = lambda real_url, value: cache.setdefault(real_url, value),
     )
 
 def _filter_packages(dists, requested_versions):
-    if dists == None:
-        return None
-
-    if not requested_versions:
+    if dists == None or not requested_versions:
         return dists
 
     sha256s_by_version = {}
@@ -141,9 +143,26 @@ def _filter_packages(dists, requested_versions):
         sha256s_by_version = sha256s_by_version,
     )
 
-def facts_cache(known_facts, facts, facts_version = _FACT_VERSION):
+def facts_cache(known_facts, facts_version = _FACT_VERSION):
+    """The facts cache.
+
+    Here we have a way to store things as facts and the main thing to keep in mind is that we should
+    not use the real_url in case it contains credentials in it (e.g. is of form `https://<username>:<password>@<host>`).
+
+    Args:
+        known_facts: An opaque object coming from {obj}`module_ctx.facts`.
+        facts_version: {type}`str` the version of the facts schema, used for short-circuiting.
+
+    Returns:
+        A struct that has:
+            * `get` method for getting values from the facts cache.
+            * `setdefault` method for setting values in the cache.
+            * `facts` attribute that should be passed to the {obj}`module_ctx.extension_metadata` to persist facts.
+    """
     if known_facts == None:
         return None
+
+    facts = {}
 
     return struct(
         get = lambda index_url, versions: _get_from_facts(
