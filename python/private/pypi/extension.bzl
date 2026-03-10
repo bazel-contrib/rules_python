@@ -399,6 +399,8 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
+    # The code is smart to not return facts if we don't support the mechanism for that.
+    # Hence we should not pass it to the metadata
     if mods.facts:
         return module_ctx.extension_metadata(
             reproducible = True,
