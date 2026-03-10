@@ -249,7 +249,7 @@ def _store_facts(facts, fact_version, index_url, value):
         facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, sha256)
         if not d.url.endswith(d.filename):
             facts.setdefault("dist_filenames", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, d.filename)
-        if d.yanked:
+        if d.yanked != None:
             facts.setdefault("dist_yanked", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(sha256, d.yanked)
 
     return value

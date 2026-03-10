@@ -104,9 +104,17 @@ def _test_pypi_cache_writes_to_facts(env):
                 url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
                 yanked = "Security issue",
             ),
+            # This won't get stored
+            "sha_whl_2": struct(
+                version = "1.1.0",
+                filename = "pkg-1.1.0-py3-none-any.whl",
+                url = "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl",
+                yanked = None,
+            ),
         },
         sha256s_by_version = {
             "1.0.0": ["sha_sdist", "sha_whl"],
+            "1.1.0": ["sha_whl_2"],
         },
     )
 
@@ -117,9 +125,13 @@ def _test_pypi_cache_writes_to_facts(env):
 
     # Then the key returns us the same items
     got = cache.get(key)
-    got.whls().contains_exactly(fake_result.whls)
+    got.whls().contains_exactly({
+        "sha_whl": fake_result.whls["sha_whl"],
+    })
     got.sdists().contains_exactly(fake_result.sdists)
-    got.sha256s_by_version().contains_exactly(fake_result.sha256s_by_version)
+    got.sha256s_by_version().contains_exactly({
+        "1.0.0": fake_result.sha256s_by_version["1.0.0"],
+    })
 
     # Then when we get facts at the end
     cache.get_facts().contains_exactly({
@@ -135,6 +147,7 @@ def _test_pypi_cache_writes_to_facts(env):
         "dist_yanked": {
             "https://{PYPI_INDEX_URL}": {
                 "pkg": {
+                    "sha_sdist": "",
                     "sha_whl": "Security issue",
                 },
             },
