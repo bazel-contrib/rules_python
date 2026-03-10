@@ -225,7 +225,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # dict[str repo, HubBuilder]
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = pypi_cache()
+    simpleapi_cache = pypi_cache(module_ctx = module_ctx)
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
@@ -293,6 +293,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         config = config,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
+        facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
@@ -372,7 +373,11 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar, enable_pipstar_extract = rp_config.enable_pipstar and rp_config.bazel_8_or_later)
+    mods = parse_modules(
+        module_ctx,
+        enable_pipstar = rp_config.enable_pipstar,
+        enable_pipstar_extract = rp_config.enable_pipstar and rp_config.bazel_8_or_later,
+    )
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
@@ -396,6 +401,7 @@ def _pip_impl(module_ctx):
 
     return module_ctx.extension_metadata(
         reproducible = True,
+        facts = mods.facts or {},
     )
 
 _default_attrs = {

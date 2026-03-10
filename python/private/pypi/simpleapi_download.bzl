@@ -81,6 +81,8 @@ def simpleapi_download(
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
 
+    input_sources = attr.sources
+
     found_on_index = {}
     warn_overrides = False
     ctx.report_progress("Fetch package lists from PyPI index")
@@ -90,8 +92,8 @@ def simpleapi_download(
             warn_overrides = True
 
         async_downloads = {}
-        sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
-        for pkg in sources:
+        sources = {pkg: versions for pkg, versions in input_sources.items() if pkg not in found_on_index}
+        for pkg, versions in sources.items():
             pkg_normalized = normalize_name(pkg)
             url = urllib.strip_empty_path_segments("{index_url}/{distribution}/".format(
                 index_url = index_url_overrides.get(pkg_normalized, index_url).rstrip("/"),
@@ -100,6 +102,7 @@ def simpleapi_download(
             result = read_simpleapi(
                 ctx = ctx,
                 attr = attr,
+                versions = versions,
                 url = url,
                 cache = cache,
                 get_auth = get_auth,
@@ -166,7 +169,7 @@ If you would like to skip downloading metadata for these packages please add 'si
 
     return contents
 
-def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
+def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
@@ -179,6 +182,7 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
            * auth_patterns: The auth_patterns parameter for ctx.download, see
                {obj}`http_file` for docs.
         cache: {type}`struct` the `pypi_cache` instance.
+        versions: {type}`list[str] The versions that have been requested.
         get_auth: A function to get auth information. Used in tests.
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
@@ -194,7 +198,7 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
 
     real_url = urllib.strip_empty_path_segments(envsubst(url, attr.envsubst, ctx.getenv))
 
-    cache_key = (url, real_url)
+    cache_key = (url, real_url, versions)
     cached_result = cache.get(cache_key)
     if cached_result:
         return struct(success = True, output = cached_result)
