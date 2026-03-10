@@ -399,10 +399,13 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    return module_ctx.extension_metadata(
-        reproducible = True,
-        facts = mods.facts or None,
-    )
+    if mods.facts:
+        return module_ctx.extension_metadata(
+            reproducible = True,
+            facts = mods.facts,
+        )
+    else:
+        return module_ctx.extension_metadata(reproducible = True)
 
 _default_attrs = {
     "arch_name": attr.string(
