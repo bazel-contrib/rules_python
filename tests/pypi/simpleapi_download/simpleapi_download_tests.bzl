@@ -148,13 +148,13 @@ def _test_fail(env):
         """
 Failed to download metadata of the following packages from urls:
 {
-    "foo": "invalid",
     "bar": ["main", "extra"],
+    "foo": "invalid",
 }
 
 If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=[
-    "foo",
     "bar",
+    "foo",
 ]' to your 'pip.parse' call.
 """,
     ])

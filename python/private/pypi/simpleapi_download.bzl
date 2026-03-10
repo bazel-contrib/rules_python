@@ -131,7 +131,7 @@ def simpleapi_download(
                 contents[download.pkg_normalized] = _with_index_url(download.url, result.output)
                 found_on_index[pkg] = index_url
 
-    failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
+    failed_sources = [pkg for pkg in input_sources if pkg not in found_on_index]
     if failed_sources:
         pkg_index_urls = {
             pkg: index_url_overrides.get(
