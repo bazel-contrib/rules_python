@@ -401,7 +401,7 @@ def _pip_impl(module_ctx):
 
     return module_ctx.extension_metadata(
         reproducible = True,
-        facts = mods.facts or {},
+        facts = mods.facts or None,
     )
 
 _default_attrs = {
