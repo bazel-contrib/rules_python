@@ -323,9 +323,21 @@ def _mkdir(mrctx, path):
     path = mrctx.path(path)
     if path.exists:
         return path
-    placeholder = path.get_child(".placeholder")
-    mrctx.file(placeholder)
-    mrctx.delete(placeholder)
+
+    repo_root = str(mrctx.path("."))
+    path_str = str(path)
+
+    if not path_str.startswith(repo_root + "/"):
+        _execute_checked(
+            mrctx,
+            op = "mkdir",
+            arguments = [_which_checked(mrctx, "mkdir"), "-p", path_str],
+        )
+        return path
+    else:
+        placeholder = path.get_child(".placeholder")
+        mrctx.file(placeholder)
+        mrctx.delete(placeholder)
     return path
 
 def _repo_root_relative_path(mrctx, path):

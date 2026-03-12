@@ -59,8 +59,10 @@ def _create_pycache_symlinks(rctx, logger):
         rctx: {type}`repository_ctx` The repository rule's context object.
         logger: Optional logger to use for operations.
     """
-    volatile_dir = repo_utils.mkdir(rctx, "_VOLATILE")
-    ##volatile_dir = rctx.path("/tmp/volatile")
+    ##volatile_dir = repo_utils.mkdir(rctx, "_VOLATILE")
+    volatile_dir = rctx.path("/tmp/rules_python_pycache_{}/{}".format(
+        hash(str(rctx.workspace_root)), rctx.name
+    ))
     volatile_dir_str = str(volatile_dir)
 
     root = rctx.path(".")
