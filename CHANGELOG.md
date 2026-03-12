@@ -58,6 +58,13 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+
+**Breaking**
+* {obj}`--windows_enable_symlinks` is required. Add `startup
+  --windows_enable_symlinks` to your `.bazelrc` to enable Bazel using full
+  symlink support on Windows.
+
+Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
   sdists in the `whl_library` rule and fetching wheels using `pip`.
 

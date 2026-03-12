@@ -5,6 +5,10 @@
 # To update the file, execute
 import %workspace%/.bazelrc.deleted_packages
 
+# Symlinks are used extensively because of runfiles, venvs, and other reasons.
+# Supporting otherwise is very complex with little benefit.
+startup --windows_enable_symlinks
+
 test --test_output=errors
 
 # Do NOT implicitly create empty __init__.py files in the runfiles tree.
