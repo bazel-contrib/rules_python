@@ -65,15 +65,8 @@ def define_hermetic_runtime_toolchain_impl(
         "libs/**",
         "share/**",
     ]
-    ##files_include += extra_files_glob_include
-    # This glob include appears to add the watch of `_VOLATILE/.../__pycache__`
-    files_include += ["lib/**"]
+    files_include += extra_files_glob_include
     files_exclude = [
-        # The VOLATILE directory contains e.g. pyc files generated
-        # at runtime, which would otherwise invalidate the repo and
-        # break caching.
-        "_VOLATILE",
-        "_VOLATILE/**",
         # Unused shared libraries. `python` executable and the `:libpython` target
         # depend on `libpython{python_version}.so.1.0`.
         "lib/libpython{major}.{minor}*.so".format(**version_dict),

@@ -100,6 +100,7 @@ def _create_pycache_symlinks(rctx, logger):
         logger: Optional logger to use for operations.
     """
     pycache_root = _get_pycache_root(rctx)
+    logger.info(lambda: "pycache root: {}".format(pycache_root))
     pycache_root_str = str(pycache_root) if pycache_root else None
 
     os_name = repo_utils.get_platforms_os_name(rctx)
@@ -214,11 +215,6 @@ def _python_repository_impl(rctx):
             logger = logger,
         )
 
-    # Do bazel clean, then run repro.sh -> no invalidation
-    # Modify this line (or something in this repo rule) -> invalidation
-    #   happens on every subsequent invocation, even if repo rule is unmodified
-    #   between invocations.
-    print("==== init python_repository", 8)
     _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
