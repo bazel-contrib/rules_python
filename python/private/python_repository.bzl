@@ -106,10 +106,7 @@ def _create_pycache_symlinks(rctx, logger):
     os_name = repo_utils.get_platforms_os_name(rctx)
     null_device = "NUL" if os_name == "windows" else "/dev/null"
 
-    root = rctx.path(".")
-    root_str = str(root)
-
-    queue = [root]
+    queue = [rctx.path(".")]
 
     # Starlark doesn't support recursion, use a loop with a queue.
     # Using a large range as a safeguard.
