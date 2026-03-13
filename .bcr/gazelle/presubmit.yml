@@ -27,10 +27,14 @@ bcr_test_module:
       platform: ${{ platform }}
       bazel: ${{ bazel }}
       shell_commands:
+        # Add an empty line in case the bazelrc is missing a trailing newline
+        - "echo '' >> .bazelrc"
         - "echo 'common --override_module=rules_python=' >> .bazelrc"
         - "bazel run //:gazelle_python_manifest.update"
         - "bazel run //:gazelle -- update"
       batch_commands:
+        # Add an empty line in case the bazelrc is missing a trailing newline
+        - "echo '' >> .bazelrc"
         - "echo common --override_module=rules_python= >> .bazelrc"
         - "bazel run //:gazelle_python_manifest.update"
         - "bazel run //:gazelle -- update"

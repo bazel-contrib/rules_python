@@ -18,8 +18,10 @@ if (-not [string]::IsNullOrEmpty($InfoFilePath) -and (Test-Path $InfoFilePath)) 
 # Use .NET to write file to avoid PowerShell encoding/locking quirks
 # We use UTF8 without BOM for compatibility with how the bash script writes (and
 # what consumers expect).
+# We join with `n to ensure Unix-style line endings are used even on Windows.
 $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
-[System.IO.File]::WriteAllLines($OutputPath, $Lines, $Utf8NoBom)
+$Content = [string]::Join("`n", $Lines) + "`n"
+[System.IO.File]::WriteAllText($OutputPath, $Content, $Utf8NoBom)
 
 $Acl = Get-Acl $OutputPath
 $AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("Everyone", "Read", "Allow")
