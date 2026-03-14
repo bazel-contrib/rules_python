@@ -16,15 +16,20 @@ class LocalToolchainTest(unittest.TestCase):
         # that wouldn't be reflected when sub-shells are run later.
         shell_path = shutil.which("python3")
 
+        if shell_path is None:
+            self.fail(
+                "which(python3) returned None.\n" + f"PATH={os.environ.get('PATH')}"
+            )
+
         # We call the interpreter and print its executable because of
         # things like pyenv: they install a shim that re-execs python.
         # The shim is e.g. /home/user/.pyenv/shims/python3, which then
         # runs e.g. /usr/bin/python3
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = os.path.join(temp_dir, "info.py")
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 f.write(
-                """
+                    """
 import sys
 print(sys.executable)
 print(sys._base_executable)
