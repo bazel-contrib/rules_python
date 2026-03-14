@@ -196,7 +196,7 @@ def FindBinary(runfiles_root, bin_name):
     # Case 4: Path has to be looked up in the search path.
     return SearchPath(bin_name)
 
-def FindModuleSpace(main_rel_path):
+def find_runfiles_root(main_rel_path):
   """Finds the runfiles tree."""
   # When the calling process used the runfiles manifest to resolve the
   # location of this stub script, the path may be expanded. This means
@@ -272,7 +272,7 @@ def ExtractZip(zip_path, dest_dir):
         os.chmod(file_path, attrs & 0o7777)
 
 # Create the runfiles tree by extracting the zip file
-def CreateModuleSpace():
+def create_runfiles_root():
   temp_dir = tempfile.mkdtemp('', 'Bazel.runfiles_')
   ExtractZip(os.path.dirname(__file__), temp_dir)
   # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
@@ -385,7 +385,7 @@ def ExecuteFile(python_program, main_filename, args, env, runfiles_root,
     main_filename: (str) The Python file to execute
     args: (list[str]) Additional args to pass to the Python file
     env: (dict[str, str]) A dict of environment variables to set for the execution
-    runfiles_root: (str) Path to the module space/runfiles tree directory
+    runfiles_root: (str) Path to the runfiles root directory
     workspace: (str|None) Name of the workspace to execute in. This is expected to be a
         directory under the runfiles tree.
     delete_dirs: (list[str]) directories that should be deleted after the user
@@ -490,15 +490,15 @@ def Main():
   delete_dirs = []
 
   if IsRunningFromZip():
-    runfiles_root = CreateModuleSpace()
-    # NOTE: dirname() is called because CreateModuleSpace() creates a
+    runfiles_root = create_runfiles_root()
+    # NOTE: dirname() is called because create_runfiles_root() creates a
     # sub-directory within a temporary directory, and we want to remove the
     # whole temporary directory.
     delete_dirs.append(dirname(runfiles_root))
   else:
-    runfiles_root = FindModuleSpace(main_rel_path)
+    runfiles_root = find_runfiles_root(main_rel_path)
 
-  print_verbose("runfiles root:", module_space)
+  print_verbose("runfiles root:", runfiles_root)
 
   if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
     new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = runfiles_root
