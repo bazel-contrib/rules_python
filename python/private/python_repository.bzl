@@ -52,6 +52,98 @@ def is_standalone_interpreter(rctx, python_interpreter_path, *, logger = None):
         logger = logger,
     ).return_code == 0
 
+def _get_pycache_root(rctx):
+    """Calculates and creates the pycache root directory.
+
+    Returns:
+        {type}`path | None` The path to the pycache root, or None if it couldn't
+        be created.
+    """
+    os_name = repo_utils.get_platforms_os_name(rctx)
+    is_windows = os_name == "windows"
+
+    # 1. RULES_PYTHON_PYCACHE_DIR
+    res = rctx.getenv("RULES_PYTHON_PYCACHE_DIR")
+    if res:
+        res = res + "/" + rctx.name
+        return repo_utils.mkdir(rctx, res)
+
+    # Suffix for cases 2-4
+    # The first level directory is static and documented so that it is easy to
+    # use with e.g. --sandbox_add_mount_pair=/tmp/rules_python_pycache
+    suffix = "rules_python_pycache/{}/{}".format(hash(str(rctx.workspace_root)), rctx.name)
+
+    # 2. XDG_CACHE_HOME
+    res = rctx.getenv("XDG_CACHE_HOME")
+    if res:
+        path = repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
+        if path:
+            return path
+
+    # 3. TMP or TEMP
+    res = rctx.getenv("TMP") or rctx.getenv("TEMP")
+    if res:
+        path = repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
+        if path:
+            return path
+
+    # 4. /tmp or Windows equivalent
+    if is_windows:
+        path = rctx.path("C:/Temp").get_child(suffix)
+    else:
+        path = rctx.path("/tmp").get_child(suffix)
+
+    return repo_utils.mkdir(rctx, path)
+
+def _create_pycache_symlinks(rctx, logger):
+    """Finds all directories with a .py file and creates __pycache__ symlinks.
+
+    Args:
+        rctx: {type}`repository_ctx` The repository rule's context object.
+        logger: Optional logger to use for operations.
+    """
+    pycache_root = _get_pycache_root(rctx)
+    logger.info(lambda: "pycache root: {}".format(pycache_root))
+    pycache_root_str = str(pycache_root) if pycache_root else None
+
+    os_name = repo_utils.get_platforms_os_name(rctx)
+    null_device = "NUL" if os_name == "windows" else "/dev/null"
+
+    queue = [rctx.path(".")]
+
+    # Starlark doesn't support recursion, use a loop with a queue.
+    # Using a large range as a safeguard.
+    for _ in range(1000000):
+        if not queue:
+            break
+        p = queue.pop()
+
+        has_py = False
+        for child in p.readdir():
+            # Skip hidden files and directories
+            if child.basename.startswith("."):
+                continue
+
+            if child.is_dir:
+                if child.basename == "__pycache__" or str(child) == pycache_root_str:
+                    continue
+                queue.append(child)
+            elif child.basename.endswith(".py"):
+                has_py = True
+
+        if has_py:
+            pycache_dir = p.get_child("__pycache__")
+            if pycache_root:
+                pycache_relative = repo_utils.repo_root_relative_path(rctx, pycache_dir)
+                target_dir = pycache_root.get_child(pycache_relative)
+
+                repo_utils.mkdir(rctx, target_dir)
+                rctx.delete(pycache_dir)
+                rctx.symlink(target_dir, pycache_dir)
+            else:
+                rctx.delete(pycache_dir)
+                rctx.symlink(null_device, pycache_dir)
+
 def _python_repository_impl(rctx):
     if rctx.attr.distutils and rctx.attr.distutils_content:
         fail("Only one of (distutils, distutils_content) should be set.")
@@ -123,6 +215,7 @@ def _python_repository_impl(rctx):
             logger = logger,
         )
 
+    _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
     if "linux" in platform:
