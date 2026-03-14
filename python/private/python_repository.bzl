@@ -69,7 +69,9 @@ def _get_pycache_root(rctx):
         return repo_utils.mkdir(rctx, res)
 
     # Suffix for cases 2-4
-    suffix = "rules_python_{}/{}".format(hash(str(rctx.workspace_root)), rctx.name)
+    # The first level directory is static and documented so that it is easy to
+    # use with e.g. --sandbox_add_mount_pair=/tmp/rules_python_pycache
+    suffix = "rules_python_pycache/{}/{}".format(hash(str(rctx.workspace_root)), rctx.name)
 
     # 2. XDG_CACHE_HOME
     res = rctx.getenv("XDG_CACHE_HOME")
