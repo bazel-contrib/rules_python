@@ -198,6 +198,58 @@ def test_extra_with_conditional_and_unconditional_markers(env):
 
 _tests.append(test_extra_with_conditional_and_unconditional_markers)
 
+def test_span_all_python_versions(env):
+    requires_dist = [
+        "bar>=0.4.0; python_version >= \"3.13.0\"",
+        "bar>=0.3.0; python_version ~= \"3.12.0\"",
+        "bar>=0.2.0; python_version ~= \"3.11.0\"",
+        "bar>=0.1.0; python_version < \"3.11\"",
+    ]
+
+    got = deps(
+        "foo",
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([])
+    env.expect.that_dict(got.deps_select).contains_exactly({
+        "bar": "(python_version < \"3.11\") or (python_version >= \"3.13.0\") or (python_version ~= \"3.11.0\") or (python_version ~= \"3.12.0\")",
+    })
+
+_tests.append(test_span_all_python_versions)
+
+def test_extras_with_hyphens_are_normalized(env):
+    """Test that extras with hyphens in marker expressions are normalized.
+
+    When wheel METADATA uses hyphens in marker expressions
+    (e.g., extra == "db-backend") but the extras from requirement parsing
+    are already normalized (e.g., "db_backend"), the deps should still
+    resolve because marker evaluation normalizes per PEP 685.
+
+    Args:
+        env: the test environment.
+    """
+    requires_dist = [
+        "bar",
+        'baz-lib; extra == "db-backend"',
+        'qux-async; extra == "async-driver"',
+    ]
+
+    got = deps(
+        "foo",
+        extras = ["db_backend", "async_driver"],
+        requires_dist = requires_dist,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly([
+        "bar",
+        "baz_lib",
+        "qux_async",
+    ])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_extras_with_hyphens_are_normalized)
+
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,

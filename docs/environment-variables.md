@@ -29,7 +29,7 @@ The guide on {any}`How to integrate a debugger`
 :::{versionadded} 1.3.0
 :::
 :::{versionchanged} 1.7.0
-Support added for {obj}`--bootstrap_impl=system_python`.
+Support added for {bzl:flag}`--bootstrap_impl=system_python`.
 :::
 
 ::::
@@ -114,6 +114,34 @@ Determines if `--isolated` is used with pip.
 Valid values:
 * `0` and `false` mean to not use isolated mode
 * Other non-empty values mean to use isolated mode.
+:::
+
+:::{envvar} RULES_PYTHON_PYCACHE_DIR
+
+Determines the directory that runtime-generated pyc cache files will
+be stored in.
+
+This directory may be reused between invocations, depending on the sandboxing
+configuration. Setting it to `/dev/null` will, in effect, disable runtime
+pyc caching. By setting e.g.
+`--sandbox_add_mount_pair=/tmp/rules_python_pycache`, it's possible for pyc
+caching to persist across invocations.
+
+**Behavior specific to downloaded runtimes:** 
+First `RULES_PYTHON_PYCACHE_DIR` is checked. If set, it is used as-is for
+the root pycache directory.
+
+Otherwise, the following environment variables are checked in the following
+order. Their values will have `rules_python_pycache` appended to them to form
+the root pycache directory:
+1. `XDG_CACHE_HOME`.
+2. `TMP` (non-Windows) or `TEMP` (Windows).
+3. The common platform-specific temporary directory (`/tmp` (non-Windows) or
+   `C:\Temp` (Windows)).
+
+If such a diretory cannot be found, or created, then `/dev/null` will be used,
+which will effectively disable pyc caching.
+
 :::
 
 :::{envvar} RULES_PYTHON_REPO_DEBUG

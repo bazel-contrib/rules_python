@@ -1,0 +1,27 @@
+module(
+    name = "sphinxdocs",
+    version = "0.0.0",
+    compatibility_level = 1,
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "stardoc", version = "0.7.2", repo_name = "io_bazel_stardoc")
+bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "protobuf", version = "29.0-rc2", repo_name = "com_google_protobuf")
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "..",
+)
+
+dev_pip = use_extension(
+    "@rules_python//python/extensions:pip.bzl",
+    "pip",
+    dev_dependency = True,
+)
+dev_pip.parse(
+    hub_name = "dev_pip",
+    python_version = "3.11",
+    requirements_lock = "@rules_python//docs:requirements.txt",
+)
+use_repo(dev_pip, "dev_pip")

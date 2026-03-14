@@ -48,6 +48,13 @@ def rules_python_internal_deps():
         ],
     )
 
+    # Sphinxdocs doesn't support workspace mode, but we have to define it
+    # so that load() passes.
+    local_repository(
+        name = "sphinxdocs",
+        path = "sphinxdocs",
+    )
+
     local_repository(
         name = "other",
         path = "tests/modules/other",

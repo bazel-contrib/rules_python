@@ -45,9 +45,4 @@ NOT_WINDOWS = select({
     "//conditions:default": [],
 })
 
-def maybe_builtin_build_python_zip(value):
-    settings = {}
-    if not config.bazel_10_or_later:
-        settings["//command_line_option:build_python_zip"] = value
-
-    return settings
+BAZEL_8_OR_LATER = [] if config.bazel_8_or_later else ["@platforms//:incompatible"]

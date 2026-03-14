@@ -111,12 +111,10 @@ def parse_requirements(debug = False, **kwargs):
     return _parse_requirements(
         ctx = _mock_ctx(),
         logger = repo_utils.logger(struct(
-            os = struct(
-                environ = {
-                    REPO_DEBUG_ENV_VAR: "1",
-                    REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
-                },
-            ),
+            getenv = {
+                REPO_DEBUG_ENV_VAR: "1",
+                REPO_VERBOSITY_ENV_VAR: "TRACE" if debug else "INFO",
+            }.get,
         ), "unit-test"),
         **kwargs
     )
@@ -130,6 +128,7 @@ def _test_simple(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -144,7 +143,7 @@ def _test_simple(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -163,6 +162,7 @@ def _test_direct_urls_integration(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -174,7 +174,7 @@ def _test_direct_urls_integration(env):
                     sha256 = "",
                     target_platforms = ["osx_x86_64"],
                     url = "https://github.com/org/foo/downloads/foo-1.1.tar.gz",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -184,13 +184,55 @@ def _test_direct_urls_integration(env):
                     sha256 = "",
                     target_platforms = ["linux_x86_64"],
                     url = "https://some-url/package.whl",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
     ])
 
 _tests.append(_test_direct_urls_integration)
+
+def _test_direct_urls_no_extract(env):
+    """Check that URL requirements are not dropped when extract_url_srcs=False."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_direct": ["linux_x86_64"],
+            "requirements_direct_sdist": ["osx_x86_64"],
+        },
+        extract_url_srcs = False,
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "",
+                    requirement_line = "foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz",
+                    sha256 = "",
+                    target_platforms = ["osx_x86_64"],
+                    url = "",
+                    yanked = None,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "",
+                    requirement_line = "foo[extra] @ https://some-url/package.whl",
+                    sha256 = "",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_direct_urls_no_extract)
 
 def _test_extra_pip_args(env):
     got = parse_requirements(
@@ -202,6 +244,7 @@ def _test_extra_pip_args(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -215,7 +258,7 @@ def _test_extra_pip_args(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -232,6 +275,7 @@ def _test_dupe_requirements(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -243,7 +287,7 @@ def _test_dupe_requirements(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -262,6 +306,7 @@ def _test_multi_os(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
             srcs = [
@@ -273,12 +318,13 @@ def _test_multi_os(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -290,7 +336,7 @@ def _test_multi_os(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -300,7 +346,7 @@ def _test_multi_os(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -325,6 +371,7 @@ def _test_multi_os_legacy(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
             srcs = [
@@ -336,12 +383,13 @@ def _test_multi_os_legacy(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -353,7 +401,7 @@ def _test_multi_os_legacy(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -363,7 +411,7 @@ def _test_multi_os_legacy(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -404,6 +452,7 @@ def _test_env_marker_resolution(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -415,12 +464,13 @@ def _test_env_marker_resolution(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
             srcs = [
@@ -432,7 +482,7 @@ def _test_env_marker_resolution(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -450,6 +500,7 @@ def _test_different_package_version(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -461,7 +512,7 @@ def _test_different_package_version(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -471,7 +522,7 @@ def _test_different_package_version(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -489,6 +540,7 @@ def _test_different_package_extras(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -500,7 +552,7 @@ def _test_different_package_extras(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -510,7 +562,7 @@ def _test_different_package_extras(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -527,6 +579,7 @@ def _test_optional_hash(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -538,12 +591,13 @@ def _test_optional_hash(env):
                     url = "https://example.org/bar-0.0.4.whl",
                     filename = "bar-0.0.4.whl",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -555,7 +609,7 @@ def _test_optional_hash(env):
                     url = "https://example.org/foo-0.0.5.whl",
                     filename = "foo-0.0.5.whl",
                     sha256 = "deadbeef",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -572,6 +626,7 @@ def _test_git_sources(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -583,7 +638,7 @@ def _test_git_sources(env):
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -619,12 +674,13 @@ def _test_overlapping_shas_with_index_results(env):
         },
         get_index_urls = lambda _, __: {
             "foo": struct(
+                index_url = "https://example.com",
                 sdists = {
                     "5d15t": struct(
                         url = "sdist",
                         sha256 = "5d15t",
                         filename = "foo-0.0.1.tar.gz",
-                        yanked = False,
+                        yanked = None,
                     ),
                 },
                 whls = {
@@ -632,13 +688,13 @@ def _test_overlapping_shas_with_index_results(env):
                         url = "super2",
                         sha256 = "deadb11f",
                         filename = "foo-0.0.1-py3-none-macosx_14_0_x86_64.whl",
-                        yanked = False,
+                        yanked = None,
                     ),
                     "deadbaaf": struct(
                         url = "super2",
                         sha256 = "deadbaaf",
                         filename = "foo-0.0.1-py3-none-any.whl",
-                        yanked = False,
+                        yanked = None,
                     ),
                 },
             ),
@@ -647,9 +703,10 @@ def _test_overlapping_shas_with_index_results(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "foo",
+            index_url = "https://example.com",
             is_exposed = True,
             is_multiple_versions = True,
-            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",
@@ -659,7 +716,7 @@ def _test_overlapping_shas_with_index_results(env):
                     sha256 = "deadbaaf",
                     target_platforms = ["cp39_linux_x86_64"],
                     url = "super2",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -669,7 +726,7 @@ def _test_overlapping_shas_with_index_results(env):
                     sha256 = "deadb11f",
                     target_platforms = ["cp39_osx_x86_64"],
                     url = "super2",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -707,19 +764,20 @@ def _test_get_index_urls_different_versions(env):
         },
         get_index_urls = lambda _, __: {
             "foo": struct(
+                index_url = "",
                 sdists = {},
                 whls = {
                     "deadb11f": struct(
                         url = "super2",
                         sha256 = "deadb11f",
                         filename = "foo-0.0.2-py3-none-any.whl",
-                        yanked = False,
+                        yanked = None,
                     ),
                     "deadbaaf": struct(
                         url = "super2",
                         sha256 = "deadbaaf",
                         filename = "foo-0.0.1-py3-none-any.whl",
-                        yanked = False,
+                        yanked = None,
                     ),
                 },
             ),
@@ -739,9 +797,10 @@ def _test_get_index_urls_different_versions(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
-            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",
@@ -751,7 +810,7 @@ def _test_get_index_urls_different_versions(env):
                     sha256 = "",
                     target_platforms = ["cp39_linux_x86_64"],
                     url = "",
-                    yanked = False,
+                    yanked = None,
                 ),
                 struct(
                     distribution = "foo",
@@ -761,7 +820,7 @@ def _test_get_index_urls_different_versions(env):
                     sha256 = "deadb11f",
                     target_platforms = ["cp310_linux_x86_64"],
                     url = "super2",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),
@@ -789,13 +848,14 @@ def _test_get_index_urls_single_py_version(env):
         },
         get_index_urls = lambda _, __: {
             "foo": struct(
+                index_url = "",
                 sdists = {},
                 whls = {
                     "deadb11f": struct(
                         url = "super2",
                         sha256 = "deadb11f",
                         filename = "foo-0.0.2-py3-none-any.whl",
-                        yanked = False,
+                        yanked = None,
                     ),
                 },
             ),
@@ -812,9 +872,10 @@ def _test_get_index_urls_single_py_version(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "foo",
+            index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
-            name = "foo",
             srcs = [
                 struct(
                     distribution = "foo",
@@ -824,7 +885,7 @@ def _test_get_index_urls_single_py_version(env):
                     sha256 = "deadb11f",
                     target_platforms = ["cp310_linux_x86_64"],
                     url = "super2",
-                    yanked = False,
+                    yanked = None,
                 ),
             ],
         ),

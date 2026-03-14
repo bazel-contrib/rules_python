@@ -47,6 +47,7 @@ filegroup(
         "//python/runfiles:distribution",
         "//python/runtime_env_toolchains:distribution",
         "//python/uv:distribution",
+        "//python/zipapp:distribution",
     ],
     visibility = ["//:__pkg__"],
 )

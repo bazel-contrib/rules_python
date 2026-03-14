@@ -26,6 +26,7 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
+load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
 load(":whl_metadata.bzl", "whl_metadata")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
@@ -151,21 +152,13 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
     if use_isolated(rctx, rctx.attr):
         args.append("--isolated")
 
-    # Bazel version 7.1.0 and later (and rolling releases from version 8.0.0-pre.20240128.3)
-    # support rctx.getenv(name, default): When building incrementally, any change to the value of
-    # the variable named by name will cause this repository to be re-fetched.
-    if "getenv" in dir(rctx):
-        getenv = rctx.getenv
-    else:
-        getenv = rctx.os.environ.get
-
     # Check for None so we use empty default types from our attrs.
     # Some args want to be list, and some want to be dict.
     if extra_pip_args != None:
         args += [
             "--extra_pip_args",
             json.encode(struct(arg = [
-                envsubst(pip_arg, rctx.attr.envsubst, getenv)
+                envsubst(pip_arg, rctx.attr.envsubst, rctx.getenv)
                 for pip_arg in extra_pip_args
             ])),
         ]
@@ -328,6 +321,13 @@ def _whl_library_impl(rctx):
     elif rctx.attr.urls and rctx.attr.filename:
         filename = rctx.attr.filename
         urls = rctx.attr.urls
+        urls = [
+            urllib.absolute_url(
+                envsubst(rctx.attr.index_url, rctx.attr.envsubst, rctx.getenv),
+                url,
+            )
+            for url in urls
+        ]
         result = rctx.download(
             url = urls,
             output = filename,
@@ -548,7 +548,12 @@ def _whl_library_impl(rctx):
             paths.extend(path.readdir())
 
     rctx.file("BUILD.bazel", build_file_contents)
-    return
+
+    if enable_pipstar and enable_pipstar_extract:
+        if hasattr(rctx, "repo_metadata"):
+            return rctx.repo_metadata(reproducible = True)
+
+    return None
 
 def _generate_entry_point_contents(
         module,
@@ -609,6 +614,9 @@ For example if your whl depends on `numpy` and your Python package repo is named
     ),
     "group_name": attr.string(
         doc = "Name of the group, if any.",
+    ),
+    "index_url": attr.string(
+        doc = "The index_url that the package will be downloaded from.",
     ),
     "repo": attr.string(
         doc = "Pointer to parent repo name. Used to make these rules rerun if the parent repo changes.",
@@ -690,7 +698,13 @@ whl_library = repository_rule(
     attrs = whl_library_attrs,
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
-Instantiated from pip_repository and inherits config options from there.""",
+Instantiated from pip_repository and inherits config options from there.
+
+:::{versionchanged} 1.9.0
+The `whl_library` is marked as reproducible if using starlark to extract and parse the
+wheel contents without building an `sdist` first.
+:::
+""",
     implementation = _whl_library_impl,
     environ = [
         "RULES_PYTHON_PIP_ISOLATED",

@@ -29,7 +29,7 @@ def _is_repo_debug_enabled(mrctx):
     Returns:
         True if enabled, False if not.
     """
-    return _getenv(mrctx, REPO_DEBUG_ENV_VAR) == "1"
+    return mrctx.getenv(REPO_DEBUG_ENV_VAR) == "1"
 
 def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
     """Creates a logger instance for printing messages.
@@ -56,7 +56,7 @@ def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
         else:
             verbosity_level = "WARN"
 
-        env_var_verbosity = _getenv(mrctx, REPO_VERBOSITY_ENV_VAR)
+        env_var_verbosity = mrctx.getenv(REPO_VERBOSITY_ENV_VAR)
         verbosity_level = env_var_verbosity or verbosity_level
 
     verbosity = {
@@ -302,7 +302,7 @@ def _which_unchecked(mrctx, binary_name):
         mrctx.watch(binary)
         describe_failure = None
     else:
-        path = _getenv(mrctx, "PATH", "")
+        path = mrctx.getenv("PATH", "")
         describe_failure = lambda: _which_describe_failure(binary_name, path)
 
     return struct(
@@ -319,9 +319,48 @@ def _which_describe_failure(binary_name, path):
         path = path,
     )
 
-def _getenv(mrctx, name, default = None):
-    # Bazel 7+ API has (repository|module)_ctx.getenv
-    return getattr(mrctx, "getenv", mrctx.os.environ.get)(name, default)
+def _mkdir(mrctx, path):
+    path = mrctx.path(path)
+    if path.exists:
+        return path
+
+    repo_root = str(mrctx.path("."))
+    path_str = str(path)
+
+    if not path_str.startswith(repo_root):
+        mkdir_bin = mrctx.which("mkdir")
+        if not mkdir_bin:
+            return None
+        res = mrctx.execute([mkdir_bin, "-p", path_str])
+        if res.return_code != 0:
+            return None
+        return path
+    else:
+        placeholder = path.get_child(".placeholder")
+        mrctx.file(placeholder)
+        mrctx.delete(placeholder)
+        return path
+
+def _repo_root_relative_path(mrctx, path):
+    """Takes a path object and returns a repo-relative path string.
+
+    Args:
+        mrctx: module_ctx or repository_ctx
+        path: {type}`path` a path within `mrctx`
+
+    Returns:
+        {type}`str` a repo-root-relative path string.
+    """
+    repo_root = str(mrctx.path("."))
+    path_str = str(path)
+    relative_path = path_str[len(repo_root):]
+    if relative_path[0] != "/":
+        fail("{path} not under {repo_root}".format(
+            path = path,
+            repo_root = repo_root,
+        ))
+    relative_path = relative_path[1:]
+    return relative_path
 
 def _args_to_str(arguments):
     return " ".join([_arg_repr(a) for a in arguments])
@@ -467,9 +506,10 @@ repo_utils = struct(
     extract = _extract,
     get_platforms_cpu_name = _get_platforms_cpu_name,
     get_platforms_os_name = _get_platforms_os_name,
-    getenv = _getenv,
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
+    mkdir = _mkdir,
+    repo_root_relative_path = _repo_root_relative_path,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,
 )

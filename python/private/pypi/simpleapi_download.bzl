@@ -22,6 +22,7 @@ load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:text_util.bzl", "render")
 load(":parse_simpleapi_html.bzl", "parse_simpleapi_html")
+load(":urllib.bzl", "urllib")
 
 def simpleapi_download(
         ctx,
@@ -49,14 +50,13 @@ def simpleapi_download(
            * netrc: The netrc parameter for ctx.download, see http_file for docs.
            * auth_patterns: The auth_patterns parameter for ctx.download, see
                http_file for docs.
-        cache: A dictionary that can be used as a cache between calls during a
-            single evaluation of the extension. We use a dictionary as a cache
-            so that we can reuse calls to the simple API when evaluating the
-            extension. Using the canonical_id parameter of the module_ctx would
-            deposit the simple API responses to the bazel cache and that is
-            undesirable because additions to the PyPI index would not be
-            reflected when re-evaluating the extension unless we do
-            `bazel clean --expunge`.
+        cache: An opaque object used to cache call results. For implementation
+            see ./pypi_cache.bzl file. We use the canonical_id parameter for the key
+            value to ensure that distribution fetches from different indexes do not cause
+            cache collisions, because the index may return different locations from where
+            the files should be downloaded. We are not using the built-in cache in the
+            `download` function because the index may get updated at any time and we need
+            to be able to refresh the data.
         parallel_download: A boolean to enable usage of bazel 7.1 non-blocking downloads.
         read_simpleapi: a function for reading and parsing of the SimpleAPI contents.
             Used in tests.
@@ -81,6 +81,8 @@ def simpleapi_download(
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
 
+    input_sources = attr.sources
+
     found_on_index = {}
     warn_overrides = False
     ctx.report_progress("Fetch package lists from PyPI index")
@@ -90,16 +92,18 @@ def simpleapi_download(
             warn_overrides = True
 
         async_downloads = {}
-        sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
-        for pkg in sources:
+        sources = {pkg: versions for pkg, versions in input_sources.items() if pkg not in found_on_index}
+        for pkg, versions in sources.items():
             pkg_normalized = normalize_name(pkg)
+            url = urllib.strip_empty_path_segments("{index_url}/{distribution}/".format(
+                index_url = index_url_overrides.get(pkg_normalized, index_url).rstrip("/"),
+                distribution = pkg,
+            ))
             result = read_simpleapi(
                 ctx = ctx,
-                url = "{}/{}/".format(
-                    index_url_overrides.get(pkg_normalized, index_url).rstrip("/"),
-                    pkg,
-                ),
                 attr = attr,
+                versions = versions,
+                url = url,
                 cache = cache,
                 get_auth = get_auth,
                 **download_kwargs
@@ -109,9 +113,10 @@ def simpleapi_download(
                 async_downloads[pkg] = struct(
                     pkg_normalized = pkg_normalized,
                     wait = result.wait,
+                    url = url,
                 )
             elif result.success:
-                contents[pkg_normalized] = result.output
+                contents[pkg_normalized] = _with_index_url(url, result.output)
                 found_on_index[pkg] = index_url
 
         if not async_downloads:
@@ -123,10 +128,10 @@ def simpleapi_download(
             result = download.wait()
 
             if result.success:
-                contents[download.pkg_normalized] = result.output
+                contents[download.pkg_normalized] = _with_index_url(download.url, result.output)
                 found_on_index[pkg] = index_url
 
-    failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
+    failed_sources = [pkg for pkg in input_sources if pkg not in found_on_index]
     if failed_sources:
         pkg_index_urls = {
             pkg: index_url_overrides.get(
@@ -164,19 +169,20 @@ If you would like to skip downloading metadata for these packages please add 'si
 
     return contents
 
-def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
+def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
         ctx: The module_ctx or repository_ctx.
-        url: str, the url parameter that can be passed to ctx.download.
+        url: {type}`str`, the url parameter that can be passed to ctx.download.
         attr: The attribute that contains necessary info for downloading. The
           following attributes must be present:
-           * envsubst: The envsubst values for performing substitutions in the URL.
-           * netrc: The netrc parameter for ctx.download, see http_file for docs.
+           * envsubst: {type}`dict[str, str]` for performing substitutions in the URL.
+           * netrc: The netrc parameter for ctx.download, see {obj}`http_file` for docs.
            * auth_patterns: The auth_patterns parameter for ctx.download, see
-               http_file for docs.
-        cache: A dict for storing the results.
+               {obj}`http_file` for docs.
+        cache: {type}`struct` the `pypi_cache` instance.
+        versions: {type}`list[str] The versions that have been requested.
         get_auth: A function to get auth information. Used in tests.
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
@@ -190,15 +196,12 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
     # them to ctx.download if we want to correctly handle the relative URLs.
     # TODO: Add a test that env subbed index urls do not leak into the lock file.
 
-    real_url = strip_empty_path_segments(envsubst(
-        url,
-        attr.envsubst,
-        ctx.getenv if hasattr(ctx, "getenv") else ctx.os.environ.get,
-    ))
+    real_url = urllib.strip_empty_path_segments(envsubst(url, attr.envsubst, ctx.getenv))
 
-    cache_key = real_url
-    if cache_key in cache:
-        return struct(success = True, output = cache[cache_key])
+    cache_key = (url, real_url, versions)
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return struct(success = True, output = cached_result)
 
     output_str = envsubst(
         url,
@@ -229,41 +232,43 @@ def _read_simpleapi(ctx, url, attr, cache, get_auth = None, **download_kwargs):
     if download_kwargs.get("block") == False:
         # Simulate the same API as ctx.download has
         return struct(
-            wait = lambda: _read_index_result(ctx, download.wait(), output, real_url, cache, cache_key),
+            wait = lambda: _read_index_result(
+                ctx,
+                result = download.wait(),
+                output = output,
+                cache = cache,
+                cache_key = cache_key,
+            ),
         )
 
-    return _read_index_result(ctx, download, output, real_url, cache, cache_key)
+    return _read_index_result(
+        ctx,
+        result = download,
+        output = output,
+        cache = cache,
+        cache_key = cache_key,
+    )
 
-def strip_empty_path_segments(url):
-    """Removes empty path segments from a URL. Does nothing for urls with no scheme.
-
-    Public only for testing.
-
-    Args:
-        url: The url to remove empty path segments from
-
-    Returns:
-        The url with empty path segments removed and any trailing slash preserved.
-        If the url had no scheme it is returned unchanged.
-    """
-    scheme, _, rest = url.partition("://")
-    if rest == "":
-        return url
-    stripped = "/".join([p for p in rest.split("/") if p])
-    if url.endswith("/"):
-        return "{}://{}/".format(scheme, stripped)
-    else:
-        return "{}://{}".format(scheme, stripped)
-
-def _read_index_result(ctx, result, output, url, cache, cache_key):
+def _read_index_result(ctx, *, result, output, cache, cache_key):
     if not result.success:
         return struct(success = False)
 
     content = ctx.read(output)
 
-    output = parse_simpleapi_html(url = url, content = content)
+    output = parse_simpleapi_html(content = content)
     if output:
         cache.setdefault(cache_key, output)
-        return struct(success = True, output = output, cache_key = cache_key)
+        return struct(success = True, output = output)
     else:
         return struct(success = False)
+
+def _with_index_url(index_url, values):
+    if not values:
+        return values
+
+    return struct(
+        sdists = values.sdists,
+        whls = values.whls,
+        sha256s_by_version = values.sha256s_by_version,
+        index_url = index_url,
+    )

@@ -555,14 +555,14 @@ Python is used to run a program but also makes it easy to use a Python version
 that isn't compatible with build-time assumptions.
 
 ```
-register_toolchains("@rules_python//python/runtime_env_toolchains:all")
+`register_toolchains`("@rules_python//python/runtime_env_toolchains:all")
 ```
 
 Note that this toolchain has no constraints, i.e. it will match any platform,
 Python version, etc.
 
 :::{seealso}
-[Local toolchain], which creates a more full featured toolchain from a
+[Local `toolchain`], which creates a more full featured toolchain from a
 locally installed Python.
 :::
 
@@ -846,3 +846,30 @@ The [`//python/bin:repl` target](repl) provides an environment identical to
 what `py_binary` provides. That means it handles things like the
 [`PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONSAFEPATH)
 environment variable automatically. The `//python/bin:python` target will not.
+
+## Consuming Python C headers and libraries
+
+The following targets expose the headers and libraries from the
+currently selected Python C toolchain:
+
+- {obj}`@rules_python//python/cc:current_py_cc_headers`
+- {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
+- {obj}`@rules_python//python/cc:current_py_cc_libs`
+
+These targets behave similarly to a `cc_library`, but instead of defining
+their own sources, they forward providers from the underlying toolchain-
+selected `cc_library`.
+
+A Python C toolchain must be registered for these targets to work.
+Under bzlmod, a toolchain is registered automatically. In non-bzlmod
+setups, users must ensure that a toolchain is explicitly registered.
+
+Users should depend on these targets instead of legacy alias targets
+when embedding Python or building C extensions, as this ensures
+compatibility across different toolchain configurations.
+
+
+:::{seealso}
+The _How to get Python headres for C extensions_ how-to guide, and the
+{obj}`//python/cc:BUILD.bazel` package API documentation.
+:::

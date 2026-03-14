@@ -1,0 +1,7 @@
+load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_docs")
+
+sphinx_docs(
+    name = "docs",
+    srcs = ["index.md"],
+    conf = "conf.py",
+)

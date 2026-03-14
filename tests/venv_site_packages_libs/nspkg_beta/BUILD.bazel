@@ -6,5 +6,5 @@ py_library(
     name = "nspkg_beta",
     srcs = glob(["site-packages/**/*.py"]),
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
-    imports = [package_name() + "/site-packages"],
+    imports = ["site-packages"],
 )

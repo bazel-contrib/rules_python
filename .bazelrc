@@ -5,6 +5,10 @@
 # To update the file, execute
 import %workspace%/.bazelrc.deleted_packages
 
+# Symlinks are used extensively because of runfiles, venvs, and other reasons.
+# Supporting otherwise is very complex with little benefit.
+startup --windows_enable_symlinks
+
 test --test_output=errors
 
 # Do NOT implicitly create empty __init__.py files in the runfiles tree.
@@ -20,6 +24,11 @@ build --//python/config_settings:incompatible_default_to_explicit_init_py=True
 common --incompatible_disallow_struct_provider_syntax
 # Makes Bazel 7 act more like Bazel 8
 common --incompatible_use_plus_in_repo_names
+
+# Needed to make Windows with a py_binary in data deps work. The Bazel launcher
+# is used, which falls back to finding python.exe on PATH to bootstrap.
+# See https://github.com/bazel-contrib/rules_python/issues/3655
+common --incompatible_strict_action_env=false
 
 # Windows makes use of runfiles for some rules
 build --enable_runfiles

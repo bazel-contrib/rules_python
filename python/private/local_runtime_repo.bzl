@@ -359,7 +359,7 @@ def _resolve_interpreter_path(rctx):
         if "/" not in interpreter_path and "\\" not in interpreter_path:
             # Provide a bit nicer integration with pyenv: recalculate the runtime if the
             # user changes the python version using e.g. `pyenv shell`
-            repo_utils.getenv(rctx, "PYENV_VERSION")
+            rctx.getenv("PYENV_VERSION")
             result = repo_utils.which_unchecked(rctx, interpreter_path)
             resolved_path = result.binary
             describe_failure = result.describe_failure
