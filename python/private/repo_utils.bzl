@@ -356,8 +356,8 @@ def _repo_root_relative_path(mrctx, path):
     relative_path = path_str[len(repo_root):]
     if relative_path[0] != "/":
         fail("{path} not under {repo_root}".format(
-                path = path,
-                repo_root = repo_root
+            path = path,
+            repo_root = repo_root,
         ))
     relative_path = relative_path[1:]
     return relative_path
