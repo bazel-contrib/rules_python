@@ -534,7 +534,9 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
     pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv))
     ctx.actions.write(pyvenv_cfg, "")
 
-    create_full_venv = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
+    is_bootstrap_script = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
+
+    create_full_venv = rp_config.bazel_8_or_later or is_bootstrap_script
     if create_full_venv:
         # The pyvenv.cfg file must be present to trigger the venv site hooks.
         # Because it's paths are expected to be absolute paths, we can't reliably
