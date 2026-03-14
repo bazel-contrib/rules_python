@@ -65,6 +65,7 @@ def _get_pycache_root(rctx):
     # 1. RULES_PYTHON_PYCACHE_DIR
     res = rctx.getenv("RULES_PYTHON_PYCACHE_DIR")
     if res:
+        res = res + "/" + rctx.name
         return repo_utils.mkdir(rctx, res)
 
     # Suffix for cases 2-4

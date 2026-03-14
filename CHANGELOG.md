@@ -74,6 +74,12 @@ Other changes:
 * (zipapp) Resolve issue passing through compression settings in
   `py_zippapp_binary` targets
   ([#3646](https://github.com/bazel-contrib/rules_python/issues/3646)).
+* (toolchains) The pyc created at runtime in the stdlib should no longer
+  cause the Python runtime repository to be invalidated. The stdlib pyc files
+  _may_ be reused in between invocations, depending upon the sandboxing
+  configuration. See the {any}`RULES_PYTHON_PYCACHE_DIR` environment variable
+  for more information.
+  ([#3643](https://github.com/bazel-contrib/rules_python/issues/3643)).
 
 {#v0-0-0-added}
 ### Added

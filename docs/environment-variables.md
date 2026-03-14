@@ -116,6 +116,21 @@ Valid values:
 * Other non-empty values mean to use isolated mode.
 :::
 
+:::{envvar} RULES_PYTHON_PYCACHE_DIR
+
+Determines the directory that runtime-generated pyc cache files will
+be stored in.
+
+This directory may be reused between invocations, depending on the sandboxing
+configuration. Setting it to `/dev/null` will, in effect, disable runtime
+pyc caching.
+
+**Behavior specific to downloaded runtimes:** If `RULES_PYTHON_PYCACHE_DIR`
+isn't set, then it will try `XDG_CACHE_HOME`, then `TMP` (non-Windows) or `TEMP`
+(Windows), then finally the common platform-specific temporary directory
+(`C:\Temp` for Windows, `/tmp` for non-Windows).
+:::
+
 :::{envvar} RULES_PYTHON_REPO_DEBUG
 
 When `1`, repository rules will print debug information about what they're
