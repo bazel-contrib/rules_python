@@ -50,7 +50,7 @@ may be removed.
 
 The Python runtime to use for the exec configuration.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.9.0
 
 In prior versions, the equivalent can be obtained using:
 ```

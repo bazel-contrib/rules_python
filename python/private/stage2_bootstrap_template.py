@@ -71,7 +71,7 @@ class BazelBinaryInfoModule(types.ModuleType):
             path = os.path.normpath(path)
         try:
             # Use utf-8-sig to handle Windows BOM
-            with open(path, encoding='utf-8-sig') as fp:
+            with open(path, encoding="utf-8-sig") as fp:
                 return fp.read()
         except Exception as exc:
             if hasattr(exc, "add_note"):
@@ -207,6 +207,8 @@ def find_runfiles_root(main_rel_path):
         else:
             stub_filename = os.path.join(os.path.dirname(stub_filename), target)
 
+    # The `--enable_runfiles=false` flag is likely set, which isn't fully
+    # supported.
     raise AssertionError("Cannot find .runfiles directory for %s" % sys.argv[0])
 
 

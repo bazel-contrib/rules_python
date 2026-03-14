@@ -24,8 +24,8 @@ _tests = []
 
 def _mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
     return struct(
+        getenv = environ.get,
         os = struct(
-            environ = environ,
             name = os_name,
             arch = arch_name,
         ),

@@ -29,7 +29,7 @@ def _is_repo_debug_enabled(mrctx):
     Returns:
         True if enabled, False if not.
     """
-    return _getenv(mrctx, REPO_DEBUG_ENV_VAR) == "1"
+    return mrctx.getenv(REPO_DEBUG_ENV_VAR) == "1"
 
 def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
     """Creates a logger instance for printing messages.
@@ -56,7 +56,7 @@ def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
         else:
             verbosity_level = "WARN"
 
-        env_var_verbosity = _getenv(mrctx, REPO_VERBOSITY_ENV_VAR)
+        env_var_verbosity = mrctx.getenv(REPO_VERBOSITY_ENV_VAR)
         verbosity_level = env_var_verbosity or verbosity_level
 
     verbosity = {
@@ -302,7 +302,7 @@ def _which_unchecked(mrctx, binary_name):
         mrctx.watch(binary)
         describe_failure = None
     else:
-        path = _getenv(mrctx, "PATH", "")
+        path = mrctx.getenv("PATH", "")
         describe_failure = lambda: _which_describe_failure(binary_name, path)
 
     return struct(
@@ -318,10 +318,6 @@ def _which_describe_failure(binary_name, path):
         binary_name = binary_name,
         path = path,
     )
-
-def _getenv(mrctx, name, default = None):
-    # Bazel 7+ API has (repository|module)_ctx.getenv
-    return getattr(mrctx, "getenv", mrctx.os.environ.get)(name, default)
 
 def _args_to_str(arguments):
     return " ".join([_arg_repr(a) for a in arguments])
@@ -467,7 +463,6 @@ repo_utils = struct(
     extract = _extract,
     get_platforms_cpu_name = _get_platforms_cpu_name,
     get_platforms_os_name = _get_platforms_os_name,
-    getenv = _getenv,
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
     which_checked = _which_checked,

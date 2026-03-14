@@ -71,6 +71,12 @@ class PyZipAppTest(unittest.TestCase):
         zipapp_path = os.environ["TEST_ZIPAPP"]
 
         with self._open_zipapp(zipapp_path) as zf:
+            info = zf.infolist()[0]
+            if os.getenv("COMPRESSED", "0") == "1":
+                self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
+            else:
+                self.assertEqual(info.compress_type, zipfile.ZIP_STORED)
+
             namelist = zf.namelist()
 
             if self._is_bzlmod_enabled():

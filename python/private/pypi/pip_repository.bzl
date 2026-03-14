@@ -65,7 +65,7 @@ def use_isolated(ctx, attr):
     use_isolated = attr.isolated
 
     # The environment variable will take precedence over the attribute
-    isolated_env = ctx.os.environ.get("RULES_PYTHON_PIP_ISOLATED", None)
+    isolated_env = ctx.getenv("RULES_PYTHON_PIP_ISOLATED", None)
     if isolated_env != None:
         if isolated_env.lower() in ("0", "false"):
             use_isolated = False

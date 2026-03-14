@@ -24,7 +24,10 @@ py_test(
         "//:py": "local",
     },
     # Make this test better respect pyenv
-    env_inherit = ["PYENV_VERSION"],
+    env_inherit = [
+        "PYENV_VERSION",
+        "PATH",
+    ],
 )
 
 py_test(
