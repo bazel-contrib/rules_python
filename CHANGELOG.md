@@ -58,16 +58,29 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+
+**Breaking**
+* {obj}`--windows_enable_symlinks` is required. Add `startup
+  --windows_enable_symlinks` to your `.bazelrc` to enable Bazel using full
+  symlink support on Windows.
+
+Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
   sdists in the `whl_library` rule and fetching wheels using `pip`.
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (toolchain) Also set Make variables for local toolchains.
+* (zipapp) Resolve issue passing through compression settings in
+  `py_zippapp_binary` targets
+  ([#3646](https://github.com/bazel-contrib/rules_python/issues/3646)).
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* (pypi) Write SimpleAPI contents to the `MODULE.bazel.lock` file if using
+  {obj}`experimental_index_url` which should speed up consecutive initializations and should no
+  longer require the network access if the cache is hydrated.
+  Implements [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
 
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21

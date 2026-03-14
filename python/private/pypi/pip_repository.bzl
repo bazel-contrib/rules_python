@@ -65,7 +65,7 @@ def use_isolated(ctx, attr):
     use_isolated = attr.isolated
 
     # The environment variable will take precedence over the attribute
-    isolated_env = ctx.os.environ.get("RULES_PYTHON_PIP_ISOLATED", None)
+    isolated_env = ctx.getenv("RULES_PYTHON_PIP_ISOLATED", None)
     if isolated_env != None:
         if isolated_env.lower() in ("0", "false"):
             use_isolated = False
@@ -266,8 +266,7 @@ pip_repository = repository_rule(
             doc = """\
 Optional annotations to apply to packages. Keys should be package names, with
 capitalization matching the input requirements file, and values should be
-generated using the `package_name` macro. For example usage, see [this WORKSPACE
-file](https://github.com/bazel-contrib/rules_python/blob/main/examples/pip_repository_annotations/WORKSPACE).
+generated using the `package_name` macro.
 """,
         ),
         _config_template = attr.label(
