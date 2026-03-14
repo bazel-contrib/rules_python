@@ -83,7 +83,10 @@ Other changes:
 
 {#v0-0-0-added}
 ### Added
-* Nothing added.
+* (pypi) Write SimpleAPI contents to the `MODULE.bazel.lock` file if using
+  {obj}`experimental_index_url` which should speed up consecutive initializations and should no
+  longer require the network access if the cache is hydrated.
+  Implements [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
 
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21

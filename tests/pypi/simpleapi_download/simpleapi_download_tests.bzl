@@ -23,11 +23,12 @@ _tests = []
 def _test_simple(env):
     calls = []
 
-    def read_simpleapi(ctx, url, attr, cache, get_auth, block):
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block):
         _ = ctx  # buildifier: disable=unused-variable
         _ = attr
         _ = cache
         _ = get_auth
+        _ = versions
         env.expect.that_bool(block).equals(False)
         calls.append(url)
         if "foo" in url and "main" in url:
@@ -54,7 +55,7 @@ def _test_simple(env):
             index_url_overrides = {},
             index_url = "main",
             extra_index_urls = ["extra"],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
         ),
         cache = pypi_cache(),
@@ -95,11 +96,12 @@ def _test_fail(env):
     calls = []
     fails = []
 
-    def read_simpleapi(ctx, url, attr, cache, get_auth, block):
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block):
         _ = ctx  # buildifier: disable=unused-variable
         _ = attr
         _ = cache
         _ = get_auth
+        _ = versions
         env.expect.that_bool(block).equals(False)
         calls.append(url)
         if "foo" in url:
@@ -133,7 +135,7 @@ def _test_fail(env):
             },
             index_url = "main",
             extra_index_urls = ["extra"],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
         ),
         cache = pypi_cache(),
@@ -146,13 +148,13 @@ def _test_fail(env):
         """
 Failed to download metadata of the following packages from urls:
 {
-    "foo": "invalid",
     "bar": ["main", "extra"],
+    "foo": "invalid",
 }
 
 If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=[
-    "foo",
     "bar",
+    "foo",
 ]' to your 'pip.parse' call.
 """,
     ])
@@ -186,7 +188,7 @@ def _test_download_url(env):
             index_url_overrides = {},
             index_url = "https://example.com/main/simple/",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
         ),
         cache = pypi_cache(),
@@ -222,7 +224,7 @@ def _test_download_url_parallel(env):
             index_url_overrides = {},
             index_url = "https://example.com/main/simple/",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
         ),
         cache = pypi_cache(),
@@ -258,7 +260,7 @@ def _test_download_envsubst_url(env):
             index_url_overrides = {},
             index_url = "$INDEX_URL",
             extra_index_urls = [],
-            sources = ["foo", "bar", "baz"],
+            sources = {"bar": None, "baz": None, "foo": None},
             envsubst = ["INDEX_URL"],
         ),
         cache = pypi_cache(),

@@ -53,7 +53,7 @@ def parse_requirements(
             os, arch combinations.
         extra_pip_args (string list): Extra pip arguments to perform extra validations and to
             be joined with args found in files.
-        get_index_urls: Callable[[ctx, list[str]], dict], a callable to get all
+        get_index_urls: Callable[[ctx, dict[str, list[str]]], dict], a callable to get all
             of the distribution URLs from a PyPI index. Accepts ctx and
             distribution names to query.
         evaluate_markers: A function to use to evaluate the requirements.
@@ -170,15 +170,17 @@ def parse_requirements(
 
     index_urls = {}
     if get_index_urls:
+        distributions = {}
+        for reqs in requirements_by_platform.values():
+            for req in reqs.values():
+                if req.srcs.url:
+                    continue
+
+                distributions.setdefault(req.distribution, []).append(req.srcs.version)
+
         index_urls = get_index_urls(
             ctx,
-            # Use list({}) as a way to have a set
-            list({
-                req.distribution: None
-                for reqs in requirements_by_platform.values()
-                for req in reqs.values()
-                if not req.srcs.url
-            }),
+            distributions,
         )
 
     ret = []
