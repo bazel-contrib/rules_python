@@ -267,7 +267,7 @@ def _package_srcs(
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 )
                 req_line = r.srcs.requirement_line
             else:
@@ -379,7 +379,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             url = requirement.srcs.url,
             filename = requirement.srcs.filename,
             sha256 = requirement.srcs.shas[0] if requirement.srcs.shas else "",
-            yanked = False,
+            yanked = None,
         )
 
         return dist, False
@@ -403,12 +403,12 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
 
         maybe_whl = index_urls.whls.get(sha256)
-        if maybe_whl and not maybe_whl.yanked:
+        if maybe_whl and maybe_whl.yanked == None:
             whls.append(maybe_whl)
             continue
 
         maybe_sdist = index_urls.sdists.get(sha256)
-        if maybe_sdist and not maybe_sdist.yanked:
+        if maybe_sdist and maybe_sdist.yanked == None:
             sdist = maybe_sdist
             continue
 
@@ -416,7 +416,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
 
     yanked = {}
     for dist in whls + [sdist]:
-        if dist and dist.yanked:
+        if dist and dist.yanked != None:
             yanked.setdefault(dist.yanked, []).append(dist.filename)
     if yanked:
         logger.warn(lambda: "\n".join([

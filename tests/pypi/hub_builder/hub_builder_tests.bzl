@@ -777,7 +777,7 @@ def _test_simple_get_index(env):
             "plat_pkg": struct(
                 whls = {
                     "deadb44f": struct(
-                        yanked = False,
+                        yanked = None,
                         filename = "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
                         sha256 = "deadb44f",
                         url = "example2.org/index/plat_pkg/",
@@ -792,7 +792,7 @@ def _test_simple_get_index(env):
             "simple": struct(
                 whls = {
                     "deadb00f": struct(
-                        yanked = False,
+                        yanked = None,
                         filename = "simple-0.0.1-py3-none-any.whl",
                         sha256 = "deadb00f",
                         url = "example2.org",
@@ -800,7 +800,7 @@ def _test_simple_get_index(env):
                 },
                 sdists = {
                     "deadbeef": struct(
-                        yanked = False,
+                        yanked = None,
                         filename = "simple-0.0.1.tar.gz",
                         sha256 = "deadbeef",
                         url = "example.org",
@@ -811,7 +811,7 @@ def _test_simple_get_index(env):
             "some_other_pkg": struct(
                 whls = {
                     "deadb33f": struct(
-                        yanked = False,
+                        yanked = None,
                         filename = "some-other-pkg-0.0.1-py3-none-any.whl",
                         sha256 = "deadb33f",
                         url = "example2.org/index/some_other_pkg/",
