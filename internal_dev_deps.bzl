@@ -49,6 +49,11 @@ def rules_python_internal_deps():
     )
 
     local_repository(
+        name = "sphinxdocs",
+        path = "sphinxdocs",
+    )
+
+    local_repository(
         name = "other",
         path = "tests/modules/other",
     )
