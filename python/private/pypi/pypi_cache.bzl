@@ -10,23 +10,26 @@ In the future the same will be used to:
 
 load(":version_from_filename.bzl", "version_from_filename")
 
+# This value should be changed whenever the storage format changes.
+# Changing it simply means the information cached in the lockfile has to be
+# recomputed.
 _FACT_VERSION = "v1"
 
-def pypi_cache(module_ctx = None, store = None):
+def pypi_cache(mctx = None, store = None):
     """The cache for PyPI index queries.
 
     Currently the key is of the following structure:
     (url, real_url, versions)
 
     Args:
-        module_ctx: The module context
+        mctx: The module context
         store: The in-memory store, should implement dict interface for get and setdefault
 
     Returns:
         A cache struct
     """
     mcache = memory_cache(store)
-    fcache = facts_cache(getattr(module_ctx, "facts", None))
+    fcache = facts_cache(getattr(mctx, "facts", None))
 
     # buildifier: disable=uninitialized
     self = struct(
@@ -253,10 +256,10 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
 def _store_facts(facts, fact_version, index_url, value):
     """Store values as facts in the lock file.
 
-    The main idea is to ensure that the lock file is small and it is only storing what
-    we would need to fetch from the internet. Any derivative information we can
-    from this that can be achieved using pure Starlark functions should be done in
-    Starlark.
+    The main idea is to ensure that the lock file is small and it is only
+    storing what we would need to fetch from the internet. Any derivative
+    information we can get from this that can be achieved using pure Starlark
+    functions should be done in Starlark.
     """
     if not value:
         return value

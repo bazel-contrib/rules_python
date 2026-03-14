@@ -225,7 +225,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # dict[str repo, HubBuilder]
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = pypi_cache(module_ctx = module_ctx)
+    simpleapi_cache = pypi_cache(mctx = module_ctx)
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:

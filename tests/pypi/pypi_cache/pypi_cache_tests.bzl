@@ -39,7 +39,7 @@ def _test_memory_cache_hit(env):
     store = {}
 
     # We pass None for module_ctx to focus solely on memory_cache behavior
-    cache = _cache(env, module_ctx = None, store = store)
+    cache = _cache(env, mctx = None, store = store)
 
     # Mocked parsed result from a PyPI-like index
     fake_result = struct(
@@ -86,7 +86,7 @@ _tests.append(_test_memory_cache_hit)
 def _test_pypi_cache_writes_to_facts(env):
     """Verifies that setting a value in the cache also populates the facts store."""
     mock_ctx = struct(facts = {})
-    cache = _cache(env, module_ctx = mock_ctx)
+    cache = _cache(env, mctx = mock_ctx)
 
     fake_result = struct(
         sdists = {
@@ -179,7 +179,7 @@ def _test_pypi_cache_reads_from_facts(env):
         },
         "fact_version": "v1",  # Facts version
     })
-    cache = _cache(env, module_ctx = mock_ctx)
+    cache = _cache(env, mctx = mock_ctx)
 
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
 
