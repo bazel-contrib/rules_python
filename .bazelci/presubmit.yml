@@ -176,7 +176,7 @@ tasks:
 
   sphinxdocs_ubuntu:
     name: "Sphinxdocs: Ubuntu"
-    working_directory: "sphindocs"
+    working_directory: "sphinxdocs"
     platform: ubuntu2204
     build_targets:
       - "//..."
@@ -184,7 +184,7 @@ tasks:
       - "//..."
   sphinxdocs_mac:
     name: "Sphinxdocs: Mac"
-    working_directory: "sphindocs"
+    working_directory: "sphinxdocs"
     platform: macos_arm64
     build_targets:
       - "//..."
