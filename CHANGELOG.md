@@ -87,6 +87,8 @@ Other changes:
   {obj}`experimental_index_url` which should speed up consecutive initializations and should no
   longer require the network access if the cache is hydrated.
   Implements [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
+* (wheel) Specifying a path ending in `/` as a destination in `data_files`
+  will now install file(s) to a folder, preserving their basename.
 
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21
