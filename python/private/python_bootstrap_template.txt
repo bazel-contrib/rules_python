@@ -66,10 +66,10 @@ else:
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 
-def IsRunningFromZip():
+def is_running_from_zip():
   return IS_ZIPFILE
 
-if IsRunningFromZip():
+if is_running_from_zip():
   import shutil
   import tempfile
   import zipfile
@@ -77,10 +77,10 @@ else:
   import re
 
 # Return True if running on Windows
-def IsWindows():
+def is_windows():
   return os.name == 'nt'
 
-def GetWindowsPathWithUNCPrefix(path):
+def get_windows_path_with_unc_prefix(path):
   """Adds UNC prefix after getting a normalized absolute Windows path.
 
   No-op for non-Windows platforms or if running under python2.
@@ -89,7 +89,7 @@ def GetWindowsPathWithUNCPrefix(path):
 
   # No need to add prefix for non-Windows platforms.
   # And \\?\ doesn't work in python 2 or on mingw
-  if not IsWindows() or sys.version_info[0] < 3:
+  if not is_windows() or sys.version_info[0] < 3:
     return path
 
   # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
@@ -120,13 +120,13 @@ def GetWindowsPathWithUNCPrefix(path):
   # os.path.abspath returns a normalized absolute path
   return unicode_prefix + os.path.abspath(path)
 
-def HasWindowsExecutableExtension(path):
+def has_windows_executable_extension(path):
   return path.endswith('.exe') or path.endswith('.com') or path.endswith('.bat')
 
-if PYTHON_BINARY and IsWindows() and not HasWindowsExecutableExtension(PYTHON_BINARY):
+if PYTHON_BINARY and is_windows() and not has_windows_executable_extension(PYTHON_BINARY):
   PYTHON_BINARY = PYTHON_BINARY + '.exe'
 
-def SearchPath(name):
+def search_path(name):
   """Finds a file in a given search path."""
   search_path = os.getenv('PATH', os.defpath).split(os.pathsep)
   for directory in search_path:
@@ -136,12 +136,12 @@ def SearchPath(name):
         return path
   return None
 
-def FindPythonBinary(runfiles_root):
+def find_python_binary(runfiles_root):
   """Finds the real Python binary if it's not a normal absolute path."""
   if PYTHON_BINARY:
-    return FindBinary(runfiles_root, PYTHON_BINARY)
+    return find_binary(runfiles_root, PYTHON_BINARY)
   else:
-    return FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
+    return find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -165,7 +165,7 @@ def print_verbose(*args, mapping=None, values=None):
         else:
             print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
-def FindBinary(runfiles_root, bin_name):
+def find_binary(runfiles_root, bin_name):
   """Finds the real binary if it's not a normal absolute path."""
   if not bin_name:
     return None
@@ -183,7 +183,7 @@ def FindBinary(runfiles_root, bin_name):
     return os.path.join(runfiles_root, bin_name)
   else:
     # Case 4: Path has to be looked up in the search path.
-    return SearchPath(bin_name)
+    return search_path(bin_name)
 
 def find_runfiles_root(main_rel_path):
   """Finds the runfiles tree."""
@@ -207,18 +207,18 @@ def find_runfiles_root(main_rel_path):
   # On Windows, the path may contain both forward and backslashes.
   # Normalize to the OS separator because the regex used later assumes
   # the OS-specific separator.
-  if IsWindows:
+  if is_windows():
     stub_filename = stub_filename.replace("/", os.sep)
 
   if not os.path.isabs(stub_filename):
     stub_filename = os.path.join(os.getcwd(), stub_filename)
 
   while True:
-    runfiles_root = stub_filename + ('.exe' if IsWindows() else '') + '.runfiles'
+    runfiles_root = stub_filename + ('.exe' if is_windows() else '') + '.runfiles'
     if os.path.isdir(runfiles_root):
       return runfiles_root
 
-    runfiles_pattern = r'(.*\.runfiles)' + (r'\\' if IsWindows() else '/') + '.*'
+    runfiles_pattern = r'(.*\.runfiles)' + (r'\\' if is_windows() else '/') + '.*'
     matchobj = re.match(runfiles_pattern, stub_filename)
     if matchobj:
       return matchobj.group(1)
@@ -233,7 +233,7 @@ def find_runfiles_root(main_rel_path):
 
   raise AssertionError('Cannot find .runfiles directory for %s' % sys.argv[0])
 
-def ExtractZip(zip_path, dest_dir):
+def extract_zip(zip_path, dest_dir):
   """Extracts the contents of a zip file, preserving the unix file mode bits.
 
   These include the permission bits, and in particular, the executable bit.
@@ -245,8 +245,8 @@ def ExtractZip(zip_path, dest_dir):
       zip_path: The path to the zip file to extract
       dest_dir: The path to the destination directory
   """
-  zip_path = GetWindowsPathWithUNCPrefix(zip_path)
-  dest_dir = GetWindowsPathWithUNCPrefix(dest_dir)
+  zip_path = get_windows_path_with_unc_prefix(zip_path)
+  dest_dir = get_windows_path_with_unc_prefix(dest_dir)
   with zipfile.ZipFile(zip_path) as zf:
     for info in zf.infolist():
       zf.extract(info, dest_dir)
@@ -263,12 +263,12 @@ def ExtractZip(zip_path, dest_dir):
 # Create the runfiles tree by extracting the zip file
 def create_runfiles_root():
   temp_dir = tempfile.mkdtemp('', 'Bazel.runfiles_')
-  ExtractZip(os.path.dirname(__file__), temp_dir)
+  extract_zip(os.path.dirname(__file__), temp_dir)
   # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
   # important that deletion code be in sync with this directory structure
   return os.path.join(temp_dir, 'runfiles')
 
-def RunfilesEnvvar(runfiles_root):
+def runfiles_envvar(runfiles_root):
   """Finds the runfiles manifest or the runfiles directory.
 
   Returns:
@@ -287,7 +287,7 @@ def RunfilesEnvvar(runfiles_root):
     return ('RUNFILES_DIR', runfiles)
 
   # If running from a zip, there's no manifest file.
-  if IsRunningFromZip():
+  if is_running_from_zip():
     return ('RUNFILES_DIR', runfiles_root)
 
   # Look for the runfiles "output" manifest, argv[0] + ".runfiles_manifest"
@@ -310,7 +310,7 @@ def RunfilesEnvvar(runfiles_root):
 
   return (None, None)
 
-def ExecuteFile(python_program, main_filename, args, env, runfiles_root,
+def execute_file(python_program, main_filename, args, env, runfiles_root,
                 workspace, delete_runfiles_root):
   # type: (str, str, list[str], dict[str, str], str, str|None, str|None) -> ...
   """Executes the given Python file using the various environment settings.
@@ -351,8 +351,8 @@ def ExecuteFile(python_program, main_filename, args, env, runfiles_root,
   #   can't execv because we need control to return here. This only
   #   happens for targets built in the host config.
   #
-  if not (IsWindows() or workspace or delete_runfiles_root):
-    _RunExecv(python_program, argv, env)
+  if not (is_windows() or workspace or delete_runfiles_root):
+    _run_execv(python_program, argv, env)
 
   ret_code = subprocess.call(
     argv,
@@ -367,7 +367,7 @@ def ExecuteFile(python_program, main_filename, args, env, runfiles_root,
     shutil.rmtree(os.path.dirname(runfiles_root), True)
   sys.exit(ret_code)
 
-def _RunExecv(python_program, argv, env):
+def _run_execv(python_program, argv, env):
   # type: (str, list[str], dict[str, str]) -> ...
   """Executes the given Python file using the various environment settings."""
   os.environ.update(env)
@@ -376,7 +376,7 @@ def _RunExecv(python_program, argv, env):
   print_verbose("RunExecv: argv:", values=argv)
   os.execv(python_program, argv)
 
-def Main():
+def main():
   print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
   print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
   print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
@@ -410,7 +410,7 @@ def Main():
   main_rel_path = os.path.normpath(STAGE2_BOOTSTRAP)
   print_verbose("main_rel_path:", main_rel_path)
 
-  if IsRunningFromZip():
+  if is_running_from_zip():
     runfiles_root = create_runfiles_root()
     delete_runfiles_root = True
   else:
@@ -422,7 +422,7 @@ def Main():
   if os.environ.get("RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT"):
     new_env["RULES_PYTHON_TESTING_RUNFILES_ROOT"] = runfiles_root
 
-  runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(runfiles_root)
+  runfiles_envkey, runfiles_envvalue = runfiles_envvar(runfiles_root)
   if runfiles_envkey:
     new_env[runfiles_envkey] = runfiles_envvalue
 
@@ -431,13 +431,13 @@ def Main():
   new_env['PYTHONSAFEPATH'] = '1'
 
   main_filename = os.path.join(runfiles_root, main_rel_path)
-  main_filename = GetWindowsPathWithUNCPrefix(main_filename)
+  main_filename = get_windows_path_with_unc_prefix(main_filename)
   assert os.path.exists(main_filename), \
          'Cannot exec() %r: file not found.' % main_filename
   assert os.access(main_filename, os.R_OK), \
          'Cannot exec() %r: file not readable.' % main_filename
 
-  python_program = FindPythonBinary(runfiles_root)
+  python_program = find_python_binary(runfiles_root)
   if python_program is None:
     raise AssertionError("Could not find python binary: {} or {}".format(
         repr(PYTHON_BINARY),
@@ -454,7 +454,7 @@ def Main():
   new_env.update((key, val) for key, val in os.environ.items() if key not in new_env)
 
   workspace = None
-  if IsRunningFromZip():
+  if is_running_from_zip():
     # If RUN_UNDER_RUNFILES equals 1, it means we need to
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
@@ -463,8 +463,8 @@ def Main():
 
   try:
     sys.stdout.flush()
-    # NOTE: ExecuteFile may call execve() and lines after this will never run.
-    ExecuteFile(
+    # NOTE: execute_file may call execve() and lines after this will never run.
+    execute_file(
       python_program, main_filename, args, new_env, runfiles_root,
       workspace,
       delete_runfiles_root = delete_runfiles_root,
@@ -479,4 +479,4 @@ def Main():
     raise
 
 if __name__ == '__main__':
-  Main()
+  main()
