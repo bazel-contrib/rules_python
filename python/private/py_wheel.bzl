@@ -182,8 +182,35 @@ _other_attrs = {
         doc = "A list of strings describing the categories for the package. For valid classifiers see https://pypi.org/classifiers",
     ),
     "data_files": attr.label_keyed_string_dict(
-        doc = ("Any file that is not normally installed inside site-packages goes into the .data directory, named " +
-               "as the .dist-info directory but with the .data/ extension.  Allowed paths: {prefixes}".format(prefixes = ALLOWED_DATA_FILE_PREFIX)),
+        doc = ("""
+Mapping of data files to go into the wheel.
+
+The keys are targets of files to include, and the values are the `.data`-relative
+path to use.
+
+Any file that is not normally installed inside site-packages goes into the .data
+directory, named as the .dist-info directory but with the .data/ extension. If
+the destination of a file or group of files ends in a `/`, the destination is a
+folder and files are placed with their existing basenames under that folder.
+
+For example:
+
+```
+":file1.txt": "data/file1.txt",   # Destination: <wheelname>.data/data/file1.txt
+":file1.txt": "data/",            # Destination: <wheelname>.data/data/file1.txt
+":file1.txt": "data/special.txt", # Destination: <wheelname>.data/data/special.txt
+
+filegroup(name = "files", srcs = [":file1.txt", ":file2.txt"])
+":files": "data/",                # Destinations: <wheelname>.data/data/file1.txt, <wheelname>.data/data/file2.txt
+```
+
+Allowed paths: {prefixes}
+
+:::{{versionchanged}} VERSION_NEXT_FEATURE
+Values can end in slash (`/`) to indicate that all files of the target should
+be moved under that directory.
+:::
+""".format(prefixes = ALLOWED_DATA_FILE_PREFIX)),
         allow_files = True,
     ),
     "description_content_type": attr.string(
@@ -506,9 +533,9 @@ def _py_wheel_impl(ctx):
 
     for target, filename in ctx.attr.data_files.items():
         target_files = target[DefaultInfo].files.to_list()
-        if len(target_files) != 1:
+        if len(target_files) != 1 and not filename.endswith("/"):
             fail(
-                "Multi-file target listed in data_files %s",
+                "Multi-file target listed in data_files %s, this is only supported when specifying a folder path (i.e. a path ending in '/')",
                 filename,
             )
 
@@ -520,11 +547,15 @@ def _py_wheel_impl(ctx):
                     filename,
                 ),
             )
-        other_inputs.extend(target_files)
-        args.add(
-            "--data_files",
-            filename + ";" + target_files[0].path,
-        )
+
+        for file in target_files:
+            final_filename = filename + file.basename if filename.endswith("/") else filename
+
+            other_inputs.extend(target_files)
+            args.add(
+                "--data_files",
+                final_filename + ";" + file.path,
+            )
 
     ctx.actions.run(
         mnemonic = "PyWheel",

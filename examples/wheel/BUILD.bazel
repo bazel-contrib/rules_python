@@ -401,6 +401,29 @@ py_wheel(
     version = "0.0.1",
 )
 
+filegroup(
+    name = "data_files_test_group",
+    # Re-using some files already checked into the repo.
+    srcs = [
+        "README.md",
+        "//examples/wheel:NOTICE",
+    ],
+)
+
+py_wheel(
+    name = "data_files_installed_in_folder",
+    testonly = True,  # Set this to verify the generated .dist target doesn't break things
+    # Re-using some files already checked into the repo.
+    data_files = {
+        # Single file
+        "//examples/wheel:NOTICE": "scripts/",
+        # Filegroup
+        ":data_files_test_group": "data/",
+    },
+    distribution = "data_files_installed_in_folder",
+    version = "0.0.1",
+)
+
 py_test(
     name = "wheel_test",
     srcs = ["wheel_test.py"],
@@ -409,6 +432,7 @@ py_test(
         ":custom_package_root_multi_prefix",
         ":custom_package_root_multi_prefix_reverse_order",
         ":customized",
+        ":data_files_installed_in_folder",
         ":empty_requires_files",
         ":extra_requires",
         ":filename_escaping",

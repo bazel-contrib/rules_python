@@ -85,9 +85,9 @@ else
       stub_filename="$PWD/$stub_filename"
     fi
     while true; do
-      module_space="${stub_filename}.runfiles"
-      if [[ -d "$module_space" ]]; then
-        echo "$module_space"
+      runfiles_root="${stub_filename}.runfiles"
+      if [[ -d "$runfiles_root" ]]; then
+        echo "$runfiles_root"
         return 0
       fi
       if [[ "$stub_filename" == *.runfiles/* ]]; then
@@ -105,8 +105,8 @@ else
   RUNFILES_DIR=$(find_runfiles_root $0)
 fi
 
-if [[ -n "$RULES_PYTHON_TESTING_TELL_MODULE_SPACE" ]]; then
-  export RULES_PYTHON_TESTING_MODULE_SPACE="$RUNFILES_DIR"
+if [[ -n "$RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT" ]]; then
+  export RULES_PYTHON_TESTING_RUNFILES_ROOT="$RUNFILES_DIR"
 fi
 
 function find_python_interpreter() {

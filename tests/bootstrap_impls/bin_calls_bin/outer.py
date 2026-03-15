@@ -3,8 +3,8 @@ import subprocess
 import sys
 
 if __name__ == "__main__":
-    module_space = os.environ.get("RULES_PYTHON_TESTING_MODULE_SPACE")
-    print(f"outer: RULES_PYTHON_TESTING_MODULE_SPACE='{module_space}'")
+    runfiles_root = os.environ.get("RULES_PYTHON_TESTING_RUNFILES_ROOT")
+    print(f"outer: RULES_PYTHON_TESTING_RUNFILES_ROOT='{runfiles_root}'")
 
     inner_binary_path = sys.argv[1]
     result = subprocess.run(

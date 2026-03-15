@@ -500,8 +500,8 @@ def Main():
 
   print_verbose("runfiles root:", runfiles_root)
 
-  if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
-    new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = runfiles_root
+  if os.environ.get("RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT"):
+    new_env["RULES_PYTHON_TESTING_RUNFILES_ROOT"] = runfiles_root
 
   runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(runfiles_root)
   if runfiles_envkey:
