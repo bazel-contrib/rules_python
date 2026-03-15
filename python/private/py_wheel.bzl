@@ -183,21 +183,33 @@ _other_attrs = {
     ),
     "data_files": attr.label_keyed_string_dict(
         doc = ("""
-Any file that is not normally installed inside site-packages goes into the .data directory, named
-as the .dist-info directory but with the .data/ extension. If the destination of a file or group of files ends
-in a `/`, the destination is a folder and files are placed with their existing basenames under that folder.
+Mapping of data files to go into the wheel.
+
+The keys are targets of files to include, and the values are the `.data`-relative
+path to use.
+
+Any file that is not normally installed inside site-packages goes into the .data
+directory, named as the .dist-info directory but with the .data/ extension. If
+the destination of a file or group of files ends in a `/`, the destination is a
+folder and files are placed with their existing basenames under that folder.
 
 For example:
-`
+
+```
 ":file1.txt": "data/file1.txt",   # Destination: <wheelname>.data/data/file1.txt
 ":file1.txt": "data/",            # Destination: <wheelname>.data/data/file1.txt
 ":file1.txt": "data/special.txt", # Destination: <wheelname>.data/data/special.txt
 
 filegroup(name = "files", srcs = [":file1.txt", ":file2.txt"])
 ":files": "data/",                # Destinations: <wheelname>.data/data/file1.txt, <wheelname>.data/data/file2.txt
-`
+```
 
 Allowed paths: {prefixes}
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Values can end in slash (`/`) to indicate that all files of the target should
+be moved under that directory.
+:::
 """.format(prefixes = ALLOWED_DATA_FILE_PREFIX)),
         allow_files = True,
     ),
