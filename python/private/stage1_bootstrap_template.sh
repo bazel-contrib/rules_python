@@ -85,9 +85,9 @@ else
       stub_filename="$PWD/$stub_filename"
     fi
     while true; do
-      module_space="${stub_filename}.runfiles"
-      if [[ -d "$module_space" ]]; then
-        echo "$module_space"
+      runfiles_root="${stub_filename}.runfiles"
+      if [[ -d "$runfiles_root" ]]; then
+        echo "$runfiles_root"
         return 0
       fi
       if [[ "$stub_filename" == *.runfiles/* ]]; then
