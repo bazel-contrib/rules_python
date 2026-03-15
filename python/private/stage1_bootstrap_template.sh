@@ -105,8 +105,8 @@ else
   RUNFILES_DIR=$(find_runfiles_root $0)
 fi
 
-if [[ -n "$RULES_PYTHON_TESTING_TELL_MODULE_SPACE" ]]; then
-  export RULES_PYTHON_TESTING_MODULE_SPACE="$RUNFILES_DIR"
+if [[ -n "$RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT" ]]; then
+  export RULES_PYTHON_TESTING_RUNFILES_ROOT="$RUNFILES_DIR"
 fi
 
 function find_python_interpreter() {

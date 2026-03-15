@@ -1,4 +1,4 @@
 import os
 
-module_space = os.environ.get("RULES_PYTHON_TESTING_MODULE_SPACE")
-print(f"inner: RULES_PYTHON_TESTING_MODULE_SPACE='{module_space}'")
+module_space = os.environ.get("RULES_PYTHON_TESTING_RUNFILES_ROOT")
+print(f"inner: RULES_PYTHON_TESTING_RUNFILES_ROOT='{module_space}'")

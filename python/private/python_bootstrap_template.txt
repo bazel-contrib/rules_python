@@ -136,12 +136,12 @@ def SearchPath(name):
         return path
   return None
 
-def FindPythonBinary(module_space):
+def FindPythonBinary(runfiles_root):
   """Finds the real Python binary if it's not a normal absolute path."""
   if PYTHON_BINARY:
-    return FindBinary(module_space, PYTHON_BINARY)
+    return FindBinary(runfiles_root, PYTHON_BINARY)
   else:
-    return FindBinary(module_space, PYTHON_BINARY_ACTUAL)
+    return FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -165,7 +165,7 @@ def print_verbose(*args, mapping=None, values=None):
         else:
             print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
-def FindBinary(module_space, bin_name):
+def FindBinary(runfiles_root, bin_name):
   """Finds the real binary if it's not a normal absolute path."""
   if not bin_name:
     return None
@@ -180,12 +180,12 @@ def FindBinary(module_space, bin_name):
   # Use normpath() to convert slashes to os.sep on Windows.
   elif os.sep in os.path.normpath(bin_name):
     # Case 3: Path is relative to the repo root.
-    return os.path.join(module_space, bin_name)
+    return os.path.join(runfiles_root, bin_name)
   else:
     # Case 4: Path has to be looked up in the search path.
     return SearchPath(bin_name)
 
-def FindModuleSpace(main_rel_path):
+def find_runfiles_root(main_rel_path):
   """Finds the runfiles tree."""
   # When the calling process used the runfiles manifest to resolve the
   # location of this stub script, the path may be expanded. This means
@@ -214,9 +214,9 @@ def FindModuleSpace(main_rel_path):
     stub_filename = os.path.join(os.getcwd(), stub_filename)
 
   while True:
-    module_space = stub_filename + ('.exe' if IsWindows() else '') + '.runfiles'
-    if os.path.isdir(module_space):
-      return module_space
+    runfiles_root = stub_filename + ('.exe' if IsWindows() else '') + '.runfiles'
+    if os.path.isdir(runfiles_root):
+      return runfiles_root
 
     runfiles_pattern = r'(.*\.runfiles)' + (r'\\' if IsWindows() else '/') + '.*'
     matchobj = re.match(runfiles_pattern, stub_filename)
@@ -261,14 +261,14 @@ def ExtractZip(zip_path, dest_dir):
         os.chmod(file_path, attrs & 0o7777)
 
 # Create the runfiles tree by extracting the zip file
-def CreateModuleSpace():
+def create_runfiles_root():
   temp_dir = tempfile.mkdtemp('', 'Bazel.runfiles_')
   ExtractZip(os.path.dirname(__file__), temp_dir)
-  # IMPORTANT: Later code does `rm -fr` on dirname(module_space) -- it's
+  # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
   # important that deletion code be in sync with this directory structure
   return os.path.join(temp_dir, 'runfiles')
 
-def RunfilesEnvvar(module_space):
+def RunfilesEnvvar(runfiles_root):
   """Finds the runfiles manifest or the runfiles directory.
 
   Returns:
@@ -288,10 +288,10 @@ def RunfilesEnvvar(module_space):
 
   # If running from a zip, there's no manifest file.
   if IsRunningFromZip():
-    return ('RUNFILES_DIR', module_space)
+    return ('RUNFILES_DIR', runfiles_root)
 
   # Look for the runfiles "output" manifest, argv[0] + ".runfiles_manifest"
-  runfiles = module_space + '_manifest'
+  runfiles = runfiles_root + '_manifest'
   if os.path.exists(runfiles):
     return ('RUNFILES_MANIFEST_FILE', runfiles)
 
@@ -299,19 +299,19 @@ def RunfilesEnvvar(module_space):
   # Normally .runfiles_manifest and MANIFEST are both present, but the
   # former will be missing for zip-based builds or if someone copies the
   # runfiles tree elsewhere.
-  runfiles = os.path.join(module_space, 'MANIFEST')
+  runfiles = os.path.join(runfiles_root, 'MANIFEST')
   if os.path.exists(runfiles):
     return ('RUNFILES_MANIFEST_FILE', runfiles)
 
   # If running in a sandbox and no environment variables are set, then
   # Look for the runfiles  next to the binary.
-  if module_space.endswith('.runfiles') and os.path.isdir(module_space):
-    return ('RUNFILES_DIR', module_space)
+  if runfiles_root.endswith('.runfiles') and os.path.isdir(runfiles_root):
+    return ('RUNFILES_DIR', runfiles_root)
 
   return (None, None)
 
-def ExecuteFile(python_program, main_filename, args, env, module_space,
-                workspace, delete_module_space):
+def ExecuteFile(python_program, main_filename, args, env, runfiles_root,
+                workspace, delete_runfiles_root):
   # type: (str, str, list[str], dict[str, str], str, str|None, str|None) -> ...
   """Executes the given Python file using the various environment settings.
 
@@ -323,10 +323,10 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
     main_filename: (str) The Python file to execute
     args: (list[str]) Additional args to pass to the Python file
     env: (dict[str, str]) A dict of environment variables to set for the execution
-    module_space: (str) Path to the module space/runfiles tree directory
+    runfiles_root: (str) Path to the runfiles root directory
     workspace: (str|None) Name of the workspace to execute in. This is expected to be a
         directory under the runfiles tree.
-    delete_module_space: (bool), True if the module space should be deleted
+    delete_runfiles_root: (bool), True if the runfiles root should be deleted
         after a successful (exit code zero) program run, False if not.
   """
   argv = [python_program]
@@ -351,7 +351,7 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
   #   can't execv because we need control to return here. This only
   #   happens for targets built in the host config.
   #
-  if not (IsWindows() or workspace or delete_module_space):
+  if not (IsWindows() or workspace or delete_runfiles_root):
     _RunExecv(python_program, argv, env)
 
   ret_code = subprocess.call(
@@ -360,11 +360,11 @@ def ExecuteFile(python_program, main_filename, args, env, module_space,
     cwd=workspace
   )
 
-  if delete_module_space:
-    # NOTE: dirname() is called because CreateModuleSpace() creates a
+  if delete_runfiles_root:
+    # NOTE: dirname() is called because create_runfiles_root() creates a
     # sub-directory within a temporary directory, and we want to remove the
     # whole temporary directory.
-    shutil.rmtree(os.path.dirname(module_space), True)
+    shutil.rmtree(os.path.dirname(runfiles_root), True)
   sys.exit(ret_code)
 
 def _RunExecv(python_program, argv, env):
@@ -401,18 +401,18 @@ def Main():
   print_verbose("main_rel_path:", main_rel_path)
 
   if IsRunningFromZip():
-    module_space = CreateModuleSpace()
-    delete_module_space = True
+    runfiles_root = create_runfiles_root()
+    delete_runfiles_root = True
   else:
-    module_space = FindModuleSpace(main_rel_path)
-    delete_module_space = False
+    runfiles_root = find_runfiles_root(main_rel_path)
+    delete_runfiles_root = False
 
-  print_verbose("runfiles root:", module_space)
+  print_verbose("runfiles root:", runfiles_root)
 
-  if os.environ.get("RULES_PYTHON_TESTING_TELL_MODULE_SPACE"):
-    new_env["RULES_PYTHON_TESTING_MODULE_SPACE"] = module_space
+  if os.environ.get("RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT"):
+    new_env["RULES_PYTHON_TESTING_RUNFILES_ROOT"] = runfiles_root
 
-  runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(module_space)
+  runfiles_envkey, runfiles_envvalue = RunfilesEnvvar(runfiles_root)
   if runfiles_envkey:
     new_env[runfiles_envkey] = runfiles_envvalue
 
@@ -420,14 +420,14 @@ def Main():
   # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
   new_env['PYTHONSAFEPATH'] = '1'
 
-  main_filename = os.path.join(module_space, main_rel_path)
+  main_filename = os.path.join(runfiles_root, main_rel_path)
   main_filename = GetWindowsPathWithUNCPrefix(main_filename)
   assert os.path.exists(main_filename), \
          'Cannot exec() %r: file not found.' % main_filename
   assert os.access(main_filename, os.R_OK), \
          'Cannot exec() %r: file not readable.' % main_filename
 
-  program = python_program = FindPythonBinary(module_space)
+  program = python_program = FindPythonBinary(runfiles_root)
   if python_program is None:
     raise AssertionError("Could not find python binary: {} or {}".format(
         repr(PYTHON_BINARY),
@@ -449,15 +449,15 @@ def Main():
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
     if os.environ.get('RUN_UNDER_RUNFILES') == '1':
-      workspace = os.path.join(module_space, WORKSPACE_NAME)
+      workspace = os.path.join(runfiles_root, WORKSPACE_NAME)
 
   try:
     sys.stdout.flush()
     # NOTE: ExecuteFile may call execve() and lines after this will never run.
     ExecuteFile(
-      python_program, main_filename, args, new_env, module_space,
+      python_program, main_filename, args, new_env, runfiles_root,
       workspace,
-      delete_module_space = delete_module_space,
+      delete_runfiles_root = delete_runfiles_root,
     )
 
   except EnvironmentError:
