@@ -10,13 +10,13 @@ import sys
 import os
 import subprocess
 import uuid
-# runfiles-relative path
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of
 # unsubstituted placeholders, which occurs when native py_binary is used in
 # external repositories. In that case, we fall back to %main% which Bazel's
 # native rule does substitute.
 _STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
+# runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
 # NOTE: The fallback logic from stage2_bootstrap to main is only present
@@ -35,13 +35,13 @@ if not STAGE2_BOOTSTRAP:
   print("ERROR: %stage2_bootstrap% (or %main%) was not substituted.", file=sys.stderr)
   sys.exit(1)
 
-# runfiles-relative path to venv's python interpreter
+# runfiles-root-relative path to venv's python interpreter
 # Empty string if a venv is not setup.
 PYTHON_BINARY = '%python_binary%'
 
 # The path to the actual interpreter that is used.
 # Typically PYTHON_BINARY is a symlink pointing to this.
-# runfiles-relative path, absolute path, or single word.
+# runfiles-root-relative path, absolute path, or single word.
 # Used to create a venv at runtime, or when a venv isn't setup.
 PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 
