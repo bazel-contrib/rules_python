@@ -377,6 +377,16 @@ def _RunExecv(python_program, argv, env):
   os.execv(python_program, argv)
 
 def Main():
+  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
+  print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
+  print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
+  print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
+  print_verbose("RESOLVE_PYTHON_BINARY_AT_RUNTIME:", RESOLVE_PYTHON_BINARY_AT_RUNTIME)
+  print_verbose("bootstrap sys.executable:", sys.executable)
+  print_verbose("bootstrap sys._base_executable:", sys._base_executable)
+  print_verbose("bootstrap sys.version:", sys.version)
+
+  print_verbose("sys.version:", sys.version)
   print_verbose("initial argv:", values=sys.argv)
   print_verbose("initial cwd:", os.getcwd())
   print_verbose("initial environ:", mapping=os.environ)
@@ -427,7 +437,7 @@ def Main():
   assert os.access(main_filename, os.R_OK), \
          'Cannot exec() %r: file not readable.' % main_filename
 
-  program = python_program = FindPythonBinary(runfiles_root)
+  python_program = FindPythonBinary(runfiles_root)
   if python_program is None:
     raise AssertionError("Could not find python binary: {} or {}".format(
         repr(PYTHON_BINARY),
@@ -465,7 +475,7 @@ def Main():
     e = sys.exc_info()[1]
     # This exception occurs when os.execv() fails for some reason.
     if not getattr(e, 'filename', None):
-      e.filename = program  # Add info to error message
+      e.filename = python_program  # Add info to error message
     raise
 
 if __name__ == '__main__':
