@@ -206,7 +206,7 @@ filegroup(name = "files", srcs = [":file1.txt", ":file2.txt"])
 
 Allowed paths: {prefixes}
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{{versionchanged}} VERSION_NEXT_FEATURE
 Values can end in slash (`/`) to indicate that all files of the target should
 be moved under that directory.
 :::
