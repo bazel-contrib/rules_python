@@ -204,6 +204,11 @@ tasks:
     name: "Default: Ubuntu, bzlmod, minimum Bazel"
     platform: ubuntu2204
     bazel: 7.x
+    build_flags:
+    - "--keep_going"
+    - "--build_tag_filters=-integration-test"
+    - "--verbose_failures"
+      - "--noexperimental_repository_cache_hardlinks"
   ubuntu:
     <<: *reusable_config
     name: "Default: Ubuntu, Bazel {bazel}"
