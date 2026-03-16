@@ -208,7 +208,7 @@ tasks:
     - "--keep_going"
     - "--build_tag_filters=-integration-test"
     - "--verbose_failures"
-      - "--noexperimental_repository_cache_hardlinks"
+    - "--noexperimental_repository_cache_hardlinks"
   ubuntu:
     <<: *reusable_config
     name: "Default: Ubuntu, Bazel {bazel}"

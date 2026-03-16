@@ -454,15 +454,6 @@ def _symlink_exist_ok(*, from_, to):
 
 
 def main():
-  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
-  print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
-  print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
-  print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
-  print_verbose("RESOLVE_PYTHON_BINARY_AT_RUNTIME:", RESOLVE_PYTHON_BINARY_AT_RUNTIME)
-  print_verbose("bootstrap sys.executable:", sys.executable)
-  print_verbose("bootstrap sys._base_executable:", sys._base_executable)
-  print_verbose("bootstrap sys.version:", sys.version)
-
   print_verbose("sys.version:", sys.version)
   print_verbose("initial argv:", values=sys.argv)
   print_verbose("initial cwd:", os.getcwd())
