@@ -525,7 +525,7 @@ def main():
     venv, python_program = _create_venv(runfiles_root)
     delete_dirs.append(venv)
   else:
-    python_program = FindPythonBinary(runfiles_root)
+    python_program = find_python_binary(runfiles_root)
 
   # Some older Python versions on macOS (namely Python 3.7) may unintentionally
   # leave this environment variable set after starting the interpreter, which
