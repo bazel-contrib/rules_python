@@ -5,10 +5,24 @@
 # in the root module.
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_python//python:py_test.bzl", "py_test")
 
 build_test(
     name = "other_module_bin_build_test",
     targets = [
         "@our_other_module//other_module/pkg:bin",
     ],
+)
+
+py_test(
+    name = "other_module_import_test",
+    srcs = ["other_module_import_test.py"],
+    data = ["@our_other_module//other_module/pkg:bin_zipapp"],
+    env = {"ZIPAPP_PATH": "$(location @our_other_module//other_module/pkg:bin_zipapp)"},
+    # For now, skip this test on Windows because it fails for reasons
+    # other than the code path being tested.
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )

@@ -510,10 +510,7 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
         substitutions = {
             "%python_binary%": python_binary,
             "%python_binary_actual%": python_binary_actual,
-            "%stage2_bootstrap%": "{}/{}".format(
-                ctx.workspace_name,
-                stage2_bootstrap.short_path,
-            ),
+            "%stage2_bootstrap%": runfiles_root_path(ctx, stage2_bootstrap.short_path),
             "%workspace_name%": ctx.workspace_name,
         },
     )
@@ -624,7 +621,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
             "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
-            "%site_init_runfiles_path%": "{}/{}".format(ctx.workspace_name, site_init.short_path),
+            "%site_init_runfiles_path%": runfiles_root_path(ctx, site_init.short_path),
             "%workspace_name%": ctx.workspace_name,
         },
         computed_substitutions = computed_subs,
@@ -679,10 +676,7 @@ def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and
         runtime and
         runtime.coverage_tool):
-        return "{}/{}".format(
-            ctx.workspace_name,
-            runtime.coverage_tool.short_path,
-        )
+        return runfiles_root_path(ctx, runtime.coverage_tool.short_path)
     else:
         return ""
 
@@ -785,10 +779,7 @@ def _create_stage1_bootstrap(
         if (ctx.configuration.coverage_enabled and
             runtime and
             runtime.coverage_tool):
-            coverage_tool_runfiles_path = "{}/{}".format(
-                ctx.workspace_name,
-                runtime.coverage_tool.short_path,
-            )
+            coverage_tool_runfiles_path = runfiles_root_path(ctx, runtime.coverage_tool.short_path)
         else:
             coverage_tool_runfiles_path = ""
         if runtime:
@@ -801,7 +792,7 @@ def _create_stage1_bootstrap(
         subs["%coverage_tool%"] = coverage_tool_runfiles_path
         subs["%import_all%"] = ("True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False")
         subs["%imports%"] = ":".join(imports.to_list())
-        subs["%main%"] = "{}/{}".format(ctx.workspace_name, main_py.short_path)
+        subs["%main%"] = runfiles_root_path(ctx, main_py.short_path)
 
     ctx.actions.expand_template(
         template = template,

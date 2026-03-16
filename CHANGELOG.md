@@ -80,6 +80,9 @@ Other changes:
   configuration. See the {any}`RULES_PYTHON_PYCACHE_DIR` environment variable
   for more information.
   ([#3643](https://github.com/bazel-contrib/rules_python/issues/3643)).
+* (bootstrap) Fixed incorrect runfiles path construction in bootstrap
+  scripts when binary is defined in another bazel module
+  ([#3563](https://github.com/bazel-contrib/rules_python/issues/3563)).
 
 {#v0-0-0-added}
 ### Added
