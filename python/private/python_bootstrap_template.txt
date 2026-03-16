@@ -380,23 +380,12 @@ def main():
   print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
   print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
   print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
-  print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
-  print_verbose("RESOLVE_PYTHON_BINARY_AT_RUNTIME:", RESOLVE_PYTHON_BINARY_AT_RUNTIME)
-  print_verbose("bootstrap sys.executable:", sys.executable)
-  print_verbose("bootstrap sys._base_executable:", sys._base_executable)
-  print_verbose("bootstrap sys.version:", sys.version)
-
-  print_verbose("sys.version:", sys.version)
-  print_verbose("initial argv:", values=sys.argv)
-  print_verbose("initial cwd:", os.getcwd())
-  print_verbose("initial environ:", mapping=os.environ)
-  print_verbose("initial sys.path:", values=sys.path)
-  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
-  print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
-  print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
   print_verbose("IS_ZIPFILE:", IS_ZIPFILE)
   print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
   print_verbose("WORKSPACE_NAME :", WORKSPACE_NAME )
+  print_verbose("bootstrap sys.executable:", sys.executable)
+  print_verbose("bootstrap sys._base_executable:", sys._base_executable)
+  print_verbose("bootstrap sys.version:", sys.version)
 
   args = sys.argv[1:]
 
