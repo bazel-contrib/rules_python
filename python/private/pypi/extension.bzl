@@ -131,13 +131,13 @@ def build_config(
         arch_name = repo_utils.get_platforms_cpu_name(module_ctx)
         platform_name = "{}_{}".format(os_name, arch_name)
         defaults["platforms"][platform_name] = {
-            "name": platform_name.replace("-", "_").lower(),
             "arch_name": arch_name,
-            "os_name": os_name,
             "config_settings": [
                 "@platforms//cpu:{}".format(arch_name),
                 "@platforms//os:{}".format(os_name),
             ],
+            "name": platform_name.replace("-", "_").lower(),
+            "os_name": os_name,
         }
 
     return struct(
