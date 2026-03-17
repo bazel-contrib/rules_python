@@ -123,6 +123,23 @@ def build_config(
                 # overrides, etc. Index overrides per platform could be also used here.
             )
 
+    # When no platforms are configured (e.g., in isolated mode where
+    # rules_python's pip.default tags are not visible), provide a minimal
+    # host platform default so that requirements files can still be parsed.
+    if not defaults["platforms"]:
+        os_name = repo_utils.get_platforms_os_name(module_ctx)
+        arch_name = repo_utils.get_platforms_cpu_name(module_ctx)
+        platform_name = "{}_{}".format(os_name, arch_name)
+        defaults["platforms"][platform_name] = {
+            "name": platform_name.replace("-", "_").lower(),
+            "arch_name": arch_name,
+            "os_name": os_name,
+            "config_settings": [
+                "@platforms//cpu:{}".format(arch_name),
+                "@platforms//os:{}".format(os_name),
+            ],
+        }
+
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
         netrc = defaults.get("netrc", None),
