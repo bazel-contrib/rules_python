@@ -12,6 +12,7 @@ fi
 # output.
 ZIPAPP="${ZIPAPP/.exe/.zip}"
 
+export RULES_PYTHON_BOOTSTRAP_VERBOSE=1
 # We're testing the invocation of `__main__.py`, so we have to
 # manually pass the zipapp to python.
 "$PYTHON" "$ZIPAPP"

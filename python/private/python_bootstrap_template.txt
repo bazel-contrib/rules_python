@@ -265,10 +265,17 @@ def extract_zip(zip_path, dest_dir):
       # https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation
       file_path = os.path.abspath(os.path.join(dest_dir, info.filename))
       # The Unix st_mode bits (see "man 7 inode") are stored in the upper 16
-      # bits of external_attr. Of those, we set the lower 12 bits, which are the
-      # file mode bits (since the file type bits can't be set by chmod anyway).
+      # bits of external_attr.
       attrs = info.external_attr >> 16
-      if attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
+      # Symlink bit in st_mode is 0o120000.
+      if (attrs & 0o170000) == 0o120000:
+        with open(file_path, "r") as f:
+          target = f.read()
+        os.remove(file_path)
+        os.symlink(target, file_path)
+      # Of those, we set the lower 12 bits, which are the
+      # file mode bits (since the file type bits can't be set by chmod anyway).
+      elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
         os.chmod(file_path, attrs & 0o7777)
 
 # Create the runfiles tree by extracting the zip file
@@ -290,7 +297,7 @@ def _create_venv(runfiles_root):
       venv = tempfile.mkdtemp("", f"bazel.{basename(runfiles_venv)}.")
       cleanup_dir = venv
 
-    python_exe_actual = FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
+    python_exe_actual = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
 
     # See stage1_bootstrap_template.sh for details on this code path. In short,
     # this handles when the build-time python version doesn't match runtime
@@ -309,7 +316,7 @@ print(site.getsitepackages(["{venv}"])[-1])
         os.makedirs(dirname(venv_site_packages), exist_ok=True)
         runfiles_venv_site_packages = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
     else:
-        python_exe_actual = FindBinary(runfiles_root, PYTHON_BINARY_ACTUAL)
+        python_exe_actual = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
         venv_site_packages = join(venv, "lib")
         runfiles_venv_site_packages = join(runfiles_venv, "lib")
 
@@ -420,10 +427,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   print_verbose("run: subproc: cwd:", workspace)
   print_verbose("run: subproc: argv:", values=argv)
   ret_code = subprocess.call(
-    argv,
-    env=env,
-    cwd=workspace
-  )
+      argv, env=env, cwd=workspace)
 
   if delete_dirs:
     for delete_dir in delete_dirs:

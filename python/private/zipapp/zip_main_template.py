@@ -124,7 +124,7 @@ def search_path(name):
     return None
 
 
-def find_binary(module_space, bin_name):
+def find_binary(runfiles_root, bin_name):
     """Finds the real binary if it's not a normal absolute path."""
     if not bin_name:
         return None
@@ -139,7 +139,7 @@ def find_binary(module_space, bin_name):
     # Use normpath() to convert slashes to os.sep on Windows.
     elif os.sep in os.path.normpath(bin_name):
         # Case 3: Path is relative to the repo root.
-        return os.path.join(module_space, bin_name)
+        return os.path.join(runfiles_root, bin_name)
     else:
         # Case 4: Path has to be looked up in the search path.
         return search_path(bin_name)
@@ -166,18 +166,25 @@ def extract_zip(zip_path, dest_dir):
             # https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation
             file_path = os.path.abspath(os.path.join(dest_dir, info.filename))
             # The Unix st_mode bits (see "man 7 inode") are stored in the upper 16
-            # bits of external_attr. Of those, we set the lower 12 bits, which are the
-            # file mode bits (since the file type bits can't be set by chmod anyway).
+            # bits of external_attr.
             attrs = info.external_attr >> 16
-            if attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
+            # Symlink bit in st_mode is 0o120000.
+            if (attrs & 0o170000) == 0o120000:
+                with open(file_path, "r") as f:
+                    target = f.read()
+                os.remove(file_path)
+                os.symlink(target, file_path)
+            # Of those, we set the lower 12 bits, which are the
+            # file mode bits (since the file type bits can't be set by chmod anyway).
+            elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
                 os.chmod(file_path, attrs & 0o7777)
 
 
 # Create the runfiles tree by extracting the zip file
-def create_module_space():
+def create_runfiles_root():
     temp_dir = tempfile.mkdtemp("", "Bazel.runfiles_")
     extract_zip(os.path.dirname(__file__), temp_dir)
-    # IMPORTANT: Later code does `rm -fr` on dirname(module_space) -- it's
+    # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
     return os.path.join(temp_dir, "runfiles")
 
@@ -187,7 +194,7 @@ def execute_file(
     main_filename,
     args,
     env,
-    module_space,
+    runfiles_root,
     workspace,
 ):
     # type: (str, str, list[str], dict[str, str], str, str|None, str|None) -> ...
@@ -201,7 +208,7 @@ def execute_file(
       main_filename: (str) The Python file to execute
       args: (list[str]) Additional args to pass to the Python file
       env: (dict[str, str]) A dict of environment variables to set for the execution
-      module_space: (str) Path to the module space/runfiles tree directory
+      runfiles_root: (str) Path to the runfiles tree directory
       workspace: (str|None) Name of the workspace to execute in. This is expected to be a
           directory under the runfiles tree.
     """
@@ -223,10 +230,11 @@ def execute_file(
         ret_code = subprocess.call(subprocess_argv, env=env, cwd=workspace)
         sys.exit(ret_code)
     finally:
-        # NOTE: dirname() is called because create_module_space() creates a
+        # NOTE: dirname() is called because create_runfiles_root() creates a
         # sub-directory within a temporary directory, and we want to remove the
         # whole temporary directory.
-        shutil.rmtree(os.path.dirname(module_space), True)
+        ##shutil.rmtree(os.path.dirname(runfiles_root), True)
+        pass
 
 
 def main():
@@ -249,16 +257,16 @@ def main():
     if is_windows():
         main_rel_path = main_rel_path.replace("/", os.sep)
 
-    module_space = create_module_space()
-    print_verbose("extracted runfiles to:", module_space)
+    runfiles_root = create_runfiles_root()
+    print_verbose("extracted runfiles to:", runfiles_root)
 
-    new_env["RUNFILES_DIR"] = module_space
+    new_env["RUNFILES_DIR"] = runfiles_root
 
     # Don't prepend a potentially unsafe path to sys.path
     # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
     new_env["PYTHONSAFEPATH"] = "1"
 
-    main_filename = os.path.join(module_space, main_rel_path)
+    main_filename = os.path.join(runfiles_root, main_rel_path)
     main_filename = get_windows_path_with_unc_prefix(main_filename)
     assert os.path.exists(main_filename), (
         "Cannot exec() %r: file not found." % main_filename
@@ -268,18 +276,18 @@ def main():
     )
 
     if _PYTHON_BINARY_VENV:
-        python_program = os.path.join(module_space, _PYTHON_BINARY_VENV)
+        python_program = os.path.join(runfiles_root, _PYTHON_BINARY_VENV)
         # When a venv is used, the `bin/python3` symlink may need to be created.
         # This case occurs when "create venv at runtime" or "resolve python at
         # runtime" modes are enabled.
         if not os.path.lexists(python_program):
             # The venv bin/python3 interpreter should always be under runfiles, but
             # double check. We don't want to accidentally create symlinks elsewhere
-            if not python_program.startswith(module_space):
+            if not python_program.startswith(runfiles_root):
                 raise AssertionError(
                     "Program's venv binary not under runfiles: {python_program}"
                 )
-            symlink_to = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
+            symlink_to = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
             os.makedirs(os.path.dirname(python_program), exist_ok=True)
             try:
                 os.symlink(symlink_to, python_program)
@@ -289,7 +297,7 @@ def main():
                 ) from e
 
     else:
-        python_program = find_binary(module_space, _PYTHON_BINARY_ACTUAL)
+        python_program = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
         if python_program is None:
             raise AssertionError(
                 "Could not find python binary: " + _PYTHON_BINARY_ACTUAL
@@ -309,7 +317,7 @@ def main():
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
     if os.environ.get("RUN_UNDER_RUNFILES") == "1":
-        workspace = os.path.join(module_space, _WORKSPACE_NAME)
+        workspace = os.path.join(runfiles_root, _WORKSPACE_NAME)
 
     sys.stdout.flush()
     execute_file(
@@ -317,7 +325,7 @@ def main():
         main_filename,
         args,
         new_env,
-        module_space,
+        runfiles_root,
         workspace,
     )
 
