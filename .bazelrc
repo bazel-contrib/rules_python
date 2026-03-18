@@ -31,7 +31,7 @@ common --incompatible_use_plus_in_repo_names
 common --incompatible_strict_action_env=false
 
 # To work around bug on bazel 7
-common --experimental_repository_cache_hardlinks=false
+common:ci --experimental_repository_cache_hardlinks=false
 
 # Windows makes use of runfiles for some rules
 build --enable_runfiles

@@ -32,6 +32,7 @@ buildifier:
     # their package path is qualified with the repo name.
     - "@rules_python//examples/wheel/..."
   build_flags: &reusable_config_build_flags
+    - "--config=ci"
     - "--keep_going"
     - "--build_tag_filters=-integration-test"
     - "--verbose_failures"
@@ -42,6 +43,7 @@ buildifier:
     - "--test_tag_filters=-integration-test"
 .common_workspace_flags_min_bazel: &common_workspace_flags_min_bazel
   build_flags:
+    - "--config=ci"
     - "--noenable_bzlmod"
     - "--build_tag_filters=-integration-test"
   test_flags:
