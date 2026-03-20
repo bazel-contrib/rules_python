@@ -75,6 +75,11 @@ def simpleapi_download(
         for p, i in (attr.index_url_overrides or {}).items()
     }
 
+    sources = {
+        normalize_name(pkg): versions
+        for pkg, versions in attr.sources.items()
+    }
+
     # NOTE @aignas 2024-03-31: we are not merging results from multiple indexes
     # to replicate how `pip` would handle this case.
     contents = {}
@@ -83,8 +88,9 @@ def simpleapi_download(
 
     dist_urls = _get_dist_urls(
         ctx,
-        index_urls,
-        index_url_overrides,
+        index_urls = index_urls,
+        index_url_overrides = index_url_overrides,
+        sources = sources,
         read_simpleapi = read_simpleapi,
         cache = cache,
         get_auth = get_auth,
@@ -94,11 +100,6 @@ def simpleapi_download(
     )
 
     ctx.report_progress("Fetch package lists from PyPI index")
-
-    sources = {
-        normalize_name(pkg): versions
-        for pkg, versions in attr.sources.items()
-    }
 
     downloads = {}
     contents = {}
@@ -125,29 +126,10 @@ def simpleapi_download(
 
     return contents
 
-def _get_dist_urls(ctx, index_urls, index_url_overrides, read_simpleapi, *, attr, block, _fail = fail, **kwargs):
-    if index_url_overrides:
-        first_index = index_urls[0]
-        return {
-            pkg: urllib.strip_empty_path_segments("{index_url}/{distribution}/".format(
-                index_url = index_url_overrides.get(normalize_name(pkg), first_index).rstrip("/"),
-                distribution = pkg,
-            ))
-            for pkg in attr.sources
-        }
-
+def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
     downloads = {}
     results = {}
     for index_url in index_urls:
-        # TODO @aignas 2026-03-20: pull from the cache/facts
-        # we can store the following schema:
-        # facts: {
-        #   "index_urls": {
-        #       "<index_url>": {
-        #           "<pkg_normalized>": "<dist_url>",
-        #       }
-        #   }
-        # }
         download = read_simpleapi(
             ctx = ctx,
             attr = attr,
@@ -155,7 +137,7 @@ def _get_dist_urls(ctx, index_urls, index_url_overrides, read_simpleapi, *, attr
                 index_url = index_url,
             )),
             parse_index = True,
-            versions = None,
+            versions = {pkg: None for pkg in sources},
             block = block,
             allow_fail = False,
             **kwargs
@@ -170,25 +152,25 @@ def _get_dist_urls(ctx, index_urls, index_url_overrides, read_simpleapi, *, attr
 
     found_on_index = {}
     for index_url, result in results.items():
-        sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
-
-        available_packages = result.output
-        sources = [pkg for pkg in sources if normalize_name(pkg) in available_packages]
+        # Filter out the things that we have already found
         found_on_index.update({
-            pkg: urllib.absolute_url(index_url, available_packages[normalize_name(pkg)])
+            pkg: urllib.absolute_url(index_url, result.output[pkg])
             for pkg in sources
         })
+        sources = [
+            pkg
+            for pkg in sources
+            if pkg not in found_on_index
+        ]
 
-    failed_sources = [pkg for pkg in attr.sources if pkg not in found_on_index]
-    if failed_sources:
+    if sources:
         pkg_index_urls = {
-            pkg: index_url_overrides.get(
-                normalize_name(pkg),
-                index_urls,
-            )
-            for pkg in failed_sources
+            pkg: index_url_overrides.get(pkg, index_urls)
+            for pkg in sources
         }
 
+        # TODO @aignas 2026-03-20: we haven't found these pkgs on the index, so we can
+        # print a warning, or we can fallback to PyPI. For now let's fail
         _fail(
             """
 Failed to find packages on PyPI of the following packages from urls:
@@ -196,13 +178,13 @@ Failed to find packages on PyPI of the following packages from urls:
 
 If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={failed_sources}' to your 'pip.parse' call.
 """.format(
-                pkg_index_urls = render.dict(pkg_index_urls),
-                failed_sources = render.list(failed_sources),
+                pkg_index_urls = render.dict(dict(sorted(pkg_index_urls.items()))),
+                failed_sources = render.list(sources),
             ),
         )
         return None
 
-    return {normalize_name(pkg): url for pkg, url in found_on_index.items()}
+    return found_on_index
 
 def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, parse_index = False, **download_kwargs):
     """Read SimpleAPI.
@@ -227,11 +209,6 @@ def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, parse_inde
         A similar object to what `download` would return except that in result.out
         will be the parsed simple api contents.
     """
-    # NOTE @aignas 2024-03-31: some of the simple APIs use relative URLs for
-    # the whl location and we cannot handle multiple URLs at once by passing
-    # them to ctx.download if we want to correctly handle the relative URLs.
-    # TODO: Add a test that env subbed index urls do not leak into the lock file.
-
     real_url = urllib.strip_empty_path_segments(envsubst(url, attr.envsubst, ctx.getenv))
 
     cache_key = (url, real_url, versions)
