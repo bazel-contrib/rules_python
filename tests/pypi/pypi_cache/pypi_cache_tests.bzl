@@ -155,6 +155,39 @@ def _test_pypi_cache_writes_to_facts(env):
         "fact_version": "v1",  # Facts version
     })
 
+    # When we get the other items cached in memory, they get written to facts
+    got = cache.get((key[0], key[1], ["1.1.0"]))
+    got.whls().contains_exactly({
+        "sha_whl_2": fake_result.whls["sha_whl_2"],
+    })
+    got.sdists().contains_exactly({})
+    got.sha256s_by_version().contains_exactly({
+        "1.1.0": fake_result.sha256s_by_version["1.1.0"],
+    })
+
+    # Then when we get facts at the end
+    cache.get_facts().contains_exactly({
+        "dist_hashes": {
+            # We are not using the real index URL, because we may have credentials in here
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha_whl",
+                    "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha_sdist",
+                    "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl": "sha_whl_2",
+                },
+            },
+        },
+        "dist_yanked": {
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "sha_sdist": "",
+                    "sha_whl": "Security issue",
+                },
+            },
+        },
+        "fact_version": "v1",  # Facts version
+    })
+
 _tests.append(_test_pypi_cache_writes_to_facts)
 
 def _test_pypi_cache_reads_from_facts(env):

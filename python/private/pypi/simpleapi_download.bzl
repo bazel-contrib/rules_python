@@ -73,16 +73,17 @@ def simpleapi_download(
         normalize_name(p): i
         for p, i in (attr.index_url_overrides or {}).items()
     }
-
     sources = {
         normalize_name(pkg): versions
         for pkg, versions in attr.sources.items()
     }
 
-    # NOTE @aignas 2024-03-31: we are not merging results from multiple indexes
-    # to replicate how `pip` would handle this case.
     read_simpleapi = read_simpleapi or _read_simpleapi
 
+    ctx.report_progress("Fetch package lists from PyPI index")
+
+    # NOTE: we are not merging results from multiple indexes to replicate how `pip` would
+    # handle this case. What we do is we select a particular index to download the packages
     dist_urls = _get_dist_urls(
         ctx,
         index_urls = [attr.index_url] + attr.extra_index_urls,
@@ -96,7 +97,7 @@ def simpleapi_download(
         _fail = _fail,
     )
 
-    ctx.report_progress("Fetch package lists from PyPI index")
+    ctx.report_progress("Fetching package URLs from PyPI index")
 
     downloads = {}
     contents = {}
