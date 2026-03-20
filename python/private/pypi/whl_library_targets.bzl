@@ -39,7 +39,7 @@ _BAZEL_REPO_FILE_GLOBS = [
     "BUILD.bazel",
     "REPO.bazel",
     "WORKSPACE",
-    "WORKSPACE",
+    "WORKSPACE.bzlmod",
     "WORKSPACE.bazel",
 ]
 
