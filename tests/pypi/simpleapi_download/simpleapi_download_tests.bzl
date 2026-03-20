@@ -24,11 +24,7 @@ def _test_simple(env):
     calls = []
 
     def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, allow_fail):
-        _ = ctx  # buildifier: disable=unused-variable
-        _ = attr
-        _ = cache
-        _ = get_auth
-        _ = versions
+        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
         env.expect.that_bool(allow_fail).equals(True)
         calls.append(url)
@@ -98,11 +94,7 @@ def _test_fail(env):
     fails = []
 
     def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, allow_fail):
-        _ = ctx  # buildifier: disable=unused-variable
-        _ = attr
-        _ = cache
-        _ = get_auth
-        _ = versions
+        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
         env.expect.that_bool(allow_fail).equals(True)
         calls.append(url)
@@ -173,11 +165,7 @@ def _test_allow_fail_single_index(env):
     fails = []
 
     def read_simpleapi(ctx, *, url, versions, attr, cache, get_auth, block, allow_fail):
-        _ = ctx  # buildifier: disable=unused-variable
-        _ = attr
-        _ = cache
-        _ = get_auth
-        _ = versions
+        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
         env.expect.that_bool(allow_fail).equals(False)
         calls.append(url)
