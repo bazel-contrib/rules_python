@@ -42,6 +42,29 @@ def _generate_html(*items):
         ]),
     )
 
+def _test_index(env):
+    # buildifier: disable=unsorted-dict-items
+    tests = [
+        (
+            [
+                struct(attrs = ['href="/simple/foo/"'], filename = "foo"),
+                struct(attrs = ['href="./b-ar/"'], filename = "b-._.-aR"),
+            ],
+            {
+                "b_ar": "./b-ar/",
+                "foo": "/simple/foo/",
+            },
+        ),
+    ]
+
+    for (input, want) in tests:
+        html = _generate_html(*input)
+        got = parse_simpleapi_html(content = html, parse_index = True)
+
+        env.expect.that_dict(got).contains_exactly(want)
+
+_tests.append(_test_index)
+
 def _test_sdist(env):
     # buildifier: disable=unsorted-dict-items
     tests = [
