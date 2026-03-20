@@ -89,6 +89,9 @@ def _pypi_cache_get(self, key):
     if not cached and versions:
         # Could not get from in-memory, read from lockfile facts
         cached = self._facts.get(index_url, versions)
+    else:
+        # TODO @aignas 2026-03-20: add a test here
+        self._facts.setdefault(index_url, cached)
 
     return cached
 
@@ -123,13 +126,11 @@ def _filter_packages(dists, requested_versions):
         return dists
 
     if type(dists) == "dict":
-        pkgs = requested_versions
-        filtered = {
+        return {
             pkg: url
             for pkg, url in dists.items()
-            if pkg in pkgs
+            if pkg in requested_versions
         }
-        return filtered
 
     sha256s_by_version = {}
     whls = {}
@@ -290,7 +291,7 @@ def _store_facts(facts, fact_version, index_url, value):
         #   },
         # },
         for pkg, url in value.items():
-            facts.setdefault("index_urls", {}).setdefault(index_url, {}).setdefault(pkg, url)
+            facts.setdefault("index_urls", {}).setdefault(index_url, {})[pkg] = url
         return value
 
     root_url, _, distribution = index_url.rstrip("/").rpartition("/")

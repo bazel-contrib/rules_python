@@ -82,13 +82,11 @@ def simpleapi_download(
 
     # NOTE @aignas 2024-03-31: we are not merging results from multiple indexes
     # to replicate how `pip` would handle this case.
-    contents = {}
-    index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
 
     dist_urls = _get_dist_urls(
         ctx,
-        index_urls = index_urls,
+        index_urls = [attr.index_url] + attr.extra_index_urls,
         index_url_overrides = index_url_overrides,
         sources = sources,
         read_simpleapi = read_simpleapi,
