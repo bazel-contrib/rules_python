@@ -19,7 +19,6 @@ A file that houses private functions used in the `bzlmod` extension with the sam
 load("//python/private:auth.bzl", _get_auth = "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:normalize_name.bzl", "normalize_name")
-load("//python/private:text_util.bzl", "render")
 load(":parse_simpleapi_html.bzl", "parse_simpleapi_html")
 load(":urllib.bzl", "urllib")
 
@@ -150,37 +149,19 @@ def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simple
 
     found_on_index = {}
     for index_url, result in results.items():
-        # Filter out the things that we have already found
-        found_on_index.update({
-            pkg: urllib.absolute_url(index_url, result.output[pkg])
-            for pkg in sources
-        })
         sources = [
             pkg
             for pkg in sources
             if pkg not in found_on_index
         ]
 
-    if sources:
-        pkg_index_urls = {
-            pkg: index_url_overrides.get(pkg, index_urls)
+        # Filter out the things that we have already found
+        found_on_index.update({
+            pkg: urllib.absolute_url(index_url, result.output[pkg])
             for pkg in sources
-        }
-
-        # TODO @aignas 2026-03-20: we haven't found these pkgs on the index, so we can
-        # print a warning, or we can fallback to PyPI. For now let's fail
-        _fail(
-            """
-Failed to find packages on PyPI of the following packages from urls:
-{pkg_index_urls}
-
-If you would like to skip downloading metadata for these packages please add 'simpleapi_skip={failed_sources}' to your 'pip.parse' call.
-""".format(
-                pkg_index_urls = render.dict(dict(sorted(pkg_index_urls.items()))),
-                failed_sources = render.list(sources),
-            ),
-        )
-        return None
+            # TODO @aignas 2026-03-20: add a test here
+            if index_url_overrides.get(pkg, index_url)
+        })
 
     return found_on_index
 
