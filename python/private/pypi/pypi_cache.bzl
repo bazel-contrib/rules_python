@@ -90,6 +90,9 @@ def _pypi_cache_get(self, key):
         # Could not get from in-memory, read from lockfile facts
         cached = self._facts.get(index_url, versions)
     else:
+        # We might be using something from memory that is not yet stored in facts (e.g. we processed
+        # the requirements.txt for one Python version and the deps got cached, but new python
+        # version means different deps, which may add extras.
         self._facts.setdefault(index_url, cached)
 
     return cached

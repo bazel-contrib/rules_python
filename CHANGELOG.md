@@ -67,8 +67,13 @@ END_UNRELEASED_TEMPLATE
 Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
   sdists in the `whl_library` rule and fetching wheels using `pip`.
-* (pypi) We will set `allow_fail` to `False` if the {attr}`experimental_index_url_overrides` is set
-  to a non-empty value. This means that failures will be no-longer cached in this particular case.
+* (pypi) Before using the bazel downloader to fetch the PyPI package metadata
+  we will from now on fetch the lists of available packages on each index. The
+  used package mappings will be written as facts to the `MODULE.bazel.lock` file
+  on supported bazel versions and it should be done at most once. As a result,
+  per-package {obj}`experimental_index_url_overrides` is no longer needed if the index URLs are
+  passed to the `pip.parse` via `experimental_index_url` and `experimental_extra_index_urls`.
+  Fixes
   ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and 
   [#2632](https://github.com/bazel-contrib/rules_python/issues/2632))
 

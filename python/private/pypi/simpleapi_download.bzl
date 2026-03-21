@@ -191,7 +191,8 @@ def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = Non
         cache: {type}`struct` the `pypi_cache` instance.
         versions: {type}`list[str] The versions that have been requested.
         get_auth: A function to get auth information. Used in tests.
-        parse_index: TODO
+        parse_index:  {type}`bool` Whether to parse the content as a root index page
+            (e.g. `/simple/`) instead of a package-specific page.
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
 
