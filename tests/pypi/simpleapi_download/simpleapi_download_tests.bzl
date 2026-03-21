@@ -23,25 +23,29 @@ _tests = []
 def _test_simple(env):
     calls = []
 
-    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, allow_fail):
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, parse_index):
+        if parse_index:
+            return struct(
+                success = True,
+                output = {
+                    "bar": "/bar/",
+                    "baz": "/baz/",
+                } if "main" in url else {
+                    "foo": "/foo/",
+                },
+            )
+
         _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
-        env.expect.that_bool(allow_fail).equals(True)
         calls.append(url)
-        if "foo" in url and "main" in url:
-            return struct(
-                output = "",
-                success = False,
-            )
-        else:
-            return struct(
-                output = struct(
-                    sdists = {"deadbeef": url.strip("/").split("/")[-1]},
-                    whls = {"deadb33f": url.strip("/").split("/")[-1]},
-                    sha256s_by_version = {"fizz": url.strip("/").split("/")[-1]},
-                ),
-                success = True,
-            )
+        return struct(
+            output = struct(
+                sdists = {"deadbeef": url.strip("/").split("/")[-1]},
+                whls = {"deadb33f": url.strip("/").split("/")[-1]},
+                sha256s_by_version = {"fizz": url.strip("/").split("/")[-1]},
+            ),
+            success = True,
+        )
 
     contents = simpleapi_download(
         ctx = struct(
@@ -50,8 +54,8 @@ def _test_simple(env):
         ),
         attr = struct(
             index_url_overrides = {},
-            index_url = "main",
-            extra_index_urls = ["extra"],
+            index_url = "https://main.com",
+            extra_index_urls = ["https://extra.com"],
             sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
         ),
@@ -61,26 +65,25 @@ def _test_simple(env):
     )
 
     env.expect.that_collection(calls).contains_exactly([
-        "extra/foo/",
-        "main/bar/",
-        "main/baz/",
-        "main/foo/",
+        "https://extra.com/foo/",
+        "https://main.com/bar/",
+        "https://main.com/baz/",
     ])
     env.expect.that_dict(contents).contains_exactly({
         "bar": struct(
-            index_url = "main/bar/",
+            index_url = "https://main.com/bar/",
             sdists = {"deadbeef": "bar"},
             sha256s_by_version = {"fizz": "bar"},
             whls = {"deadb33f": "bar"},
         ),
         "baz": struct(
-            index_url = "main/baz/",
+            index_url = "https://main.com/baz/",
             sdists = {"deadbeef": "baz"},
             sha256s_by_version = {"fizz": "baz"},
             whls = {"deadb33f": "baz"},
         ),
         "foo": struct(
-            index_url = "extra/foo/",
+            index_url = "https://extra.com/foo/",
             sdists = {"deadbeef": "foo"},
             sha256s_by_version = {"fizz": "foo"},
             whls = {"deadb33f": "foo"},
@@ -89,85 +92,25 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
-def _test_fail(env):
+def _test_index_overrides(env):
     calls = []
     fails = []
 
-    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, allow_fail):
-        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
-        env.expect.that_bool(block).equals(False)
-        env.expect.that_bool(allow_fail).equals(True)
-        calls.append(url)
-        if "foo" in url:
+    def read_simpleapi(ctx, *, url, versions, attr, cache, get_auth, block, parse_index):
+        if parse_index:
             return struct(
-                output = "",
-                success = False,
-            )
-        if "bar" in url:
-            return struct(
-                output = "",
-                success = False,
-            )
-        else:
-            return struct(
-                output = struct(
-                    sdists = {},
-                    whls = {},
-                    sha256s_by_version = {},
-                ),
                 success = True,
+                output = {
+                    "Baz": "/baz/",  # let's test normalization
+                    "bar": "/bar/",
+                    "foo": "/foo-should-fail/",
+                } if "main" in url else {
+                    "foo": "/foo/",
+                },
             )
 
-    simpleapi_download(
-        ctx = struct(
-            getenv = {}.get,
-            report_progress = lambda _: None,
-        ),
-        attr = struct(
-            index_url_overrides = {},
-            index_url = "main",
-            extra_index_urls = ["extra"],
-            sources = {"bar": None, "baz": None, "foo": None},
-            envsubst = [],
-        ),
-        cache = pypi_cache(),
-        parallel_download = True,
-        read_simpleapi = read_simpleapi,
-        _fail = fails.append,
-    )
-
-    env.expect.that_collection(fails).contains_exactly([
-        """
-Failed to download metadata of the following packages from urls:
-{
-    "bar": ["main", "extra"],
-    "foo": ["main", "extra"],
-}
-
-If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=[
-    "bar",
-    "foo",
-]' to your 'pip.parse' call.
-""",
-    ])
-    env.expect.that_collection(calls).contains_exactly([
-        "main/foo/",
-        "main/bar/",
-        "main/baz/",
-        "extra/foo/",
-        "extra/bar/",
-    ])
-
-_tests.append(_test_fail)
-
-def _test_allow_fail_single_index(env):
-    calls = []
-    fails = []
-
-    def read_simpleapi(ctx, *, url, versions, attr, cache, get_auth, block, allow_fail):
         _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
-        env.expect.that_bool(allow_fail).equals(False)
         calls.append(url)
         return struct(
             output = struct(
@@ -185,9 +128,9 @@ def _test_allow_fail_single_index(env):
         ),
         attr = struct(
             index_url_overrides = {
-                "foo": "extra",
+                "foo": "https://extra.com",
             },
-            index_url = "main",
+            index_url = "https://main.com",
             extra_index_urls = [],
             sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
@@ -200,32 +143,32 @@ def _test_allow_fail_single_index(env):
 
     env.expect.that_collection(fails).contains_exactly([])
     env.expect.that_collection(calls).contains_exactly([
-        "main/bar/",
-        "main/baz/",
-        "extra/foo/",
+        "https://main.com/bar/",
+        "https://main.com/baz/",
+        "https://extra.com/foo/",
     ])
     env.expect.that_dict(contents).contains_exactly({
         "bar": struct(
-            index_url = "main/bar/",
+            index_url = "https://main.com/bar/",
             sdists = {"deadbeef": "bar"},
             sha256s_by_version = {"fizz": "bar"},
             whls = {"deadb33f": "bar"},
         ),
         "baz": struct(
-            index_url = "main/baz/",
+            index_url = "https://main.com/baz/",
             sdists = {"deadbeef": "baz"},
             sha256s_by_version = {"fizz": "baz"},
             whls = {"deadb33f": "baz"},
         ),
         "foo": struct(
-            index_url = "extra/foo/",
+            index_url = "https://extra.com/foo/",
             sdists = {"deadbeef": "foo"},
             sha256s_by_version = {"fizz": "foo"},
             whls = {"deadb33f": "foo"},
         ),
     })
 
-_tests.append(_test_allow_fail_single_index)
+_tests.append(_test_index_overrides)
 
 def _test_download_url(env):
     downloads = {}
@@ -233,6 +176,17 @@ def _test_download_url(env):
     def download(url, output, **kwargs):
         _ = kwargs  # buildifier: disable=unused-variable
         downloads[url[0]] = output
+
+        if len(downloads) == 1:
+            return struct(
+                success = True,
+                output = """
+                <a href="/main/simple/bar/">bar</a>
+                <a href="/main/simple/baz/">baz</a>
+                <a href="/main/simple/foo/">foo</a>
+                """,
+            )
+
         return struct(success = True)
 
     simpleapi_download(

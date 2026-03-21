@@ -110,6 +110,7 @@ def simpleapi_download(
             versions = sources[pkg],
             get_auth = get_auth,
             block = not parallel_download,
+            parse_index = False,
         )
         if hasattr(result, "wait"):
             # We will process it in a separate loop:
@@ -127,6 +128,10 @@ def simpleapi_download(
 def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
     downloads = {}
     results = {}
+    for extra in index_url_overrides.values():
+        if extra not in index_urls:
+            index_urls.append(extra)
+
     for index_url in index_urls:
         download = read_simpleapi(
             ctx = ctx,
@@ -137,7 +142,6 @@ def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simple
             parse_index = True,
             versions = {pkg: None for pkg in sources},
             block = block,
-            allow_fail = False,
             **kwargs
         )
         if hasattr(download, "wait"):
@@ -150,23 +154,27 @@ def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simple
 
     found_on_index = {}
     for index_url, result in results.items():
-        sources = [
-            pkg
-            for pkg in sources
-            if pkg not in found_on_index
-        ]
+        for pkg in sources:
+            if pkg in found_on_index:
+                # We have already found the package, skip
+                continue
 
-        # Filter out the things that we have already found
-        found_on_index.update({
-            pkg: urllib.absolute_url(index_url, result.output[pkg])
-            for pkg in sources
-            # TODO @aignas 2026-03-20: add a test here
-            if index_url_overrides.get(pkg, index_url)
-        })
+            if index_url_overrides.get(pkg, index_url) != index_url:
+                # we should not use this index for the package
+                continue
+
+            if not hasattr(result.output, "get"):
+                fail(result.output)
+
+            found = result.output.get(pkg)
+            if not found:
+                continue
+
+            found_on_index[pkg] = urllib.absolute_url(index_url, found)
 
     return found_on_index
 
-def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, parse_index = False, **download_kwargs):
+def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = None, **download_kwargs):
     """Read SimpleAPI.
 
     Args:

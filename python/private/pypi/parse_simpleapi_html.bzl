@@ -132,7 +132,7 @@ def parse_simpleapi_html(*, content, parse_index = False):
         else:
             sdists[sha256] = dist
 
-    if packages:
+    if parse_index:
         return packages
 
     return struct(
