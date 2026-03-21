@@ -247,12 +247,19 @@ def _test_simple_extras_vs_no_extras(env):
 _tests.append(_test_simple_extras_vs_no_extras)
 
 def _test_simple_extras_vs_no_extras_simpleapi(env):
-    def mockread_simpleapi(*_, **__):
+    def mockread_simpleapi(*_, parse_index, **__):
+        if parse_index:
+            content = """\
+    <a href="/simple/>simple</a><br/>
+"""
+        else:
+            content = """\
+    <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
+"""
         return struct(
             output = parse_simpleapi_html(
-                content = """\
-    <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
-""",
+                content = content,
+                parse_index = parse_index,
             ),
             success = True,
         )
@@ -489,10 +496,13 @@ def _test_simple_with_markers(env):
 _tests.append(_test_simple_with_markers)
 
 def _test_torch_experimental_index_url(env):
-    def mockread_simpleapi(*_, **__):
-        return struct(
-            output = parse_simpleapi_html(
-                content = """\
+    def mockread_simpleapi(*_, parse_index, **__):
+        if parse_index:
+            content = """\
+    <a href="/ignored/">torch</a>
+"""
+        else:
+            content = """\
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-linux_x86_64.whl#sha256=833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6">torch-2.4.1+cpu-cp310-cp310-linux_x86_64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-win_amd64.whl#sha256=1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202">torch-2.4.1+cpu-cp310-cp310-win_amd64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf">torch-2.4.1+cpu-cp311-cp311-linux_x86_64.whl</a><br/>
@@ -513,7 +523,12 @@ def _test_torch_experimental_index_url(env):
     <a href="/whl/cpu/torch-2.4.1-cp38-none-macosx_11_0_arm64.whl#sha256=5fc1d4d7ed265ef853579caf272686d1ed87cebdcd04f2a498f800ffc53dab71">torch-2.4.1-cp38-none-macosx_11_0_arm64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e">torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1-cp39-none-macosx_11_0_arm64.whl#sha256=a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec">torch-2.4.1-cp39-none-macosx_11_0_arm64.whl</a><br/>
-""",
+"""
+
+        return struct(
+            output = parse_simpleapi_html(
+                content = content,
+                parse_index = parse_index,
             ),
             success = True,
         )
