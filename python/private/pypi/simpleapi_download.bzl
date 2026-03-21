@@ -163,14 +163,18 @@ def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simple
                 # we should not use this index for the package
                 continue
 
-            if not hasattr(result.output, "get"):
-                fail(result.output)
-
             found = result.output.get(pkg)
             if not found:
                 continue
 
-            found_on_index[pkg] = urllib.absolute_url(index_url, found)
+            # The spec says that we should be able to reach the thing via `<index_url>/<dist_name>`,
+            # so let's extract that
+            found, _, part = found.rpartition("/")
+            if not part:
+                _, _, part = found.rpartition("/")
+            found_on_index[pkg] = urllib.strip_empty_path_segments(
+                "{}/{}/".format(index_url, part),
+            )
 
     return found_on_index
 
