@@ -375,6 +375,7 @@ def _create_executable(
 
     # NOTE: --build_python_zip defaults to true on Windows
     build_zip_enabled = read_possibly_native_flag(ctx, "build_python_zip")
+    build_zip_enabled = False
 
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
@@ -540,7 +541,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
     # compatible with full venv.
     # TODO: Use non-build_python_zip codepath for Windows
     if is_windows:
-        create_full_venv = False
+        create_full_venv = True
     elif not rp_config.bazel_8_or_later and not is_bootstrap_script:
         # Full venv for Bazel 7 + system_python is disabled because packaging
         # it using build_python_zip=true or rules_pkg breaks.

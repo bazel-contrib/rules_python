@@ -54,3 +54,4 @@ common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
 
+try-import user.bazelrc
