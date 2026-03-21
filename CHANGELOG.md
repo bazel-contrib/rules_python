@@ -63,6 +63,8 @@ END_UNRELEASED_TEMPLATE
 * {obj}`--windows_enable_symlinks` is required. Add `startup
   --windows_enable_symlinks` to your `.bazelrc` to enable Bazel using full
   symlink support on Windows.
+* venv-based binaries are created by default ({obj}`--bootstrap_impl=system_python`)
+  on supported platforms (Linux/Mac with Bazel 8+).
 
 Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
