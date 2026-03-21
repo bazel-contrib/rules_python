@@ -8,8 +8,11 @@ from __future__ import print_function
 import sys
 
 import os
+from os.path import dirname, join, basename
 import subprocess
 import uuid
+import shutil
+
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of
 # unsubstituted placeholders, which occurs when native py_binary is used in
@@ -51,7 +54,14 @@ IS_ZIPFILE = "%is_zipfile%" == "1"
 # 0 or 1.
 # If 1, then a venv will be created at runtime that replicates what would have
 # been the build-time structure.
-RECREATE_VENV_AT_RUNTIME="%recreate_venv_at_runtime%"
+RECREATE_VENV_AT_RUNTIME = "%recreate_venv_at_runtime%" == "1"
+# 0 or 1
+# If 1, then the path to python will be resolved by running
+# PYTHON_BINARY_ACTUAL to determine the actual underlying interpreter.
+RESOLVE_PYTHON_BINARY_AT_RUNTIME = "%resolve_python_binary_at_runtime%" == "1"
+# venv-relative path to the site-packages
+# e.g. lib/python3.12t/site-packages
+VENV_REL_SITE_PACKAGES = "%venv_rel_site_packages%"
 
 WORKSPACE_NAME = "%workspace_name%"
 
@@ -65,6 +75,7 @@ else:
   INTERPRETER_ARGS = [arg for arg in _INTERPRETER_ARGS_RAW.split("\n") if arg]
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
+EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
 def is_running_from_zip():
   return IS_ZIPFILE
@@ -149,7 +160,7 @@ def print_verbose(*args, mapping=None, values=None):
         if mapping is not None:
             for key, value in sorted((mapping or {}).items()):
                 print(
-                    "bootstrap: stage 1: ",
+                    "bootstrap: stage 1:",
                     *(list(args) + ["{}={}".format(key, repr(value))]),
                     file=sys.stderr,
                     flush=True
@@ -254,10 +265,17 @@ def extract_zip(zip_path, dest_dir):
       # https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation
       file_path = os.path.abspath(os.path.join(dest_dir, info.filename))
       # The Unix st_mode bits (see "man 7 inode") are stored in the upper 16
-      # bits of external_attr. Of those, we set the lower 12 bits, which are the
-      # file mode bits (since the file type bits can't be set by chmod anyway).
+      # bits of external_attr.
       attrs = info.external_attr >> 16
-      if attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
+      # Symlink bit in st_mode is 0o120000.
+      if (attrs & 0o170000) == 0o120000:
+        with open(file_path, "r") as f:
+          target = f.read()
+        os.remove(file_path)
+        os.symlink(target, file_path)
+      # Of those, we set the lower 12 bits, which are the
+      # file mode bits (since the file type bits can't be set by chmod anyway).
+      elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
         os.chmod(file_path, attrs & 0o7777)
 
 # Create the runfiles tree by extracting the zip file
@@ -267,6 +285,57 @@ def create_runfiles_root():
   # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
   # important that deletion code be in sync with this directory structure
   return os.path.join(temp_dir, 'runfiles')
+
+def _create_venv(runfiles_root):
+    runfiles_venv = join(runfiles_root, dirname(dirname(PYTHON_BINARY)))
+    if EXTRACT_ROOT:
+      venv = join(EXTRACT_ROOT, runfiles_venv)
+      os.makedirs(venv, exist_ok=True)
+      cleanup_dir = None
+    else:
+      import tempfile
+      venv = tempfile.mkdtemp("", f"bazel.{basename(runfiles_venv)}.")
+      cleanup_dir = venv
+
+    python_exe_actual = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
+
+    # See stage1_bootstrap_template.sh for details on this code path. In short,
+    # this handles when the build-time python version doesn't match runtime
+    # and if the initially resolved python_exe_actual is a wrapper script.
+    if RESOLVE_PYTHON_BINARY_AT_RUNTIME:
+        src = f"""
+import sys, site
+print(sys.executable)
+print(site.getsitepackages(["{venv}"])[-1])
+        """
+        output = subprocess.check_output([python_exe_actual, "-I"], shell=True,
+                                         encoding = "utf8", input=src)
+        output = output.strip().split("\n")
+        python_exe_actual = output[0]
+        venv_site_packages = output[1]
+        os.makedirs(dirname(venv_site_packages), exist_ok=True)
+        runfiles_venv_site_packages = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
+    else:
+        python_exe_actual = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
+        venv_site_packages = join(venv, "lib")
+        runfiles_venv_site_packages = join(runfiles_venv, "lib")
+
+    if python_exe_actual is None:
+        raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY_ACTUAL))
+
+    venv_bin = join(venv, "bin")
+    try:
+      os.mkdir(venv_bin)
+    except FileExistsError as e:
+      pass
+
+    # Match the basename; some tools, e.g. pyvenv key off the executable name
+    venv_python_exe = join(venv_bin, os.path.basename(python_exe_actual))
+    _symlink_exist_ok(from_=venv_python_exe, to=python_exe_actual)
+    _symlink_exist_ok(from_=join(venv, "lib"), to=join(runfiles_venv, "lib"))
+    _symlink_exist_ok(from_=venv_site_packages, to=runfiles_venv_site_packages)
+    _symlink_exist_ok(from_=join(venv, "pyvenv.cfg"), to=join(runfiles_venv, "pyvenv.cfg"))
+    return cleanup_dir, venv_python_exe
 
 def runfiles_envvar(runfiles_root):
   """Finds the runfiles manifest or the runfiles directory.
@@ -311,7 +380,7 @@ def runfiles_envvar(runfiles_root):
   return (None, None)
 
 def execute_file(python_program, main_filename, args, env, runfiles_root,
-                workspace, delete_runfiles_root):
+                workspace, delete_dirs):
   # type: (str, str, list[str], dict[str, str], str, str|None, str|None) -> ...
   """Executes the given Python file using the various environment settings.
 
@@ -326,8 +395,8 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
     runfiles_root: (str) Path to the runfiles root directory
     workspace: (str|None) Name of the workspace to execute in. This is expected to be a
         directory under the runfiles tree.
-    delete_runfiles_root: (bool), True if the runfiles root should be deleted
-        after a successful (exit code zero) program run, False if not.
+    delete_dirs: (list[str]) directories that should be deleted after the user
+        program has finished running.
   """
   argv = [python_program]
   argv.extend(INTERPRETER_ARGS)
@@ -351,20 +420,19 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   #   can't execv because we need control to return here. This only
   #   happens for targets built in the host config.
   #
-  if not (is_windows() or workspace or delete_runfiles_root):
+  if not (is_windows() or workspace or delete_dirs):
     _run_execv(python_program, argv, env)
 
+  print_verbose("run: subproc: environ:", mapping=os.environ)
+  print_verbose("run: subproc: cwd:", workspace)
+  print_verbose("run: subproc: argv:", values=argv)
   ret_code = subprocess.call(
-    argv,
-    env=env,
-    cwd=workspace
-  )
+      argv, env=env, cwd=workspace)
 
-  if delete_runfiles_root:
-    # NOTE: dirname() is called because create_runfiles_root() creates a
-    # sub-directory within a temporary directory, and we want to remove the
-    # whole temporary directory.
-    shutil.rmtree(os.path.dirname(runfiles_root), True)
+  if delete_dirs:
+    for delete_dir in delete_dirs:
+      print_verbose("rmtree:", delete_dir)
+      shutil.rmtree(delete_dir, True)
   sys.exit(ret_code)
 
 def _run_execv(python_program, argv, env):
@@ -374,9 +442,27 @@ def _run_execv(python_program, argv, env):
   print_verbose("RunExecv: environ:", mapping=os.environ)
   print_verbose("RunExecv: python:", python_program)
   print_verbose("RunExecv: argv:", values=argv)
-  os.execv(python_program, argv)
+  try:
+    os.execv(python_program, argv)
+  except:
+    with open(python_program, 'rb') as f:
+      print_verbose("pyprog head:" + str(f.read(50)))
+    raise
+
+def _symlink_exist_ok(*, from_, to):
+  try:
+    os.symlink(to, from_)
+  except FileExistsError:
+    pass
+
+
 
 def main():
+  print_verbose("sys.version:", sys.version)
+  print_verbose("initial argv:", values=sys.argv)
+  print_verbose("initial cwd:", os.getcwd())
+  print_verbose("initial environ:", mapping=os.environ)
+  print_verbose("initial sys.path:", values=sys.path)
   print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
   print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
   print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
@@ -399,12 +485,16 @@ def main():
   main_rel_path = os.path.normpath(STAGE2_BOOTSTRAP)
   print_verbose("main_rel_path:", main_rel_path)
 
+  delete_dirs = []
+
   if is_running_from_zip():
     runfiles_root = create_runfiles_root()
-    delete_runfiles_root = True
+    # NOTE: dirname() is called because create_runfiles_root() creates a
+    # sub-directory within a temporary directory, and we want to remove the
+    # whole temporary directory.
+    delete_dirs.append(dirname(runfiles_root))
   else:
     runfiles_root = find_runfiles_root(main_rel_path)
-    delete_runfiles_root = False
 
   print_verbose("runfiles root:", runfiles_root)
 
@@ -433,6 +523,14 @@ def main():
         repr(PYTHON_BINARY_ACTUAL)
     ))
 
+  if RECREATE_VENV_AT_RUNTIME:
+    # When the venv is created at runtime, python_program is PYTHON_BINARY_ACTUAL
+    # so we have to re-point it to the symlink in the venv
+    venv, python_program = _create_venv(runfiles_root)
+    delete_dirs.append(venv)
+  else:
+    python_program = find_python_binary(runfiles_root)
+
   # Some older Python versions on macOS (namely Python 3.7) may unintentionally
   # leave this environment variable set after starting the interpreter, which
   # causes problems with Python subprocesses correctly locating sys.executable,
@@ -456,7 +554,7 @@ def main():
     execute_file(
       python_program, main_filename, args, new_env, runfiles_root,
       workspace,
-      delete_runfiles_root = delete_runfiles_root,
+      delete_dirs = delete_dirs,
     )
 
   except EnvironmentError:

@@ -31,7 +31,8 @@ buildifier:
     # As a regression test for #225, check that wheel targets still build when
     # their package path is qualified with the repo name.
     - "@rules_python//examples/wheel/..."
-  build_flags:
+  build_flags: &reusable_config_build_flags
+    - "--experimental_repository_cache_hardlinks=false"
     - "--keep_going"
     - "--build_tag_filters=-integration-test"
     - "--verbose_failures"
@@ -42,6 +43,7 @@ buildifier:
     - "--test_tag_filters=-integration-test"
 .common_workspace_flags_min_bazel: &common_workspace_flags_min_bazel
   build_flags:
+    - "--experimental_repository_cache_hardlinks=false"
     - "--noenable_bzlmod"
     - "--build_tag_filters=-integration-test"
   test_flags:
@@ -292,6 +294,7 @@ tasks:
     name: "RBE: Ubuntu, minimum Bazel"
     platform: rbe_ubuntu2204
     build_flags:
+      - "--experimental_repository_cache_hardlinks=false"
       # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
       # which prevents cc toolchain autodetection from working correctly
       # on Bazel 5.4 and earlier. To workaround this, manually specify the

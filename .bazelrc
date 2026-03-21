@@ -30,6 +30,9 @@ common --incompatible_use_plus_in_repo_names
 # See https://github.com/bazel-contrib/rules_python/issues/3655
 common --incompatible_strict_action_env=false
 
+# To work around bug on bazel 7
+common:ci --experimental_repository_cache_hardlinks=false
+
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
 
@@ -50,3 +53,4 @@ common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
+

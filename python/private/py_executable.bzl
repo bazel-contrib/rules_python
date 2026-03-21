@@ -523,8 +523,35 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
 def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps):
-    create_full_venv = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     venv = "_{}.venv".format(output_prefix.lstrip("_"))
+
+    # The pyvenv.cfg file must be present to trigger the venv site hooks.
+    # Because it's paths are expected to be absolute paths, we can't reliably
+    # put much in it. See https://github.com/python/cpython/issues/83650
+    pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv))
+    ctx.actions.write(pyvenv_cfg, "")
+
+    is_bootstrap_script = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
+    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+
+    create_full_venv = True
+
+    # The legacy build_python_zip codepath (enabled by default on windows) isn't
+    # compatible with full venv.
+    # TODO: Use non-build_python_zip codepath for Windows
+    if is_windows:
+        create_full_venv = False
+    elif not rp_config.bazel_8_or_later and not is_bootstrap_script:
+        # Full venv for Bazel 7 + system_python is disabled because packaging
+        # it using build_python_zip=true or rules_pkg breaks.
+        # * Using build_python_zip=true breaks because the legacy zipapp support
+        #   doesn't handle symlinks correctly.
+        # * Using rules_pkg breaks for two reasons:
+        #   1. It requires rules_pkg 1.2, which crashes under Bazel 7
+        #   2. It requires File.is_symlink, which is a Bazel 8+ API.
+        # While bootstrap=script has the same problems, it has always been like
+        # that.
+        create_full_venv = False
 
     if create_full_venv:
         # The pyvenv.cfg file must be present to trigger the venv site hooks.
@@ -534,7 +561,6 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         ctx.actions.write(pyvenv_cfg, "")
     else:
         pyvenv_cfg = None
-
     runtime = runtime_details.effective_runtime
 
     venvs_use_declare_symlink_enabled = (
@@ -561,6 +587,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
             # needed or used at runtime. However, the zip code uses the interpreter
             # File object to figure out some paths.
             interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
+
             ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
         elif runtime.interpreter:
