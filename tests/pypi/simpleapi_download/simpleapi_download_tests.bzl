@@ -101,8 +101,9 @@ def _test_index_overrides(env):
             return struct(
                 success = True,
                 output = {
+                    # normalized
+                    "ba_z": "/ba-z/",
                     "bar": "/bar/",
-                    "baz": "/baz/",
                     "foo": "/foo-should-fail/",
                 } if "main" in url else {
                     "foo": "/foo/",
@@ -132,7 +133,7 @@ def _test_index_overrides(env):
             },
             index_url = "https://main.com",
             extra_index_urls = [],
-            sources = {"bar": None, "baz": None, "foo": None},
+            sources = {"ba_z": None, "bar": None, "foo": None},
             envsubst = [],
         ),
         cache = pypi_cache(),
@@ -144,21 +145,21 @@ def _test_index_overrides(env):
     env.expect.that_collection(fails).contains_exactly([])
     env.expect.that_collection(calls).contains_exactly([
         "https://main.com/bar/",
-        "https://main.com/baz/",
+        "https://main.com/ba-z/",
         "https://extra.com/foo/",
     ])
     env.expect.that_dict(contents).contains_exactly({
+        "ba_z": struct(
+            index_url = "https://main.com/ba-z/",
+            sdists = {"deadbeef": "ba-z"},
+            sha256s_by_version = {"fizz": "ba-z"},
+            whls = {"deadb33f": "ba-z"},
+        ),
         "bar": struct(
             index_url = "https://main.com/bar/",
             sdists = {"deadbeef": "bar"},
             sha256s_by_version = {"fizz": "bar"},
             whls = {"deadb33f": "bar"},
-        ),
-        "baz": struct(
-            index_url = "https://main.com/baz/",
-            sdists = {"deadbeef": "baz"},
-            sha256s_by_version = {"fizz": "baz"},
-            whls = {"deadb33f": "baz"},
         ),
         "foo": struct(
             index_url = "https://extra.com/foo/",
