@@ -169,12 +169,14 @@ def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simple
 
             # The spec says that we should be able to reach the thing via `<index_url>/<dist_name>`,
             # so let's extract that
+            parts = [index_url]
             found, _, part = found.rpartition("/")
+            parts.append(part)
             if not part:
                 _, _, part = found.rpartition("/")
-            found_on_index[pkg] = urllib.strip_empty_path_segments(
-                "{}/{}/".format(index_url, part),
-            )
+                parts.append(part)
+
+            found_on_index[pkg] = urllib.strip_empty_path_segments("/".join(parts))
 
     return found_on_index
 
