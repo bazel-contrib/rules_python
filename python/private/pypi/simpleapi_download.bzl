@@ -71,15 +71,20 @@ def simpleapi_download(
         for p, i in (attr.index_url_overrides or {}).items()
     }
 
-    download_kwargs = {}
-    if bazel_features.external_deps.download_has_block_param:
-        download_kwargs["block"] = not parallel_download
-
     # NOTE @aignas 2024-03-31: we are not merging results from multiple indexes
     # to replicate how `pip` would handle this case.
     contents = {}
     index_urls = [attr.index_url] + attr.extra_index_urls
     read_simpleapi = read_simpleapi or _read_simpleapi
+
+    download_kwargs = {}
+    if bazel_features.external_deps.download_has_block_param:
+        download_kwargs["block"] = not parallel_download
+
+    if len(index_urls) == 1 or index_url_overrides:
+        download_kwargs["allow_fail"] = False
+    else:
+        download_kwargs["allow_fail"] = True
 
     input_sources = attr.sources
 
@@ -225,7 +230,6 @@ def _read_simpleapi(ctx, url, attr, cache, versions, get_auth = None, **download
         url = [real_url],
         output = output,
         auth = get_auth(ctx, [real_url], ctx_attr = attr),
-        allow_fail = True,
         **download_kwargs
     )
 

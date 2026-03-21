@@ -23,13 +23,10 @@ _tests = []
 def _test_simple(env):
     calls = []
 
-    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block):
-        _ = ctx  # buildifier: disable=unused-variable
-        _ = attr
-        _ = cache
-        _ = get_auth
-        _ = versions
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, allow_fail):
+        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
+        env.expect.that_bool(allow_fail).equals(True)
         calls.append(url)
         if "foo" in url and "main" in url:
             return struct(
@@ -96,13 +93,10 @@ def _test_fail(env):
     calls = []
     fails = []
 
-    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block):
-        _ = ctx  # buildifier: disable=unused-variable
-        _ = attr
-        _ = cache
-        _ = get_auth
-        _ = versions
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, allow_fail):
+        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
+        env.expect.that_bool(allow_fail).equals(True)
         calls.append(url)
         if "foo" in url:
             return struct(
@@ -130,9 +124,7 @@ def _test_fail(env):
             report_progress = lambda _: None,
         ),
         attr = struct(
-            index_url_overrides = {
-                "foo": "invalid",
-            },
+            index_url_overrides = {},
             index_url = "main",
             extra_index_urls = ["extra"],
             sources = {"bar": None, "baz": None, "foo": None},
@@ -149,7 +141,7 @@ def _test_fail(env):
 Failed to download metadata of the following packages from urls:
 {
     "bar": ["main", "extra"],
-    "foo": "invalid",
+    "foo": ["main", "extra"],
 }
 
 If you would like to skip downloading metadata for these packages please add 'simpleapi_skip=[
@@ -159,14 +151,81 @@ If you would like to skip downloading metadata for these packages please add 'si
 """,
     ])
     env.expect.that_collection(calls).contains_exactly([
-        "invalid/foo/",
+        "main/foo/",
         "main/bar/",
         "main/baz/",
-        "invalid/foo/",
+        "extra/foo/",
         "extra/bar/",
     ])
 
 _tests.append(_test_fail)
+
+def _test_allow_fail_single_index(env):
+    calls = []
+    fails = []
+
+    def read_simpleapi(ctx, *, url, versions, attr, cache, get_auth, block, allow_fail):
+        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
+        env.expect.that_bool(block).equals(False)
+        env.expect.that_bool(allow_fail).equals(False)
+        calls.append(url)
+        return struct(
+            output = struct(
+                sdists = {"deadbeef": url.strip("/").split("/")[-1]},
+                whls = {"deadb33f": url.strip("/").split("/")[-1]},
+                sha256s_by_version = {"fizz": url.strip("/").split("/")[-1]},
+            ),
+            success = True,
+        )
+
+    contents = simpleapi_download(
+        ctx = struct(
+            getenv = {}.get,
+            report_progress = lambda _: None,
+        ),
+        attr = struct(
+            index_url_overrides = {
+                "foo": "extra",
+            },
+            index_url = "main",
+            extra_index_urls = [],
+            sources = {"bar": None, "baz": None, "foo": None},
+            envsubst = [],
+        ),
+        cache = pypi_cache(),
+        parallel_download = True,
+        read_simpleapi = read_simpleapi,
+        _fail = fails.append,
+    )
+
+    env.expect.that_collection(fails).contains_exactly([])
+    env.expect.that_collection(calls).contains_exactly([
+        "main/bar/",
+        "main/baz/",
+        "extra/foo/",
+    ])
+    env.expect.that_dict(contents).contains_exactly({
+        "bar": struct(
+            index_url = "main/bar/",
+            sdists = {"deadbeef": "bar"},
+            sha256s_by_version = {"fizz": "bar"},
+            whls = {"deadb33f": "bar"},
+        ),
+        "baz": struct(
+            index_url = "main/baz/",
+            sdists = {"deadbeef": "baz"},
+            sha256s_by_version = {"fizz": "baz"},
+            whls = {"deadb33f": "baz"},
+        ),
+        "foo": struct(
+            index_url = "extra/foo/",
+            sdists = {"deadbeef": "foo"},
+            sha256s_by_version = {"fizz": "foo"},
+            whls = {"deadb33f": "foo"},
+        ),
+    })
+
+_tests.append(_test_allow_fail_single_index)
 
 def _test_download_url(env):
     downloads = {}
