@@ -42,11 +42,13 @@ def simpleapi_download(
         ctx: The module_ctx or repository_ctx.
         attr: Contains the parameters for the download. They are grouped into a
           struct for better clarity. It must have attributes:
-           * index_url: str, the index.
+           * index_url: str, the index, or if `extra_index_urls` are passed, the default index.
            * index_url_overrides: dict[str, str], the index overrides for
              separate packages.
-           * extra_index_urls: Extra index URLs that will be looked up after
-             the main is looked up.
+           * extra_index_urls: Will be looked at in the order they are defined and the first match
+                wins. This is similar to what uv does, see
+                https://docs.astral.sh/uv/concepts/indexes/#searching-across-multiple-indexes.
+                PRs for implementing other strategies are welcome.
            * sources: list[str], the sources to download things for. Each value is
              the contents of requirements files.
            * envsubst: list[str], the envsubst vars for performing substitution in index url.
@@ -86,7 +88,8 @@ def simpleapi_download(
     # handle this case. What we do is we select a particular index to download the packages
     dist_urls = _get_dist_urls(
         ctx,
-        index_urls = [attr.index_url] + attr.extra_index_urls,
+        default_index = attr.index_url,
+        index_urls = attr.extra_index_urls,
         index_url_overrides = index_url_overrides,
         sources = sources,
         read_simpleapi = read_simpleapi,
@@ -125,12 +128,16 @@ def simpleapi_download(
 
     return contents
 
-def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
+def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
     downloads = {}
     results = {}
     for extra in index_url_overrides.values():
         if extra not in index_urls:
             index_urls.append(extra)
+
+    index_urls = index_urls or []
+    if default_index not in index_urls:
+        index_urls.append(default_index)
 
     for index_url in index_urls:
         download = read_simpleapi(
@@ -156,7 +163,11 @@ def _get_dist_urls(ctx, *, index_urls, index_url_overrides, sources, read_simple
     for index_url, result in results.items():
         for pkg in sources:
             if pkg in found_on_index:
-                # We have already found the package, skip
+                # We have already found the package, skip searching for it in
+                # other indexes.
+                #
+                # If we wanted to merge all of the index results, we would have to continue here
+                # and in the outer function process merging of the results.
                 continue
 
             if index_url_overrides.get(pkg, index_url) != index_url:

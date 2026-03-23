@@ -253,7 +253,7 @@ def _test_download_url_parallel(env):
         ),
         attr = struct(
             index_url_overrides = {},
-            index_url = "https://example.com/main/simple/",
+            index_url = "https://example.com/default/simple/",
             extra_index_urls = ["https://example.com/extra/simple/"],
             sources = {"bar": None, "baz": None, "foo": None},
             envsubst = [],
@@ -264,11 +264,11 @@ def _test_download_url_parallel(env):
     )
 
     env.expect.that_dict(downloads).contains_exactly({
+        "https://example.com/default/simple/": "path/for/https___example_com_default_simple.html",
         "https://example.com/extra/simple/": "path/for/https___example_com_extra_simple.html",
-        "https://example.com/main/simple/": "path/for/https___example_com_main_simple.html",
-        "https://example.com/main/simple/bar/": "path/for/https___example_com_main_simple_bar.html",
-        "https://example.com/main/simple/baz/": "path/for/https___example_com_main_simple_baz.html",
-        "https://example.com/main/simple/foo/": "path/for/https___example_com_main_simple_foo.html",
+        "https://example.com/extra/simple/bar/": "path/for/https___example_com_extra_simple_bar.html",
+        "https://example.com/extra/simple/baz/": "path/for/https___example_com_extra_simple_baz.html",
+        "https://example.com/extra/simple/foo/": "path/for/https___example_com_extra_simple_foo.html",
     })
 
 _tests.append(_test_download_url_parallel)

@@ -75,6 +75,9 @@ Other changes:
   on supported bazel versions and it should be done at most once. As a result,
   per-package {obj}`experimental_index_url_overrides` is no longer needed if the index URLs are
   passed to the `pip.parse` via `experimental_index_url` and `experimental_extra_index_urls`.
+  What is more, we start implementing the flags for `--index_url` and `--extra_index_urls` more in
+  line to how it is used in `uv` and `pip`, i.e. we default to `--index_url` if the package is not
+  found in `--extra_index_urls`.
   Fixes
   ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and 
   [#2632](https://github.com/bazel-contrib/rules_python/issues/2632)).
