@@ -72,11 +72,16 @@ def parse_simpleapi_html(*, content, parse_index = False):
         if start_tag == -1:
             break
 
-        # Find the end of the opening tag and the closing </a>
-        tag_end = content.find(">", start_tag)
-        end_tag = content.find("</a>", tag_end)
-        if tag_end == -1 or end_tag == -1:
+        # Find the closing </a> tag first, then find the end of the opening
+        # <a ...> tag using rfind. This correctly handles attributes that
+        # contain > characters, e.g. data-requires-python=">=3.6".
+        end_tag = content.find("</a>", start_tag)
+        if end_tag == -1:
             break
+        tag_end = content.rfind(">", start_tag, end_tag)
+        if tag_end == -1 or tag_end <= start_tag:
+            cursor = end_tag + 4
+            continue
 
         # Extract only the necessary slices
         filename = content[tag_end + 1:end_tag].strip()

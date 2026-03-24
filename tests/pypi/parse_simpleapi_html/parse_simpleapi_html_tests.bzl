@@ -88,7 +88,7 @@ def _test_sdist(env):
             struct(
                 attrs = [
                     'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
-                    'data-requires-python="&gt;=3.7"',
+                    'data-requires-python=">=3.7"',
                     "data-yanked",
                 ],
                 filename = "foo-0.0.1.tar.gz",
@@ -105,7 +105,7 @@ def _test_sdist(env):
             struct(
                 attrs = [
                     'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
-                    'data-requires-python="&gt;=3.7"',
+                    'data-requires-python="<=3.7"',
                     "data-yanked=\"Something &#10;with &quot;quotes&quot;&#10;over two lines\"",
                 ],
                 filename = "foo-0.0.1.tar.gz",
