@@ -138,6 +138,8 @@ Other changes:
     venvs.
   * {obj}`PyExecutableInfo.venv_interpreter_runfiles`, and
     {obj}`PyExecutableInfo.venv_interpreter_symlinks` adde
+* (wheel) Add support for `add_path_prefix` argument in `py_wheel` which can be
+  used to prepend a prefix to the files in the wheel.
 
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21

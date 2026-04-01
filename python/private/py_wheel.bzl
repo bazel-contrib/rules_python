@@ -170,6 +170,19 @@ entry_points, e.g. `{'console_scripts': ['main = examples.wheel.main:main']}`.
 }
 
 _other_attrs = {
+    "add_path_prefix": attr.string(
+        default = "",
+        doc = """\
+Path prefix to prepend to files added to the generated package.
+This prefix will be prepended **after** the paths are first stripped of the prefixes
+specified in `strip_path_prefixes`.
+
+For example:
++ `"foo/" will prepend to `"bar/baz/file.py"` as `"foo/bar/baz/file.py"`
++ `"foo_" will prepend to `"bar/baz/file.py"` as `"foo_bar/baz/file.py"`
++ `stripping ["bar/"] and adding "foo/" will change `"bar/baz/file.py"` to `"foo/baz/file.py"`
+""",
+    ),
     "author": attr.string(
         doc = "A string specifying the author of the package.",
         default = "",
@@ -389,6 +402,7 @@ def _py_wheel_impl(ctx):
     args.add("--out", outfile)
     args.add("--name_file", name_file)
     args.add_all(ctx.attr.strip_path_prefixes, format_each = "--strip_path_prefix=%s")
+    args.add("--path_prefix", ctx.attr.add_path_prefix)
 
     # Pass workspace status files if stamping is enabled
     if is_stamping_enabled(ctx.attr):

@@ -34,39 +34,69 @@ class QuoteAllFilenamesTest(unittest.TestCase):
     def test_quote_all_quotes_filenames_with_commas(self) -> None:
         """Filenames with commas are always quoted, regardless of quote_all_filenames."""
         whl = self._make_whl_file(quote_all=True)
-        self.assertEqual(whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"')
+        self.assertEqual(
+            whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"'
+        )
 
         whl = self._make_whl_file(quote_all=False)
-        self.assertEqual(whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"')
+        self.assertEqual(
+            whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"'
+        )
 
 
 class ArcNameFromTest(unittest.TestCase):
     def test_arcname_from(self) -> None:
-        # (name, distribution_prefix, strip_path_prefixes, want) tuples
+        # (name, distribution_prefix, strip_path_prefixes, add_path_prefix, want) tuples
         checks = [
-            ("a/b/c/file.py", "", [], "a/b/c/file.py"),
-            ("a/b/c/file.py", "", ["a"], "/b/c/file.py"),
-            ("a/b/c/file.py", "", ["a/b/"], "c/file.py"),
+            ("a/b/c/file.py", "", [], "", "a/b/c/file.py"),
+            ("a/b/c/file.py", "", ["a"], "", "/b/c/file.py"),
+            ("a/b/c/file.py", "", ["a/b/"], "", "c/file.py"),
             # only first found is used and it's not cumulative.
-            ("a/b/c/file.py", "", ["a/", "b/"], "b/c/file.py"),
+            ("a/b/c/file.py", "", ["a/", "b/"], "", "b/c/file.py"),
             # Examples from docs
-            ("foo/bar/baz/file.py", "", ["foo", "foo/bar/baz"], "/bar/baz/file.py"),
-            ("foo/bar/baz/file.py", "", ["foo/bar/baz", "foo"], "/file.py"),
-            ("foo/file2.py", "", ["foo/bar/baz", "foo"], "/file2.py"),
+            (
+                "foo/bar/baz/file.py",
+                "",
+                ["foo", "foo/bar/baz"],
+                "",
+                "/bar/baz/file.py",
+            ),
+            ("foo/bar/baz/file.py", "", ["foo/bar/baz", "foo"], "", "/file.py"),
+            ("foo/file2.py", "", ["foo/bar/baz", "foo"], "", "/file2.py"),
             # Files under the distribution prefix (eg mylib-1.0.0-dist-info)
             # are unmodified
-            ("mylib-0.0.1-dist-info/WHEEL", "mylib", [], "mylib-0.0.1-dist-info/WHEEL"),
-            ("mylib/a/b/c/WHEEL", "mylib", ["mylib"], "mylib/a/b/c/WHEEL"),
+            (
+                "mylib-0.0.1-dist-info/WHEEL",
+                "mylib",
+                [],
+                "",
+                "mylib-0.0.1-dist-info/WHEEL",
+            ),
+            ("mylib/a/b/c/WHEEL", "mylib", ["mylib"], "", "mylib/a/b/c/WHEEL"),
+            # Check that prefixes are added
+            ("a/b/c/file.py", "", [], "namespace/", "namespace/a/b/c/file.py"),
+            ("a/b/c/file.py", "", ["a"], "namespace", "namespace/b/c/file.py"),
+            (
+                "a/b/c/file.py",
+                "",
+                ["a/b/"],
+                "namespace_",
+                "namespace_c/file.py",
+            ),
         ]
-        for name, prefix, strip, want in checks:
+        for name, prefix, strip, add, want in checks:
             with self.subTest(
                 name=name,
                 distribution_prefix=prefix,
                 strip_path_prefixes=strip,
+                add_path_prefix=add,
                 want=want,
             ):
                 got = wheelmaker.arcname_from(
-                    name=name, distribution_prefix=prefix, strip_path_prefixes=strip
+                    name=name,
+                    distribution_prefix=prefix,
+                    strip_path_prefixes=strip,
+                    add_path_prefix=add,
                 )
                 self.assertEqual(got, want)
 
@@ -77,7 +107,9 @@ class GetNewRequirementLineTest(unittest.TestCase):
         self.assertEqual(result, "Requires-Dist: requests>=2.0")
 
     def test_requirement_and_extra(self):
-        result = wheelmaker.get_new_requirement_line("requests>=2.0", "extra=='dev'")
+        result = wheelmaker.get_new_requirement_line(
+            "requests>=2.0", "extra=='dev'"
+        )
         self.assertEqual(result, "Requires-Dist: requests>=2.0; extra=='dev'")
 
     def test_requirement_with_url(self):
