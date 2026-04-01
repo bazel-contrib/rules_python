@@ -385,7 +385,7 @@ uv = use_extension("//python/uv:uv.bzl", "uv")
 uv.default(
     base_url = "https://github.com/astral-sh/uv/releases/download",
     manifest_filename = "dist-manifest.json",
-    version = "0.6.3",
+    version = "0.11.2",
 )
 uv.default(
     compatible_with = [
@@ -400,13 +400,6 @@ uv.default(
         "@platforms//cpu:aarch64",
     ],
     platform = "aarch64-unknown-linux-gnu",
-)
-uv.default(
-    compatible_with = [
-        "@platforms//os:linux",
-        "@platforms//cpu:ppc",
-    ],
-    platform = "powerpc64-unknown-linux-gnu",
 )
 uv.default(
     compatible_with = [
@@ -460,7 +453,7 @@ uv_dev = use_extension(
     dev_dependency = True,
 )
 uv_dev.configure(
-    version = "0.6.2",
+    version = "0.11.2",
 )
 
 # Temporarily comment out these flag aliases because they break Bazel 9

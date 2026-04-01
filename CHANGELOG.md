@@ -81,6 +81,10 @@ Other changes:
   Fixes
   ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and 
   [#2632](https://github.com/bazel-contrib/rules_python/issues/2632)).
+* (uv) We will now use the download URL specified in the `uv`'s `dist_manifest.json`
+  file. If you have redirects or blocking rules as part of your downloader setup,
+  you may need to adjust them. What is more, the default uv version has been bumped
+  `0.11.2`.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -97,6 +101,19 @@ Other changes:
 * (bootstrap) Fixed incorrect runfiles path construction in bootstrap
   scripts when binary is defined in another bazel module
   ([#3563](https://github.com/bazel-contrib/rules_python/issues/3563)).
+* (uv) Downloads for versions `>=0.10` work again. In order to fix this we had
+  drop support for `powerpc64` platform. People interested in the platform can
+  bring it back via the `uv.default` API. Like:
+  ```
+  uv.default(
+      compatible_with = [
+          "@platforms//os:linux",
+          "@platforms//cpu:ppc",
+      ],
+      platform = "powerpc64-unknown-linux-gnu",
+  )
+  ```
+  Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
 
 {#v0-0-0-added}
 ### Added

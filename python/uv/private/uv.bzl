@@ -420,6 +420,17 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                 "uv-aarch64-apple-darwin.tar.gz.sha256"
                 "...
             ]
+            hosting	
+                order	
+                0	"simple"
+                1	"github"
+                github	
+                    artifact_base_url	"https://github.com"
+                    artifact_download_path	"/astral-sh/uv/releases/download/0.11.2"
+                    owner	"astral-sh"
+                    repo	"uv"
+                simple	
+                    download_url	"https://releases.astral.sh/github/uv/releases/download/0.11.2"
         artifacts	
             uv-aarch64-apple-darwin.tar.gz	
                 name	"uv-aarch64-apple-darwin.tar.gz"
@@ -459,6 +470,14 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
     if not result.success:
         fail(result)
     dist_manifest = json.decode(module_ctx.read(dist_manifest))
+
+    base_url = (
+        dist_manifest
+            .get("releases", [{}])[0]
+            .get("hosting", {})
+            .get("simple", {})
+            .get("download_url", base_url)
+    )
 
     artifacts = dist_manifest["artifacts"]
     tool_sources = {}
