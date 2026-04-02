@@ -16,7 +16,8 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
-load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:extension.bzl", "build_config", "default_platforms", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:platform.bzl", _plat = "platform")
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load(":pip_parse.bzl", _parse = "pip_parse")
 
@@ -49,33 +50,63 @@ simple==0.0.1 \
         ],
     )
 
-def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_root = True):
+def _default(
+        *,
+        arch_name = None,
+        auth_patterns = None,
+        config_settings = None,
+        env = None,
+        index_url = None,
+        marker = None,
+        netrc = None,
+        os_name = None,
+        platform = None,
+        whl_platform_tags = None,
+        whl_abi_tags = None):
+    return struct(
+        arch_name = arch_name,
+        auth_patterns = auth_patterns or {},
+        config_settings = config_settings,
+        env = env or {},
+        index_url = index_url or "",
+        marker = marker or "",
+        netrc = netrc,
+        os_name = os_name,
+        platform = platform,
+        whl_abi_tags = whl_abi_tags or [],
+        whl_platform_tags = whl_platform_tags or [],
+    )
+
+# The default value for the default platforms tags use in `_mod`.
+_default_tags_default = [
+    _default(
+        platform = "{}_{}{}".format(os, cpu, freethreaded),
+        os_name = os,
+        arch_name = cpu,
+        config_settings = [
+            "@platforms//os:{}".format(os),
+            "@platforms//cpu:{}".format(cpu),
+        ],
+        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
+        whl_platform_tags = whl_platform_tags,
+    )
+    for (os, cpu, freethreaded), whl_platform_tags in {
+        ("linux", "x86_64", ""): ["linux_x86_64", "manylinux_*_x86_64"],
+        ("linux", "x86_64", "_freethreaded"): ["linux_x86_64", "manylinux_*_x86_64"],
+        ("linux", "aarch64", ""): ["linux_aarch64", "manylinux_*_aarch64"],
+        ("osx", "aarch64", ""): ["macosx_*_arm64"],
+        ("windows", "aarch64", ""): ["win_arm64"],
+    }.items()
+]
+
+def _mod(*, name, default = _default_tags_default, parse = [], override = [], whl_mods = [], is_root = True):
     return struct(
         name = name,
         tags = struct(
             parse = parse,
             override = override,
             whl_mods = whl_mods,
-            default = default or [
-                _default(
-                    platform = "{}_{}{}".format(os, cpu, freethreaded),
-                    os_name = os,
-                    arch_name = cpu,
-                    config_settings = [
-                        "@platforms//os:{}".format(os),
-                        "@platforms//cpu:{}".format(cpu),
-                    ],
-                    whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
-                    whl_platform_tags = whl_platform_tags,
-                )
-                for (os, cpu, freethreaded), whl_platform_tags in {
-                    ("linux", "x86_64", ""): ["linux_x86_64", "manylinux_*_x86_64"],
-                    ("linux", "x86_64", "_freethreaded"): ["linux_x86_64", "manylinux_*_x86_64"],
-                    ("linux", "aarch64", ""): ["linux_aarch64", "manylinux_*_aarch64"],
-                    ("osx", "aarch64", ""): ["macosx_*_arm64"],
-                    ("windows", "aarch64", ""): ["win_arm64"],
-                }.items()
-            ],
+            default = default,
         ),
         is_root = is_root,
     )
@@ -108,33 +139,6 @@ def _build_config(env, enable_pipstar = 0, **kwargs):
             netrc = subjects.str,
             platforms = subjects.dict,
         ),
-    )
-
-def _default(
-        *,
-        arch_name = None,
-        auth_patterns = None,
-        config_settings = None,
-        env = None,
-        index_url = None,
-        marker = None,
-        netrc = None,
-        os_name = None,
-        platform = None,
-        whl_platform_tags = None,
-        whl_abi_tags = None):
-    return struct(
-        arch_name = arch_name,
-        auth_patterns = auth_patterns or {},
-        config_settings = config_settings,
-        env = env or {},
-        index_url = index_url or "",
-        marker = marker or "",
-        netrc = netrc,
-        os_name = os_name,
-        platform = platform,
-        whl_abi_tags = whl_abi_tags or [],
-        whl_platform_tags = whl_platform_tags or [],
     )
 
 def _test_simple(env):
@@ -183,6 +187,58 @@ def _test_simple(env):
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_simple)
+
+def _test_simple_isolated(env):
+    """
+    Simulate `isolate = True` with parse_modules:
+    No pip.default tags,
+    but requirements parsing still produces the expected hub output.
+    """
+    pypi = _parse_modules(
+        env,
+        module_ctx = _mock_mctx(
+            _mod(
+                name = "my_module",
+                default = [],  # no platform tags
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+    pypi.hub_group_map().contains_exactly({"pypi": {}})
+    pypi.hub_whl_map().contains_exactly({"pypi": {
+        "simple": {
+            "pypi_315_simple": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+    }})
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        },
+    })
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_simple_isolated)
 
 def _test_build_pipstar_platform(env):
     config = _build_config(
@@ -237,6 +293,9 @@ def _test_build_pipstar_platform(env):
             whl_abi_tags = ["none", "abi3", "cp{major}{minor}"],
             whl_platform_tags = ["any"],
         ),
+    } | {
+        name: _plat(**values)
+        for name, values in default_platforms().items()
     })
 
 _tests.append(_test_build_pipstar_platform)
