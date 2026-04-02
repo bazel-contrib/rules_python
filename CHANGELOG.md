@@ -85,6 +85,7 @@ Other changes:
   file. If you have redirects or blocking rules as part of your downloader setup,
   you may need to adjust them. What is more, the default uv version has been bumped
   `0.11.2`.
+* (runfiles): We are stopping the type annotation testing with `mypy` for Python 3.9.
 
 {#v0-0-0-fixed}
 ### Fixed
