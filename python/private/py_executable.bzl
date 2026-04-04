@@ -701,6 +701,7 @@ def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
 
     venv_site_packages = "lib/python{}/site-packages".format(version)
     return _venv_details(
+        interpreter = interpreter,
         pyvenv_cfg = pyvenv_cfg,
         venv_site_packages = venv_site_packages,
         bin_dir = bin_dir,
