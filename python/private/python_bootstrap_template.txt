@@ -87,11 +87,9 @@ if is_running_from_zip():
 else:
   import re
 
-# Return True if running on Windows
-def is_windows():
-  return os.name == 'nt'
+IS_WINDOWS = os.name == "nt"
 
-BIN_DIR_NAME = "bin" if not is_windows() else "Scripts"
+BIN_DIR_NAME = "bin" if not IS_WINDOWS else "Scripts"
 
 def get_windows_path_with_unc_prefix(path):
   """Adds UNC prefix after getting a normalized absolute Windows path.
@@ -102,7 +100,7 @@ def get_windows_path_with_unc_prefix(path):
 
   # No need to add prefix for non-Windows platforms.
   # And \\?\ doesn't work in python 2 or on mingw
-  if not is_windows() or sys.version_info[0] < 3:
+  if not IS_WINDOWS or sys.version_info[0] < 3:
     return path
 
   # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
@@ -224,18 +222,18 @@ def find_runfiles_root(main_rel_path):
   # On Windows, the path may contain both forward and backslashes.
   # Normalize to the OS separator because the regex used later assumes
   # the OS-specific separator.
-  if is_windows():
+  if IS_WINDOWS:
     stub_filename = stub_filename.replace("/", os.sep)
 
   if not os.path.isabs(stub_filename):
     stub_filename = os.path.join(os.getcwd(), stub_filename)
 
   while True:
-    runfiles_root = stub_filename + ('.exe' if is_windows() else '') + '.runfiles'
+    runfiles_root = stub_filename + ('.exe' if IS_WINDOWS else '') + '.runfiles'
     if os.path.isdir(runfiles_root):
       return runfiles_root
 
-    runfiles_pattern = r'(.*\.runfiles)' + (r'\\' if is_windows() else '/') + '.*'
+    runfiles_pattern = r'(.*\.runfiles)' + (r'\\' if IS_WINDOWS else '/') + '.*'
     matchobj = re.match(runfiles_pattern, stub_filename)
     if matchobj:
       return matchobj.group(1)
@@ -326,12 +324,13 @@ print(site.getsitepackages(["{venv_src}"])[-1])
                                          encoding = "utf8", input=src)
         output = output.strip().split("\n")
         python_exe_actual = output[0]
-        python_home = output[1] if is_windows() else None
+        python_home = output[1] if IS_WINDOWS else None
         venv_site_packages = output[2]
         os.makedirs(dirname(venv_site_packages), exist_ok=True)
         runfiles_venv_site_packages = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
     else:
-        python_home = dirname(python_exe_actual) if is_windows else None
+        # On unixy, Python can find home based on the symlink.
+        python_home = dirname(python_exe_actual) if IS_WINDOWS else None
         venv_site_packages = join(venv, "lib")
         runfiles_venv_site_packages = join(runfiles_venv, "lib")
 
@@ -346,7 +345,7 @@ print(site.getsitepackages(["{venv_src}"])[-1])
 
     # Windows requires supporting .dll files in the venv bin dir, but
     # they aren't known in advance when the interpreter is resolved at runtime.
-    if RESOLVE_PYTHON_BINARY_AT_RUNTIME and is_windows():
+    if RESOLVE_PYTHON_BINARY_AT_RUNTIME and IS_WINDOWS:
         files = os.listdir(python_home)
         for f in files:
             if not f.endswith((".dll", ".pdb")): continue
@@ -365,7 +364,7 @@ print(site.getsitepackages(["{venv_src}"])[-1])
     _symlink_exist_ok(from_=join(venv, "lib"), to=join(runfiles_venv, "lib"))
     _symlink_exist_ok(from_=venv_site_packages, to=runfiles_venv_site_packages)
 
-    if is_windows():
+    if IS_WINDOWS:
         print_verbose("create_venv: pyvenv.cfg home: ", python_home)
         venv_pyvenv_cfg = join(venv, "pyvenv.cfg")
         with open(venv_pyvenv_cfg, "w") as fp:
@@ -460,7 +459,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   #   can't execv because we need control to return here. This only
   #   happens for targets built in the host config.
   #
-  if not (is_windows() or workspace or delete_dirs):
+  if not (IS_WINDOWS or workspace or delete_dirs):
     _run_execv(python_program, argv, env)
 
   print_verbose("run: subproc: environ:", mapping=os.environ)

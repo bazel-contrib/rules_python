@@ -67,7 +67,7 @@ class BazelBinaryInfoModule(types.ModuleType):
             from python.runfiles import runfiles
         rlocation_path = self.BUILD_DATA_FILE
         path = runfiles.Create().Rlocation(rlocation_path)
-        if is_windows():
+        if IS_WINDOWS:
             path = os.path.normpath(path)
         try:
             # Use utf-8-sig to handle Windows BOM
@@ -84,17 +84,14 @@ class BazelBinaryInfoModule(types.ModuleType):
 
 sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
 
-
-# Return True if running on Windows
-def is_windows():
-    return os.name == "nt"
+IS_WINDOWS = os.name == "nt"
 
 
 def get_windows_path_with_unc_prefix(path):
     path = path.strip()
 
     # No need to add prefix for non-Windows platforms.
-    if not is_windows() or sys.version_info[0] < 3:
+    if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
     # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
@@ -197,11 +194,11 @@ def find_runfiles_root(main_rel_path):
         stub_filename = os.path.join(os.getcwd(), stub_filename)
 
     while True:
-        module_space = stub_filename + (".exe" if is_windows() else "") + ".runfiles"
+        module_space = stub_filename + (".exe" if IS_WINDOWS else "") + ".runfiles"
         if os.path.isdir(module_space):
             return module_space
 
-        runfiles_pattern = r"(.*\.runfiles)" + (r"\\" if is_windows() else "/") + ".*"
+        runfiles_pattern = r"(.*\.runfiles)" + (r"\\" if IS_WINDOWS else "/") + ".*"
         matchobj = re.match(runfiles_pattern, stub_filename)
         if matchobj:
             return matchobj.group(1)
@@ -454,7 +451,7 @@ def main():
     # runfiles root
     if MAIN_PATH:
         main_rel_path = MAIN_PATH
-        if is_windows():
+        if IS_WINDOWS:
             main_rel_path = main_rel_path.replace("/", os.sep)
 
         runfiles_root = find_runfiles_root(main_rel_path)

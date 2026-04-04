@@ -375,7 +375,9 @@ def _create_executable(
 
     # NOTE: --build_python_zip defaults to true on Windows
     build_zip_enabled = read_possibly_native_flag(ctx, "build_python_zip")
-    build_zip_enabled = False
+    if is_windows:
+        # The legacy build_python_zip codepath isn't compatible with full venvs on Windows.
+        build_zip_enabled = False
 
     # When --build_python_zip is enabled, then the zip file becomes
     # one of the default outputs.
@@ -610,11 +612,6 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
 
 def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
     interpreter_runfiles = builders.RunfilesBuilder()
-    if runtime.interpreter:
-        interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
-    else:
-        interpreter_actual_path = runtime.interpreter_path
-
     is_bootstrap_script = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     create_full_venv = True
     # The legacy build_python_zip codepath (enabled by default on windows) isn't
@@ -761,7 +758,7 @@ def _venv_details(*,
         # bool; True if the venv needs to be recreated at runtime (because the
         # build-time construction isn't sufficient). False if the build-time
         # constructed venv is sufficient.
-        recreate_venv_at_runtime = recreate_venv_at_runtime ,
+        recreate_venv_at_runtime = recreate_venv_at_runtime,
         # runfiles; runfiles for interpreter-specific files in the venv.
         interpreter_runfiles = interpreter_runfiles,
     )
