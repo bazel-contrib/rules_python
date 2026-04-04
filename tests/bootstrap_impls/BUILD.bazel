@@ -128,7 +128,7 @@ py_reconfig_test(
 )
 
 py_reconfig_test(
-    name = "sys_path_order_bootstrap_system_python_test",
+    name = "sys_path_order_sys_test",
     srcs = ["sys_path_order_test.py"],
     bootstrap_impl = "system_python",
     env = {"BOOTSTRAP": "system_python"},

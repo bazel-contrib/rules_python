@@ -240,6 +240,11 @@ def define_hermetic_runtime_toolchain_impl(
             _IS_FREETHREADED_YES: "cpython-{major}{minor}t".format(**version_dict),
             _IS_FREETHREADED_NO: "cpython-{major}{minor}".format(**version_dict),
         }),
+        # On Windows, a symlink-style venv requires supporting .dll files.
+        venv_bin_files = select({
+            "@platforms//os:windows": native.glob(include=["*.dll", "*.pdb"]),
+            "//conditions:default": [],
+        })
     )
 
     py_runtime_pair(

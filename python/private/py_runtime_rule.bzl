@@ -130,6 +130,7 @@ def _py_runtime_impl(ctx):
         abi_flags = abi_flags,
         site_init_template = ctx.file.site_init_template,
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
+        venv_bin_files = ctx.files.venv_bin_files,
     ))
 
     providers = [
@@ -379,6 +380,7 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
             "_python_version_flag": attr.label(
                 default = labels.PYTHON_VERSION,
             ),
+            "venv_bin_files": attr.label_list(allow_files=True),
         },
     ),
 )

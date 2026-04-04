@@ -112,6 +112,13 @@ if (
 ):
     _PYTHON_BINARY_VENV = _PYTHON_BINARY_VENV + ".exe"
 
+if (
+    _PYTHON_BINARY_ACTUAL
+    and is_windows()
+    and not has_windows_executable_extension(_PYTHON_BINARY_ACTUAL)
+):
+    _PYTHON_BINARY_ACTUAL = _PYTHON_BINARY_ACTUAL + ".exe"
+
 
 def search_path(name):
     """Finds a file in a given search path."""
@@ -223,7 +230,11 @@ def execute_file(
     # - When running in a zip file, we need to clean up the
     #   workspace after the process finishes so control must return here.
     try:
-        subprocess_argv = [python_program, main_filename] + args
+        subprocess_argv = [
+            python_program,
+            f"-XRULES_PYTHON_ZIP_DIR={os.path.dirname(runfiles_root)}",
+            main_filename,
+        ] + args
         print_verbose("subprocess argv:", values=subprocess_argv)
         print_verbose("subprocess env:", mapping=env)
         print_verbose("subprocess cwd:", workspace)
@@ -280,7 +291,7 @@ def main():
         # When a venv is used, the `bin/python3` symlink may need to be created.
         # This case occurs when "create venv at runtime" or "resolve python at
         # runtime" modes are enabled.
-        if not os.path.lexists(python_program):
+        if not os.path.exists(python_program):
             # The venv bin/python3 interpreter should always be under runfiles, but
             # double check. We don't want to accidentally create symlinks elsewhere
             if not python_program.startswith(runfiles_root):
@@ -289,6 +300,8 @@ def main():
                 )
             symlink_to = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
             os.makedirs(os.path.dirname(python_program), exist_ok=True)
+            if os.path.lexists(python_program):
+                os.remove(python_program)
             try:
                 os.symlink(symlink_to, python_program)
             except OSError as e:

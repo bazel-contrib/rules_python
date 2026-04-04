@@ -66,7 +66,8 @@ def _PyRuntimeInfo_init(
         zip_main_template = None,
         abi_flags = "",
         site_init_template = None,
-        supports_build_time_venv = True):
+        supports_build_time_venv = True,
+        venv_bin_files = None):
     if (interpreter_path and interpreter) or (not interpreter_path and not interpreter):
         fail("exactly one of interpreter or interpreter_path must be specified")
 
@@ -120,6 +121,7 @@ def _PyRuntimeInfo_init(
         "stub_shebang": stub_shebang,
         "supports_build_time_venv": supports_build_time_venv,
         "zip_main_template": zip_main_template,
+        "venv_bin_files": venv_bin_files,
     }
 
 PyRuntimeInfo, _unused_raw_py_runtime_info_ctor = provider(
@@ -355,6 +357,14 @@ The following substitutions are made during template expansion:
 
 :::{versionadded} 0.33.0
 :::
+""",
+"venv_bin_files": """
+:type: list[File]
+
+Files that should be added to the venv's `bin/` (or platform-specific equivalent)
+directory (using the file's basename).
+
+:::{versionadded} VERSION_NEXT_FEATURE
 """,
     },
 )

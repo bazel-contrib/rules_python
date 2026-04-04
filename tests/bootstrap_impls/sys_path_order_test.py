@@ -17,7 +17,6 @@ import re
 import sys
 import unittest
 
-
 class SysPathOrderTest(unittest.TestCase):
     def test_sys_path_order(self):
         last_stdlib = None

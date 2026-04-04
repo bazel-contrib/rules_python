@@ -475,7 +475,7 @@ WARNING: Target: {}
     # The interpreter is added this late in the process so that it isn't
     # added to the zipped files.
     if venv and venv.interpreter:
-        extra_runfiles = extra_runfiles.merge(ctx.runfiles([venv.interpreter]))
+        extra_runfiles = extra_runfiles.merge(venv.interpreter_runfiles)
     return struct(
         # depset[File] of additional files that should be included as default
         # outputs.
@@ -524,25 +524,103 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
 def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps):
-    venv = "_{}.venv".format(output_prefix.lstrip("_"))
+    venv_root = "_{}.venv".format(output_prefix.lstrip("_"))
+    runtime = runtime_details.effective_runtime
+    if runtime.interpreter:
+        interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
+    else:
+        interpreter_actual_path = runtime.interpreter_path
 
-    # The pyvenv.cfg file must be present to trigger the venv site hooks.
-    # Because it's paths are expected to be absolute paths, we can't reliably
-    # put much in it. See https://github.com/python/cpython/issues/83650
-    pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv))
-    ctx.actions.write(pyvenv_cfg, "")
+    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+    if is_windows:
+        venv_details = _create_venv_windows(ctx, venv_root = venv_root,
+            interpreter_actual_path = interpreter_actual_path,
+            runtime = runtime,
+        )
+    else:
+        venv_details = _create_venv_unixy(ctx, venv_root= venv_root,
+            interpreter_actual_path = interpreter_actual_path,
+            runtime = runtime,
+        )
+
+    site_packages = "{}/{}".format(venv_root, venv_details.venv_site_packages)
+
+    pth = ctx.actions.declare_file("{}/bazel.pth".format(site_packages))
+    ctx.actions.write(pth, "import _bazel_site_init\n")
+
+    site_init = ctx.actions.declare_file("{}/_bazel_site_init.py".format(site_packages))
+    computed_subs = ctx.actions.template_dict()
+    computed_subs.add_joined("%imports%", imports, join_with = ":", map_each = _map_each_identity)
+    ctx.actions.expand_template(
+        template = runtime.site_init_template,
+        output = site_init,
+        substitutions = {
+            "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
+            "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
+            "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
+            "%site_init_runfiles_path%": runfiles_root_path(ctx, site_init.short_path),
+            "%workspace_name%": ctx.workspace_name,
+        },
+        computed_substitutions = computed_subs,
+    )
+
+    venv_dir_map = {
+        VenvSymlinkKind.BIN: venv_details.bin_dir,
+        VenvSymlinkKind.LIB: site_packages,
+    }
+    venv_app_files = create_venv_app_files(
+        ctx,
+        deps = collect_deps(ctx, extra_deps),
+        venv_dir_map = venv_dir_map,
+    )
+
+    files_without_interpreter = [pth, site_init] + venv_app_files.venv_files
+    if venv_details.pyvenv_cfg:
+        files_without_interpreter.append(venv_details.pyvenv_cfg)
+
+    return struct(
+        # File or None; the `bin/python3` executable in the venv.
+        # None if a full venv isn't created.
+        interpreter = venv_details.interpreter,
+        # Files in the venv that need to be created for the interpreter to work
+        interpreter_runfiles = venv_details.interpreter_runfiles,
+        # bool; True if the venv should be recreated at runtime
+        recreate_venv_at_runtime = venv_details.recreate_venv_at_runtime,
+        # Runfiles root relative path or absolute path
+        interpreter_actual_path = interpreter_actual_path,
+        files_without_interpreter = files_without_interpreter,
+        # string; venv-relative path to the site-packages directory.
+        venv_site_packages = venv_details.venv_site_packages,
+        # string; runfiles-root relative path to venv root.
+        venv_root = runfiles_root_path(
+            ctx,
+            paths.join(
+                py_internal.get_label_repo_runfiles_path(ctx.label),
+                venv_root,
+            ),
+        ),
+        # venv files for user library dependencies (files that are specific
+        # to the executable bootstrap and python runtime aren't here).
+        # `root_symlinks` should be used, otherwise, with symlinks files always go
+        # to `_main` prefix, and binaries from non-root module become broken.
+        lib_runfiles = ctx.runfiles(
+            root_symlinks = venv_app_files.runfiles_symlinks,
+        ),
+    )
+
+def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
+    interpreter_runfiles = builders.RunfilesBuilder()
+    if runtime.interpreter:
+        interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
+    else:
+        interpreter_actual_path = runtime.interpreter_path
 
     is_bootstrap_script = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
-    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
-
     create_full_venv = True
-
     # The legacy build_python_zip codepath (enabled by default on windows) isn't
     # compatible with full venv.
     # TODO: Use non-build_python_zip codepath for Windows
-    if is_windows:
-        create_full_venv = True
-    elif not rp_config.bazel_8_or_later and not is_bootstrap_script:
+    if not rp_config.bazel_8_or_later and not is_bootstrap_script:
         # Full venv for Bazel 7 + system_python is disabled because packaging
         # it using build_python_zip=true or rules_pkg breaks.
         # * Using build_python_zip=true breaks because the legacy zipapp support
@@ -558,24 +636,18 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         # The pyvenv.cfg file must be present to trigger the venv site hooks.
         # Because it's paths are expected to be absolute paths, we can't reliably
         # put much in it. See https://github.com/python/cpython/issues/83650
-        pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv))
+        pyvenv_cfg = ctx.actions.declare_file("{}/pyvenv.cfg".format(venv_root))
         ctx.actions.write(pyvenv_cfg, "")
     else:
         pyvenv_cfg = None
-    runtime = runtime_details.effective_runtime
 
     venvs_use_declare_symlink_enabled = (
         VenvsUseDeclareSymlinkFlag.get_value(ctx) == VenvsUseDeclareSymlinkFlag.YES
     )
+
     recreate_venv_at_runtime = False
 
-    if runtime.interpreter:
-        interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
-    else:
-        interpreter_actual_path = runtime.interpreter_path
-
-    bin_dir = "{}/bin".format(venv)
-
+    bin_dir = "{}/bin".format(venv_root)
     if create_full_venv:
         # Some wrappers around the interpreter (e.g. pyenv) use the program
         # name to decide what to do, so preserve the name.
@@ -604,7 +676,6 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
                 from_ = paths.dirname(runfiles_root_path(ctx, interpreter.short_path)),
                 to = interpreter_actual_path,
             )
-
             ctx.actions.symlink(output = interpreter, target_path = rel_path)
         else:
             interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
@@ -627,67 +698,75 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         version += "t"
 
     venv_site_packages = "lib/python{}/site-packages".format(version)
-    site_packages = "{}/{}".format(venv, venv_site_packages)
-    pth = ctx.actions.declare_file("{}/bazel.pth".format(site_packages))
-    ctx.actions.write(pth, "import _bazel_site_init\n")
-
-    site_init = ctx.actions.declare_file("{}/_bazel_site_init.py".format(site_packages))
-    computed_subs = ctx.actions.template_dict()
-    computed_subs.add_joined("%imports%", imports, join_with = ":", map_each = _map_each_identity)
-    ctx.actions.expand_template(
-        template = runtime.site_init_template,
-        output = site_init,
-        substitutions = {
-            "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
-            "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
-            "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
-            "%site_init_runfiles_path%": runfiles_root_path(ctx, site_init.short_path),
-            "%workspace_name%": ctx.workspace_name,
-        },
-        computed_substitutions = computed_subs,
-    )
-
-    venv_dir_map = {
-        VenvSymlinkKind.BIN: bin_dir,
-        VenvSymlinkKind.LIB: site_packages,
-    }
-    venv_app_files = create_venv_app_files(
-        ctx,
-        deps = collect_deps(ctx, extra_deps),
-        venv_dir_map = venv_dir_map,
-    )
-
-    files_without_interpreter = [pth, site_init] + venv_app_files.venv_files
-    if pyvenv_cfg:
-        files_without_interpreter.append(pyvenv_cfg)
-
-    return struct(
-        # File or None; the `bin/python3` executable in the venv.
-        # None if a full venv isn't created.
-        interpreter = interpreter,
-        # bool; True if the venv should be recreated at runtime
-        recreate_venv_at_runtime = recreate_venv_at_runtime,
-        # Runfiles root relative path or absolute path
-        interpreter_actual_path = interpreter_actual_path,
-        files_without_interpreter = files_without_interpreter,
-        # string; venv-relative path to the site-packages directory.
+    return _venv_details(
+        pyvenv_cfg = pyvenv_cfg,
         venv_site_packages = venv_site_packages,
-        # string; runfiles-root relative path to venv root.
-        venv_root = runfiles_root_path(
-            ctx,
-            paths.join(
-                py_internal.get_label_repo_runfiles_path(ctx.label),
-                venv,
-            ),
-        ),
-        # venv files for user library dependencies (files that are specific
-        # to the executable bootstrap and python runtime aren't here).
-        # `root_symlinks` should be used, otherwise, with symlinks files always go
-        # to `_main` prefix, and binaries from non-root module become broken.
-        lib_runfiles = ctx.runfiles(
-            root_symlinks = venv_app_files.runfiles_symlinks,
-        ),
+        bin_dir = bin_dir,
+        recreate_venv_at_runtime = recreate_venv_at_runtime,
+        interpreter_runfiles = interpreter_runfiles.build(ctx),
     )
+
+def _create_venv_windows(ctx, *, venv_root, runtime, interpreter_actual_path):
+    interpreter_runfiles = builders.RunfilesBuilder()
+
+    # Some wrappers around the interpreter (e.g. pyenv) use the program
+    # name to decide what to do, so preserve the name.
+    py_exe_basename = paths.basename(interpreter_actual_path)
+    bin_dir = "{}/Scripts".format(venv_root)
+    if runtime.interpreter:
+        interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
+        interpreter_runfiles.add(interpreter)
+        ctx.actions.symlink(output = interpreter, target_file = runtime.interpreter)
+        for f in runtime.venv_bin_files:
+            venv_path = "{}/{}".format(bin_dir, f.basename)
+            venv_file = ctx.actions.declare_file(venv_path)
+            ctx.actions.symlink(output = venv_file, target_file = f)
+            interpreter_runfiles.add(venv_file)
+    else:
+        interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+        interpreter_runfiles.add(interpreter)
+        ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
+
+    # See site.py logic: Windows uses a version/build agnostic site-packages path
+    venv_site_packages = "Lib/site-packages"
+
+    return _venv_details(
+        interpreter = interpreter,
+        pyvenv_cfg = None,
+        venv_site_packages = venv_site_packages,
+        bin_dir = bin_dir,
+        recreate_venv_at_runtime = True,
+        interpreter_runfiles = interpreter_runfiles.build(ctx),
+    )
+
+def _venv_details(*,
+        interpreter,
+        pyvenv_cfg,
+        venv_site_packages,
+        bin_dir,
+        recreate_venv_at_runtime,
+        interpreter_runfiles,
+        ):
+    """Helper to create a struct of platform-specific venv details."""
+    return struct(
+        # File; the `bin/python` executable (or equivalent) within the venv.
+        interpreter = interpreter,
+        # File|None; the pyvenv.cfg file, if any. May be none, in which case,
+        # it's expected that one will be created at runtime.
+        pyvenv_cfg = pyvenv_cfg,
+        # str; venv-relative path to the site-packages directory
+        venv_site_packages = venv_site_packages,
+        # str; ctx-relative path to the venv's bin directory.
+        bin_dir = bin_dir,
+        # bool; True if the venv needs to be recreated at runtime (because the
+        # build-time construction isn't sufficient). False if the build-time
+        # constructed venv is sufficient.
+        recreate_venv_at_runtime = recreate_venv_at_runtime ,
+        # runfiles; runfiles for interpreter-specific files in the venv.
+        interpreter_runfiles = interpreter_runfiles,
+    )
+)
+
 
 def _map_each_identity(v):
     return v
@@ -776,6 +855,7 @@ def _create_stage1_bootstrap(
         resolve_python_binary_at_runtime = "0"
     else:
         resolve_python_binary_at_runtime = "1"
+
 
     subs = {
         "%interpreter_args%": "\n".join(ctx.attr.interpreter_args),

@@ -91,6 +91,8 @@ else:
 def is_windows():
   return os.name == 'nt'
 
+BIN_DIR_NAME = "bin" if not is_windows() else "Scripts"
+
 def get_windows_path_with_unc_prefix(path):
   """Adds UNC prefix after getting a normalized absolute Windows path.
 
@@ -131,12 +133,6 @@ def get_windows_path_with_unc_prefix(path):
   # os.path.abspath returns a normalized absolute path
   return unicode_prefix + os.path.abspath(path)
 
-def has_windows_executable_extension(path):
-  return path.endswith('.exe') or path.endswith('.com') or path.endswith('.bat')
-
-if PYTHON_BINARY and is_windows() and not has_windows_executable_extension(PYTHON_BINARY):
-  PYTHON_BINARY = PYTHON_BINARY + '.exe'
-
 def search_path(name):
   """Finds a file in a given search path."""
   search_path = os.getenv('PATH', os.defpath).split(os.pathsep)
@@ -150,31 +146,34 @@ def search_path(name):
 def find_python_binary(runfiles_root):
   """Finds the real Python binary if it's not a normal absolute path."""
   if PYTHON_BINARY:
-    return find_binary(runfiles_root, PYTHON_BINARY)
+    bin_path = find_binary(runfiles_root, PYTHON_BINARY)
   else:
-    return find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
+    bin_path = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
+  return bin_path
 
 
 def print_verbose(*args, mapping=None, values=None):
-    if os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"):
-        if mapping is not None:
-            for key, value in sorted((mapping or {}).items()):
-                print(
-                    "bootstrap: stage 1:",
-                    *(list(args) + ["{}={}".format(key, repr(value))]),
-                    file=sys.stderr,
-                    flush=True
-                )
-        elif values is not None:
-            for i, v in enumerate(values):
-                print(
-                    "bootstrap: stage 1:",
-                    *(list(args) + ["[{}] {}".format(i, repr(v))]),
-                    file=sys.stderr,
-                    flush=True
-                )
-        else:
-            print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
+    if not os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"):
+        return
+
+    if mapping is not None:
+        for key, value in sorted((mapping or {}).items()):
+            print(
+                "bootstrap: stage 1:",
+                *(list(args) + ["{}={}".format(key, repr(value))]),
+                file=sys.stderr,
+                flush=True
+            )
+    elif values is not None:
+        for i, v in enumerate(values):
+            print(
+                "bootstrap: stage 1:",
+                *(list(args) + ["[{}] {}".format(i, repr(v))]),
+                file=sys.stderr,
+                flush=True
+            )
+    else:
+        print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
 def find_binary(runfiles_root, bin_name):
   """Finds the real binary if it's not a normal absolute path."""
@@ -286,56 +285,90 @@ def create_runfiles_root():
   # important that deletion code be in sync with this directory structure
   return os.path.join(temp_dir, 'runfiles')
 
-def _create_venv(runfiles_root):
-    runfiles_venv = join(runfiles_root, dirname(dirname(PYTHON_BINARY)))
+def _create_venv(runfiles_root, delete_dirs):
+    rel_runfiles_venv = dirname(dirname(PYTHON_BINARY))
+    runfiles_venv = join(runfiles_root, rel_runfiles_venv)
+    print_verbose("create_venv: runfiles venv:", runfiles_venv)
     if EXTRACT_ROOT:
-      venv = join(EXTRACT_ROOT, runfiles_venv)
+      venv = join(EXTRACT_ROOT, rel_runfiles_venv)
       os.makedirs(venv, exist_ok=True)
-      cleanup_dir = None
     else:
       import tempfile
       venv = tempfile.mkdtemp("", f"bazel.{basename(runfiles_venv)}.")
-      cleanup_dir = venv
+      delete_dirs.append(venv)
+
+    print_verbose("create_venv: created venv:", venv)
 
     python_exe_actual = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
+    if python_exe_actual is None:
+        raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY_ACTUAL))
 
     # See stage1_bootstrap_template.sh for details on this code path. In short,
     # this handles when the build-time python version doesn't match runtime
     # and if the initially resolved python_exe_actual is a wrapper script.
     if RESOLVE_PYTHON_BINARY_AT_RUNTIME:
+        venv_src = venv.replace("\\", "\\\\")  # Escape backslashes
         src = f"""
 import sys, site
 print(sys.executable)
-print(site.getsitepackages(["{venv}"])[-1])
+print(sys.base_prefix)
+print(site.getsitepackages(["{venv_src}"])[-1])
         """
+        print_verbose("prog:", src)
         output = subprocess.check_output([python_exe_actual, "-I"], shell=True,
                                          encoding = "utf8", input=src)
         output = output.strip().split("\n")
         python_exe_actual = output[0]
-        venv_site_packages = output[1]
+        python_home = output[1] if is_windows() else None
+        venv_site_packages = output[2]
         os.makedirs(dirname(venv_site_packages), exist_ok=True)
         runfiles_venv_site_packages = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
     else:
-        python_exe_actual = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
+        python_home = dirname(python_exe_actual) if is_windows else None
         venv_site_packages = join(venv, "lib")
         runfiles_venv_site_packages = join(runfiles_venv, "lib")
 
-    if python_exe_actual is None:
-        raise AssertionError('Could not find python binary: ' + repr(PYTHON_BINARY_ACTUAL))
-
-    venv_bin = join(venv, "bin")
+    venv_bin = join(venv, BIN_DIR_NAME)
     try:
       os.mkdir(venv_bin)
     except FileExistsError as e:
       pass
-
     # Match the basename; some tools, e.g. pyvenv key off the executable name
     venv_python_exe = join(venv_bin, os.path.basename(python_exe_actual))
     _symlink_exist_ok(from_=venv_python_exe, to=python_exe_actual)
+
+    # Windows requires supporting .dll files in the venv bin dir, but
+    # they aren't known in advance when the interpreter is resolved at runtime.
+    if RESOLVE_PYTHON_BINARY_AT_RUNTIME and is_windows():
+        files = os.listdir(python_home)
+        for f in files:
+            if not f.endswith((".dll", ".pdb")): continue
+            venv_path = join(venv, BIN_DIR_NAME, f)
+            target = join(python_home, f)
+            _symlink_exist_ok(from_=venv_path, to=target)
+
+    # Re-add all the entries under bin/, which includes supporting
+    # .dll files when under windows.
+    runfiles_venv_bin = join(runfiles_venv, BIN_DIR_NAME)
+    for f_basename in os.listdir(runfiles_venv_bin):
+        venv_path = join(venv, BIN_DIR_NAME, f_basename)
+        target = join(runfiles_venv_bin, f_basename)
+        _symlink_exist_ok(from_=venv_path, to=target)
+
     _symlink_exist_ok(from_=join(venv, "lib"), to=join(runfiles_venv, "lib"))
     _symlink_exist_ok(from_=venv_site_packages, to=runfiles_venv_site_packages)
-    _symlink_exist_ok(from_=join(venv, "pyvenv.cfg"), to=join(runfiles_venv, "pyvenv.cfg"))
-    return cleanup_dir, venv_python_exe
+
+    if is_windows():
+        print_verbose("create_venv: pyvenv.cfg home: ", python_home)
+        venv_pyvenv_cfg = join(venv, "pyvenv.cfg")
+        with open(venv_pyvenv_cfg, "w") as fp:
+            # Until Windows supports a build-time generated venv using symlinks
+            # to directories, we have to write the full, absolute, path to PYTHONHOME
+            # so that support directories (e.g. DLLs, libs) can be found.
+            fp.write("home = {}\n".format(python_home))
+    else:
+      _symlink_exist_ok(from_=join(venv, "pyvenv.cfg"), to=join(runfiles_venv, "pyvenv.cfg"))
+    return venv_python_exe
 
 def runfiles_envvar(runfiles_root):
   """Finds the runfiles manifest or the runfiles directory.
@@ -428,6 +461,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   print_verbose("run: subproc: argv:", values=argv)
   ret_code = subprocess.call(
       argv, env=env, cwd=workspace)
+  print_verbose("run: subproc: exit code:", ret_code)
 
   if delete_dirs:
     for delete_dir in delete_dirs:
@@ -463,12 +497,14 @@ def main():
   print_verbose("initial cwd:", os.getcwd())
   print_verbose("initial environ:", mapping=os.environ)
   print_verbose("initial sys.path:", values=sys.path)
-  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
+  print_verbose("IS_ZIPFILE:", IS_ZIPFILE)
   print_verbose("PYTHON_BINARY:", PYTHON_BINARY)
   print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
-  print_verbose("IS_ZIPFILE:", IS_ZIPFILE)
   print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
-  print_verbose("WORKSPACE_NAME :", WORKSPACE_NAME )
+  print_verbose("RESOLVE_PYTHON_BINARY_AT_RUNTIME:", RESOLVE_PYTHON_BINARY_AT_RUNTIME)
+  print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
+  print_verbose("VENV_REL_SITE_PACKAGES:", VENV_REL_SITE_PACKAGES)
+  print_verbose("WORKSPACE_NAME:", WORKSPACE_NAME )
   print_verbose("bootstrap sys.executable:", sys.executable)
   print_verbose("bootstrap sys._base_executable:", sys._base_executable)
   print_verbose("bootstrap sys.version:", sys.version)
@@ -516,20 +552,19 @@ def main():
   assert os.access(main_filename, os.R_OK), \
          'Cannot exec() %r: file not readable.' % main_filename
 
-  python_program = find_python_binary(runfiles_root)
-  if python_program is None:
-    raise AssertionError("Could not find python binary: {} or {}".format(
-        repr(PYTHON_BINARY),
-        repr(PYTHON_BINARY_ACTUAL)
-    ))
-
   if RECREATE_VENV_AT_RUNTIME:
     # When the venv is created at runtime, python_program is PYTHON_BINARY_ACTUAL
     # so we have to re-point it to the symlink in the venv
-    venv, python_program = _create_venv(runfiles_root)
-    delete_dirs.append(venv)
+    python_program = _create_venv(runfiles_root, delete_dirs)
   else:
     python_program = find_python_binary(runfiles_root)
+    if python_program is None:
+      raise AssertionError("Could not find python binary: {} or {}".format(
+          repr(PYTHON_BINARY),
+          repr(PYTHON_BINARY_ACTUAL)
+      ))
+
+  python_program = get_windows_path_with_unc_prefix(python_program)
 
   # Some older Python versions on macOS (namely Python 3.7) may unintentionally
   # leave this environment variable set after starting the interpreter, which
