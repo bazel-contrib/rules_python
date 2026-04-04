@@ -359,9 +359,9 @@ readthedocs-sphinx-ext==2.2.5 \
     --hash=sha256:ee5fd5b99db9f0c180b2396cbce528aa36671951b9526bb0272dbfce5517bd27 \
     --hash=sha256:f8c56184ea011c972dd45a90122568587cc85b0127bc9cf064d17c68bc809daa
     # via rules-python-docs (docs/pyproject.toml)
-requests==2.32.5 \
-    --hash=sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6 \
-    --hash=sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf
+requests==2.33.0 \
+    --hash=sha256:3324635456fa185245e24865e810cecec7b4caf933d7eb133dcde67d48cee69b \
+    --hash=sha256:c7ebc5e8b0f21837386ad0e1c8fe8b829fa5f544d8df3b2253bff14ef29d7652
     # via
     #   readthedocs-sphinx-ext
     #   sphinx

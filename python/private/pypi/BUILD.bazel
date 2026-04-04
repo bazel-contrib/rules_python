@@ -244,6 +244,7 @@ bzl_library(
     srcs = ["parse_simpleapi_html.bzl"],
     deps = [
         ":version_from_filename_bzl",
+        "//python/private:normalize_name_bzl",
     ],
 )
 
@@ -424,8 +425,6 @@ bzl_library(
         ":urllib_bzl",
         "//python/private:auth_bzl",
         "//python/private:normalize_name_bzl",
-        "//python/private:text_util_bzl",
-        "@bazel_features//:features",
     ],
 )
 

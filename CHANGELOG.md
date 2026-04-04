@@ -69,12 +69,23 @@ END_UNRELEASED_TEMPLATE
 Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
   sdists in the `whl_library` rule and fetching wheels using `pip`.
-* (pypi) We will set `allow_fail` to `False` if the
-  {attr}`experimental_index_url_overrides` is set
-  to a non-empty value. This means that failures will be no-longer cached in
-  this particular case.
-  ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and
-  [#2632](https://github.com/bazel-contrib/rules_python/issues/2632))
+* (pypi) Before using the bazel downloader to fetch the PyPI package metadata
+  we will from now on fetch the lists of available packages on each index. The
+  used package mappings will be written as facts to the `MODULE.bazel.lock` file
+  on supported bazel versions and it should be done at most once. As a result,
+  per-package {obj}`experimental_index_url_overrides` is no longer needed if the index URLs are
+  passed to the `pip.parse` via `experimental_index_url` and `experimental_extra_index_urls`.
+  What is more, we start implementing the flags for `--index_url` and `--extra_index_urls` more in
+  line to how it is used in `uv` and `pip`, i.e. we default to `--index_url` if the package is not
+  found in `--extra_index_urls`.
+  Fixes
+  ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and 
+  [#2632](https://github.com/bazel-contrib/rules_python/issues/2632)).
+* (uv) We will now use the download URL specified in the `uv`'s `dist_manifest.json`
+  file. If you have redirects or blocking rules as part of your downloader setup,
+  you may need to adjust them. What is more, the default uv version has been bumped
+  `0.11.2`.
+* (runfiles): We are stopping the type annotation testing with `mypy` for Python 3.9.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -91,6 +102,22 @@ Other changes:
 * (bootstrap) Fixed incorrect runfiles path construction in bootstrap
   scripts when binary is defined in another bazel module
   ([#3563](https://github.com/bazel-contrib/rules_python/issues/3563)).
+* (bootstrap) Resolve `RUNFILES_DIR` inheritance issues, which lead to a child
+  Python binary incorrectly using it's parent's Python binary environment
+  ([#3518](https://github.com/bazel-contrib/rules_python/issues/3518)).
+* (uv) Downloads for versions `>=0.10` work again. In order to fix this we had
+  drop support for `powerpc64` platform. People interested in the platform can
+  bring it back via the `uv.default` API. Like:
+  ```
+  uv.default(
+      compatible_with = [
+          "@platforms//os:linux",
+          "@platforms//cpu:ppc",
+      ],
+      platform = "powerpc64-unknown-linux-gnu",
+  )
+  ```
+  Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
 
 {#v0-0-0-added}
 ### Added

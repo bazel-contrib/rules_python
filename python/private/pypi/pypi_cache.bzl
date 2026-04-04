@@ -89,6 +89,11 @@ def _pypi_cache_get(self, key):
     if not cached and versions:
         # Could not get from in-memory, read from lockfile facts
         cached = self._facts.get(index_url, versions)
+    else:
+        # We might be using something from memory that is not yet stored in facts (e.g. we processed
+        # the requirements.txt for one Python version and the deps got cached, but new python
+        # version means different deps, which may add extras.
+        self._facts.setdefault(index_url, cached)
 
     return cached
 
@@ -121,6 +126,13 @@ def memory_cache(cache = None):
 def _filter_packages(dists, requested_versions):
     if dists == None or not requested_versions:
         return dists
+
+    if type(dists) == "dict":
+        return {
+            pkg: url
+            for pkg, url in dists.items()
+            if pkg in requested_versions
+        }
 
     sha256s_by_version = {}
     whls = {}
@@ -192,6 +204,12 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     if known_facts.get("fact_version") != facts_version:
         # cannot trust known facts, different version that we know how to parse
         return None
+
+    if type(requested_versions) == "dict":
+        return _filter_packages(
+            dists = known_facts.get("index_urls", {}).get(index_url, {}),
+            requested_versions = requested_versions,
+        )
 
     known_sources = {}
 
@@ -266,10 +284,46 @@ def _store_facts(facts, fact_version, index_url, value):
 
     facts["fact_version"] = fact_version
 
+    if type(value) == "dict":
+        # facts: {
+        #   "index_urls": {
+        #     "<index_url>": {
+        #       "<pkg_normalized>": "<dist_url>",
+        #     },
+        #   },
+        # },
+        for pkg, url in value.items():
+            facts.setdefault("index_urls", {}).setdefault(index_url, {})[pkg] = url
+        return value
+
     root_url, _, distribution = index_url.rstrip("/").rpartition("/")
     distribution = distribution.rstrip("/")
     root_url = root_url.rstrip("/")
 
+    # The schema is
+    # facts: {
+    #   "dist_hashes": {
+    #     "<index_url>": {
+    #       "<last segment>": {
+    #         "<dist url>": "<sha256>",
+    #       },
+    #     },
+    #   },
+    #   "dist_filenames": {
+    #     "<index_url>": {
+    #       "<last segment>": {
+    #         "<dist url>": "<filename>",   # if it is different from the URL
+    #       },
+    #     },
+    #   },
+    #   "dist_yanked": {
+    #     "<index_url>": {
+    #       "<last segment>": {
+    #         "<sha256>": "<reason>",   # if the package is yanked
+    #       },
+    #     },
+    #   },
+    # },
     for sha256, d in (value.sdists | value.whls).items():
         facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, sha256)
         if not d.url.endswith(d.filename):
