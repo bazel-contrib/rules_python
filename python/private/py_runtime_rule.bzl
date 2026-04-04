@@ -361,6 +361,7 @@ See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
 """,
                 default = True,
             ),
+            "venv_bin_files": attr.label_list(allow_files = True),
             "zip_main_template": attr.label(
                 default = "//python/private/zipapp:zip_main_template",
                 allow_single_file = True,
@@ -380,7 +381,6 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
             "_python_version_flag": attr.label(
                 default = labels.PYTHON_VERSION,
             ),
-            "venv_bin_files": attr.label_list(allow_files=True),
         },
     ),
 )

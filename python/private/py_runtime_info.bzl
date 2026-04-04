@@ -120,8 +120,8 @@ def _PyRuntimeInfo_init(
         "stage2_bootstrap_template": stage2_bootstrap_template,
         "stub_shebang": stub_shebang,
         "supports_build_time_venv": supports_build_time_venv,
-        "zip_main_template": zip_main_template,
         "venv_bin_files": venv_bin_files,
+        "zip_main_template": zip_main_template,
     }
 
 PyRuntimeInfo, _unused_raw_py_runtime_info_ctor = provider(
@@ -337,6 +337,14 @@ to meet two criteria:
 :::{versionadded} 1.5.0
 :::
 """,
+        "venv_bin_files": """
+:type: list[File]
+
+Files that should be added to the venv's `bin/` (or platform-specific equivalent)
+directory (using the file's basename).
+
+:::{versionadded} VERSION_NEXT_FEATURE
+""",
         "zip_main_template": """
 :type: File
 
@@ -357,14 +365,6 @@ The following substitutions are made during template expansion:
 
 :::{versionadded} 0.33.0
 :::
-""",
-"venv_bin_files": """
-:type: list[File]
-
-Files that should be added to the venv's `bin/` (or platform-specific equivalent)
-directory (using the file's basename).
-
-:::{versionadded} VERSION_NEXT_FEATURE
 """,
     },
 )

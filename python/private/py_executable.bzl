@@ -535,12 +535,16 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
 
     is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
     if is_windows:
-        venv_details = _create_venv_windows(ctx, venv_root = venv_root,
+        venv_details = _create_venv_windows(
+            ctx,
+            venv_root = venv_root,
             interpreter_actual_path = interpreter_actual_path,
             runtime = runtime,
         )
     else:
-        venv_details = _create_venv_unixy(ctx, venv_root= venv_root,
+        venv_details = _create_venv_unixy(
+            ctx,
+            venv_root = venv_root,
             interpreter_actual_path = interpreter_actual_path,
             runtime = runtime,
         )
@@ -614,6 +618,7 @@ def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
     interpreter_runfiles = builders.RunfilesBuilder()
     is_bootstrap_script = BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SCRIPT
     create_full_venv = True
+
     # The legacy build_python_zip codepath (enabled by default on windows) isn't
     # compatible with full venv.
     # TODO: Use non-build_python_zip codepath for Windows
@@ -736,14 +741,14 @@ def _create_venv_windows(ctx, *, venv_root, runtime, interpreter_actual_path):
         interpreter_runfiles = interpreter_runfiles.build(ctx),
     )
 
-def _venv_details(*,
+def _venv_details(
+        *,
         interpreter,
         pyvenv_cfg,
         venv_site_packages,
         bin_dir,
         recreate_venv_at_runtime,
-        interpreter_runfiles,
-        ):
+        interpreter_runfiles):
     """Helper to create a struct of platform-specific venv details."""
     return struct(
         # File; the `bin/python` executable (or equivalent) within the venv.
@@ -850,7 +855,6 @@ def _create_stage1_bootstrap(
         resolve_python_binary_at_runtime = "0"
     else:
         resolve_python_binary_at_runtime = "1"
-
 
     subs = {
         "%interpreter_args%": "\n".join(ctx.attr.interpreter_args),

@@ -186,8 +186,8 @@ def find_runfiles_root(main_rel_path):
     # not found. These can be correctly set for a parent Python process, but
     # inherited by the child, and not correct for it. Later bootstrap code
     # assumes they're are correct if set.
-    os.environ.pop('RUNFILES_DIR', None)
-    os.environ.pop('RUNFILES_MANIFEST_FILE', None)
+    os.environ.pop("RUNFILES_DIR", None)
+    os.environ.pop("RUNFILES_MANIFEST_FILE", None)
 
     stub_filename = sys.argv[0]
     if not os.path.isabs(stub_filename):

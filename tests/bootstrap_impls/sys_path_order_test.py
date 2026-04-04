@@ -17,6 +17,7 @@ import re
 import sys
 import unittest
 
+
 class SysPathOrderTest(unittest.TestCase):
     def test_sys_path_order(self):
         last_stdlib = None
@@ -34,7 +35,7 @@ class SysPathOrderTest(unittest.TestCase):
         for i, value in enumerate(sys.path):
             # On windows, the `pythonXY.zip` entry shows up as `$venv/Scripts/pythonXY.zip`
             # While it's technically part of the venv, it's considered the stdlib.
-            if os.name == 'nt' and re.search("python.*[.]zip$", value):
+            if os.name == "nt" and re.search("python.*[.]zip$", value):
                 category = "stdlib"
             elif value in (sys.prefix, sys.base_prefix):
                 # The runtime's root repo may be added to sys.path, but it
