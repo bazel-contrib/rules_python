@@ -144,10 +144,9 @@ def search_path(name):
 def find_python_binary(runfiles_root):
   """Finds the real Python binary if it's not a normal absolute path."""
   if PYTHON_BINARY:
-    bin_path = find_binary(runfiles_root, PYTHON_BINARY)
+    return find_binary(runfiles_root, PYTHON_BINARY)
   else:
-    bin_path = find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
-  return bin_path
+    return find_binary(runfiles_root, PYTHON_BINARY_ACTUAL)
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -353,13 +352,16 @@ print(site.getsitepackages(["{venv_src}"])[-1])
             target = join(python_home, f)
             _symlink_exist_ok(from_=venv_path, to=target)
 
-    # Re-add all the entries under bin/, which includes supporting
-    # .dll files when under windows.
     runfiles_venv_bin = join(runfiles_venv, BIN_DIR_NAME)
-    for f_basename in os.listdir(runfiles_venv_bin):
-        venv_path = join(venv, BIN_DIR_NAME, f_basename)
-        target = join(runfiles_venv_bin, f_basename)
-        _symlink_exist_ok(from_=venv_path, to=target)
+    # The runfiles bin directory may not exist if
+    # supports_build_time_venv=False and the interpreter is resolved at runtime.
+    if os.path.exists(runfiles_venv_bin):
+      # Re-add all the entries under bin/, which includes supporting
+      # .dll files when under windows.
+      for f_basename in os.listdir(runfiles_venv_bin):
+          venv_path = join(venv, BIN_DIR_NAME, f_basename)
+          target = join(runfiles_venv_bin, f_basename)
+          _symlink_exist_ok(from_=venv_path, to=target)
 
     _symlink_exist_ok(from_=join(venv, "lib"), to=join(runfiles_venv, "lib"))
     _symlink_exist_ok(from_=venv_site_packages, to=runfiles_venv_site_packages)

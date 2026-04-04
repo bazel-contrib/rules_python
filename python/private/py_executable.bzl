@@ -662,7 +662,6 @@ def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
             # needed or used at runtime. However, the zip code uses the interpreter
             # File object to figure out some paths.
             interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
-
             ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
         elif runtime.interpreter:
@@ -671,6 +670,7 @@ def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
             # in runfiles is always a symlink. An RBE implementation, for example,
             # may choose to write what symlink() points to instead.
             interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+            interpreter_runfiles.add(interpreter)
 
             rel_path = relative_path(
                 # dirname is necessary because a relative symlink is relative to
@@ -681,6 +681,7 @@ def _create_venv_unixy(ctx, *, venv_root, runtime, interpreter_actual_path):
             ctx.actions.symlink(output = interpreter, target_path = rel_path)
         else:
             interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+            interpreter_runfiles.add(interpreter)
             ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
     else:
         interpreter = None
