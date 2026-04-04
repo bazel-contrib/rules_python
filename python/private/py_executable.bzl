@@ -765,8 +765,6 @@ def _venv_details(*,
         # runfiles; runfiles for interpreter-specific files in the venv.
         interpreter_runfiles = interpreter_runfiles,
     )
-)
-
 
 def _map_each_identity(v):
     return v
