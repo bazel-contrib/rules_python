@@ -240,7 +240,7 @@ def _test_debugger_impl(env, targets):
     # #3481: Ensure that venv site-packages is setup correctly, if the dependency is coming
     # from pip integration.
     env.expect.that_target(targets.target_venv).runfiles().contains_predicate(
-        matching.str_endswith("site-packages/test_debugger_debugger_venv.py")
+        matching.str_endswith("site-packages/test_debugger_debugger_venv.py"),
     )
 
     # 3. Subject exec
