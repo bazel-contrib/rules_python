@@ -494,6 +494,8 @@ WARNING: Target: {}
         app_runfiles = app_runfiles.build(ctx),
         # File|None; the venv `bin/python3` file, if any.
         venv_python_exe = venv.interpreter if venv else None,
+        # runfiles; runfiles in the venv for the interpreter
+        venv_interpreter_runfiles = venv.interpreter_runfiles,
     )
 
 def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
@@ -1193,6 +1195,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         stage2_bootstrap = exec_result.stage2_bootstrap,
         app_runfiles = app_runfiles,
         venv_python_exe = exec_result.venv_python_exe,
+        venv_interpreter_runfiles = exec_result.venv_interpreter_runfiles,
         interpreter_args = ctx.attr.interpreter_args,
     )
 
@@ -1739,6 +1742,7 @@ def _create_providers(
         stage2_bootstrap,
         app_runfiles,
         venv_python_exe,
+        venv_interpreter_runfiles,
         interpreter_args):
     """Creates the providers an executable should return.
 
@@ -1792,14 +1796,15 @@ def _create_providers(
         create_instrumented_files_info(ctx),
         _create_run_environment_info(ctx, inherited_environment),
         PyExecutableInfo(
+            app_runfiles = app_runfiles,
+            build_data_file = runfiles_details.build_data_file,
+            interpreter_args = interpreter_args,
+            interpreter_path = runtime_details.executable_interpreter_path,
             main = main_py,
             runfiles_without_exe = runfiles_details.runfiles_without_exe,
-            build_data_file = runfiles_details.build_data_file,
-            interpreter_path = runtime_details.executable_interpreter_path,
             stage2_bootstrap = stage2_bootstrap,
-            app_runfiles = app_runfiles,
+            venv_interpreter_runfiles = venv_interpreter_runfiles,
             venv_python_exe = venv_python_exe,
-            interpreter_args = interpreter_args,
         ),
     ]
 

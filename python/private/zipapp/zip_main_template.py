@@ -22,7 +22,9 @@ import sys
 del sys.path[0]
 
 import os
+from os.path import dirname, join
 import shutil
+import stat
 import subprocess
 import tempfile
 import zipfile
@@ -35,7 +37,10 @@ _PYTHON_BINARY_VENV = "%python_binary%"
 # executable to use.
 _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 _WORKSPACE_NAME = "%workspace_name%"
+# relative path under EXTRACT_ROOT to extract to.
+EXTRACT_DIR = "%EXTRACT_DIR%"
 
+EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
 def print_verbose(*args, mapping=None, values=None):
     if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
@@ -181,19 +186,25 @@ def extract_zip(zip_path, dest_dir):
                     target = f.read()
                 os.remove(file_path)
                 os.symlink(target, file_path)
+                ##os.chmod(file_path, stat.S_IWRITE)
             # Of those, we set the lower 12 bits, which are the
             # file mode bits (since the file type bits can't be set by chmod anyway).
             elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
-                os.chmod(file_path, attrs & 0o7777)
+                # Add the write bit to ensure the files can be deleted during cleanup and
+                # overwritten by subsequent invocations.
+                os.chmod(file_path, (attrs & 0o7777) | stat.S_IWRITE)
 
 
 # Create the runfiles tree by extracting the zip file
 def create_runfiles_root():
-    temp_dir = tempfile.mkdtemp("", "Bazel.runfiles_")
-    extract_zip(os.path.dirname(__file__), temp_dir)
+    if EXTRACT_ROOT:
+        extract_root = join(EXTRACT_ROOT, EXTRACT_DIR)
+    else:
+        extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
+    extract_zip(os.path.dirname(__file__), extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
-    return os.path.join(temp_dir, "runfiles")
+    return os.path.join(extract_root, "runfiles")
 
 
 def execute_file(
@@ -230,23 +241,61 @@ def execute_file(
     # - When running in a zip file, we need to clean up the
     #   workspace after the process finishes so control must return here.
     try:
-        subprocess_argv = [
-            python_program,
-            f"-XRULES_PYTHON_ZIP_DIR={os.path.dirname(runfiles_root)}",
-            main_filename,
-        ] + args
-        print_verbose("subprocess argv:", values=subprocess_argv)
+        subprocess_argv = [python_program]
+        if not EXTRACT_ROOT:
+            subprocess_argv.append(f"-XRULES_PYTHON_ZIP_DIR={os.path.dirname(runfiles_root)}")
+        subprocess_argv.append(main_filename)
+        subprocess_argv += args
         print_verbose("subprocess env:", mapping=env)
         print_verbose("subprocess cwd:", workspace)
+        print_verbose("subprocess argv:", values=subprocess_argv)
         ret_code = subprocess.call(subprocess_argv, env=env, cwd=workspace)
         sys.exit(ret_code)
     finally:
-        # NOTE: dirname() is called because create_runfiles_root() creates a
-        # sub-directory within a temporary directory, and we want to remove the
-        # whole temporary directory.
-        ##shutil.rmtree(os.path.dirname(runfiles_root), True)
-        pass
+        if not EXTRACT_ROOT:
+            # NOTE: dirname() is called because create_runfiles_root() creates a
+            # sub-directory within a temporary directory, and we want to remove the
+            # whole temporary directory.
+            extract_root = os.path.dirname(runfiles_root)
+            print_verbose("cleanup: rmtree: ", extract_root)
+            shutil.rmtree(extract_root, True)
 
+
+def finish_venv_setup(runfiles_root):
+    python_program = os.path.join(runfiles_root, _PYTHON_BINARY_VENV)
+    # When a venv is used, the `bin/python3` symlink may need to be created.
+    # This case occurs when "create venv at runtime" or "resolve python at
+    # runtime" modes are enabled.
+    if not os.path.exists(python_program):
+        # The venv bin/python3 interpreter should always be under runfiles, but
+        # double check. We don't want to accidentally create symlinks elsewhere
+        if not python_program.startswith(runfiles_root):
+            raise AssertionError(
+                "Program's venv binary not under runfiles: {python_program}"
+            )
+        symlink_to = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
+        os.makedirs(dirname(python_program), exist_ok=True)
+        if os.path.lexists(python_program):
+            os.remove(python_program)
+        try:
+            os.symlink(symlink_to, python_program)
+        except OSError as e:
+            raise Exception(
+                f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
+            ) from e
+    venv_root = dirname(dirname(python_program))
+    pyvenv_cfg = join(venv_root, "pyvenv.cfg")
+    if not os.path.exists(pyvenv_cfg):
+        print_verbose("finish_venv_setup: create pyvenv.cfg:", pyvenv_cfg)
+        python_home = join(runfiles_root, dirname(_PYTHON_BINARY_ACTUAL))
+        print_verbose("finish_venv_setup: pyvenv.cfg home:", python_home)
+        with open(pyvenv_cfg, "w") as fp:
+            # Until Windows supports a build-time generated venv using symlinks
+            # to directories, we have to write the full, absolute, path to PYTHONHOME
+            # so that support directories (e.g. DLLs, libs) can be found.
+            fp.write("home = {}\n".format(python_home))
+
+    return python_program
 
 def main():
     print_verbose("running zip main bootstrap")
@@ -287,28 +336,7 @@ def main():
     )
 
     if _PYTHON_BINARY_VENV:
-        python_program = os.path.join(runfiles_root, _PYTHON_BINARY_VENV)
-        # When a venv is used, the `bin/python3` symlink may need to be created.
-        # This case occurs when "create venv at runtime" or "resolve python at
-        # runtime" modes are enabled.
-        if not os.path.exists(python_program):
-            # The venv bin/python3 interpreter should always be under runfiles, but
-            # double check. We don't want to accidentally create symlinks elsewhere
-            if not python_program.startswith(runfiles_root):
-                raise AssertionError(
-                    "Program's venv binary not under runfiles: {python_program}"
-                )
-            symlink_to = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
-            os.makedirs(os.path.dirname(python_program), exist_ok=True)
-            if os.path.lexists(python_program):
-                os.remove(python_program)
-            try:
-                os.symlink(symlink_to, python_program)
-            except OSError as e:
-                raise Exception(
-                    f"Unable to create venv python interpreter symlink: {python_program} -> {symlink_to}"
-                ) from e
-
+        python_program = finish_venv_setup(runfiles_root)
     else:
         python_program = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
         if python_program is None:

@@ -15,4 +15,14 @@ ZIPAPP="${ZIPAPP/.exe/.zip}"
 export RULES_PYTHON_BOOTSTRAP_VERBOSE=1
 # We're testing the invocation of `__main__.py`, so we have to
 # manually pass the zipapp to python.
+set +e
 "$PYTHON" "$ZIPAPP"
+exit_code=$?
+set +x
+
+if [[ "$exit_code" -ne 0 ]]; then
+  echo "==============="
+  echo "Invocation failed, exit code: $exit_code"
+  echo "==============="
+  exit "$exit_code"
+fi

@@ -87,5 +87,13 @@ mode is not enabled.
 :::{versionadded} 1.9.0
 :::
 """,
+        "venv_interpreter_runfiles": """
+:type: runfiles | None
+
+Runfiles that are specific to the interpreter within the venv.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+"""
     },
 )
