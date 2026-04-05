@@ -27,11 +27,16 @@ class ZipMainMakerTest(unittest.TestCase):
         with open(file2_path, "wb") as f:
             f.write(b"content2")
 
+        # Add a symlink to test symlink hashing
+        symlink_path = os.path.join(self.temp_dir.name, "symlink.txt")
+        os.symlink(file1_path, symlink_path)
+
         manifest_path = os.path.join(self.temp_dir.name, "manifest.txt")
         with open(manifest_path, "w", encoding="utf-8") as f:
-            f.write(f"file1.txt|{file1_path}\n")
-            f.write(f"file2.txt|{file2_path}\n")
-            f.write(f"empty_file.txt\n")
+            f.write(f"rf-file|0|file1.txt|{file1_path}\n")
+            f.write(f"rf-file|0|file2.txt|{file2_path}\n")
+            f.write(f"rf-symlink|1|symlink.txt|{symlink_path}\n")
+            f.write(f"rf-empty|empty_file.txt\n")
 
         argv = [
             "zip_main_maker.py",
@@ -50,19 +55,39 @@ class ZipMainMakerTest(unittest.TestCase):
 
         # Calculate expected hash
         h = hashlib.sha256()
-        line1 = f"file1.txt|{file1_path}"
-        line2 = f"file2.txt|{file2_path}"
-        line3 = f"empty_file.txt"
+        line1 = f"rf-file|0|file1.txt|{file1_path}"
+        line2 = f"rf-file|0|file2.txt|{file2_path}"
+        line3 = f"rf-symlink|1|symlink.txt|{symlink_path}"
+        line4 = f"rf-empty|empty_file.txt"
 
         # Sort lines like the program does
-        lines = sorted([line1, line2, line3])
+        lines = sorted([line1, line2, line3, line4])
         for line in lines:
-            h.update(line.encode("utf-8"))
             parts = line.split("|")
-            if len(parts) == 2:
-                path = parts[1]
-                with open(path, "rb") as f:
-                    h.update(f.read())
+            if len(parts) > 1:
+                _, rest = line.split("|", 1)
+                h.update(rest.encode("utf-8"))
+            else:
+                h.update(line.encode("utf-8"))
+
+            type_ = parts[0]
+            if type_ == "rf-empty":
+                continue
+            if len(parts) >= 4:
+                is_symlink_str = parts[1]
+                path = parts[-1]
+                if not path:
+                    continue
+                if is_symlink_str == "-1":
+                    is_symlink = not os.path.exists(path)
+                else:
+                    is_symlink = is_symlink_str == "1"
+
+                if is_symlink:
+                    h.update(os.readlink(path).encode("utf-8"))
+                else:
+                    with open(path, "rb") as f:
+                        h.update(f.read())
 
         expected_hash = h.hexdigest()
 

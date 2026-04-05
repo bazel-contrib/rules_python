@@ -18,30 +18,18 @@ def _is_symlink(f):
     else:
         return "-1"
 
-def _map_zip_main_empty_filenames(list_paths_cb):
-    return list_paths_cb().to_list()
-
-def _map_zip_main_runfiles(file):
-    return file.short_path + "|" + file.path
-
-def _map_zip_main_symlinks(entry):
-    return entry.path + "|" + entry.target_file.path
-
-def _map_zip_main_root_symlinks(entry):
-    return entry.path + "|" + entry.target_file.path
-
 def _build_zip_main_hash_files_manifest(ctx, manifest, runfiles, inputs):
     manifest.add_all(
         # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
         # is used to defer that.
         [lambda: runfiles.empty_filenames],
-        map_each = _map_zip_main_empty_filenames,
+        map_each = _map_zip_empty_filenames,
         allow_closure = True,
     )
 
-    manifest.add_all(runfiles.files, map_each = _map_zip_main_runfiles)
-    manifest.add_all(runfiles.symlinks, map_each = _map_zip_main_symlinks)
-    manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_main_root_symlinks)
+    manifest.add_all(runfiles.files, map_each = _map_zip_runfiles)
+    manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
+    manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
 
     inputs.add(runfiles.files)
     inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
@@ -53,7 +41,7 @@ def _build_zip_main_hash_files_manifest(ctx, manifest, runfiles, inputs):
     )
     if zip_repo_mapping_manifest:
         manifest.add(
-            "_repo_mapping|" + zip_repo_mapping_manifest.path,
+            "rf-root-symlink|0|_repo_mapping|" + zip_repo_mapping_manifest.path,
         )
         inputs.add(zip_repo_mapping_manifest)
 

@@ -20,13 +20,12 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--hash_files_manifest",
         required=True,
-        help="A file containing lines of either 'empty_file_path' or 'short_path|readable_path'",
+        help="A file containing lines in rf-XXX formats (rf-empty, rf-file, rf-symlink, etc.)",
     )
     return parser
 
 
 def compute_inputs_hash(manifest_path: str) -> str:
-
     h = hashlib.sha256()
     with open(manifest_path, "r", encoding="utf-8") as f:
         manifest_lines = f.read().splitlines()
@@ -34,26 +33,30 @@ def compute_inputs_hash(manifest_path: str) -> str:
     # Sort lines for determinism. Hash the paths (to capture structure) and the
     # content.
     for line in sorted(manifest_lines):
-        h.update(line.encode("utf-8"))
-        parts = line.split("|")
-        if len(parts) != 2:
-            # If there's no '|', it's just an empty file path, which has
-            # already been added to the hash.
-            continue
-        path = parts[1]
+        type_, _, rest = line.partition("|")
+        h.update(rest.encode("utf-8"))
+        parts = rest.split("|")
 
-        # We hash the content for regular files. For symlinks, we hash the
-        # target path. This is more robust in a sandbox where symlink targets
-        # might not be present if they are absolute paths or outside the
-        # runfiles.
-        if os.path.islink(path):
+        if type_ == "rf-empty":
+            continue
+
+        is_symlink_str = parts[0]
+        path = parts[-1]
+
+        if is_symlink_str == "-1":
+            is_symlink = not os.path.exists(path)
+        else:
+            is_symlink = is_symlink_str == "1"
+
+        if is_symlink:
             h.update(os.readlink(path).encode("utf-8"))
-        with open(path, "rb") as f:
-            while True:
-                chunk = f.read(BLOCK_SIZE)
-                if not chunk:
-                    break
-                h.update(chunk)
+        else:
+            with open(path, "rb") as f:
+                while True:
+                    chunk = f.read(BLOCK_SIZE)
+                    if not chunk:
+                        break
+                    h.update(chunk)
 
     return h.hexdigest()
 

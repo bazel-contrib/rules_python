@@ -39,8 +39,6 @@ if [[ ! -d "$RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR" ]]; then
 fi
 
 # Check for the extra hash component.
-# Before the change, $RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR/runfiles would exist.
-# After the change, $RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR/<hash>/runfiles will exist.
 # We use glob expansion to check for the expected depth.
 # Note: [ -d ... ] expands globs, while [[ -d ... ]] does not.
 if [ ! -d "$RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR"/*/runfiles ]; then
