@@ -90,13 +90,15 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
     hash_files_manifest = ctx.actions.args()
     hash_files_manifest.use_param_file("--hash_files_manifest=%s", use_always = True)
     hash_files_manifest.set_param_file_format("multiline")
-    _build_zip_main_hash_files_manifest(ctx, runfiles, manifest, inputs)
+
+    inputs = [py_runtime.zip_main_template]
+    _build_zip_main_hash_files_manifest(ctx, hash_files_manifest, runfiles, inputs)
 
     actions_run(
         ctx,
         executable = ctx.attr._zip_main_maker,
         arguments = [args, hash_files_manifest],
-        inputs = depset([py_runtime.zip_main_template], transitive = [runfiles_files]),
+        inputs = depset(inputs, transitive = [runfiles.files]),
         outputs = [zip_main_py],
         mnemonic = "PyZipAppCreateMainPy",
         progress_message = "Generating zipapp __main__.py: %{label}",
@@ -166,7 +168,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         py_runtime,
         py_executable,
         stage2_bootstrap,
-        runfiles.build(ctx),
+        runfiles,
     )
     inputs = _build_manifest(ctx, manifest, runfiles, zip_main)
 

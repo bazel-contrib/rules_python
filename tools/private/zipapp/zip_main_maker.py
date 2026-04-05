@@ -29,7 +29,7 @@ def main():
     parser.add_argument("--template", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--substitution", action="append", default=[])
-    parser.add_argument("hash_inputs", nargs="*")
+    parser.add_argument("--hash_files_manifest", required=True)
     args = parser.parse_args()
 
     # We want the hash to be deterministic.
@@ -39,14 +39,14 @@ def main():
     # Bazel provides full paths.
     
     h = hashlib.sha256()
-    for path in sorted(args.hash_inputs):
-        # We don't have the 'short_path' here easily unless we pass it.
-        # But for the purpose of a unique hash, the full path is probably fine
-        # as long as it's stable within a build.
-        # However, full paths in Bazel can contain 'bazel-out/k8-fastbuild/bin/...'.
-        # That's still stable for a given configuration.
-        h.update(path.encode("utf-8"))
-        if os.path.isfile(path):
+    with open(args.hash_files_manifest, "r", encoding="utf-8") as f:
+        manifest_lines = f.read().splitlines()
+
+    for line in sorted(manifest_lines):
+        h.update(line.encode("utf-8"))
+        parts = line.split("|")
+        path = parts[-1]
+        if path and os.path.isfile(path):
             with open(path, "rb") as f:
                 while True:
                     chunk = f.read(65536)
