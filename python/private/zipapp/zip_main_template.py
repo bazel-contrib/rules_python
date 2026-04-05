@@ -39,6 +39,7 @@ _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 _WORKSPACE_NAME = "%workspace_name%"
 # relative path under EXTRACT_ROOT to extract to.
 EXTRACT_DIR = "%EXTRACT_DIR%"
+APP_HASH = "%APP_HASH%"
 
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
@@ -197,7 +198,7 @@ def extract_zip(zip_path, dest_dir):
 # Create the runfiles tree by extracting the zip file
 def create_runfiles_root():
     if EXTRACT_ROOT:
-        extract_root = join(EXTRACT_ROOT, EXTRACT_DIR)
+        extract_root = join(EXTRACT_ROOT, EXTRACT_DIR, APP_HASH)
     else:
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
     extract_zip(dirname(__file__), extract_root)

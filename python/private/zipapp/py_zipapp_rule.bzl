@@ -18,7 +18,45 @@ def _is_symlink(f):
     else:
         return "-1"
 
-def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap):
+def _map_zip_main_empty_filenames(list_paths_cb):
+    return list_paths_cb().to_list()
+
+def _map_zip_main_runfiles(file):
+    return file.short_path + "|" + file.path
+
+def _map_zip_main_symlinks(entry):
+    return entry.path + "|" + entry.target_file.path
+
+def _map_zip_main_root_symlinks(entry):
+    return entry.path + "|" + entry.target_file.path
+
+def _build_zip_main_hash_files_manifest(ctx, manifest, runfiles, inputs):
+    manifest.add_all(
+        # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
+        # is used to defer that.
+        [lambda: runfiles.empty_filenames],
+        map_each = _map_zip_main_empty_filenames,
+        allow_closure = True,
+    )
+
+    manifest.add_all(runfiles.files, map_each = _map_zip_main_runfiles)
+    manifest.add_all(runfiles.symlinks, map_each = _map_zip_main_symlinks)
+    manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_main_root_symlinks)
+
+    zip_repo_mapping_manifest = maybe_create_repo_mapping(
+        ctx = ctx,
+        runfiles = runfiles,
+    )
+    if zip_repo_mapping_manifest:
+        # NOTE: rf-root-symlink is used to make it show up under the runfiles
+        # subdirectory within the zip.
+        manifest.add(
+            zip_repo_mapping_manifest.path,
+            format = "rf-root-symlink|0|_repo_mapping|%s",
+        )
+        inputs.append(zip_repo_mapping_manifest)
+
+def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, runfiles):
     venv_python_exe = py_executable.venv_python_exe
     if venv_python_exe:
         venv_python_exe_path = runfiles_root_path(ctx, venv_python_exe.short_path)
@@ -31,20 +69,37 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap):
         python_binary_actual_path = py_runtime.interpreter_path
 
     zip_main_py = ctx.actions.declare_file(ctx.label.name + ".zip_main.py")
-    ctx.actions.expand_template(
-        template = py_runtime.zip_main_template,
-        output = zip_main_py,
-        substitutions = {
-            "%EXTRACT_DIR%": paths.join(
-                (ctx.label.repo_name or "_main"),
-                ctx.label.package,
-                ctx.label.name,
-            ),
-            "%python_binary%": venv_python_exe_path,
-            "%python_binary_actual%": python_binary_actual_path,
-            "%stage2_bootstrap%": runfiles_root_path(ctx, stage2_bootstrap.short_path),
-            "%workspace_name%": ctx.workspace_name,
-        },
+
+    args = ctx.actions.args()
+    args.add("--template", py_runtime.zip_main_template)
+    args.add("--output", zip_main_py)
+
+    args.add(
+        "%EXTRACT_DIR%=" + paths.join(
+            (ctx.label.repo_name or "_main"),
+            ctx.label.package,
+            ctx.label.name,
+        ),
+        format = "--substitution=%s",
+    )
+    args.add("%python_binary%=" + venv_python_exe_path, format = "--substitution=%s")
+    args.add("%python_binary_actual%=" + python_binary_actual_path, format = "--substitution=%s")
+    args.add("%stage2_bootstrap%=" + runfiles_root_path(ctx, stage2_bootstrap.short_path), format = "--substitution=%s")
+    args.add("%workspace_name%=" + ctx.workspace_name, format = "--substitution=%s")
+
+    hash_files_manifest = ctx.actions.args()
+    hash_files_manifest.use_param_file("--hash_files_manifest=%s", use_always = True)
+    hash_files_manifest.set_param_file_format("multiline")
+    _build_zip_main_hash_files_manifest(ctx, runfiles, manifest, inputs)
+
+    actions_run(
+        ctx,
+        executable = ctx.attr._zip_main_maker,
+        arguments = [args, hash_files_manifest],
+        inputs = depset([py_runtime.zip_main_template], transitive = [runfiles_files]),
+        outputs = [zip_main_py],
+        mnemonic = "PyZipAppCreateMainPy",
+        progress_message = "Generating zipapp __main__.py: %{label}",
     )
     return zip_main_py
 
@@ -106,7 +161,13 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
 
     runfiles = runfiles.build(ctx)
 
-    zip_main = _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap)
+    zip_main = _create_zipapp_main_py(
+        ctx,
+        py_runtime,
+        py_executable,
+        stage2_bootstrap,
+        runfiles.build(ctx),
+    )
     inputs = _build_manifest(ctx, manifest, runfiles, zip_main)
 
     zipper_args = ctx.actions.args()
@@ -322,6 +383,10 @@ Whether the output should be an executable zip file.
     "_zipper": attr.label(
         cfg = "exec",
         default = "//tools/private/zipapp:zipper",
+    ),
+    "_zip_main_maker": attr.label(
+        cfg = "exec",
+        default = "//tools/private/zipapp:zip_main_maker",
     ),
 } | ({
     "_windows_launcher_maker": attr.label(
