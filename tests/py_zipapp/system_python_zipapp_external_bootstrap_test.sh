@@ -16,10 +16,17 @@ export RULES_PYTHON_BOOTSTRAP_VERBOSE=1
 
 # We're testing the invocation of `__main__.py`, so we have to
 # manually pass the zipapp to python.
+echo "====================================================================="
 echo "Running zipapp using an automatic temp directory..."
+echo "====================================================================="
 "$PYTHON" "$ZIPAPP"
 
+echo
+echo
+
+echo "====================================================================="
 echo "Running zipapp with extract root set..."
+echo "====================================================================="
 export RULES_PYTHON_EXTRACT_ROOT="${TEST_TMPDIR:-/tmp}/extract_root_test"
 "$PYTHON" "$ZIPAPP"
 
@@ -29,5 +36,19 @@ if [[ ! -d "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
   exit 1
 fi
 
+# On windows, the path is shortened to just the basename to avoid long path errors.
+# Other platforms use the full path.
+# Note: [ -d ... ] expands globs, while [[ -d ... ]] does not.
+if [ -d "$RULES_PYTHON_EXTRACT_ROOT/_main/tests/py_zipapp/system_python_zipapp"/*/runfiles ]; then
+  echo "Found runfiles at $RULES_PYTHON_EXTRACT_ROOT/_main/tests/py_zipapp/system_python_zipapp/*/runfiles"
+elif [ -d "$RULES_PYTHON_EXTRACT_ROOT/system_python_zipapp"/*/runfiles ]; then
+  echo "Found runfiles at $RULES_PYTHON_EXTRACT_ROOT/system_python_zipapp/*/runfiles"
+else
+  echo "Error: Could not find 'runfiles' directory"
+  exit 1
+fi
+
+echo "====================================================================="
 echo "Running zipapp with extract root set a second time..."
+echo "====================================================================="
 "$PYTHON" "$ZIPAPP"

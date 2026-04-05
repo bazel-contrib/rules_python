@@ -28,7 +28,7 @@ import stat
 import subprocess
 import tempfile
 import zipfile
-from os.path import dirname, join
+from os.path import dirname, join, basename
 
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
@@ -40,8 +40,10 @@ _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 _WORKSPACE_NAME = "%workspace_name%"
 # relative path under EXTRACT_ROOT to extract to.
 EXTRACT_DIR = "%EXTRACT_DIR%"
+APP_HASH = "%APP_HASH%"
 
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
+IS_WINDOWS = os.name == "nt"
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -68,10 +70,6 @@ def print_verbose(*args, mapping=None, values=None):
             print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
 
-# Return True if running on Windows
-def is_windows():
-    return os.name == "nt"
-
 
 def get_windows_path_with_unc_prefix(path):
     """Adds UNC prefix after getting a normalized absolute Windows path.
@@ -82,7 +80,7 @@ def get_windows_path_with_unc_prefix(path):
 
     # No need to add prefix for non-Windows platforms.
     # And \\?\ doesn't work in python 2 or on mingw
-    if not is_windows() or sys.version_info[0] < 3:
+    if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
     # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
@@ -188,7 +186,14 @@ def extract_zip(zip_path, dest_dir):
 # Create the runfiles tree by extracting the zip file
 def create_runfiles_root():
     if EXTRACT_ROOT:
-        extract_root = join(EXTRACT_ROOT, EXTRACT_DIR)
+        # Shorten the path for Windows in case long path support is disabled
+        if IS_WINDOWS:
+            hash_dir = APP_HASH[0:32]
+            extract_dir = basename(EXTRACT_DIR)
+            extract_root = join(EXTRACT_ROOT, extract_dir, hash_dir)
+        else:
+            extract_root = join(EXTRACT_ROOT, EXTRACT_DIR, APP_HASH)
+            extract_root = get_windows_path_with_unc_prefix(extract_root)
     else:
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
     extract_zip(dirname(__file__), extract_root)
@@ -236,7 +241,6 @@ def execute_file(
             subprocess_argv.append(f"-XRULES_PYTHON_ZIP_DIR={dirname(runfiles_root)}")
         subprocess_argv.append(main_filename)
         subprocess_argv += args
-        print_verbose("subprocess argv:", values=subprocess_argv)
         print_verbose("subprocess env:", mapping=env)
         print_verbose("subprocess cwd:", workspace)
         print_verbose("subprocess argv:", values=subprocess_argv)
@@ -305,7 +309,7 @@ def main():
 
     # The main Python source file.
     main_rel_path = _STAGE2_BOOTSTRAP
-    if is_windows():
+    if IS_WINDOWS:
         main_rel_path = main_rel_path.replace("/", os.sep)
 
     runfiles_root = create_runfiles_root()

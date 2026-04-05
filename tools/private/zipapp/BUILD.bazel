@@ -34,3 +34,23 @@ py_library(
     name = "exe_zip_maker_lib",
     srcs = ["exe_zip_maker.py"],
 )
+
+py_interpreter_program(
+    name = "zip_main_maker",
+    main = "zip_main_maker.py",
+    visibility = [
+        # Not actually public. Only public so rules_python-generated toolchains
+        # are able to reference it.
+        "//visibility:public",
+    ],
+)
+
+py_library(
+    name = "zip_main_maker_lib",
+    srcs = ["zip_main_maker.py"],
+)
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**"]),
+)
