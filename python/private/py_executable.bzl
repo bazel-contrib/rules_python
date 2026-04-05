@@ -476,7 +476,7 @@ WARNING: Target: {}
 
     # The interpreter is added this late in the process so that it isn't
     # added to the zipped files.
-    if venv and venv.interpreter:
+    if venv and venv.interpreter_runfiles:
         extra_runfiles = extra_runfiles.merge(venv.interpreter_runfiles)
     return struct(
         # depset[File] of additional files that should be included as default
@@ -494,8 +494,8 @@ WARNING: Target: {}
         app_runfiles = app_runfiles.build(ctx),
         # File|None; the venv `bin/python3` file, if any.
         venv_python_exe = venv.interpreter if venv else None,
-        # runfiles; runfiles in the venv for the interpreter
-        venv_interpreter_runfiles = venv.interpreter_runfiles,
+        # runfiles|None; runfiles in the venv for the interpreter
+        venv_interpreter_runfiles = venv.interpreter_runfiles if venv else None,
     )
 
 def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):

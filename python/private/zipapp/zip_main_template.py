@@ -46,6 +46,21 @@ EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 IS_WINDOWS = os.name == "nt"
 
 
+EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
+
+# Change the paths with Unix-style forward slashes to backslashes for windows.
+# Windows usually transparently rewrites them, but e.g. `\\?\` paths require
+# backslashes to be properly understood by Windows APIs.
+if IS_WINDOWS:
+    from os.path import normpath
+    _STAGE2_BOOTSTRAP = normpath(_STAGE2_BOOTSTRAP)
+    if _PYTHON_BINARY_VENV:
+        _PYTHON_BINARY_VENV = normpath(_PYTHON_BINARY_VENV)
+    _PYTHON_BINARY_ACTUAL = normpath(_PYTHON_BINARY_ACTUAL)
+    EXTRACT_DIR = normpath(EXTRACT_DIR)
+    if EXTRACT_ROOT:
+        EXTRACT_ROOT = normpath(EXTRACT_ROOT)
+
 def print_verbose(*args, mapping=None, values=None):
     if not bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
         return
