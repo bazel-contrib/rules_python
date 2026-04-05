@@ -18,33 +18,6 @@ def _is_symlink(f):
     else:
         return "-1"
 
-def _build_zip_main_hash_files_manifest(ctx, manifest, runfiles, inputs):
-    manifest.add_all(
-        # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
-        # is used to defer that.
-        [lambda: runfiles.empty_filenames],
-        map_each = _map_zip_empty_filenames,
-        allow_closure = True,
-    )
-
-    manifest.add_all(runfiles.files, map_each = _map_zip_runfiles)
-    manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
-    manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
-
-    inputs.add(runfiles.files)
-    inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
-    inputs.add([entry.target_file for entry in runfiles.root_symlinks.to_list()])
-
-    zip_repo_mapping_manifest = maybe_create_repo_mapping(
-        ctx = ctx,
-        runfiles = runfiles,
-    )
-    if zip_repo_mapping_manifest:
-        manifest.add(
-            "rf-root-symlink|0|_repo_mapping|" + zip_repo_mapping_manifest.path,
-        )
-        inputs.add(zip_repo_mapping_manifest)
-
 def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, runfiles):
     venv_python_exe = py_executable.venv_python_exe
     if venv_python_exe:
@@ -82,7 +55,7 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
 
     inputs = builders.DepsetBuilder()
     inputs.add(py_runtime.zip_main_template)
-    _build_zip_main_hash_files_manifest(ctx, hash_files_manifest, runfiles, inputs)
+    _build_manifest(ctx, hash_files_manifest, runfiles, inputs)
 
     actions_run(
         ctx,
@@ -107,9 +80,7 @@ def _map_zip_symlinks(entry):
 def _map_zip_root_symlinks(entry):
     return "rf-root-symlink|" + _is_symlink(entry.target_file) + "|" + entry.path + "|" + entry.target_file.path
 
-def _build_manifest(ctx, manifest, runfiles, zip_main):
-    manifest.add("regular|0|__main__.py|{}".format(zip_main.path))
-
+def _build_manifest(ctx, manifest, runfiles, inputs):
     manifest.add_all(
         # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
         # is used to defer that.
@@ -122,7 +93,10 @@ def _build_manifest(ctx, manifest, runfiles, zip_main):
     manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
     manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
 
-    inputs = [zip_main]
+    inputs.add(runfiles.files)
+    inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
+    inputs.add([entry.target_file for entry in runfiles.root_symlinks.to_list()])
+
     zip_repo_mapping_manifest = maybe_create_repo_mapping(
         ctx = ctx,
         runfiles = runfiles,
@@ -134,8 +108,7 @@ def _build_manifest(ctx, manifest, runfiles, zip_main):
             zip_repo_mapping_manifest.path,
             format = "rf-root-symlink|0|_repo_mapping|%s",
         )
-        inputs.append(zip_repo_mapping_manifest)
-    return inputs
+        inputs.add(zip_repo_mapping_manifest)
 
 def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     output = ctx.actions.declare_file(ctx.label.name + ".zip")
@@ -160,7 +133,10 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         stage2_bootstrap,
         runfiles,
     )
-    inputs = _build_manifest(ctx, manifest, runfiles, zip_main)
+    inputs = builders.DepsetBuilder()
+    manifest.add("regular|0|__main__.py|{}".format(zip_main.path))
+    inputs.add(zip_main)
+    _build_manifest(ctx, manifest, runfiles, inputs)
 
     zipper_args = ctx.actions.args()
     zipper_args.add(output)
@@ -177,7 +153,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         ctx,
         executable = ctx.attr._zipper,
         arguments = [manifest, zipper_args],
-        inputs = depset(inputs, transitive = [runfiles.files]),
+        inputs = inputs.build(),
         outputs = [output],
         mnemonic = "PyZipAppCreateZip",
         progress_message = "Reticulating zipapp archive: %{label} into %{output}",
