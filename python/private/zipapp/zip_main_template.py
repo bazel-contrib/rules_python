@@ -106,25 +106,6 @@ def get_windows_path_with_unc_prefix(path):
     return unicode_prefix + os.path.abspath(path)
 
 
-def has_windows_executable_extension(path):
-    return path.endswith(".exe") or path.endswith(".com") or path.endswith(".bat")
-
-
-if (
-    _PYTHON_BINARY_VENV
-    and is_windows()
-    and not has_windows_executable_extension(_PYTHON_BINARY_VENV)
-):
-    _PYTHON_BINARY_VENV = _PYTHON_BINARY_VENV + ".exe"
-
-if (
-    _PYTHON_BINARY_ACTUAL
-    and is_windows()
-    and not has_windows_executable_extension(_PYTHON_BINARY_ACTUAL)
-):
-    _PYTHON_BINARY_ACTUAL = _PYTHON_BINARY_ACTUAL + ".exe"
-
-
 def search_path(name):
     """Finds a file in a given search path."""
     search_path = os.getenv("PATH", os.defpath).split(os.pathsep)
@@ -186,7 +167,6 @@ def extract_zip(zip_path, dest_dir):
                     target = f.read()
                 os.remove(file_path)
                 os.symlink(target, file_path)
-                ##os.chmod(file_path, stat.S_IWRITE)
             # Of those, we set the lower 12 bits, which are the
             # file mode bits (since the file type bits can't be set by chmod anyway).
             elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
