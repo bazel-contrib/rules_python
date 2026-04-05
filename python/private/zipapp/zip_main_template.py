@@ -47,27 +47,28 @@ IS_WINDOWS = os.name == "nt"
 
 
 def print_verbose(*args, mapping=None, values=None):
-    if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
-        if mapping is not None:
-            for key, value in sorted((mapping or {}).items()):
-                print(
-                    "bootstrap: stage 1:",
-                    *args,
-                    f"{key}={value!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        elif values is not None:
-            for i, v in enumerate(values):
-                print(
-                    "bootstrap: stage 1:",
-                    *args,
-                    f"[{i}] {v!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        else:
-            print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
+    if not bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
+        return
+    if mapping is not None:
+        for key, value in sorted((mapping or {}).items()):
+            print(
+                "bootstrap: stage 1:",
+                *args,
+                f"{key}={value!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    elif values is not None:
+        for i, v in enumerate(values):
+            print(
+                "bootstrap: stage 1:",
+                *args,
+                f"[{i}] {v!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    else:
+        print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
 
 
 
@@ -180,7 +181,7 @@ def extract_zip(zip_path, dest_dir):
             elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
                 # Add the write bit to ensure the files can be deleted during cleanup and
                 # overwritten by subsequent invocations.
-                os.chmod(file_path, (attrs & 0o7777) | stat.S_IWRITE)
+                os.chmod(file_path, attrs & 0o7777)
 
 
 # Create the runfiles tree by extracting the zip file
