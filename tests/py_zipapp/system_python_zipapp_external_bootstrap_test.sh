@@ -36,20 +36,15 @@ if [[ ! -d "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
   exit 1
 fi
 
-# The extract dir is _main/tests/py_zipapp/system_python_zipapp
-# The new structure should be $RULES_PYTHON_EXTRACT_ROOT/_main/tests/py_zipapp/system_python_zipapp/<hash>/runfiles
-# We check that there is a subdirectory under the expected extract dir.
-EXTRACT_DIR="_main/tests/py_zipapp/system_python_zipapp"
-if [[ ! -d "$RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR" ]]; then
-  echo "Error: Extract directory $RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR was not created!"
-  exit 1
-fi
-
-# Check for the extra hash component.
-# We use glob expansion to check for the expected depth.
+# On windows, the path is shortened to just the basename to avoid long path errors.
+# Other platforms use the full path.
 # Note: [ -d ... ] expands globs, while [[ -d ... ]] does not.
-if [ ! -d "$RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR"/*/runfiles ]; then
-  echo "Error: Could not find 'runfiles' directory at expected depth $RULES_PYTHON_EXTRACT_ROOT/$EXTRACT_DIR/*/runfiles"
+if [ -d "$RULES_PYTHON_EXTRACT_ROOT/_main/tests/py_zipapp/system_python_zipapp"/*/runfiles ]; then
+  echo "Found runfiles at $RULES_PYTHON_EXTRACT_ROOT/_main/tests/py_zipapp/system_python_zipapp/*/runfiles"
+elif [ -d "$RULES_PYTHON_EXTRACT_ROOT/system_python_zipapp"/*/runfiles ]; then
+  echo "Found runfiles at $RULES_PYTHON_EXTRACT_ROOT/system_python_zipapp/*/runfiles"
+else
+  echo "Error: Could not find 'runfiles' directory"
   exit 1
 fi
 
