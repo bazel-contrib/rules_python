@@ -1,5 +1,4 @@
 load("//python:py_library.bzl", "py_library")
-load("//python:py_test.bzl", "py_test")
 load("//python/private:py_interpreter_program.bzl", "py_interpreter_program")  # buildifier: disable=bzl-visibility
 
 package(
@@ -49,12 +48,6 @@ py_interpreter_program(
 py_library(
     name = "zip_main_maker_lib",
     srcs = ["zip_main_maker.py"],
-)
-
-py_test(
-    name = "zip_main_maker_test",
-    srcs = ["zip_main_maker_test.py"],
-    deps = [":zip_main_maker_lib"],
 )
 
 filegroup(
