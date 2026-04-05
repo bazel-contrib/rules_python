@@ -39,6 +39,11 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap):
             "%python_binary_actual%": python_binary_actual_path,
             "%stage2_bootstrap%": runfiles_root_path(ctx, stage2_bootstrap.short_path),
             "%workspace_name%": ctx.workspace_name,
+            "%EXTRACT_DIR%": paths.join(
+                (ctx.label.repo_name or "_main"),
+                ctx.label.package,
+                ctx.label.name,
+            ),
         },
     )
     return zip_main_py

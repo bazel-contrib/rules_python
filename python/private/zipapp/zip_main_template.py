@@ -22,6 +22,7 @@ import sys
 del sys.path[0]
 
 import os
+from os.path import join
 import shutil
 import subprocess
 import tempfile
@@ -35,6 +36,10 @@ _PYTHON_BINARY_VENV = "%python_binary%"
 # executable to use.
 _PYTHON_BINARY_ACTUAL = "%python_binary_actual%"
 _WORKSPACE_NAME = "%workspace_name%"
+# relative path under EXTRACT_ROOT to extract to.
+EXTRACT_DIR = "%EXTRACT_DIR%"
+
+EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -182,11 +187,14 @@ def extract_zip(zip_path, dest_dir):
 
 # Create the runfiles tree by extracting the zip file
 def create_runfiles_root():
-    temp_dir = tempfile.mkdtemp("", "Bazel.runfiles_")
-    extract_zip(os.path.dirname(__file__), temp_dir)
+    if EXTRACT_ROOT:
+        extract_root = join(EXTRACT_ROOT, EXTRACT_DIR)
+    else:
+        extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
+    extract_zip(os.path.dirname(__file__), extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
-    return os.path.join(temp_dir, "runfiles")
+    return os.path.join(extract_root, "runfiles")
 
 
 def execute_file(
@@ -223,18 +231,24 @@ def execute_file(
     # - When running in a zip file, we need to clean up the
     #   workspace after the process finishes so control must return here.
     try:
-        subprocess_argv = [python_program, main_filename] + args
+        subprocess_argv = [python_program]
+        if not EXTRACT_ROOT:
+            subprocess_argv.append(f"-XRULES_PYTHON_ZIP_DIR={os.path.dirname(runfiles_root)}")
+        subprocess_argv.append(main_filename)
+        subprocess_argv += args
         print_verbose("subprocess argv:", values=subprocess_argv)
         print_verbose("subprocess env:", mapping=env)
         print_verbose("subprocess cwd:", workspace)
         ret_code = subprocess.call(subprocess_argv, env=env, cwd=workspace)
         sys.exit(ret_code)
     finally:
-        # NOTE: dirname() is called because create_runfiles_root() creates a
-        # sub-directory within a temporary directory, and we want to remove the
-        # whole temporary directory.
-        ##shutil.rmtree(os.path.dirname(runfiles_root), True)
-        pass
+        if not EXTRACT_ROOT:
+            # NOTE: dirname() is called because create_runfiles_root() creates a
+            # sub-directory within a temporary directory, and we want to remove the
+            # whole temporary directory.
+            extract_root = os.path.dirname(runfiles_root)
+            print_verbose("cleanup: rmtree: ", extract_root)
+            shutil.rmtree(extract_root, True)
 
 
 def main():
