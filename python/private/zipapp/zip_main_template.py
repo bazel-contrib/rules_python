@@ -28,6 +28,7 @@ import stat
 import subprocess
 import tempfile
 import zipfile
+from os.path import dirname, join
 
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
@@ -41,6 +42,7 @@ _WORKSPACE_NAME = "%workspace_name%"
 EXTRACT_DIR = "%EXTRACT_DIR%"
 
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
+
 
 def print_verbose(*args, mapping=None, values=None):
     if bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
@@ -111,7 +113,7 @@ def search_path(name):
     search_path = os.getenv("PATH", os.defpath).split(os.pathsep)
     for directory in search_path:
         if directory:
-            path = os.path.join(directory, name)
+            path = join(directory, name)
             if os.path.isfile(path) and os.access(path, os.X_OK):
                 return path
     return None
@@ -132,7 +134,7 @@ def find_binary(runfiles_root, bin_name):
     # Use normpath() to convert slashes to os.sep on Windows.
     elif os.sep in os.path.normpath(bin_name):
         # Case 3: Path is relative to the repo root.
-        return os.path.join(runfiles_root, bin_name)
+        return join(runfiles_root, bin_name)
     else:
         # Case 4: Path has to be looked up in the search path.
         return search_path(bin_name)
@@ -154,10 +156,18 @@ def extract_zip(zip_path, dest_dir):
     dest_dir = get_windows_path_with_unc_prefix(dest_dir)
     with zipfile.ZipFile(zip_path) as zf:
         for info in zf.infolist():
+            file_path = os.path.abspath(join(dest_dir, info.filename))
+            # If the file exists, it might be a symlink or read-only file from a previous extraction.
+            # Unlink it first so zipfile.extract doesn't corrupt the symlink target or fail on read-only files.
+            if os.path.lexists(file_path) and not os.path.isdir(file_path):
+                try:
+                    os.unlink(file_path)
+                except OSError:
+                    # On Windows, unlinking a read-only file fails.
+                    os.chmod(file_path, stat.S_IWRITE)
+                    os.unlink(file_path)
+
             zf.extract(info, dest_dir)
-            # UNC-prefixed paths must be absolute/normalized. See
-            # https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation
-            file_path = os.path.abspath(os.path.join(dest_dir, info.filename))
             # The Unix st_mode bits (see "man 7 inode") are stored in the upper 16
             # bits of external_attr.
             attrs = info.external_attr >> 16
@@ -181,10 +191,10 @@ def create_runfiles_root():
         extract_root = join(EXTRACT_ROOT, EXTRACT_DIR)
     else:
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
-    extract_zip(os.path.dirname(__file__), extract_root)
+    extract_zip(dirname(__file__), extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
-    return os.path.join(extract_root, "runfiles")
+    return join(extract_root, "runfiles")
 
 
 def execute_file(
@@ -223,9 +233,10 @@ def execute_file(
     try:
         subprocess_argv = [python_program]
         if not EXTRACT_ROOT:
-            subprocess_argv.append(f"-XRULES_PYTHON_ZIP_DIR={os.path.dirname(runfiles_root)}")
+            subprocess_argv.append(f"-XRULES_PYTHON_ZIP_DIR={dirname(runfiles_root)}")
         subprocess_argv.append(main_filename)
         subprocess_argv += args
+        print_verbose("subprocess argv:", values=subprocess_argv)
         print_verbose("subprocess env:", mapping=env)
         print_verbose("subprocess cwd:", workspace)
         print_verbose("subprocess argv:", values=subprocess_argv)
@@ -236,7 +247,7 @@ def execute_file(
             # NOTE: dirname() is called because create_runfiles_root() creates a
             # sub-directory within a temporary directory, and we want to remove the
             # whole temporary directory.
-            extract_root = os.path.dirname(runfiles_root)
+            extract_root = dirname(runfiles_root)
             print_verbose("cleanup: rmtree: ", extract_root)
             shutil.rmtree(extract_root, True)
 
@@ -306,7 +317,7 @@ def main():
     # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
     new_env["PYTHONSAFEPATH"] = "1"
 
-    main_filename = os.path.join(runfiles_root, main_rel_path)
+    main_filename = join(runfiles_root, main_rel_path)
     main_filename = get_windows_path_with_unc_prefix(main_filename)
     assert os.path.exists(main_filename), (
         "Cannot exec() %r: file not found." % main_filename
@@ -338,7 +349,7 @@ def main():
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
     if os.environ.get("RUN_UNDER_RUNFILES") == "1":
-        workspace = os.path.join(runfiles_root, _WORKSPACE_NAME)
+        workspace = join(runfiles_root, _WORKSPACE_NAME)
 
     sys.stdout.flush()
     execute_file(

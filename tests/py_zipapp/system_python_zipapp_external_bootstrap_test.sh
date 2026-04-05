@@ -13,16 +13,21 @@ fi
 ZIPAPP="${ZIPAPP/.exe/.zip}"
 
 export RULES_PYTHON_BOOTSTRAP_VERBOSE=1
+
 # We're testing the invocation of `__main__.py`, so we have to
 # manually pass the zipapp to python.
-set +e
+echo "Running zipapp using an automatic temp directory..."
 "$PYTHON" "$ZIPAPP"
-exit_code=$?
-set +x
 
-if [[ "$exit_code" -ne 0 ]]; then
-  echo "==============="
-  echo "Invocation failed, exit code: $exit_code"
-  echo "==============="
-  exit "$exit_code"
+echo "Running zipapp with extract root set..."
+export RULES_PYTHON_EXTRACT_ROOT="${TEST_TMPDIR:-/tmp}/extract_root_test"
+"$PYTHON" "$ZIPAPP"
+
+# Verify that the directory was created
+if [[ ! -d "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
+  echo "Error: Extract root directory $RULES_PYTHON_EXTRACT_ROOT was not created!"
+  exit 1
 fi
+
+echo "Running zipapp with extract root set a second time..."
+"$PYTHON" "$ZIPAPP"
