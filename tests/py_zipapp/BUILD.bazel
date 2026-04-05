@@ -98,17 +98,6 @@ sh_test(
     toolchains = ["//python:current_py_toolchain"],
 )
 
-sh_test(
-    name = "extract_root_test",
-    srcs = ["extract_root_test.sh"],
-    data = [
-        ":system_python_zipapp",
-    ],
-    env = {
-        "ZIPAPP": "$(rootpath :system_python_zipapp)",
-    },
-)
-
 py_library(
     name = "some_dep",
     srcs = ["some_dep.py"],

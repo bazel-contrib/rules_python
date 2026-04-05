@@ -24,6 +24,7 @@ del sys.path[0]
 import os
 from os.path import join
 import shutil
+import stat
 import subprocess
 import tempfile
 import zipfile
@@ -166,10 +167,18 @@ def extract_zip(zip_path, dest_dir):
     dest_dir = get_windows_path_with_unc_prefix(dest_dir)
     with zipfile.ZipFile(zip_path) as zf:
         for info in zf.infolist():
-            zf.extract(info, dest_dir)
-            # UNC-prefixed paths must be absolute/normalized. See
-            # https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation
             file_path = os.path.abspath(os.path.join(dest_dir, info.filename))
+            # If the file exists, it might be a symlink or read-only file from a previous extraction.
+            # Unlink it first so zipfile.extract doesn't corrupt the symlink target or fail on read-only files.
+            if os.path.lexists(file_path) and not os.path.isdir(file_path):
+                try:
+                    os.unlink(file_path)
+                except OSError:
+                    # On Windows, unlinking a read-only file fails.
+                    os.chmod(file_path, stat.S_IWRITE)
+                    os.unlink(file_path)
+            
+            zf.extract(info, dest_dir)
             # The Unix st_mode bits (see "man 7 inode") are stored in the upper 16
             # bits of external_attr.
             attrs = info.external_attr >> 16
