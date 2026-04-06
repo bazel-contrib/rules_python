@@ -194,8 +194,6 @@ def extract_zip(zip_path, dest_dir):
             # Of those, we set the lower 12 bits, which are the
             # file mode bits (since the file type bits can't be set by chmod anyway).
             elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
-                # Add the write bit to ensure the files can be deleted during cleanup and
-                # overwritten by subsequent invocations.
                 os.chmod(file_path, attrs & 0o7777)
 
 
