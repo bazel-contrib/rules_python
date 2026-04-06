@@ -1,0 +1,10 @@
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**"]) + [
+        "//tools/private/zipapp:distribution",
+    ],
+)

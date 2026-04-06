@@ -11,3 +11,9 @@ py_test(
     srcs = ["exe_zip_maker_test.py"],
     deps = ["//tools/private/zipapp:exe_zip_maker_lib"],
 )
+
+py_test(
+    name = "zip_main_maker_test",
+    srcs = ["zip_main_maker_test.py"],
+    deps = ["//tools/private/zipapp:zip_main_maker_lib"],
+)
