@@ -728,6 +728,8 @@ def _create_venv_windows(ctx, *, venv_root, runtime, interpreter_actual_path):
         interpreter_runfiles.add(interpreter)
         ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
 
+    # NOTE: The .dll files must exist, however, they may not be known at build time
+    # if the interpreter is resolved at runtime.
     for f in runtime.venv_bin_files:
         venv_path = "{}/{}".format(bin_dir, f.basename)
         venv_file = ctx.actions.declare_file(venv_path)

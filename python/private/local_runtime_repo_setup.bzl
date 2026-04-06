@@ -156,9 +156,9 @@ def define_local_runtime_toolchain_impl(
         venv_bin_files = select({
             "@platforms//os:windows": native.glob(
                 include = [
-                    "*.dll",
+                    "lib/*.dll",
                     # The pdb files just provide debugging information
-                    "*.pdb",
+                    "lib/*.pdb",
                 ],
                 # This must be true because glob empty-ness is checked
                 # during loading phase, before select() filters it out.
