@@ -22,13 +22,12 @@ import sys
 del sys.path[0]
 
 import os
-from os.path import dirname, join
 import shutil
 import stat
 import subprocess
 import tempfile
 import zipfile
-from os.path import dirname, join, basename
+from os.path import basename, dirname, join
 
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
@@ -53,6 +52,7 @@ EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 # backslashes to be properly understood by Windows APIs.
 if IS_WINDOWS:
     from os.path import normpath
+
     _STAGE2_BOOTSTRAP = normpath(_STAGE2_BOOTSTRAP)
     if _PYTHON_BINARY_VENV:
         _PYTHON_BINARY_VENV = normpath(_PYTHON_BINARY_VENV)
@@ -60,6 +60,7 @@ if IS_WINDOWS:
     EXTRACT_DIR = normpath(EXTRACT_DIR)
     if EXTRACT_ROOT:
         EXTRACT_ROOT = normpath(EXTRACT_ROOT)
+
 
 def print_verbose(*args, mapping=None, values=None):
     if not bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
@@ -84,7 +85,6 @@ def print_verbose(*args, mapping=None, values=None):
             )
     else:
         print("bootstrap: stage 1:", *args, file=sys.stderr, flush=True)
-
 
 
 def get_windows_path_with_unc_prefix(path):
@@ -307,6 +307,7 @@ def finish_venv_setup(runfiles_root):
             fp.write("home = {}\n".format(python_home))
 
     return python_program
+
 
 def main():
     print_verbose("running zip main bootstrap")
