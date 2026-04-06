@@ -243,10 +243,13 @@ def define_hermetic_runtime_toolchain_impl(
         # On Windows, a symlink-style venv requires supporting .dll files.
         venv_bin_files = select({
             "@platforms//os:windows": native.glob(
-                include = ["*.dll"],
-                allow_empty = False,
-            ) + native.glob(
-                include = ["*.pdb"],
+                include = [
+                    "*.dll",
+                    # The pdb files just provide debugging information
+                    "*.pdb",
+                ],
+                # This must be true because glob empty-ness is checked
+                # during loading phase, before select() filters it out.
                 allow_empty = True,
             ),
             "//conditions:default": [],
