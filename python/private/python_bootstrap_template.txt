@@ -5,13 +5,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
+# Generated file from @rules_python//python/private:python_bootstrap_template.txt
 
-import os
 from os.path import dirname, join, basename
-import subprocess
-import uuid
+import os
 import shutil
+import subprocess
+import sys
 
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of
@@ -77,10 +77,7 @@ else:
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
-def is_running_from_zip():
-  return IS_ZIPFILE
-
-if is_running_from_zip():
+if IS_ZIPFILE:
   import shutil
   import tempfile
   import zipfile
@@ -397,7 +394,7 @@ def runfiles_envvar(runfiles_root):
     return ('RUNFILES_DIR', runfiles)
 
   # If running from a zip, there's no manifest file.
-  if is_running_from_zip():
+  if IS_ZIPFILE:
     return ('RUNFILES_DIR', runfiles_root)
 
   # Look for the runfiles "output" manifest, argv[0] + ".runfiles_manifest"
@@ -531,7 +528,7 @@ def main():
 
   delete_dirs = []
 
-  if is_running_from_zip():
+  if IS_ZIPFILE:
     runfiles_root = create_runfiles_root()
     # NOTE: dirname() is called because create_runfiles_root() creates a
     # sub-directory within a temporary directory, and we want to remove the
@@ -584,7 +581,7 @@ def main():
   new_env.update((key, val) for key, val in os.environ.items() if key not in new_env)
 
   workspace = None
-  if is_running_from_zip():
+  if IS_ZIPFILE:
     # If RUN_UNDER_RUNFILES equals 1, it means we need to
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
