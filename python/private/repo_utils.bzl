@@ -323,7 +323,7 @@ def _which_describe_failure(binary_name, path):
         "{path_str}"
     ).format(
         binary_name = binary_name,
-        path_str = "\n".join(path_parts)
+        path_str = "\n".join(path_parts),
     )
 
 def _mkdir(mrctx, path):
