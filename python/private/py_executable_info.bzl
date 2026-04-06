@@ -78,6 +78,14 @@ implementation isn't being used.
 :::{versionadded} 1.9.0
 :::
 """,
+        "venv_interpreter_runfiles": """
+:type: runfiles | None
+
+Runfiles that are specific to the interpreter within the venv.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         "venv_python_exe": """
 :type: File | None
 
@@ -87,13 +95,5 @@ mode is not enabled.
 :::{versionadded} 1.9.0
 :::
 """,
-        "venv_interpreter_runfiles": """
-:type: runfiles | None
-
-Runfiles that are specific to the interpreter within the venv.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-"""
     },
 )
