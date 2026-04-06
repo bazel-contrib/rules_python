@@ -1775,6 +1775,8 @@ def _create_providers(
         stage2_bootstrap: File; the stage 2 bootstrap script.
         app_runfiles: runfiles; the runfiles for the application (deps, etc).
         venv_python_exe: File; the python executable in the venv.
+        venv_interpreter_runfiles: runfiles; runfiles specific to the interpreter
+            for the venv.
         interpreter_args: list of strings; arguments to pass to the interpreter.
 
     Returns:
