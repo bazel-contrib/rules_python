@@ -723,15 +723,16 @@ def _create_venv_windows(ctx, *, venv_root, runtime, interpreter_actual_path):
         interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
         interpreter_runfiles.add(interpreter)
         ctx.actions.symlink(output = interpreter, target_file = runtime.interpreter)
-        for f in runtime.venv_bin_files:
-            venv_path = "{}/{}".format(bin_dir, f.basename)
-            venv_file = ctx.actions.declare_file(venv_path)
-            ctx.actions.symlink(output = venv_file, target_file = f)
-            interpreter_runfiles.add(venv_file)
     else:
         interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
         interpreter_runfiles.add(interpreter)
         ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
+
+    for f in runtime.venv_bin_files:
+        venv_path = "{}/{}".format(bin_dir, f.basename)
+        venv_file = ctx.actions.declare_file(venv_path)
+        ctx.actions.symlink(output = venv_file, target_file = f)
+        interpreter_runfiles.add(venv_file)
 
     # See site.py logic: Windows uses a version/build agnostic site-packages path
     venv_site_packages = "Lib/site-packages"

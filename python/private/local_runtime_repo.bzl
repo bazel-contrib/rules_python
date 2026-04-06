@@ -74,6 +74,12 @@ def _norm_path(path):
 def _symlink_libraries(rctx, logger, libraries, shlib_suffix):
     """Symlinks the shared libraries into the lib/ directory.
 
+    Individual files are symlinked instead of the whole directory because
+    shared_lib_dirs contains multiple search paths for the shared libraries,
+    and the python files may be missing from any of those directories, and
+    any of those directories may include non-python runtime libraries,
+    as would be the case if LIBDIR were, for example, /usr/lib.
+
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
@@ -81,12 +87,6 @@ def _symlink_libraries(rctx, logger, libraries, shlib_suffix):
         shlib_suffix: Optional. Ensure that the generated symlinks end with this suffix.
     Returns:
         A list of library paths (under lib/) linked by the action.
-
-    Individual files are symlinked instead of the whole directory because
-    shared_lib_dirs contains multiple search paths for the shared libraries,
-    and the python files may be missing from any of those directories, and
-    any of those directories may include non-python runtime libraries,
-    as would be the case if LIBDIR were, for example, /usr/lib.
     """
     result = []
     for source in libraries:

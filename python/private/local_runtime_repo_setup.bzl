@@ -153,6 +153,16 @@ def define_local_runtime_toolchain_impl(
         implementation_name = implementation_name,
         abi_flags = abi_flags,
         pyc_tag = "{}-{}{}{}".format(implementation_name, major, minor, abi_flags),
+        venv_bin_files = select({
+            "@platforms//os:windows": native.glob(
+                include = ["lib/*.dll"],
+                allow_empty = False,
+            ) + native.glob(
+                include = ["lib/*.pdb"],
+                allow_empty=True,
+            ),
+            "//conditions:default": [],
+        }),
     )
 
     py_runtime_pair(
