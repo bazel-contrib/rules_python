@@ -222,18 +222,23 @@ def _py_zipapp_executable_impl(ctx):
         if target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints):
             executable = ctx.actions.declare_file(ctx.label.name + ".exe")
 
-            python_exe = py_executable.venv_python_exe
-            if python_exe:
-                python_exe_path = runfiles_root_path(ctx, python_exe.short_path)
-            elif py_runtime.interpreter:
-                python_exe_path = runfiles_root_path(ctx, py_runtime.interpreter.short_path)
+            # The zipapp is an opaque zip file, so the Bazel Python launcher doesn't
+            # know how to look inside it to find the Python interpreter. This means
+            # we can only use system paths or programs on PATH to bootstrap.
+            if py_runtime.interpreter_path:
+                bootstrap_python_path = py_runtime.interpreter_path
             else:
-                python_exe_path = py_runtime.interpreter_path
+                # A special value the Bazel Python launcher recognized to skip
+                # lookup in the runfiles and uses `python.exe` from PATH.
+                bootstrap_python_path = "python"
 
             create_windows_exe_launcher(
                 ctx,
                 output = executable,
-                python_binary_path = python_exe_path,
+                # The path to a python to use to invoke e.g. `python.exe foo.zip`
+                python_binary_path = bootstrap_python_path,
+                # Tell the launcher to invoke `python_binary_path` on itself
+                # after removing its file extension and appending `.zip`.
                 use_zip_file = True,
             )
             default_outputs = [executable, zip_file]
