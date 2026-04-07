@@ -1,5 +1,6 @@
 import io
 import unittest
+from dataclasses import dataclass, field
 
 import tools.wheelmaker as wheelmaker
 
@@ -44,61 +45,98 @@ class QuoteAllFilenamesTest(unittest.TestCase):
         )
 
 
+@dataclass
+class ArcNameTestCase:
+    name: str
+    expected: str
+    distribution_prefix: str = ""
+    strip_path_prefixes: list[str] = field(default_factory=list)
+    add_path_prefix: str = ""
+
+
 class ArcNameFromTest(unittest.TestCase):
     def test_arcname_from(self) -> None:
-        # (name, distribution_prefix, strip_path_prefixes, add_path_prefix, want) tuples
-        checks = [
-            ("a/b/c/file.py", "", [], "", "a/b/c/file.py"),
-            ("a/b/c/file.py", "", ["a"], "", "/b/c/file.py"),
-            ("a/b/c/file.py", "", ["a/b/"], "", "c/file.py"),
-            # only first found is used and it's not cumulative.
-            ("a/b/c/file.py", "", ["a/", "b/"], "", "b/c/file.py"),
-            # Examples from docs
-            (
-                "foo/bar/baz/file.py",
-                "",
-                ["foo", "foo/bar/baz"],
-                "",
-                "/bar/baz/file.py",
+        test_cases = [
+            ArcNameTestCase(name="a/b/c/file.py", expected="a/b/c/file.py"),
+            ArcNameTestCase(
+                name="a/b/c/file.py",
+                strip_path_prefixes=["a"],
+                expected="/b/c/file.py",
             ),
-            ("foo/bar/baz/file.py", "", ["foo/bar/baz", "foo"], "", "/file.py"),
-            ("foo/file2.py", "", ["foo/bar/baz", "foo"], "", "/file2.py"),
+            ArcNameTestCase(
+                name="a/b/c/file.py",
+                strip_path_prefixes=["a/b/"],
+                expected="c/file.py",
+            ),
+            # only first found is used and it's not cumulative.
+            ArcNameTestCase(
+                name="a/b/c/file.py",
+                strip_path_prefixes=["a/", "b/"],
+                expected="b/c/file.py",
+            ),
+            # Examples from docs
+            ArcNameTestCase(
+                name="foo/bar/baz/file.py",
+                strip_path_prefixes=["foo", "foo/bar/baz"],
+                expected="/bar/baz/file.py",
+            ),
+            ArcNameTestCase(
+                name="foo/bar/baz/file.py",
+                strip_path_prefixes=["foo/bar/baz", "foo"],
+                expected="/file.py",
+            ),
+            ArcNameTestCase(
+                name="foo/file2.py",
+                strip_path_prefixes=["foo/bar/baz", "foo"],
+                expected="/file2.py",
+            ),
             # Files under the distribution prefix (eg mylib-1.0.0-dist-info)
             # are unmodified
-            (
-                "mylib-0.0.1-dist-info/WHEEL",
-                "mylib",
-                [],
-                "",
-                "mylib-0.0.1-dist-info/WHEEL",
+            ArcNameTestCase(
+                name="mylib-0.0.1-dist-info/WHEEL",
+                distribution_prefix="mylib",
+                expected="mylib-0.0.1-dist-info/WHEEL",
             ),
-            ("mylib/a/b/c/WHEEL", "mylib", ["mylib"], "", "mylib/a/b/c/WHEEL"),
+            ArcNameTestCase(
+                name="mylib/a/b/c/WHEEL",
+                distribution_prefix="mylib",
+                strip_path_prefixes=["mylib"],
+                expected="mylib/a/b/c/WHEEL",
+            ),
             # Check that prefixes are added
-            ("a/b/c/file.py", "", [], "namespace/", "namespace/a/b/c/file.py"),
-            ("a/b/c/file.py", "", ["a"], "namespace", "namespace/b/c/file.py"),
-            (
-                "a/b/c/file.py",
-                "",
-                ["a/b/"],
-                "namespace_",
-                "namespace_c/file.py",
+            ArcNameTestCase(
+                name="a/b/c/file.py",
+                add_path_prefix="namespace/",
+                expected="namespace/a/b/c/file.py",
+            ),
+            ArcNameTestCase(
+                name="a/b/c/file.py",
+                strip_path_prefixes=["a"],
+                add_path_prefix="namespace",
+                expected="namespace/b/c/file.py",
+            ),
+            ArcNameTestCase(
+                name="a/b/c/file.py",
+                strip_path_prefixes=["a/b/"],
+                add_path_prefix="namespace_",
+                expected="namespace_c/file.py",
             ),
         ]
-        for name, prefix, strip, add, want in checks:
+        for test_case in test_cases:
             with self.subTest(
-                name=name,
-                distribution_prefix=prefix,
-                strip_path_prefixes=strip,
-                add_path_prefix=add,
-                want=want,
+                name=test_case.name,
+                distribution_prefix=test_case.distribution_prefix,
+                strip_path_prefixes=test_case.strip_path_prefixes,
+                add_path_prefix=test_case.add_path_prefix,
+                want=test_case.expected,
             ):
                 got = wheelmaker.arcname_from(
-                    name=name,
-                    distribution_prefix=prefix,
-                    strip_path_prefixes=strip,
-                    add_path_prefix=add,
+                    name=test_case.name,
+                    distribution_prefix=test_case.distribution_prefix,
+                    strip_path_prefixes=test_case.strip_path_prefixes,
+                    add_path_prefix=test_case.add_path_prefix,
                 )
-                self.assertEqual(got, want)
+                self.assertEqual(got, test_case.expected)
 
 
 class GetNewRequirementLineTest(unittest.TestCase):
