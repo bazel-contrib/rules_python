@@ -18,7 +18,7 @@ def _is_symlink(f):
     else:
         return "-1"
 
-def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, runfiles):
+def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, runfiles, explicit_symlinks):
     venv_python_exe = py_executable.venv_python_exe
     if venv_python_exe:
         venv_python_exe_path = runfiles_root_path(ctx, venv_python_exe.short_path)
@@ -55,7 +55,7 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
 
     inputs = builders.DepsetBuilder()
     inputs.add(py_runtime.zip_main_template)
-    _build_manifest(ctx, hash_files_manifest, runfiles, inputs)
+    _build_manifest(ctx, hash_files_manifest, runfiles, None, explicit_symlinks)
 
     actions_run(
         ctx,
@@ -80,7 +80,10 @@ def _map_zip_symlinks(entry):
 def _map_zip_root_symlinks(entry):
     return "rf-root-symlink|" + _is_symlink(entry.target_file) + "|" + entry.path + "|" + entry.target_file.path
 
-def _build_manifest(ctx, manifest, runfiles, inputs):
+def _map_explicit_symlinks(entry):
+    return "symlink|" + entry.runfiles_path + "|" + entry.link_to_path
+
+def _build_manifest(ctx, manifest, runfiles, inputs=None, explicit_symlinks):
     manifest.add_all(
         # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
         # is used to defer that.
@@ -92,10 +95,14 @@ def _build_manifest(ctx, manifest, runfiles, inputs):
     manifest.add_all(runfiles.files, map_each = _map_zip_runfiles)
     manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
     manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
+    manifest.add_all(explicit_symlinks, _map_explicit_symlinks)
 
-    inputs.add(runfiles.files)
-    inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
-    inputs.add([entry.target_file for entry in runfiles.root_symlinks.to_list()])
+    if inputs:
+        inputs.add(runfiles.files)
+        inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
+        inputs.add([entry.target_file for entry in runfiles.root_symlinks.to_list()])
+        for entry in explicit_symlinks.to_list():
+            inputs.add(entry.files)
 
     zip_repo_mapping_manifest = maybe_create_repo_mapping(
         ctx = ctx,
@@ -108,7 +115,8 @@ def _build_manifest(ctx, manifest, runfiles, inputs):
             zip_repo_mapping_manifest.path,
             format = "rf-root-symlink|0|_repo_mapping|%s",
         )
-        inputs.add(zip_repo_mapping_manifest)
+        if inputs:
+            inputs.add(zip_repo_mapping_manifest)
 
 def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     output = ctx.actions.declare_file(ctx.label.name + ".zip")
@@ -135,17 +143,12 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         py_executable,
         stage2_bootstrap,
         runfiles,
+        py_executable.venv_interpreter_symlinks,
     )
     inputs = builders.DepsetBuilder()
     manifest.add("regular|0|__main__.py|{}".format(zip_main.path))
-
-    # unfortunately, we have to flatten to add the files to inputs.
-    for entry in py_executable.venv_interpreter_symlinks.to_list():
-        manifest.add("symlink|{}|{}".format(entry.runfiles_path, entry.link_to_path))
-        inputs.add(entry.files)
-
     inputs.add(zip_main)
-    _build_manifest(ctx, manifest, runfiles, inputs)
+    _build_manifest(ctx, manifest, runfiles, inputs, py_executable.venv_interpreter_symlinks)
 
     zipper_args = ctx.actions.args()
     zipper_args.add(output)

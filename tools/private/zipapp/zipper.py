@@ -1,5 +1,6 @@
 import argparse
 import os
+from os.path import dirname
 import shutil
 import stat
 import sys
@@ -64,7 +65,7 @@ def _parse_entry(
         _, runfile_path, link_to_rf_path = parts
         zip_path = unix_join(runfiles_dir, runfile_path)
         link_to_rf_path = unix_join(runfiles_dir, link_to_rf_path)
-        content_path = os.path.relpath(link_to_rf_path, start=zip_path)
+        content_path = os.path.relpath(link_to_rf_path, start=dirname(zip_path))
         is_symlink_str = "2"
     else:
         raise ValueError(
