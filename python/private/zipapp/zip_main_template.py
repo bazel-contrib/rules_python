@@ -51,8 +51,10 @@ EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 # Windows usually transparently rewrites them, but e.g. `\\?\` paths require
 # backslashes to be properly understood by Windows APIs.
 if IS_WINDOWS:
+
     def norm_slashes(s):
-        if not s: return s
+        if not s:
+            return s
         return s.replace("/", "\\")
 
     _STAGE2_BOOTSTRAP = norm_slashes(_STAGE2_BOOTSTRAP)

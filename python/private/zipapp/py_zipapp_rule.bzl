@@ -155,7 +155,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         zipper_args.add(ctx.attr.compression, format = "--compression=%s")
     zipper_args.add("--runfiles-dir=runfiles")
 
-    zipper_args.add("\\" if is_windows else "/", format="--pathsep=%s")
+    zipper_args.add("\\" if is_windows else "/", format = "--pathsep=%s")
 
     actions_run(
         ctx,

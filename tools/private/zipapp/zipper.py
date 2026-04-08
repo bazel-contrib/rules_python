@@ -9,8 +9,10 @@ import zipfile
 # S_IFLNK is usually 0o120000
 S_IFLNK = 0o120000
 
+
 def unix_join(*parts):
     return "/".join(parts)
+
 
 def _get_zip_runfiles_path(
     path, workspace_name, legacy_external_runfiles, runfiles_dir
@@ -95,11 +97,13 @@ def read_manifest(
     entries.sort(key=lambda x: (x[2], 0 if x[0] == "symlink" else 1))
     return entries
 
+
 def path_norm(path, pathsep):
     if pathsep == "/":
         return path.replace("\\", pathsep)
     else:
         return path.replace("/", "\\")
+
 
 def _write_entry(zf, entry, compress_type, seen, pathsep):
     type_, is_symlink_str, zip_path, content_path = entry
@@ -132,7 +136,6 @@ def _write_entry(zf, entry, compress_type, seen, pathsep):
         zi.external_attr = (S_IFLNK | 0o777) << 16
         zf.writestr(zi, target)
         return
-
 
     if is_symlink_str == "-1":
         if not os.path.exists(content_path):
@@ -249,7 +252,8 @@ into account.
         "--runfiles-dir", default="runfiles", help="Name of the runfiles directory"
     )
     parser.add_argument(
-        "--pathsep", default="/",
+        "--pathsep",
+        default="/",
     )
     args = parser.parse_args()
 
@@ -261,7 +265,7 @@ into account.
             workspace_name=args.workspace_name,
             legacy_external_runfiles=args.legacy_external_runfiles == "1",
             runfiles_dir=args.runfiles_dir,
-            pathsep = args.pathsep,
+            pathsep=args.pathsep,
         )
     except Exception as e:
         e.add_note(f"Error creating zip {args.output}")

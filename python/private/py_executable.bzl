@@ -81,10 +81,10 @@ This is only needed on Windows, where Bazel doesn't preserve declare_symlink
 with relative paths.
 """,
     fields = {
+        "link_to": "Path the symlink should point to",
         "rf_path": "runfile-root-relative path for the link",
         "venv_rel_path": "venv-root-relative path for the link",
-        "link_to": "Path the symlink should point to"
-    }
+    },
 )
 
 # Non-Google-specific attributes for executables
@@ -754,11 +754,11 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
             rf_path = rf_path,
             venv_rel_path = venv_rel_path,
             link_to = relative_path(
-            # dirname is necessary because a relative symlink is relative to
-            # the directory the symlink resides within.
+                # dirname is necessary because a relative symlink is relative to
+                # the directory the symlink resides within.
                 from_ = paths.dirname(rf_path),
                 to = interpreter_actual_path,
-            )
+            ),
         ))
     else:
         interpreter = ctx.actions.declare_symlink("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
@@ -782,7 +782,7 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
                 # the directory the symlink resides within.
                 from_ = paths.dirname(rf_path),
                 to = runfiles_root_path(ctx, f.short_path),
-            )
+            ),
         ))
 
     # See site.py logic: Windows uses a version/build agnostic site-packages path
@@ -806,8 +806,7 @@ def _venv_details(
         bin_dir,
         recreate_venv_at_runtime,
         interpreter_runfiles,
-        interpreter_symlinks,
-):
+        interpreter_symlinks):
     """Helper to create a struct of platform-specific venv details."""
     return struct(
         # File; the `bin/python` executable (or equivalent) within the venv.
@@ -931,8 +930,12 @@ def _create_stage1_bootstrap(
     }
     computed_subs = ctx.actions.template_dict()
     if venv:
-        computed_subs.add_joined("%runtime_venv_symlinks%",
-            venv.interpreter_symlinks, join_with = "\n", map_each = _map_runtime_venv_symlink)
+        computed_subs.add_joined(
+            "%runtime_venv_symlinks%",
+            venv.interpreter_symlinks,
+            join_with = "\n",
+            map_each = _map_runtime_venv_symlink,
+        )
 
     if stage2_bootstrap:
         subs["%stage2_bootstrap%"] = runfiles_root_path(ctx, stage2_bootstrap.short_path)
