@@ -168,7 +168,6 @@ def _write_entry(zf, entry, compress_type, seen, platform_pathsep):
     else:
         st = os.stat(content_path)
         zi = zipfile.ZipInfo(zip_path)
-        print("store:", zip_path)
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
         zi.compress_type = compress_type
