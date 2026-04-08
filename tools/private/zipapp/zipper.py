@@ -61,8 +61,10 @@ def _parse_entry(
         _, is_symlink_str, runfile_path, content_path = parts
         zip_path = unix_join(runfiles_dir, runfile_path)
     elif type_ == "symlink":
-        _, runfile_path, content_path = parts
+        _, runfile_path, link_to_rf_path = parts
         zip_path = unix_join(runfiles_dir, runfile_path)
+        link_to_rf_path = unix_join(runfiles_dir, link_to_rf_path)
+        content_path = os.path.relpath(link_to_rf_path, start=zip_path)
         is_symlink_str = "2"
     else:
         raise ValueError(
@@ -214,8 +216,8 @@ Path to the manifest file. Lines have one of the following formats:
 5. `rf-root-symlink|is_symlink|runfile_root_path|content_path`: Store a
    runfiles-root-relative path in the zip.
 
-6. `symlink|runfile_root_path|link_to`: Store a symlink with the value
-    of `link_to`.
+6. `symlink|runfile_root_path|link_to_path_rf_path`: Store a symlink that
+   stores a relative path from `runfile_root_path` to `link_to_rf_path`
 
 In all cases, `is_symlink` has the following values:
 * `1` means it should be stored as a symlink whose value is read

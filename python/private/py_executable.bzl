@@ -79,12 +79,21 @@ ExplicitSymlink = provider(
 A runfile that should be created as a symlink pointing to a specific location.
 
 This is only needed on Windows, where Bazel doesn't preserve declare_symlink
-with relative paths.
+with relative paths. This is basically manually captures what using
+declare_symlink(), symlink() and runfiles like so would capture:
+
+```
+link = declare_symlink(...)
+link_to_path = relative_path(from=link, to=target)
+symlink(output=link, target_path=link_to_path)
+runfiles.add([link, target])
+```
 """,
     fields = {
-        "link_to": "Path the symlink should point to",
-        "rf_path": "runfile-root-relative path for the link",
-        "venv_rel_path": "venv-root-relative path for the link",
+        "link_to_path": "Path the symlink should point to",
+        "runfiles_path": "runfiles-root-relative path for the symlink",
+        "venv_path": "venv-root-relative path for the symlink",
+        "files": "depset[File] of files that should be included if this symlink is used",
     },
 )
 
@@ -736,7 +745,7 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
 
 def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_path):
     interpreter_runfiles = builders.RunfilesBuilder()
-    interpreter_symlinks = []
+    interpreter_symlinks = builders.DepsetBuilder()
 
     # Some wrappers around the interpreter (e.g. pyenv) use the program
     # name to decide what to do, so preserve the name.
@@ -751,17 +760,15 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
         ctx.actions.symlink(output = interpreter, target_file = runtime.interpreter)
 
         rf_path = runfiles_root_path(ctx, interpreter.short_path)
-        interpreter_symlinks.append(ExplicitSymlink(
-            rf_path = rf_path,
-            venv_rel_path = venv_rel_path,
-            link_to = relative_path(
-                # dirname is necessary because a relative symlink is relative to
-                # the directory the symlink resides within.
-                from_ = paths.dirname(rf_path),
-                to = interpreter_actual_path,
-            ),
+        interpreter_symlinks.add(ExplicitSymlink(
+            runfiles_path = rf_path,
+            venv_path = venv_rel_path,
+            link_to_path = interpreter_actual_path,
+            files = depset([runtime.interpreter]),
         ))
     else:
+        # It's OK to use declare_symlink here because an absolute path
+        # will be written to it, so Bazel won't mangle it.
         interpreter = ctx.actions.declare_symlink("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
         interpreter_runfiles.add(interpreter)
         ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
@@ -771,19 +778,18 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
     for f in runtime.venv_bin_files:
         venv_rel_path = paths.join(venv_bin_rel_path, f.basename)
         venv_ctx_rel_path = paths.join(venv_ctx_rel_root, venv_rel_path)
+
         venv_file = ctx.actions.declare_file(venv_ctx_rel_path)
         ctx.actions.symlink(output = venv_file, target_file = f)
+
         interpreter_runfiles.add(venv_file)
+
         rf_path = runfiles_root_path(ctx, venv_file.short_path)
-        interpreter_symlinks.append(ExplicitSymlink(
-            rf_path = rf_path,
-            venv_rel_path = venv_rel_path,
-            link_to = relative_path(
-                # dirname is necessary because a relative symlink is relative to
-                # the directory the symlink resides within.
-                from_ = paths.dirname(rf_path),
-                to = runfiles_root_path(ctx, f.short_path),
-            ),
+        interpreter_symlinks.add(ExplicitSymlink(
+            runfiles_path = rf_path,
+            venv_path = venv_rel_path,
+            link_to_path = runfiles_root_path(ctx, f.short_path),
+            files = depset([f])
         ))
 
     # See site.py logic: Windows uses a version/build agnostic site-packages path
@@ -796,7 +802,7 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
         bin_dir = venv_bin_ctx_rel_path,
         recreate_venv_at_runtime = True,
         interpreter_runfiles = interpreter_runfiles.build(ctx),
-        interpreter_symlinks = depset(interpreter_symlinks),
+        interpreter_symlinks = interpreter_symlinks.build(),
     )
 
 def _venv_details(
@@ -972,7 +978,7 @@ def _create_stage1_bootstrap(
     )
 
 def _map_runtime_venv_symlink(entry):
-    return entry.venv_rel_path + "|" + entry.link_to
+    return entry.venv_path + "|" + entry.link_to_path
 
 def _create_zip_file(ctx, *, output, zip_main, runfiles):
     """Create a Python zipapp (zip with __main__.py entry point)."""
