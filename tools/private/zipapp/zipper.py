@@ -1,10 +1,10 @@
 import argparse
 import os
-from os.path import dirname
 import shutil
 import stat
 import sys
 import zipfile
+from os.path import dirname
 
 # Unix permission bit for symlink (S_IFLNK)
 # S_IFLNK is usually 0o120000
@@ -113,9 +113,11 @@ def convert_symlink_target(path, platform_pathsep):
         # Convert Unix to Windows
         return path.replace("/", "\\")
 
+
 # Zip files use forward slash for the entries, even on Windows
 def normalize_zip_path(path):
     return path.replace("\\", "/")
+
 
 def _write_entry(zf, entry, compress_type, seen, platform_pathsep):
     type_, is_symlink_str, zip_path, content_path = entry
@@ -262,8 +264,7 @@ into account.
         "--runfiles-dir", default="runfiles", help="Name of the runfiles directory"
     )
     parser.add_argument(
-        "--target-platform-pathsep",
-        help = "The path separator for the target platform"
+        "--target-platform-pathsep", help="The path separator for the target platform"
     )
     args = parser.parse_args()
 

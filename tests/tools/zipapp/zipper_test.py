@@ -8,8 +8,10 @@ import zipfile
 
 from tools.private.zipapp import zipper
 
+
 def symlink_target_path(p):
     return p.replace("/", os.sep)
+
 
 class ZipperTest(unittest.TestCase):
     def setUp(self):
@@ -321,7 +323,9 @@ class ZipperTest(unittest.TestCase):
 
         link_path = extract_dir / "runfiles/my_ws/path/to/link"
         self.assertTrue(link_path.is_symlink(), f"{link_path} should be a symlink")
-        self.assertEqual(os.readlink(link_path), "../../target/path".replace("/", os.path.sep))
+        self.assertEqual(
+            os.readlink(link_path), "../../target/path".replace("/", os.path.sep)
+        )
         self.assertEqual(link_path.read_text(), "target content")
 
         link2_path = extract_dir / "runfiles/my_ws/same_dir_link"
