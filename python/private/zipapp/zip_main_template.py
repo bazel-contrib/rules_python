@@ -270,7 +270,7 @@ def execute_file(
             # whole temporary directory.
             extract_root = dirname(runfiles_root)
             print_verbose("cleanup: rmtree: ", extract_root)
-            ##shutil.rmtree(extract_root, True)
+            shutil.rmtree(extract_root, True)
 
 
 def finish_venv_setup(runfiles_root):
