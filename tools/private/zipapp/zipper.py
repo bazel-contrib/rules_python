@@ -101,18 +101,27 @@ def read_manifest(
     return entries
 
 
-def path_norm(path, pathsep):
-    if pathsep == "/":
-        return path.replace("\\", pathsep)
+def convert_symlink_target(path, platform_pathsep):
+    """Converts the path a symlink points to the target-platform format.
+
+    On Windows, relative symlinks must use backslashes.
+    """
+    if platform_pathsep == "/":
+        # Convert Windows to Unix
+        return path.replace("\\", platform_pathsep)
     else:
+        # Convert Unix to Windows
         return path.replace("/", "\\")
 
+# Zip files use forward slash for the entries, even on Windows
+def normalize_zip_path(path):
+    return path.replace("\\", "/")
 
-def _write_entry(zf, entry, compress_type, seen, pathsep):
+def _write_entry(zf, entry, compress_type, seen, platform_pathsep):
     type_, is_symlink_str, zip_path, content_path = entry
     # Normalize slashes, otherwise the `seen` logic doesn't
     # work correctly.
-    zip_path = path_norm(zip_path, pathsep)
+    zip_path = normalize_zip_path(zip_path)
     if zip_path in seen:
         # This can occur because symlink entries have precedence
         # over non-symlink entries.
@@ -133,8 +142,7 @@ def _write_entry(zf, entry, compress_type, seen, pathsep):
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
         zi.compress_type = compress_type
-        # Windows doesn't like symlinks with forward slashes
-        target = path_norm(content_path, pathsep)
+        target = convert_symlink_target(content_path, platform_pathsep)
         # Set permissions to 777 for symlink (standard)
         zi.external_attr = (S_IFLNK | 0o777) << 16
         zf.writestr(zi, target)
@@ -153,14 +161,14 @@ def _write_entry(zf, entry, compress_type, seen, pathsep):
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
         zi.compress_type = compress_type
-        # Windows doesn't like symlinks with forward slashes
-        target = path_norm(os.readlink(content_path), pathsep)
+        target = convert_symlink_target(os.readlink(content_path), platform_pathsep)
         # Set permissions to 777 for symlink (standard)
         zi.external_attr = (S_IFLNK | 0o777) << 16
         zf.writestr(zi, target)
     else:
         st = os.stat(content_path)
         zi = zipfile.ZipInfo(zip_path)
+        print("store:", zip_path)
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
         zi.compress_type = compress_type
@@ -255,8 +263,8 @@ into account.
         "--runfiles-dir", default="runfiles", help="Name of the runfiles directory"
     )
     parser.add_argument(
-        "--pathsep",
-        default="/",
+        "--target-platform-pathsep",
+        help = "The path separator for the target platform"
     )
     args = parser.parse_args()
 
@@ -268,7 +276,7 @@ into account.
             workspace_name=args.workspace_name,
             legacy_external_runfiles=args.legacy_external_runfiles == "1",
             runfiles_dir=args.runfiles_dir,
-            pathsep=args.pathsep,
+            platform_pathsep=args.target_platform_pathsep,
         )
     except Exception as e:
         e.add_note(f"Error creating zip {args.output}")

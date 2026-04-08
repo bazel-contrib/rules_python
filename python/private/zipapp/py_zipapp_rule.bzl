@@ -162,7 +162,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     zipper_args.add("--runfiles-dir=runfiles")
 
     is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
-    zipper_args.add("\\" if is_windows else "/", format = "--pathsep=%s")
+    zipper_args.add("\\" if is_windows else "/", format = "--target-platform-pathsep=%s")
 
     actions_run(
         ctx,
