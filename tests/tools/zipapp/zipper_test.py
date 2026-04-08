@@ -103,7 +103,7 @@ class ZipperTest(unittest.TestCase):
         with zipfile.ZipFile(self.output_zip, "r") as zf:
             self.assertEqual(zf.namelist(), ["runfiles/path/to/link"])
             self.assertZipFileContent(
-                zf, "runfiles/path/to/link", is_symlink=True, target="target/path"
+                zf, "runfiles/path/to/link", is_symlink=True, target="../../../target/path"
             )
 
     def test_pathsep_normalization(self):
@@ -129,7 +129,7 @@ class ZipperTest(unittest.TestCase):
             )
             # The target of the symlink should have backslashes
             self.assertZipFileContent(
-                zf, "runfiles\\link\\path", is_symlink=True, target="target\\path"
+                zf, "runfiles\\link\\path", is_symlink=True, target="..\\..\\target\\path"
             )
 
     def test_symlink_precedence(self):
@@ -153,7 +153,7 @@ class ZipperTest(unittest.TestCase):
                 zf,
                 "runfiles/my_ws/path/to/file",
                 is_symlink=True,
-                target="symlink/target",
+                target="../../../../symlink/target",
             )
 
     def test_timestamps_are_deterministic(self):
