@@ -26,6 +26,7 @@ class ZipperTest(unittest.TestCase):
             "workspace_name": "my_ws",
             "legacy_external_runfiles": False,
             "runfiles_dir": "runfiles",
+            "pathsep": "/",
         }
         defaults.update(kwargs)
         zipper.create_zip(**defaults)
@@ -89,6 +90,71 @@ class ZipperTest(unittest.TestCase):
             )
             self.assertZipFileContent(zf, "runfiles/root_file", content="content1")
             self.assertZipFileContent(zf, "runfiles/my_ws/empty_file", content="")
+
+    def test_create_zip_with_direct_symlink(self):
+        # Test the 'symlink' manifest entry type
+        manifest_content = [
+            "symlink|path/to/link|target/path",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        self._create_zip()
+
+        with zipfile.ZipFile(self.output_zip, "r") as zf:
+            self.assertEqual(zf.namelist(), ["runfiles/path/to/link"])
+            self.assertZipFileContent(
+                zf, "runfiles/path/to/link", is_symlink=True, target="target/path"
+            )
+
+    def test_pathsep_normalization(self):
+        # Test that pathsep="\\" normalizes paths
+        file1_path = self.test_dir / "file1.txt"
+        file1_path.write_text("content1")
+
+        manifest_content = [
+            f"regular|0|dir/file.txt|{file1_path}",
+            "symlink|link/path|target/path",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        # Use backslash as pathsep
+        self._create_zip(pathsep="\\")
+
+        with zipfile.ZipFile(self.output_zip, "r") as zf:
+            # zipfile.namelist() always returns with forward slashes
+            # But the content of the symlink should be normalized if it was passed through path_norm
+            self.assertEqual(
+                set(zf.namelist()),
+                {"dir\\file.txt", "runfiles\\link\\path"},
+            )
+            # The target of the symlink should have backslashes
+            self.assertZipFileContent(
+                zf, "runfiles\\link\\path", is_symlink=True, target="target\\path"
+            )
+
+    def test_symlink_precedence(self):
+        # Test that 'symlink' entries take precedence over others for the same path
+        file1_path = self.test_dir / "file1.txt"
+        file1_path.write_text("content1")
+
+        manifest_content = [
+            # Same zip path: runfiles/my_ws/path/to/file
+            f"rf-file|0|path/to/file|{file1_path}",
+            "symlink|my_ws/path/to/file|symlink/target",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        self._create_zip()
+
+        with zipfile.ZipFile(self.output_zip, "r") as zf:
+            self.assertEqual(zf.namelist(), ["runfiles/my_ws/path/to/file"])
+            # It should be the symlink, not the file
+            self.assertZipFileContent(
+                zf,
+                "runfiles/my_ws/path/to/file",
+                is_symlink=True,
+                target="symlink/target",
+            )
 
     def test_timestamps_are_deterministic(self):
         # Create a content file with a specific recent timestamp
