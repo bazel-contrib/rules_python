@@ -281,6 +281,51 @@ class ZipperTest(unittest.TestCase):
                 ],
             )
 
+    def _extract_zip(self, zip_path, extract_dir):
+        # Manually extract to preserve symlinks
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for info in zf.infolist():
+                extract_path = extract_dir / info.filename
+                extract_path.parent.mkdir(parents=True, exist_ok=True)
+                if self.is_symlink(info):
+                    target = zf.read(info).decode()
+                    os.symlink(target, extract_path)
+                else:
+                    with zf.open(info) as src, open(extract_path, "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+
+    def test_symlink_extraction(self):
+        # Test that 'symlink' entries extract correctly as relative symlinks
+        # Create a file that the symlink will point to
+        target_file = self.test_dir / "target_file.txt"
+        target_file.write_text("target content")
+
+        manifest_content = [
+            f"rf-file|0|target/path|{target_file}",
+            "symlink|my_ws/path/to/link|my_ws/target/path",
+            f"rf-file|0|same_dir_target|{target_file}",
+            "symlink|my_ws/same_dir_link|my_ws/same_dir_target",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        self._create_zip(workspace_name="my_ws")
+
+        extract_dir = self.test_dir / "extract"
+        extract_dir.mkdir()
+
+        self._extract_zip(self.output_zip, extract_dir)
+
+        link_path = extract_dir / "runfiles/my_ws/path/to/link"
+        self.assertTrue(link_path.is_symlink(), f"{link_path} should be a symlink")
+        self.assertEqual(os.readlink(link_path), "../../target/path")
+        self.assertEqual(link_path.read_text(), "target content")
+
+        link2_path = extract_dir / "runfiles/my_ws/same_dir_link"
+        self.assertTrue(link2_path.is_symlink(), f"{link2_path} should be a symlink")
+        # Relative path from runfiles/my_ws/ to runfiles/my_ws/same_dir_target is just same_dir_target
+        self.assertEqual(os.readlink(link2_path), "same_dir_target")
+        self.assertEqual(link2_path.read_text(), "target content")
+
     def is_symlink(self, zip_info):
         # Check upper 4 bits of external_attr for S_IFLNK
         # S_IFLNK is 0o120000 = 0xA000
