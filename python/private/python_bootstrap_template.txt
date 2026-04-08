@@ -80,7 +80,7 @@ else:
 RUNTIME_VENV_SYMLINKS = """
 %runtime_venv_symlinks%
 """.strip().split("\n")
-RUNTIME_VENV_SYMLINKS = dict(line.split("|") for line in RUNTIME_VENV_SYMLINKS)
+RUNTIME_VENV_SYMLINKS = dict(line.split("|") for line in RUNTIME_VENV_SYMLINKS if line)
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
