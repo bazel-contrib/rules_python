@@ -90,10 +90,10 @@ runfiles.add([link, target])
 ```
 """,
     fields = {
+        "files": "depset[File] of files that should be included if this symlink is used",
         "link_to_path": "Path the symlink should point to",
         "runfiles_path": "runfiles-root-relative path for the symlink",
         "venv_path": "venv-root-relative path for the symlink",
-        "files": "depset[File] of files that should be included if this symlink is used",
     },
 )
 
@@ -789,7 +789,7 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
             runfiles_path = rf_path,
             venv_path = venv_rel_path,
             link_to_path = runfiles_root_path(ctx, f.short_path),
-            files = depset([f])
+            files = depset([f]),
         ))
 
     # See site.py logic: Windows uses a version/build agnostic site-packages path
