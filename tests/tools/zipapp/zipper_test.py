@@ -8,6 +8,8 @@ import zipfile
 
 from tools.private.zipapp import zipper
 
+def symlink_target_path(p):
+    return p.replace("/", os.sep)
 
 class ZipperTest(unittest.TestCase):
     def setUp(self):
@@ -26,7 +28,8 @@ class ZipperTest(unittest.TestCase):
             "workspace_name": "my_ws",
             "legacy_external_runfiles": False,
             "runfiles_dir": "runfiles",
-            "platform_pathsep": "/",
+            # We need to generate paths for the platform we're running on.
+            "platform_pathsep": os.sep,
         }
         defaults.update(kwargs)
         zipper.create_zip(**defaults)
@@ -106,7 +109,7 @@ class ZipperTest(unittest.TestCase):
                 zf,
                 "runfiles/path/to/link",
                 is_symlink=True,
-                target="../../target/path",
+                target=symlink_target_path("../../target/path"),
             )
 
     def test_pathsep_normalization(self):
@@ -159,7 +162,7 @@ class ZipperTest(unittest.TestCase):
                 zf,
                 "runfiles/my_ws/path/to/file",
                 is_symlink=True,
-                target="../../../symlink/target",
+                target=symlink_target_path("../../../symlink/target"),
             )
 
     def test_timestamps_are_deterministic(self):
@@ -289,6 +292,7 @@ class ZipperTest(unittest.TestCase):
                 extract_path.parent.mkdir(parents=True, exist_ok=True)
                 if self.is_symlink(info):
                     target = zf.read(info).decode()
+                    # On Windows, relative symlinks must use backslashes to be readable
                     os.symlink(target, extract_path)
                 else:
                     with zf.open(info) as src, open(extract_path, "wb") as dst:
@@ -317,7 +321,7 @@ class ZipperTest(unittest.TestCase):
 
         link_path = extract_dir / "runfiles/my_ws/path/to/link"
         self.assertTrue(link_path.is_symlink(), f"{link_path} should be a symlink")
-        self.assertEqual(os.readlink(link_path), "../../target/path")
+        self.assertEqual(os.readlink(link_path), "../../target/path".replace("/", os.path.sep))
         self.assertEqual(link_path.read_text(), "target content")
 
         link2_path = extract_dir / "runfiles/my_ws/same_dir_link"
