@@ -39,6 +39,10 @@ def compute_inputs_hash(manifest_path: str) -> str:
 
         if type_ == "rf-empty":
             continue
+        if type_ == "symlink":
+            # The symlink path and the target it points to
+            # are captured by hashing the entire line above.
+            continue
 
         is_symlink_str = parts[0]
         path = parts[-1]
