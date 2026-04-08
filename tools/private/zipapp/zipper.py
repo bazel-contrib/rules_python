@@ -186,7 +186,7 @@ def create_zip(
     workspace_name,
     legacy_external_runfiles,
     runfiles_dir,
-    pathsep,
+    platform_pathsep,
 ):
     compress_type = zipfile.ZIP_STORED if compress_level == 0 else zipfile.ZIP_DEFLATED
     zf_level = compress_level if compress_level != 0 else None
@@ -200,7 +200,7 @@ def create_zip(
         output_zip, "w", compress_type, allowZip64=True, compresslevel=zf_level
     ) as zf:
         for entry in entries:
-            _write_entry(zf, entry, compress_type, seen, pathsep)
+            _write_entry(zf, entry, compress_type, seen, platform_pathsep)
 
 
 def main():

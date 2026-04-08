@@ -55,7 +55,7 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
 
     inputs = builders.DepsetBuilder()
     inputs.add(py_runtime.zip_main_template)
-    _build_manifest(ctx, hash_files_manifest, runfiles, explicit_symlinks)
+    _build_manifest(ctx, hash_files_manifest, runfiles, explicit_symlinks, inputs)
 
     actions_run(
         ctx,
@@ -83,7 +83,7 @@ def _map_zip_root_symlinks(entry):
 def _map_explicit_symlinks(entry):
     return "symlink|" + entry.runfiles_path + "|" + entry.link_to_path
 
-def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs = None):
+def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs):
     manifest.add_all(
         # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
         # is used to defer that.
@@ -97,12 +97,11 @@ def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs = None):
     manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
     manifest.add_all(explicit_symlinks, map_each = _map_explicit_symlinks)
 
-    if inputs:
-        inputs.add(runfiles.files)
-        inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
-        inputs.add([entry.target_file for entry in runfiles.root_symlinks.to_list()])
-        for entry in explicit_symlinks.to_list():
-            inputs.add(entry.files)
+    inputs.add(runfiles.files)
+    inputs.add([entry.target_file for entry in runfiles.symlinks.to_list()])
+    inputs.add([entry.target_file for entry in runfiles.root_symlinks.to_list()])
+    for entry in explicit_symlinks.to_list():
+        inputs.add(entry.files)
 
     zip_repo_mapping_manifest = maybe_create_repo_mapping(
         ctx = ctx,
@@ -115,8 +114,7 @@ def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs = None):
             zip_repo_mapping_manifest.path,
             format = "rf-root-symlink|0|_repo_mapping|%s",
         )
-        if inputs:
-            inputs.add(zip_repo_mapping_manifest)
+        inputs.add(zip_repo_mapping_manifest)
 
 def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     output = ctx.actions.declare_file(ctx.label.name + ".zip")
