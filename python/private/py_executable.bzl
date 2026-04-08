@@ -73,6 +73,7 @@ _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
 _INIT_PY = "__init__.py"
 
+# buildifier: disable=name-conventions
 ExplicitSymlink = provider(
     doc = """
 A runfile that should be created as a symlink pointing to a specific location.
