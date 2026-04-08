@@ -55,7 +55,7 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
 
     inputs = builders.DepsetBuilder()
     inputs.add(py_runtime.zip_main_template)
-    _build_manifest(ctx, hash_files_manifest, runfiles, None, explicit_symlinks)
+    _build_manifest(ctx, hash_files_manifest, runfiles, explicit_symlinks)
 
     actions_run(
         ctx,
@@ -83,7 +83,7 @@ def _map_zip_root_symlinks(entry):
 def _map_explicit_symlinks(entry):
     return "symlink|" + entry.runfiles_path + "|" + entry.link_to_path
 
-def _build_manifest(ctx, manifest, runfiles, inputs=None, explicit_symlinks):
+def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs = None):
     manifest.add_all(
         # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
         # is used to defer that.
@@ -95,7 +95,7 @@ def _build_manifest(ctx, manifest, runfiles, inputs=None, explicit_symlinks):
     manifest.add_all(runfiles.files, map_each = _map_zip_runfiles)
     manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
     manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
-    manifest.add_all(explicit_symlinks, _map_explicit_symlinks)
+    manifest.add_all(explicit_symlinks, map_each = _map_explicit_symlinks)
 
     if inputs:
         inputs.add(runfiles.files)
@@ -148,7 +148,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     inputs = builders.DepsetBuilder()
     manifest.add("regular|0|__main__.py|{}".format(zip_main.path))
     inputs.add(zip_main)
-    _build_manifest(ctx, manifest, runfiles, inputs, py_executable.venv_interpreter_symlinks)
+    _build_manifest(ctx, manifest, runfiles, py_executable.venv_interpreter_symlinks, inputs)
 
     zipper_args = ctx.actions.args()
     zipper_args.add(output)
