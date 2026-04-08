@@ -9,6 +9,8 @@ import zipfile
 # S_IFLNK is usually 0o120000
 S_IFLNK = 0o120000
 
+def unix_join(*parts):
+    return "/".join(parts)
 
 def _get_zip_runfiles_path(
     path, workspace_name, legacy_external_runfiles, runfiles_dir
@@ -18,8 +20,8 @@ def _get_zip_runfiles_path(
     elif path.startswith("../"):
         path = path[3:]
     else:
-        path = os.path.join(workspace_name, path)
-    return os.path.join(runfiles_dir, path)
+        path = unix_join(workspace_name, path)
+    return unix_join(runfiles_dir, path)
 
 
 def _parse_entry(
@@ -52,10 +54,14 @@ def _parse_entry(
         )
     elif type_ == "rf-symlink":
         _, is_symlink_str, runfile_path, content_path = parts
-        zip_path = os.path.join(runfiles_dir, workspace_name, runfile_path)
+        zip_path = unix_join(runfiles_dir, workspace_name, runfile_path)
     elif type_ == "rf-root-symlink":
         _, is_symlink_str, runfile_path, content_path = parts
-        zip_path = os.path.join(runfiles_dir, runfile_path)
+        zip_path = unix_join(runfiles_dir, runfile_path)
+    elif type_ == "symlink":
+        _, runfile_path, content_path = parts
+        zip_path = unix_join(runfiles_dir, runfile_path)
+        is_symlink_str = "2"
     else:
         raise ValueError(
             f"Error: Unknown entry type or invalid format at line {line_idx + 1}: {line}"
@@ -84,13 +90,27 @@ def read_manifest(
                 e.add_note(f"Error processing line {line_idx + 1}: {line.strip()}")
                 raise
 
-    # Sort by zip path (3rd element in tuple)
-    entries.sort(key=lambda x: x[2])
+    # Sort symlink entries first so they have precedence.
+    # Then sort by zip path
+    entries.sort(key=lambda x: (x[2], 0 if x[0] == "symlink" else 1))
     return entries
 
+def path_norm(path, pathsep):
+    if pathsep == "/":
+        return path.replace("\\", pathsep)
+    else:
+        return path.replace("/", "\\")
 
-def _write_entry(zf, entry, compress_type):
+def _write_entry(zf, entry, compress_type, seen, pathsep):
     type_, is_symlink_str, zip_path, content_path = entry
+    # Normalize slashes, otherwise the `seen` logic doesn't
+    # work correctly.
+    zip_path = path_norm(zip_path, pathsep)
+    if zip_path in seen:
+        # This can occur because symlink entries have precedence
+        # over non-symlink entries.
+        return
+    seen.add(zip_path)
 
     if type_ == "rf-empty":
         zi = zipfile.ZipInfo(zip_path)
@@ -101,6 +121,18 @@ def _write_entry(zf, entry, compress_type):
         zi.external_attr = (0o644 & 0xFFFF) << 16
         zf.writestr(zi, "")
         return
+    if type_ == "symlink":
+        zi = zipfile.ZipInfo(zip_path)
+        zi.date_time = (1980, 1, 1, 0, 0, 0)
+        zi.create_system = 3  # Unix
+        zi.compress_type = compress_type
+        # Windows doesn't like symlinks with forward slashes
+        target = path_norm(content_path, pathsep)
+        # Set permissions to 777 for symlink (standard)
+        zi.external_attr = (S_IFLNK | 0o777) << 16
+        zf.writestr(zi, target)
+        return
+
 
     if is_symlink_str == "-1":
         if not os.path.exists(content_path):
@@ -115,7 +147,8 @@ def _write_entry(zf, entry, compress_type):
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
         zi.compress_type = compress_type
-        target = os.readlink(content_path)
+        # Windows doesn't like symlinks with forward slashes
+        target = path_norm(os.readlink(content_path), pathsep)
         # Set permissions to 777 for symlink (standard)
         zi.external_attr = (S_IFLNK | 0o777) << 16
         zf.writestr(zi, target)
@@ -139,6 +172,7 @@ def create_zip(
     workspace_name,
     legacy_external_runfiles,
     runfiles_dir,
+    pathsep,
 ):
     compress_type = zipfile.ZIP_STORED if compress_level == 0 else zipfile.ZIP_DEFLATED
     zf_level = compress_level if compress_level != 0 else None
@@ -147,11 +181,12 @@ def create_zip(
         manifest_path, workspace_name, legacy_external_runfiles, runfiles_dir
     )
 
+    seen = set()
     with zipfile.ZipFile(
         output_zip, "w", compress_type, allowZip64=True, compresslevel=zf_level
     ) as zf:
         for entry in entries:
-            _write_entry(zf, entry, compress_type)
+            _write_entry(zf, entry, compress_type, seen, pathsep)
 
 
 def main():
@@ -175,6 +210,9 @@ Path to the manifest file. Lines have one of the following formats:
 
 5. `rf-root-symlink|is_symlink|runfile_root_path|content_path`: Store a
    runfiles-root-relative path in the zip.
+
+6. `symlink|runfile_root_path|link_to`: Store a symlink with the value
+    of `link_to`.
 
 In all cases, `is_symlink` has the following values:
 * `1` means it should be stored as a symlink whose value is read
@@ -210,6 +248,9 @@ into account.
     parser.add_argument(
         "--runfiles-dir", default="runfiles", help="Name of the runfiles directory"
     )
+    parser.add_argument(
+        "--pathsep", default="/",
+    )
     args = parser.parse_args()
 
     try:
@@ -220,6 +261,7 @@ into account.
             workspace_name=args.workspace_name,
             legacy_external_runfiles=args.legacy_external_runfiles == "1",
             runfiles_dir=args.runfiles_dir,
+            pathsep = args.pathsep,
         )
     except Exception as e:
         e.add_note(f"Error creating zip {args.output}")

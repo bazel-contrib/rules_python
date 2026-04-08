@@ -7,7 +7,7 @@ from __future__ import print_function
 
 # Generated file from @rules_python//python/private:python_bootstrap_template.txt
 
-from os.path import dirname, join, basename
+from os.path import dirname, join, basename, normpath
 import os
 import shutil
 import subprocess
@@ -74,6 +74,14 @@ if _INTERPRETER_ARGS_RAW == _INTERPRETER_ARGS_SENTINEL:
 else:
   INTERPRETER_ARGS = [arg for arg in _INTERPRETER_ARGS_RAW.split("\n") if arg]
 
+# Symlinks to create at runtime in the venv.
+# Line delimited entries
+# Each entry is "venv_relative_path|path_to_symlink_to"
+RUNTIME_VENV_SYMLINKS = """
+%runtime_venv_symlinks%
+""".strip().split("\n")
+RUNTIME_VENV_SYMLINKS = dict(line.split("|") for line in RUNTIME_VENV_SYMLINKS)
+
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
@@ -87,6 +95,20 @@ else:
 IS_WINDOWS = os.name == "nt"
 
 BIN_DIR_NAME = "bin" if not IS_WINDOWS else "Scripts"
+
+# Windows APIs can be picky about slashes depending on the context,
+# so convert to backslashes to avoid any issues.
+if IS_WINDOWS:
+    def norm_slashes(s):
+        return s.replace("/", "\\")
+
+    STAGE2_BOOTSTRAP = norm_slashes(STAGE2_BOOTSTRAP)
+    PYTHON_BINARY = norm_slashes(PYTHON_BINARY)
+    PYTHON_BINARY_ACTUAL = norm_slashes(PYTHON_BINARY_ACTUAL)
+    RUNTIME_VENV_SYMLINKS = {
+        norm_slashes(k): norm_slashes(v)
+        for k, v in RUNTIME_VENV_SYMLINKS.items()
+    }
 
 def get_windows_path_with_unc_prefix(path):
   """Adds UNC prefix after getting a normalized absolute Windows path.
@@ -349,12 +371,17 @@ print(site.getsitepackages(["{venv_src}"])[-1])
             target = join(python_home, f)
             _symlink_exist_ok(from_=venv_path, to=target)
 
+    for venv_rel_path, link_to in RUNTIME_VENV_SYMLINKS.items():
+        venv_abs_path = join(venv, venv_rel_path)
+        link_to = normpath(join(runfiles_venv, dirname(venv_rel_path), link_to))
+        _symlink_exist_ok(from_=venv_abs_path, to=link_to)
+
     runfiles_venv_bin = join(runfiles_venv, BIN_DIR_NAME)
-    # The runfiles bin directory may not exist if
-    # supports_build_time_venv=False and the interpreter is resolved at runtime.
+    # The runfiles bin directory may not exist if it's empty, e.g.
+    # supports_build_time_venv=False and the interpreter is resolved at
+    # runtime.
     if os.path.exists(runfiles_venv_bin):
-      # Re-add all the entries under bin/, which includes supporting
-      # .dll files when under windows.
+      # Add any missing build-time entries under bin/
       for f_basename in os.listdir(runfiles_venv_bin):
           venv_path = join(venv, BIN_DIR_NAME, f_basename)
           target = join(runfiles_venv_bin, f_basename)
@@ -495,7 +522,6 @@ def _symlink_exist_ok(*, from_, to):
     pass
 
 
-
 def main():
   print_verbose("sys.version:", sys.version)
   print_verbose("initial argv:", values=sys.argv)
@@ -507,6 +533,7 @@ def main():
   print_verbose("PYTHON_BINARY_ACTUAL:", PYTHON_BINARY_ACTUAL)
   print_verbose("RECREATE_VENV_AT_RUNTIME:", RECREATE_VENV_AT_RUNTIME)
   print_verbose("RESOLVE_PYTHON_BINARY_AT_RUNTIME:", RESOLVE_PYTHON_BINARY_AT_RUNTIME)
+  print_verbose("RUNTIME_VENV_SYMLINKS size:", len(RUNTIME_VENV_SYMLINKS))
   print_verbose("STAGE2_BOOTSTRAP:", STAGE2_BOOTSTRAP)
   print_verbose("VENV_REL_SITE_PACKAGES:", VENV_REL_SITE_PACKAGES)
   print_verbose("WORKSPACE_NAME:", WORKSPACE_NAME )

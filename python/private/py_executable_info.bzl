@@ -86,6 +86,17 @@ Runfiles that are specific to the interpreter within the venv.
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
+        "venv_interpreter_symlinks": """
+:type: depset[ExplicitSymlink] | None
+
+Symlinks that are specific to the interpreter within the venv.
+
+Only used with windows. These take precedence over entries in
+`venv_interpreter_runfiles`
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         "venv_python_exe": """
 :type: File | None
 

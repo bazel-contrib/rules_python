@@ -245,8 +245,6 @@ def define_hermetic_runtime_toolchain_impl(
             "@platforms//os:windows": native.glob(
                 include = [
                     "*.dll",
-                    # The pdb files just provide debugging information
-                    "*.pdb",
                 ],
                 # This must be true because glob empty-ness is checked
                 # during loading phase, before select() filters it out.

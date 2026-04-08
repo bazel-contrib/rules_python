@@ -121,6 +121,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     runfiles.add(py_runtime.files)
     if py_executable.venv_python_exe:
         runfiles.add(py_executable.venv_python_exe)
+
     if py_executable.venv_interpreter_runfiles:
         runfiles.add(py_executable.venv_interpreter_runfiles)
     runfiles.add(py_executable.app_runfiles)
@@ -137,6 +138,9 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     )
     inputs = builders.DepsetBuilder()
     manifest.add("regular|0|__main__.py|{}".format(zip_main.path))
+    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+    for entry in py_executable.venv_interpreter_symlinks.to_list():
+        manifest.add("symlink|{}|{}".format(entry.rf_path, entry.link_to))
     inputs.add(zip_main)
     _build_manifest(ctx, manifest, runfiles, inputs)
 
@@ -150,6 +154,8 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     if ctx.attr.compression:
         zipper_args.add(ctx.attr.compression, format = "--compression=%s")
     zipper_args.add("--runfiles-dir=runfiles")
+
+    zipper_args.add("\\" if is_windows else "/", format="--pathsep=%s")
 
     actions_run(
         ctx,

@@ -51,15 +51,15 @@ EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 # Windows usually transparently rewrites them, but e.g. `\\?\` paths require
 # backslashes to be properly understood by Windows APIs.
 if IS_WINDOWS:
-    from os.path import normpath
+    def norm_slashes(s):
+        if not s: return s
+        return s.replace("/", "\\")
 
-    _STAGE2_BOOTSTRAP = normpath(_STAGE2_BOOTSTRAP)
-    if _PYTHON_BINARY_VENV:
-        _PYTHON_BINARY_VENV = normpath(_PYTHON_BINARY_VENV)
-    _PYTHON_BINARY_ACTUAL = normpath(_PYTHON_BINARY_ACTUAL)
-    EXTRACT_DIR = normpath(EXTRACT_DIR)
-    if EXTRACT_ROOT:
-        EXTRACT_ROOT = normpath(EXTRACT_ROOT)
+    _STAGE2_BOOTSTRAP = norm_slashes(_STAGE2_BOOTSTRAP)
+    _PYTHON_BINARY_VENV = norm_slashes(_PYTHON_BINARY_VENV)
+    _PYTHON_BINARY_ACTUAL = norm_slashes(_PYTHON_BINARY_ACTUAL)
+    EXTRACT_DIR = norm_slashes(EXTRACT_DIR)
+    EXTRACT_ROOT = norm_slashes(EXTRACT_ROOT)
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -259,6 +259,7 @@ def execute_file(
         print_verbose("subprocess cwd:", workspace)
         print_verbose("subprocess argv:", values=subprocess_argv)
         ret_code = subprocess.call(subprocess_argv, env=env, cwd=workspace)
+        print_verbose("subprocess exit code:", ret_code)
         sys.exit(ret_code)
     finally:
         if not EXTRACT_ROOT:
@@ -267,7 +268,7 @@ def execute_file(
             # whole temporary directory.
             extract_root = dirname(runfiles_root)
             print_verbose("cleanup: rmtree: ", extract_root)
-            shutil.rmtree(extract_root, True)
+            ##shutil.rmtree(extract_root, True)
 
 
 def finish_venv_setup(runfiles_root):
