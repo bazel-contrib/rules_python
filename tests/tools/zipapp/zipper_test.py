@@ -26,7 +26,7 @@ class ZipperTest(unittest.TestCase):
             "workspace_name": "my_ws",
             "legacy_external_runfiles": False,
             "runfiles_dir": "runfiles",
-            "pathsep": "/",
+            "platform_pathsep": "/",
         }
         defaults.update(kwargs)
         zipper.create_zip(**defaults)
@@ -120,8 +120,8 @@ class ZipperTest(unittest.TestCase):
         ]
         self.manifest_path.write_text("\n".join(manifest_content))
 
-        # Use backslash as pathsep
-        self._create_zip(pathsep="\\")
+        # Use backslash as platform_pathsep
+        self._create_zip(platform_pathsep="\\")
 
         with zipfile.ZipFile(self.output_zip, "r") as zf:
             # zipfile.namelist() always returns with forward slashes
