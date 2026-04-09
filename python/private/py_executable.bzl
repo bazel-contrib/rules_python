@@ -577,7 +577,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
             runtime = runtime,
         )
 
-    site_packages = "{}/{}".format(venv_ctx_rel_root, venv_details.venv_site_packages)
+    site_packages = "{}/{}".format(venv_ctx_rel_root, venv_details.site_packages)
 
     pth = ctx.actions.declare_file("{}/bazel.pth".format(site_packages))
     ctx.actions.write(pth, "import _bazel_site_init\n")
@@ -628,7 +628,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         interpreter_actual_path = interpreter_actual_path,
         files_without_interpreter = files_without_interpreter,
         # string; venv-relative path to the site-packages directory.
-        venv_site_packages = venv_details.venv_site_packages,
+        venv_site_packages = venv_details.site_packages,
         # string; runfiles-root relative path to venv root.
         venv_root = runfiles_root_path(
             ctx,
@@ -732,11 +732,11 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
     if "t" in runtime.abi_flags:
         version += "t"
 
-    venv_site_packages = "lib/python{}/site-packages".format(version)
+    site_packages = "lib/python{}/site-packages".format(version)
     return _venv_details(
         interpreter = interpreter,
         pyvenv_cfg = pyvenv_cfg,
-        venv_site_packages = venv_site_packages,
+        site_packages = site_packages,
         bin_dir = bin_dir,
         recreate_venv_at_runtime = recreate_venv_at_runtime,
         interpreter_runfiles = interpreter_runfiles.build(ctx),
@@ -793,12 +793,12 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
         ))
 
     # See site.py logic: Windows uses a version/build agnostic site-packages path
-    venv_site_packages = "Lib/site-packages"
+    site_packages = "Lib/site-packages"
 
     return _venv_details(
         interpreter = interpreter,
         pyvenv_cfg = None,
-        venv_site_packages = venv_site_packages,
+        site_packages = site_packages,
         bin_dir = venv_bin_ctx_rel_path,
         recreate_venv_at_runtime = True,
         interpreter_runfiles = interpreter_runfiles.build(ctx),
@@ -809,7 +809,7 @@ def _venv_details(
         *,
         interpreter,
         pyvenv_cfg,
-        venv_site_packages,
+        site_packages,
         bin_dir,
         recreate_venv_at_runtime,
         interpreter_runfiles,
@@ -822,7 +822,7 @@ def _venv_details(
         # it's expected that one will be created at runtime.
         pyvenv_cfg = pyvenv_cfg,
         # str; venv-relative path to the site-packages directory
-        venv_site_packages = venv_site_packages,
+        site_packages = site_packages,
         # str; ctx-relative path to the venv's bin directory.
         bin_dir = bin_dir,
         # bool; True if the venv needs to be recreated at runtime (because the
