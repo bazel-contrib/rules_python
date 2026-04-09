@@ -3,7 +3,7 @@ from xml.etree import ElementTree
 
 from absl.testing import absltest, parameterized
 
-from sphinxdocs.tests import sphinx_stardoc
+import tests.sphinx_stardoc as sphinx_stardoc
 
 
 class SphinxOutputTest(parameterized.TestCase):

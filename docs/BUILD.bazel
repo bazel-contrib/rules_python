@@ -73,7 +73,7 @@ sphinx_docs(
         ":bzl_api_docs",
         ":py_api_srcs",
         ":py_runtime_pair",
-        "@sphinxdocs//sphinxdocs/docs:docs_lib",
+        "@sphinxdocs//docs:docs_lib",
     ],
 )
 

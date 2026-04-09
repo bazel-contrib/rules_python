@@ -1,0 +1,17 @@
+load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
+
+sphinx_docs(
+    name = "docs",
+    srcs = ["index.md"],
+    config = "conf.py",
+    formats = ["html"],
+    sphinx = ":sphinx-build",
+)
+
+sphinx_build_binary(
+    name = "sphinx-build",
+    deps = [
+        "@dev_pip//myst_parser",
+        "@dev_pip//sphinx",
+    ],
+)
