@@ -47,16 +47,16 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
-{#v0-0-0}
-## Unreleased
+{#v2-0-0}
+## [2.0.0] - 2026-04-09
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[2.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0
 
-{#v0-0-0-removed}
+{#v2-0-0-removed}
 ### Removed
 * Nothing removed.
 
-{#v0-0-0-changed}
+{#v2-0-0-changed}
 ### Changed
 
 **Breaking**
@@ -91,7 +91,7 @@ Other changes:
 * Windows no longer defaults to creating a zip file and extracting it; a
   symlink-based runfiles tree is created, as on unix-like platforms.
 
-{#v0-0-0-fixed}
+{#v2-0-0-fixed}
 ### Fixed
 * (toolchain) Also set Make variables for local toolchains.
 * (zipapp) Resolve issue passing through compression settings in
@@ -123,7 +123,7 @@ Other changes:
   ```
   Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
 
-{#v0-0-0-added}
+{#v2-0-0-added}
 ### Added
 * (pypi) Write SimpleAPI contents to the `MODULE.bazel.lock` file if using
   {obj}`experimental_index_url` which should speed up consecutive

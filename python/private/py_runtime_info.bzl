@@ -343,7 +343,7 @@ to meet two criteria:
 Files that should be added to the venv's `bin/` (or platform-specific equivalent)
 directory (using the file's basename).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.0.0
 """,
         "zip_main_template": """
 :type: File
