@@ -33,7 +33,7 @@ class SysPathOrderTest(unittest.TestCase):
         # error messages are more informative.
         categorized_paths = []
         for i, value in enumerate(sys.path):
-            # On windows, the `pythonXY.zip` entry shows up as `$venv/Scripts/pythonXY.zip`
+            # On Windows, the `pythonXY.zip` entry shows up as `$venv/Scripts/pythonXY.zip`
             # While it's technically part of the venv, it's considered the stdlib.
             if os.name == "nt" and re.search("python.*[.]zip$", value):
                 category = "stdlib"
