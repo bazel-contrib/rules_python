@@ -398,7 +398,7 @@ def _create_executable(
     extra_default_outputs = []
 
     # NOTE: --build_python_zip defaults to true on Windows
-    build_zip_enabled = read_possibly_native_flag(ctx, "build_python_zip")
+    build_zip_enabled = read_possibly_native_flag(ctx, "build_python_zip") and not is_windows
     if is_windows:
         # The legacy build_python_zip codepath isn't compatible with full venvs on Windows.
         build_zip_enabled = False
