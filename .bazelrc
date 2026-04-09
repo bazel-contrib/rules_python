@@ -55,6 +55,6 @@ common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
 
-import %workspace%/.bazelrc.specialized_configs
+import %workspace%/specialized_configs.bazelrc
 
 try-import user.bazelrc
