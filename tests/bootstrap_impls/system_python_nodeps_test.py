@@ -2,6 +2,7 @@ print("Hello, world")
 
 # Verify py code from the stdlib can be imported.
 import pathlib
+
 print(pathlib)
 
 # Verify a C-implemented module can be imported.
