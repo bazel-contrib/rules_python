@@ -65,6 +65,8 @@ END_UNRELEASED_TEMPLATE
   symlink support on Windows.
 * venv-based binaries are created by default ({obj}`--bootstrap_impl=system_python`)
   on supported platforms (Linux/Mac with Bazel 8+).
+* `--build_python_zip` on Windows is ignored. Use {obj}`py_zipapp_binary` to create
+  zips of Python programs.
 
 Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
@@ -122,11 +124,18 @@ Other changes:
 {#v0-0-0-added}
 ### Added
 * (pypi) Write SimpleAPI contents to the `MODULE.bazel.lock` file if using
-  {obj}`experimental_index_url` which should speed up consecutive initializations and should no
-  longer require the network access if the cache is hydrated.
-  Implements [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
+  {obj}`experimental_index_url` which should speed up consecutive
+  initializations and should no longer require the network access if the cache is
+  hydrated.  Implements
+  [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
 * (wheel) Specifying a path ending in `/` as a destination in `data_files`
   will now install file(s) to a folder, preserving their basename.
+* Various attributes and fields added to support venvs on Windows:
+  * {obj}`py_runtime.venv_bin_files` and {obj}`PyRuntime.venv_binfiles`
+    field added to specify additional Python runtime files Windows needs for
+    venvs.
+  * {obj}`PyExecutableInfo.venv_interpreter_runfiles`, and
+    {obj}`PyExecutableInfo.venv_interpreter_symlinks` adde
 
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21

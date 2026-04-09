@@ -49,7 +49,7 @@ IS_WINDOWS = os.name == "nt"
 
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 
-# Change the paths with Unix-style forward slashes to backslashes for windows.
+# Change the paths with Unix-style forward slashes to backslashes for Windows.
 # Windows usually transparently rewrites them, but e.g. `\\?\` paths require
 # backslashes to be properly understood by Windows APIs.
 if IS_WINDOWS:

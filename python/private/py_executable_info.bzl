@@ -91,8 +91,9 @@ Runfiles that are specific to the interpreter within the venv.
 
 Symlinks that are specific to the interpreter within the venv.
 
-Only used with windows. These take precedence over entries in
-`venv_interpreter_runfiles`
+Only used with Windows for files that would have used `declare_symlink()`
+to create relative symlinks. These may overlap with paths in runfiles; it's
+up to the consumer to determine how to handle such overlaps.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
