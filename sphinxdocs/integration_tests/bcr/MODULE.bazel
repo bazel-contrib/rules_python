@@ -14,6 +14,7 @@ local_path_override(
     module_name = "rules_python",
     path = "../../..",
 )
+
 dev_pip = use_extension(
     "@rules_python//python/extensions:pip.bzl",
     "pip",
@@ -25,4 +26,5 @@ dev_pip.parse(
     requirements_lock = "@rules_python//docs:requirements.txt",
 )
 use_repo(dev_pip, "dev_pip")
+
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
