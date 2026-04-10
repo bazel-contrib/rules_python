@@ -15,3 +15,10 @@ sphinx_build_binary(
         "@dev_pip//sphinx",
     ],
 )
+
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+build_test(
+    name = "docs_build_test",
+    targets = [":docs"],
+)
