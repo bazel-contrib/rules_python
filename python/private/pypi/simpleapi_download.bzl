@@ -134,6 +134,9 @@ def simpleapi_download(
 def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
     downloads = {}
     results = {}
+
+    # Ensure the value is not frozen
+    index_urls = [] + (index_urls or [])
     for extra in index_url_overrides.values():
         if extra not in index_urls:
             index_urls.append(extra)
