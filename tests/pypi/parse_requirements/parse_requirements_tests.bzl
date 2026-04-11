@@ -672,7 +672,7 @@ def _test_overlapping_shas_with_index_results(env):
                 whl_platform_tags = ["macosx_*_x86_64"],
             ),
         },
-        get_index_urls = lambda _, __: {
+        get_index_urls = lambda _, __, **kwargs: {
             "foo": struct(
                 index_url = "https://example.com",
                 sdists = {
@@ -762,7 +762,7 @@ def _test_get_index_urls_different_versions(env):
                 whl_platform_tags = ["any"],
             ),
         },
-        get_index_urls = lambda _, __: {
+        get_index_urls = lambda _, __, **kwargs: {
             "foo": struct(
                 index_url = "",
                 sdists = {},
@@ -846,7 +846,7 @@ def _test_get_index_urls_single_py_version(env):
                 whl_platform_tags = ["any"],
             ),
         },
-        get_index_urls = lambda _, __: {
+        get_index_urls = lambda _, __, **kwargs: {
             "foo": struct(
                 index_url = "",
                 sdists = {},
