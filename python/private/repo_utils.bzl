@@ -357,18 +357,20 @@ def _norm_path(mrctx, p):
     return p
 
 def _relative_to(mrctx, path, parent, fail = fail):
-    path_d = _norm_path(mrctx, path) + "/"
-    parent_d = _norm_path(mrctx, parent) + "/"
+    path_str = str(path)
+    parent_str = str(parent)
+    path_d = _norm_path(mrctx, path_str) + "/"
+    parent_d = _norm_path(mrctx, parent_str) + "/"
     if path_d.startswith(parent_d):
-        return path.removeprefix(parent + "/")
+        return path_str[len(parent_str):].removeprefix("/")
     else:
         fail("{} is not relative to {}".format(path, parent))
 
 def _is_relative_to(mrctx, path, parent):
     """Tell if `path` is equal to or beneath `parent`."""
-    path = _norm_path(mrctx, path)
-    parent = _norm_path(mrctx, parent)
-    return (parent + "/").startswith(path + "/")
+    path_d = _norm_path(mrctx, path) + "/"
+    parent_d = _norm_path(mrctx, parent) + "/"
+    return path_d.startswith(parent_d)
 
 def _repo_root_relative_path(mrctx, path):
     """Takes a path object and returns a repo-relative path string.
