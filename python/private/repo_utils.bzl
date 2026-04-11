@@ -360,7 +360,7 @@ def _relative_to(mrctx, path, parent, fail = fail):
     path_d = _norm_path(mrctx, path) + "/"
     parent_d = _norm_path(mrctx, parent) + "/"
     if path_d.startswith(parent_d):
-        return path.removeprefix(parent_d)
+        return path.removeprefix(parent + "/")
     else:
         fail("{} is not relative to {}".format(path, parent))
 
