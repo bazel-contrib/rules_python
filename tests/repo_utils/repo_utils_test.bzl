@@ -36,10 +36,18 @@ def _test_relative_to(env):
 _tests.append(_test_relative_to)
 
 def _test_is_relative_to(env):
-    # Note: `_is_relative_to` isn't publicly exported in `repo_utils` struct natively.
-    # Actually wait, `is_relative_to` is not exported by repo_utils.bzl! 
-    # Let's skip testing `_is_relative_to` directly in this suite unless we export it or we don't need to test it directly.
-    pass
+    mock_mrctx_linux = mocks.rctx(os_name = "linux")
+    mock_mrctx_win = mocks.rctx(os_name = "windows")
+
+    # Case-sensitive matching (Linux)
+    env.expect.that_bool(repo_utils.is_relative_to(mock_mrctx_linux, "foo/bar/baz", "foo/bar")).equals(True)
+    env.expect.that_bool(repo_utils.is_relative_to(mock_mrctx_linux, "foo/bar/baz", "qux")).equals(False)
+
+    # Case-insensitive matching (Windows)
+    env.expect.that_bool(repo_utils.is_relative_to(mock_mrctx_win, "C:/Foo/Bar/Baz", "c:/foo/bar")).equals(True)
+    env.expect.that_bool(repo_utils.is_relative_to(mock_mrctx_win, "C:/Foo/Bar/Baz", "D:/Foo")).equals(False)
+
+_tests.append(_test_is_relative_to)
 
 def repo_utils_test_suite(name):
     """Create the test suite.

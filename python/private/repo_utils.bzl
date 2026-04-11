@@ -535,6 +535,7 @@ repo_utils = struct(
     mkdir = _mkdir,
     norm_path = _norm_path,
     relative_to = _relative_to,
+    is_relative_to = _is_relative_to,
     repo_root_relative_path = _repo_root_relative_path,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,
