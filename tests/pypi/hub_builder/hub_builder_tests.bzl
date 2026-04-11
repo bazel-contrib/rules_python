@@ -59,6 +59,7 @@ def hub_builder(
             # no need to evaluate the markers with the interpreter
             enable_pipstar = enable_pipstar,
             enable_pipstar_extract = enable_pipstar_extract,
+            index_url = "https://pypi.org/simple",
             platforms = {
                 "{}_{}{}".format(os, cpu, freethreaded): _plat(
                     name = "{}_{}{}".format(os, cpu, freethreaded),
@@ -285,6 +286,7 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             requirements_darwin = "darwin.txt",
             requirements_windows = "win.txt",
             experimental_index_url = "https://example.com",
+            target_platforms = ["osx_aarch64", "windows_aarch64"],
         ),
     )
     pypi = builder.build()
@@ -539,6 +541,7 @@ def _test_torch_experimental_index_url(env):
             netrc = None,
             enable_pipstar = True,
             enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
             auth_patterns = {},
             platforms = {
                 "{}_{}".format(os, cpu): _plat(
@@ -609,6 +612,16 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             python_version = "3.12",
             experimental_index_url = "https://torch.index",
             requirements_lock = "universal.txt",
+            target_platforms = [
+                "linux_x86_64",
+                "linux_aarch64",
+                # this should be ignored as well because there is no sdist and no whls
+                # for intel Macs
+                "osx_x86_64",
+                "osx_aarch64",
+                "windows_x86_64",
+                "windows_aarch64",
+            ],
         ),
     )
     pypi = builder.build()
@@ -802,7 +815,7 @@ def _test_simple_get_index(env):
                 sha256s_by_version = {
                     "0.0.4": ["deadb44f"],
                 },
-                index_url = "",
+                index_url = "https://pypi.org/simple",
             ),
             "simple": struct(
                 whls = {
@@ -821,7 +834,7 @@ def _test_simple_get_index(env):
                         url = "example.org",
                     ),
                 },
-                index_url = "",
+                index_url = "https://pypi.org/simple",
             ),
             "some_other_pkg": struct(
                 whls = {
@@ -872,9 +885,15 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             hub_name = "pypi",
             python_version = "3.15",
             requirements_lock = "requirements.txt",
-            experimental_index_url = "pypi.org",
             extra_pip_args = [
                 "--extra-args-for-sdist-building",
+            ],
+            target_platforms = [
+                "linux_aarch64",
+                "linux_x86_64",
+                "linux_x86_64_freethreaded",
+                "osx_aarch64",
+                "windows_aarch64",
             ],
         ),
     )
@@ -1027,6 +1046,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
+            "index_url": "https://pypi.org/simple",
             "requirement": "plat_pkg==0.0.4",
             "sha256": "deadb44f",
             "urls": ["example2.org/index/plat_pkg/"],
@@ -1035,6 +1055,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": "https://pypi.org/simple",
             "requirement": "simple==0.0.1",
             "sha256": "deadb00f",
             "urls": ["example2.org"],
@@ -1064,7 +1085,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                 auth_patterns = {},
                 envsubst = {},
                 extra_index_urls = [],
-                index_url = "pypi.org",
+                index_url = "https://pypi.org/simple",
                 index_url_overrides = {},
                 netrc = None,
                 sources = {
@@ -1137,6 +1158,7 @@ def _test_pipstar_platforms(env):
         config = struct(
             enable_pipstar = True,
             enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
             netrc = None,
             auth_patterns = {},
             platforms = {
@@ -1222,6 +1244,7 @@ def _test_pipstar_platforms_limit(env):
         config = struct(
             enable_pipstar = True,
             enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
             netrc = None,
             auth_patterns = {},
             platforms = {

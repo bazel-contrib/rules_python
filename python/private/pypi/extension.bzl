@@ -115,6 +115,7 @@ def build_config(
             _configure(
                 defaults,
                 override = mod.is_root,
+                index_url = tag.index_url,
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
                 netrc = tag.netrc,
@@ -125,6 +126,8 @@ def build_config(
 
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
+        # TODO @aignas 2026-04-11: ensure that we use normalized URLs
+        index_url = defaults.get("index_url", "https://pypi.org/simple/"),
         netrc = defaults.get("netrc", None),
         platforms = {
             name: _plat(**values)
@@ -451,6 +454,30 @@ This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
 ::::
 """,
     ),
+    "index_url": attr.string(
+        doc = """\
+The index URL to use as a default when downloading packages from PyPI. This is used if nothing is
+specified via `--index-url` or `--extra-index-url` parameters in the `requirements.txt` file or via
+the {attr}`pip.parse.extra_pip_args`.
+
+This value is going to be subject to `envsubst` substitutions if necessary, look at the
+{attr}`pip.parse.envsubst` documentation for more information..
+
+The indexes must support Simple API as described here:
+https://packaging.python.org/en/latest/specifications/simple-repository-api/
+
+Index metadata will be used to get `sha256` values for packages even if the
+`sha256` values are not present in the requirements.txt lock file.
+
+Defaults to `https://pypi.org/simple`.
+
+:::{versionadded} 2.0.0
+This has been added as a replacement for 
+{obj}`pip.parse.experimental_index_url` and 
+{obj}`pip.parse.experimental_extra_index_urls`.
+:::
+""",
+    ),
     "marker": attr.string(
         doc = """\
 An environment marker expression that is used to enable/disable platforms for specific python
@@ -566,17 +593,11 @@ def _pip_parse_ext_attrs(**kwargs):
     attrs = dict({
         "experimental_extra_index_urls": attr.string_list(
             doc = """\
-The extra index URLs to use for downloading wheels using bazel downloader.
-Each value is going to be subject to `envsubst` substitutions if necessary.
+May be removed in future releases.
 
-The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
-
-This is equivalent to `--extra-index-urls` `pip` option.
-
-:::{versionchanged} 1.1.0
-Starting with this version we will iterate over each index specified until
-we find metadata for all references distributions.
+:::{versionchanged} 2.0.0
+This is no-op, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
             default = [],
@@ -584,25 +605,11 @@ we find metadata for all references distributions.
         "experimental_index_url": attr.string(
             default = kwargs.get("experimental_index_url", ""),
             doc = """\
-The index URL to use for downloading wheels using bazel downloader. This value is going
-to be subject to `envsubst` substitutions if necessary.
+May be removed in future releases.
 
-The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
-
-In the future this could be defaulted to `https://pypi.org` when this feature becomes
-stable.
-
-This is equivalent to `--index-url` `pip` option.
-
-:::{versionchanged} 0.37.0
-If {attr}`download_only` is set, then `sdist` archives will be discarded and `pip.parse` will
-operate in wheel-only mode.
-:::
-
-:::{versionchanged} 1.4.0
-Index metadata will be used to deduct `sha256` values for packages even if the
-`sha256` values are not present in the requirements.txt lock file.
+:::{versionchanged} 2.0.0
+This is no-op, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
         ),
@@ -834,9 +841,6 @@ the BUILD files for wheels.
             doc = """\
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
-
-:::{include} /_includes/experimental_api.md
-:::
 
 :::{seealso}
 The [environment markers][environment_markers] specification for the explanation of the

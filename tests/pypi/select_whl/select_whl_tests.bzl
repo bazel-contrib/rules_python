@@ -449,7 +449,6 @@ def _test_multiple_musllinux_exact_params(env):
         whl_abi_tags = ["none"],
         python_version = "3.12",
         limit = 2,
-        debug = True,
     )
     _match(
         env,

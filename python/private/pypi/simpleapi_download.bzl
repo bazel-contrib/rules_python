@@ -71,6 +71,9 @@ def simpleapi_download(
     Returns:
         dict of pkg name to the parsed HTML contents - a list of structs.
     """
+    if not attr.sources:
+        return {}
+
     index_url_overrides = {
         normalize_name(p): i
         for p, i in (attr.index_url_overrides or {}).items()
@@ -143,9 +146,7 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
         download = read_simpleapi(
             ctx = ctx,
             attr = attr,
-            url = urllib.strip_empty_path_segments("{index_url}/".format(
-                index_url = index_url,
-            )),
+            url = _normalize_url("{index_url}/".format(index_url = index_url)),
             parse_index = True,
             versions = {pkg: None for pkg in sources},
             block = block,
@@ -180,12 +181,15 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
 
             # Ignore the URL here because we know how to construct it.
 
-            found_on_index[pkg] = urllib.strip_empty_path_segments("{}/{}/".format(
+            found_on_index[pkg] = _normalize_url("{}/{}/".format(
                 index_url,
                 pkg.replace("_", "-"),  # Use the official normalization for URLs
             ))
 
     return found_on_index
+
+def _normalize_url(url):
+    return urllib.strip_empty_path_segments(url)
 
 def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = None, **download_kwargs):
     """Read SimpleAPI.
@@ -211,7 +215,7 @@ def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = Non
         A similar object to what `download` would return except that in result.out
         will be the parsed simple api contents.
     """
-    real_url = urllib.strip_empty_path_segments(envsubst(url, attr.envsubst, ctx.getenv))
+    real_url = _normalize_url(envsubst(url, attr.envsubst, ctx.getenv))
 
     cache_key = (url, real_url, versions)
     cached_result = cache.get(cache_key)

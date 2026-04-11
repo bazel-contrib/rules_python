@@ -67,6 +67,12 @@ END_UNRELEASED_TEMPLATE
   on supported platforms (Linux/Mac with Bazel 8+, or Windows).
 * `--build_python_zip` on Windows is ignored. Use {obj}`py_zipapp_binary` to create
   zips of Python programs.
+* (pypi) Previously `experimental_index_url` users would not need to specify
+  target platforms if cross-building is required. From now we will only pull
+  wheels for the host OS to better align with how the rules work with the legacy
+  `pip` implementation. Use {obj}`pip.parse.target_platforms` to customize the
+  behavior.
+  Related to [#260](https://github.com/bazel-contrib/rules_python/issues/260).
 
 Other changes:
 * (pypi) Update dependencies used for `compile_pip_requirements`, building
@@ -75,12 +81,10 @@ Other changes:
   we will from now on fetch the lists of available packages on each index. The
   used package mappings will be written as facts to the `MODULE.bazel.lock` file
   on supported bazel versions and it should be done at most once. As a result,
-  per-package {obj}`experimental_index_url_overrides` is no longer needed if the
-  index URLs are passed to the `pip.parse` via `experimental_index_url` and
-  `experimental_extra_index_urls`.  What is more, we start implementing the flags
-  for `--index_url` and `--extra_index_urls` more in line to how it is used in
-  `uv` and `pip`, i.e. we default to `--index_url` if the package is not found in
-  `--extra_index_urls`.  Fixes
+  per-package {obj}`experimental_index_url_overrides` is no longer needed . What
+  is more, the flags for `--index_url` and `--extra-index-url` now behave in the
+  same way as in `uv` or `pip`, i.e. we default to `--index-url` if the package
+  is not found in `--extra-index-url`.  Fixes
   ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and
   [#2632](https://github.com/bazel-contrib/rules_python/issues/2632)).
 * (uv) We will now use the download URL specified in the `uv`'s
@@ -130,6 +134,17 @@ Other changes:
   initializations and should no longer require the network access if the cache is
   hydrated.  Implements
   [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
+* (pypi) The `--index-url` and `--extra-index-url` is now parsed from the lock
+  file and the {obj}`pip.parse.experimental_index_url` and
+  {obj}`pip.parse.experimental_extra_index_urls` is
+  no longer mandatory to leverage the bazel downloader.
+  Implements
+  [#1357](https://github.com/bazel-contrib/rules_python/issues/1357),
+  [#2951](https://github.com/bazel-contrib/rules_python/issues/2951).
+* (pypi) If cross-compilation is needed, use the {obj}`pip.parse.target_platforms`
+  to specify exactly which platforms should be supported.
+  Implements
+  [#260](https://github.com/bazel-contrib/rules_python/issues/260).
 * (wheel) Specifying a path ending in `/` as a destination in `data_files`
   will now install file(s) to a folder, preserving their basename.
 * Various attributes and fields added to support venvs on Windows:

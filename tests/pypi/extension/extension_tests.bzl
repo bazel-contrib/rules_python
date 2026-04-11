@@ -116,6 +116,7 @@ def _default(
         auth_patterns = None,
         config_settings = None,
         env = None,
+        index_url = None,
         marker = None,
         netrc = None,
         os_name = None,
@@ -127,6 +128,7 @@ def _default(
         auth_patterns = auth_patterns or {},
         config_settings = config_settings,
         env = env or {},
+        index_url = index_url or "",
         marker = marker or "",
         netrc = netrc,
         os_name = os_name,
@@ -145,6 +147,7 @@ def _test_simple(env):
                     _parse(
                         hub_name = "pypi",
                         python_version = "3.15",
+                        simpleapi_skip = ["simple"],
                         requirements_lock = "requirements.txt",
                     ),
                 ],

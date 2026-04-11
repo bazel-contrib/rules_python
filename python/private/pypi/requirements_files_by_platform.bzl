@@ -14,6 +14,7 @@
 
 """Get the requirement files by platform."""
 
+load(":argparse.bzl", "argparse")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 def _default_platforms(*, filter, platforms):
@@ -46,33 +47,9 @@ def _default_platforms(*, filter, platforms):
     return match
 
 def _platforms_from_args(extra_pip_args):
-    platform_values = []
-
-    if not extra_pip_args:
-        return platform_values
-
-    for arg in extra_pip_args:
-        if platform_values and platform_values[-1] == "":
-            platform_values[-1] = arg
-            continue
-
-        if arg == "--platform":
-            platform_values.append("")
-            continue
-
-        if not arg.startswith("--platform"):
-            continue
-
-        _, _, plat = arg.partition("=")
-        if not plat:
-            _, _, plat = arg.partition(" ")
-        if plat:
-            platform_values.append(plat)
-        else:
-            platform_values.append("")
-
+    platform_values = argparse.platform(extra_pip_args, [])
     if not platform_values:
-        return []
+        return platform_values
 
     platforms = {
         p.target_platform: None
