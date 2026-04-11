@@ -118,8 +118,8 @@ def parse_requirements(
 
             # Parse the index URL from the requirement files
             index_url = argparse.index_url(pip_args, index_url)
-            extra_index_urls = argparse.extra_index_url(pip_args, extra_index_urls)
-            platform = argparse.platform(pip_args, extra_index_urls)
+            extra_index_urls = argparse.extra_index_url(pip_args, [])
+            platform = argparse.platform(pip_args, [])
             if platform:
                 # No use of downloader if the user specifies "--platform" pip arg. This means that
                 # they intend to use pip to download the wheels
