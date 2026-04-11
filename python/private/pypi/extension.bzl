@@ -126,8 +126,7 @@ def build_config(
 
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
-        # TODO @aignas 2026-04-11: ensure that we use normalized URLs
-        index_url = defaults.get("index_url", "https://pypi.org/simple/"),
+        index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
         netrc = defaults.get("netrc", None),
         platforms = {
             name: _plat(**values)

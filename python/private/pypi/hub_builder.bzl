@@ -381,8 +381,11 @@ def _set_get_index_urls(self, pip_attr):
     self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = index_url or default_index_url,
-            extra_index_urls = extra_index_urls or default_extra_index_urls,
+            index_url = (index_url or default_index_url).rstrip("/"),
+            extra_index_urls = [
+                x.rstrip("/")
+                for x in (extra_index_urls or default_extra_index_urls)
+            ],
             index_url_overrides = pip_attr.experimental_index_url_overrides or {},
             sources = {
                 d: versions
