@@ -27,6 +27,7 @@ def _test_relative_to(env):
 
     # Failure case
     failures = []
+
     def _mock_fail(msg):
         failures.append(msg)
 
