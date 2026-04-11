@@ -595,7 +595,7 @@ def _pip_parse_ext_attrs(**kwargs):
 May be removed in future releases.
 
 :::{versionchanged} 2.0.0
-This is no-op, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+This is deprecated, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
 lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
@@ -607,7 +607,7 @@ lock-file or {obj}`pip.parse.extra_pip_args`.
 May be removed in future releases.
 
 :::{versionchanged} 2.0.0
-This is no-op, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+This is deprecated, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
 lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
