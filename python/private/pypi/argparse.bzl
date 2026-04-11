@@ -5,7 +5,7 @@ def _get_pip_args(args, *arg_names, value = None, repeated = False):
     if repeated:
         value = [] + (value or [])
 
-    for arg in args:
+    for arg in (args or []):
         if arg in arg_names:
             set_next = True
             continue
