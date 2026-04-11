@@ -16,11 +16,11 @@ def _rctx(os_name = "linux", os_arch = "x86_64", environ = None, **kwargs):
         environ = {}
 
     attrs = {
+        "getenv": environ.get,
         "os": struct(
             name = os_name,
             arch = os_arch,
         ),
-        "getenv": environ.get,
     }
     attrs.update(kwargs)
 
