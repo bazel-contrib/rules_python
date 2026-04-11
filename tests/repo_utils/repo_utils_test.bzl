@@ -2,23 +2,20 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//tests/support:mocks.bzl", "mocks")
 
 _tests = []
 
 def _test_get_platforms_os_name(env):
-    mock_mrctx = struct(
-        os = struct(
-            name = "Mac OS X",
-        ),
-    )
+    mock_mrctx = mocks.rctx(os_name = "Mac OS X")
     got = repo_utils.get_platforms_os_name(mock_mrctx)
     env.expect.that_str(got).equals("osx")
 
 _tests.append(_test_get_platforms_os_name)
 
 def _test_relative_to(env):
-    mock_mrctx_linux = struct(os = struct(name = "linux"))
-    mock_mrctx_win = struct(os = struct(name = "windows"))
+    mock_mrctx_linux = mocks.rctx(os_name = "linux")
+    mock_mrctx_win = mocks.rctx(os_name = "windows")
 
     # Case-sensitive matching (Linux)
     got = repo_utils.relative_to(mock_mrctx_linux, "foo/bar/baz", "foo/bar")
