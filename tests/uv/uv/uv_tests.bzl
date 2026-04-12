@@ -21,9 +21,8 @@ load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-
 load("//python/uv:uv_toolchain_info.bzl", "UvToolchainInfo")
 load("//python/uv/private:uv.bzl", "process_modules")  # buildifier: disable=bzl-visibility
 load("//python/uv/private:uv_toolchain.bzl", "uv_toolchain")  # buildifier: disable=bzl-visibility
-load("//tests/support/mocks:mocks.bzl", "mock_mctx")
+load("//tests/support/mocks:mocks.bzl", "mocks")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
-
 _tests = []
 
 def _uv_mock_mctx(*modules, download = None, read = None):
@@ -67,21 +66,20 @@ def _uv_mock_mctx(*modules, download = None, read = None):
         for fname, contents in manifest_files.items()
     }
 
-    return mock_mctx(
+    return mocks.mctx(
         modules = list(modules),
         download = download,
         read = read,
-        mocked_files = fake_fs,
+        mock_files = fake_fs,
     )
 
+
 def _mod(*, name = None, default = [], configure = [], is_root = True):
-    return struct(
-        name = name,  # module_name
-        tags = struct(
-            default = default,
-            configure = configure,
-        ),
+    return mocks.module(
+        name,
         is_root = is_root,
+        default = default,
+        configure = configure,
     )
 
 def _process_modules(env, **kwargs):
@@ -465,6 +463,7 @@ def _test_non_rules_python_non_root_is_ignored(env):
                 configure = [
                     _configure(version = "6.6.6"),  # use defaults whatever they are
                 ],
+                is_root = False,
             ),
         ),
         uv_repository = lambda **kwargs: calls.append(kwargs),

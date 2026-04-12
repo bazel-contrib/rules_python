@@ -17,7 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
-load("//tests/support/mocks:mocks.bzl", "mock_mctx")
+load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
@@ -49,7 +49,7 @@ def _test_simple(env):
         )
 
     contents = simpleapi_download(
-        ctx = mock_mctx(),
+        ctx = mocks.mctx(),
         attr = struct(
             index_url_overrides = {},
             index_url = "https://main.com",
@@ -121,7 +121,7 @@ def _test_index_overrides(env):
         )
 
     contents = simpleapi_download(
-        ctx = mock_mctx(),
+        ctx = mocks.mctx(),
         attr = struct(
             index_url_overrides = {
                 "foo": "https://extra.com",

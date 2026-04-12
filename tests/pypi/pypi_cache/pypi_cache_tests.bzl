@@ -3,7 +3,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
-load("//tests/support/mocks:mocks.bzl", "mock_mctx")
+load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
@@ -86,7 +86,7 @@ _tests.append(_test_memory_cache_hit)
 
 def _test_pypi_cache_writes_to_facts(env):
     """Verifies that setting a value in the cache also populates the facts store."""
-    mock_ctx = mock_mctx(facts = {})
+    mock_ctx = mocks.mctx(facts = {})
     cache = _cache(env, mctx = mock_ctx)
 
     fake_result = struct(
@@ -193,7 +193,7 @@ _tests.append(_test_pypi_cache_writes_to_facts)
 
 def _test_pypi_cache_reads_from_facts(env):
     """Verifies that setting a value in the cache also populates the facts store."""
-    mock_ctx = mock_mctx(facts = {
+    mock_ctx = mocks.mctx(facts = {
         "dist_hashes": {
             # We are not using the real index URL, because we may have credentials in here
             "https://{PYPI_INDEX_URL}": {

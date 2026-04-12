@@ -20,7 +20,7 @@ load(
     "whl_library_targets",
     "whl_library_targets_from_requires",
 )  # buildifier: disable=bzl-visibility
-load("//tests/support/mocks:mocks.bzl", "mock_glob", "mock_glob_call")
+load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
@@ -192,7 +192,7 @@ def _test_whl_and_library_deps_from_requires(env):
     py_library_calls = []
     env_marker_setting_calls = []
 
-    m_glob = mock_glob()
+    m_glob = mocks.glob()
 
     m_glob.results.append(["site-packages/foo/SRCS.py"])
     m_glob.results.append(["site-packages/foo/DATA.txt"])
@@ -266,13 +266,13 @@ def _test_whl_and_library_deps_from_requires(env):
 
     env.expect.that_collection(m_glob.calls).contains_exactly([
         # srcs call
-        mock_glob_call(
+        mocks.glob_call(
             ["site-packages/**/*.py"],
             exclude = [],
             allow_empty = True,
         ),
         # data call
-        mock_glob_call(
+        mocks.glob_call(
             ["site-packages/**/*"],
             exclude = [
                 "**/*.py",
@@ -283,7 +283,7 @@ def _test_whl_and_library_deps_from_requires(env):
             allow_empty = True,
         ),
         # pyi call
-        mock_glob_call(["site-packages/**/*.pyi"], allow_empty = True),
+        mocks.glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
     env.expect.that_collection(env_marker_setting_calls).contains_exactly([
@@ -299,7 +299,7 @@ _tests.append(_test_whl_and_library_deps_from_requires)
 def _test_whl_and_library_deps(env):
     filegroup_calls = []
     py_library_calls = []
-    m_glob = mock_glob()
+    m_glob = mocks.glob()
     m_glob.results.append(["site-packages/foo/SRCS.py"])
     m_glob.results.append(["site-packages/foo/DATA.txt"])
     m_glob.results.append(["site-packages/foo/PYI.pyi"])
@@ -397,7 +397,7 @@ def _test_group(env):
     alias_calls = []
     py_library_calls = []
 
-    m_glob = mock_glob()
+    m_glob = mocks.glob()
     m_glob.results.append(["site-packages/foo/srcs.py"])
     m_glob.results.append(["site-packages/foo/data.txt"])
     m_glob.results.append(["site-packages/foo/pyi.pyi"])
@@ -465,14 +465,14 @@ def _test_group(env):
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(m_glob.calls, expr = "glob calls").contains_exactly([
-        mock_glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
-        mock_glob_call(["site-packages/**/*"], exclude = [
+        mocks.glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
+        mocks.glob_call(["site-packages/**/*"], exclude = [
             "**/*.py",
             "**/*.pyc",
             "**/*.pyc.*",
             "**/*.dist-info/RECORD",
         ], allow_empty = True),
-        mock_glob_call(["site-packages/**/*.pyi"], allow_empty = True),
+        mocks.glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
 _tests.append(_test_group)
