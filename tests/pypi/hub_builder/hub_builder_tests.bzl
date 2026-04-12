@@ -698,6 +698,139 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
 
 _tests.append(_test_torch_experimental_index_url)
 
+def _test_index_url_precedence(env):
+    for test in [
+        struct(
+            requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
+            experimental_index_url = "https://experimental.example.com/simple",
+            experimental_extra_index_urls = [],
+            expect_index_url = "https://experimental.example.com/simple",
+            expect_extra_index_urls = [],
+            expect_url = "experimental.example.com/simple/",
+        ),
+        struct(
+            requirements_txt = """\
+--index-url=https://file.example.com/simple
+simple==0.0.1 --hash=sha256:deadb00f
+""",
+            experimental_index_url = "https://experimental.example.com/simple",
+            experimental_extra_index_urls = [],
+            expect_index_url = "https://file.example.com/simple",
+            expect_extra_index_urls = [],
+            expect_url = "file.example.com/simple/",
+        ),
+        struct(
+            requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
+            experimental_index_url = "",
+            experimental_extra_index_urls = [],
+            expect_index_url = "https://pypi.org/simple",
+            expect_extra_index_urls = [],
+            expect_url = "pypi.org/simple/",
+        ),
+        struct(
+            requirements_txt = """\
+--extra-index-url=https://extra1.example.com/simple
+--extra-index-url=https://extra2.example.com/simple
+simple==0.0.1 --hash=sha256:deadb00f
+""",
+            experimental_index_url = "",
+            experimental_extra_index_urls = [
+                "https://ignored.example.com/simple",
+            ],
+            expect_index_url = "https://pypi.org/simple",
+            expect_extra_index_urls = [
+                "https://extra1.example.com/simple",
+                "https://extra2.example.com/simple",
+            ],
+            expect_url = "pypi.org/simple/",
+        ),
+    ]:
+        got_kwargs = {}
+
+        def mock_simpleapi_download(*_, **kwargs):
+            got_kwargs.update(kwargs)
+            return {
+                "simple": struct(
+                    whls = {
+                        "deadb00f": struct(
+                            yanked = None,
+                            filename = "simple-0.0.1-py3-none-any.whl",
+                            sha256 = "deadb00f",
+                            url = test.expect_url,
+                        ),
+                    },
+                    sdists = {},
+                    sha256s_by_version = {},
+                    index_url = test.expect_index_url,
+                ),
+            }
+
+        builder = hub_builder(
+            env,
+            simpleapi_download_fn = mock_simpleapi_download,
+        )
+        builder.pip_parse(
+            _mock_mctx(
+                read = lambda x: {
+                    "requirements.txt": test.requirements_txt,
+                }[x],
+            ),
+            _parse(
+                hub_name = "pypi",
+                python_version = "3.15",
+                experimental_index_url = test.experimental_index_url,
+                experimental_extra_index_urls = test.experimental_extra_index_urls,
+                requirements_lock = "requirements.txt",
+                target_platforms = [
+                    "linux_x86_64",
+                    "osx_aarch64",
+                ],
+            ),
+        )
+        pypi = builder.build()
+
+        pypi.exposed_packages().contains_exactly(["simple"])
+        pypi.whl_map().contains_exactly({
+            "simple": {
+                "pypi_315_simple_py3_none_any_deadb00f": [
+                    whl_config_setting(
+                        target_platforms = ("cp315_linux_x86_64", "cp315_osx_aarch64"),
+                        version = "3.15",
+                    ),
+                ],
+            },
+        })
+        pypi.whl_libraries().contains_exactly({
+            "pypi_315_simple_py3_none_any_deadb00f": {
+                "config_load": "@pypi//:config.bzl",
+                "dep_template": "@pypi//{name}:{target}",
+                "filename": "simple-0.0.1-py3-none-any.whl",
+                "index_url": test.expect_index_url,
+                "requirement": "simple==0.0.1",
+                "sha256": "deadb00f",
+                "urls": [test.expect_url],
+            },
+        })
+        pypi.extra_aliases().contains_exactly({})
+
+        env.expect.that_dict(got_kwargs).contains_exactly({
+            "attr": struct(
+                auth_patterns = {},
+                envsubst = {},
+                extra_index_urls = test.expect_extra_index_urls,
+                index_url = test.expect_index_url,
+                index_url_overrides = {},
+                netrc = None,
+                sources = {
+                    "simple": ["0.0.1"],
+                },
+            ),
+            "cache": {},
+            "parallel_download": False,
+        })
+
+_tests.append(_test_index_url_precedence)
+
 def _test_download_only_multiple(env):
     builder = hub_builder(env)
     builder.pip_parse(

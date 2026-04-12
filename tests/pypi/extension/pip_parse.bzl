@@ -10,6 +10,7 @@ def pip_parse(
         enable_implicit_namespace_pkgs = False,
         environment = {},
         envsubst = {},
+        experimental_extra_index_urls = [],
         experimental_index_url = "",
         experimental_requirement_cycles = {},
         experimental_target_platforms = [],
@@ -40,6 +41,7 @@ def pip_parse(
         enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
         environment = environment,
         envsubst = envsubst,
+        experimental_extra_index_urls = experimental_extra_index_urls,
         experimental_index_url = experimental_index_url,
         experimental_requirement_cycles = experimental_requirement_cycles,
         # TODO @aignas 2025-12-02: decide on a single attr - should we reuse this?
@@ -63,8 +65,6 @@ def pip_parse(
         requirements_windows = requirements_windows,
         timeout = timeout,
         whl_modifications = whl_modifications,
-        # The following are covered by other unit tests
-        experimental_extra_index_urls = [],
         parallel_download = False,
         experimental_index_url_overrides = {},
         simpleapi_skip = simpleapi_skip,
