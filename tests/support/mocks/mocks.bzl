@@ -1,222 +1,387 @@
-# Copyright 2024 The Bazel Authors. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Mocks for repository_ctx, module_ctx, and File objects."""
 
-def mock_path(path, mocked_files = {}):
+def _path_new(path, mock_files = None):
     """Create a mock path object.
 
     Args:
-        path: The path string.
-        mocked_files: A dict of mocked files.
+        path: {type}`string` The path string.
+        mock_files: {type}`dict[string, string]` A dict of mocked files.
 
     Returns:
-        A struct mocking a path object.
+        {type}`MockPath` A struct mocking a path object.
     """
+    mock_files = mock_files or {}
     return struct(
-        exists = path in mocked_files,
+        exists = path in mock_files,
         basename = path.split("/")[-1],
         dirname = "/".join(path.split("/")[:-1]),
         _path = path,
     )
 
-def mock_file(path, content = ""):
+def _file_new(short_path, *, path = None, content = "", is_source = True, owner = Label("@mock//:mock"), repo = "@"):
     """Create a mock File object.
 
     Args:
-        path: The path to the file.
-        content: The content of the file.
+        short_path: {type}`string` The short path to the file.
+        path: {type}`string` The full path to the file. Defaults to a made up exec-root path or the short path if is_source.
+        content: {type}`string` The content of the file.
+        is_source: {type}`bool` Whether the file is a source file.
+        owner: {type}`Label` The owner label of the file.
+        repo: {type}`string` The repository the file belongs to. "@" and "@@" refer to the main repo.
 
     Returns:
-        A struct mocking a File object.
+        {type}`MockFile` A struct mocking a File object.
     """
     _ = content  # @unused
+    
+    repo_name = repo
+    for _ in range(2): # Strip up to two leading @
+        if repo_name.startswith("@"):
+            repo_name = repo_name[1:]
+
+    actual_short_path = short_path
+    if repo_name:
+        if not actual_short_path.startswith("../"):
+            actual_short_path = "../{}/{}".format(repo_name, short_path)
+
+        if path == None:
+            rel_path = short_path
+            if rel_path.startswith("../"):
+                parts = rel_path.split("/")
+                rel_path = "/".join(parts[2:])
+
+            if is_source:
+                path = "external/{}/{}".format(repo_name, rel_path)
+            else:
+                path = "bazel-out/k9-deadbeaf/bin/external/{}/{}".format(repo_name, rel_path)
+    else:
+        if path == None:
+            if is_source:
+                path = short_path
+            else:
+                path = "bazel-out/k9-deadbeaf/bin/{}".format(short_path)
+
     return struct(
         path = path,
         basename = path.split("/")[-1],
         dirname = "/".join(path.split("/")[:-1]),
         extension = path.split(".")[-1] if "." in path else "",
-        is_source = True,
-        owner = Label("//:mock"),
-        short_path = path,
+        is_source = is_source,
+        owner = owner,
+        short_path = actual_short_path,
     )
 
-def mock_mctx(
+def _tag_new(**kwargs):
+    """Create a mock tag.
+
+    Args:
+        **kwargs: {type}`dict` The tag attributes.
+
+    Returns:
+        {type}`MockTag` A mock tag object.
+    """
+    return struct(**kwargs)
+
+def _module_add_tag(self, tag_class, tag):
+    """Add a tag to a module.
+
+    Args:
+        self: The mock module object.
+        tag_class: {type}`str` The name of the tag class.
+        tag: {type}`struct` The tag object.
+
+    Returns:
+        {type}`MockModule` A new mock module object with the tag added.
+    """
+    tags_dict = {k: getattr(self.tags, k) for k in dir(self.tags)}
+    tag_list = list(tags_dict.get(tag_class, []))
+    tag_list.append(tag)
+    tags_dict[tag_class] = tag_list
+    return _module_new(self.name, is_root = self.is_root, **tags_dict)
+
+def _module_new(name, *, is_root = False, **tags):
+    """Create a mock module object.
+
+    Args:
+        name: {type}`string` The name of the module.
+        is_root: {type}`bool` Whether this is the root module.
+        **tags: {type}`list[MockTag]` Lists of tag objects.
+
+    Returns:
+        {type}`MockModule` A mock module object.
+    """
+    self = struct(
+        name = name,
+        tags = struct(**tags),
+        is_root = is_root,
+    )
+    # Re-wrap self to bind methods
+    return struct(
+        name = self.name,
+        tags = self.tags,
+        is_root = self.is_root,
+        add_tag = lambda *a, **k: _module_add_tag(self, *a, **k),
+    )
+
+def _mctx_read(self, x, watch = None):
+    _ = watch  # @unused
+    path_str = x._path if hasattr(x, "_path") else str(x)
+    if path_str not in self.mock_files:
+        return ""
+    return self.mock_files[path_str]
+
+def _mctx_path(self, x):
+    return _path_new(str(x), self.mock_files)
+
+def _mctx_download(self, *args, **kwargs):
+    _ = self, args, kwargs  # @unused
+    return struct(
+        success = True,
+        wait = lambda: struct(
+            success = True,
+        ),
+    )
+
+def _mctx_report_progress(self, message):
+    _ = self, message  # @unused
+    return None
+
+def _mctx_add_module(self, module):
+    """Add a module to the mock module_ctx.
+
+    Args:
+        self: The mock module_ctx.
+        module: {type}`MockModule` The mock module object.
+
+    Returns:
+        {type}`MockModuleCtx` The mock module_ctx.
+    """
+    if getattr(module, "is_root", False) and len(self.modules) > 0:
+        fail("is_root=True can only be set on the first module in the modules list.")
+    self.modules.append(module)
+    return self
+
+def _mctx_new(
         *args,
-        **kwargs):
+        modules = None,
+        environ = None,
+        mock_files = None,
+        os_name = "linux",
+        arch_name = "x86_64",
+        read = None,
+        download = None,
+        report_progress = None,
+        facts = None):
     """Create a mock module_ctx object.
 
     Args:
-        *args: Mock modules passed positionally.
-        **kwargs: Optional arguments:
-            modules: List of mock modules (alternative to positional args).
-            environ: Dict of environment variables.
-            mocked_files: Dict mapping path strings to content.
-            os_name: The OS name.
-            arch_name: The architecture name.
-            read: Optional read function.
-            download: Optional download function.
-            report_progress: Optional report_progress function.
+        *args: {type}`list[MockModule]` Mock modules passed positionally.
+        modules: {type}`list[MockModule]` List of mock modules (alternative to positional args).
+        environ: {type}`dict[string, string]` Dict of environment variables.
+        mock_files: {type}`dict[string, string]` Dict mapping path strings to content.
+        os_name: {type}`string` The OS name.
+        arch_name: {type}`string` The architecture name.
+        read: {type}`callable` Optional read function.
+        download: {type}`callable` Optional download function.
+        report_progress: {type}`callable` Optional report_progress function.
+        facts: {type}`dict` Optional facts dict.
 
     Returns:
-        A struct mocking a module_ctx object.
+        {type}`MockModuleCtx` A struct mocking a module_ctx object.
     """
-    modules = kwargs.get("modules")
-    if modules == None:
-        modules = list(args)
-    elif type(modules) != "list":
-        modules = [modules]
+    modules = list(args) + (modules or [])
 
-    environ = kwargs.get("environ", {})
-    mocked_files = kwargs.get("mocked_files", {})
-    os_name = kwargs.get("os_name", "linux")
-    arch_name = kwargs.get("arch_name", "x86_64")
-    read = kwargs.get("read")
-    download = kwargs.get("download")
-    report_progress = kwargs.get("report_progress")
-    facts = kwargs.get("facts")
+    for i, mod in enumerate(modules):
+        if getattr(mod, "is_root", False) and i != 0:
+            fail("is_root=True can only be set on the first module in the modules list.")
 
-    def _read(x, watch = None):
-        _ = watch  # @unused
-        path_str = x._path if hasattr(x, "_path") else str(x)
-        if path_str not in mocked_files:
-            fail("File not found in mocked_files: " + path_str)
-        return mocked_files[path_str]
+    environ = environ or {}
+    mock_files = mock_files or {}
 
-    def _path(x):
-        return mock_path(str(x), mocked_files)
-
-    return struct(
-        path = _path,
-        read = read or _read,
+    self = struct(
+        mock_files = mock_files,
         getenv = environ.get,
         facts = facts,
         os = struct(
             name = os_name,
             arch = arch_name,
         ),
-        modules = [
-            struct(
-                name = modules[0].name,
-                tags = modules[0].tags,
-                is_root = getattr(modules[0], "is_root", False),
-            ),
-        ] + [
-            struct(
-                name = mod.name,
-                tags = mod.tags,
-                is_root = False,
-            )
-            for mod in modules[1:]
-        ] if modules else [],
-        download = download or (lambda *_, **__: struct(
-            success = True,
-            wait = lambda: struct(
-                success = True,
-            ),
-        )),
-        report_progress = report_progress or (lambda _: None),
+        modules = list(modules),
+    )
+    return struct(
+        mock_files = self.mock_files,
+        getenv = self.getenv,
+        facts = self.facts,
+        os = self.os,
+        modules = self.modules,
+        path = lambda *a, **k: _mctx_path(self, *a, **k),
+        read = lambda *a, **k: _mctx_read(self, *a, **k),
+        download = lambda *a, **k: _mctx_download(self, *a, **k),
+        report_progress = lambda *a, **k: _mctx_report_progress(self, *a, **k),
+        add_module = lambda *a, **k: _mctx_add_module(self, *a, **k),
     )
 
-def mock_rctx(
-        attr = {},
-        environ = {},
-        mocked_files = {},
+def _rctx_read(self, x):
+    path_str = x._path if hasattr(x, "_path") else str(x)
+    if path_str not in self.mock_files:
+        fail("File not found in mock_files: " + path_str)
+    return self.mock_files[path_str]
+
+def _rctx_path(self, x):
+    return _path_new(str(x), self.mock_files)
+
+def _rctx_file(self, path, content = "", executable = True, legacy_utf8 = True):
+    _ = executable, legacy_utf8  # @unused
+    self.mock_files[str(path)] = content
+
+def _rctx_template(self, path, template, substitutions = {}, executable = True):
+    _ = executable  # @unused
+    template_str = str(template)
+    if template_str not in self.mock_files:
+        fail("Template file not found: " + template_str)
+    
+    content = self.mock_files[template_str]
+    for key, value in substitutions.items():
+        content = content.replace(key, value)
+        
+    self.mock_files[str(path)] = content
+
+def _rctx_which(self, program):
+    prog_str = str(program)
+    if prog_str in self.mock_which:
+        res = self.mock_which[prog_str]
+        if res == None:
+            return None
+        return _path_new(res, self.mock_files)
+    return None
+
+def _rctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = ""):
+    _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity  # @unused
+    
+    urls = url if type(url) == "list" else [url]
+    
+    for u in urls:
+        if u in self.mock_downloads:
+            res = self.mock_downloads[u]
+            if type(res) == "string":
+                if output:
+                    self.mock_files[str(output)] = res
+                return struct(success = True, sha256 = "mocksha256")
+            else:
+                return res(self, u, output, sha256, executable, allow_fail, canonical_id, auth, headers, integrity)
+    
+    if not allow_fail:
+        fail("Download not mocked for url: " + str(urls))
+    return struct(success = False)
+
+def _rctx_download_and_extract(self, url, output = "", sha256 = "", type = "", stripPrefix = "", allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = "", rename_files = {}):
+    _ = sha256, type, stripPrefix, allow_fail, canonical_id, auth, headers, integrity, rename_files  # @unused
+    
+    urls = url if type(url) == "list" else [url]
+    
+    for u in urls:
+        if u in self.mock_downloads:
+            res = self.mock_downloads[u]
+            if type(res) == "string":
+                pass
+            else:
+                return res(self, u, output, sha256, type, stripPrefix, allow_fail, canonical_id, auth, headers, integrity, rename_files)
+                
+    if not allow_fail:
+        fail("Download and extract not mocked for url: " + str(urls))
+    return struct(success = False)
+
+def _rctx_execute(self, arguments, timeout = 600, quiet = True, working_directory = "", environment = {}, custom_reporter = ""):
+    _ = arguments, timeout, quiet, working_directory, environment, custom_reporter  # @unused
+    return struct(return_code = 0, stdout = "", stderr = "")
+
+def _rctx_symlink(self, target, link_name):
+    self.mock_files[str(link_name)] = '{"type": "symlink", "target": "' + str(target) + '"}'
+
+def _rctx_new(
+        attr = None,
+        environ = None,
+        mock_files = None,
+        mock_which = None,
+        mock_downloads = None,
         os_name = "linux",
-        arch_name = "x86_64",
-        read = None,
-        download = None,
-        download_and_extract = None,
-        execute = None,
-        file = None,
-        symlink = None,
-        template = None,
-        which = None):
+        arch_name = "x86_64"):
     """Create a mock repository_ctx object.
 
     Args:
-        attr: Dict of attributes.
-        environ: Dict of environment variables.
-        mocked_files: Dict mapping path strings to content.
-        os_name: The OS name.
-        arch_name: The architecture name.
-        read: Optional read function.
-        download: Optional download function.
-        download_and_extract: Optional download_and_extract function.
-        execute: Optional execute function.
-        file: Optional file function.
-        symlink: Optional symlink function.
-        template: Optional template function.
-        which: Optional which function.
+        attr: {type}`dict` Dict of attributes.
+        environ: {type}`dict[string, string]` Dict of environment variables.
+        mock_files: {type}`dict[string, string]` Dict mapping path strings to content.
+        mock_which: {type}`dict[string, string]` Dict mapping program name to path string.
+        mock_downloads: {type}`dict[string, string|callable]` Dict mapping url to string or callable.
+        os_name: {type}`string` The OS name.
+        arch_name: {type}`string` The architecture name.
 
     Returns:
-        A struct mocking a repository_ctx object.
+        {type}`MockRepositoryCtx` A struct mocking a repository_ctx object.
     """
+    attr = attr or {}
+    environ = environ or {}
+    mock_files = mock_files or {}
+    mock_which = mock_which or {}
+    mock_downloads = mock_downloads or {}
 
-    def _read(x):
-        path_str = x._path if hasattr(x, "_path") else str(x)
-        if path_str not in mocked_files:
-            fail("File not found in mocked_files: " + path_str)
-        return mocked_files[path_str]
-
-    def _path(x):
-        return mock_path(str(x), mocked_files)
-
-    return struct(
+    self = struct(
+        mock_files = mock_files,
+        mock_which = mock_which,
+        mock_downloads = mock_downloads,
         attr = struct(**attr),
-        path = _path,
-        read = read or _read,
         os = struct(
             name = os_name,
             arch = arch_name,
         ),
         os_environ = environ,
-        download = download,
-        download_and_extract = download_and_extract,
-        execute = execute,
-        file = file,
-        symlink = symlink,
-        template = template,
-        which = which,
+    )
+    
+    return struct(
+        mock_files = self.mock_files,
+        mock_which = self.mock_which,
+        mock_downloads = self.mock_downloads,
+        attr = self.attr,
+        os = self.os,
+        os_environ = self.os_environ,
+        path = lambda *a, **k: _rctx_path(self, *a, **k),
+        read = lambda *a, **k: _rctx_read(self, *a, **k),
+        file = lambda *a, **k: _rctx_file(self, *a, **k),
+        template = lambda *a, **k: _rctx_template(self, *a, **k),
+        which = lambda *a, **k: _rctx_which(self, *a, **k),
+        download = lambda *a, **k: _rctx_download(self, *a, **k),
+        download_and_extract = lambda *a, **k: _rctx_download_and_extract(self, *a, **k),
+        execute = lambda *a, **k: _rctx_execute(self, *a, **k),
+        symlink = lambda *a, **k: _rctx_symlink(self, *a, **k),
     )
 
-def mock_glob_call(*args, **kwargs):
+def _glob_call_new(*args, **kwargs):
     """Create a struct representing a glob call.
 
     Args:
-        *args: Positional arguments to glob.
-        **kwargs: Keyword arguments to glob.
+        *args: {type}`tuple` Positional arguments to glob.
+        **kwargs: {type}`dict` Keyword arguments to glob.
 
     Returns:
-        A struct with glob and kwargs fields.
+        {type}`MockGlobCall` A struct with glob and kwargs fields.
     """
     return struct(
         glob = args,
         kwargs = kwargs,
     )
 
-def mock_glob():
+def _glob_new():
     """Create a mock glob object.
 
     Returns:
-        A struct with calls and results lists, and a glob function.
+        {type}`MockGlob` A struct with calls and results lists, and a glob function.
     """
     calls = []
     results = []
 
-    def _glob(*args, **kwargs):
-        calls.append(mock_glob_call(*args, **kwargs))
+    def _glob_fn(*args, **kwargs):
+        calls.append(_glob_call_new(*args, **kwargs))
         if not results:
             fail("Mock glob missing for invocation: args={} kwargs={}".format(
                 args,
@@ -227,18 +392,30 @@ def mock_glob():
     return struct(
         calls = calls,
         results = results,
-        glob = _glob,
+        glob = _glob_fn,
     )
 
-def mock_select(value, no_match_error = None):
+def _select_new(value, no_match_error = None):
     """A mock select function that returns the value.
 
     Args:
-        value: The value to return.
-        no_match_error: Ignored.
+        value: {type}`Any` The value to return.
+        no_match_error: {type}`string` Ignored.
 
     Returns:
-        The value.
+        {type}`MockSelect` The value.
     """
     _ = no_match_error  # @unused
     return value
+
+mocks = struct(
+    file = _file_new,
+    glob = _glob_new,
+    glob_call = _glob_call_new,
+    mctx = _mctx_new,
+    module = _module_new,
+    path = _path_new,
+    rctx = _rctx_new,
+    select = _select_new,
+    tag = _tag_new,
+)
