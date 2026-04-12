@@ -215,9 +215,9 @@ def _mctx_new(
         os = self.os,
         modules = self.modules,
         path = lambda *a, **k: _mctx_path(self, *a, **k),
-        read = lambda *a, **k: _mctx_read(self, *a, **k),
-        download = lambda *a, **k: _mctx_download(self, *a, **k),
-        report_progress = lambda *a, **k: _mctx_report_progress(self, *a, **k),
+        read = read or (lambda *a, **k: _mctx_read(self, *a, **k)),
+        download = download or (lambda *a, **k: _mctx_download(self, *a, **k)),
+        report_progress = report_progress or (lambda *a, **k: _mctx_report_progress(self, *a, **k)),
         add_module = lambda *a, **k: _mctx_add_module(self, *a, **k),
     )
 

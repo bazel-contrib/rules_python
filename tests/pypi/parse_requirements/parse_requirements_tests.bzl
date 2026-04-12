@@ -102,6 +102,7 @@ bar==0.0.1 --hash=sha256:deadb00f
         os_name = "linux",
         arch_name = "x86_64",
         read = lambda x: testdata[x],
+        mock_files = testdata,
     )
 
 _tests = []

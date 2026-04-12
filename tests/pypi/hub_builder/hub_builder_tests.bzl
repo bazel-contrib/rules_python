@@ -161,7 +161,7 @@ def _test_simple_multiple_requirements(env):
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
         builder.pip_parse(
-            _mock_mctx(
+            mocks.mctx(
                 read = lambda x: {
                     "darwin.txt": "simple==0.0.2 --hash=sha256:deadb00f",
                     "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
@@ -207,7 +207,7 @@ def _test_simple_extras_vs_no_extras(env):
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
         builder.pip_parse(
-            _mock_mctx(
+            mocks.mctx(
                 read = lambda x: {
                     "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                     "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
@@ -272,7 +272,7 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                 "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
@@ -348,7 +348,7 @@ def _test_simple_multiple_python_versions(env):
         },
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "requirements_3_15.txt": """
 simple==0.0.1 --hash=sha256:deadbeef
@@ -365,7 +365,7 @@ old-package==0.0.1 --hash=sha256:deadbaaf
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "requirements_3_16.txt": """
 simple==0.0.2 --hash=sha256:deadb00f
@@ -453,7 +453,7 @@ def _test_simple_with_markers(env):
             },
         )
         builder.pip_parse(
-            _mock_mctx(
+            mocks.mctx(
                 read = lambda x: {
                     "universal.txt": """\
     torch==2.4.1+cpu ; platform_machine == 'x86_64'
@@ -575,7 +575,7 @@ def _test_torch_experimental_index_url(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "universal.txt": """\
 torch==2.4.1 ; platform_machine != 'x86_64' \
@@ -832,7 +832,7 @@ _tests.append(_test_index_url_precedence)
 def _test_download_only_multiple(env):
     builder = hub_builder(env)
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "requirements.linux_x86_64.txt": """\
 --platform=manylinux_2_17_x86_64
@@ -995,7 +995,7 @@ def _test_simple_get_index(env):
         },
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "requirements.txt": """
 simple==0.0.1 \
@@ -1243,7 +1243,7 @@ def _test_optimum_sys_platform_extra(env):
             env,
         )
         builder.pip_parse(
-            _mock_mctx(
+            mocks.mctx(
                 read = lambda x: {
                     "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
@@ -1311,7 +1311,7 @@ def _test_pipstar_platforms(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             read = lambda x: {
                 "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
@@ -1397,7 +1397,7 @@ def _test_pipstar_platforms_limit(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             os_name = "linux",
             arch_name = "amd64",
             read = lambda x: {
@@ -1452,6 +1452,9 @@ def _test_err_duplicate_repos(env):
         _mock_mctx(
             os_name = "osx",
             arch_name = "aarch64",
+            read = lambda x: {
+                "requirements.txt": "foo==0.0.1",
+            }.get(getattr(x, "_path", str(x)), ""),
         ),
         _parse(
             hub_name = "pypi",
@@ -1463,6 +1466,9 @@ def _test_err_duplicate_repos(env):
         _mock_mctx(
             os_name = "osx",
             arch_name = "aarch64",
+            read = lambda x: {
+                "requirements.txt": "foo==0.0.1",
+            }.get(getattr(x, "_path", str(x)), ""),
         ),
         _parse(
             hub_name = "pypi",

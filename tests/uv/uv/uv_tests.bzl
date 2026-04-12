@@ -520,6 +520,7 @@ def _test_rules_python_does_not_take_precedence(env):
                         compatible_with = ["@platforms//os:osx"],
                     ),
                 ],
+                is_root = False,
             ),
         ),
         uv_repository = lambda **kwargs: calls.append(kwargs),

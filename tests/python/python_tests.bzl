@@ -24,16 +24,14 @@ _tests = []
 
 # todo: change is_root to false by default. most modules aren't root
 def _mod(*, name, defaults = [], toolchain = [], override = [], single_version_override = [], single_version_platform_override = [], is_root = False):
-    return struct(
-        name = name,
-        tags = struct(
-            defaults = defaults,
-            toolchain = toolchain,
-            override = override,
-            single_version_override = single_version_override,
-            single_version_platform_override = single_version_platform_override,
-        ),
+    return mocks.module(
+        name,
         is_root = is_root,
+        defaults = defaults,
+        toolchain = toolchain,
+        override = override,
+        single_version_override = single_version_override,
+        single_version_platform_override = single_version_platform_override,
     )
 
 def _defaults(python_version = None, python_version_env = None, python_version_file = None):
@@ -180,7 +178,7 @@ def _test_default_with_patch_version(env):
         module_ctx = mocks.mctx(
             modules = [
                 _mod(name = "alpha", toolchain = [_toolchain("3.11.2")], is_root = True),
-                _rules_python_module(is_root = True),
+                _rules_python_module(is_root = False),
             ],
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -308,7 +306,7 @@ def _test_default_from_defaults_file(env):
                 toolchain = [_toolchain("3.10"), _toolchain("3.11"), _toolchain("3.12")],
                 is_root = True,
             ),
-            mocked_files = {"@@//:.python-version": "3.12\n"},
+            mock_files = {"@@//:.python-version": "3.12\n"},
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
