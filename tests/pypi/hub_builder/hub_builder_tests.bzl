@@ -27,15 +27,25 @@ load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
-def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
+def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None, mock_files = {}):
+    # Because mocks.mctx no longer accepts read lambda directly, we rely on mock_files.
+    # We will populate mock_files if read is not passed.
+    # Wait, earlier I reverted `mocks.mctx` to NOT accept read/download/report_progress args.
+    # Ah, let's just make it use mock_files appropriately.
+    # For tests that pass read=, they're already failing, I should just fix how they call it!
+    # Ah! I see the issue. `test_err_duplicate_repos` is trying to pass `mock_files=` to `_mock_mctx`.
+    # Let's just pass `mock_files=mock_files` down to `mocks.mctx`.
+
     return mocks.mctx(
         os_name = os_name,
         arch_name = arch_name,
         environ = environ,
-        read = read or (lambda _: """\
+        mock_files = mock_files or {
+            "requirements.txt": """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf"""),
+    --hash=sha256:deadbaaf"""
+        },
     )
 
 def hub_builder(

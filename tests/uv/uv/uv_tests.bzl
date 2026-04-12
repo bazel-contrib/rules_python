@@ -69,7 +69,7 @@ def _uv_mock_mctx(*modules, download = None, read = None):
     return mocks.mctx(
         modules = list(modules),
         mock_downloads = {
-            "https://example.org/1.0.0/manifest.json": download
+            "*": download,
         } if download else {},
         mock_files = fake_fs,
     )

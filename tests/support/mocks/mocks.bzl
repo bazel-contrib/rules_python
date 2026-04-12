@@ -35,15 +35,16 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
 
     owner_str = str(owner)
     repo_name = owner_str.split("//")[0]
-    for _ in range(2):  # Strip up to two leading @
-        if repo_name.startswith("@"):
-            repo_name = repo_name[1:]
 
-    if not repo_name:
-        repo_name = "@"
+    is_main_repo = repo_name in ("", "@", "@@")
+
+    if not is_main_repo:
+        for _ in range(2):  # Strip up to two leading @
+            if repo_name.startswith("@"):
+                repo_name = repo_name[1:]
 
     actual_short_path = short_path
-    if repo_name != "@":
+    if not is_main_repo:
         if not actual_short_path.startswith("../"):
             actual_short_path = "../{}/{}".format(repo_name, short_path)
 
@@ -57,12 +58,11 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
                 path = "external/{}/{}".format(repo_name, rel_path)
             else:
                 path = "bazel-out/k9-deadbeef/bin/external/{}/{}".format(repo_name, rel_path)
-    else:
-        if path == None:
-            if is_source:
-                path = short_path
-            else:
-                path = "bazel-out/k9-deadbeef/bin/{}".format(short_path)
+    elif path == None:
+        if is_source:
+            path = short_path
+        else:
+            path = "bazel-out/k9-deadbeef/bin/{}".format(short_path)
 
     return struct(
         path = path,
@@ -112,21 +112,26 @@ def _mctx_read(self, x, watch = None):
 def _mctx_path(self, x):
     return _path_new(str(x), self.mock_files)
 
-def _mctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = ""):
-    _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity  # @unused
+def _mctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = "", block = True):
+    _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity, block  # @unused
     urls = url if type(url) == "list" else [url]
     for u in urls:
+        content = None
         if u in self.mock_downloads:
             content = self.mock_downloads[u]
+        elif "*" in self.mock_downloads:
+            content = self.mock_downloads["*"]
+
+        if content != None:
             if type(content) == "string":
                 out = str(output) if output else u.split("/")[-1]
                 self.mock_files[out] = content
                 return struct(success = True, wait = lambda: struct(success = True))
             else:
                 return content(self, u, output, sha256, executable, allow_fail, canonical_id, auth, headers, integrity)
-    
-    if not allow_fail:
-        fail("Download not mocked for url: " + str(urls))
+
+    if not self.mock_downloads:
+        return struct(success = True, wait = lambda: struct(success = True))
     return struct(success = False, wait = lambda: struct(success = False))
 
 def _mctx_report_progress(self, message):
@@ -193,7 +198,7 @@ def _mctx_new(
         os = struct(
             name = os_name,
             arch = arch_name,
-    ),
+        ),
         modules = list(modules),
     )
     return struct(
@@ -286,7 +291,7 @@ def _rctx_execute(self, arguments, timeout = 600, quiet = True, working_director
     return struct(return_code = 0, stdout = "", stderr = "")
 
 def _rctx_symlink(self, target, link_name):
-    self.mock_files[str(link_name)] = '{"type": "symlink", "target": "' + str(target) + '"}'
+    self.mock_files[str(link_name)] = {"target": str(target), "type": "symlink"}
 
 def _rctx_new(
         attr = None,
@@ -325,7 +330,7 @@ def _rctx_new(
         os = struct(
             name = os_name,
             arch = arch_name,
-    ),
+        ),
         os_environ = environ,
         path = lambda *a, **k: _rctx_path(self, *a, **k),
         read = lambda *a, **k: _rctx_read(self, *a, **k),
@@ -370,7 +375,7 @@ def _glob_new():
             fail("Mock glob missing for invocation: args={} kwargs={}".format(
                 args,
                 kwargs,
-        ))
+            ))
         return results.pop(0)
 
     return struct(
