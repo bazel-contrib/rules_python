@@ -57,11 +57,12 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
                 path = "external/{}/{}".format(repo_name, rel_path)
             else:
                 path = "bazel-out/k9-deadbeef/bin/external/{}/{}".format(repo_name, rel_path)
-    elif path == None:
-        if is_source:
-            path = short_path
-        else:
-            path = "bazel-out/k9-deadbeef/bin/{}".format(short_path)
+    else:
+        if path == None:
+            if is_source:
+                path = short_path
+            else:
+                path = "bazel-out/k9-deadbeef/bin/{}".format(short_path)
 
     return struct(
         path = path,
@@ -95,13 +96,11 @@ def _module_new(name, *, is_root = False, **tags):
     Returns:
         {type}`MockModule` A mock module object.
     """
-    self = struct(
+    return struct(
         name = name,
         tags = struct(**tags),
         is_root = is_root,
     )
-
-    return self
 
 def _mctx_read(self, x, watch = None):
     _ = watch  # @unused
@@ -126,17 +125,18 @@ def _mctx_report_progress(self, message):
     _ = self, message  # @unused
     return None
 
-def _mctx_add_module(self, module):
+def _mctx_add_module(self, **kwargs):
     """Add a module to the mock module_ctx.
 
     Args:
         self: The mock module_ctx.
-        module: {type}`MockModule` The mock module object.
+        **kwargs: Arguments to pass to _module_new.
 
     Returns:
         {type}`MockModuleCtx` The mock module_ctx.
     """
-    if getattr(module, "is_root", False) and len(self.modules) > 0:
+    module = _module_new(**kwargs)
+    if module.is_root and len(self.modules) > 0:
         fail("is_root=True can only be set on the first module in the modules list.")
     self.modules.append(module)
     return self
@@ -178,6 +178,7 @@ def _mctx_new(
     environ = environ or {}
     mock_files = mock_files or {}
 
+    # buildifier: disable=uninitialized
     self = struct(
         mock_files = mock_files,
         getenv = environ.get,
@@ -198,7 +199,7 @@ def _mctx_new(
         read = read or (lambda *a, **k: _mctx_read(self, *a, **k)),
         download = download or (lambda *a, **k: _mctx_download(self, *a, **k)),
         report_progress = report_progress or (lambda *a, **k: _mctx_report_progress(self, *a, **k)),
-        add_module = lambda *a, **k: _mctx_add_module(self, *a, **k),
+        add_module = lambda **k: _mctx_add_module(self, **k),
     )
 
 def _rctx_read(self, x):
@@ -306,6 +307,7 @@ def _rctx_new(
     mock_which = mock_which or {}
     mock_downloads = mock_downloads or {}
 
+    # buildifier: disable=uninitialized
     self = struct(
         mock_files = mock_files,
         mock_which = mock_which,
@@ -316,15 +318,6 @@ def _rctx_new(
             arch = arch_name,
         ),
         os_environ = environ,
-    )
-
-    return struct(
-        mock_files = self.mock_files,
-        mock_which = self.mock_which,
-        mock_downloads = self.mock_downloads,
-        attr = self.attr,
-        os = self.os,
-        os_environ = self.os_environ,
         path = lambda *a, **k: _rctx_path(self, *a, **k),
         read = lambda *a, **k: _rctx_read(self, *a, **k),
         file = lambda *a, **k: _rctx_file(self, *a, **k),
@@ -335,6 +328,8 @@ def _rctx_new(
         execute = lambda *a, **k: _rctx_execute(self, *a, **k),
         symlink = lambda *a, **k: _rctx_symlink(self, *a, **k),
     )
+
+    return self
 
 def _glob_call_new(*args, **kwargs):
     """Create a struct representing a glob call.
