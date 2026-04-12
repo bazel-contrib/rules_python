@@ -18,29 +18,32 @@ def _path_new(path, mock_files = None):
         _path = path,
     )
 
-def _file_new(short_path, *, path = None, content = "", is_source = True, owner = Label("@mock//:mock"), repo = "@"):
+def _file_new(short_path, *, path = None, is_source = True, owner = None):
     """Create a mock File object.
 
     Args:
         short_path: {type}`string` The short path to the file.
         path: {type}`string` The full path to the file. Defaults to a made up exec-root path or the short path if is_source.
-        content: {type}`string` The content of the file.
         is_source: {type}`bool` Whether the file is a source file.
-        owner: {type}`Label` The owner label of the file.
-        repo: {type}`string` The repository the file belongs to. "@" and "@@" refer to the main repo.
+        owner: {type}`Label|string` The owner label of the file.
 
     Returns:
         {type}`MockFile` A struct mocking a File object.
     """
-    _ = content  # @unused
-    
-    repo_name = repo
-    for _ in range(2): # Strip up to two leading @
+    if owner == None:
+        owner = Label("//:mock")
+
+    owner_str = str(owner)
+    repo_name = owner_str.split("//")[0]
+    for _ in range(2):  # Strip up to two leading @
         if repo_name.startswith("@"):
             repo_name = repo_name[1:]
 
+    if not repo_name:
+        repo_name = "@"
+
     actual_short_path = short_path
-    if repo_name:
+    if repo_name != "@":
         if not actual_short_path.startswith("../"):
             actual_short_path = "../{}/{}".format(repo_name, short_path)
 
@@ -53,13 +56,12 @@ def _file_new(short_path, *, path = None, content = "", is_source = True, owner 
             if is_source:
                 path = "external/{}/{}".format(repo_name, rel_path)
             else:
-                path = "bazel-out/k9-deadbeaf/bin/external/{}/{}".format(repo_name, rel_path)
-    else:
-        if path == None:
-            if is_source:
-                path = short_path
-            else:
-                path = "bazel-out/k9-deadbeaf/bin/{}".format(short_path)
+                path = "bazel-out/k9-deadbeef/bin/external/{}/{}".format(repo_name, rel_path)
+    elif path == None:
+        if is_source:
+            path = short_path
+        else:
+            path = "bazel-out/k9-deadbeef/bin/{}".format(short_path)
 
     return struct(
         path = path,
@@ -82,23 +84,6 @@ def _tag_new(**kwargs):
     """
     return struct(**kwargs)
 
-def _module_add_tag(self, tag_class, tag):
-    """Add a tag to a module.
-
-    Args:
-        self: The mock module object.
-        tag_class: {type}`str` The name of the tag class.
-        tag: {type}`struct` The tag object.
-
-    Returns:
-        {type}`MockModule` A new mock module object with the tag added.
-    """
-    tags_dict = {k: getattr(self.tags, k) for k in dir(self.tags)}
-    tag_list = list(tags_dict.get(tag_class, []))
-    tag_list.append(tag)
-    tags_dict[tag_class] = tag_list
-    return _module_new(self.name, is_root = self.is_root, **tags_dict)
-
 def _module_new(name, *, is_root = False, **tags):
     """Create a mock module object.
 
@@ -115,19 +100,14 @@ def _module_new(name, *, is_root = False, **tags):
         tags = struct(**tags),
         is_root = is_root,
     )
-    # Re-wrap self to bind methods
-    return struct(
-        name = self.name,
-        tags = self.tags,
-        is_root = self.is_root,
-        add_tag = lambda *a, **k: _module_add_tag(self, *a, **k),
-    )
+
+    return self
 
 def _mctx_read(self, x, watch = None):
     _ = watch  # @unused
     path_str = x._path if hasattr(x, "_path") else str(x)
     if path_str not in self.mock_files:
-        return ""
+        fail("File not found in mock_files: " + path_str)
     return self.mock_files[path_str]
 
 def _mctx_path(self, x):
@@ -239,11 +219,11 @@ def _rctx_template(self, path, template, substitutions = {}, executable = True):
     template_str = str(template)
     if template_str not in self.mock_files:
         fail("Template file not found: " + template_str)
-    
+
     content = self.mock_files[template_str]
     for key, value in substitutions.items():
         content = content.replace(key, value)
-        
+
     self.mock_files[str(path)] = content
 
 def _rctx_which(self, program):
@@ -257,9 +237,9 @@ def _rctx_which(self, program):
 
 def _rctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = ""):
     _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity  # @unused
-    
+
     urls = url if type(url) == "list" else [url]
-    
+
     for u in urls:
         if u in self.mock_downloads:
             res = self.mock_downloads[u]
@@ -269,16 +249,16 @@ def _rctx_download(self, url, output = "", sha256 = "", executable = False, allo
                 return struct(success = True, sha256 = "mocksha256")
             else:
                 return res(self, u, output, sha256, executable, allow_fail, canonical_id, auth, headers, integrity)
-    
+
     if not allow_fail:
         fail("Download not mocked for url: " + str(urls))
     return struct(success = False)
 
 def _rctx_download_and_extract(self, url, output = "", sha256 = "", type = "", stripPrefix = "", allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = "", rename_files = {}):
     _ = sha256, type, stripPrefix, allow_fail, canonical_id, auth, headers, integrity, rename_files  # @unused
-    
+
     urls = url if type(url) == "list" else [url]
-    
+
     for u in urls:
         if u in self.mock_downloads:
             res = self.mock_downloads[u]
@@ -286,13 +266,13 @@ def _rctx_download_and_extract(self, url, output = "", sha256 = "", type = "", s
                 pass
             else:
                 return res(self, u, output, sha256, type, stripPrefix, allow_fail, canonical_id, auth, headers, integrity, rename_files)
-                
+
     if not allow_fail:
         fail("Download and extract not mocked for url: " + str(urls))
     return struct(success = False)
 
 def _rctx_execute(self, arguments, timeout = 600, quiet = True, working_directory = "", environment = {}, custom_reporter = ""):
-    _ = arguments, timeout, quiet, working_directory, environment, custom_reporter  # @unused
+    _ = self, arguments, timeout, quiet, working_directory, environment, custom_reporter  # @unused
     return struct(return_code = 0, stdout = "", stderr = "")
 
 def _rctx_symlink(self, target, link_name):
@@ -337,7 +317,7 @@ def _rctx_new(
         ),
         os_environ = environ,
     )
-    
+
     return struct(
         mock_files = self.mock_files,
         mock_which = self.mock_which,
