@@ -41,6 +41,7 @@ def mock_file(path, content = ""):
     Returns:
         A struct mocking a File object.
     """
+    _ = content  # @unused
     return struct(
         path = path,
         basename = path.split("/")[-1],
@@ -87,7 +88,7 @@ def mock_mctx(
     facts = kwargs.get("facts")
 
     def _read(x, watch = None):
-        _ = watch
+        _ = watch  # @unused
         path_str = x._path if hasattr(x, "_path") else str(x)
         if path_str not in mocked_files:
             fail("File not found in mocked_files: " + path_str)
@@ -239,5 +240,5 @@ def mock_select(value, no_match_error = None):
     Returns:
         The value.
     """
-    _ = no_match_error
+    _ = no_match_error  # @unused
     return value
