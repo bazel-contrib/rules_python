@@ -20,6 +20,7 @@ load(
     "whl_library_targets",
     "whl_library_targets_from_requires",
 )  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:mocks.bzl", "mock_glob", "mock_glob_call")
 
 _tests = []
 
@@ -191,11 +192,11 @@ def _test_whl_and_library_deps_from_requires(env):
     py_library_calls = []
     env_marker_setting_calls = []
 
-    mock_glob = _mock_glob()
+    m_glob = mock_glob()
 
-    mock_glob.results.append(["site-packages/foo/SRCS.py"])
-    mock_glob.results.append(["site-packages/foo/DATA.txt"])
-    mock_glob.results.append(["site-packages/foo/PYI.pyi"])
+    m_glob.results.append(["site-packages/foo/SRCS.py"])
+    m_glob.results.append(["site-packages/foo/DATA.txt"])
+    m_glob.results.append(["site-packages/foo/PYI.pyi"])
 
     whl_library_targets_from_requires(
         name = "foo-0-py3-none-any.whl",
@@ -215,7 +216,7 @@ def _test_whl_and_library_deps_from_requires(env):
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             config_setting = lambda **_: None,
-            glob = mock_glob.glob,
+            glob = m_glob.glob,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
@@ -263,15 +264,15 @@ def _test_whl_and_library_deps_from_requires(env):
         }),
     })  # buildifier: @unsorted-dict-items
 
-    env.expect.that_collection(mock_glob.calls).contains_exactly([
+    env.expect.that_collection(m_glob.calls).contains_exactly([
         # srcs call
-        _glob_call(
+        mock_glob_call(
             ["site-packages/**/*.py"],
             exclude = [],
             allow_empty = True,
         ),
         # data call
-        _glob_call(
+        mock_glob_call(
             ["site-packages/**/*"],
             exclude = [
                 "**/*.py",
@@ -282,7 +283,7 @@ def _test_whl_and_library_deps_from_requires(env):
             allow_empty = True,
         ),
         # pyi call
-        _glob_call(["site-packages/**/*.pyi"], allow_empty = True),
+        mock_glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
     env.expect.that_collection(env_marker_setting_calls).contains_exactly([
@@ -298,10 +299,10 @@ _tests.append(_test_whl_and_library_deps_from_requires)
 def _test_whl_and_library_deps(env):
     filegroup_calls = []
     py_library_calls = []
-    mock_glob = _mock_glob()
-    mock_glob.results.append(["site-packages/foo/SRCS.py"])
-    mock_glob.results.append(["site-packages/foo/DATA.txt"])
-    mock_glob.results.append(["site-packages/foo/PYI.pyi"])
+    m_glob = mock_glob()
+    m_glob.results.append(["site-packages/foo/SRCS.py"])
+    m_glob.results.append(["site-packages/foo/DATA.txt"])
+    m_glob.results.append(["site-packages/foo/PYI.pyi"])
 
     whl_library_targets(
         name = "foo.whl",
@@ -323,7 +324,7 @@ def _test_whl_and_library_deps(env):
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             config_setting = lambda **_: None,
-            glob = mock_glob.glob,
+            glob = m_glob.glob,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
@@ -396,10 +397,10 @@ def _test_group(env):
     alias_calls = []
     py_library_calls = []
 
-    mock_glob = _mock_glob()
-    mock_glob.results.append(["site-packages/foo/srcs.py"])
-    mock_glob.results.append(["site-packages/foo/data.txt"])
-    mock_glob.results.append(["site-packages/foo/pyi.pyi"])
+    m_glob = mock_glob()
+    m_glob.results.append(["site-packages/foo/srcs.py"])
+    m_glob.results.append(["site-packages/foo/data.txt"])
+    m_glob.results.append(["site-packages/foo/pyi.pyi"])
 
     whl_library_targets(
         name = "foo.whl",
@@ -419,7 +420,7 @@ def _test_group(env):
         filegroups = {},
         native = struct(
             config_setting = lambda **_: None,
-            glob = mock_glob.glob,
+            glob = m_glob.glob,
             alias = lambda **kwargs: alias_calls.append(kwargs),
         ),
         rules = struct(
@@ -463,42 +464,18 @@ def _test_group(env):
         }),
     })  # buildifier: @unsorted-dict-items
 
-    env.expect.that_collection(mock_glob.calls, expr = "glob calls").contains_exactly([
-        _glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
-        _glob_call(["site-packages/**/*"], exclude = [
+    env.expect.that_collection(m_glob.calls, expr = "glob calls").contains_exactly([
+        mock_glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
+        mock_glob_call(["site-packages/**/*"], exclude = [
             "**/*.py",
             "**/*.pyc",
             "**/*.pyc.*",
             "**/*.dist-info/RECORD",
         ], allow_empty = True),
-        _glob_call(["site-packages/**/*.pyi"], allow_empty = True),
+        mock_glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
 _tests.append(_test_group)
-
-def _glob_call(*args, **kwargs):
-    return struct(
-        glob = args,
-        kwargs = kwargs,
-    )
-
-def _mock_glob():
-    # buildifier: disable=uninitialized
-    def glob(*args, **kwargs):
-        mock.calls.append(_glob_call(*args, **kwargs))
-        if not mock.results:
-            fail("Mock glob missing for invocation: args={} kwargs={}".format(
-                args,
-                kwargs,
-            ))
-        return mock.results.pop(0)
-
-    mock = struct(
-        calls = [],
-        results = [],
-        glob = glob,
-    )
-    return mock
 
 def whl_library_targets_test_suite(name):
     """create the test suite.

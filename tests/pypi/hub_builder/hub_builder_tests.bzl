@@ -23,21 +23,19 @@ load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: di
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
+load("//tests/support/mocks:mocks.bzl", "mock_mctx")
 
 _tests = []
 
 def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
-    return struct(
-        getenv = environ.get,
-        os = struct(
-            name = os_name,
-            arch = arch_name,
-        ),
+    return mock_mctx(
+        os_name = os_name,
+        arch_name = arch_name,
+        environ = environ,
         read = read or (lambda _: """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
     --hash=sha256:deadbaaf"""),
-        report_progress = lambda _: None,
     )
 
 def hub_builder(

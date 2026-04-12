@@ -18,35 +18,21 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:mocks.bzl", "mock_mctx")
 load(":pip_parse.bzl", _parse = "pip_parse")
 
 _tests = []
 
-def _mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
-    return struct(
-        getenv = environ.get,
-        os = struct(
-            name = os_name,
-            arch = arch_name,
-        ),
+def _pypi_mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
+    return mock_mctx(
+        modules = list(modules),
+        os_name = os_name,
+        arch_name = arch_name,
+        environ = environ,
         read = read or (lambda _: """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
     --hash=sha256:deadbaaf"""),
-        modules = [
-            struct(
-                name = modules[0].name,
-                tags = modules[0].tags,
-                is_root = modules[0].is_root,
-            ),
-        ] + [
-            struct(
-                name = mod.name,
-                tags = mod.tags,
-                is_root = False,
-            )
-            for mod in modules[1:]
-        ],
     )
 
 def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_root = True):
@@ -140,7 +126,7 @@ def _default(
 def _test_simple(env):
     pypi = _parse_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _pypi_mock_mctx(
             _mod(
                 name = "rules_python",
                 parse = [
@@ -187,7 +173,7 @@ _tests.append(_test_simple)
 def _test_build_pipstar_platform(env):
     config = _build_config(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _pypi_mock_mctx(
             _mod(
                 name = "rules_python",
                 default = [

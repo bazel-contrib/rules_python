@@ -18,29 +18,9 @@ load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:python.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:mocks.bzl", "mock_mctx")
 
 _tests = []
-
-def _mock_mctx(*modules, environ = {}, mocked_files = {}):
-    return struct(
-        path = lambda x: struct(exists = x in mocked_files, _file = x),
-        read = lambda x, watch = None: mocked_files[x._file if "_file" in dir(x) else x],
-        getenv = environ.get,
-        modules = [
-            struct(
-                name = modules[0].name,
-                tags = modules[0].tags,
-                is_root = modules[0].is_root,
-            ),
-        ] + [
-            struct(
-                name = mod.name,
-                tags = mod.tags,
-                is_root = False,
-            )
-            for mod in modules[1:]
-        ],
-    )
 
 # todo: change is_root to false by default. most modules aren't root
 def _mod(*, name, defaults = [], toolchain = [], override = [], single_version_override = [], single_version_platform_override = [], is_root = False):
@@ -148,7 +128,7 @@ def _single_version_platform_override(
 def _test_default_from_rules_python_when_rules_python_is_root(env):
     """Verify that rules_python (as root module) default is applied."""
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _rules_python_module(is_root = True),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -178,7 +158,7 @@ _tests.append(_test_default_from_rules_python_when_rules_python_is_root)
 def _test_default_from_rules_python_when_rules_python_is_not_root(env):
     """Verify that rules_python default applies when rules_python is not the root module."""
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _rules_python_module(),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -197,9 +177,11 @@ _tests.append(_test_default_from_rules_python_when_rules_python_is_not_root)
 
 def _test_default_with_patch_version(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "alpha", toolchain = [_toolchain("3.11.2")], is_root = True),
-            _rules_python_module(is_root = True),
+        module_ctx = mock_mctx(
+            modules = [
+                _mod(name = "alpha", toolchain = [_toolchain("3.11.2")], is_root = True),
+                _rules_python_module(is_root = True),
+            ],
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
@@ -217,7 +199,7 @@ _tests.append(_test_default_with_patch_version)
 
 def _test_toolchain_ordering(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 toolchain = [
@@ -264,7 +246,7 @@ _tests.append(_test_toolchain_ordering)
 
 def _test_default_from_defaults(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_root_module",
                 defaults = [_defaults(python_version = "3.11")],
@@ -291,7 +273,7 @@ _tests.append(_test_default_from_defaults)
 
 def _test_default_from_defaults_env(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_root_module",
                 defaults = [_defaults(python_version = "3.11", python_version_env = "PYENV_VERSION")],
@@ -319,7 +301,7 @@ _tests.append(_test_default_from_defaults_env)
 
 def _test_default_from_defaults_file(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_root_module",
                 defaults = [_defaults(python_version_file = "@@//:.python-version")],
@@ -347,7 +329,7 @@ _tests.append(_test_default_from_defaults_file)
 
 def _test_default_from_single_toolchain(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_root_module",
                 toolchain = [_toolchain("3.12")],
@@ -363,7 +345,7 @@ _tests.append(_test_default_from_single_toolchain)
 
 def _test_defaults_overrides_single_toolchain(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_root_module",
                 defaults = [
@@ -383,7 +365,7 @@ _tests.append(_test_defaults_overrides_single_toolchain)
 
 def _test_defaults_overrides_toolchains_setting_is_default(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_root_module",
                 defaults = [_defaults(python_version = "3.13")],
@@ -403,10 +385,12 @@ _tests.append(_test_defaults_overrides_toolchains_setting_is_default)
 
 def _test_first_occurance_of_the_toolchain_wins(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "my_module", is_root = True, toolchain = [_toolchain("3.12")]),
-            _mod(name = "some_module", toolchain = [_toolchain("3.12", configure_coverage_tool = True)]),
-            _rules_python_module(),
+        module_ctx = mock_mctx(
+            modules = [
+                _mod(name = "my_module", is_root = True, toolchain = [_toolchain("3.12")]),
+                _mod(name = "some_module", toolchain = [_toolchain("3.12", configure_coverage_tool = True)]),
+                _rules_python_module(),
+            ],
             environ = {
                 "RULES_PYTHON_BZLMOD_DEBUG": "1",
             },
@@ -444,7 +428,7 @@ _tests.append(_test_first_occurance_of_the_toolchain_wins)
 
 def _test_auth_overrides(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 toolchain = [_toolchain("3.12")],
@@ -486,7 +470,7 @@ _tests.append(_test_auth_overrides)
 
 def _test_add_new_version(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 is_root = True,
@@ -567,7 +551,7 @@ _tests.append(_test_add_new_version)
 
 def _test_register_all_versions(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 is_root = True,
@@ -633,7 +617,7 @@ _tests.append(_test_register_all_versions)
 
 def _test_ignore_unsupported_versions(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 is_root = True,
@@ -704,7 +688,7 @@ _tests.append(_test_ignore_unsupported_versions)
 
 def _test_add_patches(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 is_root = True,
@@ -783,7 +767,7 @@ _tests.append(_test_add_patches)
 def _test_fail_two_overrides(env):
     errors = []
     parse_modules(
-        module_ctx = _mock_mctx(
+        module_ctx = mock_mctx(
             _mod(
                 name = "my_module",
                 is_root = True,
@@ -815,7 +799,7 @@ def _test_single_version_override_errors(env):
     ]:
         errors = []
         parse_modules(
-            module_ctx = _mock_mctx(
+            module_ctx = mock_mctx(
                 _mod(
                     name = "my_module",
                     is_root = True,
@@ -854,7 +838,7 @@ def _test_single_version_platform_override_errors(env):
     ]:
         errors = []
         parse_modules(
-            module_ctx = _mock_mctx(
+            module_ctx = mock_mctx(
                 _mod(
                     name = "my_module",
                     toolchain = [_toolchain("3.13")],
