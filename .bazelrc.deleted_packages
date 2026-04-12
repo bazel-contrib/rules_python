@@ -17,7 +17,6 @@ common --deleted_packages=examples/multi_python_versions/requirements
 common --deleted_packages=examples/multi_python_versions/tests
 common --deleted_packages=examples/pip_parse
 common --deleted_packages=examples/pip_parse_vendored
-common --deleted_packages=examples/pip_repository_annotations
 common --deleted_packages=gazelle
 common --deleted_packages=gazelle/examples/bzlmod_build_file_generation
 common --deleted_packages=gazelle/examples/bzlmod_build_file_generation/other_module/other_module/pkg

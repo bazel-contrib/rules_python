@@ -21,24 +21,58 @@ PYTHONSTARTUP_SETS_VAR = """\
 foo = 1234
 """
 
+IS_WINDOWS = os.name == "nt"
+
 
 class ReplTest(unittest.TestCase):
     def setUp(self):
-        self.repl = rfiles.Rlocation("rules_python/python/bin/repl")
+        rpath = "rules_python/python/bin/repl"
+        if IS_WINDOWS:
+            rpath += ".exe"
+        self.repl = rfiles.Rlocation(rpath)
         assert self.repl
+        if IS_WINDOWS:
+            self.repl = os.path.normpath(self.repl)
 
     def run_code_in_repl(self, lines: Iterable[str], *, env=None) -> str:
         """Runs the lines of code in the REPL and returns the text output."""
+        input = "\n".join(lines)
         try:
             return subprocess.check_output(
                 [self.repl],
                 text=True,
                 stderr=subprocess.STDOUT,
-                input="\n".join(lines),
+                input=input,
                 env=env,
             ).strip()
         except subprocess.CalledProcessError as error:
             raise RuntimeError(f"Failed to run the REPL:\n{error.stdout}") from error
+        except Exception as exc:
+            if env:
+                env_str = "\n".join(
+                    f"{key}={value!r}" for key, value in sorted(env.items())
+                )
+            else:
+                env_str = "<inherited env>"
+            if isinstance(exc, subprocess.CalledProcessError):
+                stdout = exc.stdout
+            else:
+                stdout = "<unknown>"
+            exc.add_note(
+                f"""
+===== env start =====
+{env_str}
+===== env end =====
+===== input start =====
+{input}
+===== input end =====
+commmand: {self.repl}
+===== stdout start =====
+{stdout}
+===== stdout end =====
+"""
+            )
+            raise
 
     def test_repl_version(self):
         """Validates that we can successfully execute arbitrary code on the REPL."""

@@ -28,6 +28,7 @@ behavior.
 
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load(":argparse.bzl", "argparse")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_requirement.bzl", "requirement")
@@ -89,6 +90,8 @@ def parse_requirements(
     options = {}
     requirements = {}
     reqs_with_env_markers = {}
+    index_url = None
+    extra_index_urls = []
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -112,6 +115,18 @@ def parse_requirements(
                 if ";" in requirement_line:
                     reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
             options[plat] = pip_args
+
+            # Parse the index URL from the requirement files
+            index_url = argparse.index_url(pip_args, index_url)
+            extra_index_urls = argparse.extra_index_url(pip_args, [])
+            platform = argparse.platform(pip_args, [])
+            if platform:
+                # No use of downloader if the user specifies "--platform" pip arg. This means that
+                # they intend to use pip to download the wheels
+                #
+                # TODO @aignas 2026-04-11: consider removing this line in the next major release
+                # (3.0).
+                get_index_urls = None
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
@@ -181,6 +196,8 @@ def parse_requirements(
         index_urls = get_index_urls(
             ctx,
             distributions,
+            index_url = index_url,
+            extra_index_urls = extra_index_urls,
         )
 
     ret = []

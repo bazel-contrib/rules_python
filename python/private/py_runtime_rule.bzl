@@ -130,6 +130,7 @@ def _py_runtime_impl(ctx):
         abi_flags = abi_flags,
         site_init_template = ctx.file.site_init_template,
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
+        venv_bin_files = ctx.files.venv_bin_files,
     ))
 
     providers = [
@@ -360,6 +361,7 @@ See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
 """,
                 default = True,
             ),
+            "venv_bin_files": attr.label_list(allow_files = True),
             "zip_main_template": attr.label(
                 default = "//python/private/zipapp:zip_main_template",
                 allow_single_file = True,

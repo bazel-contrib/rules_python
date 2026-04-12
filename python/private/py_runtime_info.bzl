@@ -66,7 +66,8 @@ def _PyRuntimeInfo_init(
         zip_main_template = None,
         abi_flags = "",
         site_init_template = None,
-        supports_build_time_venv = True):
+        supports_build_time_venv = True,
+        venv_bin_files = None):
     if (interpreter_path and interpreter) or (not interpreter_path and not interpreter):
         fail("exactly one of interpreter or interpreter_path must be specified")
 
@@ -119,6 +120,7 @@ def _PyRuntimeInfo_init(
         "stage2_bootstrap_template": stage2_bootstrap_template,
         "stub_shebang": stub_shebang,
         "supports_build_time_venv": supports_build_time_venv,
+        "venv_bin_files": venv_bin_files,
         "zip_main_template": zip_main_template,
     }
 
@@ -334,6 +336,14 @@ to meet two criteria:
 
 :::{versionadded} 1.5.0
 :::
+""",
+        "venv_bin_files": """
+:type: list[File]
+
+Files that should be added to the venv's `bin/` (or platform-specific equivalent)
+directory (using the file's basename).
+
+:::{versionadded} 2.0.0
 """,
         "zip_main_template": """
 :type: File

@@ -311,12 +311,19 @@ def _which_unchecked(mrctx, binary_name):
     )
 
 def _which_describe_failure(binary_name, path):
+    if "\\" in path or ";" in path:
+        path_parts = path.split(";")
+    else:
+        path_parts = path.split(":")
+    for i, v in enumerate(path_parts):
+        path_parts[i] = "  [{}]: {}".format(i, v)
     return (
         "Unable to find the binary '{binary_name}' on PATH.\n" +
-        "  PATH = {path}"
+        "  PATH entries:\n" +
+        "{path_str}"
     ).format(
         binary_name = binary_name,
-        path = path,
+        path_str = "\n".join(path_parts),
     )
 
 def _mkdir(mrctx, path):

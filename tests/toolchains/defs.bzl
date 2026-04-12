@@ -57,4 +57,5 @@ def define_toolchain_tests(name):
             deps = ["//python/runfiles"],
             data = ["//tests/support:current_build_settings"],
             target_compatible_with = select(target_compatible_with),
+            size = "large",
         )

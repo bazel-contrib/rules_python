@@ -16,6 +16,10 @@ def _pbs_archive_impl(repository_ctx):
     urls = repository_ctx.attr.urls
     sha256s = repository_ctx.attr.sha256
 
+    # os.name for windows contain build and version; simplify it
+    if "windows" in os_name:
+        os_name = "windows"
+
     if os_name not in urls:
         fail("Unsupported OS: '{}'. Available OSs are: {}".format(
             os_name,

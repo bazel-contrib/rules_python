@@ -181,15 +181,12 @@ def _pip_parse(self, module_ctx, pip_attr):
         ))
         return
 
-    default_cross_setup = _set_get_index_urls(self, pip_attr)
+    _set_get_index_urls(self, pip_attr)
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
         config = self._config,
-        # TODO @aignas 2025-12-09: flip or part to default to 'os_arch' after
-        # 1.8.0 is released and set the default of the `target_platforms` attribute
-        # to `{os}_{arch}`.
-        target_platforms = pip_attr.target_platforms or ([] if default_cross_setup else ["{os}_{arch}"]),
+        target_platforms = pip_attr.target_platforms or ["{os}_{arch}"],
     )
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
@@ -197,8 +194,8 @@ def _pip_parse(self, module_ctx, pip_attr):
         self,
         module_ctx,
         pip_attr = pip_attr,
-        enable_pipstar = self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version),
-        enable_pipstar_extract = self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version),
+        enable_pipstar = bool(self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version)),
+        enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version)),
     )
 
 ### end of PUBLIC methods
@@ -368,18 +365,10 @@ def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
 ### end of setters, below we have various functions to implement the public methods
 
 def _set_get_index_urls(self, pip_attr):
-    if not pip_attr.experimental_index_url:
-        if pip_attr.experimental_extra_index_urls:
-            fail("'experimental_extra_index_urls' is a no-op unless 'experimental_index_url' is set")
-        elif pip_attr.experimental_index_url_overrides:
-            fail("'experimental_index_url_overrides' is a no-op unless 'experimental_index_url' is set")
-        elif pip_attr.simpleapi_skip:
-            fail("'simpleapi_skip' is a no-op unless 'experimental_index_url' is set")
-        elif pip_attr.netrc:
-            fail("'netrc' is a no-op unless 'experimental_index_url' is set")
-        elif pip_attr.auth_patterns:
-            fail("'auth_patterns' is a no-op unless 'experimental_index_url' is set")
+    default_index_url = pip_attr.experimental_index_url or self._config.index_url
+    default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
+    if not default_index_url:
         # parallel_download is set to True by default, so we are not checking/validating it
         # here
         return False
@@ -389,11 +378,14 @@ def _set_get_index_urls(self, pip_attr):
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
     })
-    self._get_index_urls[python_version] = lambda ctx, distributions: self._simpleapi_download_fn(
+    self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = pip_attr.experimental_index_url,
-            extra_index_urls = pip_attr.experimental_extra_index_urls or [],
+            index_url = (index_url or default_index_url).rstrip("/"),
+            extra_index_urls = [
+                x.rstrip("/")
+                for x in (extra_index_urls or default_extra_index_urls)
+            ],
             index_url_overrides = pip_attr.experimental_index_url_overrides or {},
             sources = {
                 d: versions
@@ -402,8 +394,8 @@ def _set_get_index_urls(self, pip_attr):
             },
             envsubst = pip_attr.envsubst,
             # Auth related info
-            netrc = pip_attr.netrc,
-            auth_patterns = pip_attr.auth_patterns,
+            netrc = self._config.netrc or pip_attr.netrc,
+            auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
         ),
         cache = self._simpleapi_cache,
         parallel_download = pip_attr.parallel_download,
@@ -603,7 +595,7 @@ def _create_whl_repos(
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,
-                use_downloader = _use_downloader(self, pip_attr.python_version, whl.name),
+                use_downloader = src.url and _use_downloader(self, pip_attr.python_version, whl.name),
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,

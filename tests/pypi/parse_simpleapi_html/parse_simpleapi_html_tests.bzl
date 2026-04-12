@@ -42,6 +42,29 @@ def _generate_html(*items):
         ]),
     )
 
+def _test_index(env):
+    # buildifier: disable=unsorted-dict-items
+    tests = [
+        (
+            [
+                struct(attrs = ['href="/simple/foo/"'], filename = "foo"),
+                struct(attrs = ['href="./b-ar/"'], filename = "b-._.-aR"),
+            ],
+            {
+                "b_ar": "./b-ar/",
+                "foo": "/simple/foo/",
+            },
+        ),
+    ]
+
+    for (input, want) in tests:
+        html = _generate_html(*input)
+        got = parse_simpleapi_html(content = html, parse_index = True)
+
+        env.expect.that_dict(got).contains_exactly(want)
+
+_tests.append(_test_index)
+
 def _test_sdist(env):
     # buildifier: disable=unsorted-dict-items
     tests = [
@@ -65,7 +88,7 @@ def _test_sdist(env):
             struct(
                 attrs = [
                     'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
-                    'data-requires-python="&gt;=3.7"',
+                    'data-requires-python=">=3.7"',
                     "data-yanked",
                 ],
                 filename = "foo-0.0.1.tar.gz",
@@ -82,7 +105,7 @@ def _test_sdist(env):
             struct(
                 attrs = [
                     'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha256=deadbeefasource"',
-                    'data-requires-python="&gt;=3.7"',
+                    'data-requires-python="<=3.7"',
                     "data-yanked=\"Something &#10;with &quot;quotes&quot;&#10;over two lines\"",
                 ],
                 filename = "foo-0.0.1.tar.gz",

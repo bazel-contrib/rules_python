@@ -30,6 +30,9 @@ common --incompatible_use_plus_in_repo_names
 # See https://github.com/bazel-contrib/rules_python/issues/3655
 common --incompatible_strict_action_env=false
 
+# To work around bug on bazel 7
+common:ci --experimental_repository_cache_hardlinks=false
+
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
 
@@ -38,6 +41,7 @@ common --enable_bzlmod
 
 # Local disk cache greatly speeds up builds if the regular cache is lost
 common --disk_cache=~/.cache/bazel/bazel-disk-cache
+
 
 # Additional config to use for readthedocs builds.
 # See .readthedocs.yml for additional flags that can only be determined from
@@ -50,3 +54,7 @@ common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
+
+import %workspace%/specialized_configs.bazelrc
+
+try-import user.bazelrc

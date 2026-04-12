@@ -3,7 +3,7 @@
 def _get_root_directory(url):
     scheme_end = url.find("://")
     if scheme_end == -1:
-        fail("Invalid URL format")
+        fail("Invalid URL format: '{}'".format(url))
 
     scheme = url[:scheme_end]
     host_end = url.find("/", scheme_end + 3)

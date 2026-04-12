@@ -1,0 +1,30 @@
+module(
+    name = "sphinxdocs_example",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "sphinxdocs", version = "0.0.0")
+local_path_override(
+    module_name = "sphinxdocs",
+    path = "../..",
+)
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+dev_pip = use_extension(
+    "@rules_python//python/extensions:pip.bzl",
+    "pip",
+    dev_dependency = True,
+)
+dev_pip.parse(
+    hub_name = "dev_pip",
+    python_version = "3.11",
+    requirements_lock = "@rules_python//docs:requirements.txt",
+)
+use_repo(dev_pip, "dev_pip")
+
+bazel_dep(name = "bazel_skylib", version = "1.8.2")

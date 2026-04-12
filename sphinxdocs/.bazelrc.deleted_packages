@@ -1,1 +1,1 @@
-common --deleted_packages=sphinxdocs/integration_tests/bcr
+common --deleted_packages=integration_tests/bcr

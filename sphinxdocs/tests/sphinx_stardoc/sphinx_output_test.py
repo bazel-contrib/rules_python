@@ -1,9 +1,8 @@
 import importlib.resources
 from xml.etree import ElementTree
 
+import tests.sphinx_stardoc as sphinx_stardoc
 from absl.testing import absltest, parameterized
-
-from sphinxdocs.tests import sphinx_stardoc
 
 
 class SphinxOutputTest(parameterized.TestCase):

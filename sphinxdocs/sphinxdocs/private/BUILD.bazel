@@ -18,7 +18,7 @@ load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 
 package(
-    default_visibility = ["//sphinxdocs:__subpackages__"],
+    default_visibility = ["//:__subpackages__"],
 )
 
 # These are only exported because they're passed as files to the @sphinxdocs

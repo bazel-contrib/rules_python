@@ -60,6 +60,11 @@ filegroup(
 # Keep sorted by library name and keep the files named by the main symbol they export
 
 bzl_library(
+    name = "argparse_bzl",
+    srcs = ["argparse.bzl"],
+)
+
+bzl_library(
     name = "attrs_bzl",
     srcs = ["attrs.bzl"],
 )
@@ -224,6 +229,7 @@ bzl_library(
     name = "parse_requirements_bzl",
     srcs = ["parse_requirements.bzl"],
     deps = [
+        ":argparse_bzl",
         ":index_sources_bzl",
         ":parse_requirements_txt_bzl",
         ":pypi_repo_utils_bzl",
@@ -244,6 +250,7 @@ bzl_library(
     srcs = ["parse_simpleapi_html.bzl"],
     deps = [
         ":version_from_filename_bzl",
+        "//python/private:normalize_name_bzl",
     ],
 )
 
@@ -402,6 +409,7 @@ bzl_library(
     name = "requirements_files_by_platform_bzl",
     srcs = ["requirements_files_by_platform.bzl"],
     deps = [
+        ":argparse_bzl",
         ":whl_target_platforms_bzl",
     ],
 )
@@ -424,8 +432,6 @@ bzl_library(
         ":urllib_bzl",
         "//python/private:auth_bzl",
         "//python/private:normalize_name_bzl",
-        "//python/private:text_util_bzl",
-        "@bazel_features//:features",
     ],
 )
 

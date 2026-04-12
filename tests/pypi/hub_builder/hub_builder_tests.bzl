@@ -59,6 +59,7 @@ def hub_builder(
             # no need to evaluate the markers with the interpreter
             enable_pipstar = enable_pipstar,
             enable_pipstar_extract = enable_pipstar_extract,
+            index_url = "https://pypi.org/simple",
             platforms = {
                 "{}_{}{}".format(os, cpu, freethreaded): _plat(
                     name = "{}_{}{}".format(os, cpu, freethreaded),
@@ -247,12 +248,19 @@ def _test_simple_extras_vs_no_extras(env):
 _tests.append(_test_simple_extras_vs_no_extras)
 
 def _test_simple_extras_vs_no_extras_simpleapi(env):
-    def mockread_simpleapi(*_, **__):
+    def mockread_simpleapi(*_, parse_index, **__):
+        if parse_index:
+            content = """\
+    <a href="/simple/>simple</a><br/>
+"""
+        else:
+            content = """\
+    <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
+"""
         return struct(
             output = parse_simpleapi_html(
-                content = """\
-    <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
-""",
+                content = content,
+                parse_index = parse_index,
             ),
             success = True,
         )
@@ -278,6 +286,7 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             requirements_darwin = "darwin.txt",
             requirements_windows = "win.txt",
             experimental_index_url = "https://example.com",
+            target_platforms = ["osx_aarch64", "windows_aarch64"],
         ),
     )
     pypi = builder.build()
@@ -489,10 +498,13 @@ def _test_simple_with_markers(env):
 _tests.append(_test_simple_with_markers)
 
 def _test_torch_experimental_index_url(env):
-    def mockread_simpleapi(*_, **__):
-        return struct(
-            output = parse_simpleapi_html(
-                content = """\
+    def mockread_simpleapi(*_, parse_index, **__):
+        if parse_index:
+            content = """\
+    <a href="/ignored/">torch</a>
+"""
+        else:
+            content = """\
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-linux_x86_64.whl#sha256=833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6">torch-2.4.1+cpu-cp310-cp310-linux_x86_64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-win_amd64.whl#sha256=1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202">torch-2.4.1+cpu-cp310-cp310-win_amd64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf">torch-2.4.1+cpu-cp311-cp311-linux_x86_64.whl</a><br/>
@@ -513,7 +525,12 @@ def _test_torch_experimental_index_url(env):
     <a href="/whl/cpu/torch-2.4.1-cp38-none-macosx_11_0_arm64.whl#sha256=5fc1d4d7ed265ef853579caf272686d1ed87cebdcd04f2a498f800ffc53dab71">torch-2.4.1-cp38-none-macosx_11_0_arm64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e">torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1-cp39-none-macosx_11_0_arm64.whl#sha256=a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec">torch-2.4.1-cp39-none-macosx_11_0_arm64.whl</a><br/>
-""",
+"""
+
+        return struct(
+            output = parse_simpleapi_html(
+                content = content,
+                parse_index = parse_index,
             ),
             success = True,
         )
@@ -524,6 +541,7 @@ def _test_torch_experimental_index_url(env):
             netrc = None,
             enable_pipstar = True,
             enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
             auth_patterns = {},
             platforms = {
                 "{}_{}".format(os, cpu): _plat(
@@ -594,6 +612,16 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             python_version = "3.12",
             experimental_index_url = "https://torch.index",
             requirements_lock = "universal.txt",
+            target_platforms = [
+                "linux_x86_64",
+                "linux_aarch64",
+                # this should be ignored as well because there is no sdist and no whls
+                # for intel Macs
+                "osx_x86_64",
+                "osx_aarch64",
+                "windows_x86_64",
+                "windows_aarch64",
+            ],
         ),
     )
     pypi = builder.build()
@@ -787,7 +815,7 @@ def _test_simple_get_index(env):
                 sha256s_by_version = {
                     "0.0.4": ["deadb44f"],
                 },
-                index_url = "",
+                index_url = "https://pypi.org/simple",
             ),
             "simple": struct(
                 whls = {
@@ -806,7 +834,7 @@ def _test_simple_get_index(env):
                         url = "example.org",
                     ),
                 },
-                index_url = "",
+                index_url = "https://pypi.org/simple",
             ),
             "some_other_pkg": struct(
                 whls = {
@@ -857,9 +885,15 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             hub_name = "pypi",
             python_version = "3.15",
             requirements_lock = "requirements.txt",
-            experimental_index_url = "pypi.org",
             extra_pip_args = [
                 "--extra-args-for-sdist-building",
+            ],
+            target_platforms = [
+                "linux_aarch64",
+                "linux_x86_64",
+                "linux_x86_64_freethreaded",
+                "osx_aarch64",
+                "windows_aarch64",
             ],
         ),
     )
@@ -1012,6 +1046,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
+            "index_url": "https://pypi.org/simple",
             "requirement": "plat_pkg==0.0.4",
             "sha256": "deadb44f",
             "urls": ["example2.org/index/plat_pkg/"],
@@ -1020,6 +1055,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": "https://pypi.org/simple",
             "requirement": "simple==0.0.1",
             "sha256": "deadb00f",
             "urls": ["example2.org"],
@@ -1049,7 +1085,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                 auth_patterns = {},
                 envsubst = {},
                 extra_index_urls = [],
-                index_url = "pypi.org",
+                index_url = "https://pypi.org/simple",
                 index_url_overrides = {},
                 netrc = None,
                 sources = {
@@ -1122,6 +1158,7 @@ def _test_pipstar_platforms(env):
         config = struct(
             enable_pipstar = True,
             enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
             netrc = None,
             auth_patterns = {},
             platforms = {
@@ -1207,6 +1244,7 @@ def _test_pipstar_platforms_limit(env):
         config = struct(
             enable_pipstar = True,
             enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
             netrc = None,
             auth_patterns = {},
             platforms = {

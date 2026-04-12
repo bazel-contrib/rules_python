@@ -9,6 +9,10 @@ import zipfile
 from tools.private.zipapp import zipper
 
 
+def symlink_target_path(p):
+    return p.replace("/", os.sep)
+
+
 class ZipperTest(unittest.TestCase):
     def setUp(self):
         self.test_dir = pathlib.Path(tempfile.mkdtemp())
@@ -26,6 +30,8 @@ class ZipperTest(unittest.TestCase):
             "workspace_name": "my_ws",
             "legacy_external_runfiles": False,
             "runfiles_dir": "runfiles",
+            # We need to generate paths for the platform we're running on.
+            "platform_pathsep": os.sep,
         }
         defaults.update(kwargs)
         zipper.create_zip(**defaults)
@@ -89,6 +95,77 @@ class ZipperTest(unittest.TestCase):
             )
             self.assertZipFileContent(zf, "runfiles/root_file", content="content1")
             self.assertZipFileContent(zf, "runfiles/my_ws/empty_file", content="")
+
+    def test_create_zip_with_direct_symlink(self):
+        # Test the 'symlink' manifest entry type
+        manifest_content = [
+            "symlink|path/to/link|target/path",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        self._create_zip()
+
+        with zipfile.ZipFile(self.output_zip, "r") as zf:
+            self.assertEqual(zf.namelist(), ["runfiles/path/to/link"])
+            self.assertZipFileContent(
+                zf,
+                "runfiles/path/to/link",
+                is_symlink=True,
+                target=symlink_target_path("../../target/path"),
+            )
+
+    def test_pathsep_normalization(self):
+        # Test that pathsep="\\" normalizes paths
+        file1_path = self.test_dir / "file1.txt"
+        file1_path.write_text("content1")
+
+        manifest_content = [
+            f"regular|0|dir/file.txt|{file1_path}",
+            "symlink|link/path|target/path",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        # Use backslash as platform_pathsep
+        self._create_zip(platform_pathsep="\\")
+
+        with zipfile.ZipFile(self.output_zip, "r") as zf:
+            # zipfile.namelist() always returns with forward slashes
+            # But the content of the symlink should be normalized if it was passed through path_norm
+            self.assertEqual(
+                set(zf.namelist()),
+                {"dir/file.txt", "runfiles/link/path"},
+            )
+            # The target of the symlink should have backslashes
+            self.assertZipFileContent(
+                zf,
+                "runfiles/link/path",
+                is_symlink=True,
+                target="..\\target\\path",
+            )
+
+    def test_symlink_precedence(self):
+        # Test that 'symlink' entries take precedence over others for the same path
+        file1_path = self.test_dir / "file1.txt"
+        file1_path.write_text("content1")
+
+        manifest_content = [
+            # Same zip path: runfiles/my_ws/path/to/file
+            f"rf-file|0|path/to/file|{file1_path}",
+            "symlink|my_ws/path/to/file|symlink/target",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        self._create_zip()
+
+        with zipfile.ZipFile(self.output_zip, "r") as zf:
+            self.assertEqual(zf.namelist(), ["runfiles/my_ws/path/to/file"])
+            # It should be the symlink, not the file
+            self.assertZipFileContent(
+                zf,
+                "runfiles/my_ws/path/to/file",
+                is_symlink=True,
+                target=symlink_target_path("../../../symlink/target"),
+            )
 
     def test_timestamps_are_deterministic(self):
         # Create a content file with a specific recent timestamp
@@ -208,6 +285,54 @@ class ZipperTest(unittest.TestCase):
                     "z/regular",
                 ],
             )
+
+    def _extract_zip(self, zip_path, extract_dir):
+        # Manually extract to preserve symlinks
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for info in zf.infolist():
+                extract_path = extract_dir / info.filename
+                extract_path.parent.mkdir(parents=True, exist_ok=True)
+                if self.is_symlink(info):
+                    target = zf.read(info).decode()
+                    # On Windows, relative symlinks must use backslashes to be readable
+                    os.symlink(target, extract_path)
+                else:
+                    with zf.open(info) as src, open(extract_path, "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+
+    def test_symlink_extraction(self):
+        # Test that 'symlink' entries extract correctly as relative symlinks
+        # Create a file that the symlink will point to
+        target_file = self.test_dir / "target_file.txt"
+        target_file.write_text("target content")
+
+        manifest_content = [
+            f"rf-file|0|target/path|{target_file}",
+            "symlink|my_ws/path/to/link|my_ws/target/path",
+            f"rf-file|0|same_dir_target|{target_file}",
+            "symlink|my_ws/same_dir_link|my_ws/same_dir_target",
+        ]
+        self.manifest_path.write_text("\n".join(manifest_content))
+
+        self._create_zip(workspace_name="my_ws")
+
+        extract_dir = self.test_dir / "extract"
+        extract_dir.mkdir()
+
+        self._extract_zip(self.output_zip, extract_dir)
+
+        link_path = extract_dir / "runfiles/my_ws/path/to/link"
+        self.assertTrue(link_path.is_symlink(), f"{link_path} should be a symlink")
+        self.assertEqual(
+            os.readlink(link_path), "../../target/path".replace("/", os.path.sep)
+        )
+        self.assertEqual(link_path.read_text(), "target content")
+
+        link2_path = extract_dir / "runfiles/my_ws/same_dir_link"
+        self.assertTrue(link2_path.is_symlink(), f"{link2_path} should be a symlink")
+        # Relative path from runfiles/my_ws/ to runfiles/my_ws/same_dir_target is just same_dir_target
+        self.assertEqual(os.readlink(link2_path), "same_dir_target")
+        self.assertEqual(link2_path.read_text(), "target content")
 
     def is_symlink(self, zip_info):
         # Check upper 4 bits of external_attr for S_IFLNK

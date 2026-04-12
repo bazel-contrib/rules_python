@@ -44,19 +44,12 @@ def _test_basic_windows(name, config):
         impl = _test_basic_windows_impl,
         target = name + "_subject",
         config_settings = {
-            # NOTE: The default for this flag is based on the Bazel host OS, not
-            # the target platform. For windows, it defaults to true, so force
-            # it to that to match behavior when this test runs on other
-            # platforms.
-            # Pass value to both native and starlark versions of the flag until
-            # the native one is removed.
-            labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
-        } | maybe_builtin_build_python_zip("true"),
+        },
         attr_values = {},
     )
 
@@ -64,7 +57,7 @@ def _test_basic_windows_impl(env, target):
     target = env.expect.that_target(target)
     target.executable().path().contains(".exe")
     target.runfiles().contains_predicate(matching.str_endswith(
-        target.meta.format_str("/{name}.zip"),
+        target.meta.format_str("/{name}"),
     ))
     target.runfiles().contains_predicate(matching.str_endswith(
         target.meta.format_str("/{name}.exe"),
@@ -246,9 +239,9 @@ def _test_debugger_impl(env, targets):
 
     # #3481: Ensure that venv site-packages is setup correctly, if the dependency is coming
     # from pip integration.
-    env.expect.that_target(targets.target_venv).runfiles().contains_at_least([
-        "{workspace}/{package}/_{name}.venv/lib/python3.13/site-packages/{test_name}_debugger_venv.py",
-    ])
+    env.expect.that_target(targets.target_venv).runfiles().contains_predicate(
+        matching.str_endswith("site-packages/test_debugger_debugger_venv.py"),
+    )
 
     # 3. Subject exec
 

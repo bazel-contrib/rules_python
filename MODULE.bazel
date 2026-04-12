@@ -65,9 +65,8 @@ register_toolchains("@pythons_hub//:all")
 
 pip = use_extension("//python/extensions:pip.bzl", "pip")
 
-# NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility with the
-# current `experimental_index_url` implementation. Whilst we stabilize the API this list may be
-# updated with a mention in the CHANGELOG.
+# NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility. Whilst we
+# stabilize the API this list may be updated with a mention in the CHANGELOG.
 [
     pip.default(
         arch_name = cpu,
@@ -223,7 +222,7 @@ bazel_dep(name = "rules_testing", version = "0.6.0", dev_dependency = True)
 bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
-bazel_dep(name = "rules_pkg", version = "1.0.1", dev_dependency = True)
+bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
 bazel_dep(name = "other", version = "0", dev_dependency = True)
 bazel_dep(name = "another_module", version = "0", dev_dependency = True)
 
@@ -306,7 +305,6 @@ dev_pip = use_extension(
 [
     dev_pip.parse(
         download_only = True,
-        experimental_index_url = "https://pypi.org/simple",
         hub_name = "dev_pip",
         parallel_download = False,
         python_version = python_version,
@@ -329,7 +327,6 @@ dev_pip = use_extension(
 
 dev_pip.parse(
     download_only = True,
-    experimental_index_url = "https://pypi.org/simple",
     hub_name = "pypiserver",
     python_version = "3.11",
     requirements_lock = "//examples/wheel:requirements_server.txt",
@@ -385,7 +382,7 @@ uv = use_extension("//python/uv:uv.bzl", "uv")
 uv.default(
     base_url = "https://github.com/astral-sh/uv/releases/download",
     manifest_filename = "dist-manifest.json",
-    version = "0.6.3",
+    version = "0.11.2",
 )
 uv.default(
     compatible_with = [
@@ -400,13 +397,6 @@ uv.default(
         "@platforms//cpu:aarch64",
     ],
     platform = "aarch64-unknown-linux-gnu",
-)
-uv.default(
-    compatible_with = [
-        "@platforms//os:linux",
-        "@platforms//cpu:ppc",
-    ],
-    platform = "powerpc64-unknown-linux-gnu",
 )
 uv.default(
     compatible_with = [
@@ -460,7 +450,7 @@ uv_dev = use_extension(
     dev_dependency = True,
 )
 uv_dev.configure(
-    version = "0.6.2",
+    version = "0.11.2",
 )
 
 # Temporarily comment out these flag aliases because they break Bazel 9
