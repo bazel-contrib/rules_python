@@ -162,10 +162,10 @@ def _test_simple_multiple_requirements(env):
         builder = hub_builder(env)
         builder.pip_parse(
             mocks.mctx(
-                read = lambda x: {
+                mock_files = {
                     "darwin.txt": "simple==0.0.2 --hash=sha256:deadb00f",
                     "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -208,10 +208,10 @@ def _test_simple_extras_vs_no_extras(env):
         builder = hub_builder(env)
         builder.pip_parse(
             mocks.mctx(
-                read = lambda x: {
+                mock_files = {
                     "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                     "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -273,10 +273,10 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
     )
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                 "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -349,12 +349,12 @@ def _test_simple_multiple_python_versions(env):
     )
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "requirements_3_15.txt": """
 simple==0.0.1 --hash=sha256:deadbeef
 old-package==0.0.1 --hash=sha256:deadbaaf
 """,
-            }[x],
+            },
             os_name = "linux",
             arch_name = "amd64",
         ),
@@ -366,12 +366,12 @@ old-package==0.0.1 --hash=sha256:deadbaaf
     )
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "requirements_3_16.txt": """
 simple==0.0.2 --hash=sha256:deadb00f
 new-package==0.0.1 --hash=sha256:deadb00f2
 """,
-            }[x],
+            },
             os_name = "linux",
             arch_name = "amd64",
         ),
@@ -454,13 +454,13 @@ def _test_simple_with_markers(env):
         )
         builder.pip_parse(
             mocks.mctx(
-                read = lambda x: {
+                mock_files = {
                     "universal.txt": """\
     torch==2.4.1+cpu ; platform_machine == 'x86_64'
     torch==2.4.1 ; platform_machine != 'x86_64' \
         --hash=sha256:deadbeef
     """,
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -576,7 +576,7 @@ def _test_torch_experimental_index_url(env):
     )
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "universal.txt": """\
 torch==2.4.1 ; platform_machine != 'x86_64' \
     --hash=sha256:1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e \
@@ -603,7 +603,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     --hash=sha256:c4f2c3c026e876d4dad7629170ec14fff48c076d6c2ae0e354ab3fdc09024f00
     # via -r requirements.in
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -769,9 +769,9 @@ simple==0.0.1 --hash=sha256:deadb00f
         )
         builder.pip_parse(
             _mock_mctx(
-                read = lambda x: {
+                mock_files = {
                     "requirements.txt": test.requirements_txt,
-                }[x],
+                },
             ),
             _parse(
                 hub_name = "pypi",
@@ -833,7 +833,7 @@ def _test_download_only_multiple(env):
     builder = hub_builder(env)
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "requirements.linux_x86_64.txt": """\
 --platform=manylinux_2_17_x86_64
 --python-version=315
@@ -854,7 +854,7 @@ extra==0.0.1 \
 simple==0.0.3 \
     --hash=sha256:deadbaaf
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -996,7 +996,7 @@ def _test_simple_get_index(env):
     )
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "requirements.txt": """
 simple==0.0.1 \
     --hash=sha256:deadbeef \
@@ -1010,7 +1010,7 @@ pip_fallback==0.0.1
 direct_sdist_without_sha @ some-archive/any-name.tar.gz
 git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1244,12 +1244,12 @@ def _test_optimum_sys_platform_extra(env):
         )
         builder.pip_parse(
             mocks.mctx(
-                read = lambda x: {
+                mock_files = {
                     "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
 optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 """,
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -1312,12 +1312,12 @@ def _test_pipstar_platforms(env):
     )
     builder.pip_parse(
         mocks.mctx(
-            read = lambda x: {
+            mock_files = {
                 "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
 optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1400,12 +1400,12 @@ def _test_pipstar_platforms_limit(env):
         mocks.mctx(
             os_name = "linux",
             arch_name = "amd64",
-            read = lambda x: {
+            mock_files = {
                 "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
 optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1452,9 +1452,9 @@ def _test_err_duplicate_repos(env):
         _mock_mctx(
             os_name = "osx",
             arch_name = "aarch64",
-            read = lambda x: {
+            mock_files = {
                 "requirements.txt": "foo==0.0.1",
-            }.get(getattr(x, "_path", str(x)), ""),
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1466,9 +1466,9 @@ def _test_err_duplicate_repos(env):
         _mock_mctx(
             os_name = "osx",
             arch_name = "aarch64",
-            read = lambda x: {
+            mock_files = {
                 "requirements.txt": "foo==0.0.1",
-            }.get(getattr(x, "_path", str(x)), ""),
+            },
         ),
         _parse(
             hub_name = "pypi",

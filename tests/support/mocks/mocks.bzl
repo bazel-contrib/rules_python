@@ -112,17 +112,25 @@ def _mctx_read(self, x, watch = None):
 def _mctx_path(self, x):
     return _path_new(str(x), self.mock_files)
 
-def _mctx_download(self, *args, **kwargs):
-    _ = self, args, kwargs  # @unused
-    return struct(
-        success = True,
-        wait = lambda: struct(
-            success = True,
-        ),
-    )
+def _mctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = ""):
+    _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity  # @unused
+    urls = url if type(url) == "list" else [url]
+    for u in urls:
+        if u in self.mock_downloads:
+            content = self.mock_downloads[u]
+            if type(content) == "string":
+                out = str(output) if output else u.split("/")[-1]
+                self.mock_files[out] = content
+                return struct(success = True, wait = lambda: struct(success = True))
+            else:
+                return content(self, u, output, sha256, executable, allow_fail, canonical_id, auth, headers, integrity)
+    
+    if not allow_fail:
+        fail("Download not mocked for url: " + str(urls))
+    return struct(success = False, wait = lambda: struct(success = False))
 
 def _mctx_report_progress(self, message):
-    _ = self, message  # @unused
+    self.report_progress_calls.append(message)
     return None
 
 def _mctx_add_module(self, **kwargs):
@@ -146,11 +154,9 @@ def _mctx_new(
         modules = None,
         environ = None,
         mock_files = None,
+        mock_downloads = None,
         os_name = "linux",
         arch_name = "x86_64",
-        read = None,
-        download = None,
-        report_progress = None,
         facts = None):
     """Create a mock module_ctx object.
 
@@ -159,11 +165,9 @@ def _mctx_new(
         modules: {type}`list[MockModule]` List of mock modules (alternative to positional args).
         environ: {type}`dict[string, string]` Dict of environment variables.
         mock_files: {type}`dict[string, string]` Dict mapping path strings to content.
+        mock_downloads: {type}`dict[string, string|callable]` Dict mapping url to string or callable.
         os_name: {type}`string` The OS name.
         arch_name: {type}`string` The architecture name.
-        read: {type}`callable` Optional read function.
-        download: {type}`callable` Optional download function.
-        report_progress: {type}`callable` Optional report_progress function.
         facts: {type}`dict` Optional facts dict.
 
     Returns:
@@ -177,28 +181,33 @@ def _mctx_new(
 
     environ = environ or {}
     mock_files = mock_files or {}
+    mock_downloads = mock_downloads or {}
 
     # buildifier: disable=uninitialized
     self = struct(
         mock_files = mock_files,
+        mock_downloads = mock_downloads,
+        report_progress_calls = [],
         getenv = environ.get,
         facts = facts,
         os = struct(
             name = os_name,
             arch = arch_name,
-        ),
+    ),
         modules = list(modules),
     )
     return struct(
         mock_files = self.mock_files,
+        mock_downloads = self.mock_downloads,
+        report_progress_calls = self.report_progress_calls,
         getenv = self.getenv,
         facts = self.facts,
         os = self.os,
         modules = self.modules,
         path = lambda *a, **k: _mctx_path(self, *a, **k),
-        read = read or (lambda *a, **k: _mctx_read(self, *a, **k)),
-        download = download or (lambda *a, **k: _mctx_download(self, *a, **k)),
-        report_progress = report_progress or (lambda *a, **k: _mctx_report_progress(self, *a, **k)),
+        read = lambda *a, **k: _mctx_read(self, *a, **k),
+        download = lambda *a, **k: _mctx_download(self, *a, **k),
+        report_progress = lambda *a, **k: _mctx_report_progress(self, *a, **k),
         add_module = lambda **k: _mctx_add_module(self, **k),
     )
 
@@ -316,7 +325,7 @@ def _rctx_new(
         os = struct(
             name = os_name,
             arch = arch_name,
-        ),
+    ),
         os_environ = environ,
         path = lambda *a, **k: _rctx_path(self, *a, **k),
         read = lambda *a, **k: _rctx_read(self, *a, **k),
@@ -361,7 +370,7 @@ def _glob_new():
             fail("Mock glob missing for invocation: args={} kwargs={}".format(
                 args,
                 kwargs,
-            ))
+        ))
         return results.pop(0)
 
     return struct(

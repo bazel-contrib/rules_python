@@ -68,8 +68,9 @@ def _uv_mock_mctx(*modules, download = None, read = None):
 
     return mocks.mctx(
         modules = list(modules),
-        download = download,
-        read = read,
+        mock_downloads = {
+            "https://example.org/1.0.0/manifest.json": download
+        } if download else {},
         mock_files = fake_fs,
     )
 
@@ -183,7 +184,7 @@ def _test_manual_url_spec(env):
                 configure = [
                     _configure(
                         platform = "linux",
-                        urls = ["https://example.org/download.zip"],
+                        urls = ["https://example.org/1.0.0/manifest.json.zip"],
                         sha256 = "deadbeef",
                     ),
                 ],
@@ -208,7 +209,7 @@ def _test_manual_url_spec(env):
             "name": "uv_1_0_0_linux",
             "platform": "linux",
             "sha256": "deadbeef",
-            "urls": ["https://example.org/download.zip"],
+            "urls": ["https://example.org/1.0.0/manifest.json.zip"],
             "version": "1.0.0",
         },
     ])

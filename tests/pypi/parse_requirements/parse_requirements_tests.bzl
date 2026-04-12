@@ -101,7 +101,6 @@ bar==0.0.1 --hash=sha256:deadb00f
     return mocks.mctx(
         os_name = "linux",
         arch_name = "x86_64",
-        read = lambda x: testdata[x],
         mock_files = testdata,
     )
 

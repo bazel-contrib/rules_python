@@ -29,10 +29,12 @@ def _pypi_mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", enviro
         os_name = os_name,
         arch_name = arch_name,
         environ = environ,
-        read = read or (lambda _: """\
+        mock_files = {
+            "requirements.txt": """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf"""),
+    --hash=sha256:deadbaaf"""
+        },
     )
 
 def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_root = True):
