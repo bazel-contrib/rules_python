@@ -1,0 +1,3 @@
+load(":argparse_tests.bzl", "argparse_test_suite")
+
+argparse_test_suite(name = "argparse_tests")
