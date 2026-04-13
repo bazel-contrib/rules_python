@@ -46,7 +46,7 @@ load(
 )
 
 _NO_MATCH_ERROR_TEMPLATE = """\
-No matching wheel for current configuration's Python version.
+No matching wheel for current configuration's Python version and platform.
 
 The current build configuration's Python version doesn't match any of the Python
 wheels available for this distribution. This distribution supports the following Python
