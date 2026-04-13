@@ -112,6 +112,20 @@ def _mctx_read(self, x, watch = None):
 def _mctx_path(self, x):
     return _path_new(str(x), self.mock_files)
 
+def _get_download_file_name(url, output = ""):
+    """Compute the download file name.
+
+    Args:
+        url: {type}`string` The URL being downloaded.
+        output: {type}`string` The explicit output path, if any.
+
+    Returns:
+        {type}`string` The file name.
+    """
+    if output:
+        return str(output)
+    return str(url).split("?")[0].split("/")[-1]
+
 def _mctx_download(
         self,
         url,
@@ -144,7 +158,7 @@ def _mctx_download(
 
         if content != None:
             if type(content) == "string":
-                out = str(output) if output else u.split("/")[-1]
+                out = _get_download_file_name(u, output)
                 self.mock_files[out] = content
                 return struct(
                     success = True,
@@ -239,21 +253,13 @@ def _mctx_new(
             arch = arch_name,
         ),
         modules = list(modules),
-    )
-    return struct(
-        mock_files = self.mock_files,
-        mock_downloads = self.mock_downloads,
-        report_progress_calls = self.report_progress_calls,
-        getenv = self.getenv,
-        facts = self.facts,
-        os = self.os,
-        modules = self.modules,
         path = lambda *a, **k: _mctx_path(self, *a, **k),
         read = lambda *a, **k: _mctx_read(self, *a, **k),
         download = lambda *a, **k: _mctx_download(self, *a, **k),
         report_progress = lambda *a, **k: _mctx_report_progress(self, *a, **k),
         add_module = lambda **k: _mctx_add_module(self, **k),
     )
+    return self
 
 def _rctx_read(self, x):
     path_str = x._path if hasattr(x, "_path") else str(x)
@@ -330,8 +336,8 @@ def _rctx_download(
         if u in self.mock_downloads:
             res = self.mock_downloads[u]
             if type(res) == "string":
-                if output:
-                    self.mock_files[str(output)] = res
+                out = _get_download_file_name(u, output)
+                self.mock_files[out] = res
                 return struct(success = True, sha256 = "mocksha256")
             else:
                 return res(
@@ -351,6 +357,26 @@ def _rctx_download(
         fail("Download not mocked for url: " + str(urls))
     return struct(success = False)
 
+def _rctx_extract(
+        self,
+        archive,
+        output = "",
+        stripPrefix = "",
+        rename_files = {},
+        *,
+        watch_archive = "auto"):
+    _ = (
+        stripPrefix,
+        rename_files,
+        watch_archive,
+    )  # @unused
+
+    archive_str = str(archive)
+    if archive_str in self.mock_extracts:
+        for f, c in self.mock_extracts[archive_str].items():
+            out_path = "{}/{}".format(output, f) if output else str(f)
+            self.mock_files[out_path] = c
+
 def _rctx_download_and_extract(
         self,
         url,
@@ -364,44 +390,34 @@ def _rctx_download_and_extract(
         headers = {},
         integrity = "",
         rename_files = {}):
-    _ = (
-        sha256,
-        type,
-        stripPrefix,
-        allow_fail,
-        canonical_id,
-        auth,
-        headers,
-        integrity,
-        rename_files,
-    )  # @unused
+    _ = type  # @unused
+
+    res = self.download(
+        url = url,
+        output = "",
+        sha256 = sha256,
+        allow_fail = allow_fail,
+        canonical_id = canonical_id,
+        auth = auth,
+        headers = headers,
+        integrity = integrity,
+    )
+    if not res.success:
+        return res
 
     urls = url if type(url) == "list" else [url]
-
     for u in urls:
-        if u in self.mock_downloads:
-            res = self.mock_downloads[u]
-            if type(res) == "string":
-                pass
-            else:
-                return res(
-                    self,
-                    u,
-                    output,
-                    sha256,
-                    type,
-                    stripPrefix,
-                    allow_fail,
-                    canonical_id,
-                    auth,
-                    headers,
-                    integrity,
-                    rename_files,
-                )
+        downloaded_file = _get_download_file_name(u)
+        if downloaded_file in self.mock_extracts:
+            self.extract(
+                archive = downloaded_file,
+                output = output,
+                stripPrefix = stripPrefix,
+                rename_files = rename_files,
+            )
+            break
 
-    if not allow_fail:
-        fail("Download and extract not mocked for url: " + str(urls))
-    return struct(success = False)
+    return res
 
 def _rctx_execute(
         self,
@@ -431,6 +447,7 @@ def _rctx_new(
         mock_files = None,
         mock_which = None,
         mock_downloads = None,
+        mock_extracts = None,
         os_name = "linux",
         arch_name = "x86_64"):
     """Create a mock repository_ctx object.
@@ -444,6 +461,8 @@ def _rctx_new(
             name to path string.
         mock_downloads: {type}`dict[string, string|callable]` Dict mapping
             url to string or callable.
+        mock_extracts: {type}`dict[string, dict[string, string]]` Dict mapping
+            downloaded filename to a dict of extracted filename to content.
         os_name: {type}`string` The OS name.
         arch_name: {type}`string` The architecture name.
 
@@ -455,12 +474,14 @@ def _rctx_new(
     mock_files = mock_files or {}
     mock_which = mock_which or {}
     mock_downloads = mock_downloads or {}
+    mock_extracts = mock_extracts or {}
 
     # buildifier: disable=uninitialized
     self = struct(
         mock_files = mock_files,
         mock_which = mock_which,
         mock_downloads = mock_downloads,
+        mock_extracts = mock_extracts,
         attr = struct(**attr),
         os = struct(
             name = os_name,
@@ -473,6 +494,7 @@ def _rctx_new(
         template = lambda *a, **k: _rctx_template(self, *a, **k),
         which = lambda *a, **k: _rctx_which(self, *a, **k),
         download = lambda *a, **k: _rctx_download(self, *a, **k),
+        extract = lambda *a, **k: _rctx_extract(self, *a, **k),
         download_and_extract = lambda *a, **k: _rctx_download_and_extract(
             self,
             *a,
