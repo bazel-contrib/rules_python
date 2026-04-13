@@ -35,7 +35,9 @@ def _test_file(env):
 
     # External repo generated file
     f3 = mocks.file("a/b.txt", is_source = False, owner = "@foo//:mock")
-    env.expect.that_str(f3.path).equals("bazel-out/k9-deadbeef/bin/external/foo/a/b.txt")
+    env.expect.that_str(f3.path).equals(
+        "bazel-out/k9-deadbeef/bin/external/foo/a/b.txt",
+    )
     env.expect.that_str(f3.short_path).equals("../foo/a/b.txt")
 
 _tests.append(_test_file)
@@ -60,7 +62,9 @@ def _test_mctx(env):
 
     # Test report progress
     mctx.report_progress("doing something")
-    env.expect.that_collection(mctx.report_progress_calls).contains_exactly(["doing something"])
+    env.expect.that_collection(mctx.report_progress_calls).contains_exactly([
+        "doing something",
+    ])
 
 _tests.append(_test_mctx)
 
@@ -85,7 +89,9 @@ def _test_rctx(env):
     # Test template
     rctx.file("template.txt", "Hello {name}")
     rctx.template("rendered.txt", "template.txt", {"{name}": "World"})
-    env.expect.that_str(rctx.read(mocks.path("rendered.txt"))).equals("Hello World")
+    env.expect.that_str(rctx.read(mocks.path("rendered.txt"))).equals(
+        "Hello World",
+    )
 
     # Test symlink reading
     rctx.symlink("rendered.txt", "link.txt")
@@ -100,12 +106,18 @@ def _test_glob(env):
     env.expect.that_collection(res).contains_exactly(["a.txt", "b.txt"])
     env.expect.that_collection(g.calls).has_size(1)
     env.expect.that_collection(g.calls[0].glob[0]).contains_exactly(["*.txt"])
-    env.expect.that_collection(g.calls[0].kwargs["exclude"]).contains_exactly(["c.txt"])
+    env.expect.that_collection(g.calls[0].kwargs["exclude"]).contains_exactly([
+        "c.txt",
+    ])
 
 _tests.append(_test_glob)
 
 def _test_module_and_tags(env):
-    mod = mocks.module("my_mod", is_root = True, my_tag = [mocks.tag(attr1 = "val1")])
+    mod = mocks.module(
+        "my_mod",
+        is_root = True,
+        my_tag = [mocks.tag(attr1 = "val1")],
+    )
     env.expect.that_str(mod.name).equals("my_mod")
     env.expect.that_bool(mod.is_root).equals(True)
     env.expect.that_str(mod.tags.my_tag[0].attr1).equals("val1")

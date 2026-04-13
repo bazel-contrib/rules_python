@@ -23,7 +23,8 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
 
     Args:
         short_path: {type}`string` The short path to the file.
-        path: {type}`string` The full path to the file. Defaults to a made up exec-root path or the short path if is_source.
+        path: {type}`string` The full path to the file. Defaults to a made
+            up exec-root path or the short path if is_source.
         is_source: {type}`bool` Whether the file is a source file.
         owner: {type}`Label|string` The owner label of the file.
 
@@ -53,7 +54,10 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
             if is_source:
                 path = "external/{}/{}".format(repo_name, rel_path)
             else:
-                path = "bazel-out/k9-deadbeef/bin/external/{}/{}".format(repo_name, rel_path)
+                path = "bazel-out/k9-deadbeef/bin/external/{}/{}".format(
+                    repo_name,
+                    rel_path,
+                )
     elif path == None:
         if is_source:
             path = short_path
@@ -108,8 +112,28 @@ def _mctx_read(self, x, watch = None):
 def _mctx_path(self, x):
     return _path_new(str(x), self.mock_files)
 
-def _mctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = "", block = True):
-    _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity, block  # @unused
+def _mctx_download(
+        self,
+        url,
+        output = "",
+        sha256 = "",
+        executable = False,
+        allow_fail = False,
+        canonical_id = "",
+        auth = {},
+        headers = {},
+        integrity = "",
+        block = True):
+    _ = (
+        sha256,
+        executable,
+        allow_fail,
+        canonical_id,
+        auth,
+        headers,
+        integrity,
+        block,
+    )  # @unused
     urls = url if type(url) == "list" else [url]
     for u in urls:
         content = None
@@ -122,9 +146,23 @@ def _mctx_download(self, url, output = "", sha256 = "", executable = False, allo
             if type(content) == "string":
                 out = str(output) if output else u.split("/")[-1]
                 self.mock_files[out] = content
-                return struct(success = True, wait = lambda: struct(success = True))
+                return struct(
+                    success = True,
+                    wait = lambda: struct(success = True),
+                )
             else:
-                return content(self, u, output, sha256, executable, allow_fail, canonical_id, auth, headers, integrity)
+                return content(
+                    self,
+                    u,
+                    output,
+                    sha256,
+                    executable,
+                    allow_fail,
+                    canonical_id,
+                    auth,
+                    headers,
+                    integrity,
+                )
 
     if not self.mock_downloads:
         return struct(success = True, wait = lambda: struct(success = True))
@@ -146,7 +184,8 @@ def _mctx_add_module(self, **kwargs):
     """
     module = _module_new(**kwargs)
     if module.is_root and len(self.modules) > 0:
-        fail("is_root=True can only be set on the first module in the modules list.")
+        fail("is_root=True can only be set on the first module in the " +
+             "modules list.")
     self.modules.append(module)
     return self
 
@@ -163,10 +202,13 @@ def _mctx_new(
 
     Args:
         *args: {type}`list[MockModule]` Mock modules passed positionally.
-        modules: {type}`list[MockModule]` List of mock modules (alternative to positional args).
+        modules: {type}`list[MockModule]` List of mock modules (alternative
+            to positional args).
         environ: {type}`dict[string, string]` Dict of environment variables.
-        mock_files: {type}`dict[string, string]` Dict mapping path strings to content.
-        mock_downloads: {type}`dict[string, string|callable]` Dict mapping url to string or callable.
+        mock_files: {type}`dict[string, string]` Dict mapping path strings
+            to content.
+        mock_downloads: {type}`dict[string, string|callable]` Dict mapping
+            url to string or callable.
         os_name: {type}`string` The OS name.
         arch_name: {type}`string` The architecture name.
         facts: {type}`dict` Optional facts dict.
@@ -178,7 +220,8 @@ def _mctx_new(
 
     for i, mod in enumerate(modules):
         if getattr(mod, "is_root", False) and i != 0:
-            fail("is_root=True can only be set on the first module in the modules list.")
+            fail("is_root=True can only be set on the first module in the " +
+                 "modules list.")
 
     environ = environ or {}
     mock_files = mock_files or {}
@@ -260,8 +303,26 @@ def _rctx_which(self, program):
         return _path_new(res, self.mock_files)
     return None
 
-def _rctx_download(self, url, output = "", sha256 = "", executable = False, allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = ""):
-    _ = sha256, executable, allow_fail, canonical_id, auth, headers, integrity  # @unused
+def _rctx_download(
+        self,
+        url,
+        output = "",
+        sha256 = "",
+        executable = False,
+        allow_fail = False,
+        canonical_id = "",
+        auth = {},
+        headers = {},
+        integrity = ""):
+    _ = (
+        sha256,
+        executable,
+        allow_fail,
+        canonical_id,
+        auth,
+        headers,
+        integrity,
+    )  # @unused
 
     urls = url if type(url) == "list" else [url]
 
@@ -273,14 +334,47 @@ def _rctx_download(self, url, output = "", sha256 = "", executable = False, allo
                     self.mock_files[str(output)] = res
                 return struct(success = True, sha256 = "mocksha256")
             else:
-                return res(self, u, output, sha256, executable, allow_fail, canonical_id, auth, headers, integrity)
+                return res(
+                    self,
+                    u,
+                    output,
+                    sha256,
+                    executable,
+                    allow_fail,
+                    canonical_id,
+                    auth,
+                    headers,
+                    integrity,
+                )
 
     if not allow_fail:
         fail("Download not mocked for url: " + str(urls))
     return struct(success = False)
 
-def _rctx_download_and_extract(self, url, output = "", sha256 = "", type = "", stripPrefix = "", allow_fail = False, canonical_id = "", auth = {}, headers = {}, integrity = "", rename_files = {}):
-    _ = sha256, type, stripPrefix, allow_fail, canonical_id, auth, headers, integrity, rename_files  # @unused
+def _rctx_download_and_extract(
+        self,
+        url,
+        output = "",
+        sha256 = "",
+        type = "",
+        stripPrefix = "",
+        allow_fail = False,
+        canonical_id = "",
+        auth = {},
+        headers = {},
+        integrity = "",
+        rename_files = {}):
+    _ = (
+        sha256,
+        type,
+        stripPrefix,
+        allow_fail,
+        canonical_id,
+        auth,
+        headers,
+        integrity,
+        rename_files,
+    )  # @unused
 
     urls = url if type(url) == "list" else [url]
 
@@ -290,14 +384,42 @@ def _rctx_download_and_extract(self, url, output = "", sha256 = "", type = "", s
             if type(res) == "string":
                 pass
             else:
-                return res(self, u, output, sha256, type, stripPrefix, allow_fail, canonical_id, auth, headers, integrity, rename_files)
+                return res(
+                    self,
+                    u,
+                    output,
+                    sha256,
+                    type,
+                    stripPrefix,
+                    allow_fail,
+                    canonical_id,
+                    auth,
+                    headers,
+                    integrity,
+                    rename_files,
+                )
 
     if not allow_fail:
         fail("Download and extract not mocked for url: " + str(urls))
     return struct(success = False)
 
-def _rctx_execute(self, arguments, timeout = 600, quiet = True, working_directory = "", environment = {}, custom_reporter = ""):
-    _ = self, arguments, timeout, quiet, working_directory, environment, custom_reporter  # @unused
+def _rctx_execute(
+        self,
+        arguments,
+        timeout = 600,
+        quiet = True,
+        working_directory = "",
+        environment = {},
+        custom_reporter = ""):
+    _ = (
+        self,
+        arguments,
+        timeout,
+        quiet,
+        working_directory,
+        environment,
+        custom_reporter,
+    )  # @unused
     return struct(return_code = 0, stdout = "", stderr = "")
 
 def _rctx_symlink(self, target, link_name):
@@ -316,9 +438,12 @@ def _rctx_new(
     Args:
         attr: {type}`dict` Dict of attributes.
         environ: {type}`dict[string, string]` Dict of environment variables.
-        mock_files: {type}`dict[string, string]` Dict mapping path strings to content.
-        mock_which: {type}`dict[string, string]` Dict mapping program name to path string.
-        mock_downloads: {type}`dict[string, string|callable]` Dict mapping url to string or callable.
+        mock_files: {type}`dict[string, string]` Dict mapping path strings
+            to content.
+        mock_which: {type}`dict[string, string]` Dict mapping program
+            name to path string.
+        mock_downloads: {type}`dict[string, string|callable]` Dict mapping
+            url to string or callable.
         os_name: {type}`string` The OS name.
         arch_name: {type}`string` The architecture name.
 
@@ -348,7 +473,11 @@ def _rctx_new(
         template = lambda *a, **k: _rctx_template(self, *a, **k),
         which = lambda *a, **k: _rctx_which(self, *a, **k),
         download = lambda *a, **k: _rctx_download(self, *a, **k),
-        download_and_extract = lambda *a, **k: _rctx_download_and_extract(self, *a, **k),
+        download_and_extract = lambda *a, **k: _rctx_download_and_extract(
+            self,
+            *a,
+            **k
+        ),
         execute = lambda *a, **k: _rctx_execute(self, *a, **k),
         symlink = lambda *a, **k: _rctx_symlink(self, *a, **k),
     )
@@ -374,7 +503,8 @@ def _glob_new():
     """Create a mock glob object.
 
     Returns:
-        {type}`MockGlob` A struct with calls and results lists, and a glob function.
+        {type}`MockGlob` A struct with calls and results lists, and a
+            glob function.
     """
     calls = []
     results = []
