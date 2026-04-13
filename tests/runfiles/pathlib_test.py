@@ -15,7 +15,7 @@ class PathlibTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmpdir.cleanup()
 
-    def testPathApi(self) -> None:
+    def test_path_api(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         root = r.root()
@@ -40,25 +40,25 @@ class PathlibTest(unittest.TestCase):
         p3 = root / pathlib.PurePath("repo/pkg/file.txt")
         self.assertEqual(p, p3)
 
-    def testRoot(self) -> None:
+    def test_root(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         self.assertEqual(str(r.root()), self.root_dir)
 
-    def testRunfilesRootMethod(self) -> None:
+    def test_runfiles_root_method(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p = r.root() / "foo/bar"
         self.assertEqual(p.runfiles_root(), r.root())
         self.assertEqual(str(p.runfiles_root()), self.root_dir)
 
-    def testOsPathLike(self) -> None:
+    def test_os_path_like(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p = r.root() / "foo"
         self.assertEqual(os.fspath(p), f"{self.root_dir}/foo")
 
-    def testEqualityAndHash(self) -> None:
+    def test_equality_and_hash(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p1 = r.root() / "foo"
@@ -69,13 +69,13 @@ class PathlibTest(unittest.TestCase):
         self.assertNotEqual(p1, p3)
         self.assertEqual(hash(p1), hash(p2))
 
-    def testJoinPath(self) -> None:
+    def test_join_path(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p = r.root().joinpath("repo", "file")
         self.assertEqual(str(p), f"{self.root_dir}/repo/file")
 
-    def testParents(self) -> None:
+    def test_parents(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p = r.root() / "a/b/c"
@@ -85,14 +85,14 @@ class PathlibTest(unittest.TestCase):
         self.assertEqual(str(parents[1]), f"{self.root_dir}/a")
         self.assertEqual(str(parents[2]), self.root_dir)
 
-    def testWithMethods(self) -> None:
+    def test_with_methods(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p = r.root() / "foo/bar.txt"
         self.assertEqual(str(p.with_name("baz.py")), f"{self.root_dir}/foo/baz.py")
         self.assertEqual(str(p.with_suffix(".dat")), f"{self.root_dir}/foo/bar.dat")
 
-    def testMatch(self) -> None:
+    def test_match(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
         assert r is not None
         p = r.root() / "foo/bar.txt"

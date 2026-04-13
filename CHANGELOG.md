@@ -47,8 +47,24 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
 ## Unreleased
 
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* Nothing fixed.
+
+{#v0-0-0-added}
 ### Added
 * (runfiles) Added a {obj}`Path` class that implements the `pathlib.PurePath` API
   for idiomatic path manipulation of runfiles. It is created by calling the
