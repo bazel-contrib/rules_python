@@ -58,10 +58,36 @@ def fetch_buildkite_data(build_url):
                     file=sys.stderr,
                 )
                 return None
-            return json.loads(response.read().decode())
+            data = json.loads(response.read().decode())
     except Exception as e:
         print(f"Error fetching data from {json_url}: {e}", file=sys.stderr)
         return None
+
+    # If jobs list is truncated or empty but statistics says there are more jobs,
+    # try to fetch from /data/jobs.json
+    jobs = data.get("jobs", [])
+    jobs_count = data.get("statistics", {}).get("jobs_count", 0)
+
+    if len(jobs) < jobs_count:
+        # Try fetching from /data/jobs.json
+        # Build URL might have .json already from the check above
+        base_url = build_url
+        if base_url.endswith(".json"):
+            base_url = base_url[:-5]
+
+        jobs_url = f"{base_url}/data/jobs.json"
+        try:
+            with urllib.request.urlopen(jobs_url) as response:
+                if response.status == 200:
+                    jobs_data = json.loads(response.read().decode())
+                    if isinstance(jobs_data, list):
+                        data["jobs"] = jobs_data
+                    elif isinstance(jobs_data, dict) and "records" in jobs_data:
+                        data["jobs"] = jobs_data["records"]
+        except Exception as e:
+            print(f"Warning: Could not fetch detailed jobs from {jobs_url}: {e}", file=sys.stderr)
+
+    return data
 
 
 def download_log(job_url, output_path):
@@ -119,7 +145,11 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Fetching checks for PR #{args.pr_number}...", file=sys.stderr)
+    pr_display = args.pr_number
+    if "pull/" in pr_display:
+        pr_display = pr_display.split("pull/")[1].split("#")[0].split("/")[0]
+
+    print(f"Fetching checks for PR #{pr_display}...", file=sys.stderr)
     checks = get_pr_checks(args.pr_number)
 
     build_url = get_buildkite_build_url(checks)
@@ -133,10 +163,19 @@ def main():
     if not data:
         sys.exit(1)
 
-    print(f"Build State: {data.get('state')}")
-    print("-" * 40)
-
+    build_state = data.get("state", "Unknown")
+    print(f"Build State: {build_state}")
+    
     jobs = data.get("jobs", [])
+    jobs_count = data.get("statistics", {}).get("jobs_count", 0)
+    
+    print(f"Total jobs reported: {jobs_count}")
+    print(f"Jobs found in data: {len(jobs)}")
+    
+    if jobs_count != len(jobs):
+        print(f"WARNING: Reported job count ({jobs_count}) does not match jobs found ({len(jobs)}).", file=sys.stderr)
+
+    print("-" * 40)
 
     filtered_jobs = []
     if args.jobs:
