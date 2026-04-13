@@ -66,10 +66,7 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
-* (runfiles) Added a {obj}`Path` class that implements the `pathlib.PurePath` API
-  for idiomatic path manipulation of runfiles. It is created by calling the
-  {obj}`Runfiles.root` instance method. The {obj}`Path` class also has a
-  {obj}`Path.runfiles_root` method to return the root of the runfiles tree.
+* (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
   Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
 
 {#v2-0-0}
