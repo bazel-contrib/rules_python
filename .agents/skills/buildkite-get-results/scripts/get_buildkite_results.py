@@ -63,11 +63,12 @@ def fetch_buildkite_data(build_url):
         print(f"Error fetching data from {json_url}: {e}", file=sys.stderr)
         return None
 
-    # If jobs is empty but statistics says there are jobs, try to fetch from /data/jobs.json
+    # If jobs list is truncated or empty but statistics says there are more jobs,
+    # try to fetch from /data/jobs.json
     jobs = data.get("jobs", [])
     jobs_count = data.get("statistics", {}).get("jobs_count", 0)
 
-    if not jobs and jobs_count > 0:
+    if len(jobs) < jobs_count:
         # Try fetching from /data/jobs.json
         # Build URL might have .json already from the check above
         base_url = build_url
@@ -79,10 +80,10 @@ def fetch_buildkite_data(build_url):
             with urllib.request.urlopen(jobs_url) as response:
                 if response.status == 200:
                     jobs_data = json.loads(response.read().decode())
-                    if isinstance(jobs_data, dict) and "records" in jobs_data:
-                        data["jobs"] = jobs_data["records"]
-                    elif isinstance(jobs_data, list):
+                    if isinstance(jobs_data, list):
                         data["jobs"] = jobs_data
+                    elif isinstance(jobs_data, dict) and "records" in jobs_data:
+                        data["jobs"] = jobs_data["records"]
         except Exception as e:
             print(f"Warning: Could not fetch detailed jobs from {jobs_url}: {e}", file=sys.stderr)
 
