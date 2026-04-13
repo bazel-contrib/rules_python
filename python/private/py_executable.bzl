@@ -1278,7 +1278,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     )
     _add_provider_py_runtime_info(providers, runtime_details)
     _add_provider_py_cc_link_params_info(providers, cc_details.cc_info_for_propagating)
-    py_info, _ = _add_provider_py_info(
+    py_info = _add_provider_py_info(
         providers,
         ctx = ctx,
         original_sources = direct_sources,
@@ -1993,7 +1993,7 @@ def _add_provider_py_info(
         imports: depset of strings; the import paths to propagate
 
     Returns:
-        tuple of (PyInfo, BuiltinPyInfo|None).
+        PyInfo.
     """
     py_info, builtin_py_info = create_py_info(
         ctx,
@@ -2007,7 +2007,7 @@ def _add_provider_py_info(
     providers.append(py_info)
     if builtin_py_info:
         providers.append(builtin_py_info)
-    return py_info, builtin_py_info
+    return py_info
 
 def _add_provider_output_group_info(providers, py_info, output_groups):
     """Adds the OutputGroupInfo provider.
