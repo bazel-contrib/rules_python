@@ -7,6 +7,14 @@ Act as an expert in Bazel, rules_python, Starlark, and Python.
 
 DO NOT `git commit` or `git push`.
 
+## RULES TO ALWAYS FOLLOW AND NEVER IGNORE
+
+ALWAYS FOLLOW THESE RULES. NEVER VIOLATE THEM.
+
+Ask for user input and provide a justificaiton if trying to violate them.
+
+* NEVER run `bazel clean --expunge`.
+
 ## Style and conventions
 
 Read `.editorconfig` for line length wrapping
@@ -121,11 +129,21 @@ bzl_library(
 
 Tests are under the `tests/` directory.
 
-When testing, add `--test_tag_filters=-integration-test`.
+When testing, add `--config=fast-tests`.
 
-When building, add `--build_tag_filters=-integration-test`.
+When building, add `--config=fast-tests`.
+
+The `--config=fast-tests` flag avoids running expensive and slow tests can that
+freeze the host machine or cause flakiness.
 
 ## Understanding the code base
+
+This repository contains 3 Bazel bzlmod modules.
+
+ * `sphinxdocs/` is for the `@sphinxdocs` module.
+ * `gazelle/` is for the `@rules_python_gazelle_plugin` module.
+ * All other code is part of `@rules_python`.
+
 
 `python/config_settings/BUILD.bazel` contains build flags that are part of the
 public API. DO NOT add, remove, or modify these build flags unless specifically
