@@ -26,9 +26,7 @@ load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
 
-def _uv_mock_mctx(*modules, download = None, read = None):
-    _ = read  # @unused
-
+def _uv_mock_mctx(*modules, download = None):
     # Here we construct a fake minimal manifest file that we use to mock what would
     # be otherwise read from GH files
     manifest_files = {
@@ -191,7 +189,6 @@ def _test_manual_url_spec(env):
                     ),
                 ],
             ),
-            read = lambda *args, **kwargs: fail(args, kwargs),
         ),
         uv_repository = lambda **kwargs: calls.append(kwargs),
     )

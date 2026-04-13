@@ -33,6 +33,7 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
     if owner == None:
         owner = Label("//:mock")
 
+    # In modern bazel, stringified labels can look like `@@//:mock` or `@foo//:mock`
     owner_str = str(owner)
     repo_name = owner_str.split("//")[0]
 
@@ -42,7 +43,6 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
         for _ in range(2):  # Strip up to two leading @
             if repo_name.startswith("@"):
                 repo_name = repo_name[1:]
-
     actual_short_path = short_path
     if not is_main_repo:
         if not actual_short_path.startswith("../"):
