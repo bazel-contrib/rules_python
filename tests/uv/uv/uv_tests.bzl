@@ -23,9 +23,12 @@ load("//python/uv/private:uv.bzl", "process_modules")  # buildifier: disable=bzl
 load("//python/uv/private:uv_toolchain.bzl", "uv_toolchain")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
+
 _tests = []
 
 def _uv_mock_mctx(*modules, download = None, read = None):
+    _ = read  # @unused
+
     # Here we construct a fake minimal manifest file that we use to mock what would
     # be otherwise read from GH files
     manifest_files = {
@@ -73,7 +76,6 @@ def _uv_mock_mctx(*modules, download = None, read = None):
         } if download else {},
         mock_files = fake_fs,
     )
-
 
 def _mod(*, name = None, default = [], configure = [], is_root = True):
     return mocks.module(

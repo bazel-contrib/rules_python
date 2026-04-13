@@ -220,7 +220,7 @@ def _rctx_read(self, x):
     path_str = x._path if hasattr(x, "_path") else str(x)
     if path_str not in self.mock_files:
         fail("File not found in mock_files: " + path_str)
-        
+
     val = self.mock_files[path_str]
     for _ in range(10):
         if type(val) == "dict" and val.get("type") == "symlink":

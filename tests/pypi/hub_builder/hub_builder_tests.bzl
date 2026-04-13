@@ -28,6 +28,7 @@ load("//tests/support/mocks:mocks.bzl", "mocks")
 _tests = []
 
 def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None, mock_files = {}):
+    _ = read  # @unused
     # Because mocks.mctx no longer accepts read lambda directly, we rely on mock_files.
     # We will populate mock_files if read is not passed.
     # Wait, earlier I reverted `mocks.mctx` to NOT accept read/download/report_progress args.
@@ -44,7 +45,7 @@ def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = 
             "requirements.txt": """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf"""
+    --hash=sha256:deadbaaf""",
         },
     )
 
@@ -1496,11 +1497,11 @@ def _test_err_duplicate_repos(env):
     env.expect.that_dict(logs).keys().contains_exactly(["rules_python:unit-test FAIL:"])
     env.expect.that_collection(logs["rules_python:unit-test FAIL:"]).contains_exactly([
         """\
-Attempting to create a duplicate library pypi_315_simple for simple with different arguments. Already existing declaration has:
+Attempting to create a duplicate library pypi_315_foo for foo with different arguments. Already existing declaration has:
     common: {
         "dep_template": "@pypi//{name}:{target}",
         "config_load": "@pypi//:config.bzl",
-        "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        "requirement": "foo==0.0.1",
     }
     different: {
         "python_interpreter_target": ("unit_test_interpreter_target_1", "unit_test_interpreter_target_2"),

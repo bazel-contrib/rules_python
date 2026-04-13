@@ -24,6 +24,7 @@ load(":pip_parse.bzl", _parse = "pip_parse")
 _tests = []
 
 def _pypi_mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
+    _ = read  # @unused
     return mocks.mctx(
         modules = list(modules),
         os_name = os_name,
@@ -33,7 +34,7 @@ def _pypi_mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", enviro
             "requirements.txt": """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf"""
+    --hash=sha256:deadbaaf""",
         },
     )
 
