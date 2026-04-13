@@ -53,6 +53,9 @@ wheels available for this distribution. This distribution supports the following
 configuration settings:
     {config_settings}
 
+As configured by the `pip.parse.target_platforms` settings (note that
+`requirements_by_platform` only affects the Bazel host platform).
+
 To determine the current configuration's Python version, run:
     `bazel config <config id>` (shown further below)
 
