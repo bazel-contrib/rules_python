@@ -243,7 +243,7 @@ class Path(pathlib.PurePath):
         )
 
     def __repr__(self) -> str:
-        return 'runfiles.Path("{}")'.format(super().__str__())
+        return 'runfiles.Path({!r})'.format(super().__str__())
 
     def __str__(self) -> str:
         path_posix = super().__str__().replace("\\", "/")
