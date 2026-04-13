@@ -27,8 +27,7 @@ load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
-def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None, mock_files = {}):
-    _ = read  # @unused
+def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, mock_files = {}):
     # Because mocks.mctx no longer accepts read lambda directly, we rely on mock_files.
     # We will populate mock_files if read is not passed.
     # Wait, earlier I reverted `mocks.mctx` to NOT accept read/download/report_progress args.

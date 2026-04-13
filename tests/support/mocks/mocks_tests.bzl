@@ -29,12 +29,12 @@ def _test_file(env):
     env.expect.that_str(str(f1.owner)).equals(str(Label("//:mock")))
 
     # External repo
-    f2 = mocks.file("a/b.txt", is_source = True, owner = Label("@foo//:mock"))
+    f2 = mocks.file("a/b.txt", is_source = True, owner = "@foo//:mock")
     env.expect.that_str(f2.path).equals("external/foo/a/b.txt")
     env.expect.that_str(f2.short_path).equals("../foo/a/b.txt")
 
     # External repo generated file
-    f3 = mocks.file("a/b.txt", is_source = False, owner = Label("@foo//:mock"))
+    f3 = mocks.file("a/b.txt", is_source = False, owner = "@foo//:mock")
     env.expect.that_str(f3.path).equals("bazel-out/k9-deadbeef/bin/external/foo/a/b.txt")
     env.expect.that_str(f3.short_path).equals("../foo/a/b.txt")
 

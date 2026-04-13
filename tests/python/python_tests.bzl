@@ -22,7 +22,6 @@ load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
-# todo: change is_root to false by default. most modules aren't root
 def _mod(*, name, defaults = [], toolchain = [], override = [], single_version_override = [], single_version_platform_override = [], is_root = False):
     return mocks.module(
         name,
