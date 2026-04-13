@@ -1278,7 +1278,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     )
     _add_provider_py_runtime_info(providers, runtime_details)
     _add_provider_py_cc_link_params_info(providers, cc_details.cc_info_for_propagating)
-    py_info, builtin_py_info = _add_provider_py_info(
+    py_info, _ = _add_provider_py_info(
         providers,
         ctx = ctx,
         original_sources = direct_sources,
