@@ -100,6 +100,7 @@ buildifier:
     bazel: ${{ bazel }}
     working_directory: gazelle/examples/bzlmod_build_file_generation
     shell_commands:
+      - "../../../.bazelci/isolate.sh gazelle"
       - "echo 'common --override_module=rules_python=' >> .bazelrc"
       - "bazel run //:gazelle_python_manifest.update"
       - "bazel run //:gazelle -- update"
@@ -159,6 +160,8 @@ tasks:
     <<: *minimum_supported_version
     name: "Gazelle: workspace, minimum supported Bazel version"
     platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh gazelle"
     build_targets: ["//..."]
     test_targets: ["//..."]
     working_directory: gazelle
@@ -166,12 +169,16 @@ tasks:
     <<: *common_workspace_flags
     name: "Gazelle: workspace"
     platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh gazelle"
     build_targets: ["//..."]
     test_targets: ["//..."]
     working_directory: gazelle
   gazelle_extension:
     name: "Gazelle: default settings"
     platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh gazelle"
     build_targets: ["//..."]
     test_targets: ["//..."]
     working_directory: gazelle
@@ -180,6 +187,8 @@ tasks:
     name: "Sphinxdocs: Ubuntu"
     working_directory: "sphinxdocs"
     platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
     build_targets:
       - "//..."
     test_targets:
@@ -188,6 +197,8 @@ tasks:
     name: "Sphinxdocs: Mac"
     working_directory: "sphinxdocs"
     platform: macos_arm64
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
     build_targets:
       - "//..."
     test_targets:
