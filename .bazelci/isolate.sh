@@ -1,22 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODULE_DIR="${1:-}"
+module_dir="${1:-}"
 
-if [[ -z "${MODULE_DIR}" ]]; then
+if [[ -z "${module_dir}" ]]; then
   echo "Usage: $0 <module_directory>"
   exit 1
 fi
 
 # Find the repository root assuming this script is in .bazelci/
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(dirname "${script_dir}")"
 
-cd "${REPO_ROOT}"
+cd "${repo_root}"
 
-echo "Removing files outside of ${MODULE_DIR} to simulate BCR environment..."
+if [[ ! -f "MODULE.bazel" ]]; then
+  echo "Error: MODULE.bazel not found in ${repo_root}. Are you sure this is the repo root?"
+  exit 1
+fi
+
+if [[ ! -d "${module_dir}" ]]; then
+  echo "Error: Module directory '${module_dir}' not found in ${repo_root}."
+  exit 1
+fi
+
+echo "Removing files outside of ${module_dir} to simulate BCR environment..."
 find . -maxdepth 1 -mindepth 1 \
-  ! -name "${MODULE_DIR}" \
+  ! -name "${module_dir}" \
   ! -name ".git" \
   ! -name ".bazelci" \
   -exec rm -rf '{}' +
