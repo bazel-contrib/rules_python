@@ -43,8 +43,7 @@ def simpleapi_download(
         attr: Contains the parameters for the download. They are grouped into a
           struct for better clarity. It must have attributes:
            * index_url: str, the index, or if `extra_index_urls` are passed, the default index.
-           * index_url_overrides: dict[str, str], the index overrides for
-             separate packages.
+           * index_url_overrides: dict[str, str], the index overrides for separate packages.
            * extra_index_urls: Will be looked at in the order they are defined and the first match
                 wins. This is similar to what uv does, see
                 https://docs.astral.sh/uv/concepts/indexes/#searching-across-multiple-indexes.
@@ -132,16 +131,22 @@ def simpleapi_download(
     return contents
 
 def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
+    if index_url_overrides:
+        # Let's not call the index at all and just assume that all of the overrides have been
+        # specified.
+        return {
+            pkg: _normalize_url("{}/{}/".format(
+                index_url_overrides.get(pkg, default_index),
+                pkg.replace("_", "-"),  # Use the official normalization for URLs
+            ))
+            for pkg in sources
+        }
+
     downloads = {}
     results = {}
 
     # Ensure the value is not frozen
     index_urls = [] + (index_urls or [])
-    for extra in index_url_overrides.values():
-        if extra not in index_urls:
-            index_urls.append(extra)
-
-    index_urls = index_urls or []
     if default_index not in index_urls:
         index_urls.append(default_index)
 
@@ -172,10 +177,6 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
                 #
                 # If we wanted to merge all of the index results, we would have to continue here
                 # and in the outer function process merging of the results.
-                continue
-
-            if index_url_overrides.get(pkg, index_url) != index_url:
-                # we should not use this index for the package
                 continue
 
             found = result.output.get(pkg)

@@ -81,7 +81,8 @@ Other changes:
   we will from now on fetch the lists of available packages on each index. The
   used package mappings will be written as facts to the `MODULE.bazel.lock` file
   on supported bazel versions and it should be done at most once. As a result,
-  per-package {obj}`experimental_index_url_overrides` is no longer needed . What
+  per-package {obj}`experimental_index_url_overrides` is no longer needed, but 
+  if specified, it needs to be provided for all packages not on the default index. What
   is more, the flags for `--index_url` and `--extra-index-url` now behave in the
   same way as in `uv` or `pip`, i.e. we default to `--index-url` if the package
   is not found in `--extra-index-url`.  Fixes
