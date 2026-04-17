@@ -58,7 +58,7 @@ func getMappedKind(c *config.Config, kind string) string {
 
 // kindMatches returns whether r matches the canonical Python rule kind `expected`, respecting `# gazelle:map_kind` and
 // `# gazelle:alias_kind` directives in the config.Config c.
-func kindMatches(r *rule.Rule, expected string, c *config.Config) bool {
+func kindMatches(c *config.Config, r *rule.Rule, expected string) bool {
 	kind := r.Kind()
 	return kind == getMappedKind(c, expected) || c.AliasMap[kind] == expected
 }
@@ -320,7 +320,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 			generateEmptyLibrary := false
 			for _, r := range args.File.Rules {
-				if r.Name() == pyLibraryTargetName && kindMatches(r, pyLibraryKind, args.Config) {
+				if r.Name() == pyLibraryTargetName && kindMatches(args.Config, r, pyLibraryKind) {
 					generateEmptyLibrary = true
 				}
 			}
@@ -579,7 +579,7 @@ func (py *Python) getRulesWithInvalidSrcs(args language.GenerateArgs, validFiles
 		return strings.HasPrefix(src, "@") || strings.HasPrefix(src, "//") || strings.HasPrefix(src, ":")
 	}
 	for _, existingRule := range args.File.Rules {
-		if !kindMatches(existingRule, pyBinaryKind, args.Config) {
+		if !kindMatches(args.Config, existingRule, pyBinaryKind) {
 			continue
 		}
 		var hasValidSrcs bool
@@ -660,7 +660,7 @@ func ensureNoCollision(c *config.Config, file *rule.File, targetName, kind strin
 		return nil
 	}
 	for _, t := range file.Rules {
-		if t.Name() == targetName && !kindMatches(t, kind, c) {
+		if t.Name() == targetName && !kindMatches(c, t, kind) {
 			return fmt.Errorf("a target of kind %q with the same name already exists", t.Kind())
 		}
 	}
@@ -683,7 +683,7 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 	pyProtoRulesForProto := map[string]string{}
 	if args.File != nil {
 		for _, r := range args.File.Rules {
-			if kindMatches(r, pyProtoLibraryKind, args.Config) {
+			if kindMatches(args.Config, r, pyProtoLibraryKind) {
 				pyProtoRules[r.Name()] = false
 
 				protos := r.AttrStrings("deps")
