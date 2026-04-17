@@ -48,14 +48,19 @@ var (
 	buildFilenames = []string{"BUILD", "BUILD.bazel"}
 )
 
+// Returns the mapped kind, or kind if no mapping is configured with the map_kind directive.
+func getMappedKind(c *config.Config, kind string) string {
+	if mapped, ok := c.KindMap[kind]; ok {
+		return mapped.KindName
+	}
+	return kind
+}
+
 // kindMatches returns whether r matches the canonical Python rule kind `expected`, respecting `# gazelle:map_kind` and
 // `# gazelle:alias_kind` directives in the config.Config c.
 func kindMatches(r *rule.Rule, expected string, c *config.Config) bool {
-	k := r.Kind()
-	if mapped, ok := c.KindMap[expected]; ok {
-		return k == mapped.KindName || c.AliasMap[k] == expected
-	}
-	return k == expected || c.AliasMap[k] == expected
+	kind := r.Kind()
+	return kind == getMappedKind(c, expected) || c.AliasMap[kind] == expected
 }
 
 func matchesAnyGlob(s string, globs []string) bool {
@@ -285,7 +290,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				if err := ensureNoCollision(args.Config, args.File, pyBinaryTargetName, pyBinaryKind); err != nil {
 					fqTarget := label.New("", args.Rel, pyBinaryTargetName)
 					log.Printf("failed to generate target %q of kind %q: %v",
-						fqTarget.String(), pyBinaryKind, err)
+						fqTarget.String(), getMappedKind(args.Config, pyBinaryKind), err)
 					continue
 				}
 
@@ -335,7 +340,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			fqTarget := label.New("", args.Rel, pyLibraryTargetName)
 			err := fmt.Errorf("failed to generate target %q of kind %q: %w. "+
 				"Use the '# gazelle:%s' directive to change the naming convention.",
-				fqTarget.String(), pyLibraryKind, err, pythonconfig.LibraryNamingConvention)
+				fqTarget.String(), getMappedKind(args.Config, pyLibraryKind), err, pythonconfig.LibraryNamingConvention)
 			collisionErrors.Add(err)
 		}
 
@@ -389,7 +394,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			fqTarget := label.New("", args.Rel, pyBinaryTargetName)
 			err := fmt.Errorf("failed to generate target %q of kind %q: %w. "+
 				"Use the '# gazelle:%s' directive to change the naming convention.",
-				fqTarget.String(), pyBinaryKind, err, pythonconfig.BinaryNamingConvention)
+				fqTarget.String(), getMappedKind(args.Config, pyBinaryKind), err, pythonconfig.BinaryNamingConvention)
 			collisionErrors.Add(err)
 		}
 
@@ -427,7 +432,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		if err := ensureNoCollision(args.Config, args.File, conftestTargetname, pyLibraryKind); err != nil {
 			fqTarget := label.New("", args.Rel, conftestTargetname)
 			err := fmt.Errorf("failed to generate target %q of kind %q: %w. ",
-				fqTarget.String(), pyLibraryKind, err)
+				fqTarget.String(), getMappedKind(args.Config, pyLibraryKind), err)
 			collisionErrors.Add(err)
 		}
 
@@ -465,7 +470,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			fqTarget := label.New("", args.Rel, pyTestTargetName)
 			err := fmt.Errorf("failed to generate target %q of kind %q: %w. "+
 				"Use the '# gazelle:%s' directive to change the naming convention.",
-				fqTarget.String(), pyTestKind, err, pythonconfig.TestNamingConvention)
+				fqTarget.String(), getMappedKind(args.Config, pyTestKind), err, pythonconfig.TestNamingConvention)
 			collisionErrors.Add(err)
 		}
 
