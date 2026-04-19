@@ -58,7 +58,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
-* Nothing changed.
+* (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
+  The go version was also bumped from 1.21.13 to 1.22.9.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -109,7 +110,7 @@ Other changes:
   we will from now on fetch the lists of available packages on each index. The
   used package mappings will be written as facts to the `MODULE.bazel.lock` file
   on supported bazel versions and it should be done at most once. As a result,
-  per-package {obj}`experimental_index_url_overrides` is no longer needed, but 
+  per-package {obj}`experimental_index_url_overrides` is no longer needed, but
   if specified, it needs to be provided for all packages not on the default index. What
   is more, the flags for `--index_url` and `--extra-index-url` now behave in the
   same way as in `uv` or `pip`, i.e. we default to `--index-url` if the package
