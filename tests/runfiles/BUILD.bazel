@@ -15,8 +15,30 @@ py_test(
 )
 
 py_test(
+    name = "runfiles_min_python_test",
+    srcs = ["runfiles_test.py"],
+    main = "runfiles_test.py",
+    data = [
+        "//tests/support:current_build_settings",
+    ],
+    env = {
+        "BZLMOD_ENABLED": "1" if BZLMOD_ENABLED else "0",
+    },
+    python_version = "3.10",
+    deps = ["//python/runfiles"],
+)
+
+py_test(
     name = "pathlib_test",
     srcs = ["pathlib_test.py"],
+    deps = ["//python/runfiles"],
+)
+
+py_test(
+    name = "pathlib_min_python_test",
+    srcs = ["pathlib_test.py"],
+    main = "pathlib_test.py",
+    python_version = "3.10",
     deps = ["//python/runfiles"],
 )
 
