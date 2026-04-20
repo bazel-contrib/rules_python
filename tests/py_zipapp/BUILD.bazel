@@ -12,22 +12,18 @@ py_binary(
     config_settings = {
         "//python/config_settings:venvs_site_packages": "yes",
     } | select({
-        "@platforms//os:windows": {
-            ## "//python/config_settings:bootstrap_impl": "system_python",
-        },
+        "@platforms//os:windows": {},
         "//conditions:default": {
             "//python/config_settings:bootstrap_impl": "script",
         },
     }),
     main = "main.py",
-    ##target_compatible_with = NOT_WINDOWS,
     deps = [":bin_deps"],
 )
 
 py_zipapp_binary(
     name = "venv_zipapp",
     binary = ":venv_bin",
-    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_test(
@@ -38,7 +34,6 @@ py_test(
         "BZLMOD_ENABLED": str(int(BZLMOD_ENABLED)),
         "TEST_ZIPAPP": "$(location :venv_zipapp)",
     },
-    ##target_compatible_with = NOT_WINDOWS,
 )
 
 # Create the app with a supported level of compression
@@ -46,7 +41,6 @@ py_zipapp_binary(
     name = "venv_zipapp_compressed",
     binary = ":venv_bin",
     compression = "4",
-    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_test(
@@ -59,7 +53,6 @@ py_test(
         "TEST_ZIPAPP": "$(location :venv_zipapp_compressed)",
     },
     main = "venv_zipapp_test.py",
-    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_binary(

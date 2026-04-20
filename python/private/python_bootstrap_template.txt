@@ -405,9 +405,6 @@ print(site.getsitepackages(["{venv_src}"])[-1])
           target = join(runfiles_venv_bin, f_basename)
           _symlink_exist_ok(from_=venv_path, to=target)
 
-    ## todo: remove this before commit
-    shutil.rmtree(join(venv_lib, "site-packages"), True)
-
     # Recreate correct relative symlinks
     for venv_rel_path, link_to_rf_path in RUNTIME_VENV_SYMLINKS.items():
         venv_abs_path = join(venv, venv_rel_path)
@@ -418,8 +415,6 @@ print(site.getsitepackages(["{venv_src}"])[-1])
     # Do this last to handle non-relative symlinks artifacts
     if os.path.exists(runfiles_venv_lib):
         _symlink_tree(link_from=venv_lib, link_to=runfiles_venv_lib)
-
-    ##_symlink_exist_ok(from_=venv_lib, to=runfiles_venv_lib)
 
     if IS_WINDOWS:
         print_verbose("create_venv: pyvenv.cfg home: ", python_home)
@@ -529,7 +524,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   if delete_dirs:
     for delete_dir in delete_dirs:
       print_verbose("cleanup: rmtree:", delete_dir)
-      ##shutil.rmtree(delete_dir, True)
+      shutil.rmtree(delete_dir, True)
   sys.exit(ret_code)
 
 def _run_execv(python_program, argv, env):

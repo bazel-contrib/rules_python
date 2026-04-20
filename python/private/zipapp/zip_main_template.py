@@ -64,7 +64,6 @@ if IS_WINDOWS:
     EXTRACT_ROOT = norm_slashes(EXTRACT_ROOT)
 
 IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
-IS_VERBOSE = True
 
 def print_verbose(*args, mapping=None, values=None):
     if not IS_VERBOSE:

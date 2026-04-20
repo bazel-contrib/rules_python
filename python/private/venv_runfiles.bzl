@@ -100,8 +100,6 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                     link_to_path = link_to,
                     files = depset(),
                 ))
-                print(explicit_symlinks[-1])
-                ##venv_files.append()
 
     return struct(
         venv_files = venv_files,

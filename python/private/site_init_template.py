@@ -31,7 +31,6 @@ _ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
 
 
 def _is_verbose():
-    return True
     return bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
 
 

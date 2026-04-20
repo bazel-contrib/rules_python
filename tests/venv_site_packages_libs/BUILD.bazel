@@ -31,7 +31,6 @@ sh_test(
     env = {
         "VENV_BIN": "$(rootpath @other//:venv_bin)",
     },
-    ##target_compatible_with = NOT_WINDOWS,
 )
 
 py_reconfig_test(
@@ -39,7 +38,6 @@ py_reconfig_test(
     srcs = ["bin.py"],
     bootstrap_impl = "script",
     main = "bin.py",
-    ##target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
     venvs_site_packages = "yes",
     deps = [
         ":closer_lib",

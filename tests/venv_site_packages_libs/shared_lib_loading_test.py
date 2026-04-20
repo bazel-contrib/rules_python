@@ -84,7 +84,6 @@ class SharedLibLoadingTest(unittest.TestCase):
                       "sys.path:\n" + "\n".join(sys.path))
 
 
-        print(f"Module file: {module.__file__}")
 
         # Verify it's in the venv
         # Normalize paths for Windows comparison.
