@@ -359,8 +359,8 @@ def _whl_library_impl(rctx):
     enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
 
     # When pipstar is enabled, Python isn't used, so there's no need
-    # to setup env vars to run Python.
-    if enable_pipstar_extract:
+    # to setup env vars to run Python, unless we need to build an sdist
+    if enable_pipstar_extract and whl_path:
         environment = {}
     else:
         # Manually construct the PYTHONPATH since we cannot use the toolchain here
