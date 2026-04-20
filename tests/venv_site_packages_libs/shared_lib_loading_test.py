@@ -54,9 +54,7 @@ class SharedLibLoadingTest(unittest.TestCase):
             )
 
         # Check that the module was loaded from the venv.
-        # Use Path for platform-agnostic comparison, though this test is skipIf(os.name == "nt")
-        actual_file = Path(ext_with_libs.adder.__file__).resolve()
-        self.assertIn(".venv", actual_file.parts)
+        self.assertIn(".venv/", ext_with_libs.adder.__file__)
 
         adder_path = os.path.realpath(ext_with_libs.adder.__file__)
 
