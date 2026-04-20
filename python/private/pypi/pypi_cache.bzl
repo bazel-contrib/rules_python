@@ -128,11 +128,12 @@ def _filter_packages(dists, requested_versions):
         return dists
 
     if type(dists) == "dict":
-        return {
+        result = {
             pkg: url
             for pkg, url in dists.items()
             if pkg in requested_versions
         }
+        return result if result else None
 
     sha256s_by_version = {}
     whls = {}
@@ -206,10 +207,13 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         return None
 
     if type(requested_versions) == "dict":
-        return _filter_packages(
+        result = _filter_packages(
             dists = known_facts.get("index_urls", {}).get(index_url, {}),
             requested_versions = requested_versions,
         )
+        if result:
+            _store_facts(facts, facts_version, index_url, result)
+        return result
 
     known_sources = {}
 

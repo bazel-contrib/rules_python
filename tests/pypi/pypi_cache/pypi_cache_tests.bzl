@@ -20,6 +20,9 @@ def _cache(env, **kwargs):
         if not value:
             return env.expect.that_str(value)
 
+        if type(value) == "dict":
+            return env.expect.that_dict(value)
+
         return env.expect.that_struct(
             value,
             attrs = attrs,
@@ -265,6 +268,101 @@ def _test_pypi_cache_reads_from_facts(env):
     got.equals(None)
 
 _tests.append(_test_pypi_cache_reads_from_facts)
+
+def _test_memory_cache_index_urls(env):
+    """Verifies that the cache returns stored values for index_urls."""
+    store = {}
+    cache = _cache(env, mctx = None, store = store)
+
+    fake_result = {
+        "pkg-a": "https://pypi.org/simple/pkg-a/",
+        "pkg_b": "https://pypi.org/simple/pkg-b/",
+    }
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None, "pkg_b": None})
+
+    cache.setdefault(key, fake_result)
+
+    got = cache.get(key)
+    got.contains_exactly(fake_result)
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None})
+    got = cache.get(key)
+    got.contains_exactly({"pkg-a": "https://pypi.org/simple/pkg-a/"})
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-c": None})
+    cache.get(key).equals(None)
+
+_tests.append(_test_memory_cache_index_urls)
+
+def _test_pypi_cache_writes_index_urls_to_facts(env):
+    """Verifies that setting index_urls in the cache also populates the facts store."""
+    mock_ctx = mocks.mctx(facts = {})
+    cache = _cache(env, mctx = mock_ctx)
+
+    fake_result = {
+        "pkg-a": "https://pypi.org/simple/pkg-a/",
+        "pkg_b": "https://pypi.org/simple/pkg-b/",
+    }
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None})
+
+    cache.setdefault(key, fake_result)
+
+    cache.get_facts().contains_exactly({
+        "fact_version": "v1",
+        "index_urls": {
+            "https://pypi.org/simple/": {
+                "pkg-a": "https://pypi.org/simple/pkg-a/",
+            },
+        },
+    })
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg_b": None})
+    cache.setdefault(key, fake_result)
+
+    cache.get_facts().contains_exactly({
+        "fact_version": "v1",
+        "index_urls": {
+            "https://pypi.org/simple/": {
+                "pkg-a": "https://pypi.org/simple/pkg-a/",
+                "pkg_b": "https://pypi.org/simple/pkg-b/",
+            },
+        },
+    })
+
+_tests.append(_test_pypi_cache_writes_index_urls_to_facts)
+
+def _test_pypi_cache_reads_index_urls_from_facts(env):
+    """Verifies that reading index_urls from facts works correctly."""
+    mock_ctx = mocks.mctx(facts = {
+        "fact_version": "v1",
+        "index_urls": {
+            "https://pypi.org/simple/": {
+                "pkg-a": "https://pypi.org/simple/pkg-a/",
+                "pkg-b": "https://pypi.org/simple/pkg-b/",
+            },
+        },
+    })
+    cache = _cache(env, mctx = mock_ctx)
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None})
+    got = cache.get(key)
+    got.contains_exactly({"pkg-a": "https://pypi.org/simple/pkg-a/"})
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None, "pkg-b": None})
+    got = cache.get(key)
+    got.contains_exactly({
+        "pkg-a": "https://pypi.org/simple/pkg-a/",
+        "pkg-b": "https://pypi.org/simple/pkg-b/",
+    })
+
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-c": None})
+    cache.get(key).equals(None)
+
+    cache.get_facts().contains_exactly(mock_ctx.facts)
+
+_tests.append(_test_pypi_cache_reads_index_urls_from_facts)
 
 def pypi_cache_test_suite(name):
     test_suite(
