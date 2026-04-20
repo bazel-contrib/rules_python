@@ -306,9 +306,6 @@ def _whl_library_impl(rctx):
     extra_pip_args = []
     extra_pip_args.extend(rctx.attr.extra_pip_args)
 
-    # Manually construct the PYTHONPATH since we cannot use the toolchain here
-    environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
-
     whl_path = None
     sdist_filename = None
     if rctx.attr.whl_file:
@@ -377,7 +374,8 @@ def _whl_library_impl(rctx):
             python = python_interpreter,
             op = op_tmpl.format(name = rctx.attr.name, requirement = rctx.attr.requirement.split(" ", 1)[0]),
             arguments = args,
-            environment = environment,
+            # Manually construct the PYTHONPATH since we cannot use the toolchain here
+            environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger),
             srcs = rctx.attr._python_srcs,
             quiet = rctx.attr.quiet,
             timeout = rctx.attr.timeout,
@@ -414,7 +412,8 @@ def _whl_library_impl(rctx):
             python_interpreter = python_interpreter,
             args = args,
             whl_path = whl_path,
-            environment = environment,
+            # Manually construct the PYTHONPATH since we cannot use the toolchain here
+            environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger),
             logger = logger,
         )
 
