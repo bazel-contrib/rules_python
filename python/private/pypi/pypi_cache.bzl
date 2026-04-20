@@ -129,9 +129,9 @@ def _filter_packages(dists, requested_versions):
 
     if type(dists) == "dict":
         result = {
-            pkg: dists[pkg]
-            for pkg in requested_versions
-            if pkg in dists
+            pkg: url
+            for pkg, url in dists.items()
+            if pkg in requested_versions
         }
         return result if result else None
 
