@@ -17,13 +17,13 @@ py_test(
 py_test(
     name = "runfiles_min_python_test",
     srcs = ["runfiles_test.py"],
-    main = "runfiles_test.py",
     data = [
         "//tests/support:current_build_settings",
     ],
     env = {
         "BZLMOD_ENABLED": "1" if BZLMOD_ENABLED else "0",
     },
+    main = "runfiles_test.py",
     python_version = "3.10",
     deps = ["//python/runfiles"],
 )
