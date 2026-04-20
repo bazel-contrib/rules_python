@@ -1231,9 +1231,6 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         )
     ))
 
-    app_runfiles = exec_result.app_runfiles
-    app_runfiles = exec_result.app_runfiles
-
     providers = []
 
     _add_provider_default_info(
@@ -1247,7 +1244,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     _add_provider_run_environment_info(providers, ctx, inherited_environment)
     _add_provider_py_executable_info(
         providers,
-        app_runfiles = app_runfiles,
+        app_runfiles = exec_result.app_runfiles,
         build_data_file = runfiles_details.build_data_file,
         interpreter_args = ctx.attr.interpreter_args,
         interpreter_path = runtime_details.executable_interpreter_path,
