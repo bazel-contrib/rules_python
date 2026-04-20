@@ -9,11 +9,14 @@ def main():
         print(f"dep: {some_dep}")
 
         import pkgdep.pkgmod
+
         print(f"dep: {pkgdep.pkgmod}")
     except ImportError as e:
         import sys
-        e.add_note("Failed to import a dependency.\n" +
-                   "sys.path:\n" + "\n".join(sys.path))
+
+        e.add_note(
+            "Failed to import a dependency.\n" + "sys.path:\n" + "\n".join(sys.path)
+        )
         raise
 
 

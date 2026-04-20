@@ -65,6 +65,7 @@ if IS_WINDOWS:
 
 IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
 
+
 def print_verbose(*args, mapping=None, values=None):
     if not IS_VERBOSE:
         return
@@ -206,8 +207,7 @@ def extract_zip(zip_path, dest_dir):
                         target_is_directory = True
                 else:
                     target_is_directory = False
-                os.symlink(target, file_path,
-                           target_is_directory=target_is_directory)
+                os.symlink(target, file_path, target_is_directory=target_is_directory)
             # Of those, we set the lower 12 bits, which are the
             # file mode bits (since the file type bits can't be set by chmod anyway).
             elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
@@ -229,7 +229,7 @@ def create_runfiles_root():
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
     shutil.rmtree(extract_root, True)
     extract_zip(dirname(__file__), extract_root)
-    print_verbose('extracted to:', extract_root)
+    print_verbose("extracted to:", extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
     return join(extract_root, "runfiles")

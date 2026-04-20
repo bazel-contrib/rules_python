@@ -1880,6 +1880,8 @@ def _add_provider_py_executable_info(
         main_py: File; the main .py entry point.
         runfiles_without_exe: runfiles; the default runfiles, but without the executable.
         stage2_bootstrap: File; the stage 2 bootstrap script.
+        venv_app_symlinks: depset[ExplicitSymlink]; symlinks to create for the
+          venv that are the application (deps, etc).
         venv_interpreter_runfiles: runfiles; runfiles specific to the interpreter for the venv.
         venv_interpreter_symlinks: depset[ExplicitSymlink]; interpreter-specific symlinks to create for the venv.
         venv_python_exe: File; the python executable in the venv.

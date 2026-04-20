@@ -78,12 +78,14 @@ class SharedLibLoadingTest(unittest.TestCase):
         # We import markupsafe._speedups (a .cp311-win_amd64.pyd extension)
         try:
             import markupsafe._speedups
+
             module = markupsafe._speedups
         except ImportError as e:
-            self.fail(f"Failed to import markupsafe._speedups: {e}\n"+
-                      "sys.path:\n" + "\n".join(sys.path))
-
-
+            self.fail(
+                f"Failed to import markupsafe._speedups: {e}\n"
+                + "sys.path:\n"
+                + "\n".join(sys.path)
+            )
 
         # Verify it's in the venv
         # Normalize paths for Windows comparison.
@@ -97,13 +99,13 @@ class SharedLibLoadingTest(unittest.TestCase):
             f"Module {module.__name__} not loaded from venv.\n"
             f"Venv: {expected_prefix}\n"
             f"Module file: {actual_file}\n"
-            f"sys.path:\n" + "\n".join(sys.path)
+            f"sys.path:\n" + "\n".join(sys.path),
         )
 
         # Verify it's a shared library (.pyd)
         self.assertTrue(
             actual_file.endswith(".pyd"),
-            f"Expected .pyd extension, got {module.__file__}"
+            f"Expected .pyd extension, got {module.__file__}",
         )
 
     def _get_linking_info(self, path):

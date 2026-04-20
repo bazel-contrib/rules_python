@@ -60,12 +60,15 @@ IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
 # so convert to backslashes to avoid any issues.
 # Related: some logic checks path strings, which needs uniform separators.
 if IS_WINDOWS:
+
     def norm_slashes(s):
         return s.replace("/", "\\")
+
     MAIN_PATH = norm_slashes(MAIN_PATH)
     VENV_ROOT = norm_slashes(VENV_ROOT)
     VENV_SITE_PACKAGES = norm_slashes(VENV_SITE_PACKAGES)
     BUILD_DATA_FILE = norm_slashes(BUILD_DATA_FILE)
+
 
 class BazelBinaryInfoModule(types.ModuleType):
     BUILD_DATA_FILE = BUILD_DATA_FILE
@@ -96,7 +99,6 @@ class BazelBinaryInfoModule(types.ModuleType):
 
 
 sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
-
 
 
 def get_windows_path_with_unc_prefix(path):

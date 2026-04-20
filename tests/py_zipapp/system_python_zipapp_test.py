@@ -12,7 +12,11 @@ class SystemPythonZipAppTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(zipapp_path))
 
         try:
-            output = subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT).decode("utf-8").strip()
+            output = (
+                subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT)
+                .decode("utf-8")
+                .strip()
+            )
         except subprocess.CalledProcessError as e:
             self.fail(
                 "exit code: {}\n"
