@@ -194,7 +194,6 @@ def extract_zip(zip_path, dest_dir):
                 with open(file_path, "r") as f:
                     target = f.read()
                 os.remove(file_path)
-                print_verbose("link", file_path, "to", target)
                 if IS_WINDOWS:
                     entry_path = normpath(join(dirname(info.filename), target))
                     # Zip lookup uses forward slashes, target has backslashes.
@@ -227,7 +226,7 @@ def create_runfiles_root():
             extract_root = get_windows_path_with_unc_prefix(extract_root)
     else:
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
-    shutil.rmtree(extract_root, True)
+
     extract_zip(dirname(__file__), extract_root)
     print_verbose("extracted to:", extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
@@ -368,7 +367,6 @@ def main():
     if _PYTHON_BINARY_VENV:
         python_program = finish_venv_setup(runfiles_root)
     else:
-        assert False, "should be using venv"
         python_program = find_binary(runfiles_root, _PYTHON_BINARY_ACTUAL)
         if python_program is None:
             raise AssertionError(

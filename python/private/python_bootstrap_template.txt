@@ -310,13 +310,13 @@ def create_runfiles_root():
   return join(temp_dir, 'runfiles')
 
 def _symlink_tree(link_from, link_to):
-    # Ensure the source is an absolute path for valid symlinking
+    # Ensure the source is an absolute path to simplify symlinking
     link_to_root = abspath(link_to)
     link_from_root = abspath(link_from)
 
     # This is non-optimal because it recreates the entire
     # venv site-packages tree (as opposed to finding a highest-common
-    # directory to symlink). But its easy and safe.
+    # directory to symlink). But its easy and understandable.
     for root, dirs, files in os.walk(link_to_root):
         rel_path = os.path.relpath(root, link_to_root)
         link_from_dir = join(link_from_root, rel_path)
