@@ -550,7 +550,6 @@ WINDOWS_CONSTRAINTS_ATTRS = {
     ),
 }
 
-
 # Attribute names common to all Python rules
 COMMON_ATTR_NAMES = [
     "compatible_with",

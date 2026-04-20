@@ -2,7 +2,7 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
-load("//python/private:attributes.bzl", "WINDOWS_CONSTRAINTS_ATTRS", "apply_config_settings_attr")
+load("//python/private:attributes.bzl", "apply_config_settings_attr")
 load("//python/private:builders.bzl", "builders")
 load("//python/private:common.bzl", "BUILTIN_BUILD_PYTHON_ZIP", "actions_run", "create_windows_exe_launcher", "is_windows_platform", "maybe_builtin_build_python_zip", "maybe_create_repo_mapping", "runfiles_root_path")
 load("//python/private:common_labels.bzl", "labels")
