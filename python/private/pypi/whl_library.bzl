@@ -358,6 +358,12 @@ def _whl_library_impl(rctx):
     enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
     enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
 
+    if enable_pipstar_extract:
+        environment = {}
+    else:
+        # Manually construct the PYTHONPATH since we cannot use the toolchain here
+        environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
+
     if not whl_path:
         if rctx.attr.urls:
             op_tmpl = "whl_library.BuildWheelFromSource({name}, {requirement})"
@@ -374,8 +380,7 @@ def _whl_library_impl(rctx):
             python = python_interpreter,
             op = op_tmpl.format(name = rctx.attr.name, requirement = rctx.attr.requirement.split(" ", 1)[0]),
             arguments = args,
-            # Manually construct the PYTHONPATH since we cannot use the toolchain here
-            environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger),
+            environment = environment,
             srcs = rctx.attr._python_srcs,
             quiet = rctx.attr.quiet,
             timeout = rctx.attr.timeout,
@@ -412,8 +417,7 @@ def _whl_library_impl(rctx):
             python_interpreter = python_interpreter,
             args = args,
             whl_path = whl_path,
-            # Manually construct the PYTHONPATH since we cannot use the toolchain here
-            environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger),
+            environment = environment,
             logger = logger,
         )
 
