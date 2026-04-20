@@ -159,6 +159,11 @@ class Path(pathlib.Path):
     using the associated `Runfiles` instance when converted to a string.
     """
 
+    # Mypy isn't smart enough to realize `self` in the methods
+    # refers to our Path class instead of pathlib.Path
+    _runfiles: Optional["Runfiles"]
+    _source_repo: Optional[str]
+
     # For Python < 3.12 compatibility when subclassing Path directly
     _flavour = getattr(type(pathlib.Path()), "_flavour", None)
 
