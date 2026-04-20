@@ -31,12 +31,14 @@ import sys
 from collections import defaultdict
 from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
 
-try:
+if sys.version_info >= (3, 11):
     from typing import Self
-except ImportError:
+elif sys.version_info >= (3, 10):
     from typing import TypeAlias
 
     Self: TypeAlias = "Path"  # type: ignore
+else:
+    from typing import Any as Self
 
 
 class _RepositoryMapping:
