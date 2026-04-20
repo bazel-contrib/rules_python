@@ -34,7 +34,7 @@ from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
 try:
     from typing import Self
 except ImportError:
-    from typing import Any as Self
+    Self = "Path"  # type: ignore
 
 
 class _RepositoryMapping:
