@@ -31,6 +31,11 @@ import sys
 from collections import defaultdict
 from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
 
+try:
+    from typing import Self
+except ImportError:
+    from typing import Any as Self
+
 
 class _RepositoryMapping:
     """Repository mapping for resolving apparent repository names to canonical ones.
@@ -158,7 +163,7 @@ class Path(pathlib.Path):
         *args: Union[str, os.PathLike],
         runfiles: Optional["Runfiles"] = None,
         source_repo: Optional[str] = None,
-    ) -> "Self":
+    ) -> Self:
         """Private constructor. Use Runfiles.root() to create instances."""
         obj = super().__new__(cls, *args)
         # Type checkers might complain about adding attributes to Path,
@@ -188,7 +193,7 @@ class Path(pathlib.Path):
     # to self._as_path() because super().resolve() creates intermediate objects
     # that would otherwise crash during internal stat() calls.
     # override
-    def resolve(self, strict: bool = False) -> "Self":
+    def resolve(self, strict: bool = False) -> Self:
         return type(self)(
             self._as_path().resolve(strict=strict),
             runfiles=self._runfiles,
@@ -196,7 +201,7 @@ class Path(pathlib.Path):
         )
 
     # override
-    def absolute(self) -> "Self":
+    def absolute(self) -> Self:
         return type(self)(
             self._as_path().absolute(),
             runfiles=self._runfiles,
@@ -204,7 +209,7 @@ class Path(pathlib.Path):
         )
 
     # override
-    def with_segments(self, *pathsegments: Union[str, os.PathLike]) -> "Self":
+    def with_segments(self, *pathsegments: Union[str, os.PathLike]) -> Self:
         """Used by Python 3.12+ pathlib to create new path objects."""
         return type(self)(
             *pathsegments,
@@ -214,7 +219,7 @@ class Path(pathlib.Path):
 
     # For Python < 3.12
     # override
-    def _make_child(self, args: Tuple[str, ...]) -> "Self":
+    def _make_child(self, args: Tuple[str, ...]) -> Self:
         obj = super()._make_child(args)  # type: ignore
         obj._runfiles = self._runfiles  # type: ignore
         obj._source_repo = self._source_repo  # type: ignore
@@ -222,7 +227,7 @@ class Path(pathlib.Path):
 
     # override
     @property
-    def parents(self) -> Tuple["Self", ...]:
+    def parents(self) -> Tuple[Self, ...]:
         return tuple(
             type(self)(
                 p,
@@ -234,7 +239,7 @@ class Path(pathlib.Path):
 
     # override
     @property
-    def parent(self) -> "Self":
+    def parent(self) -> Self:
         return type(self)(
             super().parent,
             runfiles=self._runfiles,
@@ -250,7 +255,7 @@ class Path(pathlib.Path):
         return path_posix
 
     # override
-    def with_name(self, name: str) -> "Self":
+    def with_name(self, name: str) -> Self:
         return type(self)(
             super().with_name(name),
             runfiles=self._runfiles,
@@ -258,7 +263,7 @@ class Path(pathlib.Path):
         )
 
     # override
-    def with_suffix(self, suffix: str) -> "Self":
+    def with_suffix(self, suffix: str) -> Self:
         return type(self)(
             super().with_suffix(suffix),
             runfiles=self._runfiles,
@@ -336,19 +341,19 @@ class Path(pathlib.Path):
         return self._as_path().read_text(encoding=encoding, errors=errors)
 
     # override
-    def iterdir(self) -> Generator["Self", None, None]:
+    def iterdir(self) -> Generator[Self, None, None]:
         resolved = self._as_path()
         for p in resolved.iterdir():
             yield self / p.name
 
     # override
-    def glob(self, pattern: str) -> Generator["Self", None, None]:
+    def glob(self, pattern: str) -> Generator[Self, None, None]:
         resolved = self._as_path()
         for p in resolved.glob(pattern):
             yield self / p.relative_to(resolved)
 
     # override
-    def rglob(self, pattern: str) -> Generator["Self", None, None]:
+    def rglob(self, pattern: str) -> Generator[Self, None, None]:
         resolved = self._as_path()
         for p in resolved.rglob(pattern):
             yield self / p.relative_to(resolved)
@@ -371,7 +376,7 @@ class Path(pathlib.Path):
     def __fspath__(self) -> str:
         return str(self)
 
-    def runfiles_root(self) -> "Self":
+    def runfiles_root(self) -> Self:
         """Returns a Path object representing the runfiles root."""
         return self._runfiles.root(source_repo=self._source_repo)  # type: ignore
 
