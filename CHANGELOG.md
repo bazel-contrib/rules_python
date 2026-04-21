@@ -67,6 +67,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (windows) Full venv support for Windows is available. Set
+  {obj}`--venvs_site_packages=yes` to enable.
 * (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
   Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
 * (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
