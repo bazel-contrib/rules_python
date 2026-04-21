@@ -158,6 +158,8 @@ Other changes:
   )
   ```
   Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
+* (pypi) Fixes wheel extraction on hosts without python installed,
+  Fixes [#3712](https://github.com/bazel-contrib/rules_python/issues/3712).
 
 {#v2-0-0-added}
 ### Added

@@ -306,9 +306,6 @@ def _whl_library_impl(rctx):
     extra_pip_args = []
     extra_pip_args.extend(rctx.attr.extra_pip_args)
 
-    # Manually construct the PYTHONPATH since we cannot use the toolchain here
-    environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
-
     whl_path = None
     sdist_filename = None
     if rctx.attr.whl_file:
@@ -360,6 +357,14 @@ def _whl_library_impl(rctx):
     # also enable pipstar for any whls that are downloaded without `pip`
     enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
     enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
+
+    # When pipstar is enabled, Python isn't used, so there's no need
+    # to setup env vars to run Python, unless we need to build an sdist
+    if enable_pipstar_extract and whl_path:
+        environment = {}
+    else:
+        # Manually construct the PYTHONPATH since we cannot use the toolchain here
+        environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
 
     if not whl_path:
         if rctx.attr.urls:
