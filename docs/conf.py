@@ -95,13 +95,6 @@ redirects = {
     "pypi-dependencies.html": "pypi/index.html",
 }
 
-# Adapted from the template code:
-# https://github.com/readthedocs/readthedocs.org/blob/main/readthedocs/doc_builder/templates/doc_builder/conf.py.tmpl
-if os.environ.get("READTHEDOCS") == "True":
-    # Must come first because it can interfere with other extensions, according
-    # to the original conf.py template comments
-    extensions.insert(0, "readthedocs_ext.readthedocs")
-
 exclude_patterns = ["_includes/*"]
 templates_path = ["_templates"]
 primary_domain = None  # The default is 'py', which we don't make much use of
