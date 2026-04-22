@@ -7,7 +7,7 @@ from __future__ import print_function
 
 # Generated file from @rules_python//python/private:python_bootstrap_template.txt
 
-from os.path import dirname, join, basename, normpath
+from os.path import abspath, dirname, join, basename, normpath
 import os
 import shutil
 import subprocess
@@ -95,6 +95,7 @@ else:
 IS_WINDOWS = os.name == "nt"
 
 BIN_DIR_NAME = "bin" if not IS_WINDOWS else "Scripts"
+LIB_DIR_NAME = "lib" if not IS_WINDOWS else "Lib"
 
 # Windows APIs can be picky about slashes depending on the context,
 # so convert to backslashes to avoid any issues.
@@ -147,15 +148,15 @@ def get_windows_path_with_unc_prefix(path):
   if path.startswith(unicode_prefix):
     return path
 
-  # os.path.abspath returns a normalized absolute path
-  return unicode_prefix + os.path.abspath(path)
+  # abspath returns a normalized absolute path
+  return unicode_prefix + abspath(path)
 
 def search_path(name):
   """Finds a file in a given search path."""
   search_path = os.getenv('PATH', os.defpath).split(os.pathsep)
   for directory in search_path:
     if directory:
-      path = os.path.join(directory, name)
+      path = join(directory, name)
       if os.path.isfile(path) and os.access(path, os.X_OK):
         return path
   return None
@@ -206,7 +207,7 @@ def find_binary(runfiles_root, bin_name):
   # Use normpath() to convert slashes to os.sep on Windows.
   elif os.sep in os.path.normpath(bin_name):
     # Case 3: Path is relative to the repo root.
-    return os.path.join(runfiles_root, bin_name)
+    return join(runfiles_root, bin_name)
   else:
     # Case 4: Path has to be looked up in the search path.
     return search_path(bin_name)
@@ -226,7 +227,7 @@ def find_runfiles_root(main_rel_path):
       runfiles_dir = runfiles_manifest_file[:-9]
   # Be defensive: the runfiles dir should contain our main entry point. If
   # it doesn't, then it must not be our runfiles directory.
-  if runfiles_dir and os.path.exists(os.path.join(runfiles_dir, main_rel_path)):
+  if runfiles_dir and os.path.exists(join(runfiles_dir, main_rel_path)):
     return runfiles_dir
 
   # Clear RUNFILES_DIR & RUNFILES_MANIFEST_FILE since the runfiles dir was
@@ -244,7 +245,7 @@ def find_runfiles_root(main_rel_path):
     stub_filename = stub_filename.replace("/", os.sep)
 
   if not os.path.isabs(stub_filename):
-    stub_filename = os.path.join(os.getcwd(), stub_filename)
+    stub_filename = join(os.getcwd(), stub_filename)
 
   while True:
     runfiles_root = stub_filename + ('.exe' if IS_WINDOWS else '') + '.runfiles'
@@ -262,7 +263,7 @@ def find_runfiles_root(main_rel_path):
     if os.path.isabs(target):
       stub_filename = target
     else:
-      stub_filename = os.path.join(os.path.dirname(stub_filename), target)
+      stub_filename = join(os.path.dirname(stub_filename), target)
 
   raise AssertionError('Cannot find .runfiles directory for %s' % sys.argv[0])
 
@@ -285,7 +286,7 @@ def extract_zip(zip_path, dest_dir):
       zf.extract(info, dest_dir)
       # UNC-prefixed paths must be absolute/normalized. See
       # https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation
-      file_path = os.path.abspath(os.path.join(dest_dir, info.filename))
+      file_path = abspath(join(dest_dir, info.filename))
       # The Unix st_mode bits (see "man 7 inode") are stored in the upper 16
       # bits of external_attr.
       attrs = info.external_attr >> 16
@@ -306,7 +307,27 @@ def create_runfiles_root():
   extract_zip(os.path.dirname(__file__), temp_dir)
   # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
   # important that deletion code be in sync with this directory structure
-  return os.path.join(temp_dir, 'runfiles')
+  return join(temp_dir, 'runfiles')
+
+def _symlink_tree(link_from, link_to):
+    # Ensure the source is an absolute path to simplify symlinking
+    link_to_root = abspath(link_to)
+    link_from_root = abspath(link_from)
+
+    # This is non-optimal because it recreates the entire
+    # venv site-packages tree (as opposed to finding a highest-common
+    # directory to symlink). But its easy and understandable.
+    for root, dirs, files in os.walk(link_to_root):
+        rel_path = os.path.relpath(root, link_to_root)
+        link_from_dir = join(link_from_root, rel_path)
+
+        if not os.path.exists(link_from_dir):
+            os.makedirs(link_from_dir)
+
+        for name in files:
+            link_to = join(root, name)
+            link_from = join(link_from_dir, name)
+            _symlink_exist_ok(from_=link_from, to=link_to)
 
 def _create_venv(runfiles_root, delete_dirs):
     rel_runfiles_venv = dirname(dirname(PYTHON_BINARY))
@@ -343,14 +364,14 @@ print(site.getsitepackages(["{venv_src}"])[-1])
         output = output.strip().split("\n")
         python_exe_actual = output[0]
         python_home = output[1] if IS_WINDOWS else None
-        venv_site_packages = output[2]
-        os.makedirs(dirname(venv_site_packages), exist_ok=True)
-        runfiles_venv_site_packages = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
+        venv_lib = output[2]
+        os.makedirs(dirname(venv_lib), exist_ok=True)
+        runfiles_venv_lib = join(runfiles_venv, VENV_REL_SITE_PACKAGES)
     else:
         # On unixy, Python can find home based on the symlink.
         python_home = dirname(python_exe_actual) if IS_WINDOWS else None
-        venv_site_packages = join(venv, "lib")
-        runfiles_venv_site_packages = join(runfiles_venv, "lib")
+        venv_lib = join(venv, LIB_DIR_NAME)
+        runfiles_venv_lib = join(runfiles_venv, LIB_DIR_NAME)
 
     venv_bin = join(venv, BIN_DIR_NAME)
     try:
@@ -384,14 +405,16 @@ print(site.getsitepackages(["{venv_src}"])[-1])
           target = join(runfiles_venv_bin, f_basename)
           _symlink_exist_ok(from_=venv_path, to=target)
 
+    # Recreate correct relative symlinks
     for venv_rel_path, link_to_rf_path in RUNTIME_VENV_SYMLINKS.items():
         venv_abs_path = join(venv, venv_rel_path)
-        link_to = normpath(join(runfiles_venv, link_to_rf_path))
+        link_to = normpath(join(runfiles_root, link_to_rf_path))
         os.makedirs(dirname(venv_abs_path), exist_ok=True)
         _symlink_exist_ok(from_=venv_abs_path, to=link_to)
 
-    _symlink_exist_ok(from_=join(venv, "lib"), to=join(runfiles_venv, "lib"))
-    _symlink_exist_ok(from_=venv_site_packages, to=runfiles_venv_site_packages)
+    # Do this last to handle non-relative symlinks artifacts
+    if os.path.exists(runfiles_venv_lib):
+        _symlink_tree(link_from=venv_lib, link_to=runfiles_venv_lib)
 
     if IS_WINDOWS:
         print_verbose("create_venv: pyvenv.cfg home: ", python_home)
@@ -436,7 +459,7 @@ def runfiles_envvar(runfiles_root):
   # Normally .runfiles_manifest and MANIFEST are both present, but the
   # former will be missing for zip-based builds or if someone copies the
   # runfiles tree elsewhere.
-  runfiles = os.path.join(runfiles_root, 'MANIFEST')
+  runfiles = join(runfiles_root, 'MANIFEST')
   if os.path.exists(runfiles):
     return ('RUNFILES_MANIFEST_FILE', runfiles)
 
@@ -500,7 +523,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
 
   if delete_dirs:
     for delete_dir in delete_dirs:
-      print_verbose("rmtree:", delete_dir)
+      print_verbose("cleanup: rmtree:", delete_dir)
       shutil.rmtree(delete_dir, True)
   sys.exit(ret_code)
 
@@ -520,13 +543,17 @@ def _run_execv(python_program, argv, env):
 
 def _symlink_exist_ok(*, from_, to):
   try:
-    os.symlink(to, from_)
+    # On Windows, symlinks have to be told whether they're
+    # pointing to a file or directory. Python is supposed to auto-detect
+    # this, but in practice, this doesn't reliably happen.
+    os.symlink(to, from_, target_is_directory=os.path.isdir(to))
   except FileExistsError:
     pass
 
 
 def main():
   print_verbose("sys.version:", sys.version)
+  print_verbose("sys.executable:", sys.executable)
   print_verbose("initial argv:", values=sys.argv)
   print_verbose("initial cwd:", os.getcwd())
   print_verbose("initial environ:", mapping=os.environ)
@@ -580,7 +607,7 @@ def main():
   # See: https://docs.python.org/3.11/using/cmdline.html#envvar-PYTHONSAFEPATH
   new_env['PYTHONSAFEPATH'] = '1'
 
-  main_filename = os.path.join(runfiles_root, main_rel_path)
+  main_filename = join(runfiles_root, main_rel_path)
   main_filename = get_windows_path_with_unc_prefix(main_filename)
   assert os.path.exists(main_filename), \
          'Cannot exec() %r: file not found.' % main_filename
@@ -616,7 +643,7 @@ def main():
     # change directory to the right runfiles directory.
     # (So that the data files are accessible)
     if os.environ.get('RUN_UNDER_RUNFILES') == '1':
-      workspace = os.path.join(runfiles_root, WORKSPACE_NAME)
+      workspace = join(runfiles_root, WORKSPACE_NAME)
 
   try:
     sys.stdout.flush()

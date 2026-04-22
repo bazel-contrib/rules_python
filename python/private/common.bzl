@@ -49,6 +49,31 @@ BUILTIN_BUILD_PYTHON_ZIP = [] if config.bazel_10_or_later else [
     "//command_line_option:build_python_zip",
 ]
 
+# Not an actual provider. Provider used for memory efficiency.
+# buildifier: disable=name-conventions
+ExplicitSymlink = provider(
+    doc = """
+A runfile that should be created as a symlink pointing to a specific location.
+
+This is only needed on Windows, where Bazel doesn't preserve declare_symlink
+with relative paths. This is basically manually captures what using
+declare_symlink(), symlink() and runfiles like so would capture:
+
+```
+link = declare_symlink(...)
+link_to_path = relative_path(from=link, to=target)
+symlink(output=link, target_path=link_to_path)
+runfiles.add([link, target])
+```
+""",
+    fields = {
+        "files": "depset[File] of files that should be included if this symlink is used",
+        "link_to_path": "Path the symlink should point to",
+        "runfiles_path": "runfiles-root-relative path for the symlink",
+        "venv_path": "venv-root-relative path for the symlink",
+    },
+)
+
 def maybe_builtin_build_python_zip(value, settings = None):
     settings = settings or {}
     if not config.bazel_10_or_later:
@@ -459,6 +484,17 @@ def target_platform_has_any_constraint(ctx, constraints):
         if ctx.target_platform_has_constraint(constraint_value):
             return True
     return False
+
+def is_windows_platform(ctx):
+    """Check if target platform is windows.
+
+    Args:
+      ctx: rule context.
+
+    Returns:
+      True if target platform is windows.
+    """
+    return target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
 
 def relative_path(from_, to):
     """Compute a relative path from one path to another.

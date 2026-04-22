@@ -22,8 +22,10 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assertTrue(
             module.__file__.startswith(self.venv),
             f"\n{module_name} was imported, but not from the venv.\n"
-            + f"venv  : {self.venv}\n"
-            + f"actual: {module.__file__}",
+            + f"       venv: {self.venv}\n"
+            + f"module file: {module.__file__}\n"
+            + "sys.path:\n"
+            + "\n".join(sys.path),
         )
         return module
 

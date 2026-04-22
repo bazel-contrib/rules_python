@@ -1,11 +1,6 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//python:py_library.bzl", "py_library")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
-load(
-    "//tests/support:support.bzl",
-    "NOT_WINDOWS",
-    "SUPPORTS_BOOTSTRAP_SCRIPT",
-)
 
 py_library(
     name = "user_lib",
@@ -31,7 +26,6 @@ sh_test(
     env = {
         "VENV_BIN": "$(rootpath @other//:venv_bin)",
     },
-    target_compatible_with = NOT_WINDOWS,
 )
 
 py_reconfig_test(
@@ -39,7 +33,6 @@ py_reconfig_test(
     srcs = ["bin.py"],
     bootstrap_impl = "script",
     main = "bin.py",
-    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
     venvs_site_packages = "yes",
     deps = [
         ":closer_lib",
@@ -58,13 +51,20 @@ py_reconfig_test(
 py_reconfig_test(
     name = "shared_lib_loading_test",
     srcs = ["shared_lib_loading_test.py"],
-    bootstrap_impl = "script",
+    bootstrap_impl = select({
+        "@platforms//os:windows": "system_python",
+        "//conditions:default": "script",
+    }),
     main = "shared_lib_loading_test.py",
-    target_compatible_with = NOT_WINDOWS,
     venvs_site_packages = "yes",
-    deps = [
-        "//tests/venv_site_packages_libs/ext_with_libs",
-        "@dev_pip//macholib",
-        "@dev_pip//pyelftools",
-    ],
+    deps = select({
+        "@platforms//os:windows": [
+            "@dev_pip//markupsafe",
+        ],
+        "//conditions:default": [
+            "//tests/venv_site_packages_libs/ext_with_libs",
+            "@dev_pip//macholib",
+            "@dev_pip//pyelftools",
+        ],
+    }),
 )

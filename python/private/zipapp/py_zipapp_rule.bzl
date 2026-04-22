@@ -4,7 +4,16 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:attributes.bzl", "apply_config_settings_attr")
 load("//python/private:builders.bzl", "builders")
-load("//python/private:common.bzl", "BUILTIN_BUILD_PYTHON_ZIP", "actions_run", "create_windows_exe_launcher", "maybe_builtin_build_python_zip", "maybe_create_repo_mapping", "runfiles_root_path", "target_platform_has_any_constraint")
+load(
+    "//python/private:common.bzl",
+    "BUILTIN_BUILD_PYTHON_ZIP",
+    "actions_run",
+    "create_windows_exe_launcher",
+    "is_windows_platform",
+    "maybe_builtin_build_python_zip",
+    "maybe_create_repo_mapping",
+    "runfiles_root_path",
+)
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:py_internal.bzl", "py_internal")
@@ -135,18 +144,22 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
 
     runfiles = runfiles.build(ctx)
 
+    explicit_symlinks = depset(transitive = [
+        py_executable.venv_interpreter_symlinks,
+        py_executable.venv_app_symlinks,
+    ])
     zip_main = _create_zipapp_main_py(
         ctx,
         py_runtime,
         py_executable,
         stage2_bootstrap,
         runfiles,
-        py_executable.venv_interpreter_symlinks,
+        explicit_symlinks,
     )
     inputs = builders.DepsetBuilder()
     manifest.add("regular|0|__main__.py|{}".format(zip_main.path))
     inputs.add(zip_main)
-    _build_manifest(ctx, manifest, runfiles, py_executable.venv_interpreter_symlinks, inputs)
+    _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs)
 
     zipper_args = ctx.actions.args()
     zipper_args.add(output)
@@ -159,7 +172,7 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
         zipper_args.add(ctx.attr.compression, format = "--compression=%s")
     zipper_args.add("--runfiles-dir=runfiles")
 
-    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+    is_windows = is_windows_platform(ctx)
     zipper_args.add("\\" if is_windows else "/", format = "--target-platform-pathsep=%s")
 
     actions_run(
@@ -230,7 +243,7 @@ def _py_zipapp_executable_impl(ctx):
 
     zip_file = _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap)
     if ctx.attr.executable:
-        if target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints):
+        if is_windows_platform(ctx):
             executable = ctx.actions.declare_file(ctx.label.name + ".exe")
 
             # The zipapp is an opaque zip file, so the Bazel Python launcher doesn't

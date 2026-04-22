@@ -67,6 +67,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (windows) Full venv support for Windows is available. Set
+  {obj}`--venvs_site_packages=yes` to enable.
 * (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
   Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
 * (gazelle) Support alias_kind directive.
@@ -158,6 +160,8 @@ Other changes:
   )
   ```
   Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
+* (pypi) Fixes wheel extraction on hosts without python installed,
+  Fixes [#3712](https://github.com/bazel-contrib/rules_python/issues/3712).
 
 {#v2-0-0-added}
 ### Added

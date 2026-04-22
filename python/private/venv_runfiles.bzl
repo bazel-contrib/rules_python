@@ -3,7 +3,9 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load(
     ":common.bzl",
+    "ExplicitSymlink",
     "is_file",
+    "is_windows_platform",
     "relative_path",
     "runfiles_root_path",
 )
@@ -58,6 +60,14 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
     link_map = build_link_map(ctx, entries)
     venv_files = []
     runfiles_symlinks = {}
+    explicit_symlinks = []
+
+    is_windows = is_windows_platform(ctx)
+
+    ctx_rf_path = paths.join(
+        ctx.label.repo_name or ctx.workspace_name,
+        ctx.label.package,
+    )
 
     for kind, kind_map in link_map.items():
         base = venv_dir_map[kind]
@@ -70,7 +80,7 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                 symlink_from = paths.join(runfile_prefix, ctx.label.package, bin_venv_path)
 
                 runfiles_symlinks[symlink_from] = link_to
-            else:
+            elif not is_windows:
                 venv_link = ctx.actions.declare_symlink(bin_venv_path)
                 venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
                 rel_path = relative_path(
@@ -81,10 +91,20 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                 )
                 ctx.actions.symlink(output = venv_link, target_path = rel_path)
                 venv_files.append(venv_link)
+            else:
+                rf_path = paths.join(ctx_rf_path, bin_venv_path)
+                _, _, venv_path = bin_venv_path.partition(".venv/")
+                explicit_symlinks.append(ExplicitSymlink(
+                    runfiles_path = rf_path,
+                    venv_path = venv_path,
+                    link_to_path = link_to,
+                    files = depset(),
+                ))
 
     return struct(
         venv_files = venv_files,
         runfiles_symlinks = runfiles_symlinks,
+        explicit_symlinks = depset(explicit_symlinks),
     )
 
 # Visible for testing

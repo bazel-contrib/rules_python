@@ -82,20 +82,22 @@ class PyZipAppTest(unittest.TestCase):
             if self._is_bzlmod_enabled():
                 self.assertIn("runfiles/_repo_mapping", namelist)
 
-            self.assertHasPathMatchingSuffix(namelist, "/pyvenv.cfg")
+            # On Windows, pyvenv.cfg and bin/python3 are generated at runtime.
+            if os.name != "nt":
+                self.assertHasPathMatchingSuffix(namelist, "/pyvenv.cfg")
 
-            # The venv directory name depends on the target name, so find it
-            # by looking for pyvenv.cfg.
-            venv_config = next(
-                (name for name in namelist if name.endswith("/pyvenv.cfg")), None
-            )
-            self.assertIsNotNone(venv_config)
+                # The venv directory name depends on the target name, so find it
+                # by looking for pyvenv.cfg.
+                venv_config = next(
+                    (name for name in namelist if name.endswith("/pyvenv.cfg")), None
+                )
+                self.assertIsNotNone(venv_config)
 
-            venv_root = os.path.dirname(venv_config)
+                venv_root = os.path.dirname(venv_config)
 
-            # Verify bin/python3 exists and is a symlink
-            python_bin = f"{venv_root}/bin/python3"
-            self.assertZipEntryIsSymlink(zf, python_bin)
+                # Verify bin/python3 exists and is a symlink
+                python_bin = f"{venv_root}/bin/python3"
+                self.assertZipEntryIsSymlink(zf, python_bin)
 
             # Verify _bazel_site_init.py exists in site-packages
             self.assertHasPathMatchingSuffix(

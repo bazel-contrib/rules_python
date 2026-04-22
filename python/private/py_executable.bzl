@@ -30,12 +30,14 @@ load(
     "PrecompileAttr",
     "PycCollectionAttr",
     "REQUIRED_EXEC_GROUP_BUILDERS",
+    "WINDOWS_CONSTRAINTS_ATTRS",
     "apply_config_settings_attr",
 )
 load(":builders.bzl", "builders")
 load(":cc_helper.bzl", "cc_helper")
 load(
     ":common.bzl",
+    "ExplicitSymlink",
     "collect_cc_info",
     "collect_deps",
     "collect_imports",
@@ -49,10 +51,10 @@ load(
     "csv",
     "filter_to_py_srcs",
     "is_bool",
+    "is_windows_platform",
     "maybe_create_repo_mapping",
     "relative_path",
     "runfiles_root_path",
-    "target_platform_has_any_constraint",
 )
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "BootstrapImplFlag", "VenvsUseDeclareSymlinkFlag", "read_possibly_native_flag")
@@ -73,30 +75,6 @@ _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
 _INIT_PY = "__init__.py"
 
-# buildifier: disable=name-conventions
-ExplicitSymlink = provider(
-    doc = """
-A runfile that should be created as a symlink pointing to a specific location.
-
-This is only needed on Windows, where Bazel doesn't preserve declare_symlink
-with relative paths. This is basically manually captures what using
-declare_symlink(), symlink() and runfiles like so would capture:
-
-```
-link = declare_symlink(...)
-link_to_path = relative_path(from=link, to=target)
-symlink(output=link, target_path=link_to_path)
-runfiles.add([link, target])
-```
-""",
-    fields = {
-        "files": "depset[File] of files that should be included if this symlink is used",
-        "link_to_path": "Path the symlink should point to",
-        "runfiles_path": "runfiles-root-relative path for the symlink",
-        "venv_path": "venv-root-relative path for the symlink",
-    },
-)
-
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
 EXECUTABLE_ATTRS = dicts.add(
@@ -104,6 +82,7 @@ EXECUTABLE_ATTRS = dicts.add(
     AGNOSTIC_EXECUTABLE_ATTRS,
     PY_SRCS_ATTRS,
     IMPORTS_ATTRS,
+    WINDOWS_CONSTRAINTS_ATTRS,
     # starlark flags attributes
     {
         "_build_python_zip_flag": attr.label(default = "//python/config_settings:build_python_zip"),
@@ -257,11 +236,6 @@ accepting arbitrary Python versions.
             default = labels.VENVS_USE_DECLARE_SYMLINK,
             providers = [BuildSettingInfo],
         ),
-        "_windows_constraints": lambda: attrb.LabelList(
-            default = [
-                "@platforms//os:windows",
-            ],
-        ),
         "_zipper": lambda: attrb.Label(
             cfg = "exec",
             executable = True,
@@ -323,7 +297,7 @@ def _create_executable(
         extra_deps):
     _ = is_test, cc_details, native_deps_details  # @unused
 
-    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+    is_windows = is_windows_platform(ctx)
 
     if is_windows:
         if not executable.extension == "exe":
@@ -447,14 +421,14 @@ WARNING: Target: {}
             use_zip_file = build_zip_enabled,
             python_binary_path = runtime_details.executable_interpreter_path,
         )
-        if not build_zip_enabled:
-            # On Windows, the main executable has an "exe" extension, so
-            # here we re-use the un-extensioned name for the bootstrap output.
-            bootstrap_output = ctx.actions.declare_file(base_executable_name)
 
-            # The launcher looks for the non-zip executable next to
-            # itself, so add it to the default outputs.
-            extra_default_outputs.append(bootstrap_output)
+        # On Windows, the main executable has an "exe" extension, so
+        # here we re-use the un-extensioned name for the bootstrap output.
+        bootstrap_output = ctx.actions.declare_file(base_executable_name)
+
+        # The launcher looks for the non-zip executable next to
+        # itself, so add it to the default outputs.
+        extra_default_outputs.append(bootstrap_output)
 
     if should_create_executable_zip:
         if bootstrap_output != None:
@@ -516,6 +490,9 @@ WARNING: Target: {}
         # runfiles; runfiles for the app itself (e.g its deps, but no Python
         # runtime files)
         app_runfiles = app_runfiles.build(ctx),
+        # depset[ExplicitSymlink]None; symlinks that should be created in
+        # the venv to augment app_runfiles
+        venv_app_symlinks = venv.lib_symlinks if venv else None,
         # File|None; the venv `bin/python3` file, if any.
         venv_python_exe = venv.interpreter if venv else None,
         # runfiles|None; runfiles in the venv for the interpreter
@@ -561,7 +538,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
     else:
         interpreter_actual_path = runtime.interpreter_path
 
-    is_windows = target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+    is_windows = is_windows_platform(ctx)
     if is_windows:
         venv_details = _create_venv_windows(
             ctx,
@@ -644,6 +621,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         lib_runfiles = ctx.runfiles(
             root_symlinks = venv_app_files.runfiles_symlinks,
         ),
+        lib_symlinks = venv_app_files.explicit_symlinks,
     )
 
 def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_path):
@@ -937,9 +915,12 @@ def _create_stage1_bootstrap(
     }
     computed_subs = ctx.actions.template_dict()
     if venv:
+        runtime_venv_symlinks = depset(
+            transitive = [venv.interpreter_symlinks, venv.lib_symlinks],
+        )
         computed_subs.add_joined(
             "%runtime_venv_symlinks%",
-            venv.interpreter_symlinks,
+            runtime_venv_symlinks,
             join_with = "\n",
             map_each = _map_runtime_venv_symlink,
         )
@@ -1250,8 +1231,6 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         )
     ))
 
-    app_runfiles = exec_result.app_runfiles
-
     providers = []
 
     _add_provider_default_info(
@@ -1265,13 +1244,14 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     _add_provider_run_environment_info(providers, ctx, inherited_environment)
     _add_provider_py_executable_info(
         providers,
-        app_runfiles = app_runfiles,
+        app_runfiles = exec_result.app_runfiles,
         build_data_file = runfiles_details.build_data_file,
         interpreter_args = ctx.attr.interpreter_args,
         interpreter_path = runtime_details.executable_interpreter_path,
         main_py = main_py,
         runfiles_without_exe = runfiles_details.runfiles_without_exe,
         stage2_bootstrap = exec_result.stage2_bootstrap,
+        venv_app_symlinks = exec_result.venv_app_symlinks,
         venv_interpreter_runfiles = exec_result.venv_interpreter_runfiles,
         venv_interpreter_symlinks = exec_result.venv_interpreter_symlinks,
         venv_python_exe = exec_result.venv_python_exe,
@@ -1313,7 +1293,7 @@ def _validate_executable(ctx):
         ).format(ctx.attr.main, ctx.attr.main_module))
 
 def _declare_executable_file(ctx):
-    if target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints):
+    if is_windows_platform(ctx):
         executable = ctx.actions.declare_file(ctx.label.name + ".exe")
     else:
         executable = ctx.actions.declare_file(ctx.label.name)
@@ -1882,6 +1862,7 @@ def _add_provider_py_executable_info(
         main_py,
         runfiles_without_exe,
         stage2_bootstrap,
+        venv_app_symlinks,
         venv_interpreter_runfiles,
         venv_interpreter_symlinks,
         venv_python_exe):
@@ -1896,6 +1877,8 @@ def _add_provider_py_executable_info(
         main_py: File; the main .py entry point.
         runfiles_without_exe: runfiles; the default runfiles, but without the executable.
         stage2_bootstrap: File; the stage 2 bootstrap script.
+        venv_app_symlinks: depset[ExplicitSymlink]; symlinks to create for the
+          venv that are the application (deps, etc).
         venv_interpreter_runfiles: runfiles; runfiles specific to the interpreter for the venv.
         venv_interpreter_symlinks: depset[ExplicitSymlink]; interpreter-specific symlinks to create for the venv.
         venv_python_exe: File; the python executable in the venv.
@@ -1908,6 +1891,7 @@ def _add_provider_py_executable_info(
         main = main_py,
         runfiles_without_exe = runfiles_without_exe,
         stage2_bootstrap = stage2_bootstrap,
+        venv_app_symlinks = venv_app_symlinks,
         venv_interpreter_runfiles = venv_interpreter_runfiles,
         venv_interpreter_symlinks = venv_interpreter_symlinks,
         venv_python_exe = venv_python_exe,
