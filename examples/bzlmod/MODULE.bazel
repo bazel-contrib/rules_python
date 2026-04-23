@@ -45,6 +45,12 @@ python.toolchain(
     python_version = "3.10",
 )
 
+# Adding Python 3.12 version for testing
+python.toolchain(
+    configure_coverage_tool = True,
+    python_version = "3.12",
+)
+
 # Adding the latest Python 3.13 version for testing
 python.toolchain(
     configure_coverage_tool = True,
@@ -104,7 +110,7 @@ python.single_version_platform_override(
 # See the tests folder for various examples on using multiple Python versions.
 # The names "python_3_9" and "python_3_10" are autmatically created by the repo
 # rules based on the `python_version` arg values.
-use_repo(python, "python_3_10", "python_3_13", "python_3_9", "python_versions", "pythons_hub")
+use_repo(python, "python_3_10", "python_3_12", "python_3_13", "python_3_9", "python_versions", "pythons_hub")
 
 # EXPERIMENTAL: This is experimental and may be changed or removed without notice
 uv = use_extension(
@@ -266,6 +272,17 @@ pip.parse(
     # These modifications were created above and we
     # are providing pip.parse with the label of the mod
     # and the name of the wheel.
+    whl_modifications = {
+        "@whl_mods_hub//:requests.json": "requests",
+        "@whl_mods_hub//:wheel.json": "wheel",
+    },
+)
+pip.parse(
+    hub_name = "pip",
+    python_version = "3.12",
+    requirements_by_platform = {
+        "//:requirements_lock_3_12.txt": "linux_*,osx_*",
+    },
     whl_modifications = {
         "@whl_mods_hub//:requests.json": "requests",
         "@whl_mods_hub//:wheel.json": "wheel",
