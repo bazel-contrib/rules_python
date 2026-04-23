@@ -13,3 +13,4 @@
 # limitations under the License.
 
 # For test purposes only.
+BAR = "baz"

@@ -63,7 +63,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
-* Nothing fixed.
+* (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
+  targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
 
 {#v0-0-0-added}
 ### Added
