@@ -183,7 +183,8 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
     if rctx.attr.add_libdir_to_library_search_path:
         if "LDFLAGS" in env:
             fail("Can't set both environment LDFLAGS and add_libdir_to_library_search_path")
-        command = [pypi_repo_utils.resolve_python_interpreter(rctx), "-c", "import sys ; sys.stdout.write('{}/lib'.format(sys.exec_prefix))"]
+        command = [
+            pypi_repo_utils.resolve_python_interpreter(rctx), "-c", "import sys ; sys.stdout.write('{}/lib'.format(sys.exec_prefix))"]
         result = rctx.execute(command)
         if result.return_code != 0:
             fail("Failed to get LDFLAGS path: command: {}, exit code: {}, stdout: {}, stderr: {}".format(command, result.return_code, result.stdout, result.stderr))
@@ -292,22 +293,11 @@ def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, lo
 
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
-    python_interpreter = pypi_repo_utils.resolve_python_interpreter(
-        rctx,
-        python_interpreter = rctx.attr.python_interpreter,
-        python_interpreter_target = rctx.attr.python_interpreter_target,
-    )
-    args = [
-        "-m",
-        "python.private.pypi.whl_installer.wheel_installer",
-        "--requirement",
-        rctx.attr.requirement,
-    ]
-    extra_pip_args = []
-    extra_pip_args.extend(rctx.attr.extra_pip_args)
 
     whl_path = None
     sdist_filename = None
+    extra_pip_args = []
+    extra_pip_args.extend(rctx.attr.extra_pip_args)
     if rctx.attr.whl_file:
         rctx.watch(rctx.attr.whl_file)
         whl_path = rctx.path(rctx.attr.whl_file)
@@ -352,8 +342,6 @@ def _whl_library_impl(rctx):
             # build deps from PyPI (e.g. `flit_core`) if they are missing.
             extra_pip_args.extend(["--find-links", "."])
 
-    args = _parse_optional_attrs(rctx, args, extra_pip_args)
-
     # also enable pipstar for any whls that are downloaded without `pip`
     enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
     enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
@@ -362,7 +350,21 @@ def _whl_library_impl(rctx):
     # to setup env vars to run Python, unless we need to build an sdist
     if enable_pipstar_extract and whl_path:
         environment = {}
+        args = []
+        python_interpreter = None
     else:
+        python_interpreter = pypi_repo_utils.resolve_python_interpreter(
+            rctx,
+            python_interpreter = rctx.attr.python_interpreter,
+            python_interpreter_target = rctx.attr.python_interpreter_target,
+        )
+        args = [
+            "-m",
+            "python.private.pypi.whl_installer.wheel_installer",
+            "--requirement",
+            rctx.attr.requirement,
+        ]
+        args = _parse_optional_attrs(rctx, args, extra_pip_args)
         # Manually construct the PYTHONPATH since we cannot use the toolchain here
         environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
 
