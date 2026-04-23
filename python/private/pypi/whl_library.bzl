@@ -351,7 +351,7 @@ def _whl_library_impl(rctx):
 
     # When pipstar is enabled, Python isn't used, so there's no need
     # to setup env vars to run Python, unless we need to build an sdist
-    if enable_pipstar_extract and whl_path:
+    if enable_pipstar_extract and whl_path and not rctx.attr.patches:
         environment = {}
         args = []
         python_interpreter = None
