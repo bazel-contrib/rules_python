@@ -184,7 +184,10 @@ def _parse_optional_attrs(rctx, args, extra_pip_args = None):
         if "LDFLAGS" in env:
             fail("Can't set both environment LDFLAGS and add_libdir_to_library_search_path")
         command = [
-            pypi_repo_utils.resolve_python_interpreter(rctx), "-c", "import sys ; sys.stdout.write('{}/lib'.format(sys.exec_prefix))"]
+            pypi_repo_utils.resolve_python_interpreter(rctx),
+            "-c",
+            "import sys ; sys.stdout.write('{}/lib'.format(sys.exec_prefix))",
+        ]
         result = rctx.execute(command)
         if result.return_code != 0:
             fail("Failed to get LDFLAGS path: command: {}, exit code: {}, stdout: {}, stderr: {}".format(command, result.return_code, result.stdout, result.stderr))
@@ -365,6 +368,7 @@ def _whl_library_impl(rctx):
             rctx.attr.requirement,
         ]
         args = _parse_optional_attrs(rctx, args, extra_pip_args)
+
         # Manually construct the PYTHONPATH since we cannot use the toolchain here
         environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
 
