@@ -27,12 +27,12 @@ bazel_dep(name = "rules_rust", version = "0.67.0")
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(
     # Use python.defaults if you have defined multiple toolchain versions.
-    python_version = "3.9",
+    python_version = "3.11",
     python_version_env = "BAZEL_PYTHON_VERSION",
 )
 python.toolchain(
     configure_coverage_tool = True,
-    python_version = "3.9",
+    python_version = "3.11",
 )
 
 # We are also using a second version of Python in this project.
@@ -40,12 +40,6 @@ python.toolchain(
 # If you need a different vesion we support more than one.
 # Note: we do not supporting using multiple pip extensions, this is
 # work in progress.
-python.toolchain(
-    configure_coverage_tool = True,
-    python_version = "3.10",
-)
-
-# Adding Python 3.12 version for testing
 python.toolchain(
     configure_coverage_tool = True,
     python_version = "3.12",
@@ -57,24 +51,13 @@ python.toolchain(
     python_version = "3.13",
 )
 
-# One can override the actual toolchain versions that are available, which can be useful
-# when optimizing what gets downloaded and when.
+# One can override the actual toolchain versions that are available
 python.override(
-    # NOTE: These are disabled in the example because transitive dependencies
-    # require versions not listed here.
     # available_python_versions = [
-    #     "3.10.9",
-    #     "3.9.19",
-    #     # The following is used by the `other_module` and we need to include it here
-    #     # as well.
-    #     "3.11.8",
+    #     "3.12.9",
+    #     "3.11.19",
+    #     "3.13.4",
     # ],
-    # Also override the `minor_mapping` so that the root module,
-    # instead of rules_python's defaulting to the latest available version,
-    # controls what full version is used when `3.x` is requested.
-    minor_mapping = {
-        "3.9": "3.9.25",
-    },
 )
 
 # Or the sources that the toolchains come from for all platforms
@@ -110,7 +93,7 @@ python.single_version_platform_override(
 # See the tests folder for various examples on using multiple Python versions.
 # The names "python_3_9" and "python_3_10" are autmatically created by the repo
 # rules based on the `python_version` arg values.
-use_repo(python, "python_3_10", "python_3_12", "python_3_13", "python_3_9", "python_versions", "pythons_hub")
+use_repo(python, "python_3_11", "python_3_12", "python_3_13", "python_versions", "pythons_hub")
 
 # EXPERIMENTAL: This is experimental and may be changed or removed without notice
 uv = use_extension(
@@ -219,7 +202,7 @@ pip.parse(
         "--index-url=${PIP_INDEX_URL:-https://pypi.org/simple}",
     ],
     hub_name = "pip",
-    python_version = "3.9",
+    python_version = "3.11",
     requirements_lock = "requirements_lock_3_9.txt",
     # These modifications were created above and we
     # are providing pip.parse with the label of the mod
@@ -241,7 +224,7 @@ pip.parse(
         ],
     },
     hub_name = "pip",
-    python_version = "3.10",
+    python_version = "3.12",
     # The requirements files for each platform that we want to support.
     requirements_by_platform = {
         # Default requirements file for needs to explicitly provide the platforms

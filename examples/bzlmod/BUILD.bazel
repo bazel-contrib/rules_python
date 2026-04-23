@@ -7,20 +7,20 @@
 # names. Those names are defined in the MODULES.bazel file.
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@pip//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
-load("@python_3_9//:defs.bzl", py_test_with_transition = "py_test")
-load("@python_versions//3.10:defs.bzl", compile_pip_requirements_3_10 = "compile_pip_requirements")
+load("@python_3_11//:defs.bzl", py_test_with_transition = "py_test")
+load("@python_versions//3.12:defs.bzl", compile_pip_requirements_3_12 = "compile_pip_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 # This stanza calls a rule that generates targets for managing pip dependencies
 # with pip-compile for a particular python version.
-compile_pip_requirements_3_10(
-    name = "requirements_3_10",
+compile_pip_requirements_3_12(
+    name = "requirements_3_12",
     timeout = "moderate",
     src = "requirements.in",
-    requirements_txt = "requirements_lock_3_10.txt",
-    requirements_windows = "requirements_windows_3_10.txt",
+    requirements_txt = "requirements_lock_3_12.txt",
+    requirements_windows = "requirements_windows_3_12.txt",
 )
 
 # The rules below are language specific rules defined in
