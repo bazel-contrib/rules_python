@@ -1,0 +1,2 @@
+# gazelle:python_root
+# gazelle:python_strip_import_prefix src

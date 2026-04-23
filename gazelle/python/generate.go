@@ -307,7 +307,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				filenames := treeset.NewWith(godsutils.StringComparator, filename)
 				pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
 
-				pyBinaryBuilder := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
+				pyBinaryBuilder := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports(), cfg.StripImportPrefix()).
 					addVisibility(visibility).
 					addSrc(filename).
 					addPyiSrcs(pyiSrcs).
@@ -358,7 +358,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			collisionErrors.Add(err)
 		}
 
-		pyLibrary := newTargetBuilder(pyLibraryKind, pyLibraryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
+		pyLibrary := newTargetBuilder(pyLibraryKind, pyLibraryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports(), cfg.StripImportPrefix()).
 			addVisibility(visibility).
 			addSrcs(srcs).
 			addPyiSrcs(pyiSrcs).
@@ -416,7 +416,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		filenames := treeset.NewWith(godsutils.StringComparator, pyBinaryEntrypointFilename)
 		pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
 
-		pyBinaryTarget := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
+		pyBinaryTarget := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports(), cfg.StripImportPrefix()).
 			setMain(pyBinaryEntrypointFilename).
 			addVisibility(visibility).
 			addSrc(pyBinaryEntrypointFilename).
@@ -454,7 +454,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		filenames := treeset.NewWith(godsutils.StringComparator, conftestFilename)
 		pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
 
-		conftestTarget := newTargetBuilder(pyLibraryKind, conftestTargetname, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
+		conftestTarget := newTargetBuilder(pyLibraryKind, conftestTargetname, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports(), cfg.StripImportPrefix()).
 			addSrc(conftestFilename).
 			addPyiSrcs(pyiSrcs).
 			addModuleDependencies(deps).
@@ -491,7 +491,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// Add any sibling .pyi files to pyi_srcs
 		pyiSrcs, _ := getPyiFilenames(srcs, cfg.GeneratePyiSrcs(), args.Dir)
 
-		return newTargetBuilder(pyTestKind, pyTestTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
+		return newTargetBuilder(pyTestKind, pyTestTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports(), cfg.StripImportPrefix()).
 			addSrcs(srcs).
 			addPyiSrcs(pyiSrcs).
 			addModuleDependencies(deps).
@@ -555,7 +555,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			for _, conftestPkg := range findConftestPaths(args.Config.RepoRoot, args.Rel, pythonProjectRoot, cfg.IncludeAncestorConftest()) {
 				pyTestTarget.addModuleDependency(
 					Module{
-						Name:     importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename).Imp,
+						Name:     importSpecFromSrc(pythonProjectRoot, conftestPkg, conftestFilename, cfg.StripImportPrefix()).Imp,
 						Filepath: filepath.Join(conftestPkg, conftestFilename),
 					},
 				)
@@ -609,7 +609,7 @@ func (py *Python) getRulesWithInvalidSrcs(args language.GenerateArgs, validFiles
 			}
 		}
 		if !hasValidSrcs {
-			invalidRules = append(invalidRules, newTargetBuilder(pyBinaryKind, existingRule.Name(), "", "", nil, false).build())
+			invalidRules = append(invalidRules, newTargetBuilder(pyBinaryKind, existingRule.Name(), "", "", nil, false, "").build())
 		}
 	}
 	return invalidRules
@@ -718,7 +718,7 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 			pyProtoLibraryName = ruleName
 		}
 
-		pyProtoLibrary := newTargetBuilder(pyProtoLibraryKind, pyProtoLibraryName, pythonProjectRoot, args.Rel, &emptySiblings, false).
+		pyProtoLibrary := newTargetBuilder(pyProtoLibraryKind, pyProtoLibraryName, pythonProjectRoot, args.Rel, &emptySiblings, false, "").
 			addVisibility(visibility).
 			addResolvedDependency(":" + protoRuleName).
 			generateImportsAttribute().build()
@@ -735,7 +735,7 @@ func generateProtoLibraries(args language.GenerateArgs, cfg *pythonconfig.Config
 			continue
 		}
 
-		emptyRule := newTargetBuilder(pyProtoLibraryKind, ruleName, pythonProjectRoot, args.Rel, &emptySiblings, false).build()
+		emptyRule := newTargetBuilder(pyProtoLibraryKind, ruleName, pythonProjectRoot, args.Rel, &emptySiblings, false, "").build()
 		res.Empty = append(res.Empty, emptyRule)
 	}
 

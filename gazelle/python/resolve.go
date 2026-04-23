@@ -70,7 +70,7 @@ func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 			continue
 		}
 		pythonProjectRoot := cfg.PythonProjectRoot()
-		provide := importSpecFromSrc(pythonProjectRoot, f.Pkg, src)
+		provide := importSpecFromSrc(pythonProjectRoot, f.Pkg, src, cfg.StripImportPrefix())
 		provides = append(provides, provide)
 	}
 	if len(provides) == 0 {
@@ -82,7 +82,7 @@ func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 // importSpecFromSrc determines the ImportSpec based on the target that contains the src so that
 // the target can be indexed for import statements that match the calculated src relative to the its
 // Python project root.
-func importSpecFromSrc(pythonProjectRoot, bzlPkg, src string) resolve.ImportSpec {
+func importSpecFromSrc(pythonProjectRoot, bzlPkg, src, stripImportPrefix string) resolve.ImportSpec {
 	pythonPkgDir := filepath.Join(bzlPkg, filepath.Dir(src))
 	relPythonPkgDir, err := filepath.Rel(pythonProjectRoot, pythonPkgDir)
 	if err != nil {
@@ -90,6 +90,13 @@ func importSpecFromSrc(pythonProjectRoot, bzlPkg, src string) resolve.ImportSpec
 	}
 	if relPythonPkgDir == "." {
 		relPythonPkgDir = ""
+	}
+	if stripImportPrefix != "" {
+		if strings.HasPrefix(relPythonPkgDir, stripImportPrefix+"/") {
+			relPythonPkgDir = relPythonPkgDir[len(stripImportPrefix)+1:]
+		} else if relPythonPkgDir == stripImportPrefix {
+			relPythonPkgDir = ""
+		}
 	}
 	pythonPkg := strings.ReplaceAll(relPythonPkgDir, "/", ".")
 	filename := filepath.Base(src)

@@ -40,10 +40,11 @@ type targetBuilder struct {
 	testonly              bool
 	annotations           *annotations
 	resolveSiblingImports bool
+	stripImportPrefix     string
 }
 
 // newTargetBuilder constructs a new targetBuilder.
-func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingSrcs *treeset.Set, resolveSiblingImports bool) *targetBuilder {
+func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingSrcs *treeset.Set, resolveSiblingImports bool, stripImportPrefix string) *targetBuilder {
 	return &targetBuilder{
 		kind:                  kind,
 		name:                  name,
@@ -57,6 +58,7 @@ func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingS
 		visibility:            treeset.NewWith(godsutils.StringComparator),
 		annotations:           new(annotations),
 		resolveSiblingImports: resolveSiblingImports,
+		stripImportPrefix:     stripImportPrefix,
 	}
 }
 
@@ -99,7 +101,7 @@ func (t *targetBuilder) addModuleDependency(dep Module) *targetBuilder {
 	if t.resolveSiblingImports && t.siblingSrcs.Contains(fileName) && fileName != filepath.Base(dep.Filepath) {
 		// importing another module from the same package, converting to absolute imports to make
 		// dependency resolution easier
-		dep.Name = importSpecFromSrc(t.pythonProjectRoot, t.bzlPackage, fileName).Imp
+		dep.Name = importSpecFromSrc(t.pythonProjectRoot, t.bzlPackage, fileName, t.stripImportPrefix).Imp
 	}
 
 	addModuleToTreeSet(t.deps, dep)

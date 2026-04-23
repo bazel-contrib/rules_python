@@ -1,0 +1,3 @@
+manifest:
+  modules_mapping: {}
+  pip_deps_repository_name: gazelle_python_test

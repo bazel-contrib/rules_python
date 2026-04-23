@@ -75,6 +75,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.GenerateProto,
 		pythonconfig.PythonResolveSiblingImports,
 		pythonconfig.PythonIncludeAncestorConftest,
+		pythonconfig.PythonStripImportPrefix,
 	}
 }
 
@@ -268,6 +269,8 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetIncludeAncestorConftest(v)
+		case pythonconfig.PythonStripImportPrefix:
+			config.SetStripImportPrefix(strings.TrimSpace(d.Value))
 		}
 	}
 
