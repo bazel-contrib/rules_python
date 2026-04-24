@@ -268,7 +268,7 @@ def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, lo
         arguments = args + [
             "--whl-file",
             whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
+        ],
         srcs = rctx.attr._python_srcs,
         environment = environment,
         quiet = rctx.attr.quiet,
