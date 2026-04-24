@@ -348,30 +348,6 @@ functionality for exposing [entry points][whl_ep] as `py_binary` targets as well
 
 [whl_ep]: https://packaging.python.org/specifications/entry-points/
 
-```starlark
-load("@pypi//:requirements.bzl", "entry_point")
-
-alias(
-    name = "pip-compile",
-    actual = entry_point(
-        pkg = "pip-tools",
-        script = "pip-compile",
-    ),
-)
-```
-
-Note that for packages whose name and script are the same, only the name of the package
-is needed when calling the `entry_point` macro.
-
-```starlark
-load("@pip//:requirements.bzl", "entry_point")
-
-alias(
-    name = "flake8",
-    actual = entry_point("flake8"),
-)
-```
-
 :::{rubric} Vendoring the requirements.bzl file
 :heading-level: 3
 :::

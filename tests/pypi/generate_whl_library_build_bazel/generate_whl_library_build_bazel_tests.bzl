@@ -42,9 +42,6 @@ whl_library_targets(
     dependencies_by_platform = {
         "baz": ["bar"],
     },
-    entry_points = {
-        "foo": "bar.py",
-    },
     group_deps = [
         "foo",
         "fox",
@@ -56,11 +53,6 @@ whl_library_targets(
     tags = ["tag1"],
 )
 
-exports_files(
-    srcs = ["bar.py"],
-    visibility = ["//visibility:public"],
-)
-
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
@@ -68,9 +60,6 @@ exports_files(
         name = "foo.whl",
         dependencies = ["foo"],
         dependencies_by_platform = {"baz": ["bar"]},
-        entry_points = {
-            "foo": "bar.py",
-        },
         data_exclude = ["exclude_via_attr"],
         annotation = struct(
             copy_files = {"file_src": "file_dest"},
@@ -108,9 +97,6 @@ whl_library_targets_from_requires(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
-    entry_points = {
-        "foo": "bar.py",
-    },
     group_deps = [
         "foo",
         "fox",
@@ -127,20 +113,12 @@ whl_library_targets_from_requires(
     srcs_exclude = ["srcs_exclude_all"],
 )
 
-exports_files(
-    srcs = ["bar.py"],
-    visibility = ["//visibility:public"],
-)
-
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
         requires_dist = ["foo", "bar-baz", "qux"],
-        entry_points = {
-            "foo": "bar.py",
-        },
         data_exclude = ["exclude_via_attr"],
         annotation = struct(
             copy_files = {"file_src": "file_dest"},
@@ -178,9 +156,6 @@ whl_library_targets_from_requires(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
-    entry_points = {
-        "foo": "bar.py",
-    },
     group_deps = [
         "foo",
         "fox",
@@ -197,20 +172,12 @@ whl_library_targets_from_requires(
     srcs_exclude = ["srcs_exclude_all"],
 )
 
-exports_files(
-    srcs = ["bar.py"],
-    visibility = ["//visibility:public"],
-)
-
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
         requires_dist = ["foo", "bar-baz", "qux"],
-        entry_points = {
-            "foo": "bar.py",
-        },
         data_exclude = ["exclude_via_attr"],
         annotation = struct(
             copy_files = {"file_src": "file_dest"},
@@ -248,9 +215,6 @@ whl_library_targets_from_requires(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
-    entry_points = {
-        "foo": "bar.py",
-    },
     group_deps = [
         "foo",
         "fox",
@@ -267,20 +231,12 @@ whl_library_targets_from_requires(
     srcs_exclude = ["srcs_exclude_all"],
 )
 
-exports_files(
-    srcs = ["bar.py"],
-    visibility = ["//visibility:public"],
-)
-
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
         requires_dist = ["foo", "bar-baz", "qux"],
-        entry_points = {
-            "foo": "bar.py",
-        },
         data_exclude = ["exclude_via_attr"],
         annotation = struct(
             copy_files = {"file_src": "file_dest"},
