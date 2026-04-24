@@ -81,9 +81,9 @@ def _parse_modules(env, **kwargs):
         ),
     )
 
-def _build_config(env, **kwargs):
+def _build_config(env, enable_pipstar_extract = True, **kwargs):
     return env.expect.that_struct(
-        build_config(**kwargs),
+        build_config(enable_pipstar_extract = enable_pipstar_extract, **kwargs),
         attrs = dict(
             auth_patterns = subjects.dict,
             netrc = subjects.str,

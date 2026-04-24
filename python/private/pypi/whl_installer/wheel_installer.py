@@ -80,7 +80,6 @@ def _parse_requirement_for_extra(
 def _extract_wheel(
     wheel_file: str,
     extras: Dict[str, Set[str]],
-    platforms: List[wheel.Platform],
     installation_dir: Path = Path("."),
 ) -> None:
     """Extracts wheel into given directory and creates py_library and filegroup targets.
@@ -110,7 +109,6 @@ def main() -> None:
         _extract_wheel(
             wheel_file=whl,
             extras=extras,
-            platforms=arguments.get_platforms(args),
         )
         return
 

@@ -72,8 +72,6 @@ class TestWhlFilegroup(unittest.TestCase):
             Path(self.wheel_path),
             installation_dir=Path(self.wheel_dir),
             extras={},
-            platforms=[],
-            enable_pipstar=False,
         )
 
         want_files = [
