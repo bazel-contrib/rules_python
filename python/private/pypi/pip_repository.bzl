@@ -95,6 +95,17 @@ def _pip_repository_impl(rctx):
         python_version = result.stdout.strip().split(" ")[-1]
     else:
         fail("Could not determine Python version")
+    platforms = [
+        "linux_aarch64",
+        "linux_arm",
+        "linux_ppc",
+        "linux_riscv64",
+        "linux_s390x",
+        "linux_x86_64",
+        "osx_aarch64",
+        "osx_x86_64",
+        "windows_x86_64",
+    ]
 
     marker_env = env(os = rctx.os.name, arch = rctx.os.arch, python_version = python_version)
     requirements_by_platform = parse_requirements(
@@ -106,17 +117,7 @@ def _pip_repository_impl(rctx):
             requirements_osx = rctx.attr.requirements_darwin,
             requirements_windows = rctx.attr.requirements_windows,
             extra_pip_args = rctx.attr.extra_pip_args,
-            platforms = [
-                "linux_aarch64",
-                "linux_arm",
-                "linux_ppc",
-                "linux_riscv64",
-                "linux_s390x",
-                "linux_x86_64",
-                "osx_aarch64",
-                "osx_x86_64",
-                "windows_x86_64",
-            ],
+            platforms = platforms,
         ),
         extra_pip_args = rctx.attr.extra_pip_args,
         evaluate_markers = lambda rctx, requirements: evaluate_markers(
@@ -126,17 +127,7 @@ def _pip_repository_impl(rctx):
                 req: {p: p for p in plats}
                 for req, plats in requirements.items()
             },
-            platforms = {
-                "linux_aarch64": struct(env = marker_env),
-                "linux_arm": struct(env = marker_env),
-                "linux_ppc": struct(env = marker_env),
-                "linux_riscv64": struct(env = marker_env),
-                "linux_s390x": struct(env = marker_env),
-                "linux_x86_64": struct(env = marker_env),
-                "osx_aarch64": struct(env = marker_env),
-                "osx_x86_64": struct(env = marker_env),
-                "windows_x86_64": struct(env = marker_env),
-            },
+            platforms = {p: struct(env = marker_env) for p in platforms},
         ),
         extract_url_srcs = False,
         logger = logger,
