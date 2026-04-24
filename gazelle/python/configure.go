@@ -270,7 +270,7 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			}
 			config.SetIncludeAncestorConftest(v)
 		case pythonconfig.PythonStripImportPrefix:
-			config.SetStripImportPrefix(strings.TrimSpace(d.Value))
+config.SetStripImportPrefix(strings.Trim(strings.TrimSpace(d.Value), "/"))
 		}
 	}
 
