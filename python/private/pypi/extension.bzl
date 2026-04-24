@@ -68,9 +68,8 @@ def default_platforms():
     Returns:
         A dict of platform name to platform config dicts.
     """
-    # NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility with the
-    # current `experimental_index_url` implementation. Whilst we stabilize the API this list may be
-    # updated with a mention in the CHANGELOG.
+    # NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility. Whilst we
+    # stabilize the API this list may be updated with a mention in the CHANGELOG.
 
     platforms = {}
 
