@@ -65,6 +65,8 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 * (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
   targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
+* (entry_point) From now on `mypy` type checking will be skipped on the generated
+  files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
 
 {#v0-0-0-added}
 ### Added
