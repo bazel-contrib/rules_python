@@ -62,8 +62,7 @@ except ImportError:
     raise
 
 if __name__ == "__main__":
-    # type: ignore
-    sys.exit({entry_point}())
+    sys.exit({entry_point}())  # type: ignore
 """
 
 
