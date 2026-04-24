@@ -22,14 +22,12 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
-load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
 load(":whl_metadata.bzl", "whl_metadata")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
@@ -263,21 +261,6 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
     return env
 
 def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
-    target_platforms = rctx.attr.experimental_target_platforms or []
-    if target_platforms:
-        parsed_whl = parse_whl_name(whl_path.basename)
-
-        # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
-        # only include deps for that target platform
-        if parsed_whl.platform_tag != "any":
-            target_platforms = [
-                p.target_platform
-                for p in whl_target_platforms(
-                    platform_tag = parsed_whl.platform_tag,
-                    abi_tag = parsed_whl.abi_tag.strip("tm"),
-                )
-            ]
-
     pypi_repo_utils.execute_checked(
         rctx,
         op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),

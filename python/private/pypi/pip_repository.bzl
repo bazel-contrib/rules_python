@@ -197,8 +197,6 @@ def _pip_repository_impl(rctx):
 
     if rctx.attr.python_interpreter_target:
         config["python_interpreter_target"] = str(rctx.attr.python_interpreter_target)
-    if rctx.attr.experimental_target_platforms:
-        config["experimental_target_platforms"] = rctx.attr.experimental_target_platforms
 
     macro_tmpl = "@%s//{}:{}" % rctx.attr.name
 
