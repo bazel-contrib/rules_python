@@ -77,7 +77,6 @@ class TestWhlFilegroup(unittest.TestCase):
         )
 
         want_files = [
-            "metadata.json",
             "site-packages",
             self.wheel_name,
         ]
@@ -90,17 +89,6 @@ class TestWhlFilegroup(unittest.TestCase):
                 ]
             ),
         )
-        with open("{}/metadata.json".format(self.wheel_dir)) as metadata_file:
-            metadata_file_content = json.load(metadata_file)
-
-        want = dict(
-            deps=[],
-            deps_by_platform={},
-            entry_points=[],
-            name="example-minimal-package",
-            version="0.0.1",
-        )
-        self.assertEqual(want, metadata_file_content)
 
 
 if __name__ == "__main__":

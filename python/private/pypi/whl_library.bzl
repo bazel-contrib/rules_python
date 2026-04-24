@@ -344,9 +344,7 @@ def _whl_library_impl(rctx):
             # build deps from PyPI (e.g. `flit_core`) if they are missing.
             extra_pip_args.extend(["--find-links", "."])
 
-    # also enable pipstar for any whls that are downloaded without `pip`
-    enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
-    enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
+    enable_pipstar_extract = rp_config.bazel_8_or_later
 
     # When pipstar is enabled, Python isn't used, so there's no need
     # to setup env vars to run Python, unless we need to build an sdist
@@ -428,65 +426,34 @@ def _whl_library_impl(rctx):
             logger = logger,
         )
 
-    # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
-    # dep_template set or the packages is not set either, we should still not break, best to
-    # disable pipstar for that particular case.
-    #
-    # Remove non-pipstar and config_load check when we release rules_python 2.
-    if enable_pipstar:
-        install_dir_path = whl_path.dirname.get_child("site-packages")
-        metadata = whl_metadata(
-            install_dir = install_dir_path,
-            read_fn = rctx.read,
-            logger = logger,
-        )
-        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
+    install_dir_path = whl_path.dirname.get_child("site-packages")
+    metadata = whl_metadata(
+        install_dir = install_dir_path,
+        read_fn = rctx.read,
+        logger = logger,
+    )
+    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
-        build_file_contents = generate_whl_library_build_bazel(
-            name = whl_path.basename,
-            sdist_filename = sdist_filename,
-            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
-                rctx.attr.repo_prefix,
-            ),
-            config_load = rctx.attr.config_load,
-            metadata_name = metadata.name,
-            metadata_version = metadata.version,
-            requires_dist = metadata.requires_dist,
-            # TODO @aignas 2025-05-17: maybe have a build flag for this instead
-            enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
-            # TODO @aignas 2025-04-14: load through the hub:
-            annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-            data_exclude = rctx.attr.pip_data_exclude,
-            group_deps = rctx.attr.group_deps,
-            group_name = rctx.attr.group_name,
-            namespace_package_files = namespace_package_files,
-            extras = requirement(rctx.attr.requirement).extras,
-        )
-    else:
-        metadata = json.decode(rctx.read("metadata.json"))
-        rctx.delete("metadata.json")
-
-        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, rctx.path("site-packages"))
-
-        build_file_contents = generate_whl_library_build_bazel(
-            name = whl_path.basename,
-            sdist_filename = sdist_filename,
-            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-            # TODO @aignas 2025-05-17: maybe have a build flag for this instead
-            enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
-            # TODO @aignas 2025-04-14: load through the hub:
-            dependencies = metadata["deps"],
-            dependencies_by_platform = metadata["deps_by_platform"],
-            annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-            data_exclude = rctx.attr.pip_data_exclude,
-            group_deps = rctx.attr.group_deps,
-            group_name = rctx.attr.group_name,
-            tags = [
-                "pypi_name={}".format(metadata["name"]),
-                "pypi_version={}".format(metadata["version"]),
-            ],
-            namespace_package_files = namespace_package_files,
-        )
+    build_file_contents = generate_whl_library_build_bazel(
+        name = whl_path.basename,
+        sdist_filename = sdist_filename,
+        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
+            rctx.attr.repo_prefix,
+        ),
+        config_load = rctx.attr.config_load,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
+        # TODO @aignas 2025-05-17: maybe have a build flag for this instead
+        enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
+        # TODO @aignas 2025-04-14: load through the hub:
+        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+        data_exclude = rctx.attr.pip_data_exclude,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
+        namespace_package_files = namespace_package_files,
+        extras = requirement(rctx.attr.requirement).extras,
+    )
 
     # Delete these in case the wheel had them. They generally don't cause
     # a problem, but let's avoid the chance of that happening.
@@ -509,7 +476,7 @@ def _whl_library_impl(rctx):
 
     rctx.file("BUILD.bazel", build_file_contents)
 
-    if enable_pipstar and enable_pipstar_extract:
+    if enable_pipstar_extract:
         if hasattr(rctx, "repo_metadata"):
             return rctx.repo_metadata(reproducible = True)
 

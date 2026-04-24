@@ -52,32 +52,6 @@ When `1`, `rules_python` will warn users about deprecated functionality that wil
 be removed in a subsequent major `rules_python` version. Defaults to `0` if unset.
 :::
 
-::::{envvar} RULES_PYTHON_ENABLE_PYSTAR
-
-When `1`, the `rules_python` Starlark implementation of the core rules is used
-instead of the Bazel-builtin rules. Note that this requires Bazel 7+. Defaults
-to `1`.
-
-:::{versionadded} 0.26.0
-Defaults to `0` if unspecified.
-:::
-:::{versionchanged} 0.40.0
-The default became `1` if unspecified
-:::
-::::
-
-::::{envvar} RULES_PYTHON_ENABLE_PIPSTAR
-
-When `1`, the `rules_python` Starlark implementation of the PyPI/pip integration is used
-instead of the legacy Python scripts.
-
-:::{versionadded} 1.5.0
-:::
-:::{versionchanged} 1.7.0
-Flipped to be enabled by default.
-:::
-::::
-
 ::::{envvar} RULES_PYTHON_EXTRACT_ROOT
 
 Directory to use as the root for creating files necessary for bootstrapping so

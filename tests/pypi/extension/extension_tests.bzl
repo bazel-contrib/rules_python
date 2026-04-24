@@ -67,10 +67,9 @@ def _mod(*, name, default = [], parse = [], override = [], whl_mods = [], is_roo
         ],
     )
 
-def _parse_modules(env, enable_pipstar = 0, **kwargs):
+def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
         parse_modules(
-            enable_pipstar = enable_pipstar,
             **kwargs
         ),
         attrs = dict(
@@ -82,16 +81,11 @@ def _parse_modules(env, enable_pipstar = 0, **kwargs):
         ),
     )
 
-def _build_config(env, enable_pipstar = 0, **kwargs):
+def _build_config(env, **kwargs):
     return env.expect.that_struct(
-        build_config(
-            enable_pipstar = enable_pipstar,
-            enable_pipstar_extract = True,
-            **kwargs
-        ),
+        build_config(**kwargs),
         attrs = dict(
             auth_patterns = subjects.dict,
-            enable_pipstar = subjects.bool,
             netrc = subjects.str,
             platforms = subjects.dict,
         ),
@@ -205,11 +199,9 @@ def _test_build_pipstar_platform(env):
                 ],
             ),
         ),
-        enable_pipstar = True,
     )
     config.auth_patterns().contains_exactly({"foo": "bar"})
     config.netrc().equals("my_netrc")
-    config.enable_pipstar().equals(True)
     config.platforms().contains_exactly({
         "myplat": struct(
             name = "myplat",

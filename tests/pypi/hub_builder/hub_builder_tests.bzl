@@ -42,7 +42,6 @@ simple==0.0.1 \
 
 def hub_builder(
         env,
-        enable_pipstar = True,
         enable_pipstar_extract = True,
         debug = False,
         config = None,
@@ -57,7 +56,6 @@ def hub_builder(
         module_name = "unit_test",
         config = config or struct(
             # no need to evaluate the markers with the interpreter
-            enable_pipstar = enable_pipstar,
             enable_pipstar_extract = enable_pipstar_extract,
             index_url = "https://pypi.org/simple",
             platforms = {
@@ -539,7 +537,6 @@ def _test_torch_experimental_index_url(env):
         env,
         config = struct(
             netrc = None,
-            enable_pipstar = True,
             enable_pipstar_extract = True,
             index_url = "https://pypi.org/simple",
             auth_patterns = {},
@@ -1287,9 +1284,7 @@ _tests.append(_test_optimum_sys_platform_extra)
 def _test_pipstar_platforms(env):
     builder = hub_builder(
         env,
-        enable_pipstar = True,
         config = struct(
-            enable_pipstar = True,
             enable_pipstar_extract = True,
             index_url = "https://pypi.org/simple",
             netrc = None,
@@ -1373,9 +1368,7 @@ _tests.append(_test_pipstar_platforms)
 def _test_pipstar_platforms_limit(env):
     builder = hub_builder(
         env,
-        enable_pipstar = True,
         config = struct(
-            enable_pipstar = True,
             enable_pipstar_extract = True,
             index_url = "https://pypi.org/simple",
             netrc = None,
