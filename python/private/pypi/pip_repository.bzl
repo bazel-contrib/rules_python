@@ -18,9 +18,11 @@ load("@bazel_skylib//lib:sets.bzl", "sets")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:text_util.bzl", "render")
-load(":evaluate_markers.bzl", "evaluate_markers_py", EVALUATE_MARKERS_SRCS = "SRCS")
+load(":evaluate_markers.bzl", "evaluate_markers")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
+load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
+load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 
@@ -83,6 +85,18 @@ exports_files(["requirements.bzl"])
 
 def _pip_repository_impl(rctx):
     logger = repo_utils.logger(rctx)
+    python_interpreter = pypi_repo_utils.resolve_python_interpreter(
+        rctx,
+        python_interpreter = rctx.attr.python_interpreter,
+        python_interpreter_target = rctx.attr.python_interpreter_target,
+    )
+    result = rctx.execute([python_interpreter, "--version"])
+    if result.stdout:
+        python_version = result.stdout.strip().split(" ")[-1]
+    else:
+        fail("Could not determine Python version")
+
+    marker_env = env(os = rctx.os.name, arch = rctx.os.arch, python_version = python_version)
     requirements_by_platform = parse_requirements(
         rctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -105,17 +119,24 @@ def _pip_repository_impl(rctx):
             ],
         ),
         extra_pip_args = rctx.attr.extra_pip_args,
-        evaluate_markers = lambda rctx, requirements: evaluate_markers_py(
-            rctx,
+        evaluate_markers = lambda rctx, requirements: evaluate_markers(
             requirements = {
                 # NOTE @aignas 2025-07-07: because we don't distinguish between
                 # freethreaded and non-freethreaded, it is a 1:1 mapping.
                 req: {p: p for p in plats}
                 for req, plats in requirements.items()
             },
-            python_interpreter = rctx.attr.python_interpreter,
-            python_interpreter_target = rctx.attr.python_interpreter_target,
-            srcs = rctx.attr._evaluate_markers_srcs,
+            platforms = {
+                "linux_aarch64": struct(env = marker_env),
+                "linux_arm": struct(env = marker_env),
+                "linux_ppc": struct(env = marker_env),
+                "linux_riscv64": struct(env = marker_env),
+                "linux_s390x": struct(env = marker_env),
+                "linux_x86_64": struct(env = marker_env),
+                "osx_aarch64": struct(env = marker_env),
+                "osx_x86_64": struct(env = marker_env),
+                "windows_x86_64": struct(env = marker_env),
+            },
         ),
         extract_url_srcs = False,
         logger = logger,
@@ -272,13 +293,6 @@ generated using the `package_name` macro.
         ),
         _template = attr.label(
             default = ":requirements.bzl.tmpl.workspace",
-        ),
-        _evaluate_markers_srcs = attr.label_list(
-            default = EVALUATE_MARKERS_SRCS,
-            doc = """\
-The list of labels to use as SRCS for the marker evaluation code. This ensures that the
-code will be re-evaluated when any of files in the default changes.
-""",
         ),
         **ATTRS
     ),
