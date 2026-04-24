@@ -329,6 +329,7 @@ bzl_library(
         ":attrs_bzl",
         ":evaluate_markers_bzl",
         ":parse_requirements_bzl",
+        ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
         ":pypi_repo_utils_bzl",
         ":render_pkg_aliases_bzl",
