@@ -222,7 +222,6 @@ def py_wheel(
         py_console_script_binary(
             name = "{}.publish".format(name),
             pkg = twine,
-            imports = ["."],
             args = twine_args,
             data = [dist_target],
             script = "twine",
