@@ -15,7 +15,7 @@
 """Public API for for building wheels."""
 
 load("@bazel_skylib//rules:native_binary.bzl", "native_binary")
-load("//python:py_binary.bzl", "py_binary")
+load("//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 load("//python/private:py_package.bzl", "py_package_lib")
 load("//python/private:py_wheel.bzl", _PyWheelInfo = "PyWheelInfo", _py_wheel = "py_wheel")
@@ -219,16 +219,13 @@ def py_wheel(
         if not twine.endswith(":pkg"):
             fail("twine label should look like @my_twine_repo//:pkg")
 
-        twine_main = twine.replace(":pkg", ":rules_python_wheel_entry_point_twine.py")
-
-        py_binary(
+        py_console_script_binary(
             name = "{}.publish".format(name),
-            srcs = [twine_main],
+            pkg = twine,
+            imports = ["."],
             args = twine_args,
             data = [dist_target],
-            imports = ["."],
-            main = twine_main,
-            deps = [twine],
+            script = "twine",
             tags = manual_tags,
             visibility = kwargs.get("visibility"),
             **copy_propagating_kwargs(kwargs)
