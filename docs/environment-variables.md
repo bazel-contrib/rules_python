@@ -148,3 +148,14 @@ os, arch values are the same as the ones mentioned in the
 
 When `1`, debug information about coverage behavior is printed to stderr.
 :::
+
+## Removed Environment Variables
+
+:::{versionremoved} VERSION_NEXT_FEATURE
+The following environment variables were removed:
+
+* `RULES_PYTHON_ENABLE_PYSTAR`: Used to enable the Starlark implementation of
+  core rules.
+* `RULES_PYTHON_ENABLE_PIPSTAR`: Used to enable the Starlark implementation of
+  PyPI integration.
+:::
