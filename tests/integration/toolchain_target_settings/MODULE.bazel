@@ -15,7 +15,7 @@ python.toolchain(python_version = "3.13")
 # This prevents them from being a silent fallback when a different toolchain
 # family is requested.
 python.override(
-    toolchain_target_settings = ["@@//:is_prebuilt"],
+    add_target_settings = ["@@//:is_prebuilt"],
 )
 
 # Register //:family as a transition setting so py_binary/py_test

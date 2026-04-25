@@ -54,7 +54,7 @@ def _override(
         minor_mapping = {},
         netrc = "",
         register_all_versions = False,
-        toolchain_target_settings = []):
+        add_target_settings = []):
     return struct(
         auth_patterns = auth_patterns,
         available_python_versions = available_python_versions,
@@ -62,7 +62,7 @@ def _override(
         minor_mapping = minor_mapping,
         netrc = netrc,
         register_all_versions = register_all_versions,
-        toolchain_target_settings = toolchain_target_settings,
+        add_target_settings = add_target_settings,
     )
 
 def _rules_python_module(is_root = False):
@@ -467,7 +467,7 @@ def _test_auth_overrides(env):
 
 _tests.append(_test_auth_overrides)
 
-def _test_toolchain_target_settings(env):
+def _test_add_target_settings(env):
     py = parse_modules(
         module_ctx = mocks.mctx(
             _mod(
@@ -475,7 +475,7 @@ def _test_toolchain_target_settings(env):
                 toolchain = [_toolchain("3.12")],
                 override = [
                     _override(
-                        toolchain_target_settings = [
+                        add_target_settings = [
                             "@@//my:custom_setting",
                         ],
                     ),
@@ -488,10 +488,10 @@ def _test_toolchain_target_settings(env):
     )
 
     env.expect.that_collection(
-        py.config.toolchain_target_settings,
+        py.config.add_target_settings,
     ).contains_exactly(["@@//my:custom_setting"])
 
-_tests.append(_test_toolchain_target_settings)
+_tests.append(_test_add_target_settings)
 
 def _test_add_new_version(env):
     py = parse_modules(

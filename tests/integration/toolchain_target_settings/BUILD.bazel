@@ -12,7 +12,7 @@ string_flag(
 )
 
 # Matches when the "prebuilt" family is selected.
-# This is referenced in MODULE.bazel's python.override(toolchain_target_settings=...).
+# This is referenced in MODULE.bazel's python.override(add_target_settings=...).
 config_setting(
     name = "is_prebuilt",
     flag_values = {
@@ -30,7 +30,7 @@ config_setting(
 )
 
 # This target selects the "prebuilt" family via config_settings transition.
-# Since python.override(toolchain_target_settings = ["@@//:is_prebuilt"]) gates
+# Since python.override(add_target_settings = ["@@//:is_prebuilt"]) gates
 # the default toolchains, this should succeed: the flag matches, the config_setting
 # is satisfied, and the default 3.13 toolchain resolves.
 py_test(

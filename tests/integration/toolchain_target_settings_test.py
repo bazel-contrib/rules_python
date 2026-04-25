@@ -1,4 +1,4 @@
-"""Integration test for python.override(toolchain_target_settings=...).
+"""Integration test for python.override(add_target_settings=...).
 
 Verifies that when all default toolchains are gated behind a config_setting,
 requesting a different (unregistered) toolchain family produces a toolchain
@@ -10,7 +10,7 @@ import unittest
 from tests.integration import runner
 
 
-class ToolchainTargetSettingsTest(runner.TestCase):
+class AddTargetSettingsTest(runner.TestCase):
     def test_prebuilt_family_resolves(self):
         """Building with the 'prebuilt' family should succeed.
 
@@ -24,7 +24,7 @@ class ToolchainTargetSettingsTest(runner.TestCase):
         """Building with the 'custom' family should fail.
 
         No toolchains have target_settings = [":is_custom"], and the default
-        toolchains are gated behind ":is_prebuilt" (via toolchain_target_settings),
+        toolchains are gated behind ":is_prebuilt" (via add_target_settings),
         so toolchain resolution should fail with no matching toolchain.
         """
         result = self.run_bazel("build", "//:custom_no_toolchain_test", check=False)
