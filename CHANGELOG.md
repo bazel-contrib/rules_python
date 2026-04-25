@@ -68,6 +68,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
+  adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set
   {obj}`--venvs_site_packages=yes` to enable.
 * (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`

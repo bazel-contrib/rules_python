@@ -1173,7 +1173,7 @@ These settings are appended to the `target_settings` of all toolchains
 registered by the extension, including any that already have settings
 from `python.single_version_platform_override`.
 
-:::{versionadded} VERSION_NEXT
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
         ),
