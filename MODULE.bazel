@@ -64,7 +64,6 @@ register_toolchains("@pythons_hub//:all")
 # Install twine for our own runfiles wheel publishing and allow bzlmod users to use it.
 
 pip = use_extension("//python/extensions:pip.bzl", "pip")
-
 pip.parse(
     hub_name = "rules_python_publish_deps",
     python_version = "3.11",

@@ -17,7 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private/pypi:extension.bzl", "build_config", "default_platforms", "parse_modules")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:platform.bzl", _plat = "platform")
+load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load(":pip_parse.bzl", _parse = "pip_parse")
 
@@ -189,10 +189,10 @@ def _test_simple(env):
 _tests.append(_test_simple)
 
 def _test_simple_isolated(env):
-    """
-    Simulate `isolate = True` with parse_modules:
-    No pip.default tags,
-    but requirements parsing still produces the expected hub output.
+    """Simulate `isolate = True` with parse_modules.
+
+    No pip.default tags, but requirements parsing still produces the expected
+    hub output.
     """
     pypi = _parse_modules(
         env,
@@ -204,6 +204,7 @@ def _test_simple_isolated(env):
                     _parse(
                         hub_name = "pypi",
                         python_version = "3.15",
+                        simpleapi_skip = ["simple"],
                         requirements_lock = "requirements.txt",
                     ),
                 ],
