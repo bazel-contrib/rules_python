@@ -103,7 +103,7 @@ information on using pull requests.
 
 [GitHub Help]: https://help.github.com/articles/about-pull-requests/
 
-### Commit messages
+### Commit messages and PR descriptions
 
 Commit messages (upon merging) and PR messages should follow the [Conventional
 Commits](https://www.conventionalcommits.org/) style:
@@ -139,8 +139,35 @@ Common `type`s:
 * `revert:` means a prior change is being reverted in some way.
 * `test:` means only tests are being added.
 
+For the body, follow this guidance:
+
+* Briefly tells *why* the change is being made. This usually means
+  briefly describing how a bug manifests or what can't be accomplished
+  without the feature.
+* Briefly gives an overview of *how* the code is changed. This is to
+  orient readers for the diff they're about to read and understand; it's
+  not a verbatim description of what changed.
+* List unrelated or notable dev-only changes at the end. e.g. formatting an
+  old file, cleaning up testing, adding test support code, etc.
+
 For the full details of types, see
 [Conventional Commits](https://www.conventionalcommits.org/).
+
+#### PR description example
+
+```
+fix(pypi): handle files with .exe extensions
+
+Currently, if a file with `.exe` is seen, an error
+occurs because validation assumes unix-only filenames.
+This prevents using whls with pre-built .exe files in
+their data payload.
+
+To fix, detect the target OS and use an OS-appropriate
+validation function.
+
+* Also adds test helpers for detecting the current OS
+```
 
 ### Documenting changes
 
