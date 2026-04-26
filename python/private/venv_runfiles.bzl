@@ -336,6 +336,26 @@ def get_venv_symlinks(
 
     all_files = sorted(files, key = lambda f: f.short_path)
 
+    cannot_be_linked_directly = {}
+    for dirname in [
+        # The venv directories that bin, include, and data get put into are
+        # shared across wheels, are also shared across wheels, so we cannot link
+        # them directly
+        "bin",
+        "include",
+        "data",
+        # The data scheme is overlaid on the venv root, so the files under it
+        # could, in theory, get installed into e.g. bin/ or similar. Explicitly
+        # mark them as non-directly linkable to avoid issues.
+        "data/bin",
+        "data/include",
+        "data/lib",
+        "data/Scripts",
+        "data/Include",
+        "data/Lib",
+    ]:
+        cannot_be_linked_directly[dirname] = True
+
     # dict[str venv-relative dirname, bool is_namespace_package]
     namespace_package_dirs = {
         ns: True
@@ -343,10 +363,10 @@ def get_venv_symlinks(
     }
 
     # venv paths that cannot be directly linked. Dict acting as set.
-    cannot_be_linked_directly = {
+    cannot_be_linked_directly.update({
         dirname: True
         for dirname in namespace_package_dirs.keys()
-    }
+    })
     for f in namespace_package_files:
         venv_path, _ = _get_file_venv_path(ctx, f, site_packages_root)
         if venv_path == None:
@@ -423,25 +443,6 @@ def get_venv_symlinks(
             # then we should not unset it.
             if not cannot_be_linked_directly.get(dirname, False):
                 cannot_be_linked_directly[dirname] = True
-
-    for dirname in [
-        # The venv directories that bin, include, and data get put into are
-        # shared across wheels, are also shared across wheels, so we cannot link
-        # them directly
-        "bin",
-        "include",
-        "data",
-        # The data scheme is overlaid on the venv root, so the files under it
-        # could, in theory, get installed into e.g. bin/ or similar. Explicitly
-        # mark them as non-directly linkable to avoid issues.
-        "data/bin",
-        "data/include",
-        "data/lib",
-        "data/Scripts",
-        "data/Include",
-        "data/Lib",
-    ]:
-        cannot_be_linked_directly[dirname] = True
 
     # At this point, venv_symlinks has entries for the shared libraries
     # and cannot_be_linked_directly has the directories that cannot be
