@@ -99,10 +99,6 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         files = [p.name for p in d.glob("*")]
         self.assertIn("another_module_data.txt", files)
 
-    @unittest.skipIf(
-        os.environ.get("BZLMOD_ENABLED") == "0",
-        "whl_with_data1 is only available with bzlmod",
-    )
     def test_whl_with_data1_included(self):
         module = self.assert_imported_from_venv("whl_with_data1")
         site_packages_rel = self.site_packages.relative_to(self.venv)
@@ -127,10 +123,6 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
             self.include_dir_name / "whl_with_data1/header_file.h"
         )
 
-    @unittest.skipIf(
-        os.environ.get("BZLMOD_ENABLED") == "0",
-        "whl_with_data1 is only available with bzlmod",
-    )
     def test_whl_with_data2_included(self):
         module = self.assert_imported_from_venv("whl_with_data2")
 
@@ -147,10 +139,6 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
             self.include_dir_name / "whl_with_data2/header_file.h"
         )
 
-    @unittest.skipIf(
-        os.environ.get("BZLMOD_ENABLED") == "0",
-        "whl_with_data is only available with bzlmod",
-    )
     def test_whl_with_data_overlap(self):
         self.assert_venv_path_exists("data/overlap/both.txt")
         self.assert_venv_path_exists("data/overlap/data1.txt")
