@@ -351,8 +351,7 @@ def get_venv_symlinks(
     cannot_be_linked_directly = {}
     for dirname in [
         # The venv directories that bin, include, and data get put into are
-        # shared across wheels, are also shared across wheels, so we cannot link
-        # them directly
+        # shared across wheels, so we cannot link them directly
         "bin",
         "include",
         "data",

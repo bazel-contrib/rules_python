@@ -381,12 +381,9 @@ def whl_library_targets(
             namespace_package_files += generated_namespace_package_files
             srcs = srcs + generated_namespace_package_files
 
-        # This must be doe after the above because create_inits() is macro-phase,
-        # so can't handle select() values.
-        data = data + select({
-            _IS_VENV_SITE_PACKAGES_YES: [DATA_LABEL],
-            "//conditions:default": [],
-        })
+        # This is done after create_inits() is called so that the data scheme
+        # files don't have such files created in their directories.
+        data = data + [DATA_LABEL]
 
         rules.py_library(
             name = py_library_label,

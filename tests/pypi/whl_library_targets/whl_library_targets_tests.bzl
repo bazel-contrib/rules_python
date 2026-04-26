@@ -249,7 +249,7 @@ def _test_whl_and_library_deps_from_requires(env):
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/PYI.pyi"],
-        "data": ["site-packages/foo/DATA.txt"] + select({Label("//python/config_settings:_is_venvs_site_packages_yes"): ["data"], "//conditions:default": []}),
+        "data": ["site-packages/foo/DATA.txt", "data"],
         "imports": ["site-packages"],
         "deps": ["@pypi//bar:pkg"] + select({
             ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
@@ -365,7 +365,7 @@ def _test_whl_and_library_deps(env):
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/PYI.pyi"],
-        "data": ["site-packages/foo/DATA.txt"] + select({Label("//python/config_settings:_is_venvs_site_packages_yes"): ["data"], "//conditions:default": []}),
+        "data": ["site-packages/foo/DATA.txt", "data"],
         "imports": ["site-packages"],
         "deps": [
             "@pypi_bar_baz//:pkg",
@@ -448,7 +448,7 @@ def _test_group(env):
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/pyi.pyi"],
-        "data": ["site-packages/foo/data.txt"] + select({Label("//python/config_settings:_is_venvs_site_packages_yes"): ["data"], "//conditions:default": []}),
+        "data": ["site-packages/foo/data.txt", "data"],
         "imports": ["site-packages"],
         "deps": ["@pypi_bar_baz//:pkg"] + select({
             "@platforms//os:linux": ["@pypi_box//:pkg"],
