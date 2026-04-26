@@ -26,8 +26,8 @@ load("//python:versions.bzl", "MINOR_MAPPING", "TOOL_VERSIONS")
 load("//python/private:pythons_hub.bzl", "hub_repo")  # buildifier: disable=bzl-visibility
 load("//python/private:runtime_env_repo.bzl", "runtime_env_repo")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:deps.bzl", "pypi_deps")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:whl_library.bzl", "whl_library")
-load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
+load("//python/private/pypi:whl_library.bzl", "whl_library")  # buildifier: disable=bzl-visibility
+load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")  # buildifier: disable=bzl-visibility
 
 def rules_python_internal_setup():
     """Setup for development and testing of rules_python itself."""
