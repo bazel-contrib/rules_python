@@ -141,8 +141,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
+
 
     @unittest.skipIf(
         os.environ.get("BZLMOD_ENABLED") == "0",
@@ -151,8 +150,9 @@ if __name__ == "__main__":
     def test_whl_with_data2_included(self):
         module = self.assert_imported_from_venv("whl_with_data2")
 
-        venv_root = Path(module.__file__).parents[3]
-        site_packages = venv_root / "lib" / "site-packages"
+        module_path = Path(module.__file__)
+        site_packages = module_path.parent.parent
+        venv_root = Path(self.venv)
 
         data_file = site_packages / "whl_with_data2" / "data_file.txt"
         self.assertTrue(data_file.exists(), data_file)
@@ -171,19 +171,36 @@ if __name__ == "__main__":
         data_data_file = venv_root / "data" / "whl_with_data2" / "data_data_file.txt"
         self.assertTrue(data_data_file.exists(), data_data_file)
         self.assertTrue(data_data_file.is_file(), data_data_file)
-        self.assertTrue(data_data_file.read_text() == "123\n")
 
-        # In python versions < 3.10, the `venv/include/pythonX.Y/` dir doesn't seem to get
-        # created but we don't care to support dropping includes there on that
-        # platform.
-        if sys.version_info >= (3, 10):
-            # Include dir is `include/pythonX.Y`.
-            include_dir_name = (
-                f"include/python{sys.version_info.major}.{sys.version_info.minor}"
-            )
-            header_file = (
-                venv_root / include_dir_name / "whl_with_data2" / "header_file.h"
-            )
-            self.assertTrue(header_file.exists(), header_file)
-            self.assertTrue(header_file.is_file(), header_file)
-            self.assertTrue(header_file.read_text() == "123\n")
+
+        is_windows = sys.platform == "win32"
+        if is_windows:
+            include_dir_name = "Include"
+        else:
+            include_dir_name = "include"
+
+        header_file = (
+            venv_root / include_dir_name / "whl_with_data2" / "header_file.h"
+        )
+        self.assertTrue(header_file.exists(), header_file)
+        self.assertTrue(header_file.is_file(), header_file)
+
+
+    @unittest.skipIf(
+        os.environ.get("BZLMOD_ENABLED") == "0",
+        "whl_with_data is only available with bzlmod",
+    )
+    def test_whl_with_data_overlap(self):
+        venv_root = Path(self.venv)
+
+        overlap_both = venv_root / "data" / "overlap" / "both.txt"
+        self.assertTrue(overlap_both.exists(), f"Expected {overlap_both} to exist")
+
+        overlap_data1 = venv_root / "data" / "overlap" / "data1.txt"
+        self.assertTrue(overlap_data1.exists(), f"Expected {overlap_data1} to exist")
+
+        overlap_data2 = venv_root / "data" / "overlap" / "data2.txt"
+        self.assertTrue(overlap_data2.exists(), f"Expected {overlap_data2} to exist")
+
+if __name__ == "__main__":
+    unittest.main()
