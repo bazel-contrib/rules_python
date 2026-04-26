@@ -566,7 +566,6 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
     "_python_srcs": attr.label_list(
         # Used as a default value in a rule to ensure we fetch the dependencies.
         default = [
-            Label("//python/private/pypi/whl_installer:platform.py"),
             Label("//python/private/pypi/whl_installer:wheel.py"),
             Label("//python/private/pypi/whl_installer:wheel_installer.py"),
             Label("//python/private/pypi/whl_installer:arguments.py"),
