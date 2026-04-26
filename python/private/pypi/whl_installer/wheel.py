@@ -316,7 +316,7 @@ class Wheel:
         destination = installer.destinations.SchemeDictionaryDestination(
             installation_schemes,
             # TODO Should entry_point scripts also be handled by installer rather than custom code?
-            interpreter="/dev/null",
+            interpreter="python",
             script_kind="posix",
             destdir=directory,
             bytecode_optimization_levels=[],

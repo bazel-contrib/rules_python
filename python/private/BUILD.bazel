@@ -740,6 +740,14 @@ bzl_library(
     ],
 )
 
+alias(
+    name = "venv_bin_rewriter",
+    actual = select({
+        "@platforms//os:windows": ":venv_bin_rewriter.ps1",
+        "//conditions:default": ":venv_bin_rewriter.sh",
+    }),
+)
+
 bzl_library(
     name = "venv_runfiles_bzl",
     srcs = ["venv_runfiles.bzl"],

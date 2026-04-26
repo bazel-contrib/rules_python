@@ -25,6 +25,41 @@ _WELL_KNOWN_NAMESPACE_PACKAGES = [
     "nvidia",
 ]
 
+def _rewrite_bin_script(ctx, link_to, bin_venv_path):
+    out_file = ctx.actions.declare_file(bin_venv_path)
+
+    action_args = ctx.actions.args()
+    rewriter_file = ctx.files._venv_bin_rewriter[0]
+    inputs = depset([link_to, rewriter_file])
+
+    if rewriter_file.path.endswith(".ps1"):
+        # powershell.exe is used for broader compatibility
+        # It is installed by default on most Windows versions
+        action_exe = "powershell.exe"
+        action_args.add_all([
+            "-ExecutionPolicy",
+            "Bypass",
+            "-NoProfile",
+            "-File",
+            rewriter_file,
+        ])
+    else:
+        action_exe = ctx.attr._venv_bin_rewriter[DefaultInfo].files_to_run
+
+    action_args.add(link_to)
+    action_args.add(out_file)
+
+    ctx.actions.run(
+        inputs = inputs,
+        outputs = [out_file],
+        executable = action_exe,
+        arguments = [action_args],
+        mnemonic = "PyVenvRewriteBin",
+        progress_message = "Rewriting venv bin script %{input}",
+        toolchain = None,
+    )
+    return out_file
+
 def create_venv_app_files(ctx, deps, venv_dir_map):
     """Creates the tree of app-specific files for a venv for a binary.
 
@@ -84,6 +119,10 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                 # runfile_prefix should be prepended as we use runfiles.root_symlinks
                 runfile_prefix = ctx.label.repo_name or ctx.workspace_name
                 symlink_from = paths.join(runfile_prefix, ctx.label.package, bin_venv_path)
+
+                if kind == VenvSymlinkKind.BIN:
+                    link_to = _rewrite_bin_script(ctx, link_to, bin_venv_path)
+                    venv_files.append(link_to)
 
                 runfiles_symlinks[symlink_from] = link_to
 
@@ -521,7 +560,7 @@ def get_venv_symlinks(
         venv_symlinks[venv_path] = VenvSymlinkEntry(
             kind = kind,
             link_to_path = link_to_path,
-            link_to_file = None,
+            link_to_file = files[0] if kind == VenvSymlinkKind.BIN and len(files) == 1 else None,
             package = package,
             version = version_str,
             venv_path = out_venv_path,
