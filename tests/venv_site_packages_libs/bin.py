@@ -1,6 +1,7 @@
 import importlib
 import os
 import sys
+import sysconfig
 import unittest
 from pathlib import Path
 
@@ -11,6 +12,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         if sys.prefix == sys.base_prefix:
             raise AssertionError("Not running under a venv")
         self.venv = Path(sys.prefix)
+        self.site_packages = Path(sysconfig.get_paths()["purelib"])
 
         is_windows = sys.platform == "win32"
         if is_windows:
@@ -64,12 +66,8 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
     def test_data_is_included(self):
         self.assert_imported_from_venv("simple")
         module = importlib.import_module("simple")
-        module_path = Path(module.__file__)
-
-        site_packages = module_path.parent.parent
-
         # Ensure that packages from simple v1 are not present
-        files = [p.name for p in site_packages.glob("*")]
+        files = [p.name for p in self.site_packages.glob("*")]
         self.assertIn("simple_v1_extras", files)
 
     def test_override_pkg(self):
@@ -83,27 +81,21 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
     def test_dirs_from_replaced_package_are_not_present(self):
         self.assert_imported_from_venv("simple")
         module = importlib.import_module("simple")
-        module_path = Path(module.__file__)
-
-        site_packages = module_path.parent.parent
-        dist_info_dirs = [p.name for p in site_packages.glob("simple*.dist-info")]
+        dist_info_dirs = [p.name for p in self.site_packages.glob("simple*.dist-info")]
         self.assertEqual(
             ["simple-1.0.0.dist-info"],
             dist_info_dirs,
         )
 
         # Ensure that packages from simple v1 are not present
-        files = [p.name for p in site_packages.glob("*")]
+        files = [p.name for p in self.site_packages.glob("*")]
         self.assertNotIn("simple.libs", files)
 
     def test_data_from_another_pkg_is_included_via_copy_file(self):
         self.assert_imported_from_venv("simple")
         module = importlib.import_module("simple")
-        module_path = Path(module.__file__)
-
-        site_packages = module_path.parent.parent
         # Ensure that packages from simple v1 are not present
-        d = site_packages / "external_data"
+        d = self.site_packages / "external_data"
         files = [p.name for p in d.glob("*")]
         self.assertIn("another_module_data.txt", files)
 
@@ -113,19 +105,16 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
     )
     def test_whl_with_data1_included(self):
         module = self.assert_imported_from_venv("whl_with_data1")
-        module_path = Path(module.__file__)
-        site_packages = module_path.parent.parent
-
-        site_packages_rel = site_packages.relative_to(self.venv)
+        site_packages_rel = self.site_packages.relative_to(self.venv)
         # purelib
         self.assert_venv_path_exists(site_packages_rel / "whl_with_data1/data_file.txt")
 
         # platlib
-        self.assert_venv_path_exists(site_packages_rel / "whl_with_data1/platlib_file.txt")
+        self.assert_venv_path_exists(
+            site_packages_rel / "whl_with_data1/platlib_file.txt"
+        )
 
         venv_root = self.venv
-
-
 
         # data
         self.assert_venv_path_exists("data/whl_with_data1/data_data_file.txt")
@@ -134,10 +123,9 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_venv_path_exists(self.bin_dir_name / "whl_script.sh")
 
         # headers
-        self.assert_venv_path_exists(self.include_dir_name / "whl_with_data1/header_file.h")
-
-
-
+        self.assert_venv_path_exists(
+            self.include_dir_name / "whl_with_data1/header_file.h"
+        )
 
     @unittest.skipIf(
         os.environ.get("BZLMOD_ENABLED") == "0",
@@ -146,27 +134,18 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
     def test_whl_with_data2_included(self):
         module = self.assert_imported_from_venv("whl_with_data2")
 
-        module_path = Path(module.__file__)
-        site_packages = module_path.parent.parent
-        venv_root = self.venv
-
-        site_packages_rel = site_packages.relative_to(self.venv)
+        site_packages_rel = self.site_packages.relative_to(self.venv)
         self.assert_venv_path_exists(site_packages_rel / "whl_with_data2/data_file.txt")
 
-
         self.assert_venv_path_exists(self.bin_dir_name / "whl_script.sh")
-
-
 
         # Ensure that `data` files are unpacked in `venv/data/`
         # and then linked as `venv/data/whl_with_data1/data_data_file.txt`.
         self.assert_venv_path_exists("data/whl_with_data2/data_data_file.txt")
 
-
-
-
-        self.assert_venv_path_exists(self.include_dir_name / "whl_with_data2/header_file.h")
-
+        self.assert_venv_path_exists(
+            self.include_dir_name / "whl_with_data2/header_file.h"
+        )
 
     @unittest.skipIf(
         os.environ.get("BZLMOD_ENABLED") == "0",
@@ -177,8 +156,6 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_venv_path_exists("data/overlap/data1.txt")
         self.assert_venv_path_exists("data/overlap/data2.txt")
 
-
-
         self.assert_venv_path_exists(self.bin_dir_name / "overlap/both.sh")
         self.assert_venv_path_exists(self.bin_dir_name / "overlap/script1.sh")
         self.assert_venv_path_exists(self.bin_dir_name / "overlap/script2.sh")
@@ -186,6 +163,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         self.assert_venv_path_exists(self.include_dir_name / "overlap/both.h")
         self.assert_venv_path_exists(self.include_dir_name / "overlap/header1.h")
         self.assert_venv_path_exists(self.include_dir_name / "overlap/header2.h")
+
 
 if __name__ == "__main__":
     unittest.main()
