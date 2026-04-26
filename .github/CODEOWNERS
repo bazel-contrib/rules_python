@@ -7,5 +7,5 @@
 /examples/build_file_generation/ @dougthor42 @aignas
 
 # PyPI integration related code
-/python/private/pypi/ @rickeylev @aignas @groodt
-/tests/pypi/ @rickeylev @aignas @groodt
+/python/private/pypi/ @rickeylev @aignas
+/tests/pypi/ @rickeylev @aignas
