@@ -69,10 +69,16 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
         ctx.label.package,
     )
 
+    seen_bin_venv_paths = {}
+
     for kind, kind_map in link_map.items():
         base = venv_dir_map[kind]
         for venv_path, link_to in kind_map.items():
             bin_venv_path = paths.join(base, venv_path)
+            if bin_venv_path in seen_bin_venv_paths:
+                continue
+            seen_bin_venv_paths[bin_venv_path] = True
+
             if is_file(link_to):
                 # use paths.join to handle ctx.label.package = ""
                 # runfile_prefix should be prepended as we use runfiles.root_symlinks
@@ -418,9 +424,23 @@ def get_venv_symlinks(
             if not cannot_be_linked_directly.get(dirname, False):
                 cannot_be_linked_directly[dirname] = True
 
-    # bin, include, and data are also shared across wheels, so we cannot link
-    # them directly if they are at the top level.
-    for dirname in ["bin", "include", "data"]:
+    for dirname in [
+        # The venv directories that bin, include, and data get put into are
+        # shared across wheels, are also shared across wheels, so we cannot link
+        # them directly
+        "bin",
+        "include",
+        "data",
+        # The data scheme is overlaid on the venv root, so the files under it
+        # could, in theory, get installed into e.g. bin/ or similar. Explicitly
+        # mark them as non-directly linkable to avoid issues.
+        "data/bin",
+        "data/include",
+        "data/lib",
+        "data/Scripts",
+        "data/Include",
+        "data/Lib",
+    ]:
         cannot_be_linked_directly[dirname] = True
 
     # At this point, venv_symlinks has entries for the shared libraries

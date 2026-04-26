@@ -113,7 +113,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         venv_root = self.venv
 
         # data
-        self.assert_venv_path_exists("data/whl_with_data1/data_data_file.txt")
+        self.assert_venv_path_exists("whl_with_data1/data_data_file.txt")
 
         # scripts
         self.assert_venv_path_exists(self.bin_dir_name / "whl_script.sh")
@@ -131,18 +131,18 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
         self.assert_venv_path_exists(self.bin_dir_name / "whl_script.sh")
 
-        # Ensure that `data` files are unpacked in `venv/data/`
-        # and then linked as `venv/data/whl_with_data1/data_data_file.txt`.
-        self.assert_venv_path_exists("data/whl_with_data2/data_data_file.txt")
+        # Ensure that `data` files are unpacked in `venv/root/`
+        # and then linked as `venv/whl_with_data1/data_data_file.txt`.
+        self.assert_venv_path_exists("whl_with_data2/data_data_file.txt")
 
         self.assert_venv_path_exists(
             self.include_dir_name / "whl_with_data2/header_file.h"
         )
 
     def test_whl_with_data_overlap(self):
-        self.assert_venv_path_exists("data/overlap/both.txt")
-        self.assert_venv_path_exists("data/overlap/data1.txt")
-        self.assert_venv_path_exists("data/overlap/data2.txt")
+        self.assert_venv_path_exists("overlap/both.txt")
+        self.assert_venv_path_exists("overlap/data1.txt")
+        self.assert_venv_path_exists("overlap/data2.txt")
 
         self.assert_venv_path_exists(self.bin_dir_name / "overlap/both.sh")
         self.assert_venv_path_exists(self.bin_dir_name / "overlap/script1.sh")

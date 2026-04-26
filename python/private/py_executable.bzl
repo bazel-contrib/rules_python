@@ -575,11 +575,13 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         computed_substitutions = computed_subs,
     )
 
+    # See https://docs.python.org/3/library/sysconfig.html#posix-prefix
+    # for how schemes map under the venv.
     venv_dir_map = {
         VenvSymlinkKind.BIN: "{}/{}".format(venv_ctx_rel_root, venv_details.bin_dir),
         VenvSymlinkKind.LIB: site_packages,
         VenvSymlinkKind.INCLUDE: "{}/{}".format(venv_ctx_rel_root, venv_details.include_dir),
-        VenvSymlinkKind.DATA: "{}/data".format(venv_ctx_rel_root),
+        VenvSymlinkKind.DATA: venv_ctx_rel_root,
     }
     venv_app_files = create_venv_app_files(
         ctx,

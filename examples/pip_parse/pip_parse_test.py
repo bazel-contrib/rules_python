@@ -54,11 +54,11 @@ class PipInstallTest(unittest.TestCase):
 
         expected = [
             "bin/s3cmd",
-            "data/share/doc/packages/s3cmd/INSTALL.md",
-            "data/share/doc/packages/s3cmd/LICENSE",
-            "data/share/doc/packages/s3cmd/NEWS",
-            "data/share/doc/packages/s3cmd/README.md",
-            "data/share/man/man1/s3cmd.1",
+            "share/doc/packages/s3cmd/INSTALL.md",
+            "share/doc/packages/s3cmd/LICENSE",
+            "share/doc/packages/s3cmd/NEWS",
+            "share/doc/packages/s3cmd/README.md",
+            "share/man/man1/s3cmd.1",
         ]
 
         self.assertListEqual(actual, expected)
