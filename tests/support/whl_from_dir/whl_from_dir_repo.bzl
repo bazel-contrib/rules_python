@@ -11,20 +11,41 @@ def _whl_from_dir_repo(rctx):
     rctx.watch_tree(root)
 
     output = rctx.path(rctx.attr.output)
-    repo_utils.execute_checked(
-        rctx,
-        # cd to root so zip recursively takes everything there.
-        working_directory = str(root),
-        op = "WhlFromDir",
-        arguments = [
-            "zip",
-            "-0",  # Skip compressing
-            "-X",  # Don't store file time or metadata
-            str(output),
-            "-r",
-            ".",
-        ],
-    )
+    if repo_utils.get_platforms_os_name(rctx) == "windows":
+        powershell_exe = rctx.which("powershell.exe") or rctx.which("powershell")
+        if not powershell_exe:
+            fail("powershell not found on PATH")
+
+        zip_script = rctx.path(rctx.attr._zip_script)
+
+        repo_utils.execute_checked(
+            rctx,
+            op = "WhlFromDir",
+            arguments = [
+                powershell_exe,
+                "-NoProfile",
+                "-File",
+                str(zip_script),
+                str(output),
+                str(root),
+            ],
+            # zip.ps1 handles relativizing paths.
+        )
+    else:
+        repo_utils.execute_checked(
+            rctx,
+            # cd to root so zip recursively takes everything there.
+            working_directory = str(root),
+            op = "WhlFromDir",
+            arguments = [
+                "zip",
+                "-0",  # Skip compressing
+                "-X",  # Don't store file time or metadata
+                str(output),
+                "-r",
+                ".",
+            ],
+        )
     rctx.file("BUILD.bazel", 'exports_files(glob(["*"]))')
 
 whl_from_dir_repo = repository_rule(
@@ -45,6 +66,10 @@ https://packaging.python.org/en/latest/specifications/binary-distribution-format
 A file whose directory will be put into the output wheel. All files
 are included verbatim.
             """,
+        ),
+        "_zip_script": attr.label(
+            default = "//tests/support/whl_from_dir:zip.ps1",
+            allow_single_file = True,
         ),
     },
 )
