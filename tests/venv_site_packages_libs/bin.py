@@ -10,7 +10,22 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         super().setUp()
         if sys.prefix == sys.base_prefix:
             raise AssertionError("Not running under a venv")
-        self.venv = sys.prefix
+        self.venv = Path(sys.prefix)
+
+        is_windows = sys.platform == "win32"
+        if is_windows:
+            self.bin_dir_name = Path("Scripts")
+            self.include_dir_name = Path("Include")
+        else:
+            self.bin_dir_name = Path("bin")
+            self.include_dir_name = Path("include")
+
+    def assert_venv_path_exists(self, rel_path):
+        path = self.venv / rel_path
+        self.assertTrue(
+            path.exists(),
+            f"Expected {path} to exist. {path.parent.name} contents: {list(path.parent.iterdir()) if path.parent.exists() else 'N/A'}",
+        )
 
     def assert_imported_from_venv(self, module_name):
         module = importlib.import_module(module_name)
@@ -21,7 +36,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
             + f"__file__ set, but got None. {module=}",
         )
         self.assertTrue(
-            module.__file__.startswith(self.venv),
+            module.__file__.startswith(str(self.venv)),
             f"\n{module_name} was imported, but not from the venv.\n"
             + f"       venv: {self.venv}\n"
             + f"module file: {module.__file__}\n"
@@ -101,44 +116,25 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         module_path = Path(module.__file__)
         site_packages = module_path.parent.parent
 
+        site_packages_rel = site_packages.relative_to(self.venv)
         # purelib
-        data_file = site_packages / "whl_with_data1" / "data_file.txt"
-        self.assertTrue(data_file.exists(), f"Expected {data_file} to exist")
+        self.assert_venv_path_exists(site_packages_rel / "whl_with_data1/data_file.txt")
 
         # platlib
-        platlib_file = site_packages / "whl_with_data1" / "platlib_file.txt"
-        self.assertTrue(platlib_file.exists(), f"Expected {platlib_file} to exist")
+        self.assert_venv_path_exists(site_packages_rel / "whl_with_data1/platlib_file.txt")
 
-        venv_root = Path(self.venv)
+        venv_root = self.venv
 
-        is_windows = sys.platform == "win32"
-        if is_windows:
-            bin_dir_name = "Scripts"
-            include_dir_name = "Include"
-        else:
-            bin_dir_name = "bin"
-            include_dir_name = "include"
+
 
         # data
-        data_data_file = venv_root / "data" / "whl_with_data1" / "data_data_file.txt"
-        self.assertTrue(
-            data_data_file.exists(),
-            f"Expected {data_data_file} to exist. venv_root contents: {list(venv_root.iterdir()) if venv_root.exists() else 'N/A'}. os.name={os.name}, sys.platform={sys.platform}",
-        )
+        self.assert_venv_path_exists("data/whl_with_data1/data_data_file.txt")
 
         # scripts
-        script_file = venv_root / bin_dir_name / "whl_script.sh"
-        self.assertTrue(
-            script_file.exists(),
-            f"Expected {script_file} to exist. {bin_dir_name} contents: {list((venv_root / bin_dir_name).iterdir()) if (venv_root / bin_dir_name).exists() else 'N/A'}",
-        )
+        self.assert_venv_path_exists(self.bin_dir_name / "whl_script.sh")
 
         # headers
-        header_file = venv_root / include_dir_name / "whl_with_data1" / "header_file.h"
-        self.assertTrue(
-            header_file.exists(),
-            f"Expected {header_file} to exist. {include_dir_name} contents: {list((venv_root / include_dir_name).iterdir()) if (venv_root / include_dir_name).exists() else 'N/A'}",
-        )
+        self.assert_venv_path_exists(self.include_dir_name / "whl_with_data1/header_file.h")
 
 
 
@@ -152,38 +148,24 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
         module_path = Path(module.__file__)
         site_packages = module_path.parent.parent
-        venv_root = Path(self.venv)
+        venv_root = self.venv
 
-        data_file = site_packages / "whl_with_data2" / "data_file.txt"
-        self.assertTrue(data_file.exists(), data_file)
-        self.assertTrue(data_file.is_file(), data_file)
+        site_packages_rel = site_packages.relative_to(self.venv)
+        self.assert_venv_path_exists(site_packages_rel / "whl_with_data2/data_file.txt")
 
-        platlib_file = site_packages / "whl_with_data2" / "platlib_file.txt"
-        self.assertTrue(platlib_file.exists(), platlib_file)
-        self.assertTrue(platlib_file.is_file(), platlib_file)
 
-        script_file = venv_root / "bin" / "whl_script.sh"
-        self.assertTrue(script_file.exists(), script_file)
-        self.assertTrue(script_file.is_file(), script_file)
+        self.assert_venv_path_exists(self.bin_dir_name / "whl_script.sh")
+
+
 
         # Ensure that `data` files are unpacked in `venv/data/`
         # and then linked as `venv/data/whl_with_data1/data_data_file.txt`.
-        data_data_file = venv_root / "data" / "whl_with_data2" / "data_data_file.txt"
-        self.assertTrue(data_data_file.exists(), data_data_file)
-        self.assertTrue(data_data_file.is_file(), data_data_file)
+        self.assert_venv_path_exists("data/whl_with_data2/data_data_file.txt")
 
 
-        is_windows = sys.platform == "win32"
-        if is_windows:
-            include_dir_name = "Include"
-        else:
-            include_dir_name = "include"
 
-        header_file = (
-            venv_root / include_dir_name / "whl_with_data2" / "header_file.h"
-        )
-        self.assertTrue(header_file.exists(), header_file)
-        self.assertTrue(header_file.is_file(), header_file)
+
+        self.assert_venv_path_exists(self.include_dir_name / "whl_with_data2/header_file.h")
 
 
     @unittest.skipIf(
@@ -191,16 +173,19 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         "whl_with_data is only available with bzlmod",
     )
     def test_whl_with_data_overlap(self):
-        venv_root = Path(self.venv)
+        self.assert_venv_path_exists("data/overlap/both.txt")
+        self.assert_venv_path_exists("data/overlap/data1.txt")
+        self.assert_venv_path_exists("data/overlap/data2.txt")
 
-        overlap_both = venv_root / "data" / "overlap" / "both.txt"
-        self.assertTrue(overlap_both.exists(), f"Expected {overlap_both} to exist")
 
-        overlap_data1 = venv_root / "data" / "overlap" / "data1.txt"
-        self.assertTrue(overlap_data1.exists(), f"Expected {overlap_data1} to exist")
 
-        overlap_data2 = venv_root / "data" / "overlap" / "data2.txt"
-        self.assertTrue(overlap_data2.exists(), f"Expected {overlap_data2} to exist")
+        self.assert_venv_path_exists(self.bin_dir_name / "overlap/both.sh")
+        self.assert_venv_path_exists(self.bin_dir_name / "overlap/script1.sh")
+        self.assert_venv_path_exists(self.bin_dir_name / "overlap/script2.sh")
+
+        self.assert_venv_path_exists(self.include_dir_name / "overlap/both.h")
+        self.assert_venv_path_exists(self.include_dir_name / "overlap/header1.h")
+        self.assert_venv_path_exists(self.include_dir_name / "overlap/header2.h")
 
 if __name__ == "__main__":
     unittest.main()
