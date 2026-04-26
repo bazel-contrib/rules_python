@@ -1,10 +1,10 @@
 load("//python:py_test.bzl", "py_test")
-load("//tests/support:support.bzl", "SUPPORTS_BZLMOD_UNIXY")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 
 py_test(
     name = "whl_library_extras_test",
     srcs = ["whl_library_extras_test.py"],
-    target_compatible_with = SUPPORTS_BZLMOD_UNIXY,
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         "@whl_library_extras_direct_dep//:pkg",
     ],
