@@ -216,19 +216,12 @@ def py_wheel(
             **copy_propagating_kwargs(kwargs)
         )
     elif twine:
-        if not twine.endswith(":pkg"):
-            fail("twine label should look like @my_twine_repo//:pkg")
-
-        twine_main = twine.replace(":pkg", ":rules_python_wheel_entry_point_twine.py")
-
         py_binary(
             name = "{}.publish".format(name),
-            srcs = [twine_main],
+            deps = [twine],
             args = twine_args,
             data = [dist_target],
-            imports = ["."],
-            main = twine_main,
-            deps = [twine],
+            main_module = "twine",
             tags = manual_tags,
             visibility = kwargs.get("visibility"),
             **copy_propagating_kwargs(kwargs)

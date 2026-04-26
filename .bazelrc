@@ -25,6 +25,9 @@ common --incompatible_disallow_struct_provider_syntax
 # Makes Bazel 7 act more like Bazel 8
 common --incompatible_use_plus_in_repo_names
 
+# Implicitly adds --config=linux|macos|windows, depending on the host platform
+common --enable_platform_specific_config
+
 # Needed to make Windows with a py_binary in data deps work. The Bazel launcher
 # is used, which falls back to finding python.exe on PATH to bootstrap.
 # See https://github.com/bazel-contrib/rules_python/issues/3655
@@ -54,6 +57,20 @@ common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
+
+# Silence spammy C++ compile warnings
+build:linux --copt=-Wno-deprecated-declarations
+build:linux --copt=-Wno-stringop-overread
+build:linux --copt=-Wno-sign-compare
+build:linux --host_copt=-Wno-deprecated-declarations
+build:linux --host_copt=-Wno-stringop-overread
+build:linux --host_copt=-Wno-sign-compare
+build:macos --copt=-Wno-deprecated-declarations
+build:macos --copt=-Wno-stringop-overread
+build:macos --copt=-Wno-sign-compare
+build:macos --host_copt=-Wno-deprecated-declarations
+build:macos --host_copt=-Wno-stringop-overread
+build:macos --host_copt=-Wno-sign-compare
 
 import %workspace%/specialized_configs.bazelrc
 

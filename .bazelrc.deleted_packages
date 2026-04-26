@@ -36,6 +36,7 @@ common --deleted_packages=tests/integration/local_toolchains
 common --deleted_packages=tests/integration/pip_parse
 common --deleted_packages=tests/integration/pip_parse/empty
 common --deleted_packages=tests/integration/py_cc_toolchain_registered
+common --deleted_packages=tests/integration/toolchain_target_settings
 common --deleted_packages=tests/modules/another_module
 common --deleted_packages=tests/modules/other
 common --deleted_packages=tests/modules/other/nspkg_delta
