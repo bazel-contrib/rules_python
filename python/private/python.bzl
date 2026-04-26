@@ -403,6 +403,10 @@ def _python_impl(module_ctx):
     # the PLATFORMS global for this toolchain
     toolchain_platform_keys = {}
 
+    # Extra target_settings to add to every registered toolchain, e.g. for
+    # gating the default toolchains behind a custom config_setting.
+    global_add_target_settings = py.config.add_target_settings
+
     # Split the toolchain info into separate objects so they can be passed onto
     # the repository rule.
     for entry in toolchain_impls:
@@ -414,7 +418,7 @@ def _python_impl(module_ctx):
 
         # The target_settings attribute may not be present for users
         # patching python/versions.bzl.
-        toolchain_ts_map[key] = getattr(entry.platform, "target_settings", [])
+        toolchain_ts_map[key] = getattr(entry.platform, "target_settings", []) + global_add_target_settings
         toolchain_platform_keys[key] = entry.platform_name
         toolchain_python_versions[key] = entry.full_python_version
 
@@ -702,6 +706,9 @@ def _process_global_overrides(*, tag, default, _fail = fail):
 
         default["minor_mapping"] = tag.minor_mapping
 
+    if tag.add_target_settings:
+        default["add_target_settings"] = list(tag.add_target_settings)
+
     forwarded_attrs = sorted(AUTH_ATTRS) + [
         "base_url",
         "register_all_versions",
@@ -809,6 +816,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
     )
 
     register_all_versions = default.pop("register_all_versions", False)
+    add_target_settings = default.pop("add_target_settings", [])
     kwargs = default.pop("kwargs", {})
 
     versions = {}
@@ -834,6 +842,7 @@ def _get_toolchain_config(*, modules, _fail = fail):
         minor_mapping = minor_mapping,
         default = default,
         register_all_versions = register_all_versions,
+        add_target_settings = add_target_settings,
     )
 
 def _compute_default_python_version(mctx):
@@ -1099,6 +1108,30 @@ _override = tag_class(
 :::
 """,
     attrs = {
+        "add_target_settings": attr.string_list(
+            mandatory = False,
+            doc = """\
+A list of `config_setting` labels to add to the `target_settings` of every
+toolchain registered by this module extension. This is useful for creating
+separate "families" of toolchains gated behind custom build settings.
+
+For example, to ensure the default prebuilt toolchains are only resolved when
+a `prebuilt` config setting is active:
+
+```starlark
+python.override(
+    add_target_settings = ["@@//:python_toolchain_family_prebuilt"],
+)
+```
+
+These settings are appended to the `target_settings` of all toolchains
+registered by the extension, including any that already have settings
+from `python.single_version_platform_override`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "available_python_versions": attr.string_list(
             mandatory = False,
             doc = """\

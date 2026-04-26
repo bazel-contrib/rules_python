@@ -65,9 +65,13 @@ END_UNRELEASED_TEMPLATE
 ### Fixed
 * (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
   targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
+* (entry_point) From now on `mypy` type checking will be skipped on the generated
+  files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
 
 {#v0-0-0-added}
 ### Added
+* (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
+  adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set
   {obj}`--venvs_site_packages=yes` to enable.
 * (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`

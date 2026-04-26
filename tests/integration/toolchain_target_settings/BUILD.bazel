@@ -1,0 +1,56 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@rules_python//python:py_test.bzl", "py_test")
+
+# A flag to select which "family" of toolchains to use.
+string_flag(
+    name = "family",
+    build_setting_default = "prebuilt",
+    values = [
+        "prebuilt",
+        "custom",
+    ],
+)
+
+# Matches when the "prebuilt" family is selected.
+# This is referenced in MODULE.bazel's python.override(add_target_settings=...).
+config_setting(
+    name = "is_prebuilt",
+    flag_values = {
+        ":family": "prebuilt",
+    },
+)
+
+# Matches when the "custom" family is selected.
+# No toolchains use this setting, so selecting it should produce an error.
+config_setting(
+    name = "is_custom",
+    flag_values = {
+        ":family": "custom",
+    },
+)
+
+# This target selects the "prebuilt" family via config_settings transition.
+# Since python.override(add_target_settings = ["@@//:is_prebuilt"]) gates
+# the default toolchains, this should succeed: the flag matches, the config_setting
+# is satisfied, and the default 3.13 toolchain resolves.
+py_test(
+    name = "prebuilt_test",
+    srcs = ["main.py"],
+    config_settings = {
+        "//:family": "prebuilt",
+    },
+    main = "main.py",
+)
+
+# This target selects the "custom" family via config_settings transition.
+# No toolchains have target_settings = [":is_custom"], so toolchain resolution
+# should fail -- the default toolchains are gated behind ":is_prebuilt" and
+# won't match.
+py_test(
+    name = "custom_no_toolchain_test",
+    srcs = ["main.py"],
+    config_settings = {
+        "//:family": "custom",
+    },
+    main = "main.py",
+)
