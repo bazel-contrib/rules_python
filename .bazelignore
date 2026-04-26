@@ -33,3 +33,4 @@ sphinxdocs
 tests/integration/compile_pip_requirements/bazel-compile_pip_requirements
 tests/integration/local_toolchains/bazel-local_toolchains
 tests/integration/py_cc_toolchain_registered/bazel-py_cc_toolchain_registered
+tests/integration/toolchain_target_settings/bazel-module_under_test

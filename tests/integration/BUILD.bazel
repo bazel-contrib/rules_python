@@ -88,6 +88,11 @@ rules_python_integration_test(
     py_main = "custom_commands_test.py",
 )
 
+rules_python_integration_test(
+    name = "toolchain_target_settings_test",
+    py_main = "toolchain_target_settings_test.py",
+)
+
 py_library(
     name = "runner_lib",
     srcs = ["runner.py"],

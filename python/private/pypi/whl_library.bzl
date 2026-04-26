@@ -546,18 +546,8 @@ def _whl_library_impl(rctx):
     rctx.file("MODULE.bazel")
     rctx.file("REPO.bazel")
 
-    paths = list(rctx.path(".").readdir())
-    for _ in range(10000000):
-        if not paths:
-            break
-        path = paths.pop()
-
-        # BUILD files interfere with globbing and Bazel package boundaries.
-        if path.basename in ("BUILD", "BUILD.bazel"):
-            rctx.delete(path)
-        elif path.is_dir:
-            paths.extend(path.readdir())
-
+    # BUILD files interfere with globbing and Bazel package boundaries.
+    _remove_files(rctx, "BUILD", "BUILD.bazel")
     rctx.file("BUILD.bazel", build_file_contents)
 
     if enable_pipstar and enable_pipstar_extract:
@@ -565,6 +555,18 @@ def _whl_library_impl(rctx):
             return rctx.repo_metadata(reproducible = True)
 
     return None
+
+def _remove_files(rctx, *basenames):
+    paths = list(rctx.path(".").readdir())
+    for _ in range(10000000):
+        if not paths:
+            break
+        path = paths.pop()
+
+        if path.basename in basenames:
+            rctx.delete(path)
+        elif path.is_dir:
+            paths.extend(path.readdir())
 
 def _generate_entry_point_contents(
         module,
