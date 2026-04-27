@@ -214,7 +214,7 @@ def build_config(
             continue
 
         for tag in mod.tags.default:
-            pyproject_toml = getattr(tag, "pyproject_toml", None)
+            pyproject_toml = tag.pyproject_toml
             if pyproject_toml:
                 pyproject_version = read_pyproject_version(
                     module_ctx,
