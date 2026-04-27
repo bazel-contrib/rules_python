@@ -1,0 +1,3 @@
+load(":repo_utils_test.bzl", "repo_utils_test_suite")
+
+repo_utils_test_suite(name = "repo_utils_tests")

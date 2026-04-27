@@ -23,7 +23,6 @@ _RENDER = {
     "data_exclude": render.list,
     "dependencies": render.list,
     "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
-    "entry_points": render.dict,
     "extras": render.list,
     "group_deps": render.list,
     "include": str,
@@ -100,18 +99,6 @@ def generate_whl_library_build_bazel(
     ])
 
     additional_content = []
-    entry_points = kwargs.get("entry_points")
-    if entry_points:
-        entry_point_files = sorted({
-            entry_point_script.replace("\\", "/"): True
-            for entry_point_script in entry_points.values()
-        }.keys())
-        additional_content.append(
-            "exports_files(\n" +
-            "    srcs = {},\n".format(render.list(entry_point_files)) +
-            "    visibility = [\"//visibility:public\"],\n" +
-            ")\n",
-        )
     if annotation:
         kwargs["data"] = annotation.data
         kwargs["copy_files"] = annotation.copy_files

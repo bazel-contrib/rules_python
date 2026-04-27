@@ -17,6 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
@@ -48,10 +49,7 @@ def _test_simple(env):
         )
 
     contents = simpleapi_download(
-        ctx = struct(
-            getenv = {}.get,
-            report_progress = lambda _: None,
-        ),
+        ctx = mocks.mctx(),
         attr = struct(
             index_url_overrides = {},
             index_url = "https://main.com",
@@ -123,10 +121,7 @@ def _test_index_overrides(env):
         )
 
     contents = simpleapi_download(
-        ctx = struct(
-            getenv = {}.get,
-            report_progress = lambda _: None,
-        ),
+        ctx = mocks.mctx(),
         attr = struct(
             index_url_overrides = {
                 "foo": "https://extra.com",
@@ -272,6 +267,51 @@ def _test_download_url_parallel(env):
     })
 
 _tests.append(_test_download_url_parallel)
+
+def _test_download_url_parallel_with_overrides(env):
+    downloads = {}
+    reads = [
+        "",
+        "",
+        "",
+    ]
+
+    def download(url, output, **kwargs):
+        _ = kwargs  # buildifier: disable=unused-variable
+        downloads[url[0]] = output
+        return struct(wait = lambda: struct(success = True))
+
+    simpleapi_download(
+        ctx = struct(
+            getenv = {}.get,
+            download = download,
+            report_progress = lambda _: None,
+            # We will first add a download to the list, so this is a poor man's `next(foo)`
+            # implementation. We use 2 because we will enqueue 2 downloads in parallel.
+            read = lambda i: reads[len(downloads) - 2],
+            path = lambda i: "path/for/" + i,
+        ),
+        attr = struct(
+            index_url_overrides = {
+                "bar": "https://example.com/extra/simple/",
+            },
+            index_url = "https://example.com/default/simple/",
+            extra_index_urls = [],
+            sources = {"bar": None, "baz": None, "foo": None},
+            envsubst = [],
+        ),
+        cache = pypi_cache(),
+        parallel_download = True,
+        get_auth = lambda ctx, urls, ctx_attr: struct(),
+    )
+
+    env.expect.that_dict(downloads).contains_exactly({
+        "https://example.com/default/simple/baz/": "path/for/https___example_com_default_simple_baz.html",
+        "https://example.com/default/simple/foo/": "path/for/https___example_com_default_simple_foo.html",
+        "https://example.com/extra/simple/bar/": "path/for/https___example_com_extra_simple_bar.html",
+    })
+
+_tests.append(_test_download_url_parallel_with_overrides)
 
 def _test_download_envsubst_url(env):
     downloads = {}

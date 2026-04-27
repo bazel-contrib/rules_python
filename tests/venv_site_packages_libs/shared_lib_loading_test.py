@@ -1,10 +1,21 @@
 import importlib.util
 import os
+import sys
 import unittest
+from pathlib import Path
 
-from elftools.elf.elffile import ELFFile
-from macholib import mach_o
-from macholib.MachO import MachO
+# Optional imports for ELF/Mach-O analysis
+if os.name == "posix" and sys.platform != "darwin":
+    from elftools.elf.elffile import ELFFile
+else:
+    ELFFile = None
+
+if sys.platform == "darwin":
+    from macholib import mach_o
+    from macholib.MachO import MachO
+else:
+    mach_o = None
+    MachO = None
 
 ELF_MAGIC = b"\x7fELF"
 MACHO_MAGICS = (
@@ -16,7 +27,14 @@ MACHO_MAGICS = (
 
 
 class SharedLibLoadingTest(unittest.TestCase):
-    def test_shared_library_linking(self):
+    def setUp(self):
+        super().setUp()
+        if sys.prefix == sys.base_prefix:
+            raise AssertionError("Not running under a venv")
+        self.venv = Path(sys.prefix)
+
+    @unittest.skipIf(os.name == "nt", "Tests Unix-specific extension loading")
+    def test_shared_library_linking_unix(self):
         try:
             import ext_with_libs.adder
         except ImportError as e:
@@ -52,6 +70,41 @@ class SharedLibLoadingTest(unittest.TestCase):
 
         # Check the function works regardless of format.
         self.assertEqual(ext_with_libs.adder.do_add(), 2)
+
+    @unittest.skipUnless(os.name == "nt", "Tests Windows-specific extension loading")
+    def test_shared_library_loading_windows(self):
+        # We import markupsafe._speedups (a .cp311-win_amd64.pyd extension)
+        try:
+            import markupsafe._speedups
+
+            module = markupsafe._speedups
+        except ImportError as e:
+            self.fail(
+                f"Failed to import markupsafe._speedups: {e}\n"
+                + "sys.path:\n"
+                + "\n".join(sys.path)
+            )
+
+        # Verify it's in the venv
+        # Normalize paths for Windows comparison.
+        # We DON'T use resolve() here because we want to see the path Python used,
+        # which should be within the venv's site-packages (even if it's a symlink).
+        actual_file = str(Path(module.__file__)).lower()
+        expected_prefix = str(self.venv).lower()
+
+        self.assertTrue(
+            actual_file.startswith(expected_prefix),
+            f"Module {module.__name__} not loaded from venv.\n"
+            f"Venv: {expected_prefix}\n"
+            f"Module file: {actual_file}\n"
+            f"sys.path:\n" + "\n".join(sys.path),
+        )
+
+        # Verify it's a shared library (.pyd)
+        self.assertTrue(
+            actual_file.endswith(".pyd"),
+            f"Expected .pyd extension, got {module.__file__}",
+        )
 
     def _get_linking_info(self, path):
         """Parses a shared library and returns its rpaths and dependencies."""

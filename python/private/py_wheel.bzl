@@ -181,7 +181,8 @@ For example:
 + `"foo/" will prepend to `"bar/baz/file.py"` as `"foo/bar/baz/file.py"`
 + `"foo_" will prepend to `"bar/baz/file.py"` as `"foo_bar/baz/file.py"`
 + `stripping ["bar/"] and adding "foo/" will change `"bar/baz/file.py"` to `"foo/baz/file.py"`
-:::{versionadded} VERSION_NEXT_FEATURE
+
+:::{versionadded} 2.0.0
 The {attr}`add_path_prefix` attribute was added.
 :::
 """,

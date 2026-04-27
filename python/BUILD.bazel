@@ -88,7 +88,7 @@ bzl_library(
     name = "packaging_bzl",
     srcs = ["packaging.bzl"],
     deps = [
-        ":py_binary_bzl",
+        "//python/entry_points:py_console_script_binary_bzl",
         "//python/private:bzlmod_enabled_bzl",
         "//python/private:py_package_bzl",
         "//python/private:py_wheel_bzl",

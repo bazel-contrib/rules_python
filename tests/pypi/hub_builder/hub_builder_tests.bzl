@@ -23,26 +23,25 @@ load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: di
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
+load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
-def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, read = None):
-    return struct(
-        getenv = environ.get,
-        os = struct(
-            name = os_name,
-            arch = arch_name,
-        ),
-        read = read or (lambda _: """\
+def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, mock_files = None):
+    return mocks.mctx(
+        os_name = os_name,
+        arch_name = arch_name,
+        environ = environ,
+        mock_files = mock_files or {
+            "requirements.txt": """\
 simple==0.0.1 \
     --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf"""),
-        report_progress = lambda _: None,
+    --hash=sha256:deadbaaf""",
+        },
     )
 
 def hub_builder(
         env,
-        enable_pipstar = True,
         enable_pipstar_extract = True,
         debug = False,
         config = None,
@@ -57,7 +56,6 @@ def hub_builder(
         module_name = "unit_test",
         config = config or struct(
             # no need to evaluate the markers with the interpreter
-            enable_pipstar = enable_pipstar,
             enable_pipstar_extract = enable_pipstar_extract,
             index_url = "https://pypi.org/simple",
             platforms = {
@@ -163,11 +161,11 @@ def _test_simple_multiple_requirements(env):
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
         builder.pip_parse(
-            _mock_mctx(
-                read = lambda x: {
+            mocks.mctx(
+                mock_files = {
                     "darwin.txt": "simple==0.0.2 --hash=sha256:deadb00f",
                     "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -209,11 +207,11 @@ def _test_simple_extras_vs_no_extras(env):
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
         builder.pip_parse(
-            _mock_mctx(
-                read = lambda x: {
+            mocks.mctx(
+                mock_files = {
                     "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                     "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -274,11 +272,11 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                 "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -350,13 +348,13 @@ def _test_simple_multiple_python_versions(env):
         },
     )
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "requirements_3_15.txt": """
 simple==0.0.1 --hash=sha256:deadbeef
 old-package==0.0.1 --hash=sha256:deadbaaf
 """,
-            }[x],
+            },
             os_name = "linux",
             arch_name = "amd64",
         ),
@@ -367,13 +365,13 @@ old-package==0.0.1 --hash=sha256:deadbaaf
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "requirements_3_16.txt": """
 simple==0.0.2 --hash=sha256:deadb00f
 new-package==0.0.1 --hash=sha256:deadb00f2
 """,
-            }[x],
+            },
             os_name = "linux",
             arch_name = "amd64",
         ),
@@ -455,14 +453,14 @@ def _test_simple_with_markers(env):
             },
         )
         builder.pip_parse(
-            _mock_mctx(
-                read = lambda x: {
+            mocks.mctx(
+                mock_files = {
                     "universal.txt": """\
     torch==2.4.1+cpu ; platform_machine == 'x86_64'
     torch==2.4.1 ; platform_machine != 'x86_64' \
         --hash=sha256:deadbeef
     """,
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -539,7 +537,6 @@ def _test_torch_experimental_index_url(env):
         env,
         config = struct(
             netrc = None,
-            enable_pipstar = True,
             enable_pipstar_extract = True,
             index_url = "https://pypi.org/simple",
             auth_patterns = {},
@@ -577,8 +574,8 @@ def _test_torch_experimental_index_url(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "universal.txt": """\
 torch==2.4.1 ; platform_machine != 'x86_64' \
     --hash=sha256:1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e \
@@ -605,7 +602,7 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     --hash=sha256:c4f2c3c026e876d4dad7629170ec14fff48c076d6c2ae0e354ab3fdc09024f00
     # via -r requirements.in
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -698,11 +695,144 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
 
 _tests.append(_test_torch_experimental_index_url)
 
+def _test_index_url_precedence(env):
+    for test in [
+        struct(
+            requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
+            experimental_index_url = "https://experimental.example.com/simple",
+            experimental_extra_index_urls = [],
+            expect_index_url = "https://experimental.example.com/simple",
+            expect_extra_index_urls = [],
+            expect_url = "experimental.example.com/simple/",
+        ),
+        struct(
+            requirements_txt = """\
+--index-url=https://file.example.com/simple
+simple==0.0.1 --hash=sha256:deadb00f
+""",
+            experimental_index_url = "https://experimental.example.com/simple",
+            experimental_extra_index_urls = [],
+            expect_index_url = "https://file.example.com/simple",
+            expect_extra_index_urls = [],
+            expect_url = "file.example.com/simple/",
+        ),
+        struct(
+            requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
+            experimental_index_url = "",
+            experimental_extra_index_urls = [],
+            expect_index_url = "https://pypi.org/simple",
+            expect_extra_index_urls = [],
+            expect_url = "pypi.org/simple/",
+        ),
+        struct(
+            requirements_txt = """\
+--extra-index-url=https://extra1.example.com/simple
+--extra-index-url=https://extra2.example.com/simple
+simple==0.0.1 --hash=sha256:deadb00f
+""",
+            experimental_index_url = "",
+            experimental_extra_index_urls = [
+                "https://ignored.example.com/simple",
+            ],
+            expect_index_url = "https://pypi.org/simple",
+            expect_extra_index_urls = [
+                "https://extra1.example.com/simple",
+                "https://extra2.example.com/simple",
+            ],
+            expect_url = "pypi.org/simple/",
+        ),
+    ]:
+        got_kwargs = {}
+
+        def mock_simpleapi_download(*_, **kwargs):
+            got_kwargs.update(kwargs)
+            return {
+                "simple": struct(
+                    whls = {
+                        "deadb00f": struct(
+                            yanked = None,
+                            filename = "simple-0.0.1-py3-none-any.whl",
+                            sha256 = "deadb00f",
+                            url = test.expect_url,
+                        ),
+                    },
+                    sdists = {},
+                    sha256s_by_version = {},
+                    index_url = test.expect_index_url,
+                ),
+            }
+
+        builder = hub_builder(
+            env,
+            simpleapi_download_fn = mock_simpleapi_download,
+        )
+        builder.pip_parse(
+            _mock_mctx(
+                mock_files = {
+                    "requirements.txt": test.requirements_txt,
+                },
+            ),
+            _parse(
+                hub_name = "pypi",
+                python_version = "3.15",
+                experimental_index_url = test.experimental_index_url,
+                experimental_extra_index_urls = test.experimental_extra_index_urls,
+                requirements_lock = "requirements.txt",
+                target_platforms = [
+                    "linux_x86_64",
+                    "osx_aarch64",
+                ],
+            ),
+        )
+        pypi = builder.build()
+
+        pypi.exposed_packages().contains_exactly(["simple"])
+        pypi.whl_map().contains_exactly({
+            "simple": {
+                "pypi_315_simple_py3_none_any_deadb00f": [
+                    whl_config_setting(
+                        target_platforms = ("cp315_linux_x86_64", "cp315_osx_aarch64"),
+                        version = "3.15",
+                    ),
+                ],
+            },
+        })
+        pypi.whl_libraries().contains_exactly({
+            "pypi_315_simple_py3_none_any_deadb00f": {
+                "config_load": "@pypi//:config.bzl",
+                "dep_template": "@pypi//{name}:{target}",
+                "filename": "simple-0.0.1-py3-none-any.whl",
+                "index_url": test.expect_index_url,
+                "requirement": "simple==0.0.1",
+                "sha256": "deadb00f",
+                "urls": [test.expect_url],
+            },
+        })
+        pypi.extra_aliases().contains_exactly({})
+
+        env.expect.that_dict(got_kwargs).contains_exactly({
+            "attr": struct(
+                auth_patterns = {},
+                envsubst = {},
+                extra_index_urls = test.expect_extra_index_urls,
+                index_url = test.expect_index_url,
+                index_url_overrides = {},
+                netrc = None,
+                sources = {
+                    "simple": ["0.0.1"],
+                },
+            ),
+            "cache": {},
+            "parallel_download": False,
+        })
+
+_tests.append(_test_index_url_precedence)
+
 def _test_download_only_multiple(env):
     builder = hub_builder(env)
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "requirements.linux_x86_64.txt": """\
 --platform=manylinux_2_17_x86_64
 --python-version=315
@@ -723,7 +853,7 @@ extra==0.0.1 \
 simple==0.0.3 \
     --hash=sha256:deadbaaf
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -864,8 +994,8 @@ def _test_simple_get_index(env):
         },
     )
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "requirements.txt": """
 simple==0.0.1 \
     --hash=sha256:deadbeef \
@@ -879,7 +1009,7 @@ pip_fallback==0.0.1
 direct_sdist_without_sha @ some-archive/any-name.tar.gz
 git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1112,13 +1242,13 @@ def _test_optimum_sys_platform_extra(env):
             env,
         )
         builder.pip_parse(
-            _mock_mctx(
-                read = lambda x: {
+            mocks.mctx(
+                mock_files = {
                     "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
 optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 """,
-                }[x],
+                },
                 os_name = host_os,
                 arch_name = host_arch,
             ),
@@ -1154,9 +1284,7 @@ _tests.append(_test_optimum_sys_platform_extra)
 def _test_pipstar_platforms(env):
     builder = hub_builder(
         env,
-        enable_pipstar = True,
         config = struct(
-            enable_pipstar = True,
             enable_pipstar_extract = True,
             index_url = "https://pypi.org/simple",
             netrc = None,
@@ -1180,13 +1308,13 @@ def _test_pipstar_platforms(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
-            read = lambda x: {
+        mocks.mctx(
+            mock_files = {
                 "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
 optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1240,9 +1368,7 @@ _tests.append(_test_pipstar_platforms)
 def _test_pipstar_platforms_limit(env):
     builder = hub_builder(
         env,
-        enable_pipstar = True,
         config = struct(
-            enable_pipstar = True,
             enable_pipstar_extract = True,
             index_url = "https://pypi.org/simple",
             netrc = None,
@@ -1266,15 +1392,15 @@ def _test_pipstar_platforms_limit(env):
         ),
     )
     builder.pip_parse(
-        _mock_mctx(
+        mocks.mctx(
             os_name = "linux",
             arch_name = "amd64",
-            read = lambda x: {
+            mock_files = {
                 "universal.txt": """\
 optimum[onnxruntime]==1.17.1 ; sys_platform == 'darwin'
 optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 """,
-            }[x],
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1321,6 +1447,9 @@ def _test_err_duplicate_repos(env):
         _mock_mctx(
             os_name = "osx",
             arch_name = "aarch64",
+            mock_files = {
+                "requirements.txt": "foo==0.0.1",
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1332,6 +1461,9 @@ def _test_err_duplicate_repos(env):
         _mock_mctx(
             os_name = "osx",
             arch_name = "aarch64",
+            mock_files = {
+                "requirements.txt": "foo==0.0.1",
+            },
         ),
         _parse(
             hub_name = "pypi",
@@ -1349,11 +1481,11 @@ def _test_err_duplicate_repos(env):
     env.expect.that_dict(logs).keys().contains_exactly(["rules_python:unit-test FAIL:"])
     env.expect.that_collection(logs["rules_python:unit-test FAIL:"]).contains_exactly([
         """\
-Attempting to create a duplicate library pypi_315_simple for simple with different arguments. Already existing declaration has:
+Attempting to create a duplicate library pypi_315_foo for foo with different arguments. Already existing declaration has:
     common: {
         "dep_template": "@pypi//{name}:{target}",
         "config_load": "@pypi//:config.bzl",
-        "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        "requirement": "foo==0.0.1",
     }
     different: {
         "python_interpreter_target": ("unit_test_interpreter_target_1", "unit_test_interpreter_target_2"),

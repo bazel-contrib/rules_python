@@ -19,6 +19,7 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_EN
 load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_requirements.bzl", "select_requirement", _parse_requirements = "parse_requirements")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:mocks.bzl", "mocks")
 
 def _mock_ctx():
     testdata = {
@@ -97,12 +98,10 @@ bar==0.0.1 --hash=sha256:deadb00f
 """,
     }
 
-    return struct(
-        os = struct(
-            name = "linux",
-            arch = "x86_64",
-        ),
-        read = lambda x: testdata[x],
+    return mocks.mctx(
+        os_name = "linux",
+        arch_name = "x86_64",
+        mock_files = testdata,
     )
 
 _tests = []

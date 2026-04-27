@@ -7,7 +7,7 @@ load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers_py", evaluate_markers_star = "evaluate_markers")
+load(":evaluate_markers.bzl", evaluate_markers_star = "evaluate_markers")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -194,7 +194,6 @@ def _pip_parse(self, module_ctx, pip_attr):
         self,
         module_ctx,
         pip_attr = pip_attr,
-        enable_pipstar = bool(self._config.enable_pipstar or self._get_index_urls.get(pip_attr.python_version)),
         enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version)),
     )
 
@@ -297,7 +296,7 @@ def _diff_dict(first, second):
     else:
         return None
 
-def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
+def _add_whl_library(self, *, python_version, whl, repo):
     """Add a whl_library and kwargs to call it with for the hub.
 
     Args:
@@ -305,15 +304,12 @@ def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
         python_version: {type}`str` the python version to assume
         whl: struct from `_whl_library_args()`
         repo: struct from `_whl_repo`
-        enable_pipstar: {type}`bool` if pipstar is enabled.
     """
     if repo == None:
         # NOTE @aignas 2025-07-07: we guard against an edge-case where there
         # are more platforms defined than there are wheels for and users
         # disallow building from sdist.
         return
-
-    platforms = self._platforms[python_version]
 
     # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
     # we are using pipstar and we are downloading the wheel using the downloader
@@ -338,17 +334,6 @@ def _add_whl_library(self, *, python_version, whl, repo, enable_pipstar):
             ))
             return
     self._whl_libraries[repo_name] = repo.args
-
-    if not enable_pipstar and "experimental_target_platforms" in repo.args:
-        self._whl_libraries[repo_name] |= {
-            "experimental_target_platforms": sorted({
-                # TODO @aignas 2025-07-07: this should be solved in a better way
-                platforms[candidate].triple.partition("_")[-1]: None
-                for p in repo.args["experimental_target_platforms"]
-                for candidate in platforms
-                if candidate.endswith(p)
-            }),
-        }
 
     mapping = self._whl_map.setdefault(whl.name, {})
     if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
@@ -480,45 +465,13 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr, enable_pipstar):
+def _evaluate_markers(self, pip_attr):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
-    if enable_pipstar:
-        return lambda _, requirements: evaluate_markers_star(
-            requirements = requirements,
-            platforms = self._platforms[pip_attr.python_version],
-        )
-
-    interpreter = _detect_interpreter(self, pip_attr)
-
-    # NOTE @aignas 2024-08-02: , we will execute any interpreter that we find either
-    # in the PATH or if specified as a label. We will configure the env
-    # markers when evaluating the requirement lines based on the output
-    # from the `requirements_files_by_platform` which should have something
-    # similar to:
-    # {
-    #    "//:requirements.txt": ["cp311_linux_x86_64", ...]
-    # }
-    #
-    # We know the target python versions that we need to evaluate the
-    # markers for and thus we don't need to use multiple python interpreter
-    # instances to perform this manipulation. This function should be executed
-    # only once by the underlying code to minimize the overhead needed to
-    # spin up a Python interpreter.
-    return lambda module_ctx, requirements: evaluate_markers_py(
-        module_ctx,
-        requirements = {
-            k: {
-                p: self._platforms[pip_attr.python_version][p].triple
-                for p in plats
-            }
-            for k, plats in requirements.items()
-        },
-        python_interpreter = interpreter.path,
-        python_interpreter_target = interpreter.target,
-        srcs = pip_attr._evaluate_markers_srcs,
-        logger = self._logger,
+    return lambda _, requirements: evaluate_markers_star(
+        requirements = requirements,
+        platforms = self._platforms[pip_attr.python_version],
     )
 
 def _create_whl_repos(
@@ -526,7 +479,6 @@ def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
-        enable_pipstar = False,
         enable_pipstar_extract = False):
     """create all of the whl repositories
 
@@ -534,7 +486,6 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
-        enable_pipstar: {type}`bool` - enable the pipstar or not.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
     """
     logger = self._logger
@@ -558,7 +509,7 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr, enable_pipstar),
+        evaluate_markers = _evaluate_markers(self, pip_attr),
         logger = logger,
     )
 
@@ -577,7 +528,6 @@ def _create_whl_repos(
         self,
         module_ctx,
         pip_attr = pip_attr,
-        enable_pipstar = enable_pipstar,
     )
 
     interpreter = _detect_interpreter(self, pip_attr)
@@ -600,7 +550,6 @@ def _create_whl_repos(
                 python_version = _major_minor_version(pip_attr.python_version),
                 is_multiple_versions = whl.is_multiple_versions,
                 interpreter = interpreter,
-                enable_pipstar = enable_pipstar,
                 enable_pipstar_extract = enable_pipstar_extract,
             )
             _add_whl_library(
@@ -608,10 +557,9 @@ def _create_whl_repos(
                 python_version = pip_attr.python_version,
                 whl = whl,
                 repo = repo,
-                enable_pipstar = enable_pipstar,
             )
 
-def _common_args(self, module_ctx, *, pip_attr, enable_pipstar):
+def _common_args(self, module_ctx, *, pip_attr):
     # Construct args separately so that the lock file can be smaller and does not include unused
     # attrs.
     whl_library_args = dict(
@@ -627,8 +575,6 @@ def _common_args(self, module_ctx, *, pip_attr, enable_pipstar):
         envsubst = pip_attr.envsubst,
         pip_data_exclude = pip_attr.pip_data_exclude,
     )
-    if not enable_pipstar:
-        maybe_args["experimental_target_platforms"] = pip_attr.experimental_target_platforms
 
     whl_library_args.update({k: v for k, v in maybe_args.items() if v})
     maybe_args_with_default = dict(
@@ -679,7 +625,6 @@ def _whl_repo(
         python_version,
         use_downloader,
         interpreter,
-        enable_pipstar = False,
         enable_pipstar_extract = False):
     args = dict(whl_library_args)
     args["requirement"] = src.requirement_line
@@ -731,14 +676,6 @@ def _whl_repo(
     args["urls"] = [src.url]
     args["sha256"] = src.sha256
     args["filename"] = src.filename
-    if not enable_pipstar:
-        args["experimental_target_platforms"] = [
-            # Get rid of the version for the target platforms because we are
-            # passing the interpreter any way. Ideally we should search of ways
-            # how to pass the target platforms through the hub repo.
-            p.partition("_")[2]
-            for p in src.target_platforms
-        ]
 
     # TODO @aignas 2025-11-02: once we have pipstar enabled we can add extra
     # targets to each hub for each extra combination and solve this more cleanly as opposed to

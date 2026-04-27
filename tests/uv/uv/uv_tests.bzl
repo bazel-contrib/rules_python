@@ -21,11 +21,12 @@ load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-
 load("//python/uv:uv_toolchain_info.bzl", "UvToolchainInfo")
 load("//python/uv/private:uv.bzl", "process_modules")  # buildifier: disable=bzl-visibility
 load("//python/uv/private:uv_toolchain.bzl", "uv_toolchain")  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:mocks.bzl", "mocks")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
 
-def _mock_mctx(*modules, download = None, read = None):
+def _uv_mock_mctx(*modules, download = None):
     # Here we construct a fake minimal manifest file that we use to mock what would
     # be otherwise read from GH files
     manifest_files = {
@@ -66,39 +67,20 @@ def _mock_mctx(*modules, download = None, read = None):
         for fname, contents in manifest_files.items()
     }
 
-    return struct(
-        path = str,
-        download = download or (lambda *_, **__: struct(
-            success = True,
-            wait = lambda: struct(
-                success = True,
-            ),
-        )),
-        read = read or (lambda x: fake_fs[x]),
-        modules = [
-            struct(
-                name = modules[0].name,
-                tags = modules[0].tags,
-                is_root = modules[0].is_root,
-            ),
-        ] + [
-            struct(
-                name = mod.name,
-                tags = mod.tags,
-                is_root = False,
-            )
-            for mod in modules[1:]
-        ],
+    return mocks.mctx(
+        modules = list(modules),
+        mock_downloads = {
+            "*": download,
+        } if download else {},
+        mock_files = fake_fs,
     )
 
 def _mod(*, name = None, default = [], configure = [], is_root = True):
-    return struct(
-        name = name,  # module_name
-        tags = struct(
-            default = default,
-            configure = configure,
-        ),
+    return mocks.module(
+        name,
         is_root = is_root,
+        default = default,
+        configure = configure,
     )
 
 def _process_modules(env, **kwargs):
@@ -148,7 +130,7 @@ def _configure(urls = None, sha256 = None, **kwargs):
 def _test_only_defaults(env):
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -181,7 +163,7 @@ def _test_manual_url_spec(env):
     calls = []
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -202,12 +184,11 @@ def _test_manual_url_spec(env):
                 configure = [
                     _configure(
                         platform = "linux",
-                        urls = ["https://example.org/download.zip"],
+                        urls = ["https://example.org/1.0.0/manifest.json.zip"],
                         sha256 = "deadbeef",
                     ),
                 ],
             ),
-            read = lambda *args, **kwargs: fail(args, kwargs),
         ),
         uv_repository = lambda **kwargs: calls.append(kwargs),
     )
@@ -227,7 +208,7 @@ def _test_manual_url_spec(env):
             "name": "uv_1_0_0_linux",
             "platform": "linux",
             "sha256": "deadbeef",
-            "urls": ["https://example.org/download.zip"],
+            "urls": ["https://example.org/1.0.0/manifest.json.zip"],
             "version": "1.0.0",
         },
     ])
@@ -238,7 +219,7 @@ def _test_defaults(env):
     calls = []
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -286,7 +267,7 @@ def _test_default_building(env):
     calls = []
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -350,7 +331,7 @@ def _test_complex_configuring(env):
     calls = []
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -462,7 +443,7 @@ def _test_non_rules_python_non_root_is_ignored(env):
     calls = []
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -482,6 +463,7 @@ def _test_non_rules_python_non_root_is_ignored(env):
                 configure = [
                     _configure(version = "6.6.6"),  # use defaults whatever they are
                 ],
+                is_root = False,
             ),
         ),
         uv_repository = lambda **kwargs: calls.append(kwargs),
@@ -513,7 +495,7 @@ def _test_rules_python_does_not_take_precedence(env):
     calls = []
     uv = _process_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _uv_mock_mctx(
             _mod(
                 default = [
                     _default(
@@ -538,6 +520,7 @@ def _test_rules_python_does_not_take_precedence(env):
                         compatible_with = ["@platforms//os:osx"],
                     ),
                 ],
+                is_root = False,
             ),
         ),
         uv_repository = lambda **kwargs: calls.append(kwargs),

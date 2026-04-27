@@ -177,7 +177,6 @@ def _find_namespace_package_files(rctx, install_dir):
             to namespace packages.
     """
 
-    repo_root = str(rctx.path(".")) + "/"
     namespace_package_files = []
     for top_level_dir in install_dir.readdir():
         if not is_importable_name(top_level_dir.basename):
@@ -192,7 +191,9 @@ def _find_namespace_package_files(rctx, install_dir):
         if ("__path__ =" in content and
             "pkgutil" in content and
             "extend_path(" in content):
-            namespace_package_files.append(str(init_py).removeprefix(repo_root))
+            namespace_package_files.append(
+                repo_utils.repo_root_relative_path(rctx, init_py),
+            )
 
     return namespace_package_files
 

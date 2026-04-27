@@ -120,39 +120,6 @@ Warning:
   as two separate cycles.
 """,
     ),
-    "experimental_target_platforms": attr.string_list(
-        default = [],
-        doc = """\
-*NOTE*: This will be removed in the next major version, so please consider migrating
-to `bzlmod` and rely on {attr}`pip.parse.requirements_by_platform` for this feature.
-
-A list of platforms that we will generate the conditional dependency graph for
-cross platform wheels by parsing the wheel metadata. This will generate the
-correct dependencies for packages like `sphinx` or `pylint`, which include
-`colorama` when installed and used on Windows platforms.
-
-An empty list means falling back to the legacy behaviour where the host
-platform is the target platform.
-
-WARNING: It may not work as expected in cases where the python interpreter
-implementation that is being used at runtime is different between different platforms.
-This has been tested for CPython only.
-
-For specific target platforms use values of the form `<os>_<arch>` where `<os>`
-is one of `linux`, `osx`, `windows` and arch is one of `x86_64`, `x86_32`,
-`aarch64`, `s390x` and `ppc64le`.
-
-You can also target a specific Python version by using `cp3<minor_version>_<os>_<arch>`.
-If multiple python versions are specified as target platforms, then select statements
-of the `lib` and `whl` targets will include usage of version aware toolchain config
-settings like `@rules_python//python/config_settings:is_python_3.y`.
-
-Special values: `host` (for generating deps for the host platform only) and
-`<prefix>_*` values. For example, `cp39_*`, `linux_*`, `cp39_linux_*`.
-
-NOTE: this is not for cross-compiling Python wheels but rather for parsing the `whl` METADATA correctly.
-""",
-    ),
     "extra_hub_aliases": attr.string_list_dict(
         doc = """\
 Extra aliases to make for specific wheels in the hub repo. This is useful when

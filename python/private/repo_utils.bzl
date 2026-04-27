@@ -334,7 +334,7 @@ def _mkdir(mrctx, path):
     repo_root = str(mrctx.path("."))
     path_str = str(path)
 
-    if not path_str.startswith(repo_root):
+    if not _is_relative_to(mrctx, path_str, repo_root):
         mkdir_bin = mrctx.which("mkdir")
         if not mkdir_bin:
             return None
@@ -348,6 +348,30 @@ def _mkdir(mrctx, path):
         mrctx.delete(placeholder)
         return path
 
+def _norm_path(mrctx, p):
+    p = str(p)
+
+    # Windows is case-insensitive
+    if _get_platforms_os_name(mrctx) == "windows":
+        return p.lower()
+    return p
+
+def _relative_to(mrctx, path, parent, fail = fail):
+    path_str = str(path)
+    parent_str = str(parent)
+    path_d = _norm_path(mrctx, path_str) + "/"
+    parent_d = _norm_path(mrctx, parent_str) + "/"
+    if path_d.startswith(parent_d):
+        return path_str[len(parent_str):].removeprefix("/")
+    else:
+        fail("{} is not relative to {}".format(path, parent))
+
+def _is_relative_to(mrctx, path, parent):
+    """Tell if `path` is equal to or beneath `parent`."""
+    path_d = _norm_path(mrctx, path) + "/"
+    parent_d = _norm_path(mrctx, parent) + "/"
+    return path_d.startswith(parent_d)
+
 def _repo_root_relative_path(mrctx, path):
     """Takes a path object and returns a repo-relative path string.
 
@@ -360,14 +384,7 @@ def _repo_root_relative_path(mrctx, path):
     """
     repo_root = str(mrctx.path("."))
     path_str = str(path)
-    relative_path = path_str[len(repo_root):]
-    if relative_path[0] != "/":
-        fail("{path} not under {repo_root}".format(
-            path = path,
-            repo_root = repo_root,
-        ))
-    relative_path = relative_path[1:]
-    return relative_path
+    return _relative_to(mrctx, path_str, repo_root)
 
 def _args_to_str(arguments):
     return " ".join([_arg_repr(a) for a in arguments])
@@ -516,6 +533,9 @@ repo_utils = struct(
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
     mkdir = _mkdir,
+    norm_path = _norm_path,
+    relative_to = _relative_to,
+    is_relative_to = _is_relative_to,
     repo_root_relative_path = _repo_root_relative_path,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,

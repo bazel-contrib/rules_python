@@ -1,0 +1,13 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load(":mocks_tests.bzl", "mocks_test_suite")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "mocks_bzl",
+    srcs = ["mocks.bzl"],
+)
+
+mocks_test_suite(name = "mocks_tests")

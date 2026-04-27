@@ -229,7 +229,7 @@ string_flag(
 )
 
 config_setting(
-    name = "is_venvs_site_packages",
+    name = "_is_venvs_site_packages_yes",
     flag_values = {
         ":venvs_site_packages": VenvsSitePackages.YES,
     },

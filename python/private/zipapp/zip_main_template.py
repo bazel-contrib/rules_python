@@ -29,7 +29,7 @@ import stat
 import subprocess
 import tempfile
 import zipfile
-from os.path import basename, dirname, join
+from os.path import basename, dirname, join, normpath
 
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"
@@ -47,8 +47,6 @@ EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
 IS_WINDOWS = os.name == "nt"
 
 
-EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
-
 # Change the paths with Unix-style forward slashes to backslashes for Windows.
 # Windows usually transparently rewrites them, but e.g. `\\?\` paths require
 # backslashes to be properly understood by Windows APIs.
@@ -65,9 +63,11 @@ if IS_WINDOWS:
     EXTRACT_DIR = norm_slashes(EXTRACT_DIR)
     EXTRACT_ROOT = norm_slashes(EXTRACT_ROOT)
 
+IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
+
 
 def print_verbose(*args, mapping=None, values=None):
-    if not bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE")):
+    if not IS_VERBOSE:
         return
     if mapping is not None:
         for key, value in sorted((mapping or {}).items()):
@@ -150,7 +150,7 @@ def find_binary(runfiles_root, bin_name):
         # Case 2: Absolute path.
         return bin_name
     # Use normpath() to convert slashes to os.sep on Windows.
-    elif os.sep in os.path.normpath(bin_name):
+    elif os.sep in normpath(bin_name):
         # Case 3: Path is relative to the repo root.
         return join(runfiles_root, bin_name)
     else:
@@ -194,7 +194,19 @@ def extract_zip(zip_path, dest_dir):
                 with open(file_path, "r") as f:
                     target = f.read()
                 os.remove(file_path)
-                os.symlink(target, file_path)
+                if IS_WINDOWS:
+                    entry_path = normpath(join(dirname(info.filename), target))
+                    # Zip lookup uses forward slashes, target has backslashes.
+                    entry_path = entry_path.replace("\\", "/")
+                    try:
+                        target_is_directory = zf.getinfo(entry_path).is_dir()
+                    except KeyError:
+                        # Directories aren't stored in zips, so a missing
+                        # target means it points to a directory.
+                        target_is_directory = True
+                else:
+                    target_is_directory = False
+                os.symlink(target, file_path, target_is_directory=target_is_directory)
             # Of those, we set the lower 12 bits, which are the
             # file mode bits (since the file type bits can't be set by chmod anyway).
             elif attrs != 0:  # Rumor has it these can be 0 for zips created on Windows.
@@ -214,7 +226,9 @@ def create_runfiles_root():
             extract_root = get_windows_path_with_unc_prefix(extract_root)
     else:
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
+
     extract_zip(dirname(__file__), extract_root)
+    print_verbose("extracted to:", extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
     return join(extract_root, "runfiles")
@@ -314,10 +328,10 @@ def finish_venv_setup(runfiles_root):
 
 def main():
     print_verbose("running zip main bootstrap")
+    print_verbose("initial sys.version:", sys.version)
+    print_verbose("initial sys.executable:", sys.executable)
     print_verbose("initial argv:", values=sys.argv)
     print_verbose("initial environ:", mapping=os.environ)
-    print_verbose("initial sys.executable:", sys.executable)
-    print_verbose("initial sys.version:", sys.version)
     print_verbose("stage2_bootstrap:", _STAGE2_BOOTSTRAP)
     print_verbose("python_binary_venv:", _PYTHON_BINARY_VENV)
     print_verbose("python_binary_actual:", _PYTHON_BINARY_ACTUAL)

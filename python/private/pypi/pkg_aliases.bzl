@@ -46,12 +46,16 @@ load(
 )
 
 _NO_MATCH_ERROR_TEMPLATE = """\
-No matching wheel for current configuration's Python version.
+No matching wheel for current configuration's Python version and platform.
 
 The current build configuration's Python version doesn't match any of the Python
 wheels available for this distribution. This distribution supports the following Python
 configuration settings:
     {config_settings}
+
+As configured by the `pip.parse.target_platforms` attribute. Note that
+`requirements_by_platform` only affects the Bazel host platform unless
+`target_platforms` is also set.
 
 To determine the current configuration's Python version, run:
     `bazel config <config id>` (shown further below)

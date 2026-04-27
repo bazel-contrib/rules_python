@@ -47,6 +47,46 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
+  The go version was also bumped from 1.21.13 to 1.22.9.
+* (pypi) The data files of a wheel (bin, includes, etc) are now always included
+  as a library's data dependencies.
+
+{#v0-0-0-fixed}
+### Fixed
+* (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
+  targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
+* (entry_point) From now on `mypy` type checking will be skipped on the generated
+  files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
+
+{#v0-0-0-added}
+### Added
+* (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
+  adding `config_setting` labels to all registered toolchains.
+* (windows) Full venv support for Windows is available. Set
+  {obj}`--venvs_site_packages=yes` to enable.
+* (test/binaries) When {obj}`--venv_site_packages=yes` is enabled,
+  wheel `data`, `bin`, and `include` files are populated into the venv.
+* (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
+  Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
+* (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
+* (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
+* Python toolchain from [20260414] release.
+
+[20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
+[20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
+
 {#v2-0-0}
 ## [2.0.0] - 2026-04-09
 
@@ -81,7 +121,8 @@ Other changes:
   we will from now on fetch the lists of available packages on each index. The
   used package mappings will be written as facts to the `MODULE.bazel.lock` file
   on supported bazel versions and it should be done at most once. As a result,
-  per-package {obj}`experimental_index_url_overrides` is no longer needed . What
+  per-package {obj}`experimental_index_url_overrides` is no longer needed, but
+  if specified, it needs to be provided for all packages not on the default index. What
   is more, the flags for `--index_url` and `--extra-index-url` now behave in the
   same way as in `uv` or `pip`, i.e. we default to `--index-url` if the package
   is not found in `--extra-index-url`.  Fixes
@@ -126,6 +167,8 @@ Other changes:
   )
   ```
   Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
+* (pypi) Fixes wheel extraction on hosts without python installed,
+  Fixes [#3712](https://github.com/bazel-contrib/rules_python/issues/3712).
 
 {#v2-0-0-added}
 ### Added

@@ -127,20 +127,19 @@ def _search_path(name):
 
 
 def _setup_sys_path():
-    """Perform Bazel/binary specific sys.path setup.
-
-    """
+    """Perform Bazel/binary specific sys.path setup."""
+    _print_verbose("site init: initial sys.path:\n", "\n".join(sys.path))
     seen = set(sys.path)
     python_path_entries = []
 
-    def _maybe_add_path(path):
+    def _maybe_add_path(path, reason):
         if path in seen:
             return
         path = _get_windows_path_with_unc_prefix(path)
         if _is_windows():
             path = path.replace("/", os.sep)
 
-        _print_verbose("append sys.path:", path)
+        _print_verbose("append sys.path:", reason, ":", path)
         sys.path.append(path)
         seen.add(path)
 
@@ -153,11 +152,11 @@ def _setup_sys_path():
     # For temporary compatibility with the original system_python bootstrap
     # behavior, it is conditionally added for that boostrap mode.
     if _ADD_RUNFILES_ROOT_TO_SYS_PATH:
-        _maybe_add_path(_RUNFILES_ROOT)
+        _maybe_add_path(_RUNFILES_ROOT, "runfiles-root")
 
     for rel_path in _IMPORTS_STR.split(":"):
         abs_path = os.path.join(_RUNFILES_ROOT, rel_path)
-        _maybe_add_path(abs_path)
+        _maybe_add_path(abs_path, "imports-strs")
 
     if _IMPORT_ALL:
         repo_dirs = sorted(
@@ -165,9 +164,9 @@ def _setup_sys_path():
         )
         for d in repo_dirs:
             if os.path.isdir(d):
-                _maybe_add_path(d)
+                _maybe_add_path(d, "import-all")
     else:
-        _maybe_add_path(os.path.join(_RUNFILES_ROOT, _WORKSPACE_NAME))
+        _maybe_add_path(os.path.join(_RUNFILES_ROOT, _WORKSPACE_NAME), "workspace-root")
 
     # COVERAGE_DIR is set if coverage is enabled and instrumentation is configured
     # for something, though it could be another program executing this one or
@@ -199,7 +198,7 @@ def _setup_sys_path():
             # it with the directory of the program it starts. Our actual sys.path[0] is
             # the runfiles directory, which must not be replaced.
             # CoverageScript.do_execute() undoes this sys.path[0] setting.
-            _maybe_add_path(coverage_dir)
+            _maybe_add_path(coverage_dir, "coverage-dir")
             coverage_setup = True
         else:
             _print_verbose_coverage(

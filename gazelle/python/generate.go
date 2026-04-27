@@ -258,6 +258,15 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// Create a validFilesMap of mainModules to validate if python macros have valid srcs.
 	validFilesMap := make(map[string]struct{})
 
+	// Determine whether we have an __init__.py file in this package and whether we'll implicitly include it in srcs.
+	var hasPopulatedInit bool
+	var autoIncludeInit bool
+	if cfg.PerFileGeneration() {
+		var hasInit bool
+		hasInit, hasPopulatedInit = hasLibraryEntrypointFile(args.Dir)
+		autoIncludeInit = cfg.PerFileGenerationIncludeInit() && hasInit && hasPopulatedInit
+	}
+
 	appendPyLibrary := func(srcs *treeset.Set, pyLibraryTargetName string) {
 		allDeps, mainModules, annotations, err := parser.parse(srcs)
 		for name := range mainModules {
@@ -277,6 +286,10 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				// that we don't also generate a py_library target for it.
 				if cfg.PerFileGeneration() {
 					srcs.Remove(name)
+					// Also remove the __init__.py that was added earlier.
+					if autoIncludeInit {
+						srcs.Remove(pyLibraryEntrypointFilename)
+					}
 				}
 			}
 
@@ -294,15 +307,20 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				filenames := treeset.NewWith(godsutils.StringComparator, filename)
 				pyiSrcs, _ := getPyiFilenames(filenames, cfg.GeneratePyiSrcs(), args.Dir)
 
-				pyBinary := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
+				pyBinaryBuilder := newTargetBuilder(pyBinaryKind, pyBinaryTargetName, pythonProjectRoot, args.Rel, pyFileNames, cfg.ResolveSiblingImports()).
 					addVisibility(visibility).
 					addSrc(filename).
 					addPyiSrcs(pyiSrcs).
 					addModuleDependencies(mainModules[filename]).
 					addResolvedDependencies(annotations.includeDeps).
 					generateImportsAttribute().
-					setAnnotations(*annotations).
-					build()
+					setAnnotations(*annotations)
+
+				if autoIncludeInit {
+					pyBinaryBuilder.addSrc(pyLibraryEntrypointFilename)
+				}
+
+				pyBinary := pyBinaryBuilder.build()
 				result.Gen = append(result.Gen, pyBinary)
 				result.Imports = append(result.Imports, pyBinary.PrivateAttr(config.GazelleImportsKey))
 			}
@@ -357,15 +375,15 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			result.Imports = append(result.Imports, pyLibrary.PrivateAttr(config.GazelleImportsKey))
 		}
 	}
+
 	if cfg.PerFileGeneration() {
-		hasInit, nonEmptyInit := hasLibraryEntrypointFile(args.Dir)
 		pyLibraryFilenames.Each(func(index int, filename interface{}) {
 			pyLibraryTargetName := strings.TrimSuffix(filepath.Base(filename.(string)), ".py")
-			if filename == pyLibraryEntrypointFilename && !nonEmptyInit {
+			if filename == pyLibraryEntrypointFilename && !hasPopulatedInit {
 				return // ignore empty __init__.py.
 			}
 			srcs := treeset.NewWith(godsutils.StringComparator, filename)
-			if cfg.PerFileGenerationIncludeInit() && hasInit && nonEmptyInit {
+			if autoIncludeInit {
 				srcs.Add(pyLibraryEntrypointFilename)
 			}
 			appendPyLibrary(srcs, pyLibraryTargetName)

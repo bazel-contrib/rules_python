@@ -52,16 +52,16 @@ class PipInstallTest(unittest.TestCase):
         self.assertIsNotNone(actual)
         actual = self._remove_leading_dirs(actual.split(" "))
 
-        self.assertListEqual(
-            actual,
-            [
-                "data/share/doc/packages/s3cmd/INSTALL.md",
-                "data/share/doc/packages/s3cmd/LICENSE",
-                "data/share/doc/packages/s3cmd/NEWS",
-                "data/share/doc/packages/s3cmd/README.md",
-                "data/share/man/man1/s3cmd.1",
-            ],
-        )
+        expected = [
+            "bin/s3cmd",
+            "data/share/doc/packages/s3cmd/INSTALL.md",
+            "data/share/doc/packages/s3cmd/LICENSE",
+            "data/share/doc/packages/s3cmd/NEWS",
+            "data/share/doc/packages/s3cmd/README.md",
+            "data/share/man/man1/s3cmd.1",
+        ]
+
+        self.assertListEqual(actual, expected)
 
     def test_dist_info(self):
         actual = os.environ.get("WHEEL_DIST_INFO_CONTENTS")

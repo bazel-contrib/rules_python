@@ -78,6 +78,19 @@ implementation isn't being used.
 :::{versionadded} 1.9.0
 :::
 """,
+        "venv_app_symlinks": """
+:type: depset[ExplicitSymlink] | None
+
+Symlinks that are specific to the application within the venv (e.g.
+dependencies).
+
+Only used with Windows for files that would have used `declare_symlink()`
+to create relative symlinks. These may overlap with paths in runfiles; it's
+up to the consumer to determine how to handle such overlaps.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         "venv_interpreter_runfiles": """
 :type: runfiles | None
 

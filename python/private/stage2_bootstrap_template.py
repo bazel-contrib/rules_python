@@ -53,6 +53,22 @@ BUILD_DATA_FILE = "%build_data_file%"
 
 # ===== Template substitutions end =====
 
+IS_WINDOWS = os.name == "nt"
+IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
+
+# Windows APIs can be picky about slashes depending on the context,
+# so convert to backslashes to avoid any issues.
+# Related: some logic checks path strings, which needs uniform separators.
+if IS_WINDOWS:
+
+    def norm_slashes(s):
+        return s.replace("/", "\\")
+
+    MAIN_PATH = norm_slashes(MAIN_PATH)
+    VENV_ROOT = norm_slashes(VENV_ROOT)
+    VENV_SITE_PACKAGES = norm_slashes(VENV_SITE_PACKAGES)
+    BUILD_DATA_FILE = norm_slashes(BUILD_DATA_FILE)
+
 
 class BazelBinaryInfoModule(types.ModuleType):
     BUILD_DATA_FILE = BUILD_DATA_FILE
@@ -83,8 +99,6 @@ class BazelBinaryInfoModule(types.ModuleType):
 
 
 sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
-
-IS_WINDOWS = os.name == "nt"
 
 
 def get_windows_path_with_unc_prefix(path):
@@ -124,32 +138,29 @@ def get_windows_path_with_unc_prefix(path):
     return unicode_prefix + os.path.abspath(path)
 
 
-def is_verbose():
-    return bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
-
-
 def print_verbose(*args, mapping=None, values=None):
-    if is_verbose():
-        if mapping is not None:
-            for key, value in sorted((mapping or {}).items()):
-                print(
-                    "bootstrap: stage 2:",
-                    *args,
-                    f"{key}={value!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        elif values is not None:
-            for i, v in enumerate(values):
-                print(
-                    "bootstrap: stage 2:",
-                    *args,
-                    f"[{i}] {v!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        else:
-            print("bootstrap: stage 2:", *args, file=sys.stderr, flush=True)
+    if not IS_VERBOSE:
+        return
+    if mapping is not None:
+        for key, value in sorted((mapping or {}).items()):
+            print(
+                "bootstrap: stage 2:",
+                *args,
+                f"{key}={value!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    elif values is not None:
+        for i, v in enumerate(values):
+            print(
+                "bootstrap: stage 2:",
+                *args,
+                f"[{i}] {v!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    else:
+        print("bootstrap: stage 2:", *args, file=sys.stderr, flush=True)
 
 
 def print_verbose_coverage(*args):
@@ -160,7 +171,7 @@ def print_verbose_coverage(*args):
 
 def is_verbose_coverage():
     """Returns True if VERBOSE_COVERAGE is non-empty in the environment."""
-    return os.environ.get("VERBOSE_COVERAGE") or is_verbose()
+    return os.environ.get("VERBOSE_COVERAGE") or IS_VERBOSE
 
 
 def find_runfiles_root(main_rel_path):
@@ -419,12 +430,32 @@ source =
 
 
 def _add_site_packages(site_packages):
+    if sys.prefix != sys.base_prefix:
+        venv_root = sys.prefix + os.sep
+        saw_venv_site_packages = False
+    else:
+        venv_root = None
+        saw_venv_site_packages = True
     first_global_offset = len(sys.path)
     for i, p in enumerate(sys.path):
+        # Handle the Windows venv case: when a temporary directory is created
+        # for the venv, we want the build-time venv in runfiles to come after
+        # the venv site-packages directory.
+        if venv_root:
+            is_venv_path = (p + os.sep).startswith(venv_root)
+            if is_venv_path:
+                if p.endswith("site-packages"):
+                    saw_venv_site_packages = True
+                is_after_venv_site_packages = False
+            else:
+                is_after_venv_site_packages = saw_venv_site_packages
+        else:
+            is_after_venv_site_packages = True
+
         # We assume the first *-packages is the runtime's.
         # *-packages is matched because Debian may use dist-packages
         # instead of site-packages.
-        if p.endswith("-packages"):
+        if p.endswith("-packages") and is_after_venv_site_packages:
             first_global_offset = i
             break
     prev_len = len(sys.path)

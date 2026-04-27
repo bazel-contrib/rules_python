@@ -180,6 +180,8 @@ tasks:
     name: "Sphinxdocs: Ubuntu"
     working_directory: "sphinxdocs"
     platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
     build_targets:
       - "//..."
     test_targets:
@@ -188,6 +190,8 @@ tasks:
     name: "Sphinxdocs: Mac"
     working_directory: "sphinxdocs"
     platform: macos_arm64
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
     build_targets:
       - "//..."
     test_targets:
