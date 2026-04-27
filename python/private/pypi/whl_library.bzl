@@ -449,7 +449,7 @@ def _whl_library_impl(rctx):
     _remove_files(rctx, "BUILD", "BUILD.bazel")
     rctx.file("BUILD.bazel", build_file_contents)
 
-    if enable_pipstar and enable_pipstar_extract:
+    if enable_pipstar_extract:
         if hasattr(rctx, "repo_metadata"):
             return rctx.repo_metadata(reproducible = True)
 
