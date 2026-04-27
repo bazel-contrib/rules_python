@@ -79,6 +79,10 @@ py_reconfig_test(
         "//conditions:default": "script",
     }),
     main = "whl_scripts_runnable_test.py",
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
     venvs_site_packages = "yes",
     deps = [
         "@whl_with_data1//:pkg",
