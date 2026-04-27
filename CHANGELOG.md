@@ -83,6 +83,8 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
 * (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
 * Python toolchain from [20260414] release.
+* (pypi) `package_metadata` support, fixes 
+  [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 
 [20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
 [20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
