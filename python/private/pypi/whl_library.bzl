@@ -445,25 +445,27 @@ def _whl_library_impl(rctx):
     rctx.file("MODULE.bazel")
     rctx.file("REPO.bazel")
 
+    # BUILD files interfere with globbing and Bazel package boundaries.
+    _remove_files(rctx, "BUILD", "BUILD.bazel")
+    rctx.file("BUILD.bazel", build_file_contents)
+
+    if enable_pipstar and enable_pipstar_extract:
+        if hasattr(rctx, "repo_metadata"):
+            return rctx.repo_metadata(reproducible = True)
+
+    return None
+
+def _remove_files(rctx, *basenames):
     paths = list(rctx.path(".").readdir())
     for _ in range(10000000):
         if not paths:
             break
         path = paths.pop()
 
-        # BUILD files interfere with globbing and Bazel package boundaries.
-        if path.basename in ("BUILD", "BUILD.bazel"):
+        if path.basename in basenames:
             rctx.delete(path)
         elif path.is_dir:
             paths.extend(path.readdir())
-
-    rctx.file("BUILD.bazel", build_file_contents)
-
-    if enable_pipstar_extract:
-        if hasattr(rctx, "repo_metadata"):
-            return rctx.repo_metadata(reproducible = True)
-
-    return None
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
 whl_library_attrs = dict({

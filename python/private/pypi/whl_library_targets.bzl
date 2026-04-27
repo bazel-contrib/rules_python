@@ -42,6 +42,8 @@ _BAZEL_REPO_FILE_GLOBS = [
     "WORKSPACE.bazel",
 ]
 
+_IS_VENV_SITE_PACKAGES_YES = Label("//python/config_settings:_is_venvs_site_packages_yes")
+
 def whl_library_targets_from_requires(
         *,
         name,
@@ -191,7 +193,7 @@ def whl_library_targets(
                 include = ["site-packages/*.dist-info/**"],
             ),
             DATA_LABEL: dict(
-                include = ["data/**"],
+                include = ["data/**", "bin/**", "include/**"],
             ),
         }
 
@@ -351,7 +353,7 @@ def whl_library_targets(
 
         if not enable_implicit_namespace_pkgs:
             generated_namespace_package_files = select({
-                Label("//python/config_settings:is_venvs_site_packages"): [],
+                _IS_VENV_SITE_PACKAGES_YES: [],
                 "//conditions:default": rules.create_inits(
                     srcs = srcs + data + pyi_srcs,
                     ignored_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
@@ -360,6 +362,10 @@ def whl_library_targets(
             })
             namespace_package_files += generated_namespace_package_files
             srcs = srcs + generated_namespace_package_files
+
+        # This is done after create_inits() is called so that the data scheme
+        # files don't have such files created in their directories.
+        data = data + [DATA_LABEL]
 
         rules.py_library(
             name = py_library_label,

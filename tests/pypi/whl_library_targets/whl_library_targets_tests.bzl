@@ -50,7 +50,7 @@ def _test_filegroups(env):
         },
         {
             "name": "data",
-            "srcs": ["data/**"],
+            "srcs": ["data/**", "bin/**", "include/**"],
             "visibility": ["//visibility:public"],
         },
         {
@@ -216,11 +216,11 @@ def _test_whl_and_library_deps_from_requires(env):
     env.expect.that_dict(py_library_call).contains_exactly({
         "name": "pkg",
         "srcs": ["site-packages/foo/SRCS.py"] + select({
-            Label("//python/config_settings:is_venvs_site_packages"): [],
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/PYI.pyi"],
-        "data": ["site-packages/foo/DATA.txt"],
+        "data": ["site-packages/foo/DATA.txt", "data"],
         "imports": ["site-packages"],
         "deps": ["@pypi//bar:pkg"] + select({
             ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
@@ -230,7 +230,7 @@ def _test_whl_and_library_deps_from_requires(env):
         "visibility": ["//visibility:public"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
         "namespace_package_files": [] + select({
-            Label("//python/config_settings:is_venvs_site_packages"): [],
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
     })  # buildifier: @unsorted-dict-items
@@ -332,11 +332,11 @@ def _test_whl_and_library_deps(env):
     env.expect.that_dict(py_library_calls[0]).contains_exactly({
         "name": "pkg",
         "srcs": ["site-packages/foo/SRCS.py"] + select({
-            Label("//python/config_settings:is_venvs_site_packages"): [],
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/PYI.pyi"],
-        "data": ["site-packages/foo/DATA.txt"],
+        "data": ["site-packages/foo/DATA.txt", "data"],
         "imports": ["site-packages"],
         "deps": [
             "@pypi_bar_baz//:pkg",
@@ -357,7 +357,7 @@ def _test_whl_and_library_deps(env):
         "visibility": ["//visibility:public"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
         "namespace_package_files": [] + select({
-            Label("//python/config_settings:is_venvs_site_packages"): [],
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
     })  # buildifier: @unsorted-dict-items
@@ -414,11 +414,11 @@ def _test_group(env):
     ).contains_exactly({
         "name": "_pkg",
         "srcs": ["site-packages/foo/srcs.py"] + select({
-            Label("//python/config_settings:is_venvs_site_packages"): [],
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
         "pyi_srcs": ["site-packages/foo/pyi.pyi"],
-        "data": ["site-packages/foo/data.txt"],
+        "data": ["site-packages/foo/data.txt", "data"],
         "imports": ["site-packages"],
         "deps": ["@pypi_bar_baz//:pkg"] + select({
             "@platforms//os:linux": ["@pypi_box//:pkg"],
@@ -429,7 +429,7 @@ def _test_group(env):
         "visibility": ["@pypi__config//_groups:__pkg__"],
         "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
         "namespace_package_files": [] + select({
-            Label("//python/config_settings:is_venvs_site_packages"): [],
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
             "//conditions:default": ["_create_inits_target"],
         }),
     })  # buildifier: @unsorted-dict-items

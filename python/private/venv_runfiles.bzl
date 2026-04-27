@@ -69,10 +69,16 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
         ctx.label.package,
     )
 
+    seen_bin_venv_paths = {}
+
     for kind, kind_map in link_map.items():
         base = venv_dir_map[kind]
         for venv_path, link_to in kind_map.items():
             bin_venv_path = paths.join(base, venv_path)
+            if bin_venv_path in seen_bin_venv_paths:
+                continue
+            seen_bin_venv_paths[bin_venv_path] = True
+
             if is_file(link_to):
                 # use paths.join to handle ctx.label.package = ""
                 # runfile_prefix should be prepended as we use runfiles.root_symlinks
@@ -80,6 +86,18 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
                 symlink_from = paths.join(runfile_prefix, ctx.label.package, bin_venv_path)
 
                 runfiles_symlinks[symlink_from] = link_to
+
+                # On Windows, we need to explicitly create the symlink in the venv
+                # because the bootstrap script won't otherwise know about it.
+                if is_windows:
+                    rf_path = paths.join(ctx_rf_path, bin_venv_path)
+                    _, _, venv_path = bin_venv_path.partition(".venv/")
+                    explicit_symlinks.append(ExplicitSymlink(
+                        runfiles_path = rf_path,
+                        venv_path = venv_path,
+                        link_to_path = runfiles_root_path(ctx, link_to.short_path),
+                        files = depset([link_to]),
+                    ))
             elif not is_windows:
                 venv_link = ctx.actions.declare_symlink(bin_venv_path)
                 venv_link_rf_path = runfiles_root_path(ctx, venv_link.short_path)
@@ -275,10 +293,16 @@ def _get_file_venv_path(ctx, f, site_packages_root):
 
     Returns:
         A tuple `(venv_path, rf_root_path)` if the file is under
-        `site_packages_root`, otherwise `(None, None)`.
+        `site_packages_root` or data/, bin/, include/ otherwise `(None, None)`.
     """
     rf_root_path = runfiles_root_path(ctx, f.short_path)
     _, _, repo_rel_path = rf_root_path.partition("/")
+
+    # Check for wheel data/bin/include folders first
+    for prefix in ["data/", "bin/", "include/"]:
+        if repo_rel_path.startswith(prefix):
+            return (repo_rel_path, rf_root_path)
+
     head, found_sp_root, venv_path = repo_rel_path.partition(site_packages_root)
     if head or not found_sp_root:
         # If head is set, then the path didn't start with site_packages_root
@@ -324,6 +348,25 @@ def get_venv_symlinks(
 
     all_files = sorted(files, key = lambda f: f.short_path)
 
+    cannot_be_linked_directly = {}
+    for dirname in [
+        # The venv directories that bin, include, and data get put into are
+        # shared across wheels, so we cannot link them directly
+        "bin",
+        "include",
+        "data",
+        # The data scheme is overlaid on the venv root, so the files under it
+        # could, in theory, get installed into e.g. bin/ or similar. Explicitly
+        # mark them as non-directly linkable to avoid issues.
+        "data/bin",
+        "data/include",
+        "data/lib",
+        "data/Scripts",
+        "data/Include",
+        "data/Lib",
+    ]:
+        cannot_be_linked_directly[dirname] = True
+
     # dict[str venv-relative dirname, bool is_namespace_package]
     namespace_package_dirs = {
         ns: True
@@ -331,10 +374,10 @@ def get_venv_symlinks(
     }
 
     # venv paths that cannot be directly linked. Dict acting as set.
-    cannot_be_linked_directly = {
+    cannot_be_linked_directly.update({
         dirname: True
         for dirname in namespace_package_dirs.keys()
-    }
+    })
     for f in namespace_package_files:
         venv_path, _ = _get_file_venv_path(ctx, f, site_packages_root)
         if venv_path == None:
@@ -452,19 +495,36 @@ def get_venv_symlinks(
 
     # Finally, for each group, we create the VenvSymlinkEntry objects
     for venv_path, files in optimized_groups.items():
+        if venv_path.startswith("data/"):
+            out_venv_path = venv_path[len("data/"):]
+            kind = VenvSymlinkKind.DATA
+            prefix = ""
+        elif venv_path.startswith("include/"):
+            out_venv_path = venv_path[len("include/"):]
+            kind = VenvSymlinkKind.INCLUDE
+            prefix = ""
+        elif venv_path.startswith("bin/"):
+            out_venv_path = venv_path[len("bin/"):]
+            kind = VenvSymlinkKind.BIN
+            prefix = ""
+        else:
+            out_venv_path = venv_path
+            kind = VenvSymlinkKind.LIB
+            prefix = site_packages_root
+
         link_to_path = (
             _get_label_runfiles_repo(ctx, files[0].owner) +
             "/" +
-            site_packages_root +
+            prefix +
             venv_path
         )
         venv_symlinks[venv_path] = VenvSymlinkEntry(
-            kind = VenvSymlinkKind.LIB,
+            kind = kind,
             link_to_path = link_to_path,
             link_to_file = None,
             package = package,
             version = version_str,
-            venv_path = venv_path,
+            venv_path = out_venv_path,
             files = depset(files),
         )
 

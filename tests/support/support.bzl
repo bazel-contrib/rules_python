@@ -35,10 +35,7 @@ SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "//conditions:default": [],
 })
 
-SUPPORTS_BZLMOD_UNIXY = select({
-    "@platforms//os:windows": ["@platforms//:incompatible"],
-    "//conditions:default": [],
-}) if BZLMOD_ENABLED else ["@platforms//:incompatible"]
+SUPPORTS_BZLMOD = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"]
 
 NOT_WINDOWS = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],

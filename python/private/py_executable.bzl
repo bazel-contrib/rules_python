@@ -575,9 +575,13 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         computed_substitutions = computed_subs,
     )
 
+    # See https://docs.python.org/3/library/sysconfig.html#posix-prefix
+    # for how schemes map under the venv.
     venv_dir_map = {
-        VenvSymlinkKind.BIN: venv_details.bin_dir,
+        VenvSymlinkKind.BIN: "{}/{}".format(venv_ctx_rel_root, venv_details.bin_dir),
         VenvSymlinkKind.LIB: site_packages,
+        VenvSymlinkKind.INCLUDE: "{}/{}".format(venv_ctx_rel_root, venv_details.include_dir),
+        VenvSymlinkKind.DATA: venv_ctx_rel_root,
     }
     venv_app_files = create_venv_app_files(
         ctx,
@@ -659,7 +663,7 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
 
     recreate_venv_at_runtime = False
 
-    bin_dir = "{}/bin".format(venv_ctx_rel_root)
+    venv_bin_ctx_rel_path = "{}/bin".format(venv_ctx_rel_root)
     if create_full_venv:
         # Some wrappers around the interpreter (e.g. pyenv) use the program
         # name to decide what to do, so preserve the name.
@@ -671,7 +675,7 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
             # When the venv symlinks are disabled, the $venv/bin/python3 file isn't
             # needed or used at runtime. However, the zip code uses the interpreter
             # File object to figure out some paths.
-            interpreter = ctx.actions.declare_file("{}/{}".format(bin_dir, py_exe_basename))
+            interpreter = ctx.actions.declare_file("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
             ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
 
         elif runtime.interpreter:
@@ -679,7 +683,7 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
             # declare_symlink() is required to ensure that the resulting file
             # in runfiles is always a symlink. An RBE implementation, for example,
             # may choose to write what symlink() points to instead.
-            interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+            interpreter = ctx.actions.declare_symlink("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
             interpreter_runfiles.add(interpreter)
 
             rel_path = relative_path(
@@ -690,7 +694,7 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
             )
             ctx.actions.symlink(output = interpreter, target_path = rel_path)
         else:
-            interpreter = ctx.actions.declare_symlink("{}/{}".format(bin_dir, py_exe_basename))
+            interpreter = ctx.actions.declare_symlink("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
             interpreter_runfiles.add(interpreter)
             ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
     else:
@@ -715,7 +719,8 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
         interpreter = interpreter,
         pyvenv_cfg = pyvenv_cfg,
         site_packages = site_packages,
-        bin_dir = bin_dir,
+        bin_dir = "bin",
+        include_dir = "include",
         recreate_venv_at_runtime = recreate_venv_at_runtime,
         interpreter_runfiles = interpreter_runfiles.build(ctx),
         interpreter_symlinks = depset(),
@@ -777,7 +782,8 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
         interpreter = interpreter,
         pyvenv_cfg = None,
         site_packages = site_packages,
-        bin_dir = venv_bin_ctx_rel_path,
+        bin_dir = venv_bin_rel_path,
+        include_dir = "Include",
         recreate_venv_at_runtime = True,
         interpreter_runfiles = interpreter_runfiles.build(ctx),
         interpreter_symlinks = interpreter_symlinks.build(),
@@ -789,6 +795,7 @@ def _venv_details(
         pyvenv_cfg,
         site_packages,
         bin_dir,
+        include_dir,
         recreate_venv_at_runtime,
         interpreter_runfiles,
         interpreter_symlinks):
@@ -801,8 +808,10 @@ def _venv_details(
         pyvenv_cfg = pyvenv_cfg,
         # str; venv-relative path to the site-packages directory
         site_packages = site_packages,
-        # str; ctx-relative path to the venv's bin directory.
+        # str; venv-relative path to the venv's bin directory.
         bin_dir = bin_dir,
+        # str; venv-relative-path to the venv's include directory.
+        include_dir = include_dir,
         # bool; True if the venv needs to be recreated at runtime (because the
         # build-time construction isn't sufficient). False if the build-time
         # constructed venv is sufficient.
