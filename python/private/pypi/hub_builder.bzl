@@ -466,13 +466,14 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr, python_version):
+def _evaluate_markers(self, python_version):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
     return lambda _, requirements: evaluate_markers_star(
         requirements = requirements,
         platforms = self._platforms[python_version],
+    )
 
 def _create_whl_repos(
         self,
@@ -511,7 +512,7 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr, python_version),
+        evaluate_markers = _evaluate_markers(self, python_version),
         logger = logger,
     )
 
