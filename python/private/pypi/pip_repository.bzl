@@ -120,7 +120,7 @@ def _pip_repository_impl(rctx):
             platforms = platforms,
         ),
         extra_pip_args = rctx.attr.extra_pip_args,
-        evaluate_markers = lambda rctx, requirements: evaluate_markers(
+        evaluate_markers = lambda requirements: evaluate_markers(
             requirements = {
                 # NOTE @aignas 2025-07-07: because we don't distinguish between
                 # freethreaded and non-freethreaded, it is a 1:1 mapping.
