@@ -443,7 +443,7 @@ def _test_simple_with_markers(env):
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(
             env,
-            evaluate_markers_fn = lambda _, requirements, **__: {
+            evaluate_markers_fn = lambda requirements: {
                 key: [
                     platform
                     for platform in platforms
