@@ -10,3 +10,5 @@ whl_with_data2-1.0.data/scripts/overlap/both.sh,sha256=123,123
 whl_with_data2-1.0.data/scripts/overlap/script2.sh,sha256=123,123
 whl_with_data2-1.0.data/headers/overlap/both.h,sha256=123,123
 whl_with_data2-1.0.data/headers/overlap/header2.h,sha256=123,123
+whl_with_data2-1.0.data/purelib/whl_with_data2/__init__.py,sha256=123,123
+whl_with_data2-1.0.dist-info/entry_points.txt,sha256=123,123

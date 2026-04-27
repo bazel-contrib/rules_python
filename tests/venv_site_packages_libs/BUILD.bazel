@@ -82,5 +82,6 @@ py_reconfig_test(
     venvs_site_packages = "yes",
     deps = [
         "@whl_with_data1//:pkg",
+        "@whl_with_data2//:pkg",
     ],
 )

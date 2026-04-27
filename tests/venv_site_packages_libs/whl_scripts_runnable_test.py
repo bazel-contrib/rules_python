@@ -5,18 +5,21 @@ from pathlib import Path
 
 
 class WhlScriptsRunnableTest(unittest.TestCase):
-    def test_script_is_runnable(self):
+    def _get_script_path(self, name):
         is_windows = sys.platform == "win32"
         if is_windows:
             bin_dir = Path(sys.prefix) / "Scripts"
             # On windows, it might have .exe or no extension depending on how it was installed
-            script_path = bin_dir / "whl_with_data1_script.exe"
+            script_path = bin_dir / f"{name}.exe"
             if not script_path.exists():
-                script_path = bin_dir / "whl_with_data1_script"
+                script_path = bin_dir / name
         else:
             bin_dir = Path(sys.prefix) / "bin"
-            script_path = bin_dir / "whl_with_data1_script"
+            script_path = bin_dir / name
+        return script_path
 
+    def test_script_is_runnable(self):
+        script_path = self._get_script_path("whl_with_data1_script")
         self.assertTrue(script_path.exists(), f"Script not found at {script_path}")
 
         result = subprocess.run(
@@ -32,6 +35,23 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         # The script prints sys.executable as its second line
         # Depending on how it's invoked, it might have more output,
         # but the user said it prints the hello message AND sys.executable.
+        script_executable = output[-1].strip()
+        self.assertEqual(script_executable, sys.executable)
+
+    def test_entry_point_is_runnable(self):
+        script_path = self._get_script_path("whl_with_data2_bin")
+        self.assertTrue(script_path.exists(), f"Entry point not found at {script_path}")
+
+        result = subprocess.run(
+            [str(script_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        output = result.stdout.splitlines()
+        self.assertIn("hello from whl_with_data2_bin", output)
+
         script_executable = output[-1].strip()
         self.assertEqual(script_executable, sys.executable)
 
