@@ -45,6 +45,8 @@ py_reconfig_test(
         "@other//nspkg_gamma",
         "@other//nspkg_single",
         "@other//with_external_data",
+        "@whl_with_data1//:pkg",
+        "@whl_with_data2//:pkg",
     ],
 )
 

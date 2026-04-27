@@ -60,6 +60,8 @@ END_UNRELEASED_TEMPLATE
 ### Changed
 * (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
   The go version was also bumped from 1.21.13 to 1.22.9.
+* (pypi) The data files of a wheel (bin, includes, etc) are now always included
+  as a library's data dependencies.
 
 {#v0-0-0-fixed}
 ### Fixed
@@ -74,6 +76,8 @@ END_UNRELEASED_TEMPLATE
   adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set
   {obj}`--venvs_site_packages=yes` to enable.
+* (test/binaries) When {obj}`--venv_site_packages=yes` is enabled,
+  wheel `data`, `bin`, and `include` files are populated into the venv.
 * (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
   Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
 * (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
