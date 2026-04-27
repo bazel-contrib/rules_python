@@ -100,12 +100,9 @@ def _mod(*, name, default = _default_tags_default, parse = [], override = [], wh
         is_root = is_root,
     )
 
-def _parse_modules(env, enable_pipstar = 0, **kwargs):
+def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
-        parse_modules(
-            enable_pipstar = enable_pipstar,
-            **kwargs
-        ),
+        parse_modules(**kwargs),
         attrs = dict(
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
@@ -115,16 +112,14 @@ def _parse_modules(env, enable_pipstar = 0, **kwargs):
         ),
     )
 
-def _build_config(env, enable_pipstar = 0, **kwargs):
+def _build_config(env, **kwargs):
     return env.expect.that_struct(
         build_config(
-            enable_pipstar = enable_pipstar,
             enable_pipstar_extract = True,
             **kwargs
         ),
         attrs = dict(
             auth_patterns = subjects.dict,
-            enable_pipstar = subjects.bool,
             netrc = subjects.str,
             platforms = subjects.dict,
         ),
@@ -185,7 +180,7 @@ def _test_simple_isolated(env):
     """
     pypi = _parse_modules(
         env,
-        module_ctx = _mock_mctx(
+        module_ctx = _pypi_mock_mctx(
             _mod(
                 name = "my_module",
                 default = [],  # no platform tags
