@@ -719,12 +719,9 @@ def _version_eeq(left, right):
 
 def _version_eq(left, right):
     """== operator"""
-    if left.is_prefix and right.is_prefix:
-        fail("Invalid comparison: both versions cannot be prefix matching")
-    if left.is_prefix:
-        return right.string.startswith("{}.".format(left.string))
-    if right.is_prefix:
-        return left.string.startswith("{}.".format(right.string))
+    is_prefix = _is_prefix(left, right)
+    if is_prefix != None:
+        return is_prefix
 
     if left.epoch != right.epoch:
         return False
@@ -743,6 +740,27 @@ def _version_eq(left, right):
         # local is ignored for == checks
     )
 
+def _is_prefix(left, right):
+    if left.is_prefix and right.is_prefix:
+        fail("Invalid comparison: both versions cannot be prefix matching")
+    if left.is_prefix:
+        return _left_is_prefix(left, right)
+    if right.is_prefix:
+        return _left_is_prefix(right, left)
+
+    return None
+
+def _left_is_prefix(left, right):
+    if right.string.startswith("{}.".format(left.string)):
+        return True
+
+    # There is a chance that we are comparing 1.3 ~= 1.3.0
+    #
+    # In that case the logic would be to normalize 1.3 to 1.3.0 and then
+    # the above would work, but we end up comparing 1.3 with 1.3. above
+    # and it fails.
+    return _version_key(left) == _version_key(right)
+
 def _version_compatible(left, right):
     """~= operator"""
     if left.is_prefix or right.is_prefix:
@@ -754,11 +772,11 @@ def _version_compatible(left, right):
 
     right_star = ".".join([str(d) for d in right.release[:-1]])
     if right.epoch:
-        right_star = "{}!{}.".format(right.epoch, right_star)
+        right_star = "{}!{}.*".format(right.epoch, right_star)
     else:
-        right_star = "{}.".format(right_star)
+        right_star = "{}.*".format(right_star)
 
-    return _version_ge(left, right) and left.string.startswith(right_star)
+    return _version_ge(left, right) and _is_prefix(left, parse(right_star, strict = False))
 
 def _version_ne(left, right):
     """!= operator"""

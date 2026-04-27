@@ -615,6 +615,25 @@ Tag: cp38-abi3-{os_string}_{arch}
                 requires,
             )
 
+    def test_data_files_installed_in_folder(self):
+        filename = self._get_path(
+            "data_files_installed_in_folder-0.0.1-py3-none-any.whl"
+        )
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            self.assertEqual(
+                zf.namelist(),
+                [
+                    "data_files_installed_in_folder-0.0.1.dist-info/WHEEL",
+                    "data_files_installed_in_folder-0.0.1.dist-info/METADATA",
+                    "data_files_installed_in_folder-0.0.1.data/data/NOTICE",
+                    "data_files_installed_in_folder-0.0.1.data/data/README.md",
+                    "data_files_installed_in_folder-0.0.1.data/scripts/NOTICE",
+                    "data_files_installed_in_folder-0.0.1.dist-info/RECORD",
+                ],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

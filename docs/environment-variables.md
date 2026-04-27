@@ -11,7 +11,7 @@ would be:
 python -Xaaa /path/to/file.py
 ```
 
-This feature is likely to be useful for the integration of debuggers. For example,
+This feature is useful for the integration of debuggers. For example,
 it would be possible to configure `RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` to
 be set to `/path/to/debugger.py --port 12344 --file`, resulting
 in the command executed being:
@@ -22,12 +22,14 @@ python /path/to/debugger.py --port 12345 --file /path/to/file.py
 
 :::{seealso}
 The {bzl:obj}`interpreter_args` attribute.
+
+The guide on {any}`How to integrate a debugger`
 :::
 
 :::{versionadded} 1.3.0
 :::
 :::{versionchanged} 1.7.0
-Support added for {obj}`--bootstrap_impl=system_python`.
+Support added for {bzl:flag}`--bootstrap_impl=system_python`.
 :::
 
 ::::
@@ -49,32 +51,6 @@ doing. This is mostly useful for development to debug errors.
 When `1`, `rules_python` will warn users about deprecated functionality that will
 be removed in a subsequent major `rules_python` version. Defaults to `0` if unset.
 :::
-
-::::{envvar} RULES_PYTHON_ENABLE_PYSTAR
-
-When `1`, the `rules_python` Starlark implementation of the core rules is used
-instead of the Bazel-builtin rules. Note that this requires Bazel 7+. Defaults
-to `1`.
-
-:::{versionadded} 0.26.0
-Defaults to `0` if unspecified.
-:::
-:::{versionchanged} 0.40.0
-The default became `1` if unspecified
-:::
-::::
-
-::::{envvar} RULES_PYTHON_ENABLE_PIPSTAR
-
-When `1`, the `rules_python` Starlark implementation of the PyPI/pip integration is used
-instead of the legacy Python scripts.
-
-:::{versionadded} 1.5.0
-:::
-:::{versionchanged} 1.7.0
-Flipped to be enabled by default.
-:::
-::::
 
 ::::{envvar} RULES_PYTHON_EXTRACT_ROOT
 
@@ -114,6 +90,34 @@ Valid values:
 * Other non-empty values mean to use isolated mode.
 :::
 
+:::{envvar} RULES_PYTHON_PYCACHE_DIR
+
+Determines the directory that runtime-generated pyc cache files will
+be stored in.
+
+This directory may be reused between invocations, depending on the sandboxing
+configuration. Setting it to `/dev/null` will, in effect, disable runtime
+pyc caching. By setting e.g.
+`--sandbox_add_mount_pair=/tmp/rules_python_pycache`, it's possible for pyc
+caching to persist across invocations.
+
+**Behavior specific to downloaded runtimes:** 
+First `RULES_PYTHON_PYCACHE_DIR` is checked. If set, it is used as-is for
+the root pycache directory.
+
+Otherwise, the following environment variables are checked in the following
+order. Their values will have `rules_python_pycache` appended to them to form
+the root pycache directory:
+1. `XDG_CACHE_HOME`.
+2. `TMP` (non-Windows) or `TEMP` (Windows).
+3. The common platform-specific temporary directory (`/tmp` (non-Windows) or
+   `C:\Temp` (Windows)).
+
+If such a diretory cannot be found, or created, then `/dev/null` will be used,
+which will effectively disable pyc caching.
+
+:::
+
 :::{envvar} RULES_PYTHON_REPO_DEBUG
 
 When `1`, repository rules will print debug information about what they're
@@ -143,4 +147,15 @@ os, arch values are the same as the ones mentioned in the
 :::{envvar} VERBOSE_COVERAGE
 
 When `1`, debug information about coverage behavior is printed to stderr.
+:::
+
+## Removed Environment Variables
+
+:::{versionremoved} VERSION_NEXT_FEATURE
+The following environment variables were removed:
+
+* `RULES_PYTHON_ENABLE_PYSTAR`: Used to enable the Starlark implementation of
+  core rules.
+* `RULES_PYTHON_ENABLE_PIPSTAR`: Used to enable the Starlark implementation of
+  PyPI integration.
 :::

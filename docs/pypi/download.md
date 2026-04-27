@@ -104,9 +104,8 @@ the years, people started needing support for building containers, and usually, 
 fetching dependencies for a particular target platform that may be different from the host
 platform.
 
-Multi-platform support for cross-building the wheels can be done in two ways:
-1. using {attr}`experimental_index_url` for the {bzl:obj}`pip.parse` bzlmod tag class
-2. using the {attr}`pip.parse.download_only` setting.
+Multi-platform support for cross-building the wheels can be done by
+using {attr}`target_platforms` for the {bzl:obj}`pip.parse` bzlmod tag class
 
 :::{warning}
 This will not work for sdists with C extensions, but pure Python sdists may still work using the first
@@ -207,16 +206,6 @@ additional keys, which become available during dependency evaluation.
 (bazel-downloader)=
 ### Bazel downloader and multi-platform wheel hub repository.
 
-:::{warning}
-This is currently still experimental, and whilst it has been proven to work in quite a few
-environments, the APIs are still being finalized, and there may be changes to the APIs for this
-feature without much notice.
-
-The issues that you can subscribe to for updates are:
-* {gh-issue}`260`
-* {gh-issue}`1357`
-:::
-
 The {obj}`pip` extension supports pulling information from `PyPI` (or a compatible mirror), and it
 will ensure that the [bazel downloader][bazel_downloader] is used for downloading the wheels.
 
@@ -228,14 +217,10 @@ This provides the following benefits:
 * Allow using transitions and targeting free-threaded and musl platforms more easily.
 * Avoids `pip` for wheel fetching and results in much faster dependency fetching.
 
-To enable the feature specify {attr}`pip.parse.experimental_index_url` as shown in
-the {gh-path}`examples/bzlmod/MODULE.bazel` example.
-
-Similar to [uv](https://docs.astral.sh/uv/configuration/indexes/), one can override the
-index that is used for a single package. By default, we first search in the index specified by
-{attr}`pip.parse.experimental_index_url`, then we iterate through the
-{attr}`pip.parse.experimental_extra_index_urls` unless there are overrides specified via
-{attr}`pip.parse.experimental_index_url_overrides`.
+Similar to [uv](https://docs.astral.sh/uv/configuration/indexes/), one can override the index that
+is used for a single package. By default, we first search in the indexes specified by
+`--extra-index-url`, then we fall back to the `--index-url` setting unless there are overrides
+specified via {attr}`pip.parse.experimental_index_url_overrides`.
 
 When using this feature during the `pip` extension evaluation you will see the accessed indexes similar to below:
 ```console

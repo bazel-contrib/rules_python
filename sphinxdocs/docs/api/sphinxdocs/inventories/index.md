@@ -1,7 +1,7 @@
-:::{bzl:currentfile} //sphinxdocs/inventories:BUILD.bazel
+:::{bzl:currentfile} //inventories:BUILD.bazel
 :::
 
-# //sphinxdocs/inventories
+# //inventories
 
 :::{bzl:target} bazel_inventory
 A Sphinx inventory of Bazel objects.

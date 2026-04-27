@@ -25,10 +25,20 @@ dependency graphs under bzlmod.
 import collections.abc
 import inspect
 import os
+import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+elif sys.version_info >= (3, 10):
+    from typing import TypeAlias
+
+    Self: TypeAlias = "Path"  # type: ignore
+else:
+    from typing import Any as Self
 
 
 class _RepositoryMapping:
@@ -137,7 +147,247 @@ class _RepositoryMapping:
         Returns:
             True if there are no mappings, False otherwise
         """
-        return len(self._exact_mappings) == 0 and len(self._grouped_prefixed_mappings) == 0
+        return (
+            len(self._exact_mappings) == 0 and len(self._grouped_prefixed_mappings) == 0
+        )
+
+
+class Path(pathlib.Path):
+    """A pathlib-like path object for runfiles.
+
+    This class extends `pathlib.Path` and resolves paths
+    using the associated `Runfiles` instance when converted to a string.
+    """
+
+    # Mypy isn't smart enough to realize `self` in the methods
+    # refers to our Path class instead of pathlib.Path
+    _runfiles: Optional["Runfiles"]
+    _source_repo: Optional[str]
+
+    # For Python < 3.12 compatibility when subclassing Path directly
+    _flavour = getattr(type(pathlib.Path()), "_flavour", None)
+
+    def __new__(
+        cls,
+        *args: Union[str, os.PathLike],
+        runfiles: Optional["Runfiles"] = None,
+        source_repo: Optional[str] = None,
+    ) -> Self:
+        """Private constructor. Use Runfiles.root() to create instances."""
+        obj = super().__new__(cls, *args)
+        # Type checkers might complain about adding attributes to Path,
+        # but this is standard for pathlib subclasses.
+        obj._runfiles = runfiles  # type: ignore
+        obj._source_repo = source_repo  # type: ignore
+        return obj
+
+    def __init__(
+        self,
+        *args: Union[str, os.PathLike],
+        runfiles: Optional["Runfiles"] = None,
+        source_repo: Optional[str] = None,
+    ) -> None:
+        # In Python 3.12+, pathlib was refactored and Path.__init__ now accepts
+        # *args. Prior to 3.12, Path did not define __init__, so
+        # super().__init__(*args) would fall through to object.__init__, which
+        # raises a TypeError because it takes no arguments.
+        if sys.version_info >= (3, 12):
+            super().__init__(*args)
+        else:
+            super().__init__()
+
+    # We override resolve() and absolute() to ensure that in Python < 3.12,
+    # where pathlib internally uses object.__new__ instead of our custom
+    # __new__ or with_segments(), the runfiles state is preserved. We delegate
+    # to self._as_path() because super().resolve() creates intermediate objects
+    # that would otherwise crash during internal stat() calls.
+    # override
+    def resolve(self, strict: bool = False) -> Self:
+        return type(self)(
+            self._as_path().resolve(strict=strict),
+            runfiles=self._runfiles,
+            source_repo=self._source_repo,
+        )
+
+    # override
+    def absolute(self) -> Self:
+        return type(self)(
+            self._as_path().absolute(),
+            runfiles=self._runfiles,
+            source_repo=self._source_repo,
+        )
+
+    # override
+    def with_segments(self, *pathsegments: Union[str, os.PathLike]) -> Self:
+        """Used by Python 3.12+ pathlib to create new path objects."""
+        return type(self)(
+            *pathsegments,
+            runfiles=self._runfiles,
+            source_repo=self._source_repo,
+        )
+
+    # For Python < 3.12
+    # override
+    def _make_child(self, args: Tuple[str, ...]) -> Self:
+        obj = super()._make_child(args)  # type: ignore
+        obj._runfiles = self._runfiles  # type: ignore
+        obj._source_repo = self._source_repo  # type: ignore
+        return obj
+
+    # override
+    @property
+    def parents(self) -> Tuple[Self, ...]:
+        return tuple(
+            type(self)(
+                p,
+                runfiles=self._runfiles,
+                source_repo=self._source_repo,
+            )
+            for p in super().parents
+        )
+
+    # override
+    @property
+    def parent(self) -> Self:
+        return type(self)(
+            super().parent,
+            runfiles=self._runfiles,
+            source_repo=self._source_repo,
+        )
+
+    @property
+    def runfile_path(self) -> str:
+        """Returns the runfiles-root relative path."""
+        path_posix = super().__str__().replace("\\", "/")
+        if path_posix == ".":
+            return ""
+        return path_posix
+
+    # override
+    def with_name(self, name: str) -> Self:
+        return type(self)(
+            super().with_name(name),
+            runfiles=self._runfiles,
+            source_repo=self._source_repo,
+        )
+
+    # override
+    def with_suffix(self, suffix: str) -> Self:
+        return type(self)(
+            super().with_suffix(suffix),
+            runfiles=self._runfiles,
+            source_repo=self._source_repo,
+        )
+
+    def _as_path(self) -> pathlib.Path:
+        return pathlib.Path(str(self))
+
+    # override
+    def stat(self, *, follow_symlinks: bool = True) -> os.stat_result:
+        return self._as_path().stat(follow_symlinks=follow_symlinks)
+
+    # override
+    def lstat(self) -> os.stat_result:
+        return self._as_path().lstat()
+
+    # override
+    def exists(self) -> bool:
+        return self._as_path().exists()
+
+    # override
+    def is_dir(self) -> bool:
+        return self._as_path().is_dir()
+
+    # override
+    def is_file(self) -> bool:
+        return self._as_path().is_file()
+
+    # override
+    def is_symlink(self) -> bool:
+        return self._as_path().is_symlink()
+
+    # override
+    def is_block_device(self) -> bool:
+        return self._as_path().is_block_device()
+
+    # override
+    def is_char_device(self) -> bool:
+        return self._as_path().is_char_device()
+
+    # override
+    def is_fifo(self) -> bool:
+        return self._as_path().is_fifo()
+
+    # override
+    def is_socket(self) -> bool:
+        return self._as_path().is_socket()
+
+    # override
+    def open(
+        self,
+        mode: str = "r",
+        buffering: int = -1,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
+        newline: Optional[str] = None,
+    ):
+        return self._as_path().open(
+            mode=mode,
+            buffering=buffering,
+            encoding=encoding,
+            errors=errors,
+            newline=newline,
+        )
+
+    # override
+    def read_bytes(self) -> bytes:
+        return self._as_path().read_bytes()
+
+    # override
+    def read_text(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
+        return self._as_path().read_text(encoding=encoding, errors=errors)
+
+    # override
+    def iterdir(self) -> Generator[Self, None, None]:
+        resolved = self._as_path()
+        for p in resolved.iterdir():
+            yield self / p.name
+
+    # override
+    def glob(self, pattern: str) -> Generator[Self, None, None]:
+        resolved = self._as_path()
+        for p in resolved.glob(pattern):
+            yield self / p.relative_to(resolved)
+
+    # override
+    def rglob(self, pattern: str) -> Generator[Self, None, None]:
+        resolved = self._as_path()
+        for p in resolved.rglob(pattern):
+            yield self / p.relative_to(resolved)
+
+    def __repr__(self) -> str:
+        return "runfiles.Path({!r})".format(self.runfile_path)
+
+    def __str__(self) -> str:
+        path_posix = super().__str__().replace("\\", "/")
+        if not path_posix or path_posix == ".":
+            # pylint: disable=protected-access
+            return self._runfiles._python_runfiles_root  # type: ignore
+        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)  # type: ignore
+        if resolved is not None:
+            return resolved
+
+        # pylint: disable=protected-access
+        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # type: ignore
+
+    def __fspath__(self) -> str:
+        return str(self)
+
+    def runfiles_root(self) -> Self:
+        """Returns a Path object representing the runfiles root."""
+        return self._runfiles.root(source_repo=self._source_repo)  # type: ignore
 
 
 class _ManifestBased:
@@ -254,6 +504,16 @@ class Runfiles:
             strategy.RlocationChecked("_repo_mapping")
         )
 
+    def root(self, source_repo: Optional[str] = None) -> Path:
+        """Returns a Path object representing the runfiles root.
+
+        The repository mapping used by the returned Path object is that of the
+        caller of this method.
+        """
+        if source_repo is None and not self._repo_mapping.is_empty():
+            source_repo = self.CurrentRepository(frame=2)
+        return Path(runfiles=self, source_repo=source_repo)
+
     def Rlocation(self, path: str, source_repo: Optional[str] = None) -> Optional[str]:
         """Returns the runtime path of a runfile.
 
@@ -325,9 +585,7 @@ class Runfiles:
 
         # Look up the target repository using the repository mapping
         if target_canonical is not None:
-            return self._strategy.RlocationChecked(
-                target_canonical + "/" + remainder
-            )
+            return self._strategy.RlocationChecked(target_canonical + "/" + remainder)
 
         # No mapping found - assume target_repo is already canonical or
         # we're not using Bzlmod
@@ -389,13 +647,16 @@ class Runfiles:
             # located in the main repository.
             # With Python 3.11 and higher, the Python launcher sets
             # PYTHONSAFEPATH, which prevents this behavior.
+            # On Windows, the current toolchain being used has a buggy zip file
+            # bootstrap, which leaves RUNFILES_DIR pointing at the first stage
+            # path and not the module path. In this case too, assume that the
+            # module is located in the main repository.
             # TODO: This doesn't cover the case of a script being run from an
             #       external repository, which could be heuristically detected
             #       by parsing the script's path.
-            if (
-                sys.version_info.minor <= 10
-                and sys.path[0] != self._python_runfiles_root
-            ):
+            if (sys.version_info.minor <= 10 or sys.platform == "win32") and sys.path[
+                0
+            ] != self._python_runfiles_root:
                 return ""
             raise ValueError(
                 "{} does not lie under the runfiles root {}".format(

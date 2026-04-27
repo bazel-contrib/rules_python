@@ -26,7 +26,6 @@ load(
     "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
-    "WHEEL_ENTRY_POINT_PREFIX",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
@@ -39,9 +38,11 @@ _BAZEL_REPO_FILE_GLOBS = [
     "BUILD.bazel",
     "REPO.bazel",
     "WORKSPACE",
-    "WORKSPACE",
+    "WORKSPACE.bzlmod",
     "WORKSPACE.bazel",
 ]
+
+_IS_VENV_SITE_PACKAGES_YES = Label("//python/config_settings:_is_venvs_site_packages_yes")
 
 def whl_library_targets_from_requires(
         *,
@@ -120,7 +121,6 @@ def whl_library_targets(
         data = [],
         copy_files = {},
         copy_executables = {},
-        entry_points = {},
         native = native,
         enable_implicit_namespace_pkgs = False,
         namespace_package_files = [],
@@ -165,8 +165,6 @@ def whl_library_targets(
         srcs_exclude: {type}`list[str]` The globs for srcs attribute exclusion
             in `py_library`.
         data: {type}`list[str]` A list of labels to include as part of the `data` attribute in `py_library`.
-        entry_points: {type}`dict[str, str]` The mapping between the script
-            name and the python file to use. DEPRECATED.
         enable_implicit_namespace_pkgs: {type}`boolean` generate __init__.py
             files for namespace pkgs.
         native: {type}`native` The native struct for overriding in tests.
@@ -195,7 +193,7 @@ def whl_library_targets(
                 include = ["site-packages/*.dist-info/**"],
             ),
             DATA_LABEL: dict(
-                include = ["data/**"],
+                include = ["data/**", "bin/**", "include/**"],
             ),
         }
 
@@ -236,20 +234,6 @@ def whl_library_targets(
         d: "is_include_{}_true".format(d)
         for d in dependencies_with_markers
     }
-
-    # TODO @aignas 2024-10-25: remove the entry_point generation once
-    # `py_console_script_binary` is the only way to use entry points.
-    for entry_point, entry_point_script_name in entry_points.items():
-        rules.py_binary(
-            name = "{}_{}".format(WHEEL_ENTRY_POINT_PREFIX, entry_point),
-            # Ensure that this works on Windows as well - script may have Windows path separators.
-            srcs = [entry_point_script_name.replace("\\", "/")],
-            # This makes this directory a top-level in the python import
-            # search path for anything that depends on this.
-            imports = ["."],
-            deps = [":" + PY_LIBRARY_PUBLIC_LABEL],
-            visibility = ["//visibility:public"],
-        )
 
     # Ensure this list is normalized
     # Note: mapping used as set
@@ -369,7 +353,7 @@ def whl_library_targets(
 
         if not enable_implicit_namespace_pkgs:
             generated_namespace_package_files = select({
-                Label("//python/config_settings:is_venvs_site_packages"): [],
+                _IS_VENV_SITE_PACKAGES_YES: [],
                 "//conditions:default": rules.create_inits(
                     srcs = srcs + data + pyi_srcs,
                     ignored_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
@@ -378,6 +362,10 @@ def whl_library_targets(
             })
             namespace_package_files += generated_namespace_package_files
             srcs = srcs + generated_namespace_package_files
+
+        # This is done after create_inits() is called so that the data scheme
+        # files don't have such files created in their directories.
+        data = data + [DATA_LABEL]
 
         rules.py_library(
             name = py_library_label,

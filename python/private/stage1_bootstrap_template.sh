@@ -6,14 +6,14 @@ if [[ -n "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
   set -x
 fi
 
-# runfiles-relative path
+# runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
-# runfiles-relative path to python interpreter to use.
+# runfiles-root-relative path to python interpreter to use.
 # This is the `bin/python3` path in the binary's venv.
 PYTHON_BINARY='%python_binary%'
 # The path that PYTHON_BINARY should symlink to.
-# runfiles-relative path, absolute path, or single word.
+# runfiles-root-relative path, absolute path, or single word.
 # Only applicable for zip files or when venv is recreated at runtime.
 PYTHON_BINARY_ACTUAL="%python_binary_actual%"
 
@@ -85,9 +85,9 @@ else
       stub_filename="$PWD/$stub_filename"
     fi
     while true; do
-      module_space="${stub_filename}.runfiles"
-      if [[ -d "$module_space" ]]; then
-        echo "$module_space"
+      runfiles_root="${stub_filename}.runfiles"
+      if [[ -d "$runfiles_root" ]]; then
+        echo "$runfiles_root"
         return 0
       fi
       if [[ "$stub_filename" == *.runfiles/* ]]; then
@@ -105,8 +105,8 @@ else
   RUNFILES_DIR=$(find_runfiles_root $0)
 fi
 
-if [[ -n "$RULES_PYTHON_TESTING_TELL_MODULE_SPACE" ]]; then
-  export RULES_PYTHON_TESTING_MODULE_SPACE="$RUNFILES_DIR"
+if [[ -n "$RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT" ]]; then
+  export RULES_PYTHON_TESTING_RUNFILES_ROOT="$RUNFILES_DIR"
 fi
 
 function find_python_interpreter() {
@@ -211,7 +211,7 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
         read -r resolved_py_exe
         read -r resolved_site_packages
       } < <("$python_exe_actual" -I <<EOF
-import sys, site, os
+import sys, site
 print(sys.executable)
 print(site.getsitepackages(["$venv"])[-1])
 EOF
@@ -285,8 +285,14 @@ fi
 
 export RUNFILES_DIR
 
+if command -v env >/dev/null 2>&1; then
+  ENV_CMD="env"
+else
+  ENV_CMD="/usr/bin/env"
+fi
+
 command=(
-  env
+  "$ENV_CMD"
   "${interpreter_env[@]}"
   "$python_exe"
   "${interpreter_args[@]}"

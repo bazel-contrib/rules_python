@@ -214,7 +214,7 @@ class _AsyncPersistentWorker:
             # We don't send a response because we assume the request that
             # triggered cancelling sent the response
             raise
-        except:
+        except Exception:
             _logger.exception("Unhandled error: request=%s", request)
             self._send_response(
                 {

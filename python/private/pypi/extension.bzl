@@ -20,13 +20,13 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
+load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_library.bzl", "whl_library")
 
@@ -70,14 +70,11 @@ def _configure(config, *, override = False, **kwargs):
 def build_config(
         *,
         module_ctx,
-        enable_pipstar,
         enable_pipstar_extract):
     """Parse 'configure' and 'default' extension tags
 
     Args:
         module_ctx: {type}`module_ctx` module context.
-        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
-            evaluation of the extension.
         enable_pipstar_extract: {type}`bool | None` a flag to also not pass Python
             interpreter to `whl_library` when possible.
 
@@ -114,6 +111,7 @@ def build_config(
             _configure(
                 defaults,
                 override = mod.is_root,
+                index_url = tag.index_url,
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
                 netrc = tag.netrc,
@@ -124,12 +122,12 @@ def build_config(
 
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
+        index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
         netrc = defaults.get("netrc", None),
         platforms = {
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
         },
-        enable_pipstar = enable_pipstar,
         enable_pipstar_extract = enable_pipstar_extract,
     )
 
@@ -137,7 +135,6 @@ def parse_modules(
         module_ctx,
         _fail = fail,
         simpleapi_download = simpleapi_download,
-        enable_pipstar = False,
         enable_pipstar_extract = False,
         **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
@@ -145,8 +142,6 @@ def parse_modules(
     Args:
         module_ctx: {type}`module_ctx` module context.
         simpleapi_download: Used for testing overrides
-        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
-            evaluation of the extension.
         enable_pipstar_extract: {type}`bool` a flag to enable dropping Python dependency for
             extracting wheels.
         _fail: {type}`function` the failure function, mainly for testing.
@@ -186,7 +181,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar, enable_pipstar_extract = enable_pipstar_extract)
+    config = build_config(module_ctx = module_ctx, enable_pipstar_extract = enable_pipstar_extract)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -221,8 +216,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     # Used to track all the different pip hubs and the spoke pip Python
     # versions.
+    # dict[str repo, HubBuilder]
+    # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = {}
+    simpleapi_cache = pypi_cache(mctx = module_ctx)
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
@@ -290,6 +287,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         config = config,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
+        facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
@@ -369,7 +367,10 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar, enable_pipstar_extract = rp_config.enable_pipstar and rp_config.bazel_8_or_later)
+    mods = parse_modules(
+        module_ctx,
+        enable_pipstar_extract = rp_config.bazel_8_or_later,
+    )
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
@@ -391,9 +392,15 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    return module_ctx.extension_metadata(
-        reproducible = True,
-    )
+    # The code is smart to not return facts if we don't support the mechanism for that.
+    # Hence we should not pass it to the metadata
+    if mods.facts:
+        return module_ctx.extension_metadata(
+            reproducible = True,
+            facts = mods.facts,
+        )
+    else:
+        return module_ctx.extension_metadata(reproducible = True)
 
 _default_attrs = {
     "arch_name": attr.string(
@@ -431,10 +438,30 @@ Supported keys:
 * `platform_system`, defaults to a value inferred from the {attr}`os_name`.
 * `platform_version`, defaults to `0`.
 * `sys_platform`, defaults to a value inferred from the {attr}`os_name`.
+""",
+    ),
+    "index_url": attr.string(
+        doc = """\
+The index URL to use as a default when downloading packages from PyPI. This is used if nothing is
+specified via `--index-url` or `--extra-index-url` parameters in the `requirements.txt` file or via
+the {attr}`pip.parse.extra_pip_args`.
 
-::::{note}
-This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
-::::
+This value is going to be subject to `envsubst` substitutions if necessary, look at the
+{attr}`pip.parse.envsubst` documentation for more information..
+
+The indexes must support Simple API as described here:
+https://packaging.python.org/en/latest/specifications/simple-repository-api/
+
+Index metadata will be used to get `sha256` values for packages even if the
+`sha256` values are not present in the requirements.txt lock file.
+
+Defaults to `https://pypi.org/simple`.
+
+:::{versionadded} 2.0.0
+This has been added as a replacement for 
+{obj}`pip.parse.experimental_index_url` and 
+{obj}`pip.parse.experimental_extra_index_urls`.
+:::
 """,
     ),
     "marker": attr.string(
@@ -552,17 +579,11 @@ def _pip_parse_ext_attrs(**kwargs):
     attrs = dict({
         "experimental_extra_index_urls": attr.string_list(
             doc = """\
-The extra index URLs to use for downloading wheels using bazel downloader.
-Each value is going to be subject to `envsubst` substitutions if necessary.
+May be removed in future releases.
 
-The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
-
-This is equivalent to `--extra-index-urls` `pip` option.
-
-:::{versionchanged} 1.1.0
-Starting with this version we will iterate over each index specified until
-we find metadata for all references distributions.
+:::{versionchanged} 2.0.0
+This is deprecated, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
             default = [],
@@ -570,25 +591,11 @@ we find metadata for all references distributions.
         "experimental_index_url": attr.string(
             default = kwargs.get("experimental_index_url", ""),
             doc = """\
-The index URL to use for downloading wheels using bazel downloader. This value is going
-to be subject to `envsubst` substitutions if necessary.
+May be removed in future releases.
 
-The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
-
-In the future this could be defaulted to `https://pypi.org` when this feature becomes
-stable.
-
-This is equivalent to `--index-url` `pip` option.
-
-:::{versionchanged} 0.37.0
-If {attr}`download_only` is set, then `sdist` archives will be discarded and `pip.parse` will
-operate in wheel-only mode.
-:::
-
-:::{versionchanged} 1.4.0
-Index metadata will be used to deduct `sha256` values for packages even if the
-`sha256` values are not present in the requirements.txt lock file.
+:::{versionchanged} 2.0.0
+This is deprecated, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
         ),
@@ -696,13 +703,6 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
             doc = """\
 A dict of labels to wheel names that is typically generated by the whl_modifications.
 The labels are JSON config files describing the modifications.
-""",
-        ),
-        "_evaluate_markers_srcs": attr.label_list(
-            default = EVALUATE_MARKERS_SRCS,
-            doc = """\
-The list of labels to use as SRCS for the marker evaluation code. This ensures that the
-code will be re-evaluated when any of files in the default changes.
 """,
         ),
     }, **ATTRS)
@@ -820,9 +820,6 @@ the BUILD files for wheels.
             doc = """\
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
-
-:::{include} /_includes/experimtal_api.md
-:::
 
 :::{seealso}
 The [environment markers][environment_markers] specification for the explanation of the

@@ -183,18 +183,6 @@ pip.default(
 pip.parse(
     # We can use `envsubst in the above
     envsubst = ["PIP_INDEX_URL"],
-    # Use the bazel downloader to query the simple API for downloading the sources
-    # Note, that we can use envsubst for this value.
-    experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
-    # One can also select a particular index for a particular package.
-    # This ensures that the setup is resistant against confusion attacks.
-    # experimental_index_url_overrides = {
-    #    "my_package": "https://different-index-url.com",
-    # },
-    # Or you can specify extra indexes like with `pip`:
-    # experimental_extra_index_urls = [
-    #    "https://different-index-url.com",
-    # ],
     experimental_requirement_cycles = {
         "sphinx": [
             "sphinx",
@@ -208,6 +196,16 @@ pip.parse(
     extra_hub_aliases = {
         "wheel": ["generated_file"],
     },
+    extra_pip_args = [
+        # Use the bazel downloader to query the simple API for downloading the sources
+        # Note, that we can use envsubst for this value.
+        # One can also select a particular index for a particular package.
+        # This ensures that the setup is resistant against confusion attacks.
+        # experimental_index_url_overrides = {
+        #    "my_package": "https://different-index-url.com",
+        # },
+        "--index-url=${PIP_INDEX_URL:-https://pypi.org/simple}",
+    ],
     hub_name = "pip",
     python_version = "3.9",
     requirements_lock = "requirements_lock_3_9.txt",

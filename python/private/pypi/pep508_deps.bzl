@@ -16,6 +16,7 @@
 """
 
 load("//python/private:normalize_name.bzl", "normalize_name")
+load(":pep508_env.bzl", "create_env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_requirement.bzl", "requirement")
 
@@ -155,8 +156,9 @@ def _resolve_extras(self_name, reqs, extras):
     return sorted(extras)
 
 def _evaluate_any(req, extras):
+    env = create_env()
     for extra in extras:
-        if evaluate(req.marker, env = {"extra": extra}):
+        if evaluate(req.marker, env = env | {"extra": extra}):
             return True
 
     return False
@@ -167,11 +169,12 @@ def _add_reqs(deps, deps_select, dep, reqs, *, extras):
             _add(deps, deps_select, dep)
             return
 
+    env = create_env()
     markers = {}
     found_unconditional = False
     for req in reqs:
         for x in extras:
-            m = evaluate(req.marker, env = {"extra": x}, strict = False)
+            m = evaluate(req.marker, env = env | {"extra": x}, strict = False)
             if m == False:
                 continue
             elif m == True:

@@ -28,6 +28,7 @@ behavior.
 
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load(":argparse.bzl", "argparse")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_requirement.bzl", "requirement")
@@ -53,7 +54,7 @@ def parse_requirements(
             os, arch combinations.
         extra_pip_args (string list): Extra pip arguments to perform extra validations and to
             be joined with args found in files.
-        get_index_urls: Callable[[ctx, list[str]], dict], a callable to get all
+        get_index_urls: Callable[[ctx, dict[str, list[str]]], dict], a callable to get all
             of the distribution URLs from a PyPI index. Accepts ctx and
             distribution names to query.
         evaluate_markers: A function to use to evaluate the requirements.
@@ -89,6 +90,8 @@ def parse_requirements(
     options = {}
     requirements = {}
     reqs_with_env_markers = {}
+    index_url = None
+    extra_index_urls = []
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -112,6 +115,18 @@ def parse_requirements(
                 if ";" in requirement_line:
                     reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
             options[plat] = pip_args
+
+            # Parse the index URL from the requirement files
+            index_url = argparse.index_url(pip_args, index_url)
+            extra_index_urls = argparse.extra_index_url(pip_args, [])
+            platform = argparse.platform(pip_args, [])
+            if platform:
+                # No use of downloader if the user specifies "--platform" pip arg. This means that
+                # they intend to use pip to download the wheels
+                #
+                # TODO @aignas 2026-04-11: consider removing this line in the next major release
+                # (3.0).
+                get_index_urls = None
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
@@ -170,15 +185,19 @@ def parse_requirements(
 
     index_urls = {}
     if get_index_urls:
+        distributions = {}
+        for reqs in requirements_by_platform.values():
+            for req in reqs.values():
+                if req.srcs.url:
+                    continue
+
+                distributions.setdefault(req.distribution, []).append(req.srcs.version)
+
         index_urls = get_index_urls(
             ctx,
-            # Use list({}) as a way to have a set
-            list({
-                req.distribution: None
-                for reqs in requirements_by_platform.values()
-                for req in reqs.values()
-                if not req.srcs.url
-            }),
+            distributions,
+            index_url = index_url,
+            extra_index_urls = extra_index_urls,
         )
 
     ret = []
@@ -188,10 +207,11 @@ def parse_requirements(
             for p in r.target_platforms:
                 requirement_target_platforms[p] = None
 
+        pkg_sources = index_urls.get(name)
         package_srcs = _package_srcs(
             name = name,
             reqs = reqs,
-            index_urls = index_urls,
+            pkg_sources = pkg_sources,
             platforms = platforms,
             extract_url_srcs = extract_url_srcs,
             logger = logger,
@@ -216,6 +236,7 @@ def parse_requirements(
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,
+            index_url = pkg_sources.index_url if pkg_sources else "",
             srcs = package_srcs,
         )
         ret.append(item)
@@ -234,7 +255,7 @@ def _package_srcs(
         *,
         name,
         reqs,
-        index_urls,
+        pkg_sources,
         platforms,
         logger,
         extract_url_srcs):
@@ -253,19 +274,19 @@ def _package_srcs(
             dist, can_fallback = _add_dists(
                 requirement = r,
                 target_platform = platforms.get(target_platform),
-                index_urls = index_urls.get(name),
+                index_urls = pkg_sources,
                 logger = logger,
             )
             logger.debug(lambda: "The whl dist is: {}".format(dist.filename if dist else dist))
 
             if extract_url_srcs and dist:
                 req_line = r.srcs.requirement
-            elif can_fallback:
+            elif can_fallback or (not extract_url_srcs and dist):
                 dist = struct(
                     url = "",
                     filename = "",
                     sha256 = "",
-                    yanked = False,
+                    yanked = None,
                 )
                 req_line = r.srcs.requirement_line
             else:
@@ -377,7 +398,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             url = requirement.srcs.url,
             filename = requirement.srcs.filename,
             sha256 = requirement.srcs.shas[0] if requirement.srcs.shas else "",
-            yanked = False,
+            yanked = None,
         )
 
         return dist, False
@@ -401,12 +422,12 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
         # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
 
         maybe_whl = index_urls.whls.get(sha256)
-        if maybe_whl and not maybe_whl.yanked:
+        if maybe_whl and maybe_whl.yanked == None:
             whls.append(maybe_whl)
             continue
 
         maybe_sdist = index_urls.sdists.get(sha256)
-        if maybe_sdist and not maybe_sdist.yanked:
+        if maybe_sdist and maybe_sdist.yanked == None:
             sdist = maybe_sdist
             continue
 
@@ -414,7 +435,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
 
     yanked = {}
     for dist in whls + [sdist]:
-        if dist and dist.yanked:
+        if dist and dist.yanked != None:
             yanked.setdefault(dist.yanked, []).append(dist.filename)
     if yanked:
         logger.warn(lambda: "\n".join([

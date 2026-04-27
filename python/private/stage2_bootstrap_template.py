@@ -27,7 +27,7 @@ from functools import cache
 # ===== Template substitutions start =====
 # We just put them in one place so its easy to tell which are used.
 
-# Runfiles-relative path to the main Python source file.
+# Runfiles-root-relative path to the main Python source file.
 # Empty if MAIN_MODULE is used
 MAIN_PATH = "%main%"
 
@@ -48,9 +48,26 @@ VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
 
 # runfiles-root-relative path to a file with binary-specific build information
+# It uses forward slashes, so must be converted for proper usage on Windows.
 BUILD_DATA_FILE = "%build_data_file%"
 
 # ===== Template substitutions end =====
+
+IS_WINDOWS = os.name == "nt"
+IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
+
+# Windows APIs can be picky about slashes depending on the context,
+# so convert to backslashes to avoid any issues.
+# Related: some logic checks path strings, which needs uniform separators.
+if IS_WINDOWS:
+
+    def norm_slashes(s):
+        return s.replace("/", "\\")
+
+    MAIN_PATH = norm_slashes(MAIN_PATH)
+    VENV_ROOT = norm_slashes(VENV_ROOT)
+    VENV_SITE_PACKAGES = norm_slashes(VENV_SITE_PACKAGES)
+    BUILD_DATA_FILE = norm_slashes(BUILD_DATA_FILE)
 
 
 class BazelBinaryInfoModule(types.ModuleType):
@@ -64,24 +81,31 @@ class BazelBinaryInfoModule(types.ModuleType):
             import runfiles
         except ImportError:
             from python.runfiles import runfiles
-        path = runfiles.Create().Rlocation(self.BUILD_DATA_FILE)
-        with open(path) as fp:
-            return fp.read()
+        rlocation_path = self.BUILD_DATA_FILE
+        path = runfiles.Create().Rlocation(rlocation_path)
+        if IS_WINDOWS:
+            path = os.path.normpath(path)
+        try:
+            # Use utf-8-sig to handle Windows BOM
+            with open(path, encoding="utf-8-sig") as fp:
+                return fp.read()
+        except Exception as exc:
+            if hasattr(exc, "add_note"):
+                exc.add_note(f"runfiles lookup path: {rlocation_path}")
+                exc.add_note(f"exists: {os.path.exists(path)}")
+                can_read = os.access(path, os.R_OK)
+                exc.add_note(f"readable: {can_read}")
+            raise
 
 
 sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
-
-
-# Return True if running on Windows
-def is_windows():
-    return os.name == "nt"
 
 
 def get_windows_path_with_unc_prefix(path):
     path = path.strip()
 
     # No need to add prefix for non-Windows platforms.
-    if not is_windows() or sys.version_info[0] < 3:
+    if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
     # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
@@ -114,32 +138,29 @@ def get_windows_path_with_unc_prefix(path):
     return unicode_prefix + os.path.abspath(path)
 
 
-def is_verbose():
-    return bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
-
-
 def print_verbose(*args, mapping=None, values=None):
-    if is_verbose():
-        if mapping is not None:
-            for key, value in sorted((mapping or {}).items()):
-                print(
-                    "bootstrap: stage 2:",
-                    *args,
-                    f"{key}={value!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        elif values is not None:
-            for i, v in enumerate(values):
-                print(
-                    "bootstrap: stage 2:",
-                    *args,
-                    f"[{i}] {v!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        else:
-            print("bootstrap: stage 2:", *args, file=sys.stderr, flush=True)
+    if not IS_VERBOSE:
+        return
+    if mapping is not None:
+        for key, value in sorted((mapping or {}).items()):
+            print(
+                "bootstrap: stage 2:",
+                *args,
+                f"{key}={value!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    elif values is not None:
+        for i, v in enumerate(values):
+            print(
+                "bootstrap: stage 2:",
+                *args,
+                f"[{i}] {v!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    else:
+        print("bootstrap: stage 2:", *args, file=sys.stderr, flush=True)
 
 
 def print_verbose_coverage(*args):
@@ -150,7 +171,7 @@ def print_verbose_coverage(*args):
 
 def is_verbose_coverage():
     """Returns True if VERBOSE_COVERAGE is non-empty in the environment."""
-    return os.environ.get("VERBOSE_COVERAGE") or is_verbose()
+    return os.environ.get("VERBOSE_COVERAGE") or IS_VERBOSE
 
 
 def find_runfiles_root(main_rel_path):
@@ -172,16 +193,23 @@ def find_runfiles_root(main_rel_path):
     if runfiles_dir and os.path.exists(os.path.join(runfiles_dir, main_rel_path)):
         return runfiles_dir
 
+    # Clear RUNFILES_DIR & RUNFILES_MANIFEST_FILE since the runfiles dir was
+    # not found. These can be correctly set for a parent Python process, but
+    # inherited by the child, and not correct for it. Later bootstrap code
+    # assumes they're are correct if set.
+    os.environ.pop("RUNFILES_DIR", None)
+    os.environ.pop("RUNFILES_MANIFEST_FILE", None)
+
     stub_filename = sys.argv[0]
     if not os.path.isabs(stub_filename):
         stub_filename = os.path.join(os.getcwd(), stub_filename)
 
     while True:
-        module_space = stub_filename + (".exe" if is_windows() else "") + ".runfiles"
+        module_space = stub_filename + (".exe" if IS_WINDOWS else "") + ".runfiles"
         if os.path.isdir(module_space):
             return module_space
 
-        runfiles_pattern = r"(.*\.runfiles)" + (r"\\" if is_windows() else "/") + ".*"
+        runfiles_pattern = r"(.*\.runfiles)" + (r"\\" if IS_WINDOWS else "/") + ".*"
         matchobj = re.match(runfiles_pattern, stub_filename)
         if matchobj:
             return matchobj.group(1)
@@ -194,6 +222,8 @@ def find_runfiles_root(main_rel_path):
         else:
             stub_filename = os.path.join(os.path.dirname(stub_filename), target)
 
+    # The `--enable_runfiles=false` flag is likely set, which isn't fully
+    # supported.
     raise AssertionError("Cannot find .runfiles directory for %s" % sys.argv[0])
 
 
@@ -400,12 +430,32 @@ source =
 
 
 def _add_site_packages(site_packages):
+    if sys.prefix != sys.base_prefix:
+        venv_root = sys.prefix + os.sep
+        saw_venv_site_packages = False
+    else:
+        venv_root = None
+        saw_venv_site_packages = True
     first_global_offset = len(sys.path)
     for i, p in enumerate(sys.path):
+        # Handle the Windows venv case: when a temporary directory is created
+        # for the venv, we want the build-time venv in runfiles to come after
+        # the venv site-packages directory.
+        if venv_root:
+            is_venv_path = (p + os.sep).startswith(venv_root)
+            if is_venv_path:
+                if p.endswith("site-packages"):
+                    saw_venv_site_packages = True
+                is_after_venv_site_packages = False
+            else:
+                is_after_venv_site_packages = saw_venv_site_packages
+        else:
+            is_after_venv_site_packages = True
+
         # We assume the first *-packages is the runtime's.
         # *-packages is matched because Debian may use dist-packages
         # instead of site-packages.
-        if p.endswith("-packages"):
+        if p.endswith("-packages") and is_after_venv_site_packages:
             first_global_offset = i
             break
     prev_len = len(sys.path)
@@ -432,7 +482,7 @@ def main():
     # runfiles root
     if MAIN_PATH:
         main_rel_path = MAIN_PATH
-        if is_windows():
+        if IS_WINDOWS:
             main_rel_path = main_rel_path.replace("/", os.sep)
 
         runfiles_root = find_runfiles_root(main_rel_path)

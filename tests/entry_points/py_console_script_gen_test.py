@@ -162,7 +162,7 @@ class RunTest(unittest.TestCase):
             raise
 
         if __name__ == "__main__":
-            sys.exit(baz())
+            sys.exit(baz())  # type: ignore
         """
         )
         self.assertEqual(want, got)

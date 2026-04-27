@@ -94,13 +94,18 @@ def normalize_pep440(version):
     substituted = re.sub(r"\{\w+\}", "0", version)
     delimiter = "." if "+" in substituted else "+"
     try:
-        return str(packaging.version.Version(f"{substituted}{delimiter}{sanitized}"))
+        return str(
+            packaging.version.Version(f"{substituted}{delimiter}{sanitized}")
+        )
     except packaging.version.InvalidVersion:
         return str(packaging.version.Version(f"0+{sanitized}"))
 
 
 def arcname_from(
-    name: str, distribution_prefix: str, strip_path_prefixes: Sequence[str] = ()
+    name: str,
+    distribution_prefix: str,
+    strip_path_prefixes: Sequence[str] = (),
+    add_path_prefix: str = "",
 ) -> str:
     """Return the within-archive name for a given file path name.
 
@@ -110,17 +115,20 @@ def arcname_from(
         name: The file path eg 'mylib/a/b/c/file.py'
         distribution_prefix: The
         strip_path_prefixes: Remove these prefixes from names.
+        add_path_prefix: Add prefix after stripping the path from names.
     """
     # Always use unix path separators.
     normalized_arcname = name.replace(os.path.sep, "/")
     # Don't manipulate names filenames in the .distinfo or .data directories.
-    if distribution_prefix and normalized_arcname.startswith(distribution_prefix):
+    if distribution_prefix and normalized_arcname.startswith(
+        distribution_prefix
+    ):
         return normalized_arcname
     for prefix in strip_path_prefixes:
         if normalized_arcname.startswith(prefix):
-            return normalized_arcname[len(prefix) :]
+            return add_path_prefix + normalized_arcname[len(prefix) :]
 
-    return normalized_arcname
+    return add_path_prefix + normalized_arcname
 
 
 class _WhlFile(zipfile.ZipFile):
@@ -131,6 +139,7 @@ class _WhlFile(zipfile.ZipFile):
         mode,
         distribution_prefix: str,
         strip_path_prefixes=None,
+        add_path_prefix=None,
         compression=zipfile.ZIP_DEFLATED,
         quote_all_filenames: bool = False,
         **kwargs,
@@ -138,6 +147,7 @@ class _WhlFile(zipfile.ZipFile):
         self._distribution_prefix = distribution_prefix
 
         self._strip_path_prefixes = strip_path_prefixes or []
+        self._add_path_prefix = add_path_prefix or ""
         # Entries for the RECORD file as (filename, digest, size) tuples.
         self._record: list[tuple[str, str, str]] = []
         # Whether to quote filenames in the RECORD file (for compatibility with
@@ -168,6 +178,7 @@ class _WhlFile(zipfile.ZipFile):
             package_filename,
             distribution_prefix=self._distribution_prefix,
             strip_path_prefixes=self._strip_path_prefixes,
+            add_path_prefix=self._add_path_prefix,
         )
         zinfo = self._zipinfo(arcname)
 
@@ -194,7 +205,9 @@ class _WhlFile(zipfile.ZipFile):
         self.writestr(zinfo, contents)
         hash = hashlib.sha256()
         hash.update(contents)
-        self._add_to_record(filename, self._serialize_digest(hash), len(contents))
+        self._add_to_record(
+            filename, self._serialize_digest(hash), len(contents)
+        )
 
     def _serialize_digest(self, hash) -> str:
         # https://www.python.org/dev/peps/pep-0376/#record
@@ -231,7 +244,9 @@ class _WhlFile(zipfile.ZipFile):
         filename = filename.lstrip("/")
         # Some RECORDs like torch have *all* filenames quoted and we must minimize diff.
         # Otherwise, we quote only when necessary (e.g. for filenames with commas).
-        quoting = csv.QUOTE_ALL if self.quote_all_filenames else csv.QUOTE_MINIMAL
+        quoting = (
+            csv.QUOTE_ALL if self.quote_all_filenames else csv.QUOTE_MINIMAL
+        )
         with io.StringIO() as buf:
             csv.writer(buf, quoting=quoting).writerow([filename])
             return buf.getvalue().strip()
@@ -261,6 +276,7 @@ class WheelMaker(object):
         compress,
         outfile=None,
         strip_path_prefixes=None,
+        add_path_prefix=None,
     ):
         self._name = name
         self._version = normalize_pep440(version)
@@ -270,9 +286,10 @@ class WheelMaker(object):
         self._platform = platform
         self._outfile = outfile
         self._strip_path_prefixes = strip_path_prefixes
+        self._add_path_prefix = add_path_prefix
         self._compress = compress
-        self._wheelname_fragment_distribution_name = escape_filename_distribution_name(
-            self._name
+        self._wheelname_fragment_distribution_name = (
+            escape_filename_distribution_name(self._name)
         )
 
         self._distribution_prefix = (
@@ -287,7 +304,10 @@ class WheelMaker(object):
             mode="w",
             distribution_prefix=self._distribution_prefix,
             strip_path_prefixes=self._strip_path_prefixes,
-            compression=zipfile.ZIP_DEFLATED if self._compress else zipfile.ZIP_STORED,
+            add_path_prefix=self._add_path_prefix,
+            compression=(
+                zipfile.ZIP_DEFLATED if self._compress else zipfile.ZIP_STORED
+            ),
         )
         return self
 
@@ -341,7 +361,9 @@ Root-Is-Purelib: {}
         """Write METADATA file to the distribution."""
         # https://www.python.org/dev/peps/pep-0566/
         # https://packaging.python.org/specifications/core-metadata/
-        metadata = re.sub("^Name: .*$", "Name: %s" % name, metadata, flags=re.MULTILINE)
+        metadata = re.sub(
+            "^Name: .*$", "Name: %s" % name, metadata, flags=re.MULTILINE
+        )
         metadata += "Version: %s\n\n" % self._version
         # setuptools seems to insert UNKNOWN as description when none is
         # provided.
@@ -363,6 +385,32 @@ def get_files_to_package(input_files):
     for package_path, real_path in input_files:
         files[package_path] = real_path
     return files
+
+
+def get_new_requirement_line(reqs_text: str, extra: str) -> str:
+    """Formats a requirement text into a Requires-Dist metadata line."""
+    from packaging.requirements import Requirement
+
+    req = Requirement(reqs_text.strip())
+    req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
+
+    # Handle URL requirements (PEP 508)
+    if req.url:
+        req_spec = f" @ {req.url}"
+    else:
+        req_spec = str(req.specifier)
+
+    base = f"Requires-Dist: {req.name}{req_extra_deps}{req_spec}"
+
+    if req.marker:
+        if extra:
+            return f"{base}; ({req.marker}) and {extra}"
+        else:
+            return f"{base}; {req.marker}"
+    elif extra:
+        return f"{base}; {extra}"
+    else:
+        return base
 
 
 def resolve_argument_stamp(
@@ -394,7 +442,9 @@ def resolve_argument_stamp(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Builds a python wheel")
-    metadata_group = parser.add_argument_group("Wheel name, version and platform")
+    metadata_group = parser.add_argument_group(
+        "Wheel name, version and platform"
+    )
     metadata_group.add_argument(
         "--name", required=True, type=str, help="Name of the distribution"
     )
@@ -430,7 +480,7 @@ def parse_args() -> argparse.Namespace:
     output_group.add_argument(
         "--name_file",
         type=Path,
-        help="A file where the canonical name of the " "wheel will be written",
+        help="A file where the canonical name of the wheel will be written",
     )
 
     output_group.add_argument(
@@ -440,6 +490,13 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Path prefix to be stripped from input package files' path. "
         "Can be supplied multiple times. Evaluated in order.",
+    )
+    output_group.add_argument(
+        "--path_prefix",
+        type=str,
+        default="",
+        help="Path prefix to be prepended to input package files' path. "
+        "It is prepended after stripping any specified path prefixes first.",
     )
 
     wheel_group = parser.add_argument_group("Wheel metadata")
@@ -453,7 +510,8 @@ def parse_args() -> argparse.Namespace:
         "--description_file", help="Path to the file with package description"
     )
     wheel_group.add_argument(
-        "--description_content_type", help="Content type of the package description"
+        "--description_content_type",
+        help="Content type of the package description",
     )
     wheel_group.add_argument(
         "--entry_points_file",
@@ -555,6 +613,7 @@ def main() -> None:
         platform=arguments.platform,
         outfile=arguments.out,
         strip_path_prefixes=strip_prefixes,
+        add_path_prefix=arguments.path_prefix,
         compress=not arguments.no_compress,
     ) as maker:
         for package_filename, real_filename in all_files:
@@ -578,26 +637,15 @@ def main() -> None:
         # Search for any `Requires-Dist` entries that refer to other files and
         # expand them.
 
-        def get_new_requirement_line(reqs_text, extra):
-            req = Requirement(reqs_text.strip())
-            req_extra_deps = f"[{','.join(req.extras)}]" if req.extras else ""
-            if req.marker:
-                if extra:
-                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; ({req.marker}) and {extra}"
-                else:
-                    return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {req.marker}"
-            else:
-                return f"Requires-Dist: {req.name}{req_extra_deps}{req.specifier}; {extra}".strip(
-                    " ;"
-                )
-
         for meta_line in metadata.splitlines():
             if not meta_line.startswith("Requires-Dist: "):
                 continue
 
             if not meta_line[len("Requires-Dist: ") :].startswith("@"):
                 # This is a normal requirement.
-                package, _, extra = meta_line[len("Requires-Dist: ") :].rpartition(";")
+                package, _, extra = meta_line[
+                    len("Requires-Dist: ") :
+                ].rpartition(";")
                 if not package:
                     # This is when the package requirement does not have markers.
                     continue
@@ -612,7 +660,9 @@ def main() -> None:
             extra = extra.strip()
 
             reqs = []
-            for reqs_line in Path(file).read_text(encoding="utf-8").splitlines():
+            for reqs_line in (
+                Path(file).read_text(encoding="utf-8").splitlines()
+            ):
                 reqs_text = reqs_line.strip()
                 if not reqs_text or reqs_text.startswith(("#", "-")):
                     continue
@@ -639,7 +689,8 @@ def main() -> None:
 
         if arguments.entry_points_file:
             maker.add_file(
-                maker.distinfo_path("entry_points.txt"), arguments.entry_points_file
+                maker.distinfo_path("entry_points.txt"),
+                arguments.entry_points_file,
             )
 
         # Sort the files for reproducible order in the archive.

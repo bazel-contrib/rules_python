@@ -1,6 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("//python:py_test.bzl", "py_test")
+load("@rules_python//python:py_test.bzl", "py_test")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load("//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
 

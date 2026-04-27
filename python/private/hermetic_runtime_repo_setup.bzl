@@ -58,30 +58,35 @@ def define_hermetic_runtime_toolchain_impl(
         "major": version_info.release[0],
         "minor": version_info.release[1],
     }
+    files_include = [
+        "bin/**",
+        "extensions/**",
+        "include/**",
+        "libs/**",
+        "share/**",
+    ]
+    files_include += extra_files_glob_include
+    files_exclude = [
+        # Unused shared libraries. `python` executable and the `:libpython` target
+        # depend on `libpython{python_version}.so.1.0`.
+        "lib/libpython{major}.{minor}*.so".format(**version_dict),
+        # static libraries
+        "lib/**/*.a",
+        # tests for the standard libraries.
+        "lib/python{major}.{minor}*/**/test/**".format(**version_dict),
+        "lib/python{major}.{minor}*/**/tests/**".format(**version_dict),
+        # During pyc creation, temp files named *.pyc.NNN are created
+        "**/__pycache__/*.pyc.*",
+    ]
+    files_exclude += extra_files_glob_exclude
+
     native.filegroup(
         name = "files",
         srcs = native.glob(
-            include = [
-                "bin/**",
-                "extensions/**",
-                "include/**",
-                "libs/**",
-                "share/**",
-            ] + extra_files_glob_include,
+            include = files_include,
             # Platform-agnostic filegroup can't match on all patterns.
             allow_empty = True,
-            exclude = [
-                # Unused shared libraries. `python` executable and the `:libpython` target
-                # depend on `libpython{python_version}.so.1.0`.
-                "lib/libpython{major}.{minor}*.so".format(**version_dict),
-                # static libraries
-                "lib/**/*.a",
-                # tests for the standard libraries.
-                "lib/python{major}.{minor}*/**/test/**".format(**version_dict),
-                "lib/python{major}.{minor}*/**/tests/**".format(**version_dict),
-                # During pyc creation, temp files named *.pyc.NNN are created
-                "**/__pycache__/*.pyc.*",
-            ] + extra_files_glob_exclude,
+            exclude = files_exclude,
         ),
     )
     cc_import(
@@ -234,6 +239,18 @@ def define_hermetic_runtime_toolchain_impl(
         pyc_tag = select({
             _IS_FREETHREADED_YES: "cpython-{major}{minor}t".format(**version_dict),
             _IS_FREETHREADED_NO: "cpython-{major}{minor}".format(**version_dict),
+        }),
+        # On Windows, a symlink-style venv requires supporting .dll files.
+        venv_bin_files = select({
+            "@platforms//os:windows": native.glob(
+                include = [
+                    "*.dll",
+                ],
+                # This must be true because glob empty-ness is checked
+                # during loading phase, before select() filters it out.
+                allow_empty = True,
+            ),
+            "//conditions:default": [],
         }),
     )
 

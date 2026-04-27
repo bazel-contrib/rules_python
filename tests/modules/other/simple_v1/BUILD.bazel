@@ -10,5 +10,5 @@ py_library(
         exclude = ["site-packages/**/*.py"],
     ),
     experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
-    imports = [package_name() + "/site-packages"],
+    imports = ["site-packages"],
 )

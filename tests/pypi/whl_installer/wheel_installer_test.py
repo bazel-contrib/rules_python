@@ -63,19 +63,18 @@ class TestWhlFilegroup(unittest.TestCase):
         shutil.copy(os.path.join("examples", "wheel", self.wheel_name), self.wheel_dir)
 
     def tearDown(self):
-        shutil.rmtree(self.wheel_dir)
+        # On windows, the wheel file remains open, so gives an error upon
+        # deletion for some reason.
+        shutil.rmtree(self.wheel_dir, ignore_errors=True)
 
     def test_wheel_exists(self) -> None:
         wheel_installer._extract_wheel(
             Path(self.wheel_path),
             installation_dir=Path(self.wheel_dir),
             extras={},
-            platforms=[],
-            enable_pipstar=False,
         )
 
         want_files = [
-            "metadata.json",
             "site-packages",
             self.wheel_name,
         ]
@@ -88,17 +87,6 @@ class TestWhlFilegroup(unittest.TestCase):
                 ]
             ),
         )
-        with open("{}/metadata.json".format(self.wheel_dir)) as metadata_file:
-            metadata_file_content = json.load(metadata_file)
-
-        want = dict(
-            deps=[],
-            deps_by_platform={},
-            entry_points=[],
-            name="example-minimal-package",
-            version="0.0.1",
-        )
-        self.assertEqual(want, metadata_file_content)
 
 
 if __name__ == "__main__":

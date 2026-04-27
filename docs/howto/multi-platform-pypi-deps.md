@@ -48,7 +48,7 @@ Additional dimensions should be appended and separated with an underscore (e.g.
 `linux_x86_64_musl_cuda12.9_numpy2`).
 
 The platform name should not include the Python version. That is handled by
-`pip.parse.python_version` separately.
+{attr}`pip.parse.python_version` separately.
 
 :::{note}
 The term _platform_ here has nothing to do with Bazel's `platform()` rule.
@@ -56,7 +56,7 @@ The term _platform_ here has nothing to do with Bazel's `platform()` rule.
 
 #### Defining custom settings
 
-Because {obj}`pip.parse.config_settings` is a list of arbitrary `config_setting`
+Because {attr}`pip.default.config_settings` is a list of arbitrary `config_setting`
 targets, you can define your own flags or implement custom config matching
 logic. This allows you to model settings that aren't inherently part of
 rules_python.
@@ -85,7 +85,7 @@ contains commonly used settings for OS and CPU:
 * `@platforms//cpu:aarch64`
 
 Note that these are the raw flag names. In order to use them with `pip.default`,
-you must use {obj}`config_setting()` to match a particular value for them.
+you must use {obj}`config_setting` to match a particular value for them.
 
 ### Associating Requirements to Platforms
 

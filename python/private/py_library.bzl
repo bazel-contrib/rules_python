@@ -105,10 +105,9 @@ and that only one package version will be included.
             doc = """
 Files whose directories are namespace packages.
 
-When {obj}`--venv_site_packages=yes` is set, this helps inform which directories should be
+When {obj}`--venvs_site_packages=yes` is set, this helps inform which directories should be
 treated as namespace packages and expect files from other targets to be contributed.
 This allows optimizing the generation of symlinks to be cheaper at analysis time.
-
 :::{versionadded} 1.8.0
 :::
 """,
@@ -246,12 +245,24 @@ def _get_imports_and_venv_symlinks(ctx):
             fail("When venvs_site_packages is enabled, exactly one `imports` " +
                  "value must be specified, got {}".format(imports))
 
+        site_packages_root = paths.normalize(paths.join(
+            ctx.label.package,
+            imports[0],
+        ))
+
+        # Prevent escaping out of the repo root.
+        if site_packages_root.startswith("../") or site_packages_root == "..":
+            fail(("Invalid `imports` value '{}': resolves to '{}' which is " +
+                  "above the repo root").format(
+                imports[0],
+                site_packages_root,
+            ))
         venv_symlinks = get_venv_symlinks(
             ctx,
             ctx.files.srcs + ctx.files.data + ctx.files.pyi_srcs,
             package,
             version_str,
-            site_packages_root = imports[0],
+            site_packages_root = site_packages_root,
             namespace_package_files = ctx.files.namespace_package_files,
         )
     else:
@@ -271,7 +282,7 @@ def create_py_library_rule_builder():
     :::
 
     Returns:
-        {type}`ruleb.Rule` with the necessary settings
+        {obj}`ruleb.Rule` with the necessary settings
         for creating a `py_library` rule.
     """
     builder = ruleb.Rule(

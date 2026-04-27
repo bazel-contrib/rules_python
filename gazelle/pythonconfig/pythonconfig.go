@@ -104,6 +104,10 @@ const (
 	// separate pyi_deps attribute or merge type-checking dependencies into deps.
 	// Defaults to false for backward compatibility.
 	GeneratePyiDeps = "python_generate_pyi_deps"
+	// GeneratePyiSrcs represents the directive that controls whether to include
+	// a pyi_srcs attribute if a sibling .pyi file is found.
+	// Defaults to false for backward compatibility.
+	GeneratePyiSrcs = "python_generate_pyi_srcs"
 	// GenerateProto represents the directive that controls whether to generate
 	// python_generate_proto targets.
 	GenerateProto = "python_generate_proto"
@@ -112,6 +116,15 @@ const (
 	// like "import a" can be resolved to sibling modules. When disabled, they
 	// can only be resolved as an absolute import.
 	PythonResolveSiblingImports = "python_resolve_sibling_imports"
+	// PythonIncludeAncestorConftest represents the directive that controls
+	// whether ancestor conftest.py files are added as dependencies to py_test
+	// targets. When enabled (the default), ancestor conftest.py files are
+	// included as deps.
+	// See also https://github.com/bazel-contrib/rules_python/pull/3498, which
+	// fixed previous behavior that was incorrectly _not_ adding the files and
+	// https://github.com/bazel-contrib/rules_python/issues/3595 which requested
+	// that the behavior be configurable.
+	PythonIncludeAncestorConftest = "python_include_ancestor_conftest"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -202,8 +215,10 @@ type Config struct {
 	labelNormalization                        LabelNormalizationType
 	experimentalAllowRelativeImports          bool
 	generatePyiDeps                           bool
+	generatePyiSrcs                           bool
 	generateProto                             bool
 	resolveSiblingImports                     bool
+	includeAncestorConftest                   bool
 }
 
 type LabelNormalizationType int
@@ -242,8 +257,10 @@ func New(
 		labelNormalization:                        DefaultLabelNormalizationType,
 		experimentalAllowRelativeImports:          false,
 		generatePyiDeps:                           false,
+		generatePyiSrcs:                           false,
 		generateProto:                             false,
 		resolveSiblingImports:                     false,
+		includeAncestorConftest:                   true,
 	}
 }
 
@@ -279,8 +296,10 @@ func (c *Config) NewChild() *Config {
 		labelNormalization:                        c.labelNormalization,
 		experimentalAllowRelativeImports:          c.experimentalAllowRelativeImports,
 		generatePyiDeps:                           c.generatePyiDeps,
+		generatePyiSrcs:                           c.generatePyiSrcs,
 		generateProto:                             c.generateProto,
 		resolveSiblingImports:                     c.resolveSiblingImports,
+		includeAncestorConftest:                   c.includeAncestorConftest,
 	}
 }
 
@@ -590,6 +609,18 @@ func (c *Config) GeneratePyiDeps() bool {
 	return c.generatePyiDeps
 }
 
+// SetGeneratePyiSrcs sets whether pyi_srcs attribute should be generated if a sibling
+// .pyi file is found.
+func (c *Config) SetGeneratePyiSrcs(generatePyiSrcs bool) {
+	c.generatePyiSrcs = generatePyiSrcs
+}
+
+// GeneratePyiSrcs returns whether pyi_srcs attribute should be generated if a sibling
+// .pyi file is found.
+func (c *Config) GeneratePyiSrcs() bool {
+	return c.generatePyiSrcs
+}
+
 // SetGenerateProto sets whether py_proto_library should be generated for proto_library.
 func (c *Config) SetGenerateProto(generateProto bool) {
 	c.generateProto = generateProto
@@ -608,6 +639,16 @@ func (c *Config) SetResolveSiblingImports(resolveSiblingImports bool) {
 // ResolveSiblingImports returns whether absolute imports can be resolved to sibling modules.
 func (c *Config) ResolveSiblingImports() bool {
 	return c.resolveSiblingImports
+}
+
+// SetIncludeAncestorConftest sets whether ancestor conftest files are added to py_test targets.
+func (c *Config) SetIncludeAncestorConftest(includeAncestorConftest bool) {
+	c.includeAncestorConftest = includeAncestorConftest
+}
+
+// IncludeAncestorConftest returns whether ancestor conftest files are added to py_test targets.
+func (c *Config) IncludeAncestorConftest() bool {
+	return c.includeAncestorConftest
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

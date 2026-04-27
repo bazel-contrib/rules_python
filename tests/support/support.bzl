@@ -35,19 +35,11 @@ SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "//conditions:default": [],
 })
 
-SUPPORTS_BZLMOD_UNIXY = select({
-    "@platforms//os:windows": ["@platforms//:incompatible"],
-    "//conditions:default": [],
-}) if BZLMOD_ENABLED else ["@platforms//:incompatible"]
+SUPPORTS_BZLMOD = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"]
 
 NOT_WINDOWS = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
 })
 
-def maybe_builtin_build_python_zip(value):
-    settings = {}
-    if not config.bazel_10_or_later:
-        settings["//command_line_option:build_python_zip"] = value
-
-    return settings
+BAZEL_8_OR_LATER = [] if config.bazel_8_or_later else ["@platforms//:incompatible"]

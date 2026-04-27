@@ -21,12 +21,13 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_executable_info.bzl", "PyExecutableInfo")
 load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
+load("//python/private:common.bzl", "maybe_builtin_build_python_zip")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyRuntimeInfo")  # buildifier: disable=bzl-visibility
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", "WINDOWS_ATTR", pt_util = "util")
 load("//tests/support:py_executable_info_subject.bzl", "PyExecutableInfoSubject")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "maybe_builtin_build_python_zip")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP")
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _tests = []
@@ -43,19 +44,12 @@ def _test_basic_windows(name, config):
         impl = _test_basic_windows_impl,
         target = name + "_subject",
         config_settings = {
-            # NOTE: The default for this flag is based on the Bazel host OS, not
-            # the target platform. For windows, it defaults to true, so force
-            # it to that to match behavior when this test runs on other
-            # platforms.
-            # Pass value to both native and starlark versions of the flag until
-            # the native one is removed.
-            labels.BUILD_PYTHON_ZIP: True,
             "//command_line_option:cpu": "windows_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
             "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
             "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
-        } | maybe_builtin_build_python_zip("true"),
+        },
         attr_values = {},
     )
 
@@ -63,7 +57,7 @@ def _test_basic_windows_impl(env, target):
     target = env.expect.that_target(target)
     target.executable().path().contains(".exe")
     target.runfiles().contains_predicate(matching.str_endswith(
-        target.meta.format_str("/{name}.zip"),
+        target.meta.format_str("/{name}"),
     ))
     target.runfiles().contains_predicate(matching.str_endswith(
         target.meta.format_str("/{name}.exe"),
@@ -193,7 +187,7 @@ def _test_debugger(name, config):
     rt_util.helper_target(
         py_library,
         name = name + "_debugger_venv",
-        imports = [native.package_name() + "/site-packages"],
+        imports = ["site-packages"],
         experimental_venvs_site_packages = "@rules_python//python/config_settings:venvs_site_packages",
         srcs = [rt_util.empty_file("site-packages/" + name + "_debugger_venv.py")],
     )
@@ -245,9 +239,9 @@ def _test_debugger_impl(env, targets):
 
     # #3481: Ensure that venv site-packages is setup correctly, if the dependency is coming
     # from pip integration.
-    env.expect.that_target(targets.target_venv).runfiles().contains_at_least([
-        "{workspace}/{package}/_{name}.venv/lib/python3.13/site-packages/{test_name}_debugger_venv.py",
-    ])
+    env.expect.that_target(targets.target_venv).runfiles().contains_predicate(
+        matching.str_endswith("site-packages/test_debugger_debugger_venv.py"),
+    )
 
     # 3. Subject exec
 
@@ -377,7 +371,7 @@ def _test_explicit_main_cannot_be_ambiguous_impl(env, target):
         matching.str_matches("foo.py*matches multiple"),
     )
 
-def _test_files_to_build(name, config):
+def _test_default_outputs(name, config):
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -385,14 +379,14 @@ def _test_files_to_build(name, config):
     )
     analysis_test(
         name = name,
-        impl = _test_files_to_build_impl,
+        impl = _test_default_outputs_impl,
         target = name + "_subject",
         attrs = WINDOWS_ATTR,
     )
 
-_tests.append(_test_files_to_build)
+_tests.append(_test_default_outputs)
 
-def _test_files_to_build_impl(env, target):
+def _test_default_outputs_impl(env, target):
     default_outputs = env.expect.that_target(target).default_outputs()
     if pt_util.is_windows(env):
         default_outputs.contains("{package}/{test_name}_subject.exe")

@@ -31,9 +31,11 @@ buildifier:
     # As a regression test for #225, check that wheel targets still build when
     # their package path is qualified with the repo name.
     - "@rules_python//examples/wheel/..."
-  build_flags:
+  build_flags: &reusable_config_build_flags
+    - "--experimental_repository_cache_hardlinks=false"
     - "--keep_going"
     - "--build_tag_filters=-integration-test"
+    - "--verbose_failures"
   test_targets:
     - "--"
     - "..."
@@ -41,6 +43,7 @@ buildifier:
     - "--test_tag_filters=-integration-test"
 .common_workspace_flags_min_bazel: &common_workspace_flags_min_bazel
   build_flags:
+    - "--experimental_repository_cache_hardlinks=false"
     - "--noenable_bzlmod"
     - "--build_tag_filters=-integration-test"
   test_flags:
@@ -112,12 +115,14 @@ buildifier:
 
 
 matrix:
+  # Keep in sync with .bcr/presubmit.yml
   platform:
     - ubuntu2204
     - debian11
     - macos_arm64
     - windows
-  bazel: [7.*, 8.*, 9.*]
+  # Keep in sync with .bcr/presubmit.yml
+  bazel: [7.x, 8.x, 9.x]
 
 tasks:
   # Keep in sync with .bcr/presubmit.yml
@@ -171,6 +176,27 @@ tasks:
     test_targets: ["//..."]
     working_directory: gazelle
 
+  sphinxdocs_ubuntu:
+    name: "Sphinxdocs: Ubuntu"
+    working_directory: "sphinxdocs"
+    platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
+    build_targets:
+      - "//..."
+    test_targets:
+      - "//..."
+  sphinxdocs_mac:
+    name: "Sphinxdocs: Mac"
+    working_directory: "sphinxdocs"
+    platform: macos_arm64
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
+    build_targets:
+      - "//..."
+    test_targets:
+      - "//..."
+
   ubuntu_min_workspace:
     <<: *minimum_supported_version
     <<: *reusable_config
@@ -186,13 +212,19 @@ tasks:
     bazel: 7.x
   ubuntu:
     <<: *reusable_config
-    name: "Default: Ubuntu"
+    name: "Default: Ubuntu, Bazel {bazel}"
     platform: ubuntu2204
+    bazel: ${{ bazel }}
   ubuntu_upcoming:
     <<: *reusable_config
     name: "Default: Ubuntu, upcoming Bazel"
     platform: ubuntu2204
     bazel: last_rc
+    # This is an advisory job; doesn't block merges
+    # RCs may have regressions, so don't fail our CI on them
+    soft_fail:
+      - exit_status: 1
+      - exit_status: 3
   ubuntu_rolling:
     name: "Default: Ubuntu, rolling Bazel"
     platform: ubuntu2204
@@ -245,16 +277,19 @@ tasks:
 
   debian:
     <<: *reusable_config
-    name: "Default: Debian"
+    name: "Default: Debian, Bazel {bazel}"
     platform: debian11
+    bazel: ${{ bazel }}
   macos_arm64:
     <<: *reusable_config
-    name: "Default: MacOS"
+    name: "Default: MacOS, Bazel {bazel}"
     platform: macos_arm64
+    bazel: ${{ bazel }}
   windows:
     <<: *reusable_config
-    name: "Default: Windows"
+    name: "Default: Windows, Bazel {bazel}"
     platform: windows
+    bazel: ${{ bazel }}
     test_flags:
       - "--test_tag_filters=-integration-test,-fix-windows"
   rbe_min:
@@ -263,6 +298,7 @@ tasks:
     name: "RBE: Ubuntu, minimum Bazel"
     platform: rbe_ubuntu2204
     build_flags:
+      - "--experimental_repository_cache_hardlinks=false"
       # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
       # which prevents cc toolchain autodetection from working correctly
       # on Bazel 5.4 and earlier. To workaround this, manually specify the
@@ -282,7 +318,7 @@ tasks:
     platform: rbe_ubuntu2204
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
-    bazel: 7.x
+    bazel: 8.x
     test_flags:
       - "--test_tag_filters=-integration-test,-acceptance-test"
       - "--extra_toolchains=@buildkite_config//config:cc-toolchain"
@@ -420,58 +456,6 @@ tasks:
     platform: macos_arm64
   # We don't run pip_parse_vendored under Windows as the file checked in is
   # generated from a repository rule containing OS-specific rendered paths.
-
-  # The proto example is workspace-only; bzlmod functionality is covered
-  # by examples/bzlmod/py_proto_library
-  integration_test_py_proto_library_ubuntu_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Ubuntu, workspace"
-    working_directory: examples/py_proto_library
-    platform: ubuntu2204
-  integration_test_py_proto_library_debian_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Debian, workspace"
-    working_directory: examples/py_proto_library
-    platform: debian11
-  integration_test_py_proto_library_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: MacOS, workspace"
-    working_directory: examples/py_proto_library
-    platform: macos_arm64
-  integration_test_py_proto_library_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/py_proto_library: Windows, workspace"
-    working_directory: examples/py_proto_library
-    platform: windows
-
-  integration_test_pip_repository_annotations_ubuntu_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: Ubuntu, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: ubuntu2204
-  integration_test_pip_repository_annotations_debian_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: Debian, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: debian11
-  integration_test_pip_repository_annotations_macos_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: macOS, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: macos_arm64
-  integration_test_pip_repository_annotations_windows_workspace:
-    <<: *reusable_build_test_all
-    <<: *common_workspace_flags
-    name: "examples/pip_repository_annotations: Windows, workspace"
-    working_directory: examples/pip_repository_annotations
-    platform: windows
 
   integration_test_bazelinbazel_ubuntu:
     <<: *common_bazelinbazel_config

@@ -57,13 +57,23 @@ def _uv_repo_impl(repository_ctx):
         ),
     )
 
-    return {
+    attrs = {
         "name": repository_ctx.attr.name,
         "platform": repository_ctx.attr.platform,
         "sha256": result.sha256,
         "urls": repository_ctx.attr.urls,
         "version": repository_ctx.attr.version,
     }
+
+    # Bazel <8.3.0 lacks repository_ctx.repo_metadata
+    if not hasattr(repository_ctx, "repo_metadata"):
+        return attrs
+
+    reproducible = repository_ctx.attr.sha256 != ""
+    return repository_ctx.repo_metadata(
+        reproducible = reproducible,
+        attrs_for_reproducibility = {} if reproducible else attrs,
+    )
 
 uv_repository = repository_rule(
     _uv_repo_impl,

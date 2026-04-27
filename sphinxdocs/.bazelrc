@@ -1,0 +1,22 @@
+import %workspace%/.bazelrc.deleted_packages
+
+test --test_output=errors
+
+build --incompatible_default_to_explicit_init_py
+build --@rules_python//python/config_settings:incompatible_default_to_explicit_init_py=True
+
+# Ensure ongoing compatibility with this flag.
+common --incompatible_disallow_struct_provider_syntax
+# Makes Bazel 7 act more like Bazel 8
+common --incompatible_use_plus_in_repo_names
+
+# Explicitly enable for Windows
+build --enable_runfiles
+
+# Local disk cache greatly speeds up builds if the regular cache is lost
+common --disk_cache=~/.cache/bazel/bazel-disk-cache
+
+common --incompatible_python_disallow_native_rules
+common --incompatible_no_implicit_file_export
+
+build --lockfile_mode=update

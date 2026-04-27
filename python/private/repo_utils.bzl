@@ -29,7 +29,7 @@ def _is_repo_debug_enabled(mrctx):
     Returns:
         True if enabled, False if not.
     """
-    return _getenv(mrctx, REPO_DEBUG_ENV_VAR) == "1"
+    return mrctx.getenv(REPO_DEBUG_ENV_VAR) == "1"
 
 def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
     """Creates a logger instance for printing messages.
@@ -56,7 +56,7 @@ def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
         else:
             verbosity_level = "WARN"
 
-        env_var_verbosity = _getenv(mrctx, REPO_VERBOSITY_ENV_VAR)
+        env_var_verbosity = mrctx.getenv(REPO_VERBOSITY_ENV_VAR)
         verbosity_level = env_var_verbosity or verbosity_level
 
     verbosity = {
@@ -302,7 +302,7 @@ def _which_unchecked(mrctx, binary_name):
         mrctx.watch(binary)
         describe_failure = None
     else:
-        path = _getenv(mrctx, "PATH", "")
+        path = mrctx.getenv("PATH", "")
         describe_failure = lambda: _which_describe_failure(binary_name, path)
 
     return struct(
@@ -311,17 +311,80 @@ def _which_unchecked(mrctx, binary_name):
     )
 
 def _which_describe_failure(binary_name, path):
+    if "\\" in path or ";" in path:
+        path_parts = path.split(";")
+    else:
+        path_parts = path.split(":")
+    for i, v in enumerate(path_parts):
+        path_parts[i] = "  [{}]: {}".format(i, v)
     return (
         "Unable to find the binary '{binary_name}' on PATH.\n" +
-        "  PATH = {path}"
+        "  PATH entries:\n" +
+        "{path_str}"
     ).format(
         binary_name = binary_name,
-        path = path,
+        path_str = "\n".join(path_parts),
     )
 
-def _getenv(mrctx, name, default = None):
-    # Bazel 7+ API has (repository|module)_ctx.getenv
-    return getattr(mrctx, "getenv", mrctx.os.environ.get)(name, default)
+def _mkdir(mrctx, path):
+    path = mrctx.path(path)
+    if path.exists:
+        return path
+
+    repo_root = str(mrctx.path("."))
+    path_str = str(path)
+
+    if not _is_relative_to(mrctx, path_str, repo_root):
+        mkdir_bin = mrctx.which("mkdir")
+        if not mkdir_bin:
+            return None
+        res = mrctx.execute([mkdir_bin, "-p", path_str])
+        if res.return_code != 0:
+            return None
+        return path
+    else:
+        placeholder = path.get_child(".placeholder")
+        mrctx.file(placeholder)
+        mrctx.delete(placeholder)
+        return path
+
+def _norm_path(mrctx, p):
+    p = str(p)
+
+    # Windows is case-insensitive
+    if _get_platforms_os_name(mrctx) == "windows":
+        return p.lower()
+    return p
+
+def _relative_to(mrctx, path, parent, fail = fail):
+    path_str = str(path)
+    parent_str = str(parent)
+    path_d = _norm_path(mrctx, path_str) + "/"
+    parent_d = _norm_path(mrctx, parent_str) + "/"
+    if path_d.startswith(parent_d):
+        return path_str[len(parent_str):].removeprefix("/")
+    else:
+        fail("{} is not relative to {}".format(path, parent))
+
+def _is_relative_to(mrctx, path, parent):
+    """Tell if `path` is equal to or beneath `parent`."""
+    path_d = _norm_path(mrctx, path) + "/"
+    parent_d = _norm_path(mrctx, parent) + "/"
+    return path_d.startswith(parent_d)
+
+def _repo_root_relative_path(mrctx, path):
+    """Takes a path object and returns a repo-relative path string.
+
+    Args:
+        mrctx: module_ctx or repository_ctx
+        path: {type}`path` a path within `mrctx`
+
+    Returns:
+        {type}`str` a repo-root-relative path string.
+    """
+    repo_root = str(mrctx.path("."))
+    path_str = str(path)
+    return _relative_to(mrctx, path_str, repo_root)
 
 def _args_to_str(arguments):
     return " ".join([_arg_repr(a) for a in arguments])
@@ -467,9 +530,13 @@ repo_utils = struct(
     extract = _extract,
     get_platforms_cpu_name = _get_platforms_cpu_name,
     get_platforms_os_name = _get_platforms_os_name,
-    getenv = _getenv,
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
+    mkdir = _mkdir,
+    norm_path = _norm_path,
+    relative_to = _relative_to,
+    is_relative_to = _is_relative_to,
+    repo_root_relative_path = _repo_root_relative_path,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,
 )
