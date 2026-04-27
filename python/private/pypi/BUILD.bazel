@@ -145,7 +145,6 @@ bzl_library(
     deps = [
         ":env_marker_info.bzl",
         ":pep508_env_bzl",
-        "//python/private:enum_bzl",
         "@bazel_skylib//rules:common_settings",
     ],
 )

@@ -7,7 +7,7 @@ load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", evaluate_markers_star = "evaluate_markers")
+load(":evaluate_markers.bzl", "evaluate_markers")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -469,7 +469,7 @@ def _evaluate_markers(self, pip_attr):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
-    return lambda _, requirements: evaluate_markers_star(
+    return lambda requirements: evaluate_markers(
         requirements = requirements,
         platforms = self._platforms[pip_attr.python_version],
     )

@@ -76,6 +76,7 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
             "//python/config_settings:_is_py_freethreaded_{}".format(
                 "yes" if freethreaded else "no",
             ),
+            "//python/config_settings:_is_py_linux_libc_glibc",
         ],
         env = {"platform_version": "0"},
         marker = "python_version >= '3.13'" if freethreaded else "",

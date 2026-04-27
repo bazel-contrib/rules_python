@@ -71,7 +71,6 @@ class TestWhlFilegroup(unittest.TestCase):
         wheel_installer._extract_wheel(
             Path(self.wheel_path),
             installation_dir=Path(self.wheel_dir),
-            extras={},
         )
 
         want_files = [

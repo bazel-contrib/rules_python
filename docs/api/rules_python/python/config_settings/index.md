@@ -274,48 +274,6 @@ the values used when environment markers are resolved at build time.
 :::
 ::::
 
-::::{bzl:flag} pip_whl
-Set what distributions are used in the `pip` integration.
-
-Values:
-* `auto`: Prefer `whl` distributions if they are compatible with a target
-  platform, but fallback to `sdist`. This is the default.
-* `only`: Only use `whl` distributions and error out if it is not available.
-* `no`: Only use `sdist` distributions. The wheels will be built non-hermetically in the `whl_library` repository rule.
-:::{versionadded} 0.33.0
-:::
-::::
-
-::::{bzl:flag} pip_whl_osx_arch
-Set what wheel types we should prefer when building on the OSX platform.
-
-Values:
-* `arch`: Prefer architecture specific wheels.
-* `universal`: Prefer universal wheels that usually are bigger and contain binaries for both, Intel and ARM architectures in the same wheel.
-:::{versionadded} 0.33.0
-:::
-::::
-
-::::{bzl:flag} pip_whl_glibc_version
-Set the minimum `glibc` version that the `py_binary` using `whl` distributions from a PyPI index should support.
-
-Values:
-* `""`: Select the lowest available version of each wheel giving you the maximum compatibility. This is the default.
-* `X.Y`: The string representation of a `glibc` version. The allowed values depend on the `requirements.txt` lock file contents.
-:::{versionadded} 0.33.0
-:::
-::::
-
-::::{bzl:flag} pip_whl_muslc_version
-Set the minimum `muslc` version that the `py_binary` using `whl` distributions from a PyPI index should support.
-
-Values:
-* `""`: Select the lowest available version of each wheel giving you the maximum compatibility. This is the default.
-* `X.Y`: The string representation of a `muslc` version. The allowed values depend on the `requirements.txt` lock file contents.
-:::{versionadded} 0.33.0
-:::
-::::
-
 ::::{bzl:flag} pip_whl_osx_version
 Set the minimum `osx` version that the `py_binary` using `whl` distributions from a PyPI index should support.
 
