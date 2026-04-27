@@ -244,11 +244,6 @@ that by parsing the `whl` filename based on [PEP600], [PEP656] standards. This
 allows the user to configure the behaviour by using the following publicly
 available flags:
 * {obj}`--@rules_python//python/config_settings:py_linux_libc` for selecting the Linux libc variant.
-* {obj}`--@rules_python//python/config_settings:pip_whl` for selecting `whl` distribution preference.
-* {obj}`--@rules_python//python/config_settings:pip_whl_osx_arch` for selecting MacOS wheel preference.
-* {obj}`--@rules_python//python/config_settings:pip_whl_glibc_version` for selecting the GLIBC version compatibility.
-* {obj}`--@rules_python//python/config_settings:pip_whl_muslc_version` for selecting the musl version compatibility.
-* {obj}`--@rules_python//python/config_settings:pip_whl_osx_version` for selecting MacOS version compatibility.
 
 [bazel_downloader]: https://bazel.build/rules/lib/builtins/repository_ctx#download
 [pep600]: https://peps.python.org/pep-0600/

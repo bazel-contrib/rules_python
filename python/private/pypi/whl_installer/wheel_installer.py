@@ -79,7 +79,6 @@ def _parse_requirement_for_extra(
 
 def _extract_wheel(
     wheel_file: str,
-    extras: Dict[str, Set[str]],
     installation_dir: Path = Path("."),
 ) -> None:
     """Extracts wheel into given directory and creates py_library and filegroup targets.
@@ -87,7 +86,6 @@ def _extract_wheel(
     Args:
         wheel_file: the filepath of the .whl
         installation_dir: the destination directory for installation of the wheel.
-        extras: a list of extras to add as dependencies for the installed wheel
     """
 
     whl = wheel.Wheel(wheel_file)
@@ -103,13 +101,7 @@ def main() -> None:
 
     if args.whl_file:
         whl = Path(args.whl_file)
-
-        name, extras_for_pkg = _parse_requirement_for_extra(args.requirement)
-        extras = {name: extras_for_pkg} if extras_for_pkg and name else dict()
-        _extract_wheel(
-            wheel_file=whl,
-            extras=extras,
-        )
+        _extract_wheel(wheel_file=whl)
         return
 
     pip_args = (
