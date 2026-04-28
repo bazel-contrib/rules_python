@@ -58,7 +58,6 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         script_executable = output[-1].strip()
         self.assertEqual(script_executable, sys.executable)
 
-
     def test_pythonw_script(self):
         script_path = self._get_script_path("whl_with_data1_pythonw")
         self.assertTrue(script_path.exists(), f"Script not found at {script_path}")
@@ -81,9 +80,16 @@ class WhlScriptsRunnableTest(unittest.TestCase):
             self.assertIn("hello from whl_with_data1_pythonw", output)
 
             script_executable = output[-1].strip()
-            self.assertTrue(script_executable.endswith("pythonw.exe"), f"Expected pythonw.exe, got {script_executable}")
+            self.assertTrue(
+                script_executable.endswith("pythonw.exe"),
+                f"Expected pythonw.exe, got {script_executable}",
+            )
         else:
-            self.assertTrue(first_line.startswith("#!/bin/sh"), f"Expected #!/bin/sh, got {first_line}")
+            self.assertTrue(
+                first_line.startswith("#!/bin/sh"),
+                f"Expected #!/bin/sh, got {first_line}",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

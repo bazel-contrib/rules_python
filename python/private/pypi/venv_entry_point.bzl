@@ -19,8 +19,8 @@ def _venv_entry_point_impl(ctx):
         template = ctx.file._template,
         output = out,
         substitutions = {
-            "{MODULE}": ctx.attr.module,
             "{ATTRIBUTE}": ctx.attr.attribute,
+            "{MODULE}": ctx.attr.module,
             "{PYTHON_EXE}": python_exe,
         },
         is_executable = True,
@@ -36,10 +36,10 @@ _builder = ruleb.Rule(
     executable = True,
 )
 _builder.attrs.update({
-    "module": attr.string(mandatory = True, doc = "The module to import"),
     "attribute": attr.string(mandatory = False, doc = "The attribute to call"),
     "extras": attr.string(mandatory = False, doc = "The extras for the entry point"),
     "group": attr.string(mandatory = False, doc = "The entry point group (e.g. console_scripts)"),
+    "module": attr.string(mandatory = True, doc = "The module to import"),
     "_template": attr.label(
         default = Label("//python/private/pypi:venv_entry_point_template"),
         allow_single_file = True,

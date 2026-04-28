@@ -133,22 +133,23 @@ def parse_entry_points(contents):
         if current_group in ("console_scripts", "gui_scripts"):
             name, _, ref = line.partition("=")
             name = name.strip()
+
             # remove inline comments
             ref, _, _ = ref.partition("#")
             ref = ref.strip()
-            
+
             extras = ""
             if "[" in ref and ref.endswith("]"):
                 ref, _, extras_part = ref.partition("[")
                 extras = extras_part[:-1].strip()
                 ref = ref.strip()
-                
+
             module, _, attribute = ref.partition(":")
             entries.append({
-                "group": current_group,
-                "name": name,
-                "module": module.strip(),
                 "attribute": attribute.strip(),
                 "extras": extras,
+                "group": current_group,
+                "module": module.strip(),
+                "name": name,
             })
     return entries

@@ -290,7 +290,7 @@ def _move_scripts_needing_shebang_rewrite(rctx):
     bin_dir = rctx.path("bin")
     if not bin_dir.exists:
         return
-    
+
     for script in bin_dir.readdir():
         if script.is_dir:
             continue

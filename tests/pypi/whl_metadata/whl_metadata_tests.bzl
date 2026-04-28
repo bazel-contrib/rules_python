@@ -193,32 +193,32 @@ not very much interesting
 """)
     env.expect.that_collection(got).contains_exactly([
         {
-            "group": "console_scripts",
-            "name": "foo",
-            "module": "foomod",
             "attribute": "main",
             "extras": "",
+            "group": "console_scripts",
+            "module": "foomod",
+            "name": "foo",
         },
         {
-            "group": "console_scripts",
-            "name": "foobar",
-            "module": "importable.foomod",
             "attribute": "main_bar",
             "extras": "bar, baz",
+            "group": "console_scripts",
+            "module": "importable.foomod",
+            "name": "foobar",
         },
         {
-            "group": "console_scripts",
-            "name": "foobarbaz",
-            "module": "foomod",
             "attribute": "main.attr",
             "extras": "",
+            "group": "console_scripts",
+            "module": "foomod",
+            "name": "foobarbaz",
         },
         {
-            "group": "console_scripts",
-            "name": "foo_extra_comment",
-            "module": "foomod",
             "attribute": "main",
             "extras": "extra",
+            "group": "console_scripts",
+            "module": "foomod",
+            "name": "foo_extra_comment",
         },
     ])
 

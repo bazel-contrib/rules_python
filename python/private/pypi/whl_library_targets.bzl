@@ -19,8 +19,6 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
-load(":venv_entry_point.bzl", "venv_entry_point")
-load(":venv_rewrite_shebang.bzl", "venv_rewrite_shebang")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -33,6 +31,8 @@ load(
 )
 load(":namespace_pkgs.bzl", _create_inits = "create_inits")
 load(":pep508_deps.bzl", "deps")
+load(":venv_entry_point.bzl", "venv_entry_point")
+load(":venv_rewrite_shebang.bzl", "venv_rewrite_shebang")
 
 # Files that are special to the Bazel processing of things.
 _BAZEL_REPO_FILE_GLOBS = [
@@ -70,6 +70,7 @@ def whl_library_targets_from_requires(
         requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
             the whl `METADATA`.
         extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
+        entry_points: {type}`list[dict]` A list of parsed entry point definitions.
         include: {type}`list[str]` The list of packages to include.
         **kwargs: Extra args passed to the {obj}`whl_library_targets`
     """
@@ -153,6 +154,7 @@ def whl_library_targets(
             dependencies by platform key.
         dependencies_with_markers: {type}`dict[str, str]` A marker to evaluate
             in order for the dep to be included.
+        entry_points: {type}`list[dict]` A list of parsed entry point definitions.
         filegroups: {type}`dict[str, list[str]] | None` A dictionary of the target
             names and the glob matches. If `None`, defaults will be used.
         group_name: {type}`str` name of the dependency group (if any) which
@@ -206,7 +208,6 @@ def whl_library_targets(
             package = name,
         )
         data.append(rewrite_target_name)
-
 
     if filegroups == None:
         filegroups = {

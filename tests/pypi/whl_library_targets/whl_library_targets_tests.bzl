@@ -173,10 +173,10 @@ def _test_whl_and_library_deps_from_requires(env):
 
     m_glob = mocks.glob()
 
-    m_glob.results.append([]) # rewrite-bin
-    m_glob.results.append(["site-packages/foo/SRCS.py"]) # srcs
-    m_glob.results.append(["site-packages/foo/DATA.txt"]) # data
-    m_glob.results.append(["site-packages/foo/PYI.pyi"]) # pyi
+    m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append(["site-packages/foo/SRCS.py"])  # srcs
+    m_glob.results.append(["site-packages/foo/DATA.txt"])  # data
+    m_glob.results.append(["site-packages/foo/PYI.pyi"])  # pyi
 
     whl_library_targets_from_requires(
         name = "foo-0-py3-none-any.whl",
@@ -286,7 +286,7 @@ def _test_whl_and_library_deps(env):
     filegroup_calls = []
     py_library_calls = []
     m_glob = mocks.glob()
-    m_glob.results.append([]) # rewrite-bin
+    m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/SRCS.py"])
     m_glob.results.append(["site-packages/foo/DATA.txt"])
     m_glob.results.append(["site-packages/foo/PYI.pyi"])
@@ -386,7 +386,7 @@ def _test_group(env):
     py_library_calls = []
 
     m_glob = mocks.glob()
-    m_glob.results.append([]) # rewrite-bin
+    m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/srcs.py"])
     m_glob.results.append(["site-packages/foo/data.txt"])
     m_glob.results.append(["site-packages/foo/pyi.pyi"])

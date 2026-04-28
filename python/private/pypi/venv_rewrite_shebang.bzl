@@ -68,8 +68,8 @@ _builder = ruleb.Rule(
     executable = True,
 )
 _builder.attrs.update({
-    "src": attr.label(mandatory = True, allow_single_file = True),
     "package": attr.string(),
+    "src": attr.label(mandatory = True, allow_single_file = True),
     "version": attr.string(),
     "_venv_shebang_rewriter": attr.label(
         default = "//python/private/pypi:venv_shebang_rewriter",
