@@ -380,6 +380,10 @@ def _overlap(first_collection, second_collection):
 
     return False
 
+# See https://github.com/astral-sh/setup-uv/pull/809.
+GITHUB_RELEASES_PREFIX = "https://github.com/astral-sh/uv/releases/download/"
+ASTRAL_MIRROR_PREFIX = "https://releases.astral.sh/github/uv/releases/download/"
+
 def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, get_auth = get_auth, **auth_attrs):
     """Download the results about remote tool sources.
 
@@ -452,6 +456,8 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                     }
                 ]
                 checksum	"uv-aarch64-apple-darwin.tar.gz.sha256"
+                checksums
+                    sha256	"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
             uv-aarch64-apple-darwin.tar.gz.sha256	
                 name	"uv-aarch64-apple-darwin.tar.gz.sha256"
                 kind	"checksum"
@@ -471,7 +477,8 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
         fail(result)
     dist_manifest = json.decode(module_ctx.read(dist_manifest))
 
-    base_url = (
+    # Use the simple download_url from the manifest, when available.
+    dist_base_url = (
         dist_manifest
             .get("releases", [{}])[0]
             .get("hosting", {})
@@ -479,21 +486,46 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
             .get("download_url", base_url)
     )
 
+    # For official releases, add the astral mirror to improve availability.
+    # See https://github.com/astral-sh/setup-uv/pull/809.
+    if dist_base_url.startswith(GITHUB_RELEASES_PREFIX):
+        astral_base_url = ASTRAL_MIRROR_PREFIX + dist_base_url[len(GITHUB_RELEASES_PREFIX):]
+        base_urls = [
+            astral_base_url,
+            dist_base_url,
+        ]
+    else:
+        base_urls = [dist_base_url]
+
     artifacts = dist_manifest["artifacts"]
     tool_sources = {}
     downloads = {}
     for fname, artifact in artifacts.items():
         if artifact.get("kind") != "executable-zip":
             continue
-
-        checksum = artifacts[artifact["checksum"]]
-        if not _overlap(checksum["target_triples"], platforms):
-            # we are not interested in this platform, so skip
+        target_triples = artifact["target_triples"]
+        if not _overlap(target_triples, platforms):
+            # We are not interested in this platform, so skip.
             continue
 
+        # Releases of uv >= 0.11.0 have the sha256 directly inline.
+        sha256 = artifact.get("checksums", {}).get("sha256", "")
+        if len(sha256) > 0:
+            for platform in target_triples:
+                tool_sources[platform] = struct(
+                    urls = [
+                        "{}/{}".format(base, fname)
+                        for base in base_urls
+                    ],
+                    sha256 = sha256,
+                )
+            continue
+
+        # For uv < 0.11.0, we'll need to fetch the individual sha256 files.
+        checksum = artifacts[artifact["checksum"]]
         checksum_fname = checksum["name"]
         checksum_path = module_ctx.path(checksum_fname)
-        urls = ["{}/{}".format(base_url, checksum_fname)]
+        urls = ["{}/{}".format(dist_base_url, checksum_fname)]
         downloads[checksum_path] = struct(
             download = module_ctx.download(
                 url = urls,
@@ -502,7 +534,7 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
                 auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
             ),
             archive_fname = fname,
-            platforms = checksum["target_triples"],
+            platforms = target_triples,
         )
 
     for checksum_path, download in downloads.items():
@@ -522,7 +554,10 @@ def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename
 
         for platform in download.platforms:
             tool_sources[platform] = struct(
-                urls = ["{}/{}".format(base_url, archive_fname)],
+                urls = [
+                    "{}/{}".format(base, archive_fname)
+                    for base in base_urls
+                ],
                 sha256 = sha256,
             )
 

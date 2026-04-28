@@ -34,6 +34,7 @@ def _uv_mock_mctx(*modules, download = None):
             x: {
                 "checksum": x + ".sha256",
                 "kind": "executable-zip",
+                "target_triples": [x],
             }
             for x in ["linux", "osx"]
         } | {
@@ -47,6 +48,7 @@ def _uv_mock_mctx(*modules, download = None):
             x: {
                 "checksum": x + ".sha256",
                 "kind": "executable-zip",
+                "target_triples": [x],
             }
             for x in ["linux", "os", "osx", "something_extra"]
         } | {
