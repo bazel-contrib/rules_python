@@ -19,6 +19,8 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
+load(":venv_entry_point.bzl", "venv_entry_point")
+load(":venv_rewrite_shebang.bzl", "venv_rewrite_shebang")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -51,6 +53,7 @@ def whl_library_targets_from_requires(
         metadata_version = "",
         requires_dist = [],
         extras = [],
+        entry_points = [],
         include = [],
         group_deps = [],
         **kwargs):
@@ -82,6 +85,7 @@ def whl_library_targets_from_requires(
         name = name,
         dependencies = package_deps.deps,
         dependencies_with_markers = package_deps.deps_select,
+        entry_points = entry_points,
         tags = [
             "pypi_name={}".format(metadata_name),
             "pypi_version={}".format(metadata_version),
@@ -116,6 +120,7 @@ def whl_library_targets(
         filegroups = None,
         dependencies_by_platform = {},
         dependencies_with_markers = {},
+        entry_points = [],
         group_deps = [],
         group_name = "",
         data = [],
@@ -128,6 +133,8 @@ def whl_library_targets(
             copy_file = copy_file,
             py_binary = py_binary,
             py_library = py_library,
+            venv_entry_point = venv_entry_point,
+            venv_rewrite_shebang = venv_rewrite_shebang,
             env_marker_setting = env_marker_setting,
             create_inits = _create_inits,
         )):
@@ -179,6 +186,27 @@ def whl_library_targets(
     }
     tags = sorted(tags)
     data = [] + data
+
+    for ep_dict in entry_points:
+        kwargs = dict(ep_dict)
+        ep_name = kwargs.pop("name")
+        ep_target_name = "bin/{}".format(ep_name)
+        rules.venv_entry_point(
+            name = ep_target_name,
+            **kwargs
+        )
+        data.append(ep_target_name)
+
+    for src_path in native.glob(["rewrite-bin/*"], allow_empty = True):
+        script_name = src_path[len("rewrite-bin/"):]
+        rewrite_target_name = "bin/{}".format(script_name)
+        rules.venv_rewrite_shebang(
+            name = rewrite_target_name,
+            src = src_path,
+            package = name,
+        )
+        data.append(rewrite_target_name)
+
 
     if filegroups == None:
         filegroups = {

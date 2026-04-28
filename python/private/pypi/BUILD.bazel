@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 
 package(default_visibility = ["//:__subpackages__"])
@@ -21,6 +22,24 @@ licenses(["notice"])
 
 exports_files(
     srcs = ["namespace_pkg_tmpl.py"],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "venv_entry_point_template",
+    actual = select({
+        "@platforms//os:windows": "venv_entry_point_template.bat",
+        "//conditions:default": "venv_entry_point_template.sh",
+    }),
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "venv_shebang_rewriter",
+    actual = select({
+        "@platforms//os:windows": "venv_shebang_rewriter.ps1",
+        "//conditions:default": "venv_shebang_rewriter.sh",
+    }),
     visibility = ["//visibility:public"],
 )
 
@@ -518,4 +537,16 @@ bzl_library(
 bzl_library(
     name = "whl_target_platforms_bzl",
     srcs = ["whl_target_platforms.bzl"],
+)
+
+bzl_library(
+    name = "venv_entry_point_bzl",
+    srcs = ["venv_entry_point.bzl"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "venv_rewrite_shebang_bzl",
+    srcs = ["venv_rewrite_shebang.bzl"],
+    visibility = ["//visibility:public"],
 )

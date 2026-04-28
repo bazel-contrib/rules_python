@@ -111,3 +111,44 @@ def find_whl_metadata(*, install_dir, logger):
     else:
         logger.fail("The '*.dist-info' directory could not be found in '{}'".format(install_dir.basename))
     return None
+
+def parse_entry_points(contents):
+    """Parses entry_points.txt contents and returns console_scripts and gui_scripts entries.
+
+    Args:
+        contents: {type}`str` The contents of the entry_points.txt file.
+
+    Returns:
+        {type}`list[dict]` A list of dicts with keys: group, name, module, attribute, extras.
+    """
+    entries = []
+    current_group = None
+    for line in contents.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current_group = line[1:-1].strip()
+            continue
+        if current_group in ("console_scripts", "gui_scripts"):
+            name, _, ref = line.partition("=")
+            name = name.strip()
+            # remove inline comments
+            ref, _, _ = ref.partition("#")
+            ref = ref.strip()
+            
+            extras = ""
+            if "[" in ref and ref.endswith("]"):
+                ref, _, extras_part = ref.partition("[")
+                extras = extras_part[:-1].strip()
+                ref = ref.strip()
+                
+            module, _, attribute = ref.partition(":")
+            entries.append({
+                "group": current_group,
+                "name": name,
+                "module": module.strip(),
+                "attribute": attribute.strip(),
+                "extras": extras,
+            })
+    return entries

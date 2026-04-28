@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import unittest
@@ -9,10 +10,12 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         is_windows = sys.platform == "win32"
         if is_windows:
             bin_dir = Path(sys.prefix) / "Scripts"
-            # On windows, it might have .exe or no extension depending on how it was installed
-            script_path = bin_dir / f"{name}.exe"
-            if not script_path.exists():
-                script_path = bin_dir / name
+            pathexts = os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";")
+            for ext in [""] + [e.lower() for e in pathexts]:
+                script_path = bin_dir / f"{name}{ext}"
+                if script_path.exists():
+                    return script_path
+            return bin_dir / name
         else:
             bin_dir = Path(sys.prefix) / "bin"
             script_path = bin_dir / name
@@ -55,6 +58,32 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         script_executable = output[-1].strip()
         self.assertEqual(script_executable, sys.executable)
 
+
+    def test_pythonw_script(self):
+        script_path = self._get_script_path("whl_with_data1_pythonw")
+        self.assertTrue(script_path.exists(), f"Script not found at {script_path}")
+
+        with open(script_path, "r", encoding="utf-8") as f:
+            first_line = f.readline()
+
+        is_windows = sys.platform == "win32"
+        if is_windows:
+            self.assertIn("pythonw.exe", first_line)
+
+            result = subprocess.run(
+                [str(script_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            output = result.stdout.splitlines()
+            self.assertIn("hello from whl_with_data1_pythonw", output)
+
+            script_executable = output[-1].strip()
+            self.assertTrue(script_executable.endswith("pythonw.exe"), f"Expected pythonw.exe, got {script_executable}")
+        else:
+            self.assertTrue(first_line.startswith("#!/bin/sh"), f"Expected #!/bin/sh, got {first_line}")
 
 if __name__ == "__main__":
     unittest.main()

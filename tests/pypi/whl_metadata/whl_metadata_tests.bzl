@@ -5,6 +5,7 @@ load("@rules_testing//lib:truth.bzl", "subjects")
 load(
     "//python/private/pypi:whl_metadata.bzl",
     "find_whl_metadata",
+    "parse_entry_points",
     "parse_whl_metadata",
 )  # buildifier: disable=bzl-visibility
 
@@ -170,6 +171,58 @@ Requires-Dist: this will be ignored
     ])
 
 _tests.append(_test_parse_metadata_multiline_license)
+
+def _test_parse_entry_points(env):
+    got = parse_entry_points("""\
+[something]
+interesting # with comments
+
+[console_scripts]
+foo = foomod:main
+# One which depends on extras:
+foobar = importable.foomod:main_bar [bar, baz]
+
+  # With a comment at the end
+foobarbaz = foomod:main.attr # comment
+
+# With extra and comment
+foo_extra_comment = foomod:main [extra] # comment
+
+[something else]
+not very much interesting
+""")
+    env.expect.that_collection(got).contains_exactly([
+        {
+            "group": "console_scripts",
+            "name": "foo",
+            "module": "foomod",
+            "attribute": "main",
+            "extras": "",
+        },
+        {
+            "group": "console_scripts",
+            "name": "foobar",
+            "module": "importable.foomod",
+            "attribute": "main_bar",
+            "extras": "bar, baz",
+        },
+        {
+            "group": "console_scripts",
+            "name": "foobarbaz",
+            "module": "foomod",
+            "attribute": "main.attr",
+            "extras": "",
+        },
+        {
+            "group": "console_scripts",
+            "name": "foo_extra_comment",
+            "module": "foomod",
+            "attribute": "main",
+            "extras": "extra",
+        },
+    ])
+
+_tests.append(_test_parse_entry_points)
 
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(

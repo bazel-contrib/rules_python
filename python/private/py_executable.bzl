@@ -232,11 +232,6 @@ accepting arbitrary Python versions.
             default = "//python/private:uncachable_version_file",
             allow_files = True,
         ),
-        "_venv_bin_rewriter": lambda: attrb.Label(
-            default = "//python/private:venv_bin_rewriter",
-            allow_files = True,
-            cfg = "exec",
-        ),
         "_venvs_use_declare_symlink_flag": lambda: attrb.Label(
             default = labels.VENVS_USE_DECLARE_SYMLINK,
             providers = [BuildSettingInfo],
