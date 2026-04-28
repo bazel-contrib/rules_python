@@ -299,8 +299,8 @@ def _move_scripts_needing_shebang_rewrite(rctx):
         content = rctx.read(script)
         if content.startswith("#!python"):
             rewrite_bin_dir = rctx.path("rewrite-bin")
-            rctx.execute(["mkdir", "-p", str(rewrite_bin_dir)])
-            rctx.rename(script, rctx.path("rewrite-bin/" + script.basename))
+            repo_utils.mkdir(rctx, rewrite_bin_dir)
+            repo_utils.rename(rctx, script, rctx.path("rewrite-bin/" + script.basename))
 
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)

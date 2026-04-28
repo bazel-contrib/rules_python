@@ -72,7 +72,7 @@ def whl_extract(rctx, *, whl_path, logger):
 
             for (src, dest) in merge_trees(src, rctx.path(dest_prefix)):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
-                rctx.rename(src, dest)
+                repo_utils.rename(rctx, src, dest)
 
             # TODO @aignas 2025-12-16: when moving scripts to `bin`, rewrite the #!python
             # shebang to be something else, for inspiration look at the hermetic
