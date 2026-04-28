@@ -20,7 +20,6 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -56,6 +55,128 @@ def _whl_mods_impl(whl_mods_dict):
             whl_mods = whl_mods,
         )
 
+def default_platforms():
+    """Return the built-in default platform definitions.
+
+    These provide the platform metadata needed for pip wheel resolution
+    (whl_abi_tags, whl_platform_tags, config_settings, etc.) across all
+    common OS/arch combinations. They are always used as the starting point
+    for build_config; root modules can override individual platforms via
+    pip.default tags.
+
+    Returns:
+        A dict of platform name to platform config dicts.
+    """
+    # NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility. Whilst we
+    # stabilize the API this list may be updated with a mention in the CHANGELOG.
+
+    platforms = {}
+
+    # Linux platforms
+    for cpu in ["x86_64", "aarch64"]:
+        for freethreaded in ["", "_freethreaded"]:
+            platform_name = "linux_{}{}".format(cpu, freethreaded)
+            platforms[platform_name] = {
+                "arch_name": cpu,
+                "config_settings": [
+                    "@platforms//cpu:{}".format(cpu),
+                    "@platforms//os:linux",
+                    "//python/config_settings:_is_py_freethreaded_{}".format(
+                        "yes" if freethreaded else "no",
+                    ),
+                ],
+                "env": {"platform_version": "0"},
+                "marker": "python_version >= '3.13'" if freethreaded else "",
+                "name": platform_name,
+                "os_name": "linux",
+                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                    "abi3",
+                    "cp{major}{minor}",
+                ],
+                "whl_platform_tags": [
+                    "linux_{}".format(cpu),
+                    "manylinux_*_{}".format(cpu),
+                ],
+            }
+
+    # macOS platforms
+    for cpu, platform_tag_cpus in {
+        "aarch64": ["universal2", "arm64"],
+        "x86_64": ["universal2", "x86_64"],
+    }.items():
+        for freethreaded in ["", "_freethreaded"]:
+            platform_name = "osx_{}{}".format(cpu, freethreaded)
+            platforms[platform_name] = {
+                "arch_name": cpu,
+                "config_settings": [
+                    "@platforms//cpu:{}".format(cpu),
+                    "@platforms//os:osx",
+                    "//python/config_settings:_is_py_freethreaded_{}".format(
+                        "yes" if freethreaded else "no",
+                    ),
+                ],
+                "env": {"platform_version": "14.0"},
+                "marker": "python_version >= '3.13'" if freethreaded else "",
+                "name": platform_name,
+                "os_name": "osx",
+                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                    "abi3",
+                    "cp{major}{minor}",
+                ],
+                "whl_platform_tags": [
+                    "macosx_*_{}".format(suffix)
+                    for suffix in platform_tag_cpus
+                ],
+            }
+
+    # Windows x86_64 platforms
+    for freethreaded in ["", "_freethreaded"]:
+        platform_name = "windows_x86_64{}".format(freethreaded)
+        platforms[platform_name] = {
+            "arch_name": "x86_64",
+            "config_settings": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows",
+                "//python/config_settings:_is_py_freethreaded_{}".format(
+                    "yes" if freethreaded else "no",
+                ),
+            ],
+            "env": {"platform_version": "0"},
+            "marker": "python_version >= '3.13'" if freethreaded else "",
+            "name": platform_name,
+            "os_name": "windows",
+            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                "abi3",
+                "cp{major}{minor}",
+            ],
+            "whl_platform_tags": ["win_amd64"],
+        }
+
+    # Windows aarch64 platforms
+    for freethreaded in ["", "_freethreaded"]:
+        platform_name = "windows_aarch64{}".format(freethreaded)
+        platforms[platform_name] = {
+            "arch_name": "aarch64",
+            "config_settings": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows",
+                "//python/config_settings:_is_py_freethreaded_{}".format(
+                    "yes" if freethreaded else "no",
+                ),
+            ],
+            "env": {"platform_version": "0"},
+            "marker": "python_version >= '3.13'" if freethreaded else "python_version >= '3.11'",
+            "name": platform_name,
+            "os_name": "windows",
+            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                "abi3",
+                "cp{major}{minor}",
+            ],
+            "whl_platform_tags": ["win_arm64"],
+        }
+
+    return platforms
+
 def _configure(config, *, override = False, **kwargs):
     """Set the value in the config if the value is provided"""
     env = kwargs.get("env")
@@ -71,14 +192,11 @@ def _configure(config, *, override = False, **kwargs):
 def build_config(
         *,
         module_ctx,
-        enable_pipstar,
         enable_pipstar_extract):
     """Parse 'configure' and 'default' extension tags
 
     Args:
         module_ctx: {type}`module_ctx` module context.
-        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
-            evaluation of the extension.
         enable_pipstar_extract: {type}`bool | None` a flag to also not pass Python
             interpreter to `whl_library` when possible.
 
@@ -86,7 +204,7 @@ def build_config(
         A struct with the configuration.
     """
     defaults = {
-        "platforms": {},
+        "platforms": default_platforms(),
     }
     for mod in module_ctx.modules:
         if not (mod.is_root or mod.name == "rules_python"):
@@ -132,7 +250,6 @@ def build_config(
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
         },
-        enable_pipstar = enable_pipstar,
         enable_pipstar_extract = enable_pipstar_extract,
     )
 
@@ -140,7 +257,6 @@ def parse_modules(
         module_ctx,
         _fail = fail,
         simpleapi_download = simpleapi_download,
-        enable_pipstar = False,
         enable_pipstar_extract = False,
         **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
@@ -148,8 +264,6 @@ def parse_modules(
     Args:
         module_ctx: {type}`module_ctx` module context.
         simpleapi_download: Used for testing overrides
-        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
-            evaluation of the extension.
         enable_pipstar_extract: {type}`bool` a flag to enable dropping Python dependency for
             extracting wheels.
         _fail: {type}`function` the failure function, mainly for testing.
@@ -189,7 +303,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar, enable_pipstar_extract = enable_pipstar_extract)
+    config = build_config(module_ctx = module_ctx, enable_pipstar_extract = enable_pipstar_extract)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -377,8 +491,7 @@ def _pip_impl(module_ctx):
 
     mods = parse_modules(
         module_ctx,
-        enable_pipstar = rp_config.enable_pipstar,
-        enable_pipstar_extract = rp_config.enable_pipstar and rp_config.bazel_8_or_later,
+        enable_pipstar_extract = rp_config.bazel_8_or_later,
     )
 
     # Build all of the wheel modifications if the tag class is called.
@@ -447,10 +560,6 @@ Supported keys:
 * `platform_system`, defaults to a value inferred from the {attr}`os_name`.
 * `platform_version`, defaults to `0`.
 * `sys_platform`, defaults to a value inferred from the {attr}`os_name`.
-
-::::{note}
-This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
-::::
 """,
     ),
     "index_url": attr.string(
@@ -716,13 +825,6 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
             doc = """\
 A dict of labels to wheel names that is typically generated by the whl_modifications.
 The labels are JSON config files describing the modifications.
-""",
-        ),
-        "_evaluate_markers_srcs": attr.label_list(
-            default = EVALUATE_MARKERS_SRCS,
-            doc = """\
-The list of labels to use as SRCS for the marker evaluation code. This ensures that the
-code will be re-evaluated when any of files in the default changes.
 """,
         ),
     }, **ATTRS)

@@ -80,8 +80,6 @@ def _parse_requirement_for_extra(
 def _extract_wheel(
     wheel_file: str,
     extras: Dict[str, Set[str]],
-    enable_pipstar: bool,
-    platforms: List[wheel.Platform],
     installation_dir: Path = Path("."),
 ) -> None:
     """Extracts wheel into given directory and creates py_library and filegroup targets.
@@ -90,35 +88,10 @@ def _extract_wheel(
         wheel_file: the filepath of the .whl
         installation_dir: the destination directory for installation of the wheel.
         extras: a list of extras to add as dependencies for the installed wheel
-        enable_pipstar: if true, turns off certain operations.
     """
 
     whl = wheel.Wheel(wheel_file)
     whl.unzip(installation_dir)
-
-    if enable_pipstar:
-        return
-
-    extras_requested = extras[whl.name] if whl.name in extras else set()
-    dependencies = whl.dependencies(extras_requested, platforms)
-
-    metadata = {
-        "name": whl.name,
-        "version": whl.version,
-        "deps": dependencies.deps,
-        "deps_by_platform": dependencies.deps_select,
-        "entry_points": [
-            {
-                "name": name,
-                "module": module,
-                "attribute": attribute,
-            }
-            for name, (module, attribute) in sorted(whl.entry_points().items())
-        ],
-    }
-
-    with open(os.path.join(installation_dir, "metadata.json"), "w") as f:
-        json.dump(metadata, f)
 
 
 def main() -> None:
@@ -136,8 +109,6 @@ def main() -> None:
         _extract_wheel(
             wheel_file=whl,
             extras=extras,
-            enable_pipstar=args.enable_pipstar,
-            platforms=arguments.get_platforms(args),
         )
         return
 

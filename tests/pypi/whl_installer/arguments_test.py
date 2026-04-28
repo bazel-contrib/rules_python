@@ -48,18 +48,6 @@ class ArgumentsTestCase(unittest.TestCase):
         self.assertEqual(args["environment"], {"PIP_DO_SOMETHING": "True"})
         self.assertEqual(args["extra_pip_args"], [])
 
-    def test_platform_aggregation(self) -> None:
-        parser = arguments.parser()
-        args = parser.parse_args(
-            args=[
-                "--platform=linux_*",
-                "--platform=osx_*",
-                "--platform=windows_*",
-                "--requirement=foo",
-            ]
-        )
-        self.assertEqual(set(wheel.Platform.all()), arguments.get_platforms(args))
-
 
 if __name__ == "__main__":
     unittest.main()
