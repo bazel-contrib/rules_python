@@ -5,7 +5,7 @@ project.
 
 Act as an expert in Bazel, rules_python, Starlark, and Python.
 
-DO NOT `git commit` or `git push`.
+DO NOT `git commit` or `git push` unless given explicit permission.
 
 ## RULES TO ALWAYS FOLLOW AND NEVER IGNORE
 
@@ -29,6 +29,11 @@ into the sentence, not verbatim.
 
 When adding `{versionadded}` or `{versionchanged}` sections, add them add the
 end of the documentation text.
+
+### PR descriptions
+
+Follow the advice in `CONTRIBUTING.md` for PR descriptions. PR descriptions
+become the commit message upon merge.
 
 ### Starlark style
 

@@ -22,18 +22,15 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
-load(":parse_whl_name.bzl", "parse_whl_name")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
 load(":whl_metadata.bzl", "whl_metadata")
-load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
-_WHEEL_ENTRY_POINT_PREFIX = "rules_python_wheel_entry_point"
 
 def _get_xcode_location_cflags(rctx, logger = None):
     """Query the xcode sdk location to update cflags
@@ -264,21 +261,6 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
     return env
 
 def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
-    target_platforms = rctx.attr.experimental_target_platforms or []
-    if target_platforms:
-        parsed_whl = parse_whl_name(whl_path.basename)
-
-        # NOTE @aignas 2023-12-04: if the wheel is a platform specific wheel, we
-        # only include deps for that target platform
-        if parsed_whl.platform_tag != "any":
-            target_platforms = [
-                p.target_platform
-                for p in whl_target_platforms(
-                    platform_tag = parsed_whl.platform_tag,
-                    abi_tag = parsed_whl.abi_tag.strip("tm"),
-                )
-            ]
-
     pypi_repo_utils.execute_checked(
         rctx,
         op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
@@ -286,7 +268,7 @@ def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, lo
         arguments = args + [
             "--whl-file",
             whl_path,
-        ] + ["--platform={}".format(p) for p in target_platforms],
+        ],
         srcs = rctx.attr._python_srcs,
         environment = environment,
         quiet = rctx.attr.quiet,
@@ -345,9 +327,7 @@ def _whl_library_impl(rctx):
             # build deps from PyPI (e.g. `flit_core`) if they are missing.
             extra_pip_args.extend(["--find-links", "."])
 
-    # also enable pipstar for any whls that are downloaded without `pip`
-    enable_pipstar = (rp_config.enable_pipstar or whl_path) and rctx.attr.config_load
-    enable_pipstar_extract = enable_pipstar and rp_config.bazel_8_or_later
+    enable_pipstar_extract = rp_config.bazel_8_or_later
 
     # When pipstar is enabled, Python isn't used, so there's no need
     # to setup env vars to run Python, unless we need to build an sdist
@@ -429,115 +409,34 @@ def _whl_library_impl(rctx):
             logger = logger,
         )
 
-    # NOTE @aignas 2025-09-28: if someone has an old vendored file that does not have the
-    # dep_template set or the packages is not set either, we should still not break, best to
-    # disable pipstar for that particular case.
-    #
-    # Remove non-pipstar and config_load check when we release rules_python 2.
-    if enable_pipstar:
-        install_dir_path = whl_path.dirname.get_child("site-packages")
-        metadata = whl_metadata(
-            install_dir = install_dir_path,
-            read_fn = rctx.read,
-            logger = logger,
-        )
-        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
+    install_dir_path = whl_path.dirname.get_child("site-packages")
+    metadata = whl_metadata(
+        install_dir = install_dir_path,
+        read_fn = rctx.read,
+        logger = logger,
+    )
+    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
-        # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
-        # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
-        #
-        # See ../../packaging.bzl line 190
-        entry_points = {}
-        for item in metadata.entry_points:
-            name = item.name
-            module = item.module
-            attribute = item.attribute
-
-            # There is an extreme edge-case with entry_points that end with `.py`
-            # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
-            entry_point_without_py = name[:-3] + "_py" if name.endswith(".py") else name
-            entry_point_target_name = (
-                _WHEEL_ENTRY_POINT_PREFIX + "_" + entry_point_without_py
-            )
-            entry_point_script_name = entry_point_target_name + ".py"
-
-            rctx.file(
-                entry_point_script_name,
-                _generate_entry_point_contents(module, attribute),
-            )
-            entry_points[entry_point_without_py] = entry_point_script_name
-
-        build_file_contents = generate_whl_library_build_bazel(
-            name = whl_path.basename,
-            sdist_filename = sdist_filename,
-            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
-                rctx.attr.repo_prefix,
-            ),
-            config_load = rctx.attr.config_load,
-            entry_points = entry_points,
-            metadata_name = metadata.name,
-            metadata_version = metadata.version,
-            requires_dist = metadata.requires_dist,
-            # TODO @aignas 2025-05-17: maybe have a build flag for this instead
-            enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
-            # TODO @aignas 2025-04-14: load through the hub:
-            annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-            data_exclude = rctx.attr.pip_data_exclude,
-            group_deps = rctx.attr.group_deps,
-            group_name = rctx.attr.group_name,
-            namespace_package_files = namespace_package_files,
-            extras = requirement(rctx.attr.requirement).extras,
-        )
-    else:
-        metadata = json.decode(rctx.read("metadata.json"))
-        rctx.delete("metadata.json")
-
-        # NOTE @aignas 2024-06-22: this has to live on until we stop supporting
-        # passing `twine` as a `:pkg` library via the `WORKSPACE` builds.
-        #
-        # See ../../packaging.bzl line 190
-        entry_points = {}
-        for item in metadata["entry_points"]:
-            name = item["name"]
-            module = item["module"]
-            attribute = item["attribute"]
-
-            # There is an extreme edge-case with entry_points that end with `.py`
-            # See: https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/test/java/com/google/devtools/build/lib/rules/python/PyBinaryConfiguredTargetTest.java#L174
-            entry_point_without_py = name[:-3] + "_py" if name.endswith(".py") else name
-            entry_point_target_name = (
-                _WHEEL_ENTRY_POINT_PREFIX + "_" + entry_point_without_py
-            )
-            entry_point_script_name = entry_point_target_name + ".py"
-
-            rctx.file(
-                entry_point_script_name,
-                _generate_entry_point_contents(module, attribute),
-            )
-            entry_points[entry_point_without_py] = entry_point_script_name
-
-        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, rctx.path("site-packages"))
-
-        build_file_contents = generate_whl_library_build_bazel(
-            name = whl_path.basename,
-            sdist_filename = sdist_filename,
-            dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(rctx.attr.repo_prefix),
-            entry_points = entry_points,
-            # TODO @aignas 2025-05-17: maybe have a build flag for this instead
-            enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
-            # TODO @aignas 2025-04-14: load through the hub:
-            dependencies = metadata["deps"],
-            dependencies_by_platform = metadata["deps_by_platform"],
-            annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-            data_exclude = rctx.attr.pip_data_exclude,
-            group_deps = rctx.attr.group_deps,
-            group_name = rctx.attr.group_name,
-            tags = [
-                "pypi_name={}".format(metadata["name"]),
-                "pypi_version={}".format(metadata["version"]),
-            ],
-            namespace_package_files = namespace_package_files,
-        )
+    build_file_contents = generate_whl_library_build_bazel(
+        name = whl_path.basename,
+        sdist_filename = sdist_filename,
+        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
+            rctx.attr.repo_prefix,
+        ),
+        config_load = rctx.attr.config_load,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
+        # TODO @aignas 2025-05-17: maybe have a build flag for this instead
+        enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
+        # TODO @aignas 2025-04-14: load through the hub:
+        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+        data_exclude = rctx.attr.pip_data_exclude,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
+        namespace_package_files = namespace_package_files,
+        extras = requirement(rctx.attr.requirement).extras,
+    )
 
     # Delete these in case the wheel had them. They generally don't cause
     # a problem, but let's avoid the chance of that happening.
@@ -550,7 +449,7 @@ def _whl_library_impl(rctx):
     _remove_files(rctx, "BUILD", "BUILD.bazel")
     rctx.file("BUILD.bazel", build_file_contents)
 
-    if enable_pipstar and enable_pipstar_extract:
+    if enable_pipstar_extract:
         if hasattr(rctx, "repo_metadata"):
             return rctx.repo_metadata(reproducible = True)
 
@@ -567,34 +466,6 @@ def _remove_files(rctx, *basenames):
             rctx.delete(path)
         elif path.is_dir:
             paths.extend(path.readdir())
-
-def _generate_entry_point_contents(
-        module,
-        attribute,
-        shebang = "#!/usr/bin/env python3"):
-    """Generate the contents of an entry point script.
-
-    Args:
-        module (str): The name of the module to use.
-        attribute (str): The name of the attribute to call.
-        shebang (str, optional): The shebang to use for the entry point python
-            file.
-
-    Returns:
-        str: A string of python code.
-    """
-    contents = """\
-{shebang}
-import sys
-from {module} import {attribute}
-if __name__ == "__main__":
-    sys.exit({attribute}())
-""".format(
-        shebang = shebang,
-        module = module,
-        attribute = attribute,
-    )
-    return contents
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
 whl_library_attrs = dict({
@@ -697,7 +568,6 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
     "_python_srcs": attr.label_list(
         # Used as a default value in a rule to ensure we fetch the dependencies.
         default = [
-            Label("//python/private/pypi/whl_installer:platform.py"),
             Label("//python/private/pypi/whl_installer:wheel.py"),
             Label("//python/private/pypi/whl_installer:wheel_installer.py"),
             Label("//python/private/pypi/whl_installer:arguments.py"),

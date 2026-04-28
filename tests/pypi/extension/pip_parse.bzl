@@ -13,7 +13,6 @@ def pip_parse(
         experimental_extra_index_urls = [],
         experimental_index_url = "",
         experimental_requirement_cycles = {},
-        experimental_target_platforms = [],
         extra_hub_aliases = {},
         extra_pip_args = [],
         isolated = True,
@@ -44,8 +43,6 @@ def pip_parse(
         experimental_extra_index_urls = experimental_extra_index_urls,
         experimental_index_url = experimental_index_url,
         experimental_requirement_cycles = experimental_requirement_cycles,
-        # TODO @aignas 2025-12-02: decide on a single attr - should we reuse this?
-        experimental_target_platforms = experimental_target_platforms,
         target_platforms = target_platforms,
         extra_hub_aliases = extra_hub_aliases,
         extra_pip_args = extra_pip_args,
