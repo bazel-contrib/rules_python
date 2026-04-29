@@ -286,7 +286,7 @@ def _get_entry_points(rctx, install_dir_path, metadata):
         return parse_entry_points(rctx.read(entry_points_txt))
     return []
 
-def _move_scripts_needing_shebang_rewrite(rctx):
+def _move_scripts_needing_shebang_rewrite(rctx, entry_points):
     bin_dir = rctx.path("bin")
     if not bin_dir.exists:
         return
@@ -295,6 +295,8 @@ def _move_scripts_needing_shebang_rewrite(rctx):
         if script.is_dir:
             continue
         if script.basename.endswith(".exe") or script.basename.endswith(".dll"):
+            continue
+        if script.basename in entry_points:
             continue
         content = rctx.read(script)
         if content.startswith("#!python"):
@@ -443,8 +445,8 @@ def _whl_library_impl(rctx):
     )
     namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
-    _move_scripts_needing_shebang_rewrite(rctx)
     entry_points = _get_entry_points(rctx, install_dir_path, metadata)
+    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
 
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,

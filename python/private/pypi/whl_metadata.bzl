@@ -121,7 +121,8 @@ def parse_entry_points(contents):
     Returns:
         {type}`list[dict]` A list of dicts with keys: group, name, module, attribute, extras.
     """
-    entries = []
+    entries = {}
+    entry_names = {}
     current_group = None
     for line in contents.splitlines():
         line = line.strip()
@@ -142,6 +143,7 @@ def parse_entry_points(contents):
             lower_name = name.lower()
             if lower_name in entry_names:
                 continue
+            entry_names[lower_name] = True
 
             # remove inline comments
             ref, _, _ = ref.partition("#")
@@ -154,11 +156,11 @@ def parse_entry_points(contents):
                 ref = ref.strip()
 
             module, _, attribute = ref.partition(":")
-            entries[lower_name] = {
+            entries[name] = {
                 "attribute": attribute.strip(),
                 "extras": extras,
                 "group": current_group,
                 "module": module.strip(),
                 "name": name,
             }
-    return entries.values()
+    return entries

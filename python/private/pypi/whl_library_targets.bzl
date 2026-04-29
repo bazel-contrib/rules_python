@@ -45,6 +45,7 @@ _BAZEL_REPO_FILE_GLOBS = [
 ]
 
 _IS_VENV_SITE_PACKAGES_YES = Label("//python/config_settings:_is_venvs_site_packages_yes")
+_VENV_SITE_PACKAGES_FLAG = Label("//python/config_settings:venvs_site_packages")
 
 def whl_library_targets_from_requires(
         *,
@@ -199,11 +200,10 @@ def whl_library_targets(
         )
         data.append(ep_target_name)
 
-    ep_names = {ep["name"]: None for ep in entry_points}
+    # NOTE: We assume there is no overlap between the rewrite-bin file names,
+    # bin/ source files and generated bin/ files.
     for src_path in native.glob(["rewrite-bin/*"], allow_empty = True):
         script_name = src_path[len("rewrite-bin/"):]
-        if script_name in ep_names:
-            continue
         rewrite_target_name = "bin/{}".format(script_name)
         rules.venv_rewrite_shebang(
             name = rewrite_target_name,
@@ -415,7 +415,7 @@ def whl_library_targets(
             ),
             tags = tags,
             visibility = impl_vis,
-            experimental_venvs_site_packages = Label("//python/config_settings:venvs_site_packages"),
+            experimental_venvs_site_packages = _VENV_SITE_PACKAGES_FLAG,
             namespace_package_files = namespace_package_files,
         )
 
