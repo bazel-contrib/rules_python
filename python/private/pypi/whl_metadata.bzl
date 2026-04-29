@@ -128,11 +128,20 @@ def parse_entry_points(contents):
         if not line or line.startswith("#"):
             continue
         if line.startswith("[") and line.endswith("]"):
-            current_group = line[1:-1].strip()
+            current_group = line[1:-1].strip().lower()
             continue
+
         if current_group in ("console_scripts", "gui_scripts"):
             name, _, ref = line.partition("=")
             name = name.strip()
+
+            # Names are case-insensitive.
+            # See https://packaging.python.org/en/latest/specifications/entry-points/#data-model
+            # Entry points must be unique for a given name because they turn
+            # into files and may be on a case-insensitive file system.
+            lower_name = name.lower()
+            if lower_name in entry_names:
+                continue
 
             # remove inline comments
             ref, _, _ = ref.partition("#")
@@ -145,11 +154,11 @@ def parse_entry_points(contents):
                 ref = ref.strip()
 
             module, _, attribute = ref.partition(":")
-            entries.append({
+            entries[lower_name] = {
                 "attribute": attribute.strip(),
                 "extras": extras,
                 "group": current_group,
                 "module": module.strip(),
                 "name": name,
-            })
-    return entries
+            }
+    return entries.values()

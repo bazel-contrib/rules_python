@@ -20,7 +20,7 @@ from pathlib import Path
 import installer
 
 
-class NoNothingCm:
+class DoNothingCm:
     """A context manager that does nothing when written to."""
 
     def __enter__(self):
@@ -52,7 +52,7 @@ class NoEntryPointsSchemeDictionaryDestination(
     """
 
     def for_script(self, name, module, attribute):
-        return NoNothingCm()
+        return DoNothingCm()
 
 
 class Wheel:

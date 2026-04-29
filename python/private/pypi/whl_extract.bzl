@@ -62,9 +62,6 @@ def whl_extract(rctx, *, whl_path, logger):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
                 repo_utils.rename(rctx, src, dest)
 
-            # TODO @aignas 2025-12-16: when moving scripts to `bin`, rewrite the #!python
-            # shebang to be something else, for inspiration look at the hermetic
-            # toolchain wrappers
 
     # Ensure that there is no data dir left
         rctx.delete(data_dir)
