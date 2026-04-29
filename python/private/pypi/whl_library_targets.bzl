@@ -203,10 +203,14 @@ def whl_library_targets(
         bins_for_data_label.append(ep_target_name)
         data.append(ep_target_name)
 
-    # NOTE: We assume there is no overlap between the rewrite-bin file names,
-    # bin/ source files and generated bin/ files.
+    existing_bin_names = {ep["name"].lower(): None for ep in entry_points.values()}
+    for p in native.glob(["bin/*"], allow_empty = True):
+        existing_bin_names[p[len("bin/"):].lower()] = None
+
     for src_path in native.glob(["rewrite-bin/*"], allow_empty = True):
         script_name = src_path[len("rewrite-bin/"):]
+        if script_name.lower() in existing_bin_names:
+            continue
         rewrite_target_name = "bin/{}".format(script_name)
         rules.venv_rewrite_shebang(
             name = rewrite_target_name,

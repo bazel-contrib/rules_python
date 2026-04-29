@@ -30,7 +30,7 @@ def _test_filegroups(env):
     def glob(include, *, exclude = [], allow_empty):
         _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
-        if include == ["rewrite-bin/*"]:
+        if include == ["rewrite-bin/*"] or include == ["bin/*"]:
             return []
         return include
 
@@ -175,6 +175,7 @@ def _test_whl_and_library_deps_from_requires(env):
 
     m_glob = mocks.glob()
 
+    m_glob.results.append([])  # bin
     m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/SRCS.py"])  # srcs
     m_glob.results.append(["site-packages/foo/DATA.txt"])  # data
@@ -248,6 +249,11 @@ def _test_whl_and_library_deps_from_requires(env):
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(m_glob.calls).contains_exactly([
+        # bin call
+        mocks.glob_call(
+            ["bin/*"],
+            allow_empty = True,
+        ),
         # rewrite-bin call
         mocks.glob_call(
             ["rewrite-bin/*"],
@@ -288,6 +294,7 @@ def _test_whl_and_library_deps(env):
     filegroup_calls = []
     py_library_calls = []
     m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
     m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/SRCS.py"])
     m_glob.results.append(["site-packages/foo/DATA.txt"])
@@ -388,6 +395,7 @@ def _test_group(env):
     py_library_calls = []
 
     m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
     m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/srcs.py"])
     m_glob.results.append(["site-packages/foo/data.txt"])
@@ -456,6 +464,7 @@ def _test_group(env):
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(m_glob.calls, expr = "glob calls").contains_exactly([
+        mocks.glob_call(["bin/*"], allow_empty = True),
         mocks.glob_call(["rewrite-bin/*"], allow_empty = True),
         mocks.glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
         mocks.glob_call(["site-packages/**/*"], exclude = [
