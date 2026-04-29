@@ -199,8 +199,11 @@ def whl_library_targets(
         )
         data.append(ep_target_name)
 
+    ep_names = {ep["name"]: None for ep in entry_points}
     for src_path in native.glob(["rewrite-bin/*"], allow_empty = True):
         script_name = src_path[len("rewrite-bin/"):]
+        if script_name in ep_names:
+            continue
         rewrite_target_name = "bin/{}".format(script_name)
         rules.venv_rewrite_shebang(
             name = rewrite_target_name,

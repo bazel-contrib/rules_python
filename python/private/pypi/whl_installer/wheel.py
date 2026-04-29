@@ -50,7 +50,23 @@ class Wheel:
             "scripts": "/bin",
             "data": "/data",
         }
-        destination = installer.destinations.SchemeDictionaryDestination(
+        class NoEntryPointsSchemeDictionaryDestination(
+            installer.destinations.SchemeDictionaryDestination
+        ):
+            def for_script(self, name, module, attribute):
+                class Dummy:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *args):
+                        pass
+
+                    def write(self, data):
+                        pass
+
+                return Dummy()
+
+        destination = NoEntryPointsSchemeDictionaryDestination(
             installation_schemes,
             # TODO Should entry_point scripts also be handled by installer rather than custom code?
             interpreter="python",
