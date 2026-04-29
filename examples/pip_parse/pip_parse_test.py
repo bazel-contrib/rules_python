@@ -52,8 +52,12 @@ class PipInstallTest(unittest.TestCase):
         self.assertIsNotNone(actual)
         actual = set(self._remove_leading_dirs(actual.split(" ")))
 
+        s3cmd_bin = "bin/s3cmd"
+        if os.name == "nt":
+            s3cmd_bin += ".bat"
+
         expected = {
-            "bin/s3cmd",
+            s3cmd_bin,
             "data/share/doc/packages/s3cmd/INSTALL.md",
             "data/share/doc/packages/s3cmd/LICENSE",
             "data/share/doc/packages/s3cmd/NEWS",
