@@ -70,7 +70,13 @@ class WhlScriptsRunnableTest(unittest.TestCase):
 
         is_windows = sys.platform == "win32"
         if is_windows:
+            # On Windows, the shebang is replaced with a batch wrapper that
+            # invokes the interpreter.
             self.assertIn("pythonw.exe", first_line)
+            self.assertTrue(
+                first_line.startswith("@setlocal") or first_line.startswith("@echo off"),
+                f"Expected Windows batch wrapper, got {first_line}",
+            )
         else:
             self.assertTrue(
                 first_line.startswith("#!/bin/sh"),
