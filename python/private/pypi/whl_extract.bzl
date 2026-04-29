@@ -27,6 +27,7 @@ def whl_extract(rctx, *, whl_path, logger):
 
     # Get the <prefix>.dist_info dir name
     dist_info_dir = metadata_file.dirname
+    os_name = repo_utils.get_platforms_os_name(rctx)
     rctx.file(
         dist_info_dir.get_child("INSTALLER"),
         "https://github.com/bazel-contrib/rules_python#pipstar",
