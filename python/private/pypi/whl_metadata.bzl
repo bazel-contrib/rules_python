@@ -119,20 +119,22 @@ def parse_entry_points(contents):
         contents: {type}`str` The contents of the entry_points.txt file.
 
     Returns:
-        {type}`list[dict]` A list of dicts with keys: group, name, module, attribute, extras.
+        {type}`dict[str, dict]` A dict keyed by the original entry point name.
     """
     entries = {}
-    entry_names = {}
+    seen_lower_names = {}
     current_group = None
+    current_group_lower = None
     for line in contents.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         if line.startswith("[") and line.endswith("]"):
-            current_group = line[1:-1].strip().lower()
+            current_group = line[1:-1].strip()
+            current_group_lower = current_group.lower()
             continue
 
-        if current_group in ("console_scripts", "gui_scripts"):
+        if current_group_lower in ("console_scripts", "gui_scripts"):
             name, _, ref = line.partition("=")
             name = name.strip()
 
@@ -141,9 +143,9 @@ def parse_entry_points(contents):
             # Entry points must be unique for a given name because they turn
             # into files and may be on a case-insensitive file system.
             lower_name = name.lower()
-            if lower_name in entry_names:
+            if lower_name in seen_lower_names:
                 continue
-            entry_names[lower_name] = True
+            seen_lower_names[lower_name] = True
 
             # remove inline comments
             ref, _, _ = ref.partition("#")

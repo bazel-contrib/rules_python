@@ -191,38 +191,60 @@ foo_extra_comment = foomod:main [extra] # comment
 [something else]
 not very much interesting
 """)
-    env.expect.that_collection(got).contains_exactly([
-        {
+    env.expect.that_dict(got).contains_exactly({
+        "foo": {
             "attribute": "main",
             "extras": "",
             "group": "console_scripts",
             "module": "foomod",
             "name": "foo",
         },
-        {
+        "foobar": {
             "attribute": "main_bar",
             "extras": "bar, baz",
             "group": "console_scripts",
             "module": "importable.foomod",
             "name": "foobar",
         },
-        {
+        "foobarbaz": {
             "attribute": "main.attr",
             "extras": "",
             "group": "console_scripts",
             "module": "foomod",
             "name": "foobarbaz",
         },
-        {
+        "foo_extra_comment": {
             "attribute": "main",
             "extras": "extra",
             "group": "console_scripts",
             "module": "foomod",
             "name": "foo_extra_comment",
         },
-    ])
+    })
 
 _tests.append(_test_parse_entry_points)
+
+def _test_parse_entry_points_deduplicate(env):
+    got = parse_entry_points("""\
+[console_scripts]
+FooBar = foomod:main
+foobar = othermod:main
+fooBAR = another:main
+
+[gui_scripts]
+FOOBAR = guimod:main
+""")
+    env.expect.that_dict(got).contains_exactly({
+        "FooBar": {
+            "attribute": "main",
+            "extras": "",
+            "group": "console_scripts",
+            "module": "foomod",
+            "name": "FooBar",
+        },
+    })
+
+_tests.append(_test_parse_entry_points_deduplicate)
 
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
