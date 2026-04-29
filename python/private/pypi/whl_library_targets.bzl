@@ -44,7 +44,7 @@ _BAZEL_REPO_FILE_GLOBS = [
     "WORKSPACE.bazel",
 ]
 
-_IS_VENV_SITE_PACKAGES_YES = Label("//python/config_settings:_is_venvs_site_packages_yes")
+_IS_VENV_SITE_PACKAGES_YES = Label("@rules_python//python/config_settings:_is_venvs_site_packages_yes")
 
 def whl_library_targets_from_requires(
         *,
@@ -463,7 +463,7 @@ def _config_settings(dependencies_by_platform, dependencies_with_markers, rules,
 
         if abi:
             _kwargs["flag_values"] = {
-                Label("//python/config_settings:python_version"): "3.{}".format(abi[len("cp3"):]),
+                Label("@rules_python//python/config_settings:python_version"): "3.{}".format(abi[len("cp3"):]),
             }
 
         native.config_setting(

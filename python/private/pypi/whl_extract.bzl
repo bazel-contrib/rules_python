@@ -20,22 +20,6 @@ def whl_extract(rctx, *, whl_path, logger):
         supports_whl_extraction = rp_config.supports_whl_extraction,
     )
 
-    # Fix permissions on extracted files. Some wheels have files without read permissions set,
-    # which causes errors when trying to read them later.
-    os_name = repo_utils.get_platforms_os_name(rctx)
-    if os_name != "windows":
-        # On Unix-like systems, recursively add read permissions to all files
-        # and ensure directories are traversable (need execute permission)
-        result = repo_utils.execute_unchecked(
-            rctx,
-            op = "Fixing wheel permissions {}".format(whl_path),
-            arguments = ["chmod", "-R", "a+rX", str(install_dir_path)],
-            logger = logger,
-        )
-        if result.return_code != 0:
-            # It's possible chmod is not available or the filesystem doesn't support it.
-            # This is fine, we just want to try to fix permissions if possible.
-            logger.warn(lambda: "Failed to fix file permissions: {}".format(result.stderr))
     metadata_file = find_whl_metadata(
         install_dir = install_dir_path,
         logger = logger,
@@ -80,6 +64,24 @@ def whl_extract(rctx, *, whl_path, logger):
 
         # Ensure that there is no data dir left
         rctx.delete(data_dir)
+
+    # Fix permissions on extracted files. Some wheels have files without read permissions set,
+    # which causes errors when trying to read them later.
+    # We apply this to the root directory to ensure that everything in bin/, site-packages/,
+    # etc. is readable and executable where appropriate.
+    if os_name != "windows":
+        # On Unix-like systems, recursively add read permissions to all files
+        # and ensure directories are traversable (need execute permission)
+        result = repo_utils.execute_unchecked(
+            rctx,
+            op = "Fixing wheel permissions {}".format(whl_path),
+            arguments = ["chmod", "-R", "a+rX", "."],
+            logger = logger,
+        )
+        if result.return_code != 0:
+            # It's possible chmod is not available or the filesystem doesn't support it.
+            # This is fine, we just want to try to fix permissions if possible.
+            logger.warn(lambda: "Failed to fix file permissions: {}".format(result.stderr))
 
 def merge_trees(src, dest):
     """Merge src into the destination path.
