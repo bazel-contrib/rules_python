@@ -30,6 +30,8 @@ def _test_filegroups(env):
     def glob(include, *, exclude = [], allow_empty):
         _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
+        if include == ["rewrite-bin/*"]:
+            return []
         return include
 
     whl_library_targets(
