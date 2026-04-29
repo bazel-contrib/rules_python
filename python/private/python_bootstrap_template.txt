@@ -524,7 +524,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   if delete_dirs:
     for delete_dir in delete_dirs:
       print_verbose("cleanup: rmtree:", delete_dir)
-      ##shutil.rmtree(delete_dir, True)
+      shutil.rmtree(delete_dir, True)
   sys.exit(ret_code)
 
 def _run_execv(python_program, argv, env):
