@@ -190,6 +190,8 @@ def whl_library_targets(
     tags = sorted(tags)
     data = [] + data
 
+    bins_for_data_label = []
+
     for ep_dict in entry_points.values():
         kwargs = dict(ep_dict)
         ep_name = kwargs.pop("name")
@@ -198,6 +200,7 @@ def whl_library_targets(
             name = ep_target_name,
             **kwargs
         )
+        bins_for_data_label.append(ep_target_name)
         data.append(ep_target_name)
 
     # NOTE: We assume there is no overlap between the rewrite-bin file names,
@@ -210,6 +213,7 @@ def whl_library_targets(
             src = src_path,
             package = name,
         )
+        bins_for_data_label.append(rewrite_target_name)
         data.append(rewrite_target_name)
 
     if filegroups == None:
@@ -231,9 +235,12 @@ def whl_library_targets(
 
     for filegroup_name, glob_kwargs in filegroups.items():
         glob_kwargs = {"allow_empty": True} | glob_kwargs
+        srcs = native.glob(**glob_kwargs)
+        if filegroup_name == DATA_LABEL:
+            srcs = srcs + bins_for_data_label
         native.filegroup(
             name = filegroup_name,
-            srcs = native.glob(**glob_kwargs),
+            srcs = srcs,
             visibility = ["//visibility:public"],
         )
 

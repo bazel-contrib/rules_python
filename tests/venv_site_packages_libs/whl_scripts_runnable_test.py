@@ -6,6 +6,8 @@ from pathlib import Path
 
 
 class WhlScriptsRunnableTest(unittest.TestCase):
+    maxDiff = None
+
     def _get_script_path(self, name):
         is_windows = sys.platform == "win32"
         if is_windows:
