@@ -5,6 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+BAZEL_VERSION = os.environ.get("BAZEL_VERSION")
+IS_BAZEL_7 = BAZEL_VERSION and BAZEL_VERSION.startswith("7")
+
 
 class WhlScriptsRunnableTest(unittest.TestCase):
     maxDiff = None
@@ -61,6 +64,7 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         script_executable = output[-1].strip()
         self.assertEqual(script_executable, sys.executable)
 
+    @unittest.skipIf(IS_BAZEL_7, "bazel 8.5 and lower uses wheel.py, which rewrites #!pythonw to #!python")
     def test_pythonw_script(self):
         script_path = self._get_script_path("whl_with_data1_pythonw")
         self.assertTrue(script_path.exists(), f"Script not found at {script_path}")
