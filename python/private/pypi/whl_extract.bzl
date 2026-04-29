@@ -55,7 +55,9 @@ def whl_extract(rctx, *, whl_path, logger):
                 # The prefix does not exist in the wheel, we can continue
                 continue
 
-            for (src, dest) in merge_trees(src, rctx.path(dest_prefix)):
+            dest_dir = rctx.path(dest_prefix)
+            repo_utils.mkdir(rctx, dest_dir)
+            for (src, dest) in merge_trees(src, dest_dir):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
                 repo_utils.rename(rctx, src, dest)
 
