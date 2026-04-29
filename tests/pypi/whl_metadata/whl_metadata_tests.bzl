@@ -199,6 +199,13 @@ not very much interesting
             "module": "foomod",
             "name": "foo",
         },
+        "foo_extra_comment": {
+            "attribute": "main",
+            "extras": "extra",
+            "group": "console_scripts",
+            "module": "foomod",
+            "name": "foo_extra_comment",
+        },
         "foobar": {
             "attribute": "main_bar",
             "extras": "bar, baz",
@@ -212,13 +219,6 @@ not very much interesting
             "group": "console_scripts",
             "module": "foomod",
             "name": "foobarbaz",
-        },
-        "foo_extra_comment": {
-            "attribute": "main",
-            "extras": "extra",
-            "group": "console_scripts",
-            "module": "foomod",
-            "name": "foo_extra_comment",
         },
     })
 

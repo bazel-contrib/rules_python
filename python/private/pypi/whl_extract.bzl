@@ -62,8 +62,7 @@ def whl_extract(rctx, *, whl_path, logger):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
                 repo_utils.rename(rctx, src, dest)
 
-
-    # Ensure that there is no data dir left
+        # Ensure that there is no data dir left
         rctx.delete(data_dir)
 
 def _maybe_fix_permissions(rctx, *, whl_path, logger):

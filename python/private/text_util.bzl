@@ -172,7 +172,7 @@ def _render_dict_dict(d):
                 inner_lines.append(_indent("{}: {},".format(repr(ik), repr(iv))))
             inner_lines.append("}")
             v_str = "\n".join(inner_lines)
-        
+
         # We need to correctly indent the multi-line string v_str
         # but _indent acts on every line except the first if not carefully handled.
         # It's easier to just do:

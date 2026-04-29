@@ -42,7 +42,7 @@ class NoEntryPointsSchemeDictionaryDestination(
 
     rules_python handles entry points via its own `venv_entry_point` targets.
     If `installer` also generates these scripts in the `bin/` directory, it
-    causes a target naming collision because `whl_library_targets.bzl` will 
+    causes a target naming collision because `whl_library_targets.bzl` will
     try to create a `venv_rewrite_shebang` target with the same name.
 
     By overriding `for_script` to return a no-op dummy writer, we silently
