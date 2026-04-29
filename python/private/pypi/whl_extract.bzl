@@ -20,6 +20,8 @@ def whl_extract(rctx, *, whl_path, logger):
         supports_whl_extraction = rp_config.supports_whl_extraction,
     )
 
+    _maybe_fix_permissions(rctx, whl_path = whl_path, logger = logger)
+
     metadata_file = find_whl_metadata(
         install_dir = install_dir_path,
         logger = logger,
@@ -66,8 +68,6 @@ def whl_extract(rctx, *, whl_path, logger):
 
     # Ensure that there is no data dir left
         rctx.delete(data_dir)
-
-    _maybe_fix_permissions(rctx, whl_path = whl_path, logger = logger)
 
 def _maybe_fix_permissions(rctx, *, whl_path, logger):
     # Fix permissions on extracted files. Some wheels have files without read permissions set,
