@@ -65,6 +65,7 @@ def whl_extract(rctx, *, whl_path, logger):
         # Ensure that there is no data dir left
         rctx.delete(data_dir)
 
+# TODO: This can be removed when Bazel 8.6+ is the minimum supported version.
 def _maybe_fix_permissions(rctx, *, whl_path, logger):
     # Fix permissions on extracted files. Some wheels have files without read permissions set,
     # which causes errors when trying to read them later.
