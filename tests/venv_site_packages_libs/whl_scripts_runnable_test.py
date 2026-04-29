@@ -3,6 +3,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+import tempfile
 
 
 class WhlScriptsRunnableTest(unittest.TestCase):
@@ -70,26 +71,35 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         is_windows = sys.platform == "win32"
         if is_windows:
             self.assertIn("pythonw.exe", first_line)
-
-            result = subprocess.run(
-                [str(script_path)],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            output = result.stdout.splitlines()
-            self.assertIn("hello from whl_with_data1_pythonw", output)
-
-            script_executable = output[-1].strip()
-            self.assertTrue(
-                script_executable.endswith("pythonw.exe"),
-                f"Expected pythonw.exe, got {script_executable}",
-            )
         else:
             self.assertTrue(
                 first_line.startswith("#!/bin/sh"),
                 f"Expected #!/bin/sh, got {first_line}",
+            )
+
+        # For some reason, on Windows, the subprocess can't write
+        # to the temporary files unless mkstemp is used.
+        temp_fd, temp_str = tempfile.mkstemp()
+        try:
+            os.close(temp_fd)
+            out_path = Path(temp_str)
+            result = subprocess.run(
+                [str(script_path), str(out_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            output = out_path.read_text().splitlines()
+        finally:
+            os.unlink(temp_str)
+        self.assertIn("hello from whl_with_data1_pythonw", output)
+
+        script_executable = output[-1].strip()
+
+        if is_windows:
+            self.assertTrue(
+                script_executable.endswith("pythonw.exe"),
+                f"Expected pythonw.exe, got {script_executable}",
             )
 
 

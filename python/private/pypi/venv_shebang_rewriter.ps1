@@ -10,6 +10,8 @@ param(
     [string]$TargetOs
 )
 
+$ErrorActionPreference = "Stop"
+
 $firstLine = Get-Content -Path $InFile -TotalCount 1 -ErrorAction SilentlyContinue
 $content = Get-Content -Path $InFile | Select-Object -Skip 1
 
@@ -37,4 +39,6 @@ if ($TargetOs -eq "windows") {
     [System.IO.File]::WriteAllText($OutFile, $wrapper + "`n", $Utf8NoBom)
 }
 
-[System.IO.File]::AppendAllLines($OutFile, $content, $Utf8NoBom)
+if ($null -ne $content) {
+    [System.IO.File]::AppendAllLines($OutFile, [string[]]$content, $Utf8NoBom)
+}

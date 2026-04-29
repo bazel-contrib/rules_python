@@ -749,6 +749,14 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
             link_to_path = interpreter_actual_path,
             files = depset([runtime.interpreter]),
         ))
+
+        # This isn't strictly correct, but should work ok.
+        interpreter_symlinks.add(ExplicitSymlink(
+            runfiles_path = paths.join(paths.dirname(rf_path), "pythonw.exe"),
+            venv_path = paths.join(paths.dirname(venv_rel_path), "pythonw.exe"),
+            link_to_path = paths.join(paths.dirname(interpreter_actual_path), "pythonw.exe"),
+            files = depset(),
+        ))
     else:
         # It's OK to use declare_symlink here because an absolute path
         # will be written to it, so Bazel won't mangle it.
