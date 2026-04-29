@@ -27,7 +27,6 @@ def whl_extract(rctx, *, whl_path, logger):
 
     # Get the <prefix>.dist_info dir name
     dist_info_dir = metadata_file.dirname
-    os_name = repo_utils.get_platforms_os_name(rctx)
     rctx.file(
         dist_info_dir.get_child("INSTALLER"),
         "https://github.com/bazel-contrib/rules_python#pipstar",
@@ -65,13 +64,17 @@ def whl_extract(rctx, *, whl_path, logger):
             # shebang to be something else, for inspiration look at the hermetic
             # toolchain wrappers
 
-        # Ensure that there is no data dir left
+    # Ensure that there is no data dir left
         rctx.delete(data_dir)
 
+    _maybe_fix_permissions(rctx, whl_path = whl_path, logger = logger)
+
+def _maybe_fix_permissions(rctx, *, whl_path, logger):
     # Fix permissions on extracted files. Some wheels have files without read permissions set,
     # which causes errors when trying to read them later.
     # We apply this to the root directory to ensure that everything in bin/, site-packages/,
     # etc. is readable and executable where appropriate.
+    os_name = repo_utils.get_platforms_os_name(rctx)
     if os_name != "windows":
         # On Unix-like systems, recursively add read permissions to all files
         # and ensure directories are traversable (need execute permission)
