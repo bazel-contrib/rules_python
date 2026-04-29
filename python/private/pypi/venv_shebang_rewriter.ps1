@@ -13,6 +13,8 @@ param(
 $firstLine = Get-Content -Path $InFile -TotalCount 1 -ErrorAction SilentlyContinue
 $content = Get-Content -Path $InFile | Select-Object -Skip 1
 
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $False
+
 if ($TargetOs -eq "windows") {
     if ($firstLine -match "^#!pythonw") {
         $pythonExe = "pythonw.exe"
@@ -22,17 +24,17 @@ if ($TargetOs -eq "windows") {
     # A Batch-Python polyglot. Batch executes the first line and exits,
     # while Python (via -x) ignores the first line and executes the rest.
     $wrapper = "@setlocal enabledelayedexpansion & `"%~dp0$pythonExe`" -x `"%~f0`" %* & exit /b !ERRORLEVEL!"
-    Set-Content -Path $OutFile -Value $wrapper -Encoding UTF8
+    [System.IO.File]::WriteAllText($OutFile, $wrapper + "`r`n", $Utf8NoBom)
 } else {
     # A Shell-Python polyglot. The shell executes the triple-quoted 'exec'
     # command, re-running the script with python3 from the scripts directory.
     # Python ignores the triple-quoted string and continues.
-    $wrapper = @'
+    $wrapper = @"
 #!/bin/sh
-'''exec' "$(dirname "$0")/python3" "$0" "$@"
+'''exec' "`$(dirname "`$0")/python3" "`$0" "`$@"
 ' '''
-'@
-    Set-Content -Path $OutFile -Value $wrapper -Encoding UTF8
+"@
+    [System.IO.File]::WriteAllText($OutFile, $wrapper + "`n", $Utf8NoBom)
 }
 
-Add-Content -Path $OutFile -Value $content -Encoding UTF8
+[System.IO.File]::AppendAllLines($OutFile, $content, $Utf8NoBom)

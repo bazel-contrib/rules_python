@@ -14,14 +14,13 @@ if [ "$TARGET_OS" = "windows" ]; then
   esac
   # A Batch-Python polyglot. Batch executes the first line and exits,
   # while Python (via -x) ignores the first line and executes the rest.
-  echo "@setlocal enabledelayedexpansion & \"%~dp0$PYTHON_EXE\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!" > "$OUT"
+  printf "@setlocal enabledelayedexpansion & \"%%~dp0$PYTHON_EXE\" -x \"%%~f0\" %%* & exit /b !ERRORLEVEL!\r\n" > "$OUT"
 else
-  echo "#!/bin/sh" > "$OUT"
+  printf "#!/bin/sh\n" > "$OUT"
   # A Shell-Python polyglot. The shell executes the triple-quoted 'exec'
   # command, re-running the script with python3 from the scripts directory.
   # Python ignores the triple-quoted string and continues.
-  echo "'''exec' \"\$(dirname \"\$0\")/python3\" \"\$0\" \"\$@\"" >> "$OUT"
-  echo "' '''" >> "$OUT"
+  printf "'''exec' \"\$(dirname \"\$0\")/python3\" \"\$0\" \"\$@\"\n' '''\n" >> "$OUT"
 fi
 
 tail -n +2 "$IN" >> "$OUT"
