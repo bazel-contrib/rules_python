@@ -190,7 +190,7 @@ def whl_library_targets(
     tags = sorted(tags)
     data = [] + data
 
-    for ep_dict in entry_points:
+    for ep_dict in entry_points.values():
         kwargs = dict(ep_dict)
         ep_name = kwargs.pop("name")
         ep_target_name = "bin/{}".format(ep_name)

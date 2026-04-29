@@ -291,13 +291,14 @@ def _move_scripts_needing_shebang_rewrite(rctx, entry_points):
     if not bin_dir.exists:
         return
 
-    ep_names = {ep["name"].lower(): True for ep in entry_points}
+    ep_names = {name.lower(): True for name in entry_points}
     for script in bin_dir.readdir():
         if script.is_dir:
             continue
-        if script.basename.endswith(".exe") or script.basename.endswith(".dll"):
-            continue
         if script.basename.lower() in ep_names:
+            rctx.delete(script)
+            continue
+        if script.basename.endswith(".exe") or script.basename.endswith(".dll"):
             continue
         content = rctx.read(script)
         if content.startswith("#!python"):
@@ -447,7 +448,7 @@ def _whl_library_impl(rctx):
     namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
     entry_points = _get_entry_points(rctx, install_dir_path, metadata)
-    _move_scripts_needing_shebang_rewrite(rctx, entry_points.values())
+    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
 
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
@@ -468,7 +469,7 @@ def _whl_library_impl(rctx):
         group_name = rctx.attr.group_name,
         namespace_package_files = namespace_package_files,
         extras = requirement(rctx.attr.requirement).extras,
-        entry_points = entry_points.values(),
+        entry_points = entry_points,
     )
 
     # Delete these in case the wheel had them. They generally don't cause
