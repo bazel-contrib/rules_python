@@ -64,7 +64,10 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         script_executable = output[-1].strip()
         self.assertEqual(script_executable, sys.executable)
 
-    @unittest.skipIf(IS_BAZEL_7, "bazel 8.5 and lower uses wheel.py, which rewrites #!pythonw to #!python")
+    @unittest.skipIf(
+        IS_BAZEL_7,
+        "bazel 8.5 and lower uses wheel.py, which rewrites #!pythonw to #!python",
+    )
     def test_pythonw_script(self):
         script_path = self._get_script_path("whl_with_data1_pythonw")
         self.assertTrue(script_path.exists(), f"Script not found at {script_path}")
@@ -78,7 +81,8 @@ class WhlScriptsRunnableTest(unittest.TestCase):
             # invokes the interpreter.
             self.assertIn("pythonw.exe", first_line)
             self.assertTrue(
-                first_line.startswith("@setlocal") or first_line.startswith("@echo off"),
+                first_line.startswith("@setlocal")
+                or first_line.startswith("@echo off"),
                 f"Expected Windows batch wrapper, got {first_line}",
             )
         else:
