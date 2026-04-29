@@ -69,6 +69,11 @@ END_UNRELEASED_TEMPLATE
   targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
 * (entry_point) From now on `mypy` type checking will be skipped on the generated
   files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
+* (pypi) Support `--experimental_isolated_extension_usages`
+  ([#3668](https://github.com/bazel-contrib/rules_python/issues/3668)).
+* (uv) use the astral.sh mirror as the preferred url for binary downloads,
+  with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
+  from the dist-manifest contents.
 
 {#v0-0-0-added}
 ### Added

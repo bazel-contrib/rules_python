@@ -68,6 +68,10 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
+    name = "pip_parse_isolated_test",
+)
+
+rules_python_integration_test(
     name = "pip_parse_workspace_test",
     bzlmod = False,
     workspace_path = "pip_parse",
