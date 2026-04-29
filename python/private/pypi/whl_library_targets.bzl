@@ -54,7 +54,7 @@ def whl_library_targets_from_requires(
         metadata_version = "",
         requires_dist = [],
         extras = [],
-        entry_points = [],
+        entry_points = {},
         include = [],
         group_deps = [],
         **kwargs):
@@ -122,7 +122,7 @@ def whl_library_targets(
         filegroups = None,
         dependencies_by_platform = {},
         dependencies_with_markers = {},
-        entry_points = [],
+        entry_points = {},
         group_deps = [],
         group_name = "",
         data = [],
