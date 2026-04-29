@@ -71,6 +71,9 @@ END_UNRELEASED_TEMPLATE
   files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
 * (pypi) Support `--experimental_isolated_extension_usages`
   ([#3668](https://github.com/bazel-contrib/rules_python/issues/3668)).
+* (uv) use the astral.sh mirror as the preferred url for binary downloads,
+  with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
+  from the dist-manifest contents.
 
 {#v0-0-0-added}
 ### Added
@@ -85,6 +88,8 @@ END_UNRELEASED_TEMPLATE
 * (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
 * (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
 * Python toolchain from [20260414] release.
+* (pypi) `package_metadata` support, fixes 
+  [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 
 [20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
 [20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414

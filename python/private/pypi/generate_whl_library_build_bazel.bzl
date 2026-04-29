@@ -41,6 +41,12 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
+package_metadata(
+    name = "package_metadata",
+    purl = {purl},
+    visibility = ["//:__subpackages__"],
+)
+
 {fn}(
 {kwargs}
 )
@@ -50,12 +56,14 @@ def generate_whl_library_build_bazel(
         *,
         annotation = None,
         default_python_version = None,
+        purl = None,
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
     Args:
         annotation: The annotation for the build file.
         default_python_version: The python version to use to parse the METADATA.
+        purl: The purl.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -63,7 +71,10 @@ def generate_whl_library_build_bazel(
         A complete BUILD file as a string
     """
 
-    loads = []
+    loads = [
+        """load("@package_metadata//rules:package_metadata.bzl", "package_metadata")""",
+    ]
+
     if kwargs.get("tags"):
         fn = "whl_library_targets"
 
@@ -120,6 +131,7 @@ def generate_whl_library_build_bazel(
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())
                 ])),
+                purl = repr(purl),
             ),
         ] + additional_content,
     )

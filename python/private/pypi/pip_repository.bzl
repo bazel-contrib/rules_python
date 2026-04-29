@@ -90,11 +90,14 @@ def _pip_repository_impl(rctx):
         python_interpreter = rctx.attr.python_interpreter,
         python_interpreter_target = rctx.attr.python_interpreter_target,
     )
-    result = rctx.execute([python_interpreter, "--version"])
-    if result.stdout:
-        python_version = result.stdout.strip().split(" ")[-1]
-    else:
-        fail("Could not determine Python version")
+    result = pypi_repo_utils.execute_checked(
+        rctx,
+        python = python_interpreter,
+        srcs = [],
+        op = "GetPythonVersion",
+        arguments = ["-c", "import sys; print(sys.version.split()[0])"],
+    )
+    python_version = result.stdout.strip().splitlines()[-1]
     platforms = [
         "linux_aarch64",
         "linux_arm",
