@@ -14,7 +14,6 @@
 
 ""
 
-load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
@@ -261,22 +260,6 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
-def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
-    pypi_repo_utils.execute_checked(
-        rctx,
-        op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
-        python = python_interpreter,
-        arguments = args + [
-            "--whl-file",
-            whl_path,
-        ],
-        srcs = rctx.attr._python_srcs,
-        environment = environment,
-        quiet = rctx.attr.quiet,
-        timeout = rctx.attr.timeout,
-        logger = logger,
-    )
-
 def _get_entry_points(rctx, install_dir_path, metadata):
     dist_info_dir = "{}-{}.dist-info".format(
         metadata.name.replace("-", "_"),
@@ -376,11 +359,10 @@ def _whl_library_impl(rctx):
             # build deps from PyPI (e.g. `flit_core`) if they are missing.
             extra_pip_args.extend(["--find-links", "."])
 
-    enable_pipstar_extract = rp_config.bazel_8_or_later
-
-    # When pipstar is enabled, Python isn't used, so there's no need
-    # to setup env vars to run Python, unless we need to build an sdist
-    if enable_pipstar_extract and whl_path and not rctx.attr.whl_patches:
+    # When we already have a wheel and there are no patches, Python isn't used,
+    # so there's no need to setup env vars to run Python, unless we need to
+    # build an sdist or resolve a requirement.
+    if whl_path and not rctx.attr.whl_patches:
         environment = {}
         args = []
         python_interpreter = None
@@ -446,17 +428,7 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
-    if enable_pipstar_extract:
-        whl_extract(rctx, whl_path = whl_path, logger = logger)
-    else:
-        _extract_whl_py(
-            rctx,
-            python_interpreter = python_interpreter,
-            args = args,
-            whl_path = whl_path,
-            environment = environment,
-            logger = logger,
-        )
+    whl_extract(rctx, whl_path = whl_path, logger = logger)
 
     install_dir_path = whl_path.dirname.get_child("site-packages")
     metadata = whl_metadata(
@@ -513,9 +485,8 @@ repo(
     _remove_files(rctx, "BUILD", "BUILD.bazel")
     rctx.file("BUILD.bazel", build_file_contents)
 
-    if enable_pipstar_extract:
-        if hasattr(rctx, "repo_metadata"):
-            return rctx.repo_metadata(reproducible = True)
+    if hasattr(rctx, "repo_metadata"):
+        return rctx.repo_metadata(reproducible = True)
 
     return None
 
