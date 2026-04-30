@@ -153,7 +153,7 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
   fi
   # The bin/ directory may not exist if it is empty.
   mkdir -p "$(dirname $python_exe)"
-  ln -s "$symlink_to" "$python_exe"
+  ln -sfn "$symlink_to" "$python_exe"
 elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   if [[ -n "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
     use_exec=1
@@ -226,16 +226,16 @@ EOF
     fi
 
     mkdir -p "$venv/bin"
-    ln -s "$python_exe_actual" "$python_exe"
+    ln -sfn "$python_exe_actual" "$python_exe"
 
     if [[ ! -e "$venv_site_packages" ]]; then
       mkdir -p $(dirname $venv_site_packages)
-      ln -s "$runfiles_venv_site_packages" "$venv_site_packages"
+      ln -sfn "$runfiles_venv_site_packages" "$venv_site_packages"
     fi
   fi
 
   if [[ ! -e "$venv/pyvenv.cfg" ]]; then
-    ln -s "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
+    ln -sfn "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
   fi
 else
   use_exec=1
