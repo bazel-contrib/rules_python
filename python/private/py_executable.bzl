@@ -1018,6 +1018,22 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
 
     manifest.add_all(runfiles.files, map_each = map_zip_runfiles, allow_closure = True)
 
+    def map_zip_symlinks(entry):
+        # symlinks are workspace-relative, so prefix with the workspace name.
+        return _get_zip_runfiles_path(entry.path, workspace_name) + "=" + entry.target_file.path
+
+    def map_zip_root_symlinks(entry):
+        # root_symlinks are runfiles-root-relative; no workspace prefix.
+        return _get_zip_runfiles_path(entry.path) + "=" + entry.target_file.path
+
+    manifest.add_all(runfiles.symlinks, map_each = map_zip_symlinks, allow_closure = True)
+    manifest.add_all(runfiles.root_symlinks, map_each = map_zip_root_symlinks, allow_closure = True)
+
+    symlink_targets = depset([
+        entry.target_file
+        for entry in runfiles.symlinks.to_list() + runfiles.root_symlinks.to_list()
+    ])
+
     inputs = [zip_main]
     zip_repo_mapping_manifest = maybe_create_repo_mapping(
         ctx = ctx,
@@ -1037,7 +1053,7 @@ def _create_zip_file(ctx, *, output, zip_main, runfiles):
     ctx.actions.run(
         executable = ctx.executable._zipper,
         arguments = [zip_cli_args, manifest],
-        inputs = depset(inputs, transitive = [runfiles.files]),
+        inputs = depset(inputs, transitive = [runfiles.files, symlink_targets]),
         outputs = [output],
         use_default_shell_env = True,
         mnemonic = "PythonZipper",
