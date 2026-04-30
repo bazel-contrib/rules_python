@@ -147,8 +147,8 @@ def _build(self):
         whl_libraries = self._whl_libraries,
     )
 
-def _pip_parse(self, module_ctx, pip_attr):
-    python_version = pip_attr.python_version
+def _pip_parse(self, module_ctx, pip_attr, python_version = None):
+    python_version = python_version or pip_attr.python_version
     if python_version in self._platforms:
         fail((
             "Duplicate pip python version '{version}' for hub " +
@@ -194,7 +194,8 @@ def _pip_parse(self, module_ctx, pip_attr):
         self,
         module_ctx,
         pip_attr = pip_attr,
-        enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version)),
+        python_version = python_version,
+        enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(python_version)),
     )
 
 ### end of PUBLIC methods
@@ -387,11 +388,11 @@ def _set_get_index_urls(self, pip_attr):
     )
     return True
 
-def _detect_interpreter(self, pip_attr):
+def _detect_interpreter(self, pip_attr, python_version):
     python_interpreter_target = pip_attr.python_interpreter_target
     if python_interpreter_target == None and not pip_attr.python_interpreter:
         python_name = "python_{}_host".format(
-            pip_attr.python_version.replace(".", "_"),
+            python_version.replace(".", "_"),
         )
         if python_name not in self._available_interpreters:
             fail((
@@ -401,7 +402,7 @@ def _detect_interpreter(self, pip_attr):
                 "Expected to find {python_name} among registered versions:\n  {labels}"
             ).format(
                 hub_name = self.name,
-                version = pip_attr.python_version,
+                version = python_version,
                 python_name = python_name,
                 labels = "  \n".join(self._available_interpreters),
             ))
@@ -465,13 +466,13 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr):
+def _evaluate_markers(self, python_version):
     if self._evaluate_markers_fn:
         return self._evaluate_markers_fn
 
     return lambda _, requirements: evaluate_markers_star(
         requirements = requirements,
-        platforms = self._platforms[pip_attr.python_version],
+        platforms = self._platforms[python_version],
     )
 
 def _create_whl_repos(
@@ -479,6 +480,7 @@ def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
+        python_version,
         enable_pipstar_extract = False):
     """create all of the whl repositories
 
@@ -486,10 +488,11 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        python_version: {type}`str` - the resolved python version for this pip.parse call.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
     """
     logger = self._logger
-    platforms = self._platforms[pip_attr.python_version]
+    platforms = self._platforms[python_version]
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -501,15 +504,15 @@ def _create_whl_repos(
             extra_pip_args = pip_attr.extra_pip_args,
             platforms = sorted(platforms),  # here we only need keys
             python_version = full_version(
-                version = pip_attr.python_version,
+                version = python_version,
                 minor_mapping = self._minor_mapping,
             ),
             logger = logger,
         ),
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = self._get_index_urls.get(pip_attr.python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr),
+        get_index_urls = self._get_index_urls.get(python_version),
+        evaluate_markers = _evaluate_markers(self, python_version),
         logger = logger,
     )
 
@@ -530,7 +533,7 @@ def _create_whl_repos(
         pip_attr = pip_attr,
     )
 
-    interpreter = _detect_interpreter(self, pip_attr)
+    interpreter = _detect_interpreter(self, pip_attr, python_version)
 
     for whl in requirements_by_platform:
         whl_library_args = common_args | _whl_library_args(
@@ -545,16 +548,16 @@ def _create_whl_repos(
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,
-                use_downloader = src.url and _use_downloader(self, pip_attr.python_version, whl.name),
+                use_downloader = src.url and _use_downloader(self, python_version, whl.name),
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
-                python_version = _major_minor_version(pip_attr.python_version),
+                python_version = _major_minor_version(python_version),
                 is_multiple_versions = whl.is_multiple_versions,
                 interpreter = interpreter,
                 enable_pipstar_extract = enable_pipstar_extract,
             )
             _add_whl_library(
                 self,
-                python_version = pip_attr.python_version,
+                python_version = python_version,
                 whl = whl,
                 repo = repo,
             )

@@ -1,2 +1,3 @@
 python/features.bzl export-subst
 tools/publish/*.txt linguist-generated=true
+requirements_lock.txt linguist-generated=true
