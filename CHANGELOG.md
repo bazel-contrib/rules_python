@@ -74,6 +74,10 @@ END_UNRELEASED_TEMPLATE
 * (uv) use the astral.sh mirror as the preferred url for binary downloads,
   with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
   from the dist-manifest contents.
+* (py_binary) The `python_zip_file` output group now includes runfiles
+  contributed via `ctx.runfiles(symlinks=...)` and `ctx.runfiles(root_symlinks=...)`,
+  which were previously dropped. This notably restores `sh_binary` data deps
+  that rely on `@bazel_tools//tools/bash/runfiles` under bazel 9 / rules_shell 0.6+.
 
 {#v0-0-0-added}
 ### Added
