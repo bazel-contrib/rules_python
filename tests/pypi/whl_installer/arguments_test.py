@@ -15,7 +15,7 @@
 import json
 import unittest
 
-from python.private.pypi.whl_installer import arguments, wheel
+from python.private.pypi.whl_installer import arguments
 
 
 class ArgumentsTestCase(unittest.TestCase):

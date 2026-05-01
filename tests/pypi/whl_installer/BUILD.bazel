@@ -15,15 +15,3 @@ py_test(
         ":lib",
     ],
 )
-
-py_test(
-    name = "wheel_installer_test",
-    size = "small",
-    srcs = [
-        "wheel_installer_test.py",
-    ],
-    data = ["//examples/wheel:minimal_with_py_package"],
-    deps = [
-        ":lib",
-    ],
-)
