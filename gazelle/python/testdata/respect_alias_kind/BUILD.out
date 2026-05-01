@@ -1,0 +1,12 @@
+load(":mylib.bzl", "my_py_library")
+
+# gazelle:alias_kind my_py_library py_library
+
+my_py_library(
+    name = "respect_alias_kind",
+    srcs = [
+        "__init__.py",
+        "foo.py",
+    ],
+    visibility = ["//:__subpackages__"],
+)
