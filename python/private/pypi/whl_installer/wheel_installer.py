@@ -53,9 +53,6 @@ def _configure_reproducible_wheels() -> None:
         os.environ["PYTHONHASHSEED"] = "0"
 
 
-
-
-
 def main() -> None:
     args = arguments.parser(description=__doc__).parse_args()
     deserialized_args = dict(vars(args))
