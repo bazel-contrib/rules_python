@@ -147,18 +147,18 @@ The Python-specific directives are:
 [`# gazelle:python_generate_pyi_deps bool`](#directive-python-generate-pyi-deps)
 : Controls whether to generate a separate `pyi_deps` attribute for
   type-checking dependencies or merge them into the regular `deps`
-  attribute. When `false` (default), type-checking dependencies are
-  merged into `deps` for backward compatibility. When `true`, generates
-  separate `pyi_deps`. Imports in blocks with the format
+  attribute. When `true` (default), generates separate `pyi_deps`. When
+  `false`, type-checking dependencies are merged into `deps`. Imports in
+  blocks with the format
   `if typing.TYPE_CHECKING:` or `if TYPE_CHECKING:` and type-only stub
   packages (eg. boto3-stubs) are recognized as type-checking dependencies.
-  * Default: `false`
+  * Default: `true`
   * Allowed Values: `true`, `false`
 
 [`# gazelle:python_generate_pyi_srcs bool`](#directive-python-generate-pyi-srcs)
 : Controls whether to generate a `pyi_srcs` attribute if a sibling `.pyi` file
-  is found. When `false` (default), the `pyi_srcs` attribute is not added.
-  * Default: `false`
+  is found. When `false`, the `pyi_srcs` attribute is not added.
+  * Default: `true`
   * Allowed Values: `true`, `false`
 
 [`# gazelle:python_generate_proto bool`](#directive-python-generate-proto)
@@ -681,9 +681,37 @@ that are relative to the current package.
 {gh-pr}`3014`
 :::
 
-:::{error}
-Detailed docs are not yet written.
-:::
+When `true`, Gazelle writes type-checking dependencies to the `pyi_deps`
+attribute instead of merging them into `deps`. This is the default behavior.
+
+Gazelle treats imports inside `if TYPE_CHECKING:` and
+`if typing.TYPE_CHECKING:` blocks as type-checking dependencies. It also adds
+type stub packages, such as `boto3-stubs`, to `pyi_deps` when the corresponding
+runtime package is imported normally.
+
+For example, assume you have the following file:
+
+```python
+import boto3
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import requests
+```
+
+The generated target will be:
+
+```starlark
+py_library(
+    name = "foo",
+    srcs = ["foo.py"],
+    pyi_deps = ["@pip//requests"],
+    deps = ["@pip//boto3"],
+)
+```
+
+When `false`, Gazelle merges type-checking dependencies into `deps` and does
+not write `pyi_deps`.
 
 
 (directive-python-generate-pyi-srcs)=

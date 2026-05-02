@@ -102,11 +102,11 @@ const (
 	ExperimentalAllowRelativeImports = "python_experimental_allow_relative_imports"
 	// GeneratePyiDeps represents the directive that controls whether to generate
 	// separate pyi_deps attribute or merge type-checking dependencies into deps.
-	// Defaults to false for backward compatibility.
+	// Defaults to true.
 	GeneratePyiDeps = "python_generate_pyi_deps"
 	// GeneratePyiSrcs represents the directive that controls whether to include
 	// a pyi_srcs attribute if a sibling .pyi file is found.
-	// Defaults to false for backward compatibility.
+	// Defaults to true.
 	GeneratePyiSrcs = "python_generate_pyi_srcs"
 	// GenerateProto represents the directive that controls whether to generate
 	// python_generate_proto targets.
@@ -256,8 +256,8 @@ func New(
 		labelConvention:                           DefaultLabelConvention,
 		labelNormalization:                        DefaultLabelNormalizationType,
 		experimentalAllowRelativeImports:          false,
-		generatePyiDeps:                           false,
-		generatePyiSrcs:                           false,
+		generatePyiDeps:                           true,
+		generatePyiSrcs:                           true,
 		generateProto:                             false,
 		resolveSiblingImports:                     false,
 		includeAncestorConftest:                   true,
