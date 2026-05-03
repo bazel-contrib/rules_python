@@ -85,3 +85,17 @@ py_reconfig_test(
         "@whl_with_data2//:pkg",
     ],
 )
+
+py_reconfig_test(
+    name = "importlib_metadata_test",
+    srcs = ["importlib_metadata_test.py"],
+    bootstrap_impl = select({
+        "@platforms//os:windows": "system_python",
+        "//conditions:default": "script",
+    }),
+    main = "importlib_metadata_test.py",
+    venvs_site_packages = "yes",
+    deps = [
+        "@whl_with_data1//:pkg",
+    ],
+)

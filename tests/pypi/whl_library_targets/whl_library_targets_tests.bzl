@@ -272,7 +272,6 @@ def _test_whl_and_library_deps_from_requires(env):
                 "**/*.py",
                 "**/*.pyc",
                 "**/*.pyc.*",
-                "**/*.dist-info/RECORD",
             ],
             allow_empty = True,
         ),
@@ -471,12 +470,52 @@ def _test_group(env):
             "**/*.py",
             "**/*.pyc",
             "**/*.pyc.*",
-            "**/*.dist-info/RECORD",
         ], allow_empty = True),
         mocks.glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
 _tests.append(_test_group)
+
+def _test_sdist_excludes_record(env):
+    py_library_calls = []
+    m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append([])  # srcs
+    m_glob.results.append([])  # data
+    m_glob.results.append([])  # pyi
+
+    whl_library_targets(
+        name = "foo.whl",
+        dep_template = "@pypi_{name}//:{target}",
+        sdist_filename = "foo.tar.gz",
+        filegroups = {},
+        native = struct(
+            filegroup = lambda **_: None,
+            config_setting = lambda **_: None,
+            glob = m_glob.glob,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            create_inits = lambda **kwargs: [],
+            venv_rewrite_shebang = lambda **kwargs: None,
+        ),
+    )
+
+    env.expect.that_collection(m_glob.calls).contains_at_least([
+        mocks.glob_call(
+            ["site-packages/**/*"],
+            exclude = [
+                "**/*.py",
+                "**/*.pyc",
+                "**/*.pyc.*",
+                "**/*.dist-info/RECORD",
+            ],
+            allow_empty = True,
+        ),
+    ])
+
+_tests.append(_test_sdist_excludes_record)
 
 def whl_library_targets_test_suite(name):
     """create the test suite.

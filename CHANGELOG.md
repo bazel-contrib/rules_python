@@ -74,6 +74,10 @@ END_UNRELEASED_TEMPLATE
 * (uv) use the astral.sh mirror as the preferred url for binary downloads,
   with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
   from the dist-manifest contents.
+* (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
+  installed wheel targets, except when built from sdist
+  ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
+
 
 {#v0-0-0-added}
 ### Added
