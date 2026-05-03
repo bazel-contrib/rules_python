@@ -375,6 +375,8 @@ def whl_library_targets(
             "**/*.pyc",
             "**/*.pyc.*",  # During pyc creation, temp files named *.pyc.NNNN are created
         ]
+        if sdist_filename:
+            _data_exclude.append("**/*.dist-info/RECORD")
         for item in data_exclude:
             if item not in _data_exclude:
                 _data_exclude.append(item)
