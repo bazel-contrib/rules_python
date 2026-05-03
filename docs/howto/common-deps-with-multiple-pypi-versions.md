@@ -1,52 +1,100 @@
 (common-deps-with-multiple-pypi-versions)=
 # How to use a common set of dependencies with multiple PyPI versions
 
-In this guide, we show how to handle a situation common to monorepos
-that extensively share code: How does a common library refer to the correct
-`@pypi_<name>` hub when binaries may have their own requirements (and thus
-PyPI hub name)? Stated as code, this situation:
+In this guide, we show how to handle a situation common to monorepos that
+extensively share code: How do multiple binaries utilize distinct requirements
+files while pulling from shared internal libraries, without requiring
+manually-maintained `select()` logic inside dependency targets?
+
+Stated as code, consider this example:
 
 ```bzl
-
+# When building bin_alpha, requests and more_itertools should resolve
+# from requirements_alpha.txt
 py_binary(
-  name = "bin_alpha",
-  deps = ["@pypi_alpha//requests", ":common"],
-)
-py_binary(
-  name = "bin_beta",
-  deps = ["@pypi_beta//requests", ":common"],
+    name = "bin_alpha",
+    deps = [
+        "@pypi//requests",
+        ":common",
+    ],
 )
 
+# When building bin_beta, requests and more_itertools should resolve
+# from requirements_beta.txt
+py_binary(
+    name = "bin_beta",
+    deps = [
+        "@pypi//requests",
+        ":common",
+    ],
+)
+
+# Transitive dependencies like more_itertools are requested here, but
+# must automatically match whichever dependency track is active for the binary.
 py_library(
-  name = "common",
-  deps = ["@pypi_???//more_itertools"] # <-- Which @pypi repo?
+    name = "common",
+    deps = ["@pypi//more_itertools"],
 )
 ```
 
-## Using flags to pick a hub
+## Defining dependency tracks via custom platforms
 
-The basic trick to make `:common` pick the appropriate `@pypi_<name>` is to use
-`select()` to choose one based on build flags. To help this process, `py_binary`
-et al allow forcing particular build flags to be used, and custom flags can be
-registered to allow `py_binary` et al to set them.
+The solution involves defining custom "platforms" mapped to separate
+dependency tracks inside `MODULE.bazel`. Using custom platforms via
+{obj}`pip.default` and associating requirements files to them through the
+`requirements_by_platform` attribute on {obj}`pip.parse` instructs
+`rules_python` to generate `select()` logic behind a unified hub.
 
-In this example, we create a custom string flag named `//:pypi_hub`,
-register it to allow using it with `py_binary` directly, then use `select()`
-to pick different dependencies.
+Binaries configure their execution requirements by forcing flag transition
+attributes using custom build setting flags.
 
-```bzl
+In this example, we define custom string flag named `//:pypi_hub`, setup
+distinct custom platforms for `"alpha"` and `"beta"` profiles, and register
+associated requirements lock files grouped inside the `@pypi` hub.
+
+```starlark
 # File: MODULE.bazel
 
+rules_python_config = use_extension(
+    "@rules_python//python/extensions:config.bzl",
+    "config",
+)
 rules_python_config.add_transition_setting(
     setting = "//:pypi_hub",
 )
 
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+pip.default(
+    platform = "alpha",
+    config_settings = ["@//:is_pypi_alpha"],
+)
+
+pip.default(
+    platform = "beta",
+    config_settings = ["@//:is_pypi_beta"],
+)
+
+pip.parse(
+    hub_name = "pypi",
+    python_version = "3.14",
+    requirements_by_platform = {
+        "//:requirements_alpha.txt": "alpha",
+        "//:requirements_beta.txt": "beta",
+    },
+)
+
+use_repo(pip, "pypi")
+```
+
+```starlark
 # File: BUILD.bazel
 
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 string_flag(
     name = "pypi_hub",
+    build_setting_default = "none",
 )
 
 config_setting(
@@ -56,7 +104,7 @@ config_setting(
 
 config_setting(
     name = "is_pypi_beta",
-    flag_values = {"//:pypi_hub": "beta"}
+    flag_values = {"//:pypi_hub": "beta"},
 )
 
 py_binary(
@@ -65,26 +113,32 @@ py_binary(
     config_settings = {
         "//:pypi_hub": "alpha",
     },
-    deps = ["@pypi_alpha//requests", ":common"],
+    deps = [
+        "@pypi//requests",
+        ":common",
+    ],
 )
+
 py_binary(
     name = "bin_beta",
     srcs = ["bin_beta.py"],
     config_settings = {
         "//:pypi_hub": "beta",
     },
-    deps = ["@pypi_beta//requests", ":common"],
+    deps = [
+        "@pypi//requests",
+        ":common",
+    ],
 )
+
 py_library(
     name = "common",
-    deps = select({
-        ":is_pypi_alpha": ["@pypi_alpha//more_itertools"],
-        ":is_pypi_beta": ["@pypi_beta//more_itertools"],
-    }),
+    deps = ["@pypi//more_itertools"],
 )
 ```
 
-When `bin_alpha` and `bin_beta` are built, they will have the `pypi_hub`
-flag force to their respective value. When `:common` is evaluated, it sees
-the flag value of the binary that is consuming it, and the `select()` resolves
-appropriately.
+When building `bin_alpha` or `bin_beta`, they set `//:pypi_hub` via target
+transitions. The generated aliased dependencies inside the `@pypi` hub will
+evaluate that Bazel configuration, automatically delivering corresponding
+Python wheels from targeted lock files.
+
