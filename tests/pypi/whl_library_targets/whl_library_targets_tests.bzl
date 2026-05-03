@@ -272,7 +272,6 @@ def _test_whl_and_library_deps_from_requires(env):
                 "**/*.py",
                 "**/*.pyc",
                 "**/*.pyc.*",
-                "**/*.dist-info/RECORD",
             ],
             allow_empty = True,
         ),
@@ -471,7 +470,6 @@ def _test_group(env):
             "**/*.py",
             "**/*.pyc",
             "**/*.pyc.*",
-            "**/*.dist-info/RECORD",
         ], allow_empty = True),
         mocks.glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
