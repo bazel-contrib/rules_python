@@ -713,6 +713,10 @@ py_library(
 When `false`, Gazelle merges type-checking dependencies into `deps` and does
 not write `pyi_deps`.
 
+:::{versionchanged} VERSION_NEXT_FEATURE
+The default was changed from `false` to `true`. {gh-pr}`3753`
+:::
+
 
 (directive-python-generate-pyi-srcs)=
 ## `python_generate_pyi_srcs`
@@ -739,6 +743,10 @@ py_library(
     pyi_srcs = ["foo.pyi"],
 )
 ```
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The default was changed from `false` to `true`. {gh-pr}`3753`
+:::
 
 
 (directive-python-generate-proto)=
