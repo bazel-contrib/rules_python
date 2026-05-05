@@ -681,6 +681,10 @@ that are relative to the current package.
 {gh-pr}`3014`
 :::
 
+:::{versionchanged} VERSION_NEXT_FEATURE
+The default was changed from `false` to `true`. {gh-pr}`3753`
+:::
+
 When `true`, Gazelle writes type-checking dependencies to the `pyi_deps`
 attribute instead of merging them into `deps`. This is the default behavior.
 
@@ -713,16 +717,16 @@ py_library(
 When `false`, Gazelle merges type-checking dependencies into `deps` and does
 not write `pyi_deps`.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
-The default was changed from `false` to `true`. {gh-pr}`3753`
-:::
-
 
 (directive-python-generate-pyi-srcs)=
 ## `python_generate_pyi_srcs`
 
 :::{versionadded} 1.6.0
 {gh-pr}`3356`
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The default was changed from `false` to `true`. {gh-pr}`3753`
 :::
 
 When `true`, include any sibling `.pyi` files in the `pyi_srcs` target attribute.
@@ -743,10 +747,6 @@ py_library(
     pyi_srcs = ["foo.pyi"],
 )
 ```
-
-:::{versionchanged} VERSION_NEXT_FEATURE
-The default was changed from `false` to `true`. {gh-pr}`3753`
-:::
 
 
 (directive-python-generate-proto)=
