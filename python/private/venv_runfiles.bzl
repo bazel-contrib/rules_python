@@ -521,7 +521,7 @@ def get_venv_symlinks(
         venv_symlinks[venv_path] = VenvSymlinkEntry(
             kind = kind,
             link_to_path = link_to_path,
-            link_to_file = None,
+            link_to_file = files[0] if kind == VenvSymlinkKind.BIN and len(files) == 1 else None,
             package = package,
             version = version_str,
             venv_path = out_venv_path,

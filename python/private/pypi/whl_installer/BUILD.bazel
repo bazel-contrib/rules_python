@@ -5,7 +5,6 @@ py_library(
     name = "lib",
     srcs = [
         "arguments.py",
-        "wheel.py",
         "wheel_installer.py",
     ],
     visibility = [

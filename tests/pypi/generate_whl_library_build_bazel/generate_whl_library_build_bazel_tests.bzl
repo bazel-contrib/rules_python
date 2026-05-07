@@ -21,9 +21,16 @@ _tests = []
 
 def _test_all_legacy(env):
     want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
+
+package_metadata(
+    name = "package_metadata",
+    purl = None,
+    visibility = ["//:__subpackages__"],
+)
 
 whl_library_targets(
     copy_executables = {
@@ -79,10 +86,17 @@ _tests.append(_test_all_legacy)
 
 def _test_all_workspace(env):
     want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
 
 package(default_visibility = ["//visibility:public"])
+
+package_metadata(
+    name = "package_metadata",
+    purl = None,
+    visibility = ["//:__subpackages__"],
+)
 
 whl_library_targets_from_requires(
     copy_executables = {
@@ -138,10 +152,17 @@ _tests.append(_test_all_workspace)
 
 def _test_all(env):
     want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
 
 package(default_visibility = ["//visibility:public"])
+
+package_metadata(
+    name = "package_metadata",
+    purl = None,
+    visibility = ["//:__subpackages__"],
+)
 
 whl_library_targets_from_requires(
     copy_executables = {
@@ -197,10 +218,17 @@ _tests.append(_test_all)
 
 def _test_all_with_loads(env):
     want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
 
 package(default_visibility = ["//visibility:public"])
+
+package_metadata(
+    name = "package_metadata",
+    purl = None,
+    visibility = ["//:__subpackages__"],
+)
 
 whl_library_targets_from_requires(
     copy_executables = {

@@ -30,6 +30,8 @@ def _test_filegroups(env):
     def glob(include, *, exclude = [], allow_empty):
         _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
+        if include == ["rewrite-bin/*"] or include == ["bin/*"]:
+            return []
         return include
 
     whl_library_targets(
@@ -39,7 +41,9 @@ def _test_filegroups(env):
             filegroup = lambda **kwargs: calls.append(kwargs),
             glob = glob,
         ),
-        rules = struct(),
+        rules = struct(
+            venv_rewrite_shebang = lambda **kwargs: None,
+        ),
     )
 
     env.expect.that_collection(calls, expr = "filegroup calls").contains_exactly([
@@ -85,8 +89,11 @@ def _test_platforms(env):
         filegroups = {},
         native = struct(
             config_setting = lambda **kwargs: calls.append(kwargs),
+            glob = lambda *args, **kwargs: [],
         ),
-        rules = struct(),
+        rules = struct(
+            venv_rewrite_shebang = lambda **kwargs: None,
+        ),
     )
 
     env.expect.that_collection(calls).contains_exactly([
@@ -134,9 +141,12 @@ def _test_copy(env):
         filegroups = {},
         copy_files = {"file_src": "file_dest"},
         copy_executables = {"exec_src": "exec_dest"},
-        native = struct(),
+        native = struct(
+            glob = lambda *args, **kwargs: [],
+        ),
         rules = struct(
             copy_file = lambda **kwargs: calls.append(kwargs),
+            venv_rewrite_shebang = lambda **kwargs: None,
         ),
     )
 
@@ -165,9 +175,11 @@ def _test_whl_and_library_deps_from_requires(env):
 
     m_glob = mocks.glob()
 
-    m_glob.results.append(["site-packages/foo/SRCS.py"])
-    m_glob.results.append(["site-packages/foo/DATA.txt"])
-    m_glob.results.append(["site-packages/foo/PYI.pyi"])
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append(["site-packages/foo/SRCS.py"])  # srcs
+    m_glob.results.append(["site-packages/foo/DATA.txt"])  # data
+    m_glob.results.append(["site-packages/foo/PYI.pyi"])  # pyi
 
     whl_library_targets_from_requires(
         name = "foo-0-py3-none-any.whl",
@@ -193,6 +205,7 @@ def _test_whl_and_library_deps_from_requires(env):
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
             create_inits = lambda *args, **kwargs: ["_create_inits_target"],
+            venv_rewrite_shebang = lambda **kwargs: None,
         ),
     )
 
@@ -236,6 +249,16 @@ def _test_whl_and_library_deps_from_requires(env):
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(m_glob.calls).contains_exactly([
+        # bin call
+        mocks.glob_call(
+            ["bin/*"],
+            allow_empty = True,
+        ),
+        # rewrite-bin call
+        mocks.glob_call(
+            ["rewrite-bin/*"],
+            allow_empty = True,
+        ),
         # srcs call
         mocks.glob_call(
             ["site-packages/**/*.py"],
@@ -249,7 +272,6 @@ def _test_whl_and_library_deps_from_requires(env):
                 "**/*.py",
                 "**/*.pyc",
                 "**/*.pyc.*",
-                "**/*.dist-info/RECORD",
             ],
             allow_empty = True,
         ),
@@ -271,6 +293,8 @@ def _test_whl_and_library_deps(env):
     filegroup_calls = []
     py_library_calls = []
     m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/SRCS.py"])
     m_glob.results.append(["site-packages/foo/DATA.txt"])
     m_glob.results.append(["site-packages/foo/PYI.pyi"])
@@ -300,6 +324,7 @@ def _test_whl_and_library_deps(env):
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             create_inits = lambda **kwargs: ["_create_inits_target"],
+            venv_rewrite_shebang = lambda **kwargs: None,
         ),
     )
 
@@ -369,6 +394,8 @@ def _test_group(env):
     py_library_calls = []
 
     m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
     m_glob.results.append(["site-packages/foo/srcs.py"])
     m_glob.results.append(["site-packages/foo/data.txt"])
     m_glob.results.append(["site-packages/foo/pyi.pyi"])
@@ -396,6 +423,7 @@ def _test_group(env):
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             create_inits = lambda **kwargs: ["_create_inits_target"],
+            venv_rewrite_shebang = lambda **kwargs: None,
         ),
     )
 
@@ -435,17 +463,59 @@ def _test_group(env):
     })  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(m_glob.calls, expr = "glob calls").contains_exactly([
+        mocks.glob_call(["bin/*"], allow_empty = True),
+        mocks.glob_call(["rewrite-bin/*"], allow_empty = True),
         mocks.glob_call(["site-packages/**/*.py"], exclude = [], allow_empty = True),
         mocks.glob_call(["site-packages/**/*"], exclude = [
             "**/*.py",
             "**/*.pyc",
             "**/*.pyc.*",
-            "**/*.dist-info/RECORD",
         ], allow_empty = True),
         mocks.glob_call(["site-packages/**/*.pyi"], allow_empty = True),
     ])
 
 _tests.append(_test_group)
+
+def _test_sdist_excludes_record(env):
+    py_library_calls = []
+    m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append([])  # srcs
+    m_glob.results.append([])  # data
+    m_glob.results.append([])  # pyi
+
+    whl_library_targets(
+        name = "foo.whl",
+        dep_template = "@pypi_{name}//:{target}",
+        sdist_filename = "foo.tar.gz",
+        filegroups = {},
+        native = struct(
+            filegroup = lambda **_: None,
+            config_setting = lambda **_: None,
+            glob = m_glob.glob,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            create_inits = lambda **kwargs: [],
+            venv_rewrite_shebang = lambda **kwargs: None,
+        ),
+    )
+
+    env.expect.that_collection(m_glob.calls).contains_at_least([
+        mocks.glob_call(
+            ["site-packages/**/*"],
+            exclude = [
+                "**/*.py",
+                "**/*.pyc",
+                "**/*.pyc.*",
+                "**/*.dist-info/RECORD",
+            ],
+            allow_empty = True,
+        ),
+    ])
+
+_tests.append(_test_sdist_excludes_record)
 
 def whl_library_targets_test_suite(name):
     """create the test suite.

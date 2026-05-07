@@ -46,7 +46,7 @@ jobs:
       - name: Create release archive and notes
         run: .github/workflows/create_archive_and_notes.sh ${{ inputs.tag_name || github.ref_name }}
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # Use GH feature to populate the changelog automatically
           generate_release_notes: true

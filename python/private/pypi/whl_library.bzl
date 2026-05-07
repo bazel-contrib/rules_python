@@ -14,10 +14,10 @@
 
 ""
 
-load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
+load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
@@ -27,7 +27,7 @@ load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
-load(":whl_metadata.bzl", "whl_metadata")
+load(":whl_metadata.bzl", "parse_entry_points", "whl_metadata")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
@@ -260,21 +260,53 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
-def _extract_whl_py(rctx, *, python_interpreter, args, whl_path, environment, logger):
-    pypi_repo_utils.execute_checked(
-        rctx,
-        op = "whl_library.ExtractWheel({}, {})".format(rctx.attr.name, whl_path),
-        python = python_interpreter,
-        arguments = args + [
-            "--whl-file",
-            whl_path,
-        ],
-        srcs = rctx.attr._python_srcs,
-        environment = environment,
-        quiet = rctx.attr.quiet,
-        timeout = rctx.attr.timeout,
-        logger = logger,
+def _get_entry_points(rctx, install_dir_path, metadata):
+    dist_info_dir = "{}-{}.dist-info".format(
+        metadata.name.replace("-", "_"),
+        metadata.version.replace("-", "_"),
     )
+    entry_points_txt = install_dir_path.get_child(dist_info_dir).get_child("entry_points.txt")
+    if entry_points_txt.exists:
+        return parse_entry_points(rctx.read(entry_points_txt))
+    return {}
+
+def _move_scripts_needing_shebang_rewrite(rctx, entry_points):
+    bin_dir = rctx.path("bin")
+    if not bin_dir.exists:
+        return
+
+    ep_names = {name.lower(): True for name in entry_points}
+    for script in bin_dir.readdir():
+        if script.is_dir:
+            continue
+        if script.basename.lower() in ep_names:
+            rctx.delete(script)
+            continue
+        if script.basename.endswith(".exe") or script.basename.endswith(".dll"):
+            continue
+        content = rctx.read(script)
+        if content.startswith("#!python"):
+            rewrite_bin_dir = rctx.path("rewrite-bin")
+            repo_utils.mkdir(rctx, rewrite_bin_dir)
+            repo_utils.rename(rctx, script, rctx.path("rewrite-bin/" + script.basename))
+
+def _to_purl(*, index, metadata, filename):
+    """
+    Produce a PyPI PURL from the metadata.
+
+    https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md
+    """
+
+    # https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md#name-definition
+    name = normalize_name(metadata.name).replace("_", "-")
+
+    qualifiers = {}
+    if index:
+        qualifiers["repository_url"] = index
+    if filename:
+        qualifiers["file_name"] = filename
+
+    return "pkg:pypi/{}@{}?{}".format(name, metadata.version, "&".join(["{}={}".format(key, val) for key, val in qualifiers.items()]))
 
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -327,11 +359,10 @@ def _whl_library_impl(rctx):
             # build deps from PyPI (e.g. `flit_core`) if they are missing.
             extra_pip_args.extend(["--find-links", "."])
 
-    enable_pipstar_extract = rp_config.bazel_8_or_later
-
-    # When pipstar is enabled, Python isn't used, so there's no need
-    # to setup env vars to run Python, unless we need to build an sdist
-    if enable_pipstar_extract and whl_path and not rctx.attr.whl_patches:
+    # When we already have a wheel and there are no patches, Python isn't used,
+    # so there's no need to setup env vars to run Python, unless we need to
+    # build an sdist or resolve a requirement.
+    if whl_path and not rctx.attr.whl_patches:
         environment = {}
         args = []
         python_interpreter = None
@@ -397,17 +428,7 @@ def _whl_library_impl(rctx):
                 timeout = rctx.attr.timeout,
             )
 
-    if enable_pipstar_extract:
-        whl_extract(rctx, whl_path = whl_path, logger = logger)
-    else:
-        _extract_whl_py(
-            rctx,
-            python_interpreter = python_interpreter,
-            args = args,
-            whl_path = whl_path,
-            environment = environment,
-            logger = logger,
-        )
+    whl_extract(rctx, whl_path = whl_path, logger = logger)
 
     install_dir_path = whl_path.dirname.get_child("site-packages")
     metadata = whl_metadata(
@@ -416,6 +437,9 @@ def _whl_library_impl(rctx):
         logger = logger,
     )
     namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
+
+    entry_points = _get_entry_points(rctx, install_dir_path, metadata)
+    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
 
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
@@ -436,6 +460,12 @@ def _whl_library_impl(rctx):
         group_name = rctx.attr.group_name,
         namespace_package_files = namespace_package_files,
         extras = requirement(rctx.attr.requirement).extras,
+        entry_points = entry_points,
+        purl = _to_purl(
+            index = rctx.attr.index_url,
+            metadata = metadata,
+            filename = sdist_filename or whl_path.basename,
+        ),
     )
 
     # Delete these in case the wheel had them. They generally don't cause
@@ -443,15 +473,20 @@ def _whl_library_impl(rctx):
     rctx.file("WORKSPACE")
     rctx.file("WORKSPACE.bazel")
     rctx.file("MODULE.bazel")
-    rctx.file("REPO.bazel")
+    rctx.file("REPO.bazel", """\
+repo(
+    default_package_metadata = [
+        "//:package_metadata",
+    ],
+)
+""")
 
     # BUILD files interfere with globbing and Bazel package boundaries.
     _remove_files(rctx, "BUILD", "BUILD.bazel")
     rctx.file("BUILD.bazel", build_file_contents)
 
-    if enable_pipstar_extract:
-        if hasattr(rctx, "repo_metadata"):
-            return rctx.repo_metadata(reproducible = True)
+    if hasattr(rctx, "repo_metadata"):
+        return rctx.repo_metadata(reproducible = True)
 
     return None
 
@@ -568,7 +603,6 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
     "_python_srcs": attr.label_list(
         # Used as a default value in a rule to ensure we fetch the dependencies.
         default = [
-            Label("//python/private/pypi/whl_installer:wheel.py"),
             Label("//python/private/pypi/whl_installer:wheel_installer.py"),
             Label("//python/private/pypi/whl_installer:arguments.py"),
         ] + record_files.values(),

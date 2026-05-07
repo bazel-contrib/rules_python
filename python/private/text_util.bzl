@@ -157,9 +157,33 @@ def _left_pad_zero(index, length):
         fail("index must be non-negative")
     return ("0" * length + str(index))[-length:]
 
+def _render_dict_dict(d):
+    """Render a dict[str, dict] value without recursive function calls."""
+    if not d:
+        return "{}"
+
+    lines = ["{"]
+    for k, v in d.items():
+        if not v:
+            v_str = "{}"
+        else:
+            inner_lines = ["{"]
+            for ik, iv in v.items():
+                inner_lines.append(_indent("{}: {},".format(repr(ik), repr(iv))))
+            inner_lines.append("}")
+            v_str = "\n".join(inner_lines)
+
+        # We need to correctly indent the multi-line string v_str
+        # but _indent acts on every line except the first if not carefully handled.
+        # It's easier to just do:
+        lines.append(_indent("{}: {},".format(repr(k), v_str)))
+    lines.append("}")
+    return "\n".join(lines)
+
 render = struct(
     alias = _render_alias,
     dict = _render_dict,
+    dict_dict = _render_dict_dict,
     call = _render_call,
     hanging_indent = _hanging_indent,
     indent = _indent,

@@ -522,6 +522,38 @@ def _extract(mrctx, *, archive, supports_whl_extraction = False, **kwargs):
         if not mrctx.delete(archive):
             fail("Failed to remove the symlink after extracting")
 
+def _rename(mrctx, src, dest):
+    """Rename a file or directory.
+
+    TODO: remove when the earliest supported bazel version is at least 8.0.
+
+    Args:
+        mrctx: module_ctx or repository_ctx object
+        src: {type}`path` the source path
+        dest: {type}`path` the destination path
+    """
+    if hasattr(mrctx, "rename"):
+        mrctx.rename(src, dest)
+        return
+
+    # Fallback for Bazel < 8.0
+    os_name = _get_platforms_os_name(mrctx)
+    if os_name == "windows":
+        # On Windows, we use `cmd.exe /c move` to rename files/directories.
+        # We need to use backslashes for the paths.
+        res = mrctx.execute([
+            "cmd.exe",
+            "/c",
+            "move",
+            str(src).replace("/", "\\"),
+            str(dest).replace("/", "\\"),
+        ])
+    else:
+        res = mrctx.execute(["mv", str(src), str(dest)])
+
+    if res.return_code != 0:
+        fail("Failed to rename {} to {}: {}".format(src, dest, res.stderr))
+
 repo_utils = struct(
     # keep sorted
     execute_checked = _execute_checked,
@@ -536,6 +568,7 @@ repo_utils = struct(
     norm_path = _norm_path,
     relative_to = _relative_to,
     is_relative_to = _is_relative_to,
+    rename = _rename,
     repo_root_relative_path = _repo_root_relative_path,
     which_checked = _which_checked,
     which_unchecked = _which_unchecked,

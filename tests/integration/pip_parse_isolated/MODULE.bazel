@@ -1,0 +1,19 @@
+module(name = "pip_parse_isolated")
+
+bazel_dep(name = "rules_python")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.13")
+
+# This test module verifies that dependencies can be used with `isolate = True`.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", isolate = True)
+pip.parse(
+    hub_name = "pypi",
+    python_version = "3.13",
+    requirements_lock = "//:requirements_lock.txt",
+)
+use_repo(pip, "pypi")

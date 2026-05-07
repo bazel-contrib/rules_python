@@ -55,11 +55,6 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
         help="Use 'pip download' instead of 'pip wheel'. Disables building wheels from source, but allows use of "
         "--platform, --python-version, --implementation, and --abi in --extra_pip_args.",
     )
-    parser.add_argument(
-        "--whl-file",
-        type=pathlib.Path,
-        help="Extract a whl file to be used within Bazel.",
-    )
     return parser
 
 

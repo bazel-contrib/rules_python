@@ -25,9 +25,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, Set, Tuple
 
-from pip._vendor.packaging.utils import canonicalize_name
-
-from python.private.pypi.whl_installer import arguments, wheel
+from python.private.pypi.whl_installer import arguments
 
 
 def _configure_reproducible_wheels() -> None:
@@ -55,54 +53,12 @@ def _configure_reproducible_wheels() -> None:
         os.environ["PYTHONHASHSEED"] = "0"
 
 
-def _parse_requirement_for_extra(
-    requirement: str,
-) -> Tuple[Optional[str], Optional[Set[str]]]:
-    """Given a requirement string, returns the requirement name and set of extras, if extras specified.
-    Else, returns (None, None)
-    """
-
-    # https://www.python.org/dev/peps/pep-0508/#grammar
-    extras_pattern = re.compile(
-        r"^\s*([0-9A-Za-z][0-9A-Za-z_.\-]*)\s*\[\s*([0-9A-Za-z][0-9A-Za-z_.\-]*(?:\s*,\s*[0-9A-Za-z][0-9A-Za-z_.\-]*)*)\s*\]"
-    )
-
-    matches = extras_pattern.match(requirement)
-    if matches:
-        return (
-            canonicalize_name(matches.group(1)),
-            {extra.strip() for extra in matches.group(2).split(",")},
-        )
-
-    return None, None
-
-
-def _extract_wheel(
-    wheel_file: str,
-    installation_dir: Path = Path("."),
-) -> None:
-    """Extracts wheel into given directory and creates py_library and filegroup targets.
-
-    Args:
-        wheel_file: the filepath of the .whl
-        installation_dir: the destination directory for installation of the wheel.
-    """
-
-    whl = wheel.Wheel(wheel_file)
-    whl.unzip(installation_dir)
-
-
 def main() -> None:
     args = arguments.parser(description=__doc__).parse_args()
     deserialized_args = dict(vars(args))
     arguments.deserialize_structured_args(deserialized_args)
 
     _configure_reproducible_wheels()
-
-    if args.whl_file:
-        whl = Path(args.whl_file)
-        _extract_wheel(wheel_file=whl)
-        return
 
     pip_args = (
         [sys.executable, "-m", "pip"]

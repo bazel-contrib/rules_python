@@ -111,3 +111,58 @@ def find_whl_metadata(*, install_dir, logger):
     else:
         logger.fail("The '*.dist-info' directory could not be found in '{}'".format(install_dir.basename))
     return None
+
+def parse_entry_points(contents):
+    """Parses entry_points.txt contents and returns console_scripts and gui_scripts entries.
+
+    Args:
+        contents: {type}`str` The contents of the entry_points.txt file.
+
+    Returns:
+        {type}`dict[str, dict]` A dict keyed by the original entry point name.
+    """
+    entries = {}
+    seen_lower_names = {}
+    current_group = None
+    current_group_lower = None
+    for line in contents.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current_group = line[1:-1].strip()
+            current_group_lower = current_group.lower()
+            continue
+
+        if current_group_lower in ("console_scripts", "gui_scripts"):
+            name, _, ref = line.partition("=")
+            name = name.strip()
+
+            # Names are case-insensitive.
+            # See https://packaging.python.org/en/latest/specifications/entry-points/#data-model
+            # Entry points must be unique for a given name because they turn
+            # into files and may be on a case-insensitive file system.
+            lower_name = name.lower()
+            if lower_name in seen_lower_names:
+                continue
+            seen_lower_names[lower_name] = True
+
+            # remove inline comments
+            ref, _, _ = ref.partition("#")
+            ref = ref.strip()
+
+            extras = ""
+            if "[" in ref and ref.endswith("]"):
+                ref, _, extras_part = ref.partition("[")
+                extras = extras_part[:-1].strip()
+                ref = ref.strip()
+
+            module, _, attribute = ref.partition(":")
+            entries[name] = {
+                "attribute": attribute.strip(),
+                "extras": extras,
+                "group": current_group,
+                "module": module.strip(),
+                "name": name,
+            }
+    return entries

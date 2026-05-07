@@ -70,3 +70,32 @@ py_reconfig_test(
         ],
     }),
 )
+
+py_reconfig_test(
+    name = "whl_scripts_runnable_test",
+    srcs = ["whl_scripts_runnable_test.py"],
+    bootstrap_impl = select({
+        "@platforms//os:windows": "system_python",
+        "//conditions:default": "script",
+    }),
+    main = "whl_scripts_runnable_test.py",
+    venvs_site_packages = "yes",
+    deps = [
+        "@whl_with_data1//:pkg",
+        "@whl_with_data2//:pkg",
+    ],
+)
+
+py_reconfig_test(
+    name = "importlib_metadata_test",
+    srcs = ["importlib_metadata_test.py"],
+    bootstrap_impl = select({
+        "@platforms//os:windows": "system_python",
+        "//conditions:default": "script",
+    }),
+    main = "importlib_metadata_test.py",
+    venvs_site_packages = "yes",
+    deps = [
+        "@whl_with_data1//:pkg",
+    ],
+)
