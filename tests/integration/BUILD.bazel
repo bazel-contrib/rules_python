@@ -97,6 +97,10 @@ rules_python_integration_test(
     py_main = "toolchain_target_settings_test.py",
 )
 
+rules_python_integration_test(
+    name = "sys_executable_cross_runtime_test",
+)
+
 py_library(
     name = "runner_lib",
     srcs = ["runner.py"],
