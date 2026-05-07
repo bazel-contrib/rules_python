@@ -153,6 +153,65 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
+def _test_restrict_visibility_to(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "requirements.in": "foo>=0.0.1\n",
+                "requirements.txt": """\
+foo==0.0.1 --hash=sha256:deadbeef
+dep-of-foo==0.0.1 --hash=sha256:deadb00f
+""",
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "requirements.txt",
+            restrict_visibility_to = ["requirements.in"],
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["foo"])
+    pypi.group_map().contains_exactly({})
+    pypi.whl_map().contains_exactly({
+        "dep_of_foo": {
+            "pypi_315_dep_of_foo": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+        "foo": {
+            "pypi_315_foo": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_dep_of_foo": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "dep-of-foo==0.0.1 --hash=sha256:deadb00f",
+        },
+        "pypi_315_foo": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "foo==0.0.1 --hash=sha256:deadbeef",
+        },
+    })
+    pypi.extra_aliases().contains_exactly({})
+
+_tests.append(_test_restrict_visibility_to)
+
 def _test_simple_multiple_requirements(env):
     sub_tests = {
         ("osx", "aarch64"): "simple==0.0.2 --hash=sha256:deadb00f",

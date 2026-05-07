@@ -24,8 +24,30 @@ pip.parse(
 use_repo(pip, "my_deps")
 ```
 
-For more documentation, see the Bzlmod examples under the {gh-path}`examples` folder or the documentation
-for the {obj}`@rules_python//python/extensions:pip.bzl` extension.
+For more documentation, see the Bzlmod examples under the
+{gh-path}`examples` folder or the documentation for the
+{obj}`@rules_python//python/extensions:pip.bzl` extension.
+
+## Restricting exposed hub packages
+
+By default, every package in {attr}`pip.parse.requirements_lock` gets a public
+hub alias, such as `@my_deps//foo`. If you want only direct dependencies to be
+available to user code, set {attr}`pip.parse.restrict_visibility_to` to one or
+more requirement files that list those direct packages:
+
+```starlark
+pip.parse(
+    hub_name = "my_deps",
+    python_version = "3.13",
+    requirements_lock = "//:requirements_lock.txt",
+    restrict_visibility_to = ["//:requirements.in"],
+)
+```
+
+Packages in the lock file that are not listed in the restricted requirement
+files still get generated wheel repositories, so direct dependencies can use
+their transitive dependencies. Their hub aliases are visible only to the
+generated wheel repositories and are not public targets for user code.
 
 :::note}
 We are using a host-platform compatible toolchain by default to setup pip dependencies.

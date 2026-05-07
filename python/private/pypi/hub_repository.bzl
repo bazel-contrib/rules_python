@@ -26,12 +26,13 @@ exports_files(["requirements.bzl"])
 """
 
 def _impl(rctx):
-    bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+    bzl_packages = rctx.attr.packages
     aliases = render_multiplatform_pkg_aliases(
         aliases = {
             key: _whl_config_settings_from_json(values)
             for key, values in rctx.attr.whl_map.items()
         },
+        exposed_packages = bzl_packages,
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
@@ -81,7 +82,8 @@ hub_repository = repository_rule(
         "packages": attr.string_list(
             mandatory = False,
             doc = """\
-The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys.
+The list of packages that will be exposed via public hub aliases and
+all_*requirements macros.
 """,
         ),
         "platform_config_settings": attr.string_list_dict(
