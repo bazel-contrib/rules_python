@@ -372,3 +372,15 @@ is created.
 :::{versionadded} 1.2.0
 :::
 ::::
+
+## Removed Flags
+
+:::{versionremoved} VERSION_NEXT_FEATURE
+The following flags were removed:
+
+* `pip_whl`
+* `pip_whl_osx_arch`
+* `pip_whl_glibc_version`
+* `pip_whl_muslc_version`
+:::
+
