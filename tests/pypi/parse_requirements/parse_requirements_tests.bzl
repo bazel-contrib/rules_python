@@ -35,6 +35,10 @@ foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz
 foo[extra]==0.0.1 \
     --hash=sha256:deadbeef
 """,
+        "requirements_exposed_roots": """\
+foo[extra]>=0.0.1
+bar @ https://example.org/bar-0.0.1.whl
+""",
         "requirements_foo": """\
 foo==0.0.1 \
     --hash=sha256:deadb00f
@@ -61,6 +65,11 @@ bar==0.0.1 --hash=sha256:deadb00f
 """,
         "requirements_lock": """\
 foo[extra]==0.0.1 --hash=sha256:deadbeef
+""",
+        "requirements_lock_with_transitives": """\
+foo==0.0.1 --hash=sha256:deadbeef
+bar==0.0.1 --hash=sha256:deadb00f
+baz==0.0.1 --hash=sha256:deadbaaf
 """,
         "requirements_lock_dupe": """\
 foo[extra,extra_2]==0.0.1 --hash=sha256:deadbeef
@@ -149,6 +158,72 @@ def _test_simple(env):
     ])
 
 _tests.append(_test_simple)
+
+def _test_restrict_visibility_to(env):
+    got = parse_requirements(
+        exposed_requirements = ["requirements_exposed_roots"],
+        requirements_by_platform = {
+            "requirements_lock_with_transitives": ["linux_x86_64"],
+        },
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = [],
+                    requirement_line = "bar==0.0.1 --hash=sha256:deadb00f",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "baz",
+            index_url = "",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "baz",
+                    extra_pip_args = [],
+                    requirement_line = "baz==0.0.1 --hash=sha256:deadbaaf",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1 --hash=sha256:deadbeef",
+                    target_platforms = ["linux_x86_64"],
+                    url = "",
+                    filename = "",
+                    sha256 = "",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_restrict_visibility_to)
 
 def _test_direct_urls_integration(env):
     """Check that we are using the filename from index_sources."""

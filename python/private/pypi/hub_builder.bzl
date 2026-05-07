@@ -510,6 +510,7 @@ def _create_whl_repos(
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
         evaluate_markers = _evaluate_markers(self, pip_attr),
+        exposed_requirements = pip_attr.restrict_visibility_to,
         logger = logger,
     )
 

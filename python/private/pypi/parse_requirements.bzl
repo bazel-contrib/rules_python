@@ -42,6 +42,7 @@ def parse_requirements(
         platforms = {},
         get_index_urls = None,
         evaluate_markers = None,
+        exposed_requirements = [],
         extract_url_srcs = True,
         logger):
     """Get the requirements with platforms that the requirements apply to.
@@ -62,6 +63,9 @@ def parse_requirements(
             the platforms stored as values in the input dict. Returns the same
             dict, but with values being platforms that are compatible with the
             requirements line.
+        exposed_requirements: List of requirements files. When present, only
+            packages listed in these files should be exposed via the hub
+            repository.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
         logger: repo_utils.logger, a simple struct to log diagnostic messages.
@@ -92,6 +96,7 @@ def parse_requirements(
     reqs_with_env_markers = {}
     index_url = None
     extra_index_urls = []
+    exposed_package_names = _exposed_package_names(ctx, exposed_requirements)
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -231,17 +236,34 @@ def parse_requirements(
         #     for p in dist.target_platforms
         # ]
 
+        normalized_name = normalize_name(name)
+        is_exposed = len(requirement_target_platforms) == len(requirements)
+        if exposed_package_names != None and normalized_name not in exposed_package_names:
+            is_exposed = False
+
         item = struct(
             # Return normalized names
-            name = normalize_name(name),
-            is_exposed = len(requirement_target_platforms) == len(requirements),
+            name = normalized_name,
+            is_exposed = is_exposed,
             is_multiple_versions = len(reqs.values()) > 1,
             index_url = pkg_sources.index_url if pkg_sources else "",
             srcs = package_srcs,
         )
         ret.append(item)
-        if not item.is_exposed and logger:
-            logger.trace(lambda: "Package '{}' will not be exposed because it is only present on a subset of platforms: {} out of {}".format(
+        if (
+            exposed_package_names != None and
+            normalized_name not in exposed_package_names and
+            logger
+        ):
+            logger.trace(lambda: (
+                "Package '{}' will not be exposed because it is not present " +
+                "in restrict_visibility_to"
+            ).format(name))
+        if len(requirement_target_platforms) != len(requirements) and logger:
+            logger.trace(lambda: (
+                "Package '{}' will not be exposed because it is only present " +
+                "on a subset of platforms: {} out of {}"
+            ).format(
                 name,
                 sorted(requirement_target_platforms),
                 sorted(requirements),
@@ -250,6 +272,19 @@ def parse_requirements(
     logger.debug(lambda: "Will configure whl repos: {}".format([w.name for w in ret]))
 
     return ret
+
+def _exposed_package_names(ctx, exposed_requirements):
+    """Parse the requirement files that define hub-exposed package names."""
+    if not exposed_requirements:
+        return None
+
+    exposed = {}
+    for file in exposed_requirements:
+        parse_result = parse_requirements_txt(ctx.read(file))
+        for distribution, _ in parse_result.requirements:
+            exposed[normalize_name(distribution)] = None
+
+    return exposed
 
 def _package_srcs(
         *,
