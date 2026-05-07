@@ -433,7 +433,7 @@ def _test_select_requirement_none_platform(env):
 _tests.append(_test_select_requirement_none_platform)
 
 def _test_env_marker_resolution(env):
-    def _mock_eval_markers(_, input):
+    def _mock_eval_markers(input):
         ret = {
             "foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef": ["cp311_windows_x86_64"],
         }
@@ -781,7 +781,7 @@ def _test_get_index_urls_different_versions(env):
                 },
             ),
         },
-        evaluate_markers = lambda _, requirements: evaluate_markers(
+        evaluate_markers = lambda requirements: evaluate_markers(
             requirements = requirements,
             platforms = {
                 "cp310_linux_x86_64": struct(
@@ -859,7 +859,7 @@ def _test_get_index_urls_single_py_version(env):
                 },
             ),
         },
-        evaluate_markers = lambda _, requirements: evaluate_markers(
+        evaluate_markers = lambda requirements: evaluate_markers(
             requirements = requirements,
             platforms = {
                 "cp310_linux_x86_64": struct(

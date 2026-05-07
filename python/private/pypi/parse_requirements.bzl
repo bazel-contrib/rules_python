@@ -86,7 +86,7 @@ def parse_requirements(
 
         The second element is extra_pip_args should be passed to `whl_library`.
     """
-    evaluate_markers = evaluate_markers or (lambda _ctx, _requirements: {})
+    evaluate_markers = evaluate_markers or (lambda _requirements: {})
     options = {}
     requirements = {}
     reqs_with_env_markers = {}
@@ -130,7 +130,7 @@ def parse_requirements(
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
-    resolved_marker_platforms = evaluate_markers(ctx, reqs_with_env_markers)
+    resolved_marker_platforms = evaluate_markers(reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
         resolved_marker_platforms,
