@@ -83,6 +83,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (pip,python) Added `pyproject_toml` attribute to `pip.default()` and `python.defaults()`
+  to read Python version from pyproject.toml `requires-python` field (must be `==X.Y.Z` format).
 * (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
   adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set
