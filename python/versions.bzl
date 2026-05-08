@@ -28,6 +28,10 @@ INSTALL_ONLY = "install_only"
 
 DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone/releases/download"
 
+_GITHUB_PREFIX = "https://github.com/astral-sh/python-build-standalone/releases/download"
+_LEGACY_GITHUB_PREFIX = "https://github.com/indygreg/python-build-standalone/releases/download"
+_ASTRAL_PREFIX = "https://releases.astral.sh/github/python-build-standalone/releases/download"
+
 # When updating the versions and releases, run the following command to get
 # the hashes:
 #   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version={major}.{minor}.{patch}
@@ -1435,6 +1439,14 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
         A tuple of (filename, url, archive strip prefix, patches, patch_strip)
     """
 
+    base_urls = [base_url]
+    if base_url == DEFAULT_RELEASE_BASE_URL or base_url.startswith(_GITHUB_PREFIX):
+        suffix = base_url[len(_GITHUB_PREFIX):]
+        base_urls.append(_ASTRAL_PREFIX + suffix)
+    elif base_url.startswith(_LEGACY_GITHUB_PREFIX):
+        suffix = base_url[len(_LEGACY_GITHUB_PREFIX):]
+        base_urls.append(_ASTRAL_PREFIX + suffix)
+
     url = tool_versions[python_version]["url"]
 
     if type(url) == type({}):
@@ -1490,7 +1502,8 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
         if "://" in release_filename:  # is absolute url?
             rendered_urls.append(release_filename)
         else:
-            rendered_urls.append("/".join([base_url, release_filename]))
+            for b_url in base_urls:
+                rendered_urls.append("/".join([b_url, release_filename]))
 
     if release_filename == None:
         fail("release_filename should be set by now; were any download URLs given?")
