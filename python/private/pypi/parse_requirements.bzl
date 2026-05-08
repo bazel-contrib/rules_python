@@ -43,6 +43,8 @@ def parse_requirements(
         get_index_urls = None,
         evaluate_markers = None,
         extract_url_srcs = True,
+        download_only = False,
+        python_version = None,
         logger):
     """Get the requirements with platforms that the requirements apply to.
 
@@ -114,7 +116,14 @@ def parse_requirements(
                 # output all of the requirement lines that have a marker
                 if ";" in requirement_line:
                     reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
-            options[plat] = pip_args
+            plat_args = list(pip_args)
+            if download_only and plat.endswith("freethreaded") and python_version:
+                if not any([a.startswith("--abi") for a in plat_args]):
+                    major, _, tail = python_version.partition(".")
+                    minor, _, _ = tail.partition(".")
+                    if major and minor:
+                        plat_args.append("--abi=cp{}{}t".format(major, minor))
+            options[plat] = plat_args
 
             # Parse the index URL from the requirement files
             index_url = argparse.index_url(pip_args, index_url)
