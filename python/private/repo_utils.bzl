@@ -31,7 +31,7 @@ def _is_repo_debug_enabled(mrctx):
     """
     return mrctx.getenv(REPO_DEBUG_ENV_VAR) == "1"
 
-def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
+def _logger(mrctx = None, name = None, verbosity_level = None, printer = None, mod = None):
     """Creates a logger instance for printing messages.
 
     Args:
@@ -42,6 +42,7 @@ def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
             taken from `mrctx`.
         printer: a function to use for printing. Defaults to `print` or `fail` depending
             on the logging method.
+        mod: {type}`module_ctx.module`. The module for which the logger is created.
 
     Returns:
         A struct with attributes logging: trace, debug, info, warn, fail.
@@ -50,14 +51,22 @@ def _logger(mrctx = None, name = None, verbosity_level = None, printer = None):
         the logger injected into the function work as expected by terminating
         on the given line.
     """
+    default_verbosity_level = "WARN"
+    if mod:
+        if name:
+            name = "{}:{}".format(mod.name, name)
+        else:
+            name = mod.name
+
+        if not mod.is_root:
+            default_verbosity_level = "ERROR"  # the warnings are non actionable anyway, but we should keep them.
+
     if verbosity_level == None:
         if _is_repo_debug_enabled(mrctx):
-            verbosity_level = "DEBUG"
-        else:
-            verbosity_level = "WARN"
+            default_verbosity_level = "DEBUG"
 
         env_var_verbosity = mrctx.getenv(REPO_VERBOSITY_ENV_VAR)
-        verbosity_level = env_var_verbosity or verbosity_level
+        verbosity_level = env_var_verbosity or default_verbosity_level
 
     verbosity = {
         "DEBUG": 2,
