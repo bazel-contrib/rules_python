@@ -128,20 +128,6 @@ def parse_requirements(
                 # (3.0).
                 get_index_urls = None
 
-    # Collect all distributions from all requirements files for get_index_urls
-    # irrespective of python_version and platform markers. This ensures that
-    # the index is queried for all packages, not just those matching the
-    # current platform's markers.
-    distributions = {}
-    for _plat, parse_results in requirements.items():
-        for entry in parse_results:
-            req_line = entry[1]
-            req = requirement(req_line)
-            srcs = index_sources(req_line)
-            if srcs.url:
-                continue
-            distributions.setdefault(req.name, []).append(srcs.version)
-
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
     resolved_marker_platforms = evaluate_markers(reqs_with_env_markers)
@@ -199,6 +185,22 @@ def parse_requirements(
 
     index_urls = {}
     if get_index_urls:
+        # Collect all distributions from all requirements files irrespective
+        # of python_version and platform markers. This ensures that the index
+        # is queried for all packages, not just those matching the current
+        # platform's markers.
+        distributions = {}
+        for _plat, parse_results in requirements.items():
+            for entry in parse_results:
+                req_line = entry[1]
+                srcs = index_sources(req_line)
+                if srcs.url:
+                    continue
+                versions = distributions.setdefault(entry[0], {})
+                versions[srcs.version] = None
+
+        distributions = {k: sorted(v.keys()) for k, v in distributions.items()}
+
         index_urls = get_index_urls(
             ctx,
             distributions,
