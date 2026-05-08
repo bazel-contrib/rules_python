@@ -31,7 +31,7 @@ load(
 )
 load(":version.bzl", "version")
 
-def parse_modules(*, module_ctx, logger, _fail = fail):
+def parse_modules(*, module_ctx, logger = None, _fail = fail):
     """Parse the modules and return a struct for registrations.
 
     Args:
@@ -137,7 +137,7 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
                         first = first,
                         second_toolchain_name = toolchain_name,
                         second_module_name = mod.name,
-                        logger = logger,
+                        logger = logger or repo_utils.logger(module_ctx, "python", mod = mod),
                     )
                 toolchain_info = None
             else:
@@ -213,8 +213,10 @@ def parse_modules(*, module_ctx, logger, _fail = fail):
     )
 
 def _python_impl(module_ctx):
+    py = parse_modules(module_ctx = module_ctx)
+
+    # For all other processing(after parsing the modules) let's use a single logger.
     logger = repo_utils.logger(module_ctx, "python")
-    py = parse_modules(module_ctx = module_ctx, logger = logger)
 
     # Host compatible runtime repos
     # dict[str version, struct] where struct has:
