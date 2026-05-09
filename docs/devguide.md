@@ -105,7 +105,7 @@ integration test.
    ```
    bazel run //tools/private/update_deps:update_coverage_deps <VERSION>
    # for example:
-   # bazel run //tools/private/update_deps:update_coverage_deps 7.6.1
+   # bazel run //tools/private/update_deps:update_coverage_deps 7.10.7
    ```
 
 ## Updating tool dependencies
