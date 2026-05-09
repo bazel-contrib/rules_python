@@ -596,6 +596,10 @@
             "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz": "636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887",
             "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl": "86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b"
           },
+          "pywin32-ctypes": {
+            "https://files.pythonhosted.org/packages/85/9f/01a1a99704853cb63f253eea009390c88e7131c67e66a0a02099a8c917cb/pywin32-ctypes-0.2.3.tar.gz": "d162dc04946d704503b2edc4d55f3dba5c1d539ead017afa00142c38b9885755",
+            "https://files.pythonhosted.org/packages/de/3d/8161f7711c017e01ac9f008dfddd9410dff3674334c233bde66e7ba65bbf/pywin32_ctypes-0.2.3-py3-none-any.whl": "8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8"
+          },
           "readme-renderer": {
             "https://files.pythonhosted.org/packages/5a/a9/104ec9234c8448c4379768221ea6df01260cd6c2ce13182d4eac531c8342/readme_renderer-44.0.tar.gz": "8712034eabbfa6805cacf1402b4eeb2a73028f72d1166d6f5cb7f9c047c5d1e1",
             "https://files.pythonhosted.org/packages/e1/67/921ec3024056483db83953ae8e48079ad62b92db7880013ca77632921dd0/readme_renderer-44.0-py3-none-any.whl": "2fbca89b81a08526aadf1357a8c2ae889ec05fb03f5da67f9769c9a592166151"
@@ -661,6 +665,7 @@
           "pkginfo": "/simple/pkginfo/",
           "pycparser": "/simple/pycparser/",
           "pygments": "/simple/pygments/",
+          "pywin32_ctypes": "/simple/pywin32-ctypes/",
           "readme_renderer": "/simple/readme-renderer/",
           "requests": "/simple/requests/",
           "requests_toolbelt": "/simple/requests-toolbelt/",

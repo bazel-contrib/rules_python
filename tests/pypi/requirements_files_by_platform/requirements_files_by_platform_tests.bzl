@@ -252,6 +252,58 @@ def _test_os_arch_requirements_with_default(env):
 
 _tests.append(_test_os_arch_requirements_with_default)
 
+def _test_host_only_lockfile(env):
+    """Host-only: single requirements_lock with only the host platform.
+    Verifies no extra empty-platform files leak into the return dict."""
+    got = requirements_files_by_platform(
+        requirements_lock = "requirements_lock",
+        platforms = ["osx_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "requirements_lock": ["osx_x86_64"],
+    })
+
+_tests.append(_test_host_only_lockfile)
+
+def _test_host_only_multiple_os(env):
+    """Host-only with per-OS files but only host platform configured.
+    Files with no matching platforms should appear with empty platform
+    lists so parse_requirements can read all packages for index URLs."""
+    got = requirements_files_by_platform(
+        requirements_linux = "requirements_linux",
+        requirements_osx = "requirements_osx",
+        requirements_windows = "requirements_windows",
+        platforms = ["osx_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({
+        # Per-OS files with no matching platforms get empty lists
+        "requirements_linux": [],
+        # The matching OS file gets its platforms
+        "requirements_osx": ["osx_x86_64"],
+        "requirements_windows": [],
+    })
+
+_tests.append(_test_host_only_multiple_os)
+
+def _test_host_only_os_with_fallback(env):
+    """Host-only with per-OS files + fallback lock, host platform only.
+    The fallback should not appear since the matching OS file covers
+    the only platform; unmatched files get empty lists."""
+    got = requirements_files_by_platform(
+        requirements_linux = "requirements_linux",
+        requirements_osx = "requirements_osx",
+        requirements_lock = "requirements_lock",
+        platforms = ["osx_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "requirements_linux": [],
+        "requirements_osx": ["osx_x86_64"],
+        # Fallback lock is not used because osx file already covers
+        # the only platform
+    })
+
+_tests.append(_test_host_only_os_with_fallback)
+
 def requirements_files_by_platform_test_suite(name):
     """Create the test suite.
 

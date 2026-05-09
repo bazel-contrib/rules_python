@@ -847,6 +847,58 @@ def _test_get_index_urls_different_versions(env):
 
 _tests.append(_test_get_index_urls_different_versions)
 
+def _test_get_index_urls_cross_platform(env):
+    """Verifies that distributions from ALL requirement files are passed to
+    get_index_urls, even those files with no matching platforms for the
+    current OS. This ensures the lockfile facts are platform-independent."""
+    calls = []
+
+    def _get_index_urls(_, distributions, **__):
+        calls.append({k: list(v) for k, v in distributions.items()})
+        return {}
+
+    parse_requirements(
+        requirements_by_platform = {
+            "requirements_osx": ["cp39_osx_x86_64"],
+            # requirements_windows has no matching platforms (simulating
+            # a macOS build where windows-specific files aren't used).
+            "requirements_windows": [],
+        },
+        platforms = {
+            "cp39_osx_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "osx",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["macosx_*_x86_64"],
+            ),
+        },
+        get_index_urls = _get_index_urls,
+        evaluate_markers = lambda requirements: evaluate_markers(
+            requirements = requirements,
+            platforms = {
+                "cp39_osx_x86_64": struct(
+                    env = {"python_full_version": "3.9.0"},
+                ),
+            },
+        ),
+    )
+
+    # distributions must include packages from ALL files, even those with
+    # no matching platforms:
+    #   - foo: 0.0.2 from requirements_windows, 0.0.3 from requirements_osx
+    #   - bar: 0.0.1 from requirements_windows only
+    env.expect.that_collection(calls).contains_exactly([
+        {
+            "bar": ["0.0.1"],
+            "foo": ["0.0.2", "0.0.3"],
+        },
+    ])
+
+_tests.append(_test_get_index_urls_cross_platform)
+
 def _test_get_index_urls_single_py_version(env):
     got = parse_requirements(
         requirements_by_platform = {
