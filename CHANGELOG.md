@@ -102,6 +102,18 @@ END_UNRELEASED_TEMPLATE
 [20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
 [20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
 
+{#v2-0-1}
+## [2.0.1] - 2026-05-08
+
+[2.0.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1
+
+{#v2-0-1-fixed}
+### Fixed
+
+* (pypi) Fix the versions of packages that we are recording to a `MODULE.bazel.lock` file
+  facts by passing all of the versions to the `get_index` function.
+  Fixes [#3756](https://github.com/bazel-contrib/rules_python/issues/3756).
+
 {#v2-0-0}
 ## [2.0.0] - 2026-04-09
 
