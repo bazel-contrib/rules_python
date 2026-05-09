@@ -54,7 +54,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
-* Nothing removed.
+* (coverage) Support for python 3.8 has been dropped from the bundled
+  `coverage.py` wheel set, since coverage.py 7.6.2 dropped it.
 
 {#v0-0-0-changed}
 ### Changed
@@ -79,8 +80,6 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
   installed wheel targets, except when built from sdist
   ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
-* (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
-  Support for python 3.8 has been dropped, since coverage.py 7.6.2 dropped it.
 
 
 {#v0-0-0-added}
@@ -100,6 +99,7 @@ END_UNRELEASED_TEMPLATE
 * Python toolchain from [20260414] release.
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
+* (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
 
 [20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
 [20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
