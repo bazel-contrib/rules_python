@@ -472,8 +472,8 @@ tasks:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: macOS (subset)"
     platform: macos_arm64
-    build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
-    test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    build_targets: ["//tests/integration:subset"]
+    test_targets: ["//tests/integration:subset"]
   # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
   # have bitrotted a bit. For now, just run a subset of what we're most
   # interested in.
@@ -481,8 +481,8 @@ tasks:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Windows (subset)"
     platform: windows
-    build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
-    test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    build_targets: ["//tests/integration:subset"]
+    test_targets: ["//tests/integration:subset"]
 
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all

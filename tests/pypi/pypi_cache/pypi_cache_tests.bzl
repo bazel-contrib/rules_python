@@ -269,6 +269,73 @@ def _test_pypi_cache_reads_from_facts(env):
 
 _tests.append(_test_pypi_cache_reads_from_facts)
 
+def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
+    """Verifies that dists for unaccessed versions are dropped from computed facts."""
+    mock_ctx = mocks.mctx(facts = {
+        "dist_hashes": {
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha_whl_1.0.0",
+                    "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha_sdist_1.0.0",
+                    "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl": "sha_whl_1.1.0",
+                    "https://pypi.org/files/pkg-1.1.0.tar.gz": "sha_sdist_1.1.0",
+                },
+            },
+        },
+        "fact_version": "v1",
+    })
+    cache = _cache(env, mctx = mock_ctx)
+
+    # Request only version 1.0.0; version 1.1.0 is NOT requested
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    got = cache.get(key)
+
+    expected = struct(
+        sdists = {
+            "sha_sdist_1.0.0": struct(
+                sha256 = "sha_sdist_1.0.0",
+                version = "1.0.0",
+                filename = "pkg-1.0.0.tar.gz",
+                metadata_url = "",
+                metadata_sha256 = "",
+                url = "https://pypi.org/files/pkg-1.0.0.tar.gz",
+                yanked = None,
+            ),
+        },
+        whls = {
+            "sha_whl_1.0.0": struct(
+                sha256 = "sha_whl_1.0.0",
+                version = "1.0.0",
+                filename = "pkg-1.0.0-py3-none-any.whl",
+                metadata_url = "",
+                metadata_sha256 = "",
+                url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+                yanked = None,
+            ),
+        },
+        sha256s_by_version = {
+            "1.0.0": ["sha_sdist_1.0.0", "sha_whl_1.0.0"],
+        },
+    )
+    got.whls().contains_exactly(expected.whls)
+    got.sdists().contains_exactly(expected.sdists)
+    got.sha256s_by_version().contains_exactly(expected.sha256s_by_version)
+
+    # get_facts() must only contain version 1.0.0 data; 1.1.0 is dropped
+    cache.get_facts().contains_exactly({
+        "dist_hashes": {
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha_whl_1.0.0",
+                    "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha_sdist_1.0.0",
+                },
+            },
+        },
+        "fact_version": "v1",
+    })
+
+_tests.append(_test_pypi_cache_reads_from_facts_drops_unaccessed_dists)
+
 def _test_memory_cache_index_urls(env):
     """Verifies that the cache returns stored values for index_urls."""
     store = {}
@@ -363,6 +430,64 @@ def _test_pypi_cache_reads_index_urls_from_facts(env):
     cache.get_facts().contains_exactly(mock_ctx.facts)
 
 _tests.append(_test_pypi_cache_reads_index_urls_from_facts)
+
+def _test_pypi_cache_reads_index_urls_from_facts_incomplete(env):
+    """Verifies that incomplete index_urls facts returns None (forces fresh download)."""
+    mock_ctx = mocks.mctx(facts = {
+        "fact_version": "v1",
+        "index_urls": {
+            "https://pypi.org/simple/": {
+                "pkg-a": "https://pypi.org/simple/pkg-a/",
+            },
+        },
+    })
+    cache = _cache(env, mctx = mock_ctx)
+
+    # Request pkg-a and pkg-b, but facts only have pkg-a
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None, "pkg-b": None})
+    cache.get(key).equals(None)
+
+_tests.append(_test_pypi_cache_reads_index_urls_from_facts_incomplete)
+
+def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
+    """Verifies get_facts() drops unaccessed index_urls entries.
+
+    When known_facts has packages that are not requested, they should not
+    appear in computed_facts. This ensures stale facts (from packages
+    removed from all requirements files) get cleaned up from the lockfile.
+    """
+    mock_ctx = mocks.mctx(facts = {
+        "fact_version": "v1",
+        "index_urls": {
+            "https://pypi.org/simple/": {
+                "pkg-a": "https://pypi.org/simple/pkg-a/",
+                "pkg-b": "https://pypi.org/simple/pkg-b/",
+                "pkg-c": "https://pypi.org/simple/pkg-c/",
+            },
+        },
+    })
+    cache = _cache(env, mctx = mock_ctx)
+
+    # Request only a subset of packages; pkg-c is not requested
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None, "pkg-b": None})
+    got = cache.get(key)
+    got.contains_exactly({
+        "pkg-a": "https://pypi.org/simple/pkg-a/",
+        "pkg-b": "https://pypi.org/simple/pkg-b/",
+    })
+
+    # get_facts() must only return the requested (accessed) subset; pkg-c is dropped
+    cache.get_facts().contains_exactly({
+        "fact_version": "v1",
+        "index_urls": {
+            "https://pypi.org/simple/": {
+                "pkg-a": "https://pypi.org/simple/pkg-a/",
+                "pkg-b": "https://pypi.org/simple/pkg-b/",
+            },
+        },
+    })
+
+_tests.append(_test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed)
 
 def pypi_cache_test_suite(name):
     test_suite(

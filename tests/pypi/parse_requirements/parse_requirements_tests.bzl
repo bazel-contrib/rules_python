@@ -76,6 +76,8 @@ foo==0.0.1; python_full_version < '3.10.0' \
     --hash=sha256:deadbeef
 foo==0.0.2; python_full_version >= '3.10.0' \
     --hash=sha256:deadb11f
+boo==0.0.4; python_full_version < '3.10.0' \
+    --hash=sha256:deadbaaf
 """,
         "requirements_optional_hash": """
 bar==0.0.4 @ https://example.org/bar-0.0.4.whl
@@ -796,6 +798,24 @@ def _test_get_index_urls_different_versions(env):
 
     env.expect.that_collection(got).contains_exactly([
         struct(
+            name = "boo",
+            index_url = "",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "boo",
+                    extra_pip_args = [],
+                    filename = "",
+                    requirement_line = "boo==0.0.4 --hash=sha256:deadbaaf",
+                    sha256 = "",
+                    target_platforms = ["cp39_linux_x86_64"],
+                    url = "",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
             name = "foo",
             index_url = "",
             is_exposed = True,
@@ -891,6 +911,51 @@ def _test_get_index_urls_single_py_version(env):
     ])
 
 _tests.append(_test_get_index_urls_single_py_version)
+
+def _test_get_index_urls_all_versions(env):
+    calls = []
+
+    def _get_index_urls(_, distributions, **__):
+        calls.append({k: list(v) for k, v in distributions.items()})
+        return {}
+
+    parse_requirements(
+        requirements_by_platform = {
+            "requirements_multi_version": ["cp39_linux_x86_64"],
+        },
+        platforms = {
+            "cp39_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.9.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
+            ),
+        },
+        get_index_urls = _get_index_urls,
+        evaluate_markers = lambda requirements: evaluate_markers(
+            requirements = requirements,
+            platforms = {
+                "cp39_linux_x86_64": struct(
+                    env = {"python_full_version": "3.9.0"},
+                ),
+            },
+        ),
+    )
+
+    env.expect.that_collection(calls).contains_exactly([
+        {
+            # boo should be also passed even though it is present on one platform.
+            "boo": ["0.0.4"],
+            # Both versions 0.0.1 and 0.0.2 should be passed to get_index_urls, even
+            # though only 0.0.1 matches the cp39_linux_x86_64 platform markers.
+            "foo": ["0.0.1", "0.0.2"],
+        },
+    ])
+
+_tests.append(_test_get_index_urls_all_versions)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.
