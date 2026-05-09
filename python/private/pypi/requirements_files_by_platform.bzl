@@ -213,7 +213,6 @@ def requirements_files_by_platform(
                 default_platforms,
                 input_platforms,
             ))
-            continue
 
         if logger:
             logger.debug(lambda: "Configured platforms for file {} are {}".format(file, plats))
