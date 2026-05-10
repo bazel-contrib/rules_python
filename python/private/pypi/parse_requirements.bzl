@@ -107,37 +107,31 @@ def parse_requirements(
                 tokenized_options.append(p)
 
         pip_args = tokenized_options + extra_pip_args
+
+        # Parse the index URL from the requirement files once per file
+        index_url = argparse.index_url(pip_args, index_url)
+        extra_index_urls = argparse.extra_index_url(pip_args, [])
+        if argparse.platform(pip_args, []):
+            # No use of downloader if the user specifies "--platform" pip arg. This means that
+            # they intend to use pip to download the wheels
+            #
+            # TODO @aignas 2026-04-11: consider removing this line in the next major release
+            # (3.0).
+            get_index_urls = None
+
+        # Pre-parse requirements once per file to avoid redundant parsing in loops
+        parsed_reqs = [(entry, requirement(entry[1])) for entry in parse_result.requirements]
+
         for plat in plats:
+            plat_env = platforms.get(plat)
+
             filtered_entries = []
-            for entry in parse_result.requirements:
-                requirement_line = entry[1]
-
-                # Evaluate markers inline at parse time, so we only keep
-                # entries whose markers match the current platform.
-                if ";" in requirement_line:
-                    plat_env = platforms.get(plat)
-                    if not plat_env:
-                        continue
-
-                    req = requirement(requirement_line)
-                    if req.marker and not evaluate(req.marker, env = plat_env.env):
-                        continue
-
+            for entry, req in parsed_reqs:
+                if req.marker and (not plat_env or not evaluate(req.marker, env = plat_env.env)):
+                    continue
                 filtered_entries.append(entry)
             requirements[plat] = filtered_entries
             options[plat] = pip_args
-
-            # Parse the index URL from the requirement files
-            index_url = argparse.index_url(pip_args, index_url)
-            extra_index_urls = argparse.extra_index_url(pip_args, [])
-            platform = argparse.platform(pip_args, [])
-            if platform:
-                # No use of downloader if the user specifies "--platform" pip arg. This means that
-                # they intend to use pip to download the wheels
-                #
-                # TODO @aignas 2026-04-11: consider removing this line in the next major release
-                # (3.0).
-                get_index_urls = None
 
     requirements_by_platform = {}
     for plat, parse_results in requirements.items():
