@@ -166,6 +166,31 @@ _coverage_deps = {
 
 _coverage_patch = Label("//python/private:coverage.patch")
 
+def coverage_url_sha256(python_version, platform):
+    """Look up the bundled coverage wheel URL and sha256 for a python version + platform.
+
+    Pure function exported for testing. Returns None for any combination not
+    covered by the bundled wheel set, including the windows branch (which is
+    intentionally unsupported because the upstream coverage wrapper does not
+    work there).
+
+    Args:
+        python_version: The full python version.
+        platform: The platform, from //python:versions.bzl PLATFORMS.
+
+    Returns:
+        A (url, sha256) tuple if the (version, platform) is in the bundled
+        set, otherwise None.
+    """
+    if "windows" in platform:
+        return None
+
+    abi = "cp" + version_label(python_version)
+    url, sha256 = _coverage_deps.get(abi, {}).get(platform, (None, ""))
+    if url == None:
+        return None
+    return (url, sha256)
+
 def coverage_dep(name, python_version, platform, visibility):
     """Register a single coverage dependency based on the python version and platform.
 
@@ -178,26 +203,23 @@ def coverage_dep(name, python_version, platform, visibility):
     Returns:
         The label of the coverage tool if the platform is supported, otherwise - None.
     """
-    if "windows" in platform:
-        # NOTE @aignas 2023-01-19: currently we do not support windows as the
-        # upstream coverage wrapper is written in shell. Do not log any warning
-        # for now as it is not actionable.
+    found = coverage_url_sha256(python_version, platform)
+    if found == None:
+        if "windows" not in platform:
+            # NOTE: the windows branch is intentionally silent because the
+            # upstream coverage wrapper is written in shell and does not
+            # support windows; warning there is not actionable.
+            # buildifier: disable=print
+            print((
+                "WARNING: rules_python's bundled coverage tool has no wheel for " +
+                "python_version={}, platform={}. `bazel coverage` will produce " +
+                "empty lcov for py_test targets in this configuration. Either " +
+                "pin python_version to a version in the bundled set (see " +
+                "python/private/coverage_deps.bzl), or configure coverage " +
+                "manually via py_runtime.coverage_tool. See docs/coverage.md."
+            ).format(python_version, platform))
         return None
-
-    abi = "cp" + version_label(python_version)
-    url, sha256 = _coverage_deps.get(abi, {}).get(platform, (None, ""))
-
-    if url == None:
-        # buildifier: disable=print
-        print((
-            "WARNING: rules_python's bundled coverage tool has no wheel for " +
-            "python_version={}, platform={}. `bazel coverage` will produce " +
-            "empty lcov for py_test targets in this configuration. Either " +
-            "pin python_version to a version in the bundled set (see " +
-            "python/private/coverage_deps.bzl), or configure coverage " +
-            "manually via py_runtime.coverage_tool. See docs/coverage.md."
-        ).format(python_version, platform))
-        return None
+    url, sha256 = found
 
     maybe(
         http_archive,
