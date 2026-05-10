@@ -188,7 +188,15 @@ def coverage_dep(name, python_version, platform, visibility):
     url, sha256 = _coverage_deps.get(abi, {}).get(platform, (None, ""))
 
     if url == None:
-        # Some wheels are not present for some builds, so let's silently ignore those.
+        # buildifier: disable=print
+        print((
+            "WARNING: rules_python's bundled coverage tool has no wheel for " +
+            "python_version={}, platform={}. `bazel coverage` will produce " +
+            "empty lcov for py_test targets in this configuration. Either " +
+            "pin python_version to a version in the bundled set (see " +
+            "python/private/coverage_deps.bzl), or configure coverage " +
+            "manually via py_runtime.coverage_tool. See docs/coverage.md."
+        ).format(python_version, platform))
         return None
 
     maybe(
