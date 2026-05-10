@@ -270,7 +270,7 @@ _tests.append(_test_pypi_cache_reads_from_facts)
 
 def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     """Verifies that dists for unaccessed versions are dropped from computed facts."""
-    mock_ctx = mocks.mctx(facts = {
+    mock_ctx = struct(facts = {
         "dist_hashes": {
             "https://{PYPI_INDEX_URL}": {
                 "pkg": {
@@ -363,7 +363,7 @@ _tests.append(_test_memory_cache_index_urls)
 
 def _test_pypi_cache_writes_index_urls_to_facts(env):
     """Verifies that setting index_urls in the cache also populates the facts store."""
-    mock_ctx = mocks.mctx(facts = {})
+    mock_ctx = struct(facts = {})
     cache = _cache(env, mctx = mock_ctx)
 
     fake_result = {
@@ -401,7 +401,7 @@ _tests.append(_test_pypi_cache_writes_index_urls_to_facts)
 
 def _test_pypi_cache_reads_index_urls_from_facts(env):
     """Verifies that reading index_urls from facts works correctly."""
-    mock_ctx = mocks.mctx(facts = {
+    mock_ctx = struct(facts = {
         "fact_version": "v1",
         "index_urls": {
             "https://pypi.org/simple/": {
@@ -432,7 +432,7 @@ _tests.append(_test_pypi_cache_reads_index_urls_from_facts)
 
 def _test_pypi_cache_reads_index_urls_from_facts_incomplete(env):
     """Verifies that incomplete index_urls facts returns None (forces fresh download)."""
-    mock_ctx = mocks.mctx(facts = {
+    mock_ctx = struct(facts = {
         "fact_version": "v1",
         "index_urls": {
             "https://pypi.org/simple/": {
@@ -455,7 +455,7 @@ def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
     appear in computed_facts. This ensures stale facts (from packages
     removed from all requirements files) get cleaned up from the lockfile.
     """
-    mock_ctx = mocks.mctx(facts = {
+    mock_ctx = struct(facts = {
         "fact_version": "v1",
         "index_urls": {
             "https://pypi.org/simple/": {
