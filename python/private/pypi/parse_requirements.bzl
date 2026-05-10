@@ -89,7 +89,7 @@ def parse_requirements(
     evaluate_markers = evaluate_markers or (lambda _requirements: {})
     options = {}
     requirements = {}
-    _all_files_parsed = {}
+    all_files_parsed = {}
     reqs_with_env_markers = {}
     index_url = None
     extra_index_urls = []
@@ -105,8 +105,8 @@ def parse_requirements(
         # platforms. This ensures the distributions dict (used for index URL
         # queries) includes packages from all platform files, making the
         # lockfile facts platform-independent.
-        if file not in _all_files_parsed:
-            _all_files_parsed[file] = parse_result.requirements
+        if file not in all_files_parsed:
+            all_files_parsed[file] = parse_result.requirements
 
         tokenized_options = []
         for opt in parse_result.options:
@@ -138,6 +138,10 @@ def parse_requirements(
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
+    #
+    # TODO @aignas 2026-05-10: remove this assumption in the code because we
+    # are always using pipstar, so we can do the marker evaluation when we are
+    # parsing the files.
     resolved_marker_platforms = evaluate_markers(reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
@@ -198,7 +202,7 @@ def parse_requirements(
         # is queried for all packages, not just those matching the current
         # platform's markers.
         distributions = {}
-        for entries in _all_files_parsed.values():
+        for entries in all_files_parsed.values():
             for entry in entries:
                 name, req_line = entry
                 srcs = index_sources(req_line)
