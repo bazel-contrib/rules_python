@@ -125,12 +125,12 @@ def parse_requirements(
         for plat in plats:
             plat_env = platforms.get(plat)
 
-            filtered_entries = []
-            for entry, req in parsed_reqs:
-                if req.marker and (not plat_env or not evaluate(req.marker, env = plat_env.env)):
-                    continue
-                filtered_entries.append(entry)
-            requirements[plat] = filtered_entries
+            requirements[plat] = [
+                entry
+                for entry, req in parsed_reqs
+                if not req.marker or (plat_env and evaluate(req.marker, env = plat_env.env))
+            ]
+
             options[plat] = pip_args
 
     requirements_by_platform = {}
