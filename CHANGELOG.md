@@ -65,6 +65,10 @@ END_UNRELEASED_TEMPLATE
   default to `true`.
 * (pypi) The data files of a wheel (bin, includes, etc) are now always included
   as a library's data dependencies.
+* (coverage) When `configure_coverage_tool = True` is set but the bundled
+  `coverage.py` wheel set has no entry for the requested python version and
+  platform, a warning is now printed instead of silently producing an empty
+  coverage report.
 
 {#v0-0-0-fixed}
 ### Fixed
