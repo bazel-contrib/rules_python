@@ -71,10 +71,10 @@ def _logger(mrctx = None, name = None, verbosity_level = None, printer = None, m
     verbosity = {
         "DEBUG": 2,
         "ERROR": -1,
-        "WARN": 0,
         "FAIL": -1,
         "INFO": 1,
         "TRACE": 3,
+        "WARN": 0,
     }.get(verbosity_level, 0)
 
     if hasattr(mrctx, "attr"):
