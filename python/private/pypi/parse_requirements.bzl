@@ -89,6 +89,7 @@ def parse_requirements(
     evaluate_markers = evaluate_markers or (lambda _requirements: {})
     options = {}
     requirements = {}
+    all_files_parsed = {}
     reqs_with_env_markers = {}
     index_url = None
     extra_index_urls = []
@@ -99,6 +100,13 @@ def parse_requirements(
         # Parse the requirements file directly in starlark to get the information
         # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
+
+        # Save parsed results from ALL files, even those with no matching
+        # platforms. This ensures the distributions dict (used for index URL
+        # queries) includes packages from all platform files, making the
+        # lockfile facts platform-independent.
+        if file not in all_files_parsed:
+            all_files_parsed[file] = parse_result.requirements
 
         tokenized_options = []
         for opt in parse_result.options:
@@ -130,6 +138,10 @@ def parse_requirements(
 
     # This may call to Python, so execute it early (before calling to the
     # internet below) and ensure that we call it only once.
+    #
+    # TODO @aignas 2026-05-10: remove this assumption in the code because we
+    # are always using pipstar, so we can do the marker evaluation when we are
+    # parsing the files.
     resolved_marker_platforms = evaluate_markers(reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
@@ -185,13 +197,21 @@ def parse_requirements(
 
     index_urls = {}
     if get_index_urls:
+        # Collect all distributions from all requirements files irrespective
+        # of python_version and platform markers. This ensures that the index
+        # is queried for all packages, not just those matching the current
+        # platform's markers.
         distributions = {}
-        for reqs in requirements_by_platform.values():
-            for req in reqs.values():
-                if req.srcs.url:
+        for entries in all_files_parsed.values():
+            for entry in entries:
+                name, req_line = entry
+                srcs = index_sources(req_line)
+                if srcs.url:
                     continue
+                versions = distributions.setdefault(normalize_name(name), {})
+                versions[srcs.version] = None
 
-                distributions.setdefault(req.distribution, []).append(req.srcs.version)
+        distributions = {k: sorted(v.keys()) for k, v in distributions.items()}
 
         index_urls = get_index_urls(
             ctx,

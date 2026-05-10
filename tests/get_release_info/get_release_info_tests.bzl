@@ -48,6 +48,61 @@ def _test_file_url(env):
 
 _tests.append(_test_file_url)
 
+def _test_astral_mirror(env):
+    """Tests that the releases.astral.sh mirror is added as a secondary URL."""
+    tool_versions = {
+        "3.11.5": {
+            "sha256": {
+                "x86_64-unknown-linux-gnu": "fbed6f7694b2faae5d7c401a856219c945397f772eea5ca50c6eb825cbc9d1e1",
+            },
+            "strip_prefix": "python",
+            "url": "20230826/cpython-{python_version}+20230826-{platform}-{build}.tar.gz",
+        },
+    }
+
+    expected_urls = [
+        "https://github.com/astral-sh/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
+        "https://releases.astral.sh/github/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
+    ]
+
+    _, urls, _, _, _ = get_release_info(
+        platform = "x86_64-unknown-linux-gnu",
+        python_version = "3.11.5",
+        tool_versions = tool_versions,
+    )
+
+    env.expect.that_collection(urls).contains_exactly(expected_urls)
+
+_tests.append(_test_astral_mirror)
+
+def _test_astral_mirror_legacy(env):
+    """Tests that the releases.astral.sh mirror is added for legacy indygreg URLs."""
+    tool_versions = {
+        "3.11.5": {
+            "sha256": {
+                "x86_64-unknown-linux-gnu": "fbed6f7694b2faae5d7c401a856219c945397f772eea5ca50c6eb825cbc9d1e1",
+            },
+            "strip_prefix": "python",
+            "url": "20230826/cpython-{python_version}+20230826-{platform}-{build}.tar.gz",
+        },
+    }
+
+    expected_urls = [
+        "https://github.com/indygreg/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
+        "https://releases.astral.sh/github/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
+    ]
+
+    _, urls, _, _, _ = get_release_info(
+        platform = "x86_64-unknown-linux-gnu",
+        python_version = "3.11.5",
+        base_url = "https://github.com/indygreg/python-build-standalone/releases/download",
+        tool_versions = tool_versions,
+    )
+
+    env.expect.that_collection(urls).contains_exactly(expected_urls)
+
+_tests.append(_test_astral_mirror_legacy)
+
 def get_release_info_test_suite(name):
     """Defines the test suite for get_release_info."""
     test_suite(

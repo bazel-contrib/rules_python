@@ -37,6 +37,13 @@ first in the import path. If you find yourself in this situation, then you'll
 need to manually configure coverage (see below).
 :::
 
+:::{note}
+The bundled `coverage` wheel set covers CPython 3.9 through 3.14 (with
+freethreaded variants for 3.13+). For Python versions outside that range,
+`configure_coverage_tool = True` is a silent no-op and `bazel coverage` will
+produce empty lcov data; manually configure coverage (see below) instead.
+:::
+
 ## Manually configuring coverage
 
 To manually configure coverage support, you'll need to set the
