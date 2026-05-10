@@ -8,7 +8,7 @@ import unittest
 import six
 
 
-class TestIsolated(unittest.TestCase):
+class TestDummy(unittest.TestCase):
     def test_import(self):
         self.assertTrue(hasattr(six, "PY3"))
 
