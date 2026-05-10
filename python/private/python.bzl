@@ -215,8 +215,8 @@ def parse_modules(*, module_ctx, logger = None, _fail = fail):
 def _python_impl(module_ctx):
     py = parse_modules(module_ctx = module_ctx)
 
-    # For all other processing(after parsing the modules) let's use a single logger.
-    logger = repo_utils.logger(module_ctx, "python")
+    # For all other processing (after parsing the modules) let's use a single logger.
+    logger = repo_utils.logger(module_ctx, "python", mod = module_ctx.modules[0])
 
     # Host compatible runtime repos
     # dict[str version, struct] where struct has:
