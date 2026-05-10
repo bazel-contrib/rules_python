@@ -213,7 +213,6 @@ def requirements_files_by_platform(
                 default_platforms,
                 input_platforms,
             ))
-            continue
 
         if logger:
             logger.debug(lambda: "Configured platforms for file {} are {}".format(file, plats))
@@ -237,5 +236,9 @@ def requirements_files_by_platform(
     ret = {}
     for plat, file in requirements.items():
         ret.setdefault(file, []).append(_platform(plat, python_version = python_version))
+
+    for file, _plats in files_by_platform:
+        if file not in ret and _plats != None:
+            ret[file] = []
 
     return ret

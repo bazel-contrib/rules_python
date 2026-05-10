@@ -37,6 +37,7 @@ requirements_files_by_platform = lambda **kwargs: _sut(
 )
 
 def _test_fail_no_requirements(env):
+    """Verify that omitting all requirements attributes produces an error."""
     errors = []
     requirements_files_by_platform(
         fail_fn = errors.append,
@@ -47,6 +48,7 @@ A 'requirements_lock' attribute must be specified, a platform-specific lockfiles
 _tests.append(_test_fail_no_requirements)
 
 def _test_fail_duplicate_platforms(env):
+    """Verify that a platform mapped to multiple requirements files errors."""
     errors = []
     requirements_files_by_platform(
         requirements_by_platform = {
@@ -61,6 +63,7 @@ def _test_fail_duplicate_platforms(env):
 _tests.append(_test_fail_duplicate_platforms)
 
 def _test_fail_download_only_bad_attr(env):
+    """Verify that ``--platform`` pip args require a single ``requirements_lock``."""
     errors = []
     requirements_files_by_platform(
         requirements_linux = "requirements_linux",
@@ -78,6 +81,7 @@ def _test_fail_download_only_bad_attr(env):
 _tests.append(_test_fail_download_only_bad_attr)
 
 def _test_simple(env):
+    """Test basic mapping of a single ``requirements_lock`` to all platforms."""
     for got in [
         requirements_files_by_platform(
             requirements_lock = "requirements_lock",
@@ -104,6 +108,7 @@ def _test_simple(env):
 _tests.append(_test_simple)
 
 def _test_simple_limited(env):
+    """Test that limiting the platform list restricts the output mapping."""
     for got in [
         requirements_files_by_platform(
             requirements_lock = "requirements_lock",
@@ -132,6 +137,7 @@ def _test_simple_limited(env):
 _tests.append(_test_simple_limited)
 
 def _test_simple_with_python_version(env):
+    """Test that ``python_version`` prefixes platform names with ``cpNNN_``."""
     for got in [
         requirements_files_by_platform(
             requirements_lock = "requirements_lock",
@@ -169,6 +175,7 @@ def _test_simple_with_python_version(env):
 _tests.append(_test_simple_with_python_version)
 
 def _test_multi_os(env):
+    """Test per-OS requirements files mapping each OS group correctly."""
     for got in [
         requirements_files_by_platform(
             requirements_linux = "requirements_linux",
@@ -203,6 +210,7 @@ def _test_multi_os(env):
 _tests.append(_test_multi_os)
 
 def _test_multi_os_download_only_platform(env):
+    """Test that ``--platform`` pip args narrow platforms to the host OS."""
     got = requirements_files_by_platform(
         requirements_lock = "requirements_linux",
         extra_pip_args = [
@@ -219,6 +227,7 @@ def _test_multi_os_download_only_platform(env):
 _tests.append(_test_multi_os_download_only_platform)
 
 def _test_os_arch_requirements_with_default(env):
+    """Test combining specific OS/arch requirements with a fallback ``requirements_lock``."""
     got = requirements_files_by_platform(
         requirements_by_platform = {
             "requirements_exotic": "linux_super_exotic",
@@ -251,6 +260,64 @@ def _test_os_arch_requirements_with_default(env):
     })
 
 _tests.append(_test_os_arch_requirements_with_default)
+
+def _test_host_only_lockfile(env):
+    """Host-only: single requirements_lock with only the host platform.
+
+    Verifies no extra empty-platform files leak into the return dict.
+    """
+    got = requirements_files_by_platform(
+        requirements_lock = "requirements_lock",
+        platforms = ["osx_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "requirements_lock": ["osx_x86_64"],
+    })
+
+_tests.append(_test_host_only_lockfile)
+
+def _test_host_only_multiple_os(env):
+    """Host-only with per-OS files but only host platform configured.
+
+    Files with no matching platforms should appear with empty platform
+    lists so parse_requirements can read all packages for index URLs.
+    """
+    got = requirements_files_by_platform(
+        requirements_linux = "requirements_linux",
+        requirements_osx = "requirements_osx",
+        requirements_windows = "requirements_windows",
+        platforms = ["osx_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({
+        # Per-OS files with no matching platforms get empty lists
+        "requirements_linux": [],
+        # The matching OS file gets its platforms
+        "requirements_osx": ["osx_x86_64"],
+        "requirements_windows": [],
+    })
+
+_tests.append(_test_host_only_multiple_os)
+
+def _test_host_only_os_with_fallback(env):
+    """Host-only with per-OS files + fallback lock, host platform only.
+
+    The fallback should not appear since the matching OS file covers
+    the only platform; unmatched files get empty lists.
+    """
+    got = requirements_files_by_platform(
+        requirements_linux = "requirements_linux",
+        requirements_osx = "requirements_osx",
+        requirements_lock = "requirements_lock",
+        platforms = ["osx_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "requirements_linux": [],
+        "requirements_osx": ["osx_x86_64"],
+        # Fallback lock is not used because osx file already covers
+        # the only platform
+    })
+
+_tests.append(_test_host_only_os_with_fallback)
 
 def requirements_files_by_platform_test_suite(name):
     """Create the test suite.
