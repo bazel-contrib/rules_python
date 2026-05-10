@@ -16,7 +16,6 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_requirements.bzl", "select_requirement", _parse_requirements = "parse_requirements")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
@@ -68,7 +67,7 @@ foo==0.0.1 --hash=sha256:deadbeef
 foo[extra]==0.0.1 --hash=sha256:deadbeef
 """,
         "requirements_marker": """\
-foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef
+foo[extra]==0.0.1 ; os_name == 'nt' --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadbeef
 """,
         "requirements_multi_version": """\
@@ -441,22 +440,24 @@ def _test_select_requirement_none_platform(env):
 _tests.append(_test_select_requirement_none_platform)
 
 def _test_env_marker_resolution(env):
-    """Test environment marker resolution with ``evaluate_markers``."""
-
-    def _mock_eval_markers(input):
-        ret = {
-            "foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef": ["cp311_windows_x86_64"],
-        }
-
-        env.expect.that_collection(input.keys()).contains_exactly(ret.keys())
-        env.expect.that_collection(input.values()[0]).contains_exactly(["cp311_linux_super_exotic", "cp311_windows_x86_64"])
-        return ret
+    """Test environment marker resolution with platform env information."""
 
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_marker": ["cp311_linux_super_exotic", "cp311_windows_x86_64"],
         },
-        evaluate_markers = _mock_eval_markers,
+        platforms = {
+            "cp311_linux_super_exotic": struct(
+                env = pep508_env(os = "linux", arch = "x86_64", python_version = "3.11.0"),
+                whl_abi_tags = [],
+                whl_platform_tags = [],
+            ),
+            "cp311_windows_x86_64": struct(
+                env = pep508_env(os = "windows", arch = "x86_64", python_version = "3.11.0"),
+                whl_abi_tags = [],
+                whl_platform_tags = [],
+            ),
+        },
     )
     env.expect.that_collection(got).contains_exactly([
         struct(
@@ -797,17 +798,6 @@ def _test_get_index_urls_different_versions(env):
                 },
             ),
         },
-        evaluate_markers = lambda requirements: evaluate_markers(
-            requirements = requirements,
-            platforms = {
-                "cp310_linux_x86_64": struct(
-                    env = {"python_full_version": "3.10.0"},
-                ),
-                "cp39_linux_x86_64": struct(
-                    env = {"python_full_version": "3.9.0"},
-                ),
-            },
-        ),
     )
 
     env.expect.that_collection(got).contains_exactly([
@@ -891,14 +881,6 @@ def _test_get_index_urls_cross_platform(env):
             ),
         },
         get_index_urls = _get_index_urls,
-        evaluate_markers = lambda requirements: evaluate_markers(
-            requirements = requirements,
-            platforms = {
-                "cp39_osx_x86_64": struct(
-                    env = {"python_full_version": "3.9.0"},
-                ),
-            },
-        ),
     )
 
     # distributions must include packages from ALL files, even those with
@@ -947,14 +929,6 @@ def _test_get_index_urls_single_py_version(env):
                 },
             ),
         },
-        evaluate_markers = lambda requirements: evaluate_markers(
-            requirements = requirements,
-            platforms = {
-                "cp310_linux_x86_64": struct(
-                    env = {"python_full_version": "3.10.0"},
-                ),
-            },
-        ),
     )
 
     env.expect.that_collection(got).contains_exactly([
@@ -1004,14 +978,6 @@ def _test_get_index_urls_all_versions(env):
             ),
         },
         get_index_urls = _get_index_urls,
-        evaluate_markers = lambda requirements: evaluate_markers(
-            requirements = requirements,
-            platforms = {
-                "cp39_linux_x86_64": struct(
-                    env = {"python_full_version": "3.9.0"},
-                ),
-            },
-        ),
     )
 
     env.expect.that_collection(calls).contains_exactly([

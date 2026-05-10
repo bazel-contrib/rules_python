@@ -7,7 +7,6 @@ load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -29,7 +28,6 @@ def hub_builder(
         minor_mapping,
         available_interpreters,
         simpleapi_download_fn,
-        evaluate_markers_fn,
         logger,
         simpleapi_cache):
     """Return a hub builder instance
@@ -40,7 +38,6 @@ def hub_builder(
         config: The platform configuration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
         minor_mapping: {type}`dict[str, str]` the mapping between minor and full versions.
-        evaluate_markers_fn: the override function used to evaluate the markers.
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
@@ -97,7 +94,6 @@ def hub_builder(
         # Instance constants passed in by callers
         _config = config,
         _whl_overrides = whl_overrides,
-        _evaluate_markers_fn = evaluate_markers_fn,
         _logger = logger,
         _minor_mapping = minor_mapping,
         _available_interpreters = available_interpreters,
@@ -465,15 +461,6 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr):
-    if self._evaluate_markers_fn:
-        return self._evaluate_markers_fn
-
-    return lambda requirements: evaluate_markers(
-        requirements = requirements,
-        platforms = self._platforms[pip_attr.python_version],
-    )
-
 def _create_whl_repos(
         self,
         module_ctx,
@@ -509,7 +496,6 @@ def _create_whl_repos(
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr),
         logger = logger,
     )
 

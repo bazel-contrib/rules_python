@@ -190,7 +190,6 @@ bzl_library(
     visibility = ["//:__subpackages__"],
     deps = [
         ":attrs_bzl",
-        ":evaluate_markers_bzl",
         ":parse_requirements_bzl",
         ":pep508_env_bzl",
         ":pep508_evaluate_bzl",
@@ -247,6 +246,8 @@ bzl_library(
         ":argparse_bzl",
         ":index_sources_bzl",
         ":parse_requirements_txt_bzl",
+        ":pep508_evaluate_bzl",
+        ":pep508_requirement_bzl",
         ":pypi_repo_utils_bzl",
         ":requirements_files_by_platform_bzl",
         ":select_whl_bzl",
@@ -344,7 +345,6 @@ bzl_library(
     srcs = ["pip_repository.bzl"],
     deps = [
         ":attrs_bzl",
-        ":evaluate_markers_bzl",
         ":parse_requirements_bzl",
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
