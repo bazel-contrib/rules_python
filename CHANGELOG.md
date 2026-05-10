@@ -80,8 +80,6 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
   installed wheel targets, except when built from sdist
   ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
-* (bzlmod) Reduce default verbosity of our loggers for non-root modules
-  ([#3749](https://github.com/bazel-contrib/rules_python/issues/3749)).
 
 
 {#v0-0-0-added}
@@ -117,6 +115,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Fix the versions of packages that we are recording to a `MODULE.bazel.lock` file
   facts by passing all of the versions to the `get_index` function.
   Fixes [#3756](https://github.com/bazel-contrib/rules_python/issues/3756).
+* (bzlmod) Reduce default verbosity of our loggers for non-root modules
+  ([#3749](https://github.com/bazel-contrib/rules_python/issues/3749)).
 
 {#v2-0-0}
 ## [2.0.0] - 2026-04-09
