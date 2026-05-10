@@ -115,6 +115,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Fix the versions of packages that we are recording to a `MODULE.bazel.lock` file
   facts by passing all of the versions to the `get_index` function.
   Fixes [#3756](https://github.com/bazel-contrib/rules_python/issues/3756).
+* (bzlmod) Reduce default verbosity of our loggers for non-root modules
+  ([#3749](https://github.com/bazel-contrib/rules_python/issues/3749)).
 
 {#v2-0-0}
 ## [2.0.0] - 2026-04-09

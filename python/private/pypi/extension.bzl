@@ -357,7 +357,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     # TODO @aignas 2025-09-06: do not use kwargs
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
                     available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
-                    logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name),
+                    logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name, mod = mod),
                 )
                 pip_hub_map[pip_attr.hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
