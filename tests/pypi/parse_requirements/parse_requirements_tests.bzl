@@ -121,6 +121,7 @@ def parse_requirements(debug = False, **kwargs):
     )
 
 def _test_simple(env):
+    """Test basic parsing of a single ``requirements_lock`` file."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_lock": ["linux_x86_64", "windows_x86_64"],
@@ -236,6 +237,7 @@ def _test_direct_urls_no_extract(env):
 _tests.append(_test_direct_urls_no_extract)
 
 def _test_extra_pip_args(env):
+    """Test that ``extra_pip_args`` are merged with per-requirement-file args."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_extra_args": ["linux_x86_64"],
@@ -268,6 +270,7 @@ def _test_extra_pip_args(env):
 _tests.append(_test_extra_pip_args)
 
 def _test_dupe_requirements(env):
+    """Test that duplicate requirement entries are deduplicated."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_lock_dupe": ["linux_x86_64"],
@@ -297,6 +300,7 @@ def _test_dupe_requirements(env):
 _tests.append(_test_dupe_requirements)
 
 def _test_multi_os(env):
+    """Test per-OS requirements parsing with ``select_requirement``."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_linux": ["linux_x86_64"],
@@ -362,6 +366,7 @@ def _test_multi_os(env):
 _tests.append(_test_multi_os)
 
 def _test_multi_os_legacy(env):
+    """Test download-only per-OS requirements parsing."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_linux_download_only": ["cp39_linux_x86_64"],
@@ -421,6 +426,7 @@ def _test_multi_os_legacy(env):
 _tests.append(_test_multi_os_legacy)
 
 def _test_select_requirement_none_platform(env):
+    """Test that ``select_requirement`` returns the first src when platform is ``None``."""
     got = select_requirement(
         [
             struct(
@@ -435,6 +441,8 @@ def _test_select_requirement_none_platform(env):
 _tests.append(_test_select_requirement_none_platform)
 
 def _test_env_marker_resolution(env):
+    """Test environment marker resolution with ``evaluate_markers``."""
+
     def _mock_eval_markers(input):
         ret = {
             "foo[extra]==0.0.1 ;marker --hash=sha256:deadbeef": ["cp311_windows_x86_64"],
@@ -492,6 +500,7 @@ def _test_env_marker_resolution(env):
 _tests.append(_test_env_marker_resolution)
 
 def _test_different_package_version(env):
+    """Test that different package versions across platforms are handled."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_foo": ["linux_aarch64"],
@@ -532,6 +541,7 @@ def _test_different_package_version(env):
 _tests.append(_test_different_package_version)
 
 def _test_different_package_extras(env):
+    """Test that different extras across platforms are handled."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_foo": ["linux_aarch64"],
@@ -572,6 +582,7 @@ def _test_different_package_extras(env):
 _tests.append(_test_different_package_extras)
 
 def _test_optional_hash(env):
+    """Test parsing of requirements with optional hashes and URLs."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_optional_hash": ["linux_x86_64"],
@@ -619,6 +630,7 @@ def _test_optional_hash(env):
 _tests.append(_test_optional_hash)
 
 def _test_git_sources(env):
+    """Test parsing of git-sourced requirements."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_git": ["linux_x86_64"],
@@ -648,6 +660,7 @@ def _test_git_sources(env):
 _tests.append(_test_git_sources)
 
 def _test_overlapping_shas_with_index_results(env):
+    """Test that index results with overlapping shas are matched to the correct platform."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_linux": ["cp39_linux_x86_64"],
@@ -736,6 +749,7 @@ def _test_overlapping_shas_with_index_results(env):
 _tests.append(_test_overlapping_shas_with_index_results)
 
 def _test_get_index_urls_different_versions(env):
+    """Test that different versions from index URLs are matched correctly per platform."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_multi_version": [
@@ -848,9 +862,10 @@ def _test_get_index_urls_different_versions(env):
 _tests.append(_test_get_index_urls_different_versions)
 
 def _test_get_index_urls_cross_platform(env):
-    """Verifies that distributions from ALL requirement files are passed to
-    get_index_urls, even those files with no matching platforms for the
-    current OS. This ensures the lockfile facts are platform-independent."""
+    """Verifies that distributions from all requirement files are passed to ``get_index_urls``.
+
+    This ensures the lockfile facts are platform-independent.
+    """
     calls = []
 
     def _get_index_urls(_, distributions, **__):
@@ -900,6 +915,7 @@ def _test_get_index_urls_cross_platform(env):
 _tests.append(_test_get_index_urls_cross_platform)
 
 def _test_get_index_urls_single_py_version(env):
+    """Test index URL matching when only a single Python version is used."""
     got = parse_requirements(
         requirements_by_platform = {
             "requirements_multi_version": [
@@ -965,6 +981,7 @@ def _test_get_index_urls_single_py_version(env):
 _tests.append(_test_get_index_urls_single_py_version)
 
 def _test_get_index_urls_all_versions(env):
+    """Test that all versions from all requirement files are passed to ``get_index_urls``."""
     calls = []
 
     def _get_index_urls(_, distributions, **__):
