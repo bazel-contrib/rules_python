@@ -158,6 +158,7 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
             parse_index = True,
             versions = {pkg: None for pkg in sources},
             block = block,
+            allow_fail = True,
             **kwargs
         )
         if hasattr(download, "wait"):
@@ -170,6 +171,8 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
 
     found_on_index = {}
     for index_url, result in results.items():
+        if not result.success:
+            continue
         for pkg in sources:
             if pkg in found_on_index:
                 # We have already found the package, skip searching for it in
