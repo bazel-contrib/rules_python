@@ -761,6 +761,9 @@ hubs can be created, and each program can use its respective hub's targets.
 Targets from different hubs should not be used together.
 """,
         ),
+        "local_wheels": attr.string_dict(
+            doc = "Dictionary mapping package names to local wheel file paths relative to the workspace root.",
+        ),
         "parallel_download": attr.bool(
             doc = """\
 The flag allows to make use of parallel downloading feature in bazel 7.1 and above
@@ -820,9 +823,6 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
 :::{versionadded} 1.8.0
 :::
 """,
-        ),
-        "local_wheels": attr.string_dict(
-            doc = "Dictionary mapping package names to local wheel file paths relative to the workspace root.",
         ),
         "whl_modifications": attr.label_keyed_string_dict(
             mandatory = False,
