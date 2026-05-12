@@ -333,7 +333,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
                     if value
                 ])
             ))
-        return
+            return
     self._whl_libraries[repo_name] = repo.args
 
     mapping = self._whl_map.setdefault(whl.name, {})
