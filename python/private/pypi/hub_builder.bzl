@@ -488,6 +488,7 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        is_root: {type}`bool` - whether the calling module is the root workspace.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
     """
     logger = self._logger

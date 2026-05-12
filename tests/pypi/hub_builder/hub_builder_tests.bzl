@@ -853,9 +853,9 @@ def _test_local_wheel_override(env):
     builder.pip_parse(
         mocks.mctx(
             mock_files = {
-                "requirements.txt": "simple==0.0.1 --hash=sha256:deadbeef",
                 "MODULE.bazel": "",
                 "dist/simple-0.0.2-cp315-cp315-linux_x86_64.whl": "",
+                "requirements.txt": "simple==0.0.1 --hash=sha256:deadbeef",
             },
             os_name = "linux",
             arch_name = "x86_64",
@@ -901,9 +901,9 @@ def _test_local_wheel_override_ignored_if_not_root(env):
     builder.pip_parse(
         mocks.mctx(
             mock_files = {
-                "requirements.txt": "simple==0.0.1 --hash=sha256:deadbeef",
                 "MODULE.bazel": "",
                 "dist/simple-0.0.2-cp315-cp315-linux_x86_64.whl": "",
+                "requirements.txt": "simple==0.0.1 --hash=sha256:deadbeef",
             },
             os_name = "linux",
             arch_name = "x86_64",
@@ -1602,19 +1602,6 @@ _tests.append(_test_err_duplicate_repos)
 def _test_explicit_local_wheels(env):
     def mock_simpleapi_download(*_, **__):
         return {
-            "simple": struct(
-                whls = {
-                    "deadbeef": struct(
-                        yanked = None,
-                        filename = "simple-0.0.1-py3-none-any.whl",
-                        sha256 = "deadbeef",
-                        url = "example.com/simple-0.0.1.whl",
-                    ),
-                },
-                sdists = {},
-                sha256s_by_version = {},
-                index_url = "https://example.com",
-            ),
             "libtpu": struct(
                 whls = {
                     "deadbaaf": struct(
@@ -1622,6 +1609,19 @@ def _test_explicit_local_wheels(env):
                         filename = "libtpu-0.0.1-py3-none-any.whl",
                         sha256 = "deadbaaf",
                         url = "example.com/libtpu-0.0.1.whl",
+                    ),
+                },
+                sdists = {},
+                sha256s_by_version = {},
+                index_url = "https://example.com",
+            ),
+            "simple": struct(
+                whls = {
+                    "deadbeef": struct(
+                        yanked = None,
+                        filename = "simple-0.0.1-py3-none-any.whl",
+                        sha256 = "deadbeef",
+                        url = "example.com/simple-0.0.1.whl",
                     ),
                 },
                 sdists = {},
@@ -1637,13 +1637,13 @@ def _test_explicit_local_wheels(env):
     builder.pip_parse(
         mocks.mctx(
             mock_files = {
+                "MODULE.bazel": "",
+                "custom_folder/libtpu-0.0.41.dev20260509+nightly-cp314-cp314t-manylinux_2_31_x86_64.whl": "",
+                "custom_folder/simple-0.0.3-py3-none-any.whl": "",
                 "requirements.txt": """\
 simple==0.0.1 --hash=sha256:deadbeef
 libtpu==0.0.1 --hash=sha256:deadbaaf
 """,
-                "MODULE.bazel": "",
-                "custom_folder/libtpu-0.0.41.dev20260509+nightly-cp314-cp314t-manylinux_2_31_x86_64.whl": "",
-                "custom_folder/simple-0.0.3-py3-none-any.whl": "",
             },
             os_name = "linux",
             arch_name = "x86_64",
@@ -1654,8 +1654,8 @@ libtpu==0.0.1 --hash=sha256:deadbaaf
             experimental_index_url = "https://example.com",
             requirements_lock = "requirements.txt",
             local_wheels = {
-                "simple": "custom_folder/simple-0.0.3-py3-none-any.whl",
                 "libtpu": "custom_folder/libtpu-*.whl",
+                "simple": "custom_folder/simple-0.0.3-py3-none-any.whl",
             },
         ),
         is_root = True,
