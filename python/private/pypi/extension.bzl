@@ -581,8 +581,8 @@ Index metadata will be used to get `sha256` values for packages even if the
 Defaults to `https://pypi.org/simple`.
 
 :::{versionadded} 2.0.0
-This has been added as a replacement for 
-{obj}`pip.parse.experimental_index_url` and 
+This has been added as a replacement for
+{obj}`pip.parse.experimental_index_url` and
 {obj}`pip.parse.experimental_extra_index_urls`.
 :::
 """,
@@ -762,7 +762,28 @@ Targets from different hubs should not be used together.
 """,
         ),
         "local_wheels": attr.string_dict(
-            doc = "Dictionary mapping package names to local wheel file paths relative to the workspace root.",
+            doc = """\
+A dictionary mapping package names to local wheel file paths relative to the
+workspace root.
+
+Allows testing locally built wheels without modifying lockfiles or hosting a
+local index server.
+
+Keys are normalized package names (e.g. `my_package`). Values are paths relative
+to the workspace root.
+
+If the path contains a wildcard `*` (e.g. `dist/libtpu-*.whl`), matching `.whl`
+candidates are discovered and the newest version is selected by comparing
+basenames lexicographically.
+
+If a file is missing on disk or no files match the wildcard pattern, the
+override is silently ignored and Bazel falls back to the remote PyPI index.
+
+Overrides apply when bazel downloader is used and only take effect in the root module.
+
+:::{versionadded} 1.9.0
+:::
+""",
         ),
         "parallel_download": attr.bool(
             doc = """\
