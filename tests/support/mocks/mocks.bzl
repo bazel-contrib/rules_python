@@ -11,12 +11,58 @@ def _path_new(path, mock_files = None):
         {type}`MockPath` A struct mocking a path object.
     """
     mock_files = mock_files or {}
-    return struct(
-        exists = path in mock_files,
-        basename = path.split("/")[-1],
-        dirname = "/".join(path.split("/")[:-1]),
-        _path = path,
-    )
+    path_str = str(path)
+    if path_str.startswith("@@//:"):
+        path_str = path_str[5:]
+    elif path_str.startswith("//:"):
+        path_str = path_str[3:]
+
+    parts = path_str.split("/") if path_str else []
+
+    current_struct = None
+
+    for i in range(len(parts) + 1):
+        sub_path = "/".join(parts[:i])
+        parent_struct = current_struct
+
+        def _get_child(child_name, p = sub_path):
+            child_path = "{}/{}".format(p, child_name) if p else str(child_name)
+            return _path_new(child_path, mock_files)
+
+        def _readdir(p = sub_path):
+            prefix = (p + "/") if p else ""
+            return [
+                _path_new(f, mock_files)
+                for f in mock_files
+                if f.startswith(prefix) and f != p
+            ]
+
+        def _exists(p = sub_path):
+            if p in mock_files:
+                return True
+            prefix = (p + "/") if p else ""
+            for f in mock_files:
+                if f.startswith(prefix):
+                    return True
+            return False
+
+        current_struct = struct(
+            exists = _exists(),
+            basename = parts[i - 1] if i > 0 else "",
+            dirname = parent_struct if i > 0 else struct(
+                exists = True,
+                basename = "",
+                dirname = "",
+                get_child = _get_child,
+                readdir = _readdir,
+                _path = "",
+            ),
+            get_child = _get_child,
+            readdir = _readdir,
+            _path = sub_path,
+        )
+
+    return current_struct
 
 def _file_new(short_path, *, path = None, is_source = True, owner = None):
     """Create a mock File object.
@@ -67,7 +113,7 @@ def _file_new(short_path, *, path = None, is_source = True, owner = None):
     return struct(
         path = path,
         basename = path.split("/")[-1],
-        dirname = "/".join(path.split("/")[:-1]),
+        dirname = _path_new("/".join(path.split("/")[:-1])),
         extension = path.split(".")[-1] if "." in path else "",
         is_source = is_source,
         owner = owner,
