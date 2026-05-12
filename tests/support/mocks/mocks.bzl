@@ -14,6 +14,8 @@ def _path_new(path, mock_files = None):
     path_str = str(path)
     if path_str.startswith("@@//:"):
         path_str = path_str[5:]
+    elif path_str.startswith("@//:"):
+        path_str = path_str[4:]
     elif path_str.startswith("//:"):
         path_str = path_str[3:]
 
