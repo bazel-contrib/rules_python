@@ -96,9 +96,10 @@ END_UNRELEASED_TEMPLATE
 * Python toolchain from [20260414] release.
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
-* (pypi) Added {attr}`pip.parse.restrict_visibility_to` to expose only
-  packages listed in requirement files while keeping lockfile transitive
-  dependencies available internally. Fixes
+* (pypi) Added {attr}`pip.parse.srcs` to expose only packages listed in
+  requirement source files while keeping lockfile transitive dependencies
+  available internally, and to create a generated `lock.update` target in the
+  hub repository. Fixes
   [#3413](https://github.com/bazel-contrib/rules_python/issues/3413).
 
 [20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325

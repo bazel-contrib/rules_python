@@ -109,6 +109,7 @@ def hub_builder(
                 whl_map = subjects.dict,
                 whl_libraries = subjects.dict,
                 extra_aliases = subjects.dict,
+                lock_targets = subjects.collection,
             ),
         ),
         pip_parse = builder.pip_parse,
@@ -153,7 +154,7 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
-def _test_restrict_visibility_to(env):
+def _test_srcs_restrict_visibility_and_create_lock_target(env):
     builder = hub_builder(env)
     builder.pip_parse(
         _mock_mctx(
@@ -171,7 +172,7 @@ dep-of-foo==0.0.1 --hash=sha256:deadb00f
             hub_name = "pypi",
             python_version = "3.15",
             requirements_lock = "requirements.txt",
-            restrict_visibility_to = ["requirements.in"],
+            srcs = ["requirements.in"],
         ),
     )
     pypi = builder.build()
@@ -209,8 +210,70 @@ dep-of-foo==0.0.1 --hash=sha256:deadb00f
         },
     })
     pypi.extra_aliases().contains_exactly({})
+    pypi.lock_targets().contains_exactly([
+        struct(
+            name = "lock",
+            out = "requirements.txt",
+            python_version = "3.15",
+            srcs = ["requirements.in"],
+        ),
+    ])
 
-_tests.append(_test_restrict_visibility_to)
+_tests.append(_test_srcs_restrict_visibility_and_create_lock_target)
+
+def _test_srcs_lock_targets_are_versioned_for_multiple_python_versions(env):
+    builder = hub_builder(
+        env,
+        minor_mapping = {
+            "3.15": "3.15.19",
+            "3.16": "3.16.0",
+        },
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target_315",
+            "python_3_16_host": "unit_test_interpreter_target_316",
+        },
+    )
+    mctx = _mock_mctx(
+        os_name = "osx",
+        arch_name = "aarch64",
+        mock_files = {
+            "requirements.in": "foo>=0.0.1\n",
+            "requirements_315.txt": "foo==0.0.1 --hash=sha256:deadbeef\n",
+            "requirements_316.txt": "foo==0.0.2 --hash=sha256:deadb00f\n",
+        },
+    )
+    for python_version, requirements_lock in {
+        "3.15": "requirements_315.txt",
+        "3.16": "requirements_316.txt",
+    }.items():
+        builder.pip_parse(
+            mctx,
+            _parse(
+                hub_name = "pypi",
+                python_version = python_version,
+                requirements_lock = requirements_lock,
+                srcs = ["requirements.in"],
+            ),
+        )
+
+    pypi = builder.build()
+
+    pypi.lock_targets().contains_exactly([
+        struct(
+            name = "lock_315",
+            out = "requirements_315.txt",
+            python_version = "3.15",
+            srcs = ["requirements.in"],
+        ),
+        struct(
+            name = "lock_316",
+            out = "requirements_316.txt",
+            python_version = "3.16",
+            srcs = ["requirements.in"],
+        ),
+    ])
+
+_tests.append(_test_srcs_lock_targets_are_versioned_for_multiple_python_versions)
 
 def _test_simple_multiple_requirements(env):
     sub_tests = {

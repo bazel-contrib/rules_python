@@ -159,9 +159,9 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
-def _test_restrict_visibility_to(env):
+def _test_srcs_restrict_visibility(env):
     got = parse_requirements(
-        exposed_requirements = ["requirements_exposed_roots"],
+        exposed_srcs = ["requirements_exposed_roots"],
         requirements_by_platform = {
             "requirements_lock_with_transitives": ["linux_x86_64"],
         },
@@ -223,7 +223,7 @@ def _test_restrict_visibility_to(env):
         ),
     ])
 
-_tests.append(_test_restrict_visibility_to)
+_tests.append(_test_srcs_restrict_visibility)
 
 def _test_direct_urls_integration(env):
     """Check that we are using the filename from index_sources."""

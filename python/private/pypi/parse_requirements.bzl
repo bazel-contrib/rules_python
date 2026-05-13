@@ -42,7 +42,7 @@ def parse_requirements(
         platforms = {},
         get_index_urls = None,
         evaluate_markers = None,
-        exposed_requirements = [],
+        exposed_srcs = [],
         extract_url_srcs = True,
         logger):
     """Get the requirements with platforms that the requirements apply to.
@@ -63,7 +63,7 @@ def parse_requirements(
             the platforms stored as values in the input dict. Returns the same
             dict, but with values being platforms that are compatible with the
             requirements line.
-        exposed_requirements: List of requirements files. When present, only
+        exposed_srcs: List of requirement source files. When present, only
             packages listed in these files should be exposed via the hub
             repository.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
@@ -96,7 +96,7 @@ def parse_requirements(
     reqs_with_env_markers = {}
     index_url = None
     extra_index_urls = []
-    exposed_package_names = _exposed_package_names(ctx, exposed_requirements)
+    exposed_package_names = _exposed_package_names(ctx, exposed_srcs)
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -257,7 +257,7 @@ def parse_requirements(
         ):
             logger.trace(lambda: (
                 "Package '{}' will not be exposed because it is not present " +
-                "in restrict_visibility_to"
+                "in srcs"
             ).format(name))
         if len(requirement_target_platforms) != len(requirements) and logger:
             logger.trace(lambda: (
@@ -273,13 +273,13 @@ def parse_requirements(
 
     return ret
 
-def _exposed_package_names(ctx, exposed_requirements):
+def _exposed_package_names(ctx, exposed_srcs):
     """Parse the requirement files that define hub-exposed package names."""
-    if not exposed_requirements:
+    if not exposed_srcs:
         return None
 
     exposed = {}
-    for file in exposed_requirements:
+    for file in exposed_srcs:
         parse_result = parse_requirements_txt(ctx.read(file))
         for distribution, _ in parse_result.requirements:
             exposed[normalize_name(distribution)] = None

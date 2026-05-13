@@ -19,10 +19,26 @@ load(":render_pkg_aliases.bzl", "render_multiplatform_pkg_aliases")
 load(":whl_config_setting.bzl", "whl_config_setting")
 
 _BUILD_FILE_CONTENTS = """\
-package(default_visibility = ["//visibility:public"])
+{loads}package(default_visibility = ["//visibility:public"])
 
-# Ensure the `requirements.bzl` source can be accessed by stardoc, since users load() from it
+# Ensure the `requirements.bzl` source can be accessed by stardoc, since users
+# load() from it.
 exports_files(["requirements.bzl"])
+{lock_targets}"""
+
+_LOCK_LOAD = """\
+load("@rules_python//python/uv:lock.bzl", "lock")
+
+"""
+
+_LOCK_TARGET = """
+lock(
+    name = {name},
+    out = {out},
+    python_version = {python_version},
+    srcs = {srcs},
+    visibility = ["//visibility:public"],
+)
 """
 
 def _impl(rctx):
@@ -46,7 +62,12 @@ def _impl(rctx):
     # `requirement`, et al. macros.
     macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
 
-    rctx.file("BUILD.bazel", _BUILD_FILE_CONTENTS)
+    rctx.file("BUILD.bazel", render_hub_build_file(
+        lock_targets = [
+            json.decode(target)
+            for target in rctx.attr.lock_targets
+        ],
+    ))
     rctx.template(
         "config.bzl",
         rctx.attr._config_template,
@@ -78,6 +99,9 @@ hub_repository = repository_rule(
         ),
         "groups": attr.string_list_dict(
             mandatory = False,
+        ),
+        "lock_targets": attr.string_list(
+            doc = "JSON-encoded lock targets to render into the hub repository.",
         ),
         "packages": attr.string_list(
             mandatory = False,
@@ -111,6 +135,27 @@ in the pip.parse tag class.
     doc = """A rule for bzlmod mulitple pip repository creation. PRIVATE USE ONLY.""",
     implementation = _impl,
 )
+
+def render_hub_build_file(*, lock_targets = []):
+    rendered_lock_targets = _render_lock_targets(lock_targets)
+    return _BUILD_FILE_CONTENTS.format(
+        loads = _LOCK_LOAD if rendered_lock_targets else "",
+        lock_targets = rendered_lock_targets,
+    )
+
+def _render_lock_targets(lock_targets):
+    if not lock_targets:
+        return ""
+
+    return "\n" + "\n\n".join([
+        _LOCK_TARGET.format(
+            name = repr(target["name"]),
+            out = repr(target["out"]),
+            python_version = repr(target["python_version"]),
+            srcs = render.list(target["srcs"]),
+        ).strip()
+        for target in lock_targets
+    ]) + "\n"
 
 def _whl_config_settings_from_json(repo_mapping_json):
     """Deserialize the serialized values with whl_config_settings_to_json.

@@ -77,6 +77,9 @@ def hub_builder(
         # setting originated from.
         # dict[str whl_name, dict[str config_setting, str repo_name]]
         _whl_map = {},  # modified by _add_whl_library
+        # Lock update targets to generate in the hub repository.
+        # list[struct(out=str, python_version=str, srcs=list[str])]
+        _lock_targets = [],
 
         # Internal
 
@@ -115,6 +118,7 @@ def _build(self):
         group_map = {},
         extra_aliases = {},
         exposed_packages = [],
+        lock_targets = [],
         whl_libraries = {},
     )
     if self._logger.failed():
@@ -141,6 +145,9 @@ def _build(self):
         # The list of exposed packages in the hub.
         # list[str]
         exposed_packages = sorted(self._exposed_packages),
+        # The lock update targets in the hub.
+        # list[struct(name=str, out=str, python_version=str, srcs=list[str])]
+        lock_targets = _named_lock_targets(self._lock_targets),
 
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
@@ -190,6 +197,7 @@ def _pip_parse(self, module_ctx, pip_attr):
     )
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
+    _add_lock_target(self, pip_attr)
     _create_whl_repos(
         self,
         module_ctx,
@@ -347,7 +355,52 @@ def _add_whl_library(self, *, python_version, whl, repo):
     else:
         mapping[repo.config_setting] = repo_name
 
+def _add_lock_target(self, pip_attr):
+    """Adds a generated hub lock update target when the parse attrs are complete.
+
+    Args:
+        self: implicitly added.
+        pip_attr: The `pip.parse` tag attributes.
+    """
+    if not pip_attr.srcs or not pip_attr.requirements_lock:
+        return
+
+    self._lock_targets.append(struct(
+        out = _source_file_path(pip_attr.requirements_lock),
+        python_version = pip_attr.python_version,
+        srcs = [str(src) for src in pip_attr.srcs],
+    ))
+
 ### end of setters, below we have various functions to implement the public methods
+
+def _named_lock_targets(lock_targets):
+    if len(lock_targets) == 1:
+        target = lock_targets[0]
+        return [struct(
+            name = "lock",
+            out = target.out,
+            python_version = target.python_version,
+            srcs = target.srcs,
+        )]
+
+    return [
+        struct(
+            name = "lock_{}".format(version_label(target.python_version)),
+            out = target.out,
+            python_version = target.python_version,
+            srcs = target.srcs,
+        )
+        for target in sorted(lock_targets, key = lambda target: target.python_version)
+    ]
+
+def _source_file_path(label):
+    if type(label) == type(""):
+        return label
+
+    if label.package:
+        return "{}/{}".format(label.package, label.name)
+    else:
+        return label.name
 
 def _set_get_index_urls(self, pip_attr):
     default_index_url = pip_attr.experimental_index_url or self._config.index_url
@@ -510,7 +563,7 @@ def _create_whl_repos(
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
         evaluate_markers = _evaluate_markers(self, pip_attr),
-        exposed_requirements = pip_attr.restrict_visibility_to,
+        exposed_srcs = pip_attr.srcs,
         logger = logger,
     )
 

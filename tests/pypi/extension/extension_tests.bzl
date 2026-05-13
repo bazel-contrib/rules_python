@@ -107,6 +107,7 @@ def _parse_modules(env, **kwargs):
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
             hub_whl_map = subjects.dict,
+            lock_targets = subjects.dict,
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
         ),
