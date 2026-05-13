@@ -75,6 +75,17 @@ def _test_windows_platform_is_silent(env):
 
 _tests.append(_test_windows_platform_is_silent)
 
+# NOTE: there is intentionally no unit test for the supported-wheel path
+# (where coverage_dep returns a non-None label and emits no warning).
+# That path calls `maybe(http_archive, ...)`, which calls
+# `native.existing_rule()`. `native.existing_rule()` is only valid during
+# BUILD file, legacy macro, or rule finalizer evaluation -- not during
+# rule analysis, which is the phase rules_testing analysis tests run in.
+# Calling coverage_dep with supported args from here therefore fails with
+# "existing_rule() can only be used while evaluating a BUILD file, ...".
+# The supported-wheel path is exercised end-to-end by `bazel coverage`
+# against a real py_test target during ordinary use of the toolchain.
+
 def coverage_deps_test_suite(name):
     """Create the test suite.
 
