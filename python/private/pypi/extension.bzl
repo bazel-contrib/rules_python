@@ -781,7 +781,7 @@ override is silently ignored and Bazel falls back to the remote PyPI index.
 
 Overrides apply when bazel downloader is used and only take effect in the root module.
 
-:::{versionadded} 1.9.0
+:::{versionadded} 2.1.0
 :::
 """,
         ),
