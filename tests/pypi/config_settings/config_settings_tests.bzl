@@ -32,14 +32,7 @@ _subject = rule(
 
 _flag = struct(
     platform = lambda x: ("//command_line_option:platforms", str(Label("//tests/support/platforms:" + x))),
-    pip_whl = lambda x: (str(Label("//python/config_settings:pip_whl")), str(x)),
-    pip_whl_glibc_version = lambda x: (str(Label("//python/config_settings:pip_whl_glibc_version")), str(x)),
-    pip_whl_muslc_version = lambda x: (str(Label("//python/config_settings:pip_whl_muslc_version")), str(x)),
-    pip_whl_osx_version = lambda x: (str(Label("//python/config_settings:pip_whl_osx_version")), str(x)),
-    pip_whl_osx_arch = lambda x: (str(Label("//python/config_settings:pip_whl_osx_arch")), str(x)),
-    py_linux_libc = lambda x: (str(Label("//python/config_settings:py_linux_libc")), str(x)),
     python_version = lambda x: (str(Label("//python/config_settings:python_version")), str(x)),
-    py_freethreaded = lambda x: (str(Label("//python/config_settings:py_freethreaded")), str(x)),
 )
 
 def _analysis_test(*, name, dist, want, config_settings = [_flag.platform("linux_aarch64")]):

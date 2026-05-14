@@ -8,10 +8,6 @@ diff --git a/coverage/__main__.py b/coverage/__main__.py
 index ce2d8db..7d7d0a0 100644
 --- a/coverage/__main__.py
 +++ b/coverage/__main__.py
-@@ -6,5 +6,6 @@
- from __future__ import annotations
-
+@@ -8,1 +8,2 @@
  import sys
 +sys.path.append(sys.path.pop(0))
- from coverage.cmdline import main
- sys.exit(main())

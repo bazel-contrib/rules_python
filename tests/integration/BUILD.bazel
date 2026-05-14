@@ -38,6 +38,20 @@ default_test_runner(
 )
 
 rules_python_integration_test(
+    name = "bzlmod_lockfile_test",
+    bazel_versions = ["9.1.0"],
+)
+
+test_suite(
+    name = "subset",
+    tags = ["manual"],
+    tests = [
+        "bzlmod_lockfile_test_bazel_9.1.0",
+        "local_toolchains_test_bazel_self",
+    ],
+)
+
+rules_python_integration_test(
     name = "compile_pip_requirements_test",
 )
 

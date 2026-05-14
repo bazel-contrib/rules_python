@@ -212,6 +212,15 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             requested_versions = requested_versions,
         )
         if result:
+            if len(result) != len(requested_versions):
+                # If the results are incomplete, return None, so that we can
+                # fetch sources from the internet again.
+                return None
+
+            # Only persist the accessed (requested) packages. Packages that
+            # exist in known_facts but are not in requested_versions (e.g.
+            # removed from all requirements files) are dropped from the
+            # computed facts so they get cleaned up from the lockfile.
             _store_facts(facts, facts_version, index_url, result)
         return result
 
