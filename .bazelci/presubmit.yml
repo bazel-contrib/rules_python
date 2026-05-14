@@ -296,7 +296,7 @@ tasks:
     <<: *minimum_supported_version
     <<: *reusable_config
     name: "RBE: Ubuntu, minimum Bazel"
-    platform: rbe_ubuntu2404
+    platform: rbe_ubuntu2204
     build_flags:
       - "--experimental_repository_cache_hardlinks=false"
       # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
@@ -315,7 +315,7 @@ tasks:
   rbe:
     <<: *reusable_config
     name: "RBE: Ubuntu"
-    platform: rbe_ubuntu2404
+    platform: rbe_ubuntu2204
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
     bazel: 8.x
@@ -472,8 +472,8 @@ tasks:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: macOS (subset)"
     platform: macos_arm64
-    build_targets: ["//tests/integration:subset"]
-    test_targets: ["//tests/integration:subset"]
+    build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
   # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
   # have bitrotted a bit. For now, just run a subset of what we're most
   # interested in.
@@ -481,8 +481,8 @@ tasks:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Windows (subset)"
     platform: windows
-    build_targets: ["//tests/integration:subset"]
-    test_targets: ["//tests/integration:subset"]
+    build_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
+    test_targets: ["//tests/integration:local_toolchains_test_bazel_self"]
 
   integration_test_compile_pip_requirements_ubuntu:
     <<: *reusable_build_test_all
