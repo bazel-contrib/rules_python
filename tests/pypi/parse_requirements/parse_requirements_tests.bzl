@@ -17,7 +17,12 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:parse_requirements.bzl", "select_requirement", _parse_requirements = "parse_requirements")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:parse_requirements.bzl",
+    "parse_dep_srcs",
+    "select_requirement",
+    _parse_requirements = "parse_requirements",
+)  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 
@@ -115,9 +120,13 @@ bar==0.0.1 --hash=sha256:deadb00f
 
 _tests = []
 
-def parse_requirements(debug = False, **kwargs):
+def parse_requirements(debug = False, dep_srcs = [], **kwargs):
+    ctx = _mock_ctx()
+    if "exposed_requirements" not in kwargs:
+        kwargs["exposed_requirements"] = parse_dep_srcs(ctx, dep_srcs)
+
     return _parse_requirements(
-        ctx = _mock_ctx(),
+        ctx = ctx,
         logger = repo_utils.logger(struct(
             getenv = {
                 REPO_DEBUG_ENV_VAR: "1",
@@ -126,6 +135,14 @@ def parse_requirements(debug = False, **kwargs):
         ), "unit-test"),
         **kwargs
     )
+
+def _test_parse_dep_srcs(env):
+    got = parse_dep_srcs(_mock_ctx(), ["requirements_exposed_roots"])
+
+    env.expect.that_dict(got).keys().contains_exactly(["bar", "foo"])
+    env.expect.that_bool(parse_dep_srcs(_mock_ctx(), []) == None).equals(True)
+
+_tests.append(_test_parse_dep_srcs)
 
 def _test_simple(env):
     got = parse_requirements(
@@ -161,7 +178,7 @@ _tests.append(_test_simple)
 
 def _test_srcs_restrict_visibility(env):
     got = parse_requirements(
-        exposed_srcs = ["requirements_exposed_roots"],
+        dep_srcs = ["requirements_exposed_roots"],
         requirements_by_platform = {
             "requirements_lock_with_transitives": ["linux_x86_64"],
         },

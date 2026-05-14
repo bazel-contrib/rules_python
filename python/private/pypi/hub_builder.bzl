@@ -8,7 +8,7 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", evaluate_markers_star = "evaluate_markers")
-load(":parse_requirements.bzl", "parse_requirements")
+load(":parse_requirements.bzl", "parse_dep_srcs", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":python_tag.bzl", "python_tag")
@@ -543,6 +543,7 @@ def _create_whl_repos(
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
+    exposed_requirements = parse_dep_srcs(module_ctx, pip_attr.srcs)
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -563,7 +564,7 @@ def _create_whl_repos(
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
         evaluate_markers = _evaluate_markers(self, pip_attr),
-        exposed_srcs = pip_attr.srcs,
+        exposed_requirements = exposed_requirements,
         logger = logger,
     )
 
