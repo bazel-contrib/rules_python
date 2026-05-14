@@ -296,7 +296,7 @@ tasks:
     <<: *minimum_supported_version
     <<: *reusable_config
     name: "RBE: Ubuntu, minimum Bazel"
-    platform: rbe_ubuntu2204
+    platform: rbe_ubuntu2404
     build_flags:
       - "--experimental_repository_cache_hardlinks=false"
       # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
@@ -315,7 +315,7 @@ tasks:
   rbe:
     <<: *reusable_config
     name: "RBE: Ubuntu"
-    platform: rbe_ubuntu2204
+    platform: rbe_ubuntu2404
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
     bazel: 8.x

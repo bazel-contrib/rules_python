@@ -22,11 +22,10 @@ def _internal_dev_deps_impl(mctx):
     _ = mctx  # @unused
 
     # Creates a default toolchain config for RBE.
-    # Use this as is if you are using the rbe_ubuntu16_04 container,
-    # otherwise refer to RBE docs.
+    # Keep this in sync with the rbe_ubuntu* platform used by Bazel CI.
     rbe_preconfig(
         name = "buildkite_config",
-        toolchain = "ubuntu2204",
+        toolchain = "ubuntu2404",
     )
     runtime_env_repo(name = "rules_python_runtime_env_tc_info")
 

@@ -800,6 +800,18 @@ If an interpreter isn't explicitly provided (using `python_interpreter` or
 a corresponding `python.toolchain()` configured.
 """,
         ),
+        "simpleapi_skip": attr.string_list(
+            doc = """\
+The list of packages to skip fetching metadata for from SimpleAPI index. You should
+normally not need this attribute, but in case you do, please report this as a bug
+to `rules_python` and use this attribute until the bug is fixed.
+
+EXPERIMENTAL: this may be removed without notice.
+
+:::{versionadded} 1.4.0
+:::
+""",
+        ),
         "srcs": attr.label_list(
             allow_files = True,
             doc = """
@@ -819,18 +831,6 @@ keeps the source-file API ready for additional dependency declaration formats,
 such as `pyproject.toml`.
 
 :::{versionadded} VERSION_NEXT_FEATURE
-:::
-""",
-        ),
-        "simpleapi_skip": attr.string_list(
-            doc = """\
-The list of packages to skip fetching metadata for from SimpleAPI index. You should
-normally not need this attribute, but in case you do, please report this as a bug
-to `rules_python` and use this attribute until the bug is fixed.
-
-EXPERIMENTAL: this may be removed without notice.
-
-:::{versionadded} 1.4.0
 :::
 """,
         ),
