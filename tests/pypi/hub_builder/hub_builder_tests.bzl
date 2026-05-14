@@ -161,9 +161,11 @@ def _test_srcs_restrict_visibility_and_create_lock_target(env):
             os_name = "osx",
             arch_name = "aarch64",
             mock_files = {
+                "requirements-tools.in": "tool>=0.0.1\n",
                 "requirements.in": "foo>=0.0.1\n",
                 "requirements.txt": """\
 foo==0.0.1 --hash=sha256:deadbeef
+tool==0.0.1 --hash=sha256:deadf00d
 dep-of-foo==0.0.1 --hash=sha256:deadb00f
 """,
             },
@@ -172,12 +174,12 @@ dep-of-foo==0.0.1 --hash=sha256:deadb00f
             hub_name = "pypi",
             python_version = "3.15",
             requirements_lock = "requirements.txt",
-            srcs = ["requirements.in"],
+            srcs = ["requirements.in", "requirements-tools.in"],
         ),
     )
     pypi = builder.build()
 
-    pypi.exposed_packages().contains_exactly(["foo"])
+    pypi.exposed_packages().contains_exactly(["foo", "tool"])
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "dep_of_foo": {
@@ -189,6 +191,13 @@ dep-of-foo==0.0.1 --hash=sha256:deadb00f
         },
         "foo": {
             "pypi_315_foo": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+        "tool": {
+            "pypi_315_tool": [
                 whl_config_setting(
                     version = "3.15",
                 ),
@@ -208,6 +217,12 @@ dep-of-foo==0.0.1 --hash=sha256:deadb00f
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "foo==0.0.1 --hash=sha256:deadbeef",
         },
+        "pypi_315_tool": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "tool==0.0.1 --hash=sha256:deadf00d",
+        },
     })
     pypi.extra_aliases().contains_exactly({})
     pypi.lock_targets().contains_exactly([
@@ -215,7 +230,7 @@ dep-of-foo==0.0.1 --hash=sha256:deadb00f
             name = "lock",
             out = "requirements.txt",
             python_version = "3.15",
-            srcs = ["requirements.in"],
+            srcs = ["requirements.in", "requirements-tools.in"],
         ),
     ])
 

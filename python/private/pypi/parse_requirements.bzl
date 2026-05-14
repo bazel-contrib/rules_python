@@ -34,28 +34,6 @@ load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_requirement.bzl", "requirement")
 load(":select_whl.bzl", "select_whl")
 
-def parse_dep_srcs(ctx, dep_srcs):
-    """Parse dependency source files into normalized package names.
-
-    Args:
-        ctx: A context that has .read function that would read contents from a label.
-        dep_srcs: List of files that express direct dependencies.
-
-    Returns:
-        dict[str, None] or None: The normalized packages present in the source
-            files, or None when there are no source files.
-    """
-    if not dep_srcs:
-        return None
-
-    exposed = {}
-    for file in dep_srcs:
-        parse_result = parse_requirements_txt(ctx.read(file))
-        for distribution, _ in parse_result.requirements:
-            exposed[normalize_name(distribution)] = None
-
-    return exposed
-
 def parse_requirements(
         ctx,
         *,
@@ -64,7 +42,6 @@ def parse_requirements(
         platforms = {},
         get_index_urls = None,
         evaluate_markers = None,
-        exposed_requirements = None,
         extract_url_srcs = True,
         logger):
     """Get the requirements with platforms that the requirements apply to.
@@ -85,9 +62,6 @@ def parse_requirements(
             the platforms stored as values in the input dict. Returns the same
             dict, but with values being platforms that are compatible with the
             requirements line.
-        exposed_requirements: Packages that should be exposed via the hub
-            repository. When None, all packages eligible for exposure are
-            exposed.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
         logger: repo_utils.logger, a simple struct to log diagnostic messages.
@@ -100,8 +74,9 @@ def parse_requirements(
            API downloading (see `index_sources` return value).
          * `target_platforms`: {type}`list[str]` Target platforms that this package is for.
              The format is `cp3{minor}_{os}_{arch}`.
-         * `is_exposed`: {type}`bool` `True` if the package should be exposed via the hub
-           repository.
+         * `is_exposed`: {type}`bool` `True` if the package is eligible for
+           hub exposure based on platform coverage. Hub-level filters may
+           restrict exposure further.
          * `extra_pip_args`: {type}`list[str]` pip args to use in case we are
            not using the bazel downloader to download the archives. This should
            be passed to {obj}`whl_library`.
@@ -259,8 +234,6 @@ def parse_requirements(
 
         normalized_name = normalize_name(name)
         is_exposed = len(requirement_target_platforms) == len(requirements)
-        if exposed_requirements != None and normalized_name not in exposed_requirements:
-            is_exposed = False
 
         item = struct(
             # Return normalized names
@@ -271,15 +244,6 @@ def parse_requirements(
             srcs = package_srcs,
         )
         ret.append(item)
-        if (
-            exposed_requirements != None and
-            normalized_name not in exposed_requirements and
-            logger
-        ):
-            logger.trace(lambda: (
-                "Package '{}' will not be exposed because it is not present " +
-                "in srcs"
-            ).format(name))
         if len(requirement_target_platforms) != len(requirements) and logger:
             logger.trace(lambda: (
                 "Package '{}' will not be exposed because it is only present " +

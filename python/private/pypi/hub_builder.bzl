@@ -8,7 +8,8 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":evaluate_markers.bzl", evaluate_markers_star = "evaluate_markers")
-load(":parse_requirements.bzl", "parse_dep_srcs", "parse_requirements")
+load(":parse_requirements.bzl", "parse_requirements")
+load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":python_tag.bzl", "python_tag")
@@ -402,6 +403,49 @@ def _source_file_path(label):
     else:
         return label.name
 
+def _parse_dep_srcs(ctx, dep_srcs):
+    """Parse dependency source files into normalized package names.
+
+    Args:
+        ctx: A context that has .read function that would read contents from a label.
+        dep_srcs: List of files that express direct dependencies.
+
+    Returns:
+        dict[str, None] or None: The normalized packages present in the source
+            files, or None when there are no source files.
+    """
+    if not dep_srcs:
+        return None
+
+    exposed = {}
+    for file in dep_srcs:
+        parse_result = parse_requirements_txt(ctx.read(file))
+        for distribution, _ in parse_result.requirements:
+            exposed[normalize_name(distribution)] = None
+
+    return exposed
+
+def _exposed_packages(ctx, *, pip_attr, whls, logger):
+    """Returns hub packages exposed by platform support and direct dependency srcs."""
+    dep_srcs = _parse_dep_srcs(ctx, pip_attr.srcs)
+    exposed = {}
+    for whl in whls:
+        if not whl.is_exposed:
+            continue
+
+        # pip.parse srcs describe the direct dependencies for this parse tag.
+        # Platform-specific lock files have already been collapsed into `whls`.
+        if dep_srcs != None and whl.name not in dep_srcs:
+            logger.trace(lambda: (
+                "Package '{}' will not be exposed because it is not present " +
+                "in srcs"
+            ).format(whl.name))
+            continue
+
+        exposed[whl.name] = None
+
+    return exposed
+
 def _set_get_index_urls(self, pip_attr):
     default_index_url = pip_attr.experimental_index_url or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
@@ -543,7 +587,6 @@ def _create_whl_repos(
     """
     logger = self._logger
     platforms = self._platforms[pip_attr.python_version]
-    exposed_requirements = parse_dep_srcs(module_ctx, pip_attr.srcs)
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -564,15 +607,15 @@ def _create_whl_repos(
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
         evaluate_markers = _evaluate_markers(self, pip_attr),
-        exposed_requirements = exposed_requirements,
         logger = logger,
     )
 
-    _add_exposed_packages(self, {
-        whl.name: None
-        for whl in requirements_by_platform
-        if whl.is_exposed
-    })
+    _add_exposed_packages(self, _exposed_packages(
+        module_ctx,
+        pip_attr = pip_attr,
+        whls = requirements_by_platform,
+        logger = logger,
+    ))
 
     whl_modifications = {}
     if pip_attr.whl_modifications != None:

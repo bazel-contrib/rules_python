@@ -19,7 +19,6 @@ load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_EN
 load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
 load(
     "//python/private/pypi:parse_requirements.bzl",
-    "parse_dep_srcs",
     "select_requirement",
     _parse_requirements = "parse_requirements",
 )  # buildifier: disable=bzl-visibility
@@ -39,10 +38,6 @@ foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz
 
 foo[extra]==0.0.1 \
     --hash=sha256:deadbeef
-""",
-        "requirements_exposed_roots": """\
-foo[extra]>=0.0.1
-bar @ https://example.org/bar-0.0.1.whl
 """,
         "requirements_foo": """\
 foo==0.0.1 \
@@ -70,11 +65,6 @@ bar==0.0.1 --hash=sha256:deadb00f
 """,
         "requirements_lock": """\
 foo[extra]==0.0.1 --hash=sha256:deadbeef
-""",
-        "requirements_lock_with_transitives": """\
-foo==0.0.1 --hash=sha256:deadbeef
-bar==0.0.1 --hash=sha256:deadb00f
-baz==0.0.1 --hash=sha256:deadbaaf
 """,
         "requirements_lock_dupe": """\
 foo[extra,extra_2]==0.0.1 --hash=sha256:deadbeef
@@ -120,13 +110,9 @@ bar==0.0.1 --hash=sha256:deadb00f
 
 _tests = []
 
-def parse_requirements(debug = False, dep_srcs = [], **kwargs):
-    ctx = _mock_ctx()
-    if "exposed_requirements" not in kwargs:
-        kwargs["exposed_requirements"] = parse_dep_srcs(ctx, dep_srcs)
-
+def parse_requirements(debug = False, **kwargs):
     return _parse_requirements(
-        ctx = ctx,
+        ctx = _mock_ctx(),
         logger = repo_utils.logger(struct(
             getenv = {
                 REPO_DEBUG_ENV_VAR: "1",
@@ -135,14 +121,6 @@ def parse_requirements(debug = False, dep_srcs = [], **kwargs):
         ), "unit-test"),
         **kwargs
     )
-
-def _test_parse_dep_srcs(env):
-    got = parse_dep_srcs(_mock_ctx(), ["requirements_exposed_roots"])
-
-    env.expect.that_dict(got).keys().contains_exactly(["bar", "foo"])
-    env.expect.that_bool(parse_dep_srcs(_mock_ctx(), []) == None).equals(True)
-
-_tests.append(_test_parse_dep_srcs)
 
 def _test_simple(env):
     got = parse_requirements(
@@ -175,72 +153,6 @@ def _test_simple(env):
     ])
 
 _tests.append(_test_simple)
-
-def _test_srcs_restrict_visibility(env):
-    got = parse_requirements(
-        dep_srcs = ["requirements_exposed_roots"],
-        requirements_by_platform = {
-            "requirements_lock_with_transitives": ["linux_x86_64"],
-        },
-    )
-    env.expect.that_collection(got).contains_exactly([
-        struct(
-            name = "bar",
-            index_url = "",
-            is_exposed = True,
-            is_multiple_versions = False,
-            srcs = [
-                struct(
-                    distribution = "bar",
-                    extra_pip_args = [],
-                    requirement_line = "bar==0.0.1 --hash=sha256:deadb00f",
-                    target_platforms = ["linux_x86_64"],
-                    url = "",
-                    filename = "",
-                    sha256 = "",
-                    yanked = None,
-                ),
-            ],
-        ),
-        struct(
-            name = "baz",
-            index_url = "",
-            is_exposed = False,
-            is_multiple_versions = False,
-            srcs = [
-                struct(
-                    distribution = "baz",
-                    extra_pip_args = [],
-                    requirement_line = "baz==0.0.1 --hash=sha256:deadbaaf",
-                    target_platforms = ["linux_x86_64"],
-                    url = "",
-                    filename = "",
-                    sha256 = "",
-                    yanked = None,
-                ),
-            ],
-        ),
-        struct(
-            name = "foo",
-            index_url = "",
-            is_exposed = True,
-            is_multiple_versions = False,
-            srcs = [
-                struct(
-                    distribution = "foo",
-                    extra_pip_args = [],
-                    requirement_line = "foo==0.0.1 --hash=sha256:deadbeef",
-                    target_platforms = ["linux_x86_64"],
-                    url = "",
-                    filename = "",
-                    sha256 = "",
-                    yanked = None,
-                ),
-            ],
-        ),
-    ])
-
-_tests.append(_test_srcs_restrict_visibility)
 
 def _test_direct_urls_integration(env):
     """Check that we are using the filename from index_sources."""
