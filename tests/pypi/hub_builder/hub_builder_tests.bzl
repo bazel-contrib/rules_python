@@ -865,9 +865,8 @@ def _test_local_wheel_override(env):
             python_version = "3.15",
             experimental_index_url = "https://example.com",
             requirements_lock = "requirements.txt",
-            local_wheels = {
-                "simple": "dist/simple-0.0.2-cp315-cp315-linux_x86_64.whl",
-            },
+            local_wheel_dir = "dist",
+            local_wheel_pkgs = ["simple"],
         ),
         is_root = True,
     )
@@ -876,17 +875,17 @@ def _test_local_wheel_override(env):
     pypi.exposed_packages().contains_exactly(["simple"])
     pypi.whl_map().contains_exactly({
         "simple": {
-            "pypi_315_simple_py3_none_any_deadbeef_local_override": [
+            "pypi_315_simple_0_0_2_cp315_cp315_linux_x86_64_local_override": [
                 whl_config_setting(version = "3.15", target_platforms = ["cp315_linux_x86_64"]),
             ],
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_simple_py3_none_any_deadbeef_local_override": {
+        "pypi_315_simple_0_0_2_cp315_cp315_linux_x86_64_local_override": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.2-cp315-cp315-linux_x86_64.whl",
-            "index_url": "https://example.com",
+            "index_url": "file://",
             "requirement": "simple==0.0.1",
             "sha256": "",
             "urls": ["file://dist/simple-0.0.2-cp315-cp315-linux_x86_64.whl"],
@@ -912,9 +911,8 @@ def _test_local_wheel_override_ignored_if_not_root(env):
             hub_name = "pypi",
             python_version = "3.15",
             requirements_lock = "requirements.txt",
-            local_wheels = {
-                "simple": "dist/simple-0.0.2-cp315-cp315-linux_x86_64.whl",
-            },
+            local_wheel_dir = "dist",
+            local_wheel_pkgs = ["simple"],
         ),
         is_root = False,
     )
@@ -1598,93 +1596,6 @@ Attempting to create a duplicate library pypi_315_foo for foo with different arg
     ]).in_order()
 
 _tests.append(_test_err_duplicate_repos)
-
-def _test_explicit_local_wheels(env):
-    def mock_simpleapi_download(*_, **__):
-        return {
-            "libtpu": struct(
-                whls = {
-                    "deadbaaf": struct(
-                        yanked = None,
-                        filename = "libtpu-0.0.1-py3-none-any.whl",
-                        sha256 = "deadbaaf",
-                        url = "example.com/libtpu-0.0.1.whl",
-                    ),
-                },
-                sdists = {},
-                sha256s_by_version = {},
-                index_url = "https://example.com",
-            ),
-            "simple": struct(
-                whls = {
-                    "deadbeef": struct(
-                        yanked = None,
-                        filename = "simple-0.0.1-py3-none-any.whl",
-                        sha256 = "deadbeef",
-                        url = "example.com/simple-0.0.1.whl",
-                    ),
-                },
-                sdists = {},
-                sha256s_by_version = {},
-                index_url = "https://example.com",
-            ),
-        }
-
-    builder = hub_builder(
-        env,
-        simpleapi_download_fn = mock_simpleapi_download,
-    )
-    builder.pip_parse(
-        mocks.mctx(
-            mock_files = {
-                "MODULE.bazel": "",
-                "custom_folder/libtpu-0.0.41.dev20260509+nightly-cp314-cp314t-manylinux_2_31_x86_64.whl": "",
-                "custom_folder/simple-0.0.3-py3-none-any.whl": "",
-                "requirements.txt": """\
-simple==0.0.1 --hash=sha256:deadbeef
-libtpu==0.0.1 --hash=sha256:deadbaaf
-""",
-            },
-            os_name = "linux",
-            arch_name = "x86_64",
-        ),
-        _parse(
-            hub_name = "pypi",
-            python_version = "3.15",
-            experimental_index_url = "https://example.com",
-            requirements_lock = "requirements.txt",
-            local_wheels = {
-                "libtpu": "custom_folder/libtpu-*.whl",
-                "simple": "custom_folder/simple-0.0.3-py3-none-any.whl",
-            },
-        ),
-        is_root = True,
-    )
-    pypi = builder.build()
-
-    pypi.exposed_packages().contains_exactly(["libtpu", "simple"])
-    pypi.whl_libraries().contains_exactly({
-        "pypi_315_libtpu_py3_none_any_deadbaaf_local_override": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "filename": "libtpu-0.0.41.dev20260509+nightly-cp314-cp314t-manylinux_2_31_x86_64.whl",
-            "index_url": "https://example.com",
-            "requirement": "libtpu==0.0.1",
-            "sha256": "",
-            "urls": ["file://custom_folder/libtpu-0.0.41.dev20260509+nightly-cp314-cp314t-manylinux_2_31_x86_64.whl"],
-        },
-        "pypi_315_simple_py3_none_any_deadbeef_local_override": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "filename": "simple-0.0.3-py3-none-any.whl",
-            "index_url": "https://example.com",
-            "requirement": "simple==0.0.1",
-            "sha256": "",
-            "urls": ["file://custom_folder/simple-0.0.3-py3-none-any.whl"],
-        },
-    })
-
-_tests.append(_test_explicit_local_wheels)
 
 def hub_builder_test_suite(name):
     """Create the test suite.

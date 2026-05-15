@@ -761,29 +761,35 @@ hubs can be created, and each program can use its respective hub's targets.
 Targets from different hubs should not be used together.
 """,
         ),
-        "local_wheels": attr.string_dict(
+        "local_wheel_dir": attr.string(
             doc = """\
-A dictionary mapping package names to local wheel file paths relative to the
-workspace root.
+A path to a directory containing locally built wheels, relative to the workspace root.
 
-Allows testing locally built wheels without modifying lockfiles or hosting a
-local index server.
+Allows testing locally built wheels without modifying lockfiles or hosting a local index server.
 
-Keys are normalized package names (e.g. `my_package`). Values are paths relative
-to the workspace root.
+Must be used in conjunction with `local_wheel_pkgs` to specify which packages should be overridden.
+All child wheels in the directory belonging to the specified packages are scanned and selected to
+find the optimal wheel for the target platform.
 
-If the path contains a wildcard `*` (e.g. `dist/libtpu-*.whl`), matching `.whl`
-candidates are discovered and the newest version is selected by comparing
-basenames lexicographically.
-
-If a file is missing on disk or no files match the wildcard pattern, the
-override is silently ignored and Bazel falls back to the remote PyPI index.
+If the directory is missing on disk or no compatible wheel is found, the override is silently
+ignored and Bazel falls back to the remote PyPI index.
 
 Overrides apply when bazel downloader is used and only take effect in the root module.
 
-:::{versionadded} 2.1.0
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
+        ),
+        "local_wheel_pkgs": attr.string_list(
+            doc = """\
+A list of normalized package names (e.g. `my_package`) to override with wheels from `local_wheel_dir`.
+
+Must be used in conjunction with `local_wheel_dir`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+            default = [],
         ),
         "parallel_download": attr.bool(
             doc = """\

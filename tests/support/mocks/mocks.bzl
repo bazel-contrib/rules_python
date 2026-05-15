@@ -3,6 +3,11 @@
 def _path_new(path, mock_files = None):
     """Create a mock path object.
 
+    Simulates a hierarchical directory structure by dynamically building recursive
+    struct representations for each parent directory segment. This allows calling
+    `.dirname`, `.get_child()`, `.readdir()`, and `.exists` on mock path instances,
+    which is essential for testing path traversal in starlark tests.
+
     Args:
         path: {type}`string` The path string.
         mock_files: {type}`dict[string, string]` A dict of mocked files.
@@ -48,11 +53,22 @@ def _path_new(path, mock_files = None):
                     return True
             return False
 
+        def _is_dir(p = sub_path):
+            if p == "":
+                return True
+            prefix = (p + "/") if p else ""
+            for f in mock_files:
+                if f.startswith(prefix) and f != p:
+                    return True
+            return False
+
         current_struct = struct(
             exists = _exists(),
+            is_dir = _is_dir(),
             basename = parts[i - 1] if i > 0 else "",
             dirname = parent_struct if i > 0 else struct(
                 exists = True,
+                is_dir = True,
                 basename = "",
                 dirname = "",
                 get_child = _get_child,
