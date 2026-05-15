@@ -196,7 +196,6 @@ def _pip_parse(self, module_ctx, pip_attr, is_root = False):
         self,
         module_ctx,
         pip_attr = pip_attr,
-        is_root = is_root,
         enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version)),
     )
 
@@ -491,7 +490,6 @@ def _create_whl_repos(
         module_ctx,
         *,
         pip_attr,
-        is_root = False,
         enable_pipstar_extract = False):
     """create all of the whl repositories
 
@@ -499,7 +497,6 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
-        is_root: {type}`bool` - whether the calling module is the root workspace.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
     """
     logger = self._logger
