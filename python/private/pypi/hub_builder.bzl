@@ -391,49 +391,10 @@ def _set_get_index_urls(self, module_ctx, pip_attr, is_root = False):
             parallel_download = pip_attr.parallel_download,
         )
 
-        if not is_root or not getattr(pip_attr, "local_wheel_dir", None) or not getattr(pip_attr, "local_wheel_pkgs", None):
+        if not is_root:
             return res
 
-        workspace_root = module_ctx.path(Label("@@//:MODULE.bazel")).dirname
-        target_dir = workspace_root.get_child(pip_attr.local_wheel_dir)
-        if not target_dir.exists or not getattr(target_dir, "is_dir", False):
-            return res
-
-        candidates = target_dir.readdir()
-        override_pkgs = {normalize_name(p): True for p in pip_attr.local_wheel_pkgs}
-
-        wheels_by_pkg = {}
-        for candidate in candidates:
-            if not candidate.basename.endswith(".whl"):
-                continue
-            parsed = parse_whl_name(candidate.basename)
-            norm_name = normalize_name(parsed.distribution)
-            if norm_name in override_pkgs and norm_name in distributions:
-                wheels_by_pkg.setdefault(norm_name, []).append(candidate)
-
-        for norm_name, matched_wheels in wheels_by_pkg.items():
-            local_dists = []
-            for wheel_path in matched_wheels:
-                dist = struct(
-                    filename = wheel_path.basename,
-                    version = version_from_filename(wheel_path.basename),
-                    url = "file://" + (wheel_path._path if hasattr(wheel_path, "_path") else str(wheel_path)),
-                    sha256 = "",
-                    metadata_sha256 = "",
-                    metadata_url = "",
-                    yanked = None,
-                )
-                local_dists.append(dist)
-
-            res[norm_name] = struct(
-                sdists = {},
-                whls = {d.filename: d for d in local_dists},
-                sha256s_by_version = {},
-                index_url = "file://" + (workspace_root._path if hasattr(workspace_root, "_path") else str(workspace_root)),
-                local_override_whls = local_dists,
-            )
-
-        return res
+        return _inject_local_wheels(module_ctx, pip_attr, distributions, res)
 
     self._get_index_urls[python_version] = _download_wrapper
     return True
@@ -754,4 +715,58 @@ def _use_downloader(self, python_version, whl_name):
         self._get_index_urls.get(python_version) != None,
     )
 
+def _inject_local_wheels(module_ctx, pip_attr, distributions, res):
+    """Inject local wheel overrides into the SimpleAPI download results.
 
+    Args:
+        module_ctx: {type}`module_ctx` The module context.
+        pip_attr: {type}`struct` The pip.parse attribute struct.
+        distributions: {type}`dict` The requested distributions map.
+        res: {type}`dict` The SimpleAPI download results dict.
+
+    Returns:
+        {type}`dict` The modified SimpleAPI download results dict.
+    """
+    if not getattr(pip_attr, "local_wheel_dir", None) or not getattr(pip_attr, "local_wheel_pkgs", None):
+        return res
+
+    workspace_root = module_ctx.path(Label("@@//:MODULE.bazel")).dirname
+    target_dir = workspace_root.get_child(pip_attr.local_wheel_dir)
+    if not target_dir.exists or not getattr(target_dir, "is_dir", False):
+        return res
+
+    candidates = target_dir.readdir()
+    override_pkgs = {normalize_name(p): True for p in pip_attr.local_wheel_pkgs}
+
+    wheels_by_pkg = {}
+    for candidate in candidates:
+        if not candidate.basename.endswith(".whl"):
+            continue
+        parsed = parse_whl_name(candidate.basename)
+        norm_name = normalize_name(parsed.distribution)
+        if norm_name in override_pkgs and norm_name in distributions:
+            wheels_by_pkg.setdefault(norm_name, []).append(candidate)
+
+    for norm_name, matched_wheels in wheels_by_pkg.items():
+        local_dists = []
+        for wheel_path in matched_wheels:
+            dist = struct(
+                filename = wheel_path.basename,
+                version = version_from_filename(wheel_path.basename),
+                url = "file://" + (wheel_path._path if hasattr(wheel_path, "_path") else str(wheel_path)),
+                sha256 = "",
+                metadata_sha256 = "",
+                metadata_url = "",
+                yanked = None,
+            )
+            local_dists.append(dist)
+
+        res[norm_name] = struct(
+            sdists = {},
+            whls = {d.filename: d for d in local_dists},
+            sha256s_by_version = {},
+            index_url = "file://" + (workspace_root._path if hasattr(workspace_root, "_path") else str(workspace_root)),
+            local_override_whls = local_dists,
+        )
+
+    return res
