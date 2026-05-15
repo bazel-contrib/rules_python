@@ -26,7 +26,7 @@ def _internal_dev_deps_impl(mctx):
     # otherwise refer to RBE docs.
     rbe_preconfig(
         name = "buildkite_config",
-        toolchain = "ubuntu2204",
+        toolchain = "ubuntu2404",
     )
     runtime_env_repo(name = "rules_python_runtime_env_tc_info")
 
