@@ -47,6 +47,28 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v0-0-0}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{#v0-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v0-0-0-changed}
+### Changed
+* Nothing changed.
+
+{#v0-0-0-fixed}
+### Fixed
+* (system_python) Fix AttributeError exception on Debian 10 Buster
+  ([#3774](https://github.com/bazel-contrib/rules_python/issues/3774)).
+
+{#v0-0-0-added}
+### Added
+* Nothing added.
+
 {#v2-0-1}
 ## [2.0.1] - 2026-05-08
 
