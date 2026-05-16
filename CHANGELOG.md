@@ -80,6 +80,8 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
   installed wheel targets, except when built from sdist
   ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
+* (system_python) Fix AttributeError exception on Debian 10 Buster
+  ([#3774](https://github.com/bazel-contrib/rules_python/issues/3774)).
 
 
 {#v0-0-0-added}
