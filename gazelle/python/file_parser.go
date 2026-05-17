@@ -39,7 +39,10 @@ const (
 	sitterNodeTypeImportFromStatement = "import_from_statement"
 )
 
-var pythonLanguage = grammars.PythonLanguage()
+var (
+	pythonLanguage   = grammars.PythonLanguage()
+	pythonParserPool = sitter.NewParserPool(pythonLanguage)
+)
 
 type ParserOutput struct {
 	FileName string
@@ -63,8 +66,7 @@ func NewFileParser() *FileParser {
 // the tree-sitter RootNode.
 // It prints a warning if parsing fails.
 func ParseCode(code []byte, path string) (*sitter.Node, error) {
-	parser := sitter.NewParser(pythonLanguage)
-	tree, err := parser.Parse(code)
+	tree, err := pythonParserPool.Parse(code)
 	if err != nil {
 		return nil, err
 	}
