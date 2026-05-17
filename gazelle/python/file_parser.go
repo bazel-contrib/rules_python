@@ -62,10 +62,9 @@ func NewFileParser() *FileParser {
 	return &FileParser{}
 }
 
-// ParseCode instantiates a new tree-sitter Parser and parses the python code, returning
-// the tree-sitter RootNode.
+// parseTree parses Python code and returns the tree-sitter Tree.
 // It prints a warning if parsing fails.
-func ParseCode(code []byte, path string) (*sitter.Node, error) {
+func parseTree(code []byte, path string) (*sitter.Tree, error) {
 	tree, err := pythonParserPool.Parse(code)
 	if err != nil {
 		return nil, err
@@ -73,7 +72,7 @@ func ParseCode(code []byte, path string) (*sitter.Node, error) {
 
 	root := tree.RootNode()
 	if !root.HasError() {
-		return root, nil
+		return tree, nil
 	}
 
 	log.Printf("WARNING: failed to parse %q. The resulting BUILD target may be incorrect.", path)
@@ -82,7 +81,7 @@ func ParseCode(code []byte, path string) (*sitter.Node, error) {
 	// failure may be in some part of the code that Gazelle doesn't care about.
 	verbose, envExists := os.LookupEnv("RULES_PYTHON_GAZELLE_VERBOSE")
 	if !envExists || verbose != "1" {
-		return root, nil
+		return tree, nil
 	}
 
 	for i := 0; i < int(root.ChildCount()); i++ {
@@ -98,7 +97,18 @@ func ParseCode(code []byte, path string) (*sitter.Node, error) {
 		}
 	}
 
-	return root, nil
+	return tree, nil
+}
+
+// ParseCode instantiates a tree-sitter Parser and parses the python code, returning
+// the tree-sitter RootNode.
+// It prints a warning if parsing fails.
+func ParseCode(code []byte, path string) (*sitter.Node, error) {
+	tree, err := parseTree(code, path)
+	if err != nil {
+		return nil, err
+	}
+	return tree.RootNode(), nil
 }
 
 // parseMain returns true if the python file has an `if __name__ == "__main__":` block,
@@ -273,11 +283,13 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 }
 
 func (p *FileParser) Parse(ctx context.Context) (*ParserOutput, error) {
-	rootNode, err := ParseCode(p.code, p.relFilepath)
+	tree, err := parseTree(p.code, p.relFilepath)
 	if err != nil {
 		return nil, err
 	}
+	defer tree.Release()
 
+	rootNode := tree.RootNode()
 	p.output.HasMain = p.parseMain(ctx, rootNode)
 
 	p.parse(ctx, rootNode)
