@@ -84,6 +84,8 @@ END_UNRELEASED_TEMPLATE
   path separators; the bootstrap stub is now declared as a sibling of the
   `.exe` launcher
   ([#3789](https://github.com/bazel-contrib/rules_python/issues/3789)).
+* Fix the forwarding of `target_compatible_with` from `compile_pip_requirements`
+  towards the underlying `*.update` target
 
 
 {#v0-0-0-added}
