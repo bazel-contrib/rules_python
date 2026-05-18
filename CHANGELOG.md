@@ -65,6 +65,15 @@ END_UNRELEASED_TEMPLATE
   default to `true`.
 * (pypi) The data files of a wheel (bin, includes, etc) are now always included
   as a library's data dependencies.
+* (deps/bzlmod) Bumped the bzlmod `rules_cc` dependency from `0.1.5` to
+  `0.2.17`. This is the minimum version exposing
+  `cc/toolchains:feature_injection.bzl`, which the BazelCI-injected
+  `buildkite_config//cc/cc_toolchain_config.bzl` now loads unconditionally
+  on RBE. The WORKSPACE `http_archive` pin is left at `0.1.5` because
+  `rules_cc` 0.2.17+ requires consumers to also call
+  `compatibility_proxy_repo()` in their WORKSPACE, which would be a
+  breaking change for existing users; WORKSPACE consumers don't use RBE
+  in this repo and aren't affected by the BazelCI change.
 
 {#v0-0-0-fixed}
 ### Fixed
