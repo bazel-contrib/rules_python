@@ -424,7 +424,7 @@ WARNING: Target: {}
 
         # On Windows, the main executable has an "exe" extension, so
         # here we re-use the un-extensioned name for the bootstrap output.
-        bootstrap_output = ctx.actions.declare_file(base_executable_name)
+        bootstrap_output = ctx.actions.declare_file(base_executable_name, sibling = executable)
 
         # The launcher looks for the non-zip executable next to
         # itself, so add it to the default outputs.
