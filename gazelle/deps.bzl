@@ -131,8 +131,8 @@ def go_deps():
     go_repository(
         name = "com_github_odvcencio_gotreesitter",
         importpath = "github.com/odvcencio/gotreesitter",
-        sum = "h1:xM+yZ6G63pfT7nriiUvmddmeL5+PCZ5YdMOOOul+lmw=",
-        version = "v0.17.4",
+        sum = "h1:hYiUp3lFXlB+YEplv1KxRFM8IKAv1e5QcJcC3nKIsVI=",
+        version = "v0.18.0",
     )
     go_repository(
         name = "com_github_pmezard_go_difflib",

@@ -11,7 +11,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/emirpasic/gods v1.18.1
 	github.com/ghodss/yaml v1.0.0
-	github.com/odvcencio/gotreesitter v0.17.4
+	github.com/odvcencio/gotreesitter v0.18.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.11.0
 	gopkg.in/yaml.v2 v2.4.0
