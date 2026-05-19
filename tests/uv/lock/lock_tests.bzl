@@ -96,10 +96,27 @@ def lock_test_suite(name):
         }),
     )
 
+    lock(
+        name = "uv_lock_test",
+        srcs = ["testdata/pyproject.toml"],
+        out = "testdata/uv_lock_expected.lock",
+        tags = ["no-remote-exec"],
+    )
+
+    native_test(
+        name = "uv_lock_test_check",
+        src = ":uv_lock_test.update",
+        target_compatible_with = select({
+            "@platforms//os:windows": ["@platforms//:incompatible"],
+            "//conditions:default": [],
+        }),
+    )
+
     native.test_suite(
         name = name,
         tests = [
             ":requirements_test",
             ":requirements_run_tests",
+            ":uv_lock_test_check",
         ],
     )

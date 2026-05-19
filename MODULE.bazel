@@ -9,6 +9,7 @@ bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "package_metadata", version = "0.0.7")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_cc", version = "0.1.5")
+bazel_dep(name = "toml.bzl", version = "0.4.0")
 
 # Those are loaded only when using py_proto_library
 # Use py_proto_library directly from protobuf repository
@@ -51,9 +52,13 @@ python.defaults(
 python.toolchain(
     python_version = "3.11",
 )
+python.toolchain(
+    python_version = "3.14",
+)
 use_repo(
     python,
     "python_3_11",
+    "python_3_14",
     "pythons_hub",
     python = "python_versions",
 )
@@ -182,6 +187,7 @@ dev_pip = use_extension(
             "{os}_{arch}",
             "{os}_{arch}_freethreaded",
         ],
+        uv_lock = "//docs:uv.lock",
     )
     for python_version in [
         "3.9",

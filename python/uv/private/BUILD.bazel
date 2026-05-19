@@ -23,6 +23,12 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+# Used as a label reference from lock.bzl
+exports_files([
+    "lock_uv_lock.sh",
+    "lock_uv_lock.bat",
+])
+
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),
@@ -102,6 +108,16 @@ filegroup(
     srcs = select({
         "@platforms//os:windows": ["lock.bat"],
         "//conditions:default": ["lock.sh"],
+    }),
+    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "lock_uv_lock_template",
+    srcs = select({
+        "@platforms//os:windows": ["lock_uv_lock.bat"],
+        "//conditions:default": ["lock_uv_lock.sh"],
     }),
     target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
     visibility = ["//visibility:public"],

@@ -43,6 +43,8 @@ def parse_requirements(
         get_index_urls = None,
         evaluate_markers = None,
         extract_url_srcs = True,
+        uv_lock = None,
+        toml_decode = None,
         logger):
     """Get the requirements with platforms that the requirements apply to.
 
@@ -64,28 +66,224 @@ def parse_requirements(
             requirements line.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
+        uv_lock: {type}`str | None` an optional label/file path to the uv.lock
+            file. The ctx.read function will be used to read the contents.
+            If provided, the function will use the uv.lock file as the primary
+            source for package metadata and perform a consistency check against
+            requirements files if both are provided.
+        toml_decode: {type}`callable | None` A function to decode TOML
+            content (e.g. `toml.decode`). Required when `uv_lock` is provided.
         logger: repo_utils.logger, a simple struct to log diagnostic messages.
 
     Returns:
-        {type}`dict[str, list[struct]]` where the key is the distribution name and the struct
-        contains the following attributes:
-         * `distribution`: {type}`str` The non-normalized distribution name.
-         * `srcs`: {type}`struct` The parsed requirement line for easier Simple
-           API downloading (see `index_sources` return value).
-         * `target_platforms`: {type}`list[str]` Target platforms that this package is for.
-             The format is `cp3{minor}_{os}_{arch}`.
+        {type}`list[struct]` where each struct contains the following attributes:
+         * `name`: {type}`str` The normalized distribution name.
          * `is_exposed`: {type}`bool` `True` if the package should be exposed via the hub
            repository.
-         * `extra_pip_args`: {type}`list[str]` pip args to use in case we are
-           not using the bazel downloader to download the archives. This should
-           be passed to {obj}`whl_library`.
-         * `whls`: {type}`list[struct]` The list of whl entries that can be
-           downloaded using the bazel downloader.
-         * `sdist`: {type}`list[struct]` The sdist that can be downloaded using
-           the bazel downloader.
-
-        The second element is extra_pip_args should be passed to `whl_library`.
+         * `is_multiple_versions`: {type}`bool` `True` if multiple versions have been
+           specified for this package.
+         * `index_url`: {type}`str` The index URL used to download the package.
+         * `srcs`: {type}`list[struct]` A list of per-distribution source entries, each
+           containing: `distribution`, `extra_pip_args`, `requirement_line`,
+           `target_platforms`, `filename`, `sha256`, `url`, `yanked`.
     """
+    if uv_lock and toml_decode:
+        uv_lock = toml_decode(ctx.read(uv_lock))
+        return _parse_requirements_with_uv_lock(
+            ctx = ctx,
+            requirements_by_platform = requirements_by_platform,
+            extra_pip_args = extra_pip_args,
+            platforms = platforms,
+            get_index_urls = get_index_urls,
+            evaluate_markers = evaluate_markers,
+            extract_url_srcs = extract_url_srcs,
+            uv_lock = uv_lock,
+            logger = logger,
+        )
+
+    return _parse_requirements_from_req_files(
+        ctx = ctx,
+        requirements_by_platform = requirements_by_platform,
+        extra_pip_args = extra_pip_args,
+        platforms = platforms,
+        get_index_urls = get_index_urls,
+        evaluate_markers = evaluate_markers,
+        extract_url_srcs = extract_url_srcs,
+        logger = logger,
+    )
+
+def _get_all_platforms(requirements_by_platform):
+    """Get the set of all platform names from requirements_by_platform."""
+    all_platforms = {}
+    for plats in requirements_by_platform.values():
+        for p in plats:
+            all_platforms[p] = None
+    return sorted(all_platforms)
+
+def _parse_requirements_with_uv_lock(
+        ctx,
+        *,
+        requirements_by_platform,
+        extra_pip_args,
+        platforms,
+        get_index_urls,
+        evaluate_markers,
+        extract_url_srcs,
+        uv_lock,
+        logger):
+    """Parse requirements using uv.lock as the primary source."""
+    if uv_lock:
+        return _parse_uv_lock_json(
+            uv_lock = uv_lock,
+            all_platforms = _get_all_platforms(requirements_by_platform) if requirements_by_platform else sorted(platforms.keys()),
+            extra_pip_args = extra_pip_args,
+            logger = logger,
+        )
+
+    return _parse_requirements_from_req_files(
+        ctx = ctx,
+        requirements_by_platform = requirements_by_platform,
+        extra_pip_args = extra_pip_args,
+        platforms = platforms,
+        get_index_urls = get_index_urls,
+        evaluate_markers = evaluate_markers,
+        extract_url_srcs = extract_url_srcs,
+        logger = logger,
+    )
+
+def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None):
+    """Parse uv.lock JSON and build the same return structs as parse_requirements.
+
+    Args:
+        uv_lock: {type}`str` A JSON-encoded string of the uv.lock contents.
+        all_platforms: {type}`list[str]` The list of all platform names.
+        logger: {type}`struct` A logger for diagnostic messages.
+        extra_pip_args: {type}`list[str] | None` Extra pip arguments to pass through.
+
+    Returns:
+        {type}`list[struct]` The same format as {func}`parse_requirements`.
+    """
+    uv_packages = {}
+    for pkg in uv_lock["package"]:
+        name = pkg["name"]
+        version = pkg["version"]
+        norm_name = normalize_name(name)
+        entry = uv_packages.setdefault(norm_name, {
+            "distribution": name,
+            "extras": {},
+            "src_entries": [],
+            "versions": {},
+        })
+        entry["versions"][version] = None
+
+        # NOTE: includes all provides-extras in requirement_line. In pip context
+        # this would install all optional deps, but in rules_python the
+        # requirement_line is just metadata; deps are already resolved in uv.lock.
+        for extra in pkg.get("provides-extras", pkg.get("extras", [])):
+            if extra not in entry["extras"]:
+                entry["extras"][extra] = None
+
+        seen = {}
+        for wheel in pkg.get("wheels", []):
+            sha256 = wheel.get("hash", "").replace("sha256:", "")
+            url = wheel["url"]
+            _, _, filename = url.rpartition("/")
+            key = (filename, sha256)
+            if key not in seen:
+                seen[key] = None
+                entry["src_entries"].append(struct(
+                    version = version,
+                    sha256 = sha256,
+                    url = url,
+                    filename = filename,
+                    # NOTE @aignas 2026-05-17: we don't know if it is yanked because we are not
+                    # checking the SimpleAPI, maybe we should?
+                    yanked = None,
+                ))
+
+        sdist = pkg.get("sdist", None)
+        if sdist:
+            sha256 = sdist.get("hash", "").replace("sha256:", "")
+            url = sdist["url"]
+            _, _, filename = url.rpartition("/")
+            entry["src_entries"].append(struct(
+                version = version,
+                sha256 = sha256,
+                url = url,
+                filename = filename,
+                yanked = None,
+            ))
+        elif pkg.get("source", {}).get("git"):
+            _add_vcs_entry(entry, version, pkg["source"])
+
+    ret = []
+    for norm_name, info in sorted(uv_packages.items()):
+        versions = sorted(info["versions"].keys())
+        extras = sorted(info["extras"].keys())
+        extra_str = "[{}]".format(",".join(extras)) if extras else ""
+
+        pkg_srcs = []
+        for src_entry in info["src_entries"]:
+            requirement_line = "{name}{extras}=={version}".format(
+                name = info["distribution"],
+                extras = extra_str,
+                version = src_entry.version,
+            )
+            pkg_srcs.append(struct(
+                distribution = info["distribution"],
+                extra_pip_args = extra_pip_args or [],
+                requirement_line = requirement_line,
+                target_platforms = list(all_platforms),
+                filename = src_entry.filename,
+                sha256 = src_entry.sha256,
+                url = src_entry.url,
+                yanked = src_entry.yanked,
+            ))
+
+        item = struct(
+            name = norm_name,
+            is_exposed = True,
+            is_multiple_versions = len(versions) > 1,
+            # TODO @aignas 2026-05-17: use the default index that is used in parsing the
+            # requirements if it is not known in the uv.lock file. We need to get this from the
+            # pyproject.toml file uv.tool configuration.
+            index_url = "",
+            srcs = pkg_srcs,
+        )
+        ret.append(item)
+
+    logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
+    return ret
+
+def _add_vcs_entry(entry, version, source):
+    """Add a VCS entry from a uv.lock source.
+
+    Args:
+        entry: {type}`dict` The package entry being built.
+        version: {type}`str` The package version.
+        source: {type}`dict` The source dict from uv.lock (e.g. {"git": url}).
+    """
+    url = source["git"]
+    _, _, filename = url.rpartition("/")
+    entry["src_entries"].append(struct(
+        version = version,
+        sha256 = "",
+        url = url,
+        filename = filename,
+        yanked = None,
+    ))
+
+def _parse_requirements_from_req_files(
+        ctx,
+        *,
+        requirements_by_platform,
+        extra_pip_args,
+        platforms,
+        get_index_urls,
+        evaluate_markers,
+        extract_url_srcs,
+        logger):
+    """Parse requirements from requirements.txt files (existing behavior)."""
     evaluate_markers = evaluate_markers or (lambda _requirements: {})
     options = {}
     requirements = {}
@@ -97,14 +295,8 @@ def parse_requirements(
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
 
-        # Parse the requirements file directly in starlark to get the information
-        # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
 
-        # Save parsed results from ALL files, even those with no matching
-        # platforms. This ensures the distributions dict (used for index URL
-        # queries) includes packages from all platform files, making the
-        # lockfile facts platform-independent.
         if file not in all_files_parsed:
             all_files_parsed[file] = parse_result.requirements
 
@@ -119,52 +311,27 @@ def parse_requirements(
             for entry in parse_result.requirements:
                 requirement_line = entry[1]
 
-                # output all of the requirement lines that have a marker
                 if ";" in requirement_line:
                     reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
             options[plat] = pip_args
 
-            # Parse the index URL from the requirement files
             index_url = argparse.index_url(pip_args, index_url)
             extra_index_urls = argparse.extra_index_url(pip_args, [])
             platform = argparse.platform(pip_args, [])
             if platform:
-                # No use of downloader if the user specifies "--platform" pip arg. This means that
-                # they intend to use pip to download the wheels
-                #
-                # TODO @aignas 2026-04-11: consider removing this line in the next major release
-                # (3.0).
                 get_index_urls = None
 
-    # This may call to Python, so execute it early (before calling to the
-    # internet below) and ensure that we call it only once.
-    #
-    # TODO @aignas 2026-05-10: remove this assumption in the code because we
-    # are always using pipstar, so we can do the marker evaluation when we are
-    # parsing the files.
     resolved_marker_platforms = evaluate_markers(reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
         resolved_marker_platforms,
     ))
 
-    requirements_by_platform = {}
+    reqs_by_name = {}
     for plat, parse_results in requirements.items():
-        # Replicate a surprising behavior that WORKSPACE builds allowed:
-        # Defining a repo with the same name multiple times, but only the last
-        # definition is respected.
-        # The requirement lines might have duplicate names because lines for extras
-        # are returned as just the base package name. e.g., `foo[bar]` results
-        # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
         requirements_dict = {}
         for entry in sorted(
             parse_results,
-            # Get the longest match and fallback to original WORKSPACE sorting,
-            # which should get us the entry with most extras.
-            #
-            # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
-            # entry with all aggregated extras, but it is unclear if we
-            # should do this now.
             key = lambda x: (len(x[1].partition("==")[0]), x),
         ):
             req_line = entry[1]
@@ -175,32 +342,28 @@ def parse_requirements(
 
             requirements_dict[req.name] = entry
 
-        extra_pip_args = options[plat]
+        extra_pip_args_for_plat = options[plat]
 
         for distribution, requirement_line in requirements_dict.values():
-            for_whl = requirements_by_platform.setdefault(
+            for_whl = reqs_by_name.setdefault(
                 normalize_name(distribution),
                 {},
             )
 
             for_req = for_whl.setdefault(
-                (requirement_line, ",".join(extra_pip_args)),
+                (requirement_line, ",".join(extra_pip_args_for_plat)),
                 struct(
                     distribution = distribution,
                     srcs = index_sources(requirement_line),
                     requirement_line = requirement_line,
                     target_platforms = [],
-                    extra_pip_args = extra_pip_args,
+                    extra_pip_args = extra_pip_args_for_plat,
                 ),
             )
             for_req.target_platforms.append(plat)
 
     index_urls = {}
     if get_index_urls:
-        # Collect all distributions from all requirements files irrespective
-        # of python_version and platform markers. This ensures that the index
-        # is queried for all packages, not just those matching the current
-        # platform's markers.
         distributions = {}
         for entries in all_files_parsed.values():
             for entry in entries:
@@ -221,7 +384,7 @@ def parse_requirements(
         )
 
     ret = []
-    for name, reqs in sorted(requirements_by_platform.items()):
+    for name, reqs in sorted(reqs_by_name.items()):
         requirement_target_platforms = {}
         for r in reqs.values():
             for p in r.target_platforms:
@@ -237,22 +400,7 @@ def parse_requirements(
             logger = logger,
         )
 
-        # FIXME @aignas 2025-11-24: we can get the list of target platforms here
-        #
-        # However it is likely that we may stop exposing packages like torch in here
-        # which do not have wheels for all osx platforms.
-        #
-        # If users specify the target platforms accurately, then it is a different
-        # (better) story, but we may not be able to guarantee this
-        #
-        # target_platforms = [
-        #     p
-        #     for dist in package_srcs
-        #     for p in dist.target_platforms
-        # ]
-
         item = struct(
-            # Return normalized names
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,
