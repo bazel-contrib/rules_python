@@ -496,6 +496,35 @@ def _test_py_runtime_info_provided_impl(env, target):
 
 _tests.append(_test_py_runtime_info_provided)
 
+def _test_windows_target_with_path_separators(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/nested_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_windows_target_with_path_separators_impl,
+        target = name + "/nested_subject",
+        config_settings = {
+            "//command_line_option:cpu": "windows_x86_64",
+            "//command_line_option:crosstool_top": CROSSTOOL_TOP,
+            "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
+            "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
+        },
+        attr_values = {},
+    )
+
+def _test_windows_target_with_path_separators_impl(env, target):
+    target = env.expect.that_target(target)
+    target.runfiles().contains_predicate(matching.str_endswith(
+        target.meta.format_str("/{name}"),
+    ))
+
+_tests.append(_test_windows_target_with_path_separators)
+
 # =====
 # You were gonna add a test at the end, weren't you?
 # Nope. Please keep them sorted; put it in its alphabetical location.

@@ -80,6 +80,10 @@ END_UNRELEASED_TEMPLATE
 * (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
   installed wheel targets, except when built from sdist
   ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
+* (windows) Fix `py_test`/`py_binary` failure when the target name contains
+  path separators; the bootstrap stub is now declared as a sibling of the
+  `.exe` launcher
+  ([#3789](https://github.com/bazel-contrib/rules_python/issues/3789)).
 
 
 {#v0-0-0-added}
@@ -94,12 +98,20 @@ END_UNRELEASED_TEMPLATE
   Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
 * (gazelle) Support alias_kind directive.
   Fixes [#3183](https://github.com/bazel-contrib/rules_python/issues/3183).
-* (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
-* (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
-* Python toolchain from [20260414] release.
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 * (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+
+{#v2-0-2}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{#v2-0-2-added}
+### Added
+* (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
+* (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
+* Python toolchain from [20260414] release.
 
 [20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
 [20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
@@ -229,6 +241,17 @@ Other changes:
     {obj}`PyExecutableInfo.venv_interpreter_symlinks` adde
 * (wheel) Add support for `add_path_prefix` argument in `py_wheel` which can be
   used to prepend a prefix to the files in the wheel.
+
+{#v1-9-1}
+## [1.9.1] - 2026-05-14
+
+[1.9.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.9.1
+
+{#v1-9-1-added}
+### Added
+* (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
+* (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
+* Python toolchain from [20260414] release.
 
 {#v1-9-0}
 ## [1.9.0] - 2026-02-21
