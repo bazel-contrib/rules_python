@@ -17,7 +17,11 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:evaluate_markers.bzl", "evaluate_markers")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:parse_requirements.bzl", "select_requirement", _parse_requirements = "parse_requirements")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:parse_requirements.bzl",
+    "select_requirement",
+    _parse_requirements = "parse_requirements",
+)  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:pep508_env.bzl", pep508_env = "env")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 

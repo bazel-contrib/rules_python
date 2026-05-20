@@ -74,8 +74,9 @@ def parse_requirements(
            API downloading (see `index_sources` return value).
          * `target_platforms`: {type}`list[str]` Target platforms that this package is for.
              The format is `cp3{minor}_{os}_{arch}`.
-         * `is_exposed`: {type}`bool` `True` if the package should be exposed via the hub
-           repository.
+         * `is_exposed`: {type}`bool` `True` if the package is eligible for
+           hub exposure based on platform coverage. Hub-level filters may
+           restrict exposure further.
          * `extra_pip_args`: {type}`list[str]` pip args to use in case we are
            not using the bazel downloader to download the archives. This should
            be passed to {obj}`whl_library`.
@@ -251,17 +252,23 @@ def parse_requirements(
         #     for p in dist.target_platforms
         # ]
 
+        normalized_name = normalize_name(name)
+        is_exposed = len(requirement_target_platforms) == len(requirements)
+
         item = struct(
             # Return normalized names
-            name = normalize_name(name),
-            is_exposed = len(requirement_target_platforms) == len(requirements),
+            name = normalized_name,
+            is_exposed = is_exposed,
             is_multiple_versions = len(reqs.values()) > 1,
             index_url = pkg_sources.index_url if pkg_sources else "",
             srcs = package_srcs,
         )
         ret.append(item)
-        if not item.is_exposed and logger:
-            logger.trace(lambda: "Package '{}' will not be exposed because it is only present on a subset of platforms: {} out of {}".format(
+        if len(requirement_target_platforms) != len(requirements) and logger:
+            logger.trace(lambda: (
+                "Package '{}' will not be exposed because it is only present " +
+                "on a subset of platforms: {} out of {}"
+            ).format(
                 name,
                 sorted(requirement_target_platforms),
                 sorted(requirements),
