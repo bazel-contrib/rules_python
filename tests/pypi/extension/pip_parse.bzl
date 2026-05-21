@@ -65,6 +65,5 @@ def pip_parse(
         parallel_download = False,
         experimental_index_url_overrides = {},
         simpleapi_skip = simpleapi_skip,
-        _evaluate_markers_srcs = [],
         **kwargs
     )
