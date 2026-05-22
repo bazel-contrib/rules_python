@@ -97,6 +97,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (toolchain) Added {obj}`PyRuntimeInfo.interpreter_files_to_run` so action
+  consumers can execute an in-build runtime interpreter with its runfiles.
 * (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
   adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set

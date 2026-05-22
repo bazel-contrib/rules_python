@@ -197,6 +197,7 @@ def _test_in_build_interpreter_impl(env, target):
     info.python_version().equals("PY3")
     info.files().contains_predicate(matching.file_basename_equals("file1.txt"))
     info.interpreter().path().contains("fake_interpreter")
+    env.expect.that_bool(info.actual.interpreter_files_to_run == None).equals(True)
 
 _tests.append(_test_in_build_interpreter)
 
@@ -227,6 +228,9 @@ def _test_interpreter_binary_with_multiple_outputs_impl(env, target):
         factory = py_runtime_info_subject,
     )
     py_runtime_info.interpreter().short_path_equals("{package}/{test_name}_built_interpreter")
+    py_runtime_info.interpreter_files_to_run().executable().short_path_equals(
+        "{package}/{test_name}_built_interpreter",
+    )
     py_runtime_info.files().contains_exactly([
         "{package}/extra_default_output.txt",
         "{package}/runfile.txt",
@@ -272,6 +276,9 @@ def _test_interpreter_binary_with_single_output_and_runfiles_impl(env, target):
         factory = py_runtime_info_subject,
     )
     py_runtime_info.interpreter().short_path_equals("{package}/{test_name}_built_interpreter")
+    py_runtime_info.interpreter_files_to_run().executable().short_path_equals(
+        "{package}/{test_name}_built_interpreter",
+    )
     py_runtime_info.files().contains_exactly([
         "{package}/runfile.txt",
         "{package}/{test_name}_built_interpreter",
@@ -327,10 +334,12 @@ def _test_system_interpreter(name):
     )
 
 def _test_system_interpreter_impl(env, target):
-    env.expect.that_target(target).provider(
+    info = env.expect.that_target(target).provider(
         PyRuntimeInfo,
         factory = py_runtime_info_subject,
-    ).interpreter_path().equals("/system/python")
+    )
+    info.interpreter_path().equals("/system/python")
+    env.expect.that_bool(info.actual.interpreter_files_to_run == None).equals(True)
 
 _tests.append(_test_system_interpreter)
 
