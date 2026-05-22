@@ -42,6 +42,20 @@ _simple_binary = rule(
     executable = True,
 )
 
+def _source_file_wrapper_impl(ctx):
+    return [DefaultInfo(
+        files = depset([ctx.file.src]),
+        runfiles = ctx.runfiles(files = ctx.files.data),
+    )]
+
+_source_file_wrapper = rule(
+    implementation = _source_file_wrapper_impl,
+    attrs = {
+        "data": attr.label_list(allow_files = True),
+        "src": attr.label(allow_single_file = True, mandatory = True),
+    },
+)
+
 def _test_bootstrap_template(name):
     rt_util.helper_target(
         py_runtime,
@@ -195,10 +209,53 @@ def _test_in_build_interpreter(name):
 def _test_in_build_interpreter_impl(env, target):
     info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
     info.python_version().equals("PY3")
-    info.files().contains_predicate(matching.file_basename_equals("file1.txt"))
+    info.files().contains_exactly([
+        "{package}/fake_interpreter",
+        "{package}/file1.txt",
+    ])
     info.interpreter().path().contains("fake_interpreter")
+    env.expect.that_bool(info.actual.interpreter_files_to_run == None).equals(True)
 
 _tests.append(_test_in_build_interpreter)
+
+def _test_non_executable_source_file_interpreter_keeps_file_only_behavior(name):
+    rt_util.helper_target(
+        _source_file_wrapper,
+        name = name + "_wrapped_interpreter",
+        src = "fake_interpreter",
+        data = ["runfile.txt"],
+    )
+
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        interpreter = name + "_wrapped_interpreter",
+        python_version = "PY3",
+        files = ["file1.txt"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_non_executable_source_file_interpreter_keeps_file_only_behavior_impl,
+    )
+
+def _test_non_executable_source_file_interpreter_keeps_file_only_behavior_impl(env, target):
+    target = env.expect.that_target(target)
+    py_runtime_info = target.provider(
+        PyRuntimeInfo,
+        factory = py_runtime_info_subject,
+    )
+    py_runtime_info.interpreter().short_path_equals("{package}/fake_interpreter")
+    env.expect.that_bool(py_runtime_info.actual.interpreter_files_to_run == None).equals(True)
+    py_runtime_info.files().contains_exactly([
+        "{package}/file1.txt",
+    ])
+
+    target.default_outputs().contains_exactly([
+        "{package}/file1.txt",
+    ])
+
+_tests.append(_test_non_executable_source_file_interpreter_keeps_file_only_behavior)
 
 def _test_interpreter_binary_with_multiple_outputs(name):
     rt_util.helper_target(
@@ -227,6 +284,9 @@ def _test_interpreter_binary_with_multiple_outputs_impl(env, target):
         factory = py_runtime_info_subject,
     )
     py_runtime_info.interpreter().short_path_equals("{package}/{test_name}_built_interpreter")
+    py_runtime_info.interpreter_files_to_run().executable().short_path_equals(
+        "{package}/{test_name}_built_interpreter",
+    )
     py_runtime_info.files().contains_exactly([
         "{package}/extra_default_output.txt",
         "{package}/runfile.txt",
@@ -272,6 +332,9 @@ def _test_interpreter_binary_with_single_output_and_runfiles_impl(env, target):
         factory = py_runtime_info_subject,
     )
     py_runtime_info.interpreter().short_path_equals("{package}/{test_name}_built_interpreter")
+    py_runtime_info.interpreter_files_to_run().executable().short_path_equals(
+        "{package}/{test_name}_built_interpreter",
+    )
     py_runtime_info.files().contains_exactly([
         "{package}/runfile.txt",
         "{package}/{test_name}_built_interpreter",
@@ -327,10 +390,12 @@ def _test_system_interpreter(name):
     )
 
 def _test_system_interpreter_impl(env, target):
-    env.expect.that_target(target).provider(
+    info = env.expect.that_target(target).provider(
         PyRuntimeInfo,
         factory = py_runtime_info_subject,
-    ).interpreter_path().equals("/system/python")
+    )
+    info.interpreter_path().equals("/system/python")
+    env.expect.that_bool(info.actual.interpreter_files_to_run == None).equals(True)
 
 _tests.append(_test_system_interpreter)
 
