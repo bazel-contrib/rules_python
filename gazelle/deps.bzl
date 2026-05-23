@@ -131,26 +131,14 @@ def go_deps():
     go_repository(
         name = "com_github_odvcencio_gotreesitter",
         importpath = "github.com/odvcencio/gotreesitter",
-        sum = "h1:hYiUp3lFXlB+YEplv1KxRFM8IKAv1e5QcJcC3nKIsVI=",
-        version = "v0.18.0",
+        sum = "h1:OYp/gOvm/uQnmR1ZlBcp6bDOdN8HtRBS74cVrI3C/oc=",
+        version = "v0.19.1",
     )
     go_repository(
         name = "com_github_pmezard_go_difflib",
         importpath = "github.com/pmezard/go-difflib",
         sum = "h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=",
         version = "v1.0.0",
-    )
-    go_repository(
-        name = "com_github_segmentio_asm",
-        importpath = "github.com/segmentio/asm",
-        sum = "h1:WM03sfUOENvvKexOLp+pCqgb/WDjsi7EK8gIsICtzhc=",
-        version = "v1.1.3",
-    )
-    go_repository(
-        name = "com_github_segmentio_encoding",
-        importpath = "github.com/segmentio/encoding",
-        sum = "h1:WM4IBnxH8B9TakiM2QD5LyNl9JSndh88QbHqVC+Pauc=",
-        version = "v0.3.4",
     )
     go_repository(
         name = "com_github_stretchr_objx",
@@ -163,12 +151,6 @@ def go_deps():
         importpath = "github.com/stretchr/testify",
         sum = "h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=",
         version = "v1.9.0",
-    )
-    go_repository(
-        name = "dev_lsp_go_jsonrpc2",
-        importpath = "go.lsp.dev/jsonrpc2",
-        sum = "h1:Pr/YcXJoEOTMc/b6OTmcR1DPJ3mSWl/SWiU1Cct6VmI=",
-        version = "v0.10.0",
     )
     go_repository(
         name = "in_gopkg_check_v1",
