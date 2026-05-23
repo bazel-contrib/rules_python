@@ -196,15 +196,17 @@ class RunfilesTest(unittest.TestCase):
         self.assertIsNone(runfiles.Create({"FOO": "bar"}))
 
     def testManifestBasedRlocation(self) -> None:
-        with _MockFile(
-            contents=[
-                "Foo/runfile1 ",  # A trailing whitespace is always present in single entry lines.
-                "Foo/runfile2 C:/Actual Path\\runfile2",
-                "Foo/Bar/runfile3 D:\\the path\\run file 3.txt",
-                "Foo/Bar/Dir E:\\Actual Path\\Directory",
-                " Foo\\sBar\\bDir\\nNewline/runfile5 F:\\bActual Path\\bwith\\nnewline/runfile5",
-            ]
-        ) as mf:
+        with (
+            _MockFile(
+                contents=[
+                    "Foo/runfile1 ",  # A trailing whitespace is always present in single entry lines.
+                    "Foo/runfile2 C:/Actual Path\\runfile2",
+                    "Foo/Bar/runfile3 D:\\the path\\run file 3.txt",
+                    "Foo/Bar/Dir E:\\Actual Path\\Directory",
+                    " Foo\\sBar\\bDir\\nNewline/runfile5 F:\\bActual Path\\bwith\\nnewline/runfile5",
+                ]
+            ) as mf
+        ):
             r = runfiles.CreateManifestBased(mf.Path())
             self.assertEqual(r.Rlocation("Foo/runfile1"), "Foo/runfile1")
             self.assertEqual(r.Rlocation("Foo/runfile2"), "C:/Actual Path\\runfile2")
@@ -231,24 +233,27 @@ class RunfilesTest(unittest.TestCase):
                 self.assertEqual(r.Rlocation("/foo"), "/foo")
 
     def testManifestBasedRlocationWithRepoMappingFromMain(self) -> None:
-        with _MockFile(
-            contents=[
-                ",config.json,config.json~1.2.3",
-                ",my_module,_main",
-                ",my_protobuf,protobuf~3.19.2",
-                ",my_workspace,_main",
-                "protobuf~3.19.2,config.json,config.json~1.2.3",
-                "protobuf~3.19.2,protobuf,protobuf~3.19.2",
-            ]
-        ) as rm, _MockFile(
-            contents=[
-                "_repo_mapping " + rm.Path(),
-                "config.json /etc/config.json",
-                "protobuf~3.19.2/foo/runfile C:/Actual Path\\protobuf\\runfile",
-                "_main/bar/runfile /the/path/./to/other//other runfile.txt",
-                "protobuf~3.19.2/bar/dir E:\\Actual Path\\Directory",
-            ],
-        ) as mf:
+        with (
+            _MockFile(
+                contents=[
+                    ",config.json,config.json~1.2.3",
+                    ",my_module,_main",
+                    ",my_protobuf,protobuf~3.19.2",
+                    ",my_workspace,_main",
+                    "protobuf~3.19.2,config.json,config.json~1.2.3",
+                    "protobuf~3.19.2,protobuf,protobuf~3.19.2",
+                ]
+            ) as rm,
+            _MockFile(
+                contents=[
+                    "_repo_mapping " + rm.Path(),
+                    "config.json /etc/config.json",
+                    "protobuf~3.19.2/foo/runfile C:/Actual Path\\protobuf\\runfile",
+                    "_main/bar/runfile /the/path/./to/other//other runfile.txt",
+                    "protobuf~3.19.2/bar/dir E:\\Actual Path\\Directory",
+                ],
+            ) as mf,
+        ):
             r = runfiles.CreateManifestBased(mf.Path())
 
             self.assertEqual(
@@ -306,24 +311,27 @@ class RunfilesTest(unittest.TestCase):
             self.assertIsNone(r.Rlocation("protobuf", ""))
 
     def testManifestBasedRlocationWithRepoMappingFromOtherRepo(self) -> None:
-        with _MockFile(
-            contents=[
-                ",config.json,config.json~1.2.3",
-                ",my_module,_main",
-                ",my_protobuf,protobuf~3.19.2",
-                ",my_workspace,_main",
-                "protobuf~3.19.2,config.json,config.json~1.2.3",
-                "protobuf~3.19.2,protobuf,protobuf~3.19.2",
-            ]
-        ) as rm, _MockFile(
-            contents=[
-                "_repo_mapping " + rm.Path(),
-                "config.json /etc/config.json",
-                "protobuf~3.19.2/foo/runfile C:/Actual Path\\protobuf\\runfile",
-                "_main/bar/runfile /the/path/./to/other//other runfile.txt",
-                "protobuf~3.19.2/bar/dir E:\\Actual Path\\Directory",
-            ],
-        ) as mf:
+        with (
+            _MockFile(
+                contents=[
+                    ",config.json,config.json~1.2.3",
+                    ",my_module,_main",
+                    ",my_protobuf,protobuf~3.19.2",
+                    ",my_workspace,_main",
+                    "protobuf~3.19.2,config.json,config.json~1.2.3",
+                    "protobuf~3.19.2,protobuf,protobuf~3.19.2",
+                ]
+            ) as rm,
+            _MockFile(
+                contents=[
+                    "_repo_mapping " + rm.Path(),
+                    "config.json /etc/config.json",
+                    "protobuf~3.19.2/foo/runfile C:/Actual Path\\protobuf\\runfile",
+                    "_main/bar/runfile /the/path/./to/other//other runfile.txt",
+                    "protobuf~3.19.2/bar/dir E:\\Actual Path\\Directory",
+                ],
+            ) as mf,
+        ):
             r = runfiles.CreateManifestBased(mf.Path())
 
             self.assertEqual(

@@ -4,7 +4,6 @@ from python.runfiles import runfiles
 
 
 class BuildDataTest(unittest.TestCase):
-
     def test_target_build_data(self):
         import bazel_binary_info
 

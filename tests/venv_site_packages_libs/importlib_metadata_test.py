@@ -3,7 +3,6 @@ import unittest
 
 
 class ImportlibMetadataTest(unittest.TestCase):
-
     def test_importlib_metadata_files(self):
         files = importlib.metadata.files("whl-with-data1")
         self.assertIsNotNone(files, "importlib.metadata.files returned None")

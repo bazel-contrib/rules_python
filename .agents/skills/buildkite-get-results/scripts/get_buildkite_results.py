@@ -85,7 +85,10 @@ def fetch_buildkite_data(build_url):
                     elif isinstance(jobs_data, dict) and "records" in jobs_data:
                         data["jobs"] = jobs_data["records"]
         except Exception as e:
-            print(f"Warning: Could not fetch detailed jobs from {jobs_url}: {e}", file=sys.stderr)
+            print(
+                f"Warning: Could not fetch detailed jobs from {jobs_url}: {e}",
+                file=sys.stderr,
+            )
 
     return data
 
@@ -165,15 +168,18 @@ def main():
 
     build_state = data.get("state", "Unknown")
     print(f"Build State: {build_state}")
-    
+
     jobs = data.get("jobs", [])
     jobs_count = data.get("statistics", {}).get("jobs_count", 0)
-    
+
     print(f"Total jobs reported: {jobs_count}")
     print(f"Jobs found in data: {len(jobs)}")
-    
+
     if jobs_count != len(jobs):
-        print(f"WARNING: Reported job count ({jobs_count}) does not match jobs found ({len(jobs)}).", file=sys.stderr)
+        print(
+            f"WARNING: Reported job count ({jobs_count}) does not match jobs found ({len(jobs)}).",
+            file=sys.stderr,
+        )
 
     print("-" * 40)
 

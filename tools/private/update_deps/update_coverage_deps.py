@@ -183,7 +183,7 @@ def main():
         if u["python_version"] not in args.py:
             continue
 
-        if f'_{u["python_version"]}m_' in u["filename"]:
+        if f"_{u['python_version']}m_" in u["filename"]:
             continue
 
         platforms = _get_platforms(

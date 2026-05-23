@@ -608,8 +608,10 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
             root, class_name
         ) -> typing.Union[None, docutils_nodes.Element]:
             matches = root.findall(
-                lambda node: isinstance(node, docutils_nodes.Element)
-                and class_name in node["classes"]
+                lambda node: (
+                    isinstance(node, docutils_nodes.Element)
+                    and class_name in node["classes"]
+                )
             )
             found = next(matches, None)
             return found

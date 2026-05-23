@@ -1,7 +1,9 @@
 """Regression test for https://github.com/bazel-contrib/rules_python/issues/3563"""
+
 import os
 import subprocess
 import sys
+
 
 def main():
     # The rlocation path for the bin_zipapp. It is in the "our_other_module" repository.
@@ -17,6 +19,7 @@ def main():
     if result.returncode != 0:
         print(f"bin_zippapp failed with return code {result.returncode}")
         sys.exit(result.returncode)
+
 
 if __name__ == "__main__":
     main()

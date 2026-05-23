@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """site initialization logic for Bazel-built py_binary targets."""
+
 import os
 import os.path
 import sys
