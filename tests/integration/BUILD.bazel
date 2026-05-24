@@ -67,6 +67,10 @@ rules_python_integration_test(
 
 rules_python_integration_test(
     name = "toolchain_target_settings_test",
+    bazel_versions = [
+        "8.5.1",
+        "9.1.0",
+    ],
     py_main = "toolchain_target_settings_test.py",
 )
 
