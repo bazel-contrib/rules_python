@@ -462,7 +462,7 @@ class _BzlCsvField(_BzlXrefField):
         field_text = item[1][0].astext()
         parts = [p.strip() for p in field_text.split(",")]
         field_body = docutils_nodes.field_body()
-        for _, is_last, part in _position_iter(parts):
+        for _, is_last, part in _position_iter(parts):  # noqa: F402
             node = self.make_xref(
                 self.bodyrolename,
                 self._body_domain or domain,
@@ -775,7 +775,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
         return obj_id
 
     def _signature_add_object_type(self, sig_node: addnodes.desc_signature):
-        if sig_object_type := self._get_signature_object_type():
+        if sig_object_type := self._get_signature_object_type():  # noqa: F841
             sig_node += addnodes.desc_annotation("", self._get_signature_object_type())
             sig_node += addnodes.desc_sig_space()
 

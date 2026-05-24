@@ -131,7 +131,6 @@ def _setup_sys_path():
     """Perform Bazel/binary specific sys.path setup."""
     _print_verbose("site init: initial sys.path:\n", "\n".join(sys.path))
     seen = set(sys.path)
-    python_path_entries = []
 
     def _maybe_add_path(path, reason):
         if path in seen:

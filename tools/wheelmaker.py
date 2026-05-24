@@ -101,7 +101,7 @@ def normalize_pep440(version):
 def arcname_from(
     name: str,
     distribution_prefix: str,
-    strip_path_prefixes: Sequence[str] = (),
+    strip_path_prefixes: Sequence[str] = (),  # noqa: F821
     add_path_prefix: str = "",
 ) -> str:
     """Return the within-archive name for a given file path name.
@@ -548,7 +548,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args(sys.argv[1:])
 
 
-def _parse_file_pairs(content: List[str]) -> List[List[str]]:
+def _parse_file_pairs(content: List[str]) -> List[List[str]]:  # noqa: F821
     """
     Parse ; delimited lists of files into a 2D list.
     """

@@ -92,7 +92,7 @@ class WhlScriptsRunnableTest(unittest.TestCase):
         try:
             os.close(temp_fd)
             out_path = Path(temp_str)
-            result = subprocess.run(
+            subprocess.run(
                 [str(script_path), str(out_path)],
                 capture_output=True,
                 text=True,

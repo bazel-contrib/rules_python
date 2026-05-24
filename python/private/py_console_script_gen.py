@@ -72,7 +72,7 @@ class EntryPointsParser(configparser.ConfigParser):
     optionxform = staticmethod(str)
 
 
-def _guess_entry_point(guess: str, console_scripts: dict[string, string]) -> str | None:
+def _guess_entry_point(guess: str, console_scripts: dict[string, string]) -> str | None:  # noqa: F821
     for key, candidate in console_scripts.items():
         if guess == key:
             return candidate

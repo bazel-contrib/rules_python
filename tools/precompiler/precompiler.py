@@ -79,7 +79,7 @@ JsonWorkResponse = object
 class _SerialPersistentWorker:
     """Simple, synchronous, serial persistent worker."""
 
-    def __init__(self, instream: "typing.TextIO", outstream: "typing.TextIO"):
+    def __init__(self, instream: "typing.TextIO", outstream: "typing.TextIO"):  # noqa: F821
         self._instream = instream
         self._outstream = outstream
         self._parser = _create_parser()
@@ -148,7 +148,7 @@ class _SerialPersistentWorker:
 class _AsyncPersistentWorker:
     """Asynchronous, concurrent, persistent worker."""
 
-    def __init__(self, reader: "typing.TextIO", writer: "typing.TextIO"):
+    def __init__(self, reader: "typing.TextIO", writer: "typing.TextIO"):  # noqa: F821
         self._reader = reader
         self._writer = writer
         self._parser = _create_parser()
@@ -156,13 +156,15 @@ class _AsyncPersistentWorker:
         self._task_to_request_id = {}
 
     @classmethod
-    async def main(cls, instream: "typing.TextIO", outstream: "typing.TextIO") -> None:
+    async def main(cls, instream: "typing.TextIO", outstream: "typing.TextIO") -> None:  # noqa: F821
         reader, writer = await cls._connect_streams(instream, outstream)
         await cls(reader, writer).run()
 
     @classmethod
     async def _connect_streams(
-        cls, instream: "typing.TextIO", outstream: "typing.TextIO"
+        cls,
+        instream: "typing.TextIO",  # noqa: F821
+        outstream: "typing.TextIO",  # noqa: F821
     ) -> "tuple[asyncio.StreamReader, asyncio.StreamWriter]":
         loop = asyncio.get_event_loop()
         reader = asyncio.StreamReader()

@@ -1,6 +1,6 @@
 import os
 import subprocess
-import sys
+import sys  # noqa: F401
 import tempfile
 import unittest
 from pathlib import Path
@@ -89,7 +89,7 @@ commmand: {self.repl}
     def test_cannot_import_test_module_directly(self):
         """Validates that we cannot import helper/test_module.py since it's not a direct dep."""
         with self.assertRaises(ModuleNotFoundError):
-            import test_module
+            import test_module  # noqa: F401
 
     @unittest.skipIf(
         not EXPECT_TEST_MODULE_IMPORTABLE, "test only works without repl_dep set"

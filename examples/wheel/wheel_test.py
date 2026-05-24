@@ -523,7 +523,7 @@ Tag: cp38-abi3-{os_string}_{arch}
 
         with zipfile.ZipFile(filename) as zf:
             self.assertAllEntriesHasReproducibleMetadata(zf)
-            metadata_file = None
+            metadata_file = None  # noqa: F841
             self.assertEqual(
                 zf.namelist(),
                 [

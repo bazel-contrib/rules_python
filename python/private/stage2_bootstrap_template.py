@@ -131,11 +131,11 @@ def get_windows_path_with_unc_prefix(path):
         return path
 
     # Lets start the unicode fun
-    if path.startswith(unicode_prefix):
+    if path.startswith(unicode_prefix):  # noqa: F821
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
+    return unicode_prefix + os.path.abspath(path)  # noqa: F821
 
 
 def print_verbose(*args, mapping=None, values=None):

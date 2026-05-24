@@ -9,7 +9,7 @@ class VerifyFilestest(unittest.TestCase):
         import somepkg
         import somepkg.a
         import somepkg.subpkg
-        import somepkg.subpkg.b
+        import somepkg.subpkg.b  # noqa: F401
 
 
 if __name__ == "__main__":
