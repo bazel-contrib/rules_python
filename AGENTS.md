@@ -156,11 +156,6 @@ instructed to.
 
 `bazel query --output=build` can be used to inspect target definitions.
 
-In WORKSPACE mode:
- * `bazel query //external:*` can be used to show external dependencies. Adding
-   `--output=build` shows the definition, including version.
-
-For bzlmod mode:
  * `bazel mod graph` shows dependencies and their version.
  * `bazel mod explain` shows detailed information about a module.
  * `bazel mode show_repo` shows detailed information about a repository.

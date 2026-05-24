@@ -18,20 +18,6 @@ load(":integration_test.bzl", "rules_python_integration_test")
 
 licenses(["notice"])
 
-_WORKSPACE_FLAGS = [
-    "--noenable_bzlmod",
-    "--enable_workspace",
-]
-
-default_test_runner(
-    name = "workspace_test_runner",
-    bazel_cmds = [
-        "info {}".format(" ".join(_WORKSPACE_FLAGS)),
-        "test {} //...".format(" ".join(_WORKSPACE_FLAGS)),
-    ],
-    visibility = ["//visibility:public"],
-)
-
 default_test_runner(
     name = "test_runner",
     visibility = ["//visibility:public"],
@@ -56,25 +42,10 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
-    name = "compile_pip_requirements_workspace_test",
-    bzlmod = False,
-    workspace_path = "compile_pip_requirements",
-)
-
-rules_python_integration_test(
     name = "local_toolchains_test",
     env = {
         "RULES_PYTHON_BZLMOD_DEBUG": "1",
     },
-)
-
-rules_python_integration_test(
-    name = "local_toolchains_workspace_test",
-    bzlmod = False,
-    env = {
-        "RULES_PYTHON_BZLMOD_DEBUG": "1",
-    },
-    workspace_path = "local_toolchains",
 )
 
 rules_python_integration_test(
@@ -86,19 +57,7 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
-    name = "pip_parse_workspace_test",
-    bzlmod = False,
-    workspace_path = "pip_parse",
-)
-
-rules_python_integration_test(
     name = "py_cc_toolchain_registered_test",
-)
-
-rules_python_integration_test(
-    name = "py_cc_toolchain_registered_workspace_test",
-    bzlmod = False,
-    workspace_path = "py_cc_toolchain_registered",
 )
 
 rules_python_integration_test(

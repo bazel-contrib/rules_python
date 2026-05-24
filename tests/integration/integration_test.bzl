@@ -21,7 +21,7 @@ load(
 )
 load("//python:py_test.bzl", "py_test")
 
-def _test_runner(*, name, bazel_version, py_main, bzlmod):
+def _test_runner(*, name, bazel_version, py_main):
     if py_main:
         test_runner = "{}_bazel_{}_py_runner".format(name, bazel_version)
         py_test(
@@ -35,15 +35,11 @@ def _test_runner(*, name, bazel_version, py_main, bzlmod):
         )
         return test_runner
 
-    if bzlmod:
-        return "//tests/integration:test_runner"
-    else:
-        return "//tests/integration:workspace_test_runner"
+    return "//tests/integration:test_runner"
 
 def rules_python_integration_test(
         name,
         workspace_path = None,
-        bzlmod = True,
         tags = None,
         py_main = None,
         bazel_versions = None,
@@ -54,8 +50,6 @@ def rules_python_integration_test(
         name: Name of the test. This gets appended by the bazel version.
         workspace_path: The directory name. Defaults to `name` without the
             `_test` suffix.
-        bzlmod: bool, default True. If true, run with bzlmod enabled, otherwise
-            disable bzlmod.
         tags: Test tags.
         py_main: Optional `.py` file to run tests using. When specified, a
             python based test runner is used, and this source file is the main
@@ -91,7 +85,6 @@ def rules_python_integration_test(
             name = name,
             bazel_version = bazel_version,
             py_main = py_main,
-            bzlmod = bzlmod,
         )
         bazel_integration_test(
             name = "{}_bazel_{}".format(name, bazel_version),
