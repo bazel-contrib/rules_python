@@ -38,8 +38,6 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "MODULE.bazel",
-        "WORKSPACE",
-        "WORKSPACE.bzlmod",
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
         "version.bzl",
