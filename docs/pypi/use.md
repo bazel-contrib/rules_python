@@ -4,9 +4,7 @@
 # Use in BUILD.bazel files
 
 Once you have set up the dependencies, you are ready to start using them in your `BUILD.bazel`
-files. If you haven't done so yet, set it up by following these docs:
-1. [WORKSPACE](./download-workspace)
-2. [bzlmod](./download)
+files. If you haven't done so yet, set it up by [following these docs](./download).
 
 To refer to targets in a hub repo `pypi`, you can do one of two things:
 ```starlark

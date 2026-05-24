@@ -36,7 +36,7 @@ This rule generates two targets:
 - `bazel run [name].update` will regenerate the `requirements_txt` file
 - `bazel test [name]_test` will test that the `requirements_txt` file is up to date
 
-Once you generate this fully specified list of requirements, you can install the requirements ([bzlmod](./download)/[WORKSPACE](./download-workspace)).
+Once you generate this fully specified list of requirements, you can [install the requirements](./download).
 
 :::{warning}
 If you're specifying dependencies in `pyproject.toml`, make sure to include the
