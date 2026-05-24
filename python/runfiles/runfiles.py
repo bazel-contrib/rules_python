@@ -23,14 +23,13 @@ dependency graphs under bzlmod.
 :::
 """
 
-import collections.abc
 import inspect
 import os
 import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Generator, Optional, Tuple, Union
 
 if sys.version_info >= (3, 11):
     from typing import Self

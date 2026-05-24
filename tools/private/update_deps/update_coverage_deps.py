@@ -20,11 +20,8 @@ We are not running this with 'bazel run' to keep the dependencies minimal
 
 # NOTE @aignas 2023-01-09: We should only depend on core Python 3 packages.
 import argparse
-import difflib
 import json
 import os
-import pathlib
-import sys
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass

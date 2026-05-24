@@ -15,7 +15,6 @@
 import os
 import pathlib
 import subprocess
-import tempfile
 import unittest
 
 from python.runfiles import runfiles
@@ -51,7 +50,7 @@ class ExampleTest(unittest.TestCase):
             "",
             proc.stderr.decode("utf-8").strip(),
         )
-        self.assertRegex(proc.stdout.decode("utf-8").strip(), "^pylint 2\.15\.9")
+        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.15\.9")
 
     def test_pylint_report_has_expected_warnings(self):
         rlocation_path = os.environ.get("PYLINT_REPORT")
@@ -64,7 +63,7 @@ class ExampleTest(unittest.TestCase):
 
         self.assertRegex(
             pylint_report.read_text().strip(),
-            "W8201: Logging should be used instead of the print\(\) function\. \(print-function\)",
+            r"W8201: Logging should be used instead of the print\(\) function\. \(print-function\)",
         )
 
 

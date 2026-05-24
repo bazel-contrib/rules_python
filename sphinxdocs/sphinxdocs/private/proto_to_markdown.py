@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import argparse
-import io
 import itertools
 import pathlib
 import sys
-import textwrap
 from typing import Callable, TextIO, TypeVar
 
 from stardoc.proto import stardoc_output_pb2

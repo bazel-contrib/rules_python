@@ -24,7 +24,6 @@ import re
 import stat
 import sys
 import zipfile
-from collections.abc import Iterable
 from pathlib import Path
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -377,6 +376,9 @@ def get_files_to_package(input_files):
 
 def get_new_requirement_line(reqs_text: str, extra: str) -> str:
     """Formats a requirement text into a Requires-Dist metadata line."""
+    # This is not imported at the top of the file due to the reliance
+    # on this file in the `whl_library` repository rule which does not
+    # provide `packaging` but does import symbols defined here.
     from packaging.requirements import Requirement
 
     req = Requirement(reqs_text.strip())
@@ -614,11 +616,6 @@ def main() -> None:
                 description = description_file.read()
 
         metadata = arguments.metadata_file.read_text(encoding="utf-8")
-
-        # This is not imported at the top of the file due to the reliance
-        # on this file in the `whl_library` repository rule which does not
-        # provide `packaging` but does import symbols defined here.
-        from packaging.requirements import Requirement
 
         # Search for any `Requires-Dist` entries that refer to other files and
         # expand them.

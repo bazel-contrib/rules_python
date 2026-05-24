@@ -1,4 +1,3 @@
-import datetime
 import os
 import pathlib
 import shutil
@@ -91,9 +90,9 @@ class ReleaserTest(unittest.TestCase):
         self.assertIn(
             _UNRELEASED_TEMPLATE, new_content, msg=f"ACTUAL:\n\n{new_content}\n\n"
         )
-        self.assertIn(f"## [1.23.4] - 2025-01-01", new_content)
+        self.assertIn("## [1.23.4] - 2025-01-01", new_content)
         self.assertIn(
-            f"[1.23.4]: https://github.com/bazel-contrib/rules_python/releases/tag/1.23.4",
+            "[1.23.4]: https://github.com/bazel-contrib/rules_python/releases/tag/1.23.4",
             new_content,
         )
         self.assertIn("{#v1-23-4}", new_content)

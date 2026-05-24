@@ -22,18 +22,25 @@ from collections.abc import Collection
 from typing import Callable, Iterable, TypeVar
 
 from docutils import nodes as docutils_nodes
-from docutils.parsers.rst import directives as docutils_directives
-from docutils.parsers.rst import states
-from sphinx import addnodes, builders
-from sphinx import directives as sphinx_directives
-from sphinx import domains, environment, roles
+from docutils.parsers.rst import directives as docutils_directives, states
+from sphinx import (
+    addnodes,
+    builders,
+    directives as sphinx_directives,
+    domains,
+    environment,
+    roles,
+)
 from sphinx.highlighting import lexer_classes
 from sphinx.locale import _
-from sphinx.util import docfields
-from sphinx.util import docutils as sphinx_docutils
-from sphinx.util import inspect, logging
-from sphinx.util import nodes as sphinx_nodes
-from sphinx.util import typing as sphinx_typing
+from sphinx.util import (
+    docfields,
+    docutils as sphinx_docutils,
+    inspect,
+    logging,
+    nodes as sphinx_nodes,
+    typing as sphinx_typing,
+)
 from typing_extensions import TypeAlias, override
 
 _logger = logging.getLogger(__name__)

@@ -3,8 +3,9 @@ Verify that a dependency added using an isolated extension can be imported.
 See MODULE.bazel.
 """
 
-import six
 import unittest
+
+import six
 
 
 class TestIsolated(unittest.TestCase):

@@ -2,7 +2,6 @@ import os
 import pathlib
 import shutil
 import tempfile
-import time
 import unittest
 import zipfile
 
@@ -66,7 +65,7 @@ class ZipperTest(unittest.TestCase):
             f"rf-file|0|foo/bar.txt|{file1_path}",
             f"rf-symlink|1|link1|{symlink_path}",  # Should read target 'target.txt'
             f"rf-root-symlink|0|root_file|{file1_path}",
-            f"rf-empty|empty_file",
+            "rf-empty|empty_file",
         ]
         self.manifest_path.write_text("\n".join(manifest_content))
 
@@ -196,7 +195,7 @@ class ZipperTest(unittest.TestCase):
 
         manifest_content = [
             f"rf-file|0|../other_repo/foo.txt|{file1_path}",
-            f"rf-empty|../other_repo/empty_file",
+            "rf-empty|../other_repo/empty_file",
         ]
 
         self.manifest_path.write_text("\n".join(manifest_content))
@@ -222,7 +221,7 @@ class ZipperTest(unittest.TestCase):
 
         manifest_content = [
             f"rf-file|0|external/other_repo/foo.txt|{file1_path}",
-            f"rf-empty|external/other_repo/empty_file",
+            "rf-empty|external/other_repo/empty_file",
         ]
 
         self.manifest_path.write_text("\n".join(manifest_content))
@@ -265,7 +264,7 @@ class ZipperTest(unittest.TestCase):
             f"rf-file|0|b_rf_file|{file2}",  # -> runfiles/my_ws/b_rf_file
             f"rf-root-symlink|0|a_root_link|{file3}",  # -> runfiles/a_root_link
             f"regular|0|a/regular|{file3}",
-            f"rf-empty|d_rf_empty",  # -> runfiles/my_ws/d_rf_empty
+            "rf-empty|d_rf_empty",  # -> runfiles/my_ws/d_rf_empty
             f"rf-symlink|0|c_rf_link|{file3}",  # -> runfiles/my_ws/c_rf_link
         ]
 

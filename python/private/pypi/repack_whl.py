@@ -174,7 +174,7 @@ def main(sys_argv):
                 rel_path = p.relative_to(patched_wheel_dir)
                 out.add_file(str(rel_path), p)
 
-            logging.debug(f"Writing RECORD file")
+            logging.debug("Writing RECORD file")
             got_record = out.add_recordfile()
 
     if got_record == record_contents:

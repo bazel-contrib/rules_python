@@ -356,8 +356,6 @@ def _maybe_collect_coverage(enable):
     print_verbose_coverage("Instrumented Files:\n" + "\n".join(instrumented_files))
     print_verbose_coverage("Sources:\n" + "\n".join(unique_dirs))
 
-    import uuid
-
     import coverage
 
     coverage_dir = os.environ["COVERAGE_DIR"]

@@ -24,7 +24,7 @@ def main(argv):
     with _start_server(DirectoryHandler, "0.0.0.0", 8000) as (ip, port, httpd):
 
         def _print_server_info():
-            print(f"Serving...")
+            print("Serving...")
             print(f"  Address: http://{ip}:{port}")
             print(f"  Serving directory: {serve_directory}")
             print(f"      url: file://{serve_directory}")

@@ -37,9 +37,6 @@ from __future__ import annotations
 import argparse
 import configparser
 import pathlib
-import re
-import sys
-import textwrap
 
 _ENTRY_POINTS_TXT = "entry_points.txt"
 
