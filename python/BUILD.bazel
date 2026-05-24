@@ -102,11 +102,9 @@ bzl_library(
     srcs = ["pip.bzl"],
     deps = [
         "//python/private:normalize_name_bzl",
-        "//python/private/pypi:multi_pip_parse_bzl",
         "//python/private/pypi:package_annotation_bzl",
         "//python/private/pypi:pip_compile_bzl",
         "//python/private/pypi:pip_repository_bzl",
-        "//python/private/pypi:whl_library_alias_bzl",
         "//python/private/whl_filegroup:whl_filegroup_bzl",
     ],
 )

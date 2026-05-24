@@ -24,11 +24,9 @@ rest of the symbols are for legacy `WORKSPACE` setups.
 """
 
 load("//python/private:normalize_name.bzl", "normalize_name")
-load("//python/private/pypi:multi_pip_parse.bzl", _multi_pip_parse = "multi_pip_parse")
 load("//python/private/pypi:package_annotation.bzl", _package_annotation = "package_annotation")
 load("//python/private/pypi:pip_compile.bzl", "pip_compile")
 load("//python/private/pypi:pip_repository.bzl", "pip_repository")
-load("//python/private/pypi:whl_library_alias.bzl", _whl_library_alias = "whl_library_alias")
 load("//python/private/whl_filegroup:whl_filegroup.bzl", _whl_filegroup = "whl_filegroup")
 
 compile_pip_requirements = pip_compile
@@ -40,10 +38,3 @@ whl_filegroup = _whl_filegroup
 pip_utils = struct(
     normalize_name = normalize_name,
 )
-
-# The following are only exported here because they are used from
-# multi_toolchain_aliases repository_rule, not intended for public use.
-#
-# See ./private/toolchains_repo.bzl
-multi_pip_parse = _multi_pip_parse
-whl_library_alias = _whl_library_alias
