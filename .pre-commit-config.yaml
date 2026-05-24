@@ -30,14 +30,14 @@ repos:
       - id: buildifier-lint
         args: *args
   - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Keep in sync with .github/workflows/ruff.yaml
     rev: v0.15.14
     hooks:
       - id: ruff-check
-        args: [ --fix ]
+        args: [--fix]
         exclude: testdata
       - id: ruff-format
         exclude: testdata
-
   - repo: local
     hooks:
       - id: update-deleted-packages
