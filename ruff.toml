@@ -6,6 +6,9 @@ target-version = "py39"
 # Match Black's default line length
 line-length = 88
 
+# Ignore testdata files
+extend-exclude = ["**/testdata/**", "testdata"]
+
 [lint]
 # Enable Pyflakes (F) and pycodestyle (E, W) for standard linting,
 # and isort (I) for import sorting
