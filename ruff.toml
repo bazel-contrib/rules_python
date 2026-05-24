@@ -1,7 +1,7 @@
 # ruff.toml
 
-# Support Python 3.9 and above
-target-version = "py39"
+# Support Python 3.8 and above
+target-version = "py38"
 
 # Match Black's default line length
 line-length = 88

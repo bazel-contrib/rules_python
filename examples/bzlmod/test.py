@@ -58,7 +58,7 @@ class ExampleTest(unittest.TestCase):
                 f"sys.path has {len(sys.path)} items:\n    {all_paths}",
             )
 
-        first_item, last_item = sys.path[0], sys.path[-1]
+        first_item, _ = sys.path[0], sys.path[-1]
         self.assertFalse(
             first_item.endswith("coverage"),
             f"Expected the first item in sys.path '{first_item}' to not be related to coverage",
