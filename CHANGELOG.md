@@ -72,6 +72,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (bootstrap) Fixed a potential race condition with symlink creation during
+  startup.
 * (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
   targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
 * (entry_point) From now on `mypy` type checking will be skipped on the generated
