@@ -6,6 +6,30 @@ if [[ -n "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
   set -x
 fi
 
+# Creates a symlink. If the symlink already exists, it is tolerated to avoid
+# race conditions during startup.
+function _symlink() {
+  local target="$1"
+  local link="$2"
+  if ln -s "$target" "$link" 2>/dev/null; then
+    return 0
+  fi
+  # If it failed, maybe it already exists because of a race.
+  if [[ -L "$link" || -e "$link" ]]; then
+    return 0
+  fi
+  # If it doesn't exist, maybe we don't have write permission in the directory.
+  local dir
+  dir=$(dirname "$link")
+  if [[ ! -w "$dir" ]]; then
+    echo >&2 "ERROR: Cannot create symlink $link: Directory $dir is not writable"
+  else
+    echo >&2 "ERROR: Failed to create symlink $link -> $target"
+  fi
+  return 1
+}
+
+
 # runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
@@ -153,7 +177,7 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
   fi
   # The bin/ directory may not exist if it is empty.
   mkdir -p "$(dirname $python_exe)"
-  ln -s "$symlink_to" "$python_exe"
+  _symlink "$symlink_to" "$python_exe"
 elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   if [[ -n "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
     use_exec=1
@@ -226,16 +250,16 @@ EOF
     fi
 
     mkdir -p "$venv/bin"
-    ln -s "$python_exe_actual" "$python_exe"
+    _symlink "$python_exe_actual" "$python_exe"
 
     if [[ ! -e "$venv_site_packages" ]]; then
       mkdir -p $(dirname $venv_site_packages)
-      ln -s "$runfiles_venv_site_packages" "$venv_site_packages"
+      _symlink "$runfiles_venv_site_packages" "$venv_site_packages"
     fi
   fi
 
   if [[ ! -e "$venv/pyvenv.cfg" ]]; then
-    ln -s "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
+    _symlink "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
   fi
 else
   use_exec=1
