@@ -109,7 +109,6 @@
     "https://bcr.bazel.build/modules/rules_cc/0.0.9/MODULE.bazel": "836e76439f354b89afe6a911a7adf59a6b2518fafb174483ad78a2a2fde7b1c5",
     "https://bcr.bazel.build/modules/rules_cc/0.1.1/MODULE.bazel": "2f0222a6f229f0bf44cd711dc13c858dad98c62d52bd51d8fc3a764a83125513",
     "https://bcr.bazel.build/modules/rules_cc/0.1.2/MODULE.bazel": "557ddc3a96858ec0d465a87c0a931054d7dcfd6583af2c7ed3baf494407fd8d0",
-    "https://bcr.bazel.build/modules/rules_cc/0.1.5/MODULE.bazel": "88dfc9361e8b5ae1008ac38f7cdfd45ad738e4fa676a3ad67d19204f045a1fd8",
     "https://bcr.bazel.build/modules/rules_cc/0.2.0/MODULE.bazel": "b5c17f90458caae90d2ccd114c81970062946f49f355610ed89bebf954f5783c",
     "https://bcr.bazel.build/modules/rules_cc/0.2.13/MODULE.bazel": "eecdd666eda6be16a8d9dc15e44b5c75133405e820f620a234acc4b1fdc5aa37",
     "https://bcr.bazel.build/modules/rules_cc/0.2.17/MODULE.bazel": "1849602c86cb60da8613d2de887f9566a6d354a6df6d7009f9d04a14402f9a84",
@@ -642,42 +641,7 @@
           }
         }
       },
-      "fact_version": "v1",
-      "index_urls": {
-        "https://pypi.org/simple/": {
-          "backports_tarfile": "/simple/backports-tarfile/",
-          "certifi": "/simple/certifi/",
-          "cffi": "/simple/cffi/",
-          "charset_normalizer": "/simple/charset-normalizer/",
-          "cryptography": "/simple/cryptography/",
-          "docutils": "/simple/docutils/",
-          "idna": "/simple/idna/",
-          "importlib_metadata": "/simple/importlib-metadata/",
-          "jaraco_classes": "/simple/jaraco-classes/",
-          "jaraco_context": "/simple/jaraco-context/",
-          "jaraco_functools": "/simple/jaraco-functools/",
-          "jeepney": "/simple/jeepney/",
-          "keyring": "/simple/keyring/",
-          "markdown_it_py": "/simple/markdown-it-py/",
-          "mdurl": "/simple/mdurl/",
-          "more_itertools": "/simple/more-itertools/",
-          "nh3": "/simple/nh3/",
-          "pkginfo": "/simple/pkginfo/",
-          "pycparser": "/simple/pycparser/",
-          "pygments": "/simple/pygments/",
-          "pywin32_ctypes": "/simple/pywin32-ctypes/",
-          "readme_renderer": "/simple/readme-renderer/",
-          "requests": "/simple/requests/",
-          "requests_toolbelt": "/simple/requests-toolbelt/",
-          "rfc3986": "/simple/rfc3986/",
-          "rich": "/simple/rich/",
-          "secretstorage": "/simple/secretstorage/",
-          "six": "/simple/six/",
-          "twine": "/simple/twine/",
-          "urllib3": "/simple/urllib3/",
-          "zipp": "/simple/zipp/"
-        }
-      }
+      "fact_version": "v1"
     }
   }
 }
