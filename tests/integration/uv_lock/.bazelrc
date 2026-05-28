@@ -1,0 +1,4 @@
+build --enable_runfiles
+common --experimental_isolated_extension_usages
+
+try-import %workspace%/user.bazelrc
