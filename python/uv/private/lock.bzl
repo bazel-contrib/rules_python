@@ -142,6 +142,7 @@ def _lock_impl(ctx):
             uv,
             python_files,
         ],
+        use_default_shell_env = True,
         progress_message = "Creating a requirements.txt with uv: %{label}",
         env = ctx.attr.env,
     )
