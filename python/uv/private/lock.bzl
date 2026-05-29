@@ -395,6 +395,16 @@ def lock(
     All of the targets have `manual` tags as locking results cannot be cached.
     :::
 
+    To authenticate with a private index without embedding credentials in
+    environment variables, use {obj}`uv <UV_CREDENTIAL_HELPER>`'s credential
+    helper support. Set `UV_CREDENTIAL_HELPER` via the `env` attribute or
+    `--action_env` and mount the credential helper script into the sandbox
+    using `--sandbox_add_mount_pair`. The credential helper script follows
+    the same protocol as the Bazel credential helper — it is called as
+    `<path> get [url]` and must return JSON containing an `Authorization`
+    header. See {gh-path}`docs/pypi/download.md` for an example script
+    and configuration.
+
     Args:
         name: {type}`str` The prefix of all targets created by this macro.
         srcs: {type}`list[Label]` The sources that will be used. Add all of the
