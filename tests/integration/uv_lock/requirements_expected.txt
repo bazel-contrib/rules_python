@@ -1,0 +1,2 @@
+# This file is a placeholder. It is overwritten by the integration test
+# with the actual contents of the generated requirements file.

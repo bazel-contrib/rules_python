@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 import unittest
+import uuid
 import zipfile
 from contextlib import closing
 from pathlib import Path
@@ -70,7 +71,7 @@ class UvLockIntegrationTest(runner.TestCase):
 
         self.port = find_free_port()
         self.username = "testuser"
-        self.password = "secretpass"
+        self.password = uuid.uuid4().hex
         self.server_url = "http://localhost:{port}".format(port=self.port)
         self.auth_url = "http://{user}:{passwd}@localhost:{port}".format(
             user=self.username,
@@ -129,7 +130,30 @@ class UvLockIntegrationTest(runner.TestCase):
                 "Could not start the server, waited for {}s".format(wait_seconds)
             )
 
+        # Log in to uv's credential store so `uv auth helper` can later
+        # serve the credentials to Bazel or uv itself.
+        self.run_bazel(
+            "run",
+            "//:uv",
+            "--",
+            "auth",
+            "login",
+            self.server_url,
+            input="{}\n{}".format(self.username, self.password),
+        )
+
     def tearDown(self):
+        # Clear credentials from uv's credential store to ensure we are not
+        # logged into the service after the test.
+        self.run_bazel(
+            "run",
+            "//:uv",
+            "--",
+            "auth",
+            "logout",
+            self.server_url,
+            check=False,
+        )
         self._server.shutdown()
 
     def _assert_server_requires_auth(self):
@@ -227,6 +251,97 @@ class UvLockIntegrationTest(runner.TestCase):
             "//:requirements.update",
         )
         self._assert_lock_file(result)
+
+    def test_update_with_uv_auth_helper(self):
+        """Use ``uv auth helper`` as a credential helper.
+
+        This follows the workflow documented upstream:
+        https://github.com/astral-sh/uv/commit/634b03f972330183295adae438ec90e76105593e
+
+        The workflow:
+        1. ``uv auth login`` stores credentials (done in setUp)
+        2. A wrapper script delegates to ``uv auth helper``
+        3. ``UV_CREDENTIAL_HELPER`` points uv to the wrapper
+        4. ``uv auth logout`` clears stored credentials (done in tearDown)
+        """
+        self._assert_server_requires_auth()
+
+        # Build the uv runner so the output file exists
+        self.run_bazel("build", "//:uv")
+
+        # Get the uv binary's absolute path
+        proc = self.run_bazel("cquery", "--output=files", "//:uv")
+        uv_rel = proc.stdout.strip().split("\n")[0]
+        proc = self.run_bazel("info", "execution_root")
+        exec_root = proc.stdout.strip()
+        uv_bin = os.path.join(exec_root, uv_rel)
+
+        # Create the credential helper wrapper script
+        helper = self.dir / "uv_auth_helper.sh"
+        helper.write_text(
+            "#!/bin/bash\n"
+            "export UV_PREVIEW_FEATURES=auth-helper\n"
+            'exec "{}" auth helper --protocol=bazel "$@"\n'.format(uv_bin)
+        )
+        helper.chmod(0o755)
+
+        result = self.run_bazel(
+            "run",
+            "--sandbox_add_mount_pair={source}={target}".format(
+                source=helper,
+                target="/uv_auth_helper.sh",
+            ),
+            "--action_env={key}={value}".format(
+                key="UV_EXTRA_INDEX_URL",
+                value=self.server_url,
+            ),
+            "--action_env={key}={value}".format(
+                key="UV_CREDENTIAL_HELPER",
+                value="/uv_auth_helper.sh",
+            ),
+            "//:requirements.update",
+        )
+        self._assert_lock_file(result)
+
+    def test_diff_test_with_requirements(self):
+        """Verify that ``diff_test`` can verify the generated lock file."""
+        self._assert_server_requires_auth()
+
+        # First generate the lock file
+        result = self.run_bazel(
+            "run",
+            "--action_env={key}={value}".format(
+                key="UV_EXTRA_INDEX_URL",
+                value=self.auth_url,
+            ),
+            "//:requirements.update",
+        )
+        self._assert_lock_file(result)
+
+        # Copy the generated lock file to the expected location. The inner
+        # Bazel workspace is writable because it is a temporary copy created
+        # by the integration test framework.
+        generated = self.repo_root / "requirements.txt"
+        expected = self.repo_root / "requirements_expected.txt"
+        expected.write_text(generated.read_text())
+
+        # Run the diff_test: it triggers a build of the lock action and then
+        # compares it to our expected file.  The lock action is run locally
+        # (no sandbox) so it can reach the pypiserver.
+        result = self.run_bazel(
+            "test",
+            "--action_env={key}={value}".format(
+                key="UV_EXTRA_INDEX_URL",
+                value=self.server_url,
+            ),
+            "--strategy=PyRequirementsLockUv=local",
+            "//:requirements_diff_test",
+        )
+        self.assertEqual(
+            result.exit_code,
+            0,
+            "diff_test failed:\n{}".format(result.describe()),
+        )
 
 
 if __name__ == "__main__":

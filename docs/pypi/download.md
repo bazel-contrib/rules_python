@@ -338,13 +338,14 @@ See the [Credential Helper Spec][cred-helper-spec] for more details.
 
 The same credential helper pattern can be used with the {obj}`@rules_python//python/uv:lock.bzl`
 `lock` macro. Instead of embedding credentials in `UV_EXTRA_INDEX_URL`, set
-`UV_CREDENTIAL_HELPER` to point to a credential helper script and use
-`--sandbox_add_mount_pair` to mount it into the sandbox:
+`RULES_PYTHON_UV_CREDENTIAL_HELPER` to point to a credential helper script 
+and use `--sandbox_add_mount_pair` to mount it into the sandbox, alternatively
+use the upstream document to set the credential helper up:
 
 ```
 # .bazelrc
-build --sandbox_add_mount_pair=/path/to/cred_helper.sh=/cred_helper.sh
-build --action_env=UV_CREDENTIAL_HELPER=/cred_helper.sh
+build --sandbox_add_mount_pair=%workspace%/path/to/cred_helper.sh=/cred_helper.sh
+build --action_env=RULES_PYTHON_UV_CREDENTIAL_HELPER=/cred_helper.sh
 ```
 
 The credential helper script follows the same format as the Bazel credential

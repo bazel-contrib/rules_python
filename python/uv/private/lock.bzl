@@ -404,8 +404,25 @@ def lock(
     `<path> get [url]` and must return JSON containing an `Authorization`
     header.
 
+    :::{tip}
+    `uv` itself can serve as the credential helper. First log in with
+    ``uv auth login <url>``, then set ``UV_CREDENTIAL_HELPER`` to a wrapper
+    script that delegates to ``uv --preview-features auth-helper auth helper
+    --protocol=bazel``. The wrapper can be as simple as:
+
+    ```bash
+    #!/usr/bin/env bash
+    exec uv --preview-features auth-helper auth helper --protocol=bazel "$@"
+    ```
+
+    This avoids writing a separate credential helper script and keeps all
+    credential management in `uv`.
+    :::
+
     :::{seealso}
     See {gh-path}`docs/pypi/download.md` for an example script and configuration.
+    See the [upstream uv documentation](https://github.com/astral-sh/uv/commit/634b03f972330183295adae438ec90e76105593e)
+    for details on ``uv auth helper``.
     :::
 
     Args:

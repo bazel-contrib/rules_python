@@ -1,5 +1,6 @@
 module(name = "uv_lock")
 
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_python")
 local_path_override(
     module_name = "rules_python",
