@@ -131,9 +131,15 @@ def simpleapi_download(
     return contents
 
 def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
-    if index_url_overrides:
+    # Ensure the value is not frozen
+    index_urls = [] + (index_urls or [])
+    if default_index not in index_urls:
+        index_urls.append(default_index)
+
+    index_url_overrides = index_url_overrides or {}
+    if index_url_overrides or len(index_urls) == 1:
         # Let's not call the index at all and just assume that all of the overrides have been
-        # specified.
+        # specified or there is only a single index and there is no need to download anything
         return {
             pkg: _normalize_url("{}/{}/".format(
                 index_url_overrides.get(pkg, default_index),
@@ -144,11 +150,6 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
 
     downloads = {}
     results = {}
-
-    # Ensure the value is not frozen
-    index_urls = [] + (index_urls or [])
-    if default_index not in index_urls:
-        index_urls.append(default_index)
 
     for index_url in index_urls:
         download = read_simpleapi(
