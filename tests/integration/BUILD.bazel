@@ -48,6 +48,7 @@ test_suite(
     tests = [
         "bzlmod_lockfile_test_bazel_9.1.0",
         "local_toolchains_test_bazel_self",
+        "uv_lock_test_bazel_self",
     ],
 )
 
