@@ -402,8 +402,11 @@ def lock(
     using `--sandbox_add_mount_pair`. The credential helper script follows
     the same protocol as the Bazel credential helper — it is called as
     `<path> get [url]` and must return JSON containing an `Authorization`
-    header. See {gh-path}`docs/pypi/download.md` for an example script
-    and configuration.
+    header.
+
+    :::{seealso}
+    See {gh-path}`docs/pypi/download.md` for an example script and configuration.
+    :::
 
     Args:
         name: {type}`str` The prefix of all targets created by this macro.

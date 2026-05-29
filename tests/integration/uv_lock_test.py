@@ -132,7 +132,7 @@ class UvLockIntegrationTest(runner.TestCase):
     def tearDown(self):
         self._server.shutdown()
 
-    def test_lock_update_with_custom_index(self):
+    def _assert_server_requires_auth(self):
         req = Request(self.server_url + "/my-local-pkg/")
         try:
             urlopen(req, timeout=5)
@@ -140,17 +140,16 @@ class UvLockIntegrationTest(runner.TestCase):
         except URLError:
             pass
 
-        auth_header = "Basic " + base64.b64encode(
+    def _auth_header(self):
+        return "Basic " + base64.b64encode(
             "{user}:{passwd}".format(
                 user=self.username,
                 passwd=self.password,
             ).encode("utf-8")
         ).decode("utf-8")
-        req = Request(self.server_url + "/my-local-pkg/")
-        req.add_header("Authorization", auth_header)
-        response = urlopen(req, timeout=5)
-        self.assertEqual(response.status, 200)
 
+    def _assert_simple_api_sha256(self):
+        auth_header = self._auth_header()
         simple_req = Request(self.server_url + "/simple/my-local-pkg/")
         simple_req.add_header("Authorization", auth_header)
         simple_resp = urlopen(simple_req, timeout=5)
@@ -169,6 +168,34 @@ class UvLockIntegrationTest(runner.TestCase):
             "pypiserver hash {} != disk hash {}".format(pypiserver_sha256, disk_sha256),
         )
 
+    def _create_credential_helper(self):
+        cred_helper = self.dir / "cred_helper.sh"
+        auth_header = self._auth_header()
+        cred_helper.write_text(
+            "#!/bin/bash\n"
+            'echo \'{{"headers": {{"Authorization": ["{auth}"]}}}}\'\n'.format(
+                auth=auth_header,
+            )
+        )
+        cred_helper.chmod(0o755)
+        return cred_helper
+
+    def _assert_lock_file(self, result):
+        self.assertEqual(
+            result.exit_code,
+            0,
+            "Lock update failed:\n{}".format(result.describe()),
+        )
+        lock_file = self.repo_root / "requirements.txt"
+        self.assertTrue(lock_file.exists(), "Lock file was not created")
+        contents = lock_file.read_text()
+        self.assertIn("my-local-pkg", contents)
+        self.assertIn(self.wheel_sha256, contents)
+
+    def test_lock_update_with_custom_index(self):
+        self._assert_server_requires_auth()
+        self._assert_simple_api_sha256()
+
         result = self.run_bazel(
             "run",
             "--action_env={key}={value}".format(
@@ -177,40 +204,11 @@ class UvLockIntegrationTest(runner.TestCase):
             ),
             "//:requirements.update",
         )
-        self.assertEqual(
-            result.exit_code,
-            0,
-            "Lock update failed:\n{}".format(result.describe()),
-        )
-
-        lock_file = self.repo_root / "requirements.txt"
-        self.assertTrue(lock_file.exists(), "Lock file was not created")
-        contents = lock_file.read_text()
-        self.assertIn("my-local-pkg", contents)
-        self.assertIn(self.wheel_sha256, contents)
+        self._assert_lock_file(result)
 
     def test_update_with_credential_helper(self):
-        req = Request(self.server_url + "/my-local-pkg/")
-        try:
-            urlopen(req, timeout=5)
-            self.fail("Expected 401 without auth")
-        except URLError:
-            pass
-
-        cred_helper = self.dir / "cred_helper.sh"
-        auth_header = "Basic " + base64.b64encode(
-            "{user}:{passwd}".format(
-                user=self.username,
-                passwd=self.password,
-            ).encode("utf-8")
-        ).decode("utf-8")
-        cred_helper.write_text(
-            "#!/bin/bash\n"
-            'echo \'{{"headers": {{"Authorization": ["{auth}"]}}}}\'\n'.format(
-                auth=auth_header,
-            )
-        )
-        cred_helper.chmod(0o755)
+        self._assert_server_requires_auth()
+        cred_helper = self._create_credential_helper()
 
         result = self.run_bazel(
             "run",
@@ -228,17 +226,7 @@ class UvLockIntegrationTest(runner.TestCase):
             ),
             "//:requirements.update",
         )
-        self.assertEqual(
-            result.exit_code,
-            0,
-            "Lock update failed:\n{}".format(result.describe()),
-        )
-
-        lock_file = self.repo_root / "requirements.txt"
-        self.assertTrue(lock_file.exists(), "Lock file was not created")
-        contents = lock_file.read_text()
-        self.assertIn("my-local-pkg", contents)
-        self.assertIn(self.wheel_sha256, contents)
+        self._assert_lock_file(result)
 
 
 if __name__ == "__main__":

@@ -83,9 +83,6 @@ END_UNRELEASED_TEMPLATE
 * (uv) use the astral.sh mirror as the preferred url for binary downloads,
   with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
   from the dist-manifest contents.
-* (uv) allow user overwrite the build environment using `--action_env` to allow
-  setting authentication for the index URL.
-  ([#3045](https://github.com/bazel-contrib/rules_python/issues/3405))
 * (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
   installed wheel targets, except when built from sdist
   ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
@@ -115,6 +112,9 @@ END_UNRELEASED_TEMPLATE
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 * (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+* (uv) allow user overwrite the build environment using `--action_env` to allow
+  setting authentication for the index URL.
+  ([#3045](https://github.com/bazel-contrib/rules_python/issues/3405))
 
 {#v2-0-2}
 ## [2.0.2] - 2026-05-14
