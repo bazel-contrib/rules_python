@@ -189,6 +189,57 @@ class UvLockIntegrationTest(runner.TestCase):
         self.assertIn("my-local-pkg", contents)
         self.assertIn(self.wheel_sha256, contents)
 
+    def test_update_with_credential_helper(self):
+        req = Request(self.server_url + "/my-local-pkg/")
+        try:
+            urlopen(req, timeout=5)
+            self.fail("Expected 401 without auth")
+        except URLError:
+            pass
+
+        cred_helper = self.dir / "cred_helper.sh"
+        auth_header = "Basic " + base64.b64encode(
+            "{user}:{passwd}".format(
+                user=self.username,
+                passwd=self.password,
+            ).encode("utf-8")
+        ).decode("utf-8")
+        cred_helper.write_text(
+            "#!/bin/bash\n"
+            'echo \'{{"headers": {{"Authorization": ["{auth}"]}}}}\'\n'.format(
+                auth=auth_header,
+            )
+        )
+        cred_helper.chmod(0o755)
+
+        result = self.run_bazel(
+            "run",
+            "--sandbox_add_mount_pair={source}={target}".format(
+                source=cred_helper,
+                target="/cred_helper.sh",
+            ),
+            "--action_env={key}={value}".format(
+                key="UV_EXTRA_INDEX_URL",
+                value=self.server_url,
+            ),
+            "--action_env={key}={value}".format(
+                key="UV_CREDENTIAL_HELPER",
+                value="/cred_helper.sh",
+            ),
+            "//:requirements.update",
+        )
+        self.assertEqual(
+            result.exit_code,
+            0,
+            "Lock update failed:\n{}".format(result.describe()),
+        )
+
+        lock_file = self.repo_root / "requirements.txt"
+        self.assertTrue(lock_file.exists(), "Lock file was not created")
+        contents = lock_file.read_text()
+        self.assertIn("my-local-pkg", contents)
+        self.assertIn(self.wheel_sha256, contents)
+
 
 if __name__ == "__main__":
     unittest.main()
