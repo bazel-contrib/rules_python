@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import io
 import os
@@ -139,8 +140,6 @@ class UvLockIntegrationTest(runner.TestCase):
         except URLError:
             pass
 
-        import base64
-
         auth_header = "Basic " + base64.b64encode(
             "{user}:{passwd}".format(
                 user=self.username,
@@ -151,6 +150,24 @@ class UvLockIntegrationTest(runner.TestCase):
         req.add_header("Authorization", auth_header)
         response = urlopen(req, timeout=5)
         self.assertEqual(response.status, 200)
+
+        simple_req = Request(self.server_url + "/simple/my-local-pkg/")
+        simple_req.add_header("Authorization", auth_header)
+        simple_resp = urlopen(simple_req, timeout=5)
+        simple_html = simple_resp.read().decode("utf-8")
+        import re
+
+        hash_match = re.search(r"#sha256=([a-f0-9]+)", simple_html)
+        self.assertIsNotNone(
+            hash_match, "No sha256 found in simple API: {}".format(simple_html)
+        )
+        pypiserver_sha256 = hash_match.group(1)
+        disk_sha256 = hashlib.sha256(self.wheel_path.read_bytes()).hexdigest()
+        self.assertEqual(
+            pypiserver_sha256,
+            disk_sha256,
+            "pypiserver hash {} != disk hash {}".format(pypiserver_sha256, disk_sha256),
+        )
 
         result = self.run_bazel(
             "run",
