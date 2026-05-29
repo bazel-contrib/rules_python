@@ -16,12 +16,12 @@ load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("//examples/wheel/private:wheel_utils.bzl", "directory_writer", "make_variable_tags")
 load("//python:packaging.bzl", "py_package", "py_wheel")
-load("//python:pip.bzl", "compile_pip_requirements")
 load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python:versions.bzl", "gen_python_config_settings")
 load("//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//python/uv:lock.bzl", "lock")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -473,9 +473,10 @@ py_test(
 
 # Test wheel publishing
 
-compile_pip_requirements(
+lock(
     name = "requirements_server",
-    src = "requirements_server.in",
+    srcs = ["requirements_server.in"],
+    out = "requirements_server.txt",
 )
 
 py_test(

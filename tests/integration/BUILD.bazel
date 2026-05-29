@@ -113,6 +113,7 @@ rules_python_integration_test(
 
 rules_python_integration_test(
     name = "uv_lock_test",
+    py_deps = ["@pypiserver//pypiserver"],
     py_main = "uv_lock_test.py",
 )
 
