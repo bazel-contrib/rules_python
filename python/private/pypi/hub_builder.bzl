@@ -8,10 +8,12 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":parse_requirements.bzl", "parse_requirements")
+load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
+load(":version_from_filename.bzl", "version_from_filename")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
@@ -143,7 +145,7 @@ def _build(self):
         whl_libraries = self._whl_libraries,
     )
 
-def _pip_parse(self, module_ctx, pip_attr):
+def _pip_parse(self, module_ctx, pip_attr, is_root = False):
     python_version = pip_attr.python_version
     if python_version in self._platforms:
         fail((
@@ -177,7 +179,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         ))
         return
 
-    _set_get_index_urls(self, pip_attr)
+    _set_get_index_urls(self, module_ctx, pip_attr, is_root = is_root)
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
@@ -345,7 +347,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
 
 ### end of setters, below we have various functions to implement the public methods
 
-def _set_get_index_urls(self, pip_attr):
+def _set_get_index_urls(self, module_ctx, pip_attr, is_root = False):
     default_index_url = pip_attr.experimental_index_url or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
@@ -359,28 +361,37 @@ def _set_get_index_urls(self, pip_attr):
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
     })
-    self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
-        ctx,
-        attr = struct(
-            index_url = (index_url or default_index_url).rstrip("/"),
-            extra_index_urls = [
-                x.rstrip("/")
-                for x in (extra_index_urls or default_extra_index_urls)
-            ],
-            index_url_overrides = pip_attr.experimental_index_url_overrides or {},
-            sources = {
-                d: versions
-                for d, versions in distributions.items()
-                if _use_downloader(self, python_version, d)
-            },
-            envsubst = pip_attr.envsubst,
-            # Auth related info
-            netrc = self._config.netrc or pip_attr.netrc,
-            auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
-        ),
-        cache = self._simpleapi_cache,
-        parallel_download = pip_attr.parallel_download,
-    )
+
+    def _download_wrapper(ctx, distributions, *, index_url = None, extra_index_urls = None):
+        res = self._simpleapi_download_fn(
+            ctx,
+            attr = struct(
+                index_url = (index_url or default_index_url).rstrip("/"),
+                extra_index_urls = [
+                    x.rstrip("/")
+                    for x in (extra_index_urls or default_extra_index_urls)
+                ],
+                index_url_overrides = pip_attr.experimental_index_url_overrides or {},
+                sources = {
+                    d: versions
+                    for d, versions in distributions.items()
+                    if _use_downloader(self, python_version, d)
+                },
+                envsubst = pip_attr.envsubst,
+                # Auth related info
+                netrc = self._config.netrc or pip_attr.netrc,
+                auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
+            ),
+            cache = self._simpleapi_cache,
+            parallel_download = pip_attr.parallel_download,
+        )
+
+        if not is_root:
+            return res
+
+        return _inject_local_wheels(module_ctx, pip_attr, distributions, res)
+
+    self._get_index_urls[python_version] = _download_wrapper
     return True
 
 def _detect_interpreter(self, pip_attr):
@@ -667,9 +678,13 @@ def _whl_repo(
     # targets to each hub for each extra combination and solve this more cleanly as opposed to
     # duplicating whl_library repositories.
     target_platforms = src.target_platforms if is_multiple_versions else []
+    repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms)
+
+    if src.url.startswith("file://"):
+        repo_name += "_local_override"
 
     return struct(
-        repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
+        repo_name = repo_name,
         args = args,
         config_setting = whl_config_setting(
             version = python_version,
@@ -682,3 +697,59 @@ def _use_downloader(self, python_version, whl_name):
         normalize_name(whl_name),
         self._get_index_urls.get(python_version) != None,
     )
+
+def _inject_local_wheels(module_ctx, pip_attr, distributions, res):
+    """Inject local wheel overrides into the SimpleAPI download results.
+
+    Args:
+        module_ctx: {type}`module_ctx` The module context.
+        pip_attr: {type}`struct` The pip.parse attribute struct.
+        distributions: {type}`dict` The requested distributions map.
+        res: {type}`dict` The SimpleAPI download results dict.
+
+    Returns:
+        {type}`dict` The modified SimpleAPI download results dict.
+    """
+    if not getattr(pip_attr, "local_wheel_dir", None) or not getattr(pip_attr, "local_wheel_pkgs", None):
+        return res
+
+    workspace_root = module_ctx.path(Label("@@//:MODULE.bazel")).dirname
+    target_dir = workspace_root.get_child(pip_attr.local_wheel_dir)
+    if not target_dir.exists or not getattr(target_dir, "is_dir", False):
+        return res
+
+    candidates = target_dir.readdir()
+    override_pkgs = {normalize_name(p): True for p in pip_attr.local_wheel_pkgs}
+
+    wheels_by_pkg = {}
+    for candidate in candidates:
+        if not candidate.basename.endswith(".whl"):
+            continue
+        parsed = parse_whl_name(candidate.basename)
+        norm_name = normalize_name(parsed.distribution)
+        if norm_name in override_pkgs and norm_name in distributions:
+            wheels_by_pkg.setdefault(norm_name, []).append(candidate)
+
+    for norm_name, matched_wheels in wheels_by_pkg.items():
+        local_dists = []
+        for wheel_path in matched_wheels:
+            dist = struct(
+                filename = wheel_path.basename,
+                version = version_from_filename(wheel_path.basename),
+                url = "file://" + (wheel_path._path if hasattr(wheel_path, "_path") else str(wheel_path)),
+                sha256 = "",
+                metadata_sha256 = "",
+                metadata_url = "",
+                yanked = None,
+            )
+            local_dists.append(dist)
+
+        res[norm_name] = struct(
+            sdists = {},
+            whls = {d.filename: d for d in local_dists},
+            sha256s_by_version = {},
+            index_url = "file://" + (workspace_root._path if hasattr(workspace_root, "_path") else str(workspace_root)),
+            local_override_whls = local_dists,
+        )
+
+    return res

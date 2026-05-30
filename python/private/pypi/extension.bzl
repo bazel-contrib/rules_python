@@ -380,6 +380,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
+                is_root = mod.is_root,
             )
 
     # Keeps track of all the hub's whl repos across the different versions.
@@ -579,8 +580,8 @@ Index metadata will be used to get `sha256` values for packages even if the
 Defaults to `https://pypi.org/simple`.
 
 :::{versionadded} 2.0.0
-This has been added as a replacement for 
-{obj}`pip.parse.experimental_index_url` and 
+This has been added as a replacement for
+{obj}`pip.parse.experimental_index_url` and
 {obj}`pip.parse.experimental_extra_index_urls`.
 :::
 """,
@@ -758,6 +759,36 @@ means if different programs need different versions of some library, separate
 hubs can be created, and each program can use its respective hub's targets.
 Targets from different hubs should not be used together.
 """,
+        ),
+        "local_wheel_dir": attr.string(
+            doc = """\
+A path to a directory containing locally built wheels, relative to the workspace root.
+
+Allows testing locally built wheels without modifying lockfiles or hosting a local index server.
+
+Must be used in conjunction with `local_wheel_pkgs` to specify which packages should be overridden.
+All child wheels in the directory belonging to the specified packages are scanned and selected to
+find the optimal wheel for the target platform.
+
+If the directory is missing on disk or no compatible wheel is found, the override is silently
+ignored and Bazel falls back to the remote PyPI index.
+
+Overrides apply when bazel downloader is used and only take effect in the root module.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "local_wheel_pkgs": attr.string_list(
+            doc = """\
+A list of normalized package names (e.g. `my_package`) to override with wheels from `local_wheel_dir`.
+
+Must be used in conjunction with `local_wheel_dir`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+            default = [],
         ),
         "parallel_download": attr.bool(
             doc = """\
