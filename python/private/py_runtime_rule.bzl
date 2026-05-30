@@ -39,6 +39,7 @@ def _py_runtime_impl(ctx):
     runfiles = ctx.runfiles()
 
     hermetic = bool(interpreter)
+    interpreter_files_to_run = None
     if not hermetic:
         if runtime_files:
             fail("if 'interpreter_path' is given then 'files' must be empty")
@@ -46,9 +47,25 @@ def _py_runtime_impl(ctx):
             fail("interpreter_path must be an absolute path")
     else:
         interpreter_di = interpreter[DefaultInfo]
+        interpreter_file = None
 
-        if interpreter_di.files_to_run and interpreter_di.files_to_run.executable:
+        # Direct file targets also expose files_to_run.executable. They should
+        # keep py_runtime's file-only behavior and not populate
+        # interpreter_files_to_run. Rule targets have OutputGroupInfo; direct
+        # file targets do not.
+        is_file_target = OutputGroupInfo not in interpreter
+        if _is_singleton_depset(interpreter_di.files):
+            interpreter_file = interpreter_di.files.to_list()[0]
+
+        if is_file_target and interpreter_file:
+            # Direct file label: use the file as the interpreter, but do not
+            # treat it as an executable target with runfiles metadata.
+            interpreter = interpreter_file
+        elif interpreter_di.files_to_run and interpreter_di.files_to_run.executable:
+            # Executable rule target: use the executable and preserve the full
+            # FilesToRunProvider so action consumers can stage its runfiles.
             interpreter = interpreter_di.files_to_run.executable
+            interpreter_files_to_run = interpreter_di.files_to_run
             runfiles = runfiles.merge(interpreter_di.default_runfiles)
 
             runtime_files = depset(transitive = [
@@ -56,8 +73,10 @@ def _py_runtime_impl(ctx):
                 interpreter_di.default_runfiles.files,
                 runtime_files,
             ])
-        elif _is_singleton_depset(interpreter_di.files):
-            interpreter = interpreter_di.files.to_list()[0]
+        elif interpreter_file:
+            # Non-executable rule with exactly one output: preserve the
+            # historical file-only interpreter behavior.
+            interpreter = interpreter_file
         else:
             fail("interpreter must be an executable target or must produce exactly one file.")
 
@@ -111,6 +130,7 @@ def _py_runtime_impl(ctx):
     py_runtime_info_kwargs = dict(
         interpreter_path = interpreter_path or None,
         interpreter = interpreter,
+        interpreter_files_to_run = interpreter_files_to_run,
         files = runtime_files if hermetic else None,
         coverage_tool = coverage_tool,
         coverage_files = coverage_files,
@@ -119,6 +139,7 @@ def _py_runtime_impl(ctx):
         bootstrap_template = ctx.file.bootstrap_template,
     )
     builtin_py_runtime_info_kwargs = dict(py_runtime_info_kwargs)
+    builtin_py_runtime_info_kwargs.pop("interpreter_files_to_run", None)
 
     # There are all args that BuiltinPyRuntimeInfo doesn't support
     py_runtime_info_kwargs.update(dict(
