@@ -1,0 +1,38 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+py_binary(
+    name = "child",
+    srcs = ["child.py"],
+    main = "child.py",
+    python_version = "3.11",
+)
+
+py_binary(
+    name = "parent",
+    srcs = ["parent.py"],
+    data = [":child"],
+    deps = ["@rules_python//python/runfiles"],
+    main = "parent.py",
+    python_version = "3.12",
+)
+
+sh_test(
+    name = "child_direct_test",
+    srcs = ["run_parent.sh"],
+    data = [":parent"],
+    env = {
+        "MODE": "direct",
+        "PARENT_BINARY": "$(rootpath :parent)",
+    },
+)
+
+sh_test(
+    name = "child_sys_executable_test",
+    srcs = ["run_parent.sh"],
+    data = [":parent"],
+    env = {
+        "MODE": "sys_executable",
+        "PARENT_BINARY": "$(rootpath :parent)",
+    },
+)
