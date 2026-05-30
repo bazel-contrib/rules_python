@@ -24,7 +24,6 @@ filegroup(
         ":BUILD.bazel",
         ":MODULE.bazel",
         ":README.md",
-        ":WORKSPACE",
         ":def.bzl",
         ":deps.bzl",
         ":go.mod",

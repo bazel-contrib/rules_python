@@ -35,7 +35,6 @@ $(dirname $0)/check_version_markers.sh
 PREFIX="rules_python-${TAG}"
 ARCHIVE="rules_python-$TAG.tar.gz"
 git archive --format=tar "--prefix=${PREFIX}/" "$TAG" | gzip > "$ARCHIVE"
-SHA=$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')
 
 cat > release_notes.txt << EOF
 
@@ -43,7 +42,7 @@ For more detailed setup instructions, see https://rules-python.readthedocs.io/en
 
 For the user-facing changelog see [here](https://rules-python.readthedocs.io/en/latest/changelog.html#v${TAG//./-})
 
-## Using Bzlmod
+## Using
 
 Add to your \`MODULE.bazel\` file:
 
@@ -65,43 +64,7 @@ pip.parse(
 use_repo(pip, "pypi")
 \`\`\`
 
-## Using WORKSPACE
+For \`WORKSPACE\` users, please use rules_python through \`bzlmod\` by loading the rest of your
+dependencies through the \`WORKSPACE.bzlmod\` file.
 
-Paste this snippet into your \`WORKSPACE\` file:
-
-\`\`\`starlark
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "rules_python",
-    sha256 = "${SHA}",
-    strip_prefix = "${PREFIX}",
-    url = "https://github.com/bazel-contrib/rules_python/releases/download/${TAG}/rules_python-${TAG}.tar.gz",
-)
-
-load("@rules_python//python:repositories.bzl", "py_repositories")
-
-py_repositories()
-\`\`\`
-
-### Gazelle plugin
-
-Paste this snippet into your \`WORKSPACE\` file:
-
-\`\`\`starlark
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-http_archive(
-    name = "rules_python_gazelle_plugin",
-    sha256 = "${SHA}",
-    strip_prefix = "${PREFIX}/gazelle",
-    url = "https://github.com/bazel-contrib/rules_python/releases/download/${TAG}/rules_python-${TAG}.tar.gz",
-)
-
-# To compile the rules_python gazelle extension from source,
-# we must fetch some third-party go dependencies that it uses.
-
-load("@rules_python_gazelle_plugin//:deps.bzl", _py_gazelle_deps = "gazelle_deps")
-
-_py_gazelle_deps()
-\`\`\`
 EOF

@@ -1,11 +1,7 @@
 :::{default-domain} bzl
 :::
 
-# Download (bzlmod)
-
-:::{seealso}
-For WORKSPACE instructions see [here](./download-workspace).
-:::
+# Download
 
 To add PyPI dependencies to your `MODULE.bazel` file, use the `pip.parse`
 extension and call it to create the central external repo and individual wheel

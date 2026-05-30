@@ -21,12 +21,10 @@ load(
     _is_standalone_interpreter = "is_standalone_interpreter",
 )
 load("//python/private:py_repositories.bzl", _py_repositories = "py_repositories")
-load("//python/private:python_register_multi_toolchains.bzl", _python_register_multi_toolchains = "python_register_multi_toolchains")
 load("//python/private:python_register_toolchains.bzl", _python_register_toolchains = "python_register_toolchains")
 load("//python/private:python_repository.bzl", _python_repository = "python_repository")
 
 py_repositories = _py_repositories
-python_register_multi_toolchains = _python_register_multi_toolchains
 python_register_toolchains = _python_register_toolchains
 
 # Useful for documentation, but is not intended for public use - the python

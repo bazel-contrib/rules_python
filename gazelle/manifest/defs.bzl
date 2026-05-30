@@ -158,7 +158,7 @@ def gazelle_python_manifest(
 # buildifier: disable=provider-params
 AllSourcesInfo = provider(fields = {"all_srcs": "All sources collected from the target and dependencies."})
 
-_rules_python_workspace = Label("@rules_python//:WORKSPACE")
+_rules_python_workspace = Label("@rules_python//:MODULE.bazel")
 
 def _get_all_sources_impl(target, ctx):
     is_rules_python = target.label.repo_name == _rules_python_workspace.repo_name
