@@ -54,6 +54,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
+* (build_data) Removed CONFIG_MODE from build data
+  ([#3793](https://github.com/bazel-contrib/rules_python/issues/3793)).
 * (coverage) Support for python 3.8 has been dropped from the bundled
   `coverage.py` wheel set, since coverage.py 7.6.2 dropped it.
 
