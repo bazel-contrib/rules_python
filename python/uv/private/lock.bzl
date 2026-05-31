@@ -142,6 +142,10 @@ def _lock_impl(ctx):
             uv,
             python_files,
         ],
+        # User reported being unable to add `--action_env` and get it to work.
+        # Without this flag.
+        #
+        # Ref: https://app.slack.com/client/TA4K1KQ87/CA306CEV6
         use_default_shell_env = True,
         progress_message = "Creating a requirements.txt with uv: %{label}",
         env = ctx.attr.env,
