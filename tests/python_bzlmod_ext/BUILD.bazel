@@ -1,6 +1,7 @@
-load(":parse_sha_manifest_tests.bzl", "parse_sha_manifest_test_suite")
-load(":runtime_manifests_tests.bzl", "runtime_manifests_test_suite")
+load(":test_helpers.bzl", "register_python_bzlmod_ext_tests")
 
-parse_sha_manifest_test_suite(name = "parse_sha_manifest_tests")
-
-runtime_manifests_test_suite(name = "runtime_manifests_tests")
+register_python_bzlmod_ext_tests(
+    name = "python_bzlmod_ext_tests",
+    parse_sha_manifest_name = "parse_sha_manifest_tests",
+    runtime_manifests_name = "runtime_manifests_tests",
+)

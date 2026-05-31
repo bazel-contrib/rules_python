@@ -54,7 +54,9 @@ def _override(
         minor_mapping = {},
         netrc = "",
         register_all_versions = False,
-        add_target_settings = []):
+        add_target_settings = [],
+        add_runtime_manifest_urls = [],
+        runtime_manifest_sha = None):
     return struct(
         auth_patterns = auth_patterns,
         available_python_versions = available_python_versions,
@@ -63,6 +65,8 @@ def _override(
         netrc = netrc,
         register_all_versions = register_all_versions,
         add_target_settings = add_target_settings,
+        add_runtime_manifest_urls = add_runtime_manifest_urls,
+        runtime_manifest_sha = runtime_manifest_sha,
     )
 
 def _rules_python_module(is_root = False):
