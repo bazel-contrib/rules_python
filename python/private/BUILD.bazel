@@ -253,6 +253,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "pbs_manifest_bzl",
+    srcs = ["pbs_manifest.bzl"],
+)
+
+bzl_library(
     name = "precompile_bzl",
     srcs = ["precompile.bzl"],
     deps = [
@@ -274,6 +279,7 @@ bzl_library(
     srcs = ["python.bzl"],
     deps = [
         ":full_version_bzl",
+        ":pbs_manifest_bzl",
         ":platform_info_bzl",
         ":python_register_toolchains_bzl",
         ":pythons_hub_bzl",

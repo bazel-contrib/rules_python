@@ -16,6 +16,7 @@
 
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:python.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
@@ -54,7 +55,9 @@ def _override(
         minor_mapping = {},
         netrc = "",
         register_all_versions = False,
-        add_target_settings = []):
+        add_target_settings = [],
+        add_runtime_manifest_urls = [],
+        runtime_manifest_sha = None):
     return struct(
         auth_patterns = auth_patterns,
         available_python_versions = available_python_versions,
@@ -63,6 +66,8 @@ def _override(
         netrc = netrc,
         register_all_versions = register_all_versions,
         add_target_settings = add_target_settings,
+        add_runtime_manifest_urls = add_runtime_manifest_urls,
+        runtime_manifest_sha = runtime_manifest_sha,
     )
 
 def _rules_python_module(is_root = False):
@@ -889,3 +894,17 @@ def python_test_suite(name):
         name: the name of the test suite
     """
     test_suite(name = name, basic_tests = _tests)
+
+def register_python_tests(name):
+    """Registers the python tests if Bzlmod is enabled, otherwise defines an empty test_suite.
+
+    Args:
+        name: The name of the test target.
+    """
+    if BZLMOD_ENABLED:
+        python_test_suite(name = name)
+    else:
+        native.test_suite(
+            name = name,
+            tests = [],
+        )

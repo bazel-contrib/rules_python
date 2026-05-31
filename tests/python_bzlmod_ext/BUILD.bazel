@@ -1,0 +1,7 @@
+load(":test_helpers.bzl", "register_python_bzlmod_ext_tests")
+
+register_python_bzlmod_ext_tests(
+    name = "python_bzlmod_ext_tests",
+    parse_sha_manifest_name = "parse_sha_manifest_tests",
+    runtime_manifests_name = "runtime_manifests_tests",
+)

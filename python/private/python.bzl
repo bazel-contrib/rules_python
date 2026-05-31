@@ -18,6 +18,7 @@ load("@bazel_features//:features.bzl", "bazel_features")
 load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VERSIONS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
+load(":pbs_manifest.bzl", "parse_sha_manifest")
 load(":platform_info.bzl", "platform_info")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
@@ -76,7 +77,7 @@ def parse_modules(*, module_ctx, logger = None, _fail = fail):
     # Map of string Major.Minor or Major.Minor.Patch to the toolchain_info struct
     global_toolchain_versions = {}
 
-    config = _get_toolchain_config(modules = module_ctx.modules, _fail = _fail)
+    config = _get_toolchain_config(mctx = module_ctx, modules = module_ctx.modules, _fail = _fail)
 
     default_python_version = _compute_default_python_version(module_ctx)
 
@@ -741,10 +742,71 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
 
             override.fn(tag = tag, _fail = _fail, default = default)
 
-def _get_toolchain_config(*, modules, _fail = fail):
+def _populate_from_pbs_manifest(*, mctx, add_runtime_manifest_urls, runtime_manifest_sha = "", available_versions, _fail):
+    manifest_path = mctx.path("runtime_manifest")
+    result = mctx.download(
+        url = add_runtime_manifest_urls,
+        output = manifest_path,
+        sha256 = runtime_manifest_sha,
+    )
+    if not result.success:
+        _fail("Failed to download manifest from {}: {}".format(add_runtime_manifest_urls, result))
+        return
+
+    content = mctx.read(manifest_path)
+    base_download_urls = [url.rpartition("/")[0] for url in add_runtime_manifest_urls]
+
+    parsed_entries = parse_sha_manifest(content)
+
+    for entry in parsed_entries:
+        location = entry.location
+        sha256 = entry.sha256
+        py_version = entry.python_version
+
+        # Fallback to matching against PLATFORMS keys as before to ensure compatibility
+        # with rules_python expected platform keys.
+        matched_platform = None
+        for platform in PLATFORMS.keys():
+            if platform in location:
+                matched_platform = platform
+                break
+
+        if not matched_platform:
+            continue
+
+        expects_full = matched_platform in [
+            "aarch64-apple-darwin",
+            "aarch64-unknown-linux-gnu",
+            "ppc64le-unknown-linux-gnu",
+            "riscv64-unknown-linux-gnu",
+            "s390x-unknown-linux-gnu",
+            "x86_64-apple-darwin",
+            "x86_64-pc-windows-msvc",
+            "x86_64-unknown-linux-gnu",
+            "x86_64-unknown-linux-musl",
+        ]
+        is_full = entry.flavor.endswith("-full")
+        if expects_full != is_full:
+            continue
+
+        if "://" in location:
+            urls = [location]
+        else:
+            urls = ["{}/{}".format(base_url, location) for base_url in base_download_urls]
+
+        v_dict = available_versions.setdefault(py_version, {})
+        v_dict.setdefault("sha256", {})[matched_platform] = sha256
+        v_dict.setdefault("url", {})[matched_platform] = urls
+        if is_full:
+            v_dict.setdefault("strip_prefix", {})[matched_platform] = "python/install"
+        else:
+            v_dict.setdefault("strip_prefix", {})[matched_platform] = "python"
+
+def _get_toolchain_config(*, mctx, modules, _fail = fail):
     """Computes the configs for toolchains.
 
     Args:
+        mctx: The module context.
         modules: The modules from module_ctx
         _fail: Function to call for failing; only used for testing.
 
@@ -785,6 +847,19 @@ def _get_toolchain_config(*, modules, _fail = fail):
             }
         else:
             available_versions[py_version]["url"] = dict(url)
+
+    # Check for add_runtime_manifest_urls in override tags in root module
+    root_module = modules[0] if modules else None
+    if root_module and root_module.is_root:
+        for tag in root_module.tags.override:
+            if tag.add_runtime_manifest_urls:
+                _populate_from_pbs_manifest(
+                    mctx = mctx,
+                    add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
+                    runtime_manifest_sha = tag.runtime_manifest_sha,
+                    available_versions = available_versions,
+                    _fail = _fail,
+                )
 
     default = {
         "base_url": DEFAULT_RELEASE_BASE_URL,
@@ -1111,6 +1186,21 @@ _override = tag_class(
 :::
 """,
     attrs = {
+        "add_runtime_manifest_urls": attr.string_list(
+            mandatory = False,
+            doc = """
+URLs pointing to python-build-standalone manifest files (e.g., SHA256SUMS).
+
+Example:
+`https://github.com/astral-sh/python-build-standalone/releases/download/20260414/SHA256SUMS`
+
+Note that `/latest/` can be used in place of a specific release date (e.g., `20260414`) to automatically use the latest release:
+`https://github.com/astral-sh/python-build-standalone/releases/latest/download/SHA256SUMS`
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "add_target_settings": attr.string_list(
             mandatory = False,
             doc = """\
@@ -1180,6 +1270,15 @@ The values in this mapping override the default values and do not replace them.
             default = {},
         ),
         "register_all_versions": attr.bool(default = False, doc = "Add all versions"),
+        "runtime_manifest_sha": attr.string(
+            mandatory = False,
+            doc = """
+SHA256 hash for the add_runtime_manifest_urls.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
     } | AUTH_ATTRS,
 )
 
