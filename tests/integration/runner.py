@@ -89,7 +89,9 @@ class TestCase(unittest.TestCase):
             "RUNFILES_DIR": os.environ["TEST_SRCDIR"],
         }
 
-    def run_bazel(self, *args: str, check: bool = True) -> ExecuteResult:
+    def run_bazel(
+        self, *args: str, check: bool = True, input: str | None = None
+    ) -> ExecuteResult:
         """Run a bazel invocation.
 
         Args:
@@ -97,6 +99,7 @@ class TestCase(unittest.TestCase):
                 added automatically
             check: True if the execution must succeed, False if failure
                 should raise an error.
+            input: Optional stdin data to pass to the process.
         Returns:
             An `ExecuteResult` from running Bazel
         """
@@ -111,6 +114,7 @@ class TestCase(unittest.TestCase):
             cwd=cwd,
             env=env,
             check=False,
+            input=input,
         )
         exec_result = ExecuteResult(args, env, cwd, proc_result)
         if check and exec_result.exit_code:

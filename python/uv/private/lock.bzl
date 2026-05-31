@@ -142,6 +142,11 @@ def _lock_impl(ctx):
             uv,
             python_files,
         ],
+        # User reported being unable to add `--action_env` and get it to work.
+        # Without this flag.
+        #
+        # Ref: https://app.slack.com/client/TA4K1KQ87/CA306CEV6
+        use_default_shell_env = True,
         progress_message = "Creating a requirements.txt with uv: %{label}",
         env = ctx.attr.env,
     )
@@ -392,6 +397,36 @@ def lock(
 
     :::{note}
     All of the targets have `manual` tags as locking results cannot be cached.
+    :::
+
+    To authenticate with a private index without embedding credentials in
+    environment variables, use {obj}`uv <UV_CREDENTIAL_HELPER>`'s credential
+    helper support. Set `UV_CREDENTIAL_HELPER` via the `env` attribute or
+    `--action_env` and mount the credential helper script into the sandbox
+    using `--sandbox_add_mount_pair`. The credential helper script follows
+    the same protocol as the Bazel credential helper — it is called as
+    `<path> get [url]` and must return JSON containing an `Authorization`
+    header.
+
+    :::{tip}
+    `uv` itself can serve as the credential helper. First log in with
+    ``uv auth login <url>``, then set ``UV_CREDENTIAL_HELPER`` to a wrapper
+    script that delegates to ``uv --preview-features auth-helper auth helper
+    --protocol=bazel``. The wrapper can be as simple as:
+
+    ```bash
+    #!/usr/bin/env bash
+    exec uv --preview-features auth-helper auth helper --protocol=bazel "$@"
+    ```
+
+    This avoids writing a separate credential helper script and keeps all
+    credential management in `uv`.
+    :::
+
+    :::{seealso}
+    See {gh-path}`docs/pypi/download.md` for an example script and configuration.
+    See the [upstream uv documentation](https://github.com/astral-sh/uv/commit/634b03f972330183295adae438ec90e76105593e)
+    for details on ``uv auth helper``.
     :::
 
     Args:

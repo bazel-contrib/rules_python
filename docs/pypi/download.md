@@ -334,6 +334,27 @@ into whatever HTTP(S) request it performs against `example.com`.
 
 See the [Credential Helper Spec][cred-helper-spec] for more details.
 
+### Using a credential helper with the lock rule
+
+The same credential helper pattern can be used with the {obj}`@rules_python//python/uv:lock.bzl`
+`lock` macro. Instead of embedding credentials in `UV_EXTRA_INDEX_URL`, set
+`RULES_PYTHON_UV_CREDENTIAL_HELPER` to point to a credential helper script 
+and use `--sandbox_add_mount_pair` to mount it into the sandbox, alternatively
+use the upstream document to set the credential helper up:
+
+```
+# .bazelrc
+build --sandbox_add_mount_pair=%workspace%/path/to/cred_helper.sh=/cred_helper.sh
+build --action_env=RULES_PYTHON_UV_CREDENTIAL_HELPER=/cred_helper.sh
+```
+
+The credential helper script follows the same format as the Bazel credential
+helper described above — it receives `get` (and optionally the URL) as an
+argument and outputs JSON with the `Authorization` header.
+
+This ensures that credentials are never exposed through environment variables.
+The script itself is mounted into the sandbox from the host filesystem.
+
 [rfc7617]: https://datatracker.ietf.org/doc/html/rfc7617
 [cred-helper-design]: https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md
 [cred-helper-spec]: https://github.com/EngFlow/credential-helper-spec/blob/main/spec.md
