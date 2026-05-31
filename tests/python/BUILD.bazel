@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(":test_helpers.bzl", "register_python_tests")
+load(":python_tests.bzl", "register_python_tests")
 
 register_python_tests(name = "python_tests")
