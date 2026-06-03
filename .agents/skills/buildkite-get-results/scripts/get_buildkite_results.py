@@ -94,24 +94,32 @@ def fetch_buildkite_data(build_url):
 
 
 def download_log(job_url, output_path):
-    # Construct raw log URL: job_url + "/raw" (Buildkite convention)
-    # job_url e.g. https://buildkite.com/org/pipeline/builds/14394#job-id
-    # Wait, the job['path'] gives /org/pipeline/builds/14394#job-id
-    # We want /org/pipeline/builds/14394/jobs/job-id/raw? No
-    # The clean URL for a job is https://buildkite.com/org/pipeline/builds/14394/jobs/job-id
-    # And raw log is https://buildkite.com/org/pipeline/builds/14394/jobs/job-id/raw
-
-    # We have full_url e.g. https://buildkite.com/bazel/rules-python-python/builds/14394#019c5cf9-e3cf-468f-a7b1-8f9f5ad4b08c
-    # We need to transform it.
+    # job_url looks like:
+    # https://buildkite.com/bazel/rules-python-python/builds/15594#019e879b-...
+    # We need to transform it to:
+    # https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/15594/jobs/{job_id}/download.txt
 
     if "#" in job_url:
         base, job_id = job_url.split("#")
-        # Ensure base doesn't end with /
-        if base.endswith("/"):
-            base = base[:-1]
+        base = base.rstrip("/")
 
-        # Build raw URL
-        raw_url = f"{base}/jobs/{job_id}/raw"
+        # Parse the path segments: https://buildkite.com/org/pipeline/builds/N
+        # Rebuild with the /organizations/org/pipelines/pipeline/ format which
+        # supports the /jobs/{id}/download.txt log URL without auth.
+        parts = base.split("/")
+        # parts = ["https:", "", "buildkite.com", "org", "pipeline", "builds", "N"]
+        if len(parts) >= 7 and parts[2] == "buildkite.com":
+            org = parts[3]
+            pipeline = parts[4]
+            build_num = parts[6] if len(parts) >= 7 else ""
+            raw_url = (
+                f"https://buildkite.com/organizations/{org}"
+                f"/pipelines/{pipeline}"
+                f"/builds/{build_num}"
+                f"/jobs/{job_id}/download.txt"
+            )
+        else:
+            raw_url = f"{base}/jobs/{job_id}/download.txt"
     else:
         print(f"Could not parse job URL for download: {job_url}", file=sys.stderr)
         return False
