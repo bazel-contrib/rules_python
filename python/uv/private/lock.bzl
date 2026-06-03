@@ -117,31 +117,96 @@ def _lock_impl(ctx):
     args.run_shell.add("--no-progress")
     args.run_shell.add("--quiet")
 
+    # Generate a wrapper script that copies the existing output (if any) and
+    # then runs uv. On POSIX, args are forwarded via exec "$@". On Windows,
+    # the full command line is embedded in the .bat file with backslash paths
+    # (CMD doesn't recognize forward slashes in executable paths).
+    if ctx.attr.is_windows:
+        ext = ".bat"
+        lines = ["@echo off"]
+    else:
+        ext = ".sh"
+        lines = ["#!/usr/bin/env bash", "set -euo pipefail"]
+
+    python_path = getattr(python, "path", python)
+
     if ctx.files.existing_output:
-        command = '{python} -c {python_cmd} && "$@"'.format(
-            python = getattr(python, "path", python),
-            python_cmd = shell.quote(
-                "from shutil import copy; copy(\"{src}\", \"{dst}\")".format(
+        python_cmd = "from shutil import copy; copy(\"{src}\", \"{dst}\")".format(
+            src = ctx.files.existing_output[0].path,
+            dst = output.path,
+        )
+        if ctx.attr.is_windows:
+            # In batch files, use "" to escape internal double quotes.
+            lines.append(
+                "\"{py}\" -c \"from shutil import copy; copy(\"\"{src}\"\", \"\"{dst}\"\")\"".format(
+                    py = python_path,
                     src = ctx.files.existing_output[0].path,
                     dst = output.path,
                 ),
+            )
+        else:
+            lines.append("{py} -c '{cmd}'".format(
+                py = python_path,
+                cmd = python_cmd,
+            ))
+
+    if ctx.attr.is_windows:
+        # Build the command line with backslash paths for CMD.
+        # args.run_info has most args; add the output/progress/quiet
+        # args that were only added directly to args.run_shell.
+        def _quote(arg):
+            if hasattr(arg, "path"):
+                arg = arg.path.replace("/", "\\")
+            else:
+                arg = str(arg)
+            return '"' + arg.replace('"', '""') + '"'
+
+        bat_args = args.run_info + [
+            "--output-file",
+            output,
+            "--no-progress",
+            "--quiet",
+        ]
+        lines.append(" ".join([_quote(a) for a in bat_args]))
+
+        # Normalize CRLF line endings in the output on Windows.
+        lines.append(
+            "\"{py}\" -c \"import pathlib;p=pathlib.Path(r\"\"{dst}\"\");p.write_bytes(p.read_bytes().replace(b'\\r\\n', b'\\n'))\"".format(
+                py = python_path,
+                dst = output.path,
             ),
         )
     else:
-        command = '"$@"'
+        lines.append('exec "$@"')
+
+    script = ctx.actions.declare_file(ctx.label.name + "_lock" + ext)
+    if ctx.attr.is_windows:
+        content = "\r\n".join(lines) + "\r\n"
+    else:
+        content = "\n".join(lines) + "\n"
+    ctx.actions.write(output = script, content = content, is_executable = True)
 
     srcs = srcs + ctx.files.build_constraints + ctx.files.constraints
 
-    ctx.actions.run_shell(
-        command = command,
+    ctx.actions.run(
+        executable = script,
         inputs = srcs + ctx.files.existing_output,
         mnemonic = "PyRequirementsLockUv",
         outputs = [output],
-        arguments = [args.run_shell],
+        # On Windows, the command line is embedded directly in the .bat
+        # script (with backslash paths). On POSIX, args are forwarded via
+        # exec "$@" in the .sh script.
+        arguments = [args.run_shell] if not ctx.attr.is_windows else [],
         tools = [
             uv,
             python_files,
+            script,
         ],
+        # User reported being unable to add `--action_env` and get it to work.
+        # Without this flag.
+        #
+        # Ref: https://app.slack.com/client/TA4K1KQ87/CA306CEV6
+        use_default_shell_env = True,
         progress_message = "Creating a requirements.txt with uv: %{label}",
         env = ctx.attr.env,
     )
@@ -205,6 +270,7 @@ modifications and the locking is not done from scratch.
             doc = "Public, see the docs in the macro.",
             default = True,
         ),
+        "is_windows": attr.bool(mandatory = True),
         "output": attr.string(
             doc = "Public, see the docs in the macro.",
             mandatory = True,
@@ -241,7 +307,7 @@ The string to input for the 'uv pip compile'.
 def _lock_run_impl(ctx):
     if ctx.attr.is_windows:
         path_sep = "\\"
-        ext = ".exe"
+        ext = ".bat"
     else:
         path_sep = "/"
         ext = ""
@@ -250,7 +316,12 @@ def _lock_run_impl(ctx):
         if hasattr(arg, "short_path"):
             arg = arg.short_path
 
-        return shell.quote(arg.replace("/", path_sep))
+        arg = arg.replace("/", path_sep)
+        if ctx.attr.is_windows:
+            # On Windows, CMD uses double quotes for quoting, and internal
+            # double quotes are escaped by doubling them.
+            return '"' + arg.replace('"', '""') + '"'
+        return shell.quote(arg)
 
     info = ctx.attr.lock[_RunLockInfo]
     executable = ctx.actions.declare_file(ctx.label.name + ext)
@@ -438,6 +509,10 @@ def lock(
         env = env,
         existing_output = maybe_out,
         generate_hashes = generate_hashes,
+        is_windows = select({
+            "@platforms//os:windows": True,
+            "//conditions:default": False,
+        }),
         python_version = python_version,
         srcs = srcs,
         strip_extras = strip_extras,
