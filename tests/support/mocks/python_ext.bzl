@@ -1,6 +1,6 @@
 """Helper for defining a mock module for the python bzlmod extension."""
 
-load("//tests/support/mocks:mocks.bzl", "mocks")  # buildifier: disable=bzl-visibility
+load(":mocks.bzl", "mocks")
 
 def _module(name = "rules_python", is_root = True, **tags):
     """Creates a mock Bzlmod module struct with defaulted tag lists.
