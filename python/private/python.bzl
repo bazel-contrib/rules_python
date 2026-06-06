@@ -15,7 +15,7 @@
 "Python toolchain module extensions for use with bzlmod."
 
 load("@bazel_features//:features.bzl", "bazel_features")
-load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS", "TOOL_VERSIONS")
+load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
 load(":pbs_manifest.bzl", "parse_sha_manifest")
@@ -844,27 +844,13 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
 
     # Items that can be overridden
     available_versions = {}
-    for py_version, item in TOOL_VERSIONS.items():
-        available_versions[py_version] = {}
-        available_versions[py_version]["sha256"] = dict(item["sha256"])
-        platforms = item["sha256"].keys()
-
-        strip_prefix = item["strip_prefix"]
-        if type(strip_prefix) == type(""):
-            available_versions[py_version]["strip_prefix"] = {
-                platform: strip_prefix
-                for platform in platforms
-            }
-        else:
-            available_versions[py_version]["strip_prefix"] = dict(strip_prefix)
-        url = item["url"]
-        if type(url) == type(""):
-            available_versions[py_version]["url"] = {
-                platform: url
-                for platform in platforms
-            }
-        else:
-            available_versions[py_version]["url"] = dict(url)
+    _populate_from_pbs_manifest(
+        mctx = mctx,
+        add_runtime_manifest_files = [Label("//python:runtimes_manifest.txt")],
+        base_url = DEFAULT_RELEASE_BASE_URL,
+        available_versions = available_versions,
+        _fail = _fail,
+    )
 
     # Check for add_runtime_manifest_urls or add_runtime_manifest_files in override tags in root module
     root_module = modules[0] if modules else None

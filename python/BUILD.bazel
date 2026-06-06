@@ -252,6 +252,7 @@ filegroup(
 exports_files([
     "defs.bzl",
     "python.bzl",  # Deprecated, please use defs.bzl
+    "runtimes_manifest.txt",
 ])
 
 # This target can be used to inspect the current Python major version. To use,
