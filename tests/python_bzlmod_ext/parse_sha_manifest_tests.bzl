@@ -31,8 +31,10 @@ def _test_parse_filename_baseline_impl(env, target):
     parsed1 = parse_filename("cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz")
     env.expect.that_dict(parsed1).contains_exactly({
         "arch": "x86_64",
+        "archive_flavor": "install_only",
         "build_version": "20260414",
-        "flavor": "install_only",
+        "flavor": "",
+        "freethreaded": False,
         "libc": "gnu",
         "location": "cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
         "microarch": "",
@@ -45,8 +47,10 @@ def _test_parse_filename_baseline_impl(env, target):
     parsed2 = parse_filename("cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst")
     env.expect.that_dict(parsed2).contains_exactly({
         "arch": "x86_64",
+        "archive_flavor": "full",
         "build_version": "20260414",
-        "flavor": "lto-full",
+        "flavor": "lto",
+        "freethreaded": False,
         "libc": "musl",
         "location": "cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst",
         "microarch": "v2",
@@ -59,8 +63,10 @@ def _test_parse_filename_baseline_impl(env, target):
     parsed3 = parse_filename("cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst")
     env.expect.that_dict(parsed3).contains_exactly({
         "arch": "aarch64",
+        "archive_flavor": "full",
         "build_version": "20260414",
-        "flavor": "freethreaded+pgo+lto-full",
+        "flavor": "pgo+lto",
+        "freethreaded": True,
         "libc": "",
         "location": "cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst",
         "microarch": "",
@@ -77,8 +83,10 @@ def _test_parse_filename_baseline_impl(env, target):
     parsed5 = parse_filename("https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz")
     env.expect.that_dict(parsed5).contains_exactly({
         "arch": "x86_64",
+        "archive_flavor": "install_only",
         "build_version": "20260414",
-        "flavor": "install_only",
+        "flavor": "",
+        "freethreaded": False,
         "libc": "gnu",
         "location": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
         "microarch": "",
@@ -111,14 +119,17 @@ def _test_parse_sha_manifest_impl(env, target):
 8b14030dd3af9ea7f7c51b4c90feb04afd8a8f45435727e67b875270bd08f3bc   cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
 a57ffd435652092d16b30e783f9826c55e9c64b0f0a72cbae0a9f39e663137fb       cpython-3.11.15+20260414-aarch64-apple-darwin-install_only.tar.gz
 ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://example.com/cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst
+1111111111111111111111111111111111111111111111111111111111111111  cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst
 """
     parsed = parse_sha_manifest(content)
-    env.expect.that_collection(parsed).has_size(3)
+    env.expect.that_collection(parsed).has_size(4)
 
     env.expect.that_dict(structs.to_dict(parsed[0])).contains_exactly({
         "arch": "x86_64",
+        "archive_flavor": "install_only",
         "build_version": "20260414",
-        "flavor": "install_only",
+        "flavor": "",
+        "freethreaded": False,
         "libc": "gnu",
         "location": "cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
         "microarch": "",
@@ -130,8 +141,10 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
 
     env.expect.that_dict(structs.to_dict(parsed[2])).contains_exactly({
         "arch": "x86_64",
+        "archive_flavor": "full",
         "build_version": "20260414",
-        "flavor": "lto-full",
+        "flavor": "lto",
+        "freethreaded": False,
         "libc": "musl",
         "location": "https://example.com/cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst",
         "microarch": "v2",
@@ -139,6 +152,21 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
         "python_version": "3.10.20",
         "sha256": "ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f",
         "vendor": "unknown",
+    })
+
+    env.expect.that_dict(structs.to_dict(parsed[3])).contains_exactly({
+        "arch": "aarch64",
+        "archive_flavor": "full",
+        "build_version": "20260414",
+        "flavor": "pgo+lto",
+        "freethreaded": True,
+        "libc": "",
+        "location": "cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst",
+        "microarch": "",
+        "os": "darwin",
+        "python_version": "3.13.13",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "vendor": "apple",
     })
 
 _tests.append(_test_parse_sha_manifest)

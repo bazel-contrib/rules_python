@@ -3,6 +3,8 @@
 def parse_filename(filename):
     """Parses a python-build-standalone filename (or URL) into its components.
 
+    See https://gregoryszorc.com/docs/python-build-standalone/main/running.html
+
     Example: cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst
 
     Args:
@@ -65,10 +67,43 @@ def parse_filename(filename):
         libc = ""
         flavor = rest
 
+    freethreaded = False
+    if flavor.startswith("freethreaded+"):
+        freethreaded = True
+        flavor = flavor.removeprefix("freethreaded+")
+    elif flavor.startswith("freethreaded-"):
+        freethreaded = True
+        flavor = flavor.removeprefix("freethreaded-")
+    elif flavor == "freethreaded":
+        freethreaded = True
+        flavor = ""
+
+    archive_flavor = ""
+    if flavor.endswith("-full"):
+        archive_flavor = "full"
+        flavor = flavor.removesuffix("-full")
+    elif flavor == "full":
+        archive_flavor = "full"
+        flavor = ""
+    elif flavor.endswith("-install_only_stripped"):
+        archive_flavor = "install_only_stripped"
+        flavor = flavor.removesuffix("-install_only_stripped")
+    elif flavor == "install_only_stripped":
+        archive_flavor = "install_only_stripped"
+        flavor = ""
+    elif flavor.endswith("-install_only"):
+        archive_flavor = "install_only"
+        flavor = flavor.removesuffix("-install_only")
+    elif flavor == "install_only":
+        archive_flavor = "install_only"
+        flavor = ""
+
     return {
         "arch": arch,
+        "archive_flavor": archive_flavor,
         "build_version": build_version,
         "flavor": flavor,
+        "freethreaded": freethreaded,
         "libc": libc,
         "location": filename,
         "microarch": microarch,
@@ -87,9 +122,11 @@ def parse_sha_manifest(content):
       A list of structs capturing the parsed components of each valid entry.
       Each struct contains the following fields:
         - arch: CPU architecture (e.g., "x86_64").
+        - archive_flavor: Release asset archive type (e.g., "full", "install_only").
         - build_version: Standalone release date (e.g., "20260414").
         - location: Full package filename or URL (e.g., "cpython-3.11.15..." or "https://...").
         - flavor: Build configuration flavor (e.g., "install_only").
+        - freethreaded: Whether the build is free-threaded (boolean).
         - libc: C library type (e.g., "gnu", "musl", "msvc", or "").
         - microarch: Microarchitecture level (e.g., "v2", "v3", or "").
         - os: Operating system (e.g., "linux", "darwin", "windows").

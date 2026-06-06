@@ -805,7 +805,7 @@ def _populate_from_pbs_manifest(
                 "x86_64-unknown-linux-gnu",
                 "x86_64-unknown-linux-musl",
             ]
-            is_full = entry.flavor.endswith("-full")
+            is_full = entry.archive_flavor == "full"
             if expects_full != is_full:
                 continue
 
