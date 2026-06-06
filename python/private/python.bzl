@@ -802,6 +802,9 @@ def _populate_from_pbs_manifest(
         if not matched_platform:
             continue
 
+        if entry.archive_flavor not in ["install_only", "install_only_stripped", "full"]:
+            continue
+
         v_dict = available_versions.setdefault(py_version, {})
         if matched_platform in v_dict.get("sha256", {}):
             continue
