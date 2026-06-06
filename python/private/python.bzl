@@ -775,52 +775,47 @@ def _populate_from_pbs_manifest(
     if not base_download_urls and base_url:
         base_download_urls = [base_url]
 
+    entries = []
     for content in manifest_contents:
-        parsed_entries = parse_sha_manifest(content)
+        entries.extend(parse_sha_manifest(content))
 
-        for entry in parsed_entries:
-            location = entry.location
-            sha256 = entry.sha256
-            py_version = entry.python_version
+    # We don't model archive_flavor via flags yet, so have to pick one.
+    # Preference is given to install_only because its smaller
+    entries = sorted(
+        entries,
+        key = lambda e: {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(e.archive_flavor, 4),
+    )
 
-            # Fallback to matching against PLATFORMS keys as before to ensure compatibility
-            # with rules_python expected platform keys.
-            matched_platform = None
-            for platform in PLATFORMS.keys():
-                if platform in location:
-                    matched_platform = platform
-                    break
+    for entry in entries:
+        location = entry.location
+        sha256 = entry.sha256
+        py_version = entry.python_version
 
-            if not matched_platform:
-                continue
+        # Fallback to matching against PLATFORMS keys as before to ensure compatibility
+        # with rules_python expected platform keys.
+        matched_platform = None
+        for platform in PLATFORMS.keys():
+            if platform in location:
+                matched_platform = platform
+                break
 
-            expects_full = matched_platform in [
-                "aarch64-apple-darwin",
-                "aarch64-unknown-linux-gnu",
-                "ppc64le-unknown-linux-gnu",
-                "riscv64-unknown-linux-gnu",
-                "s390x-unknown-linux-gnu",
-                "x86_64-apple-darwin",
-                "x86_64-pc-windows-msvc",
-                "x86_64-unknown-linux-gnu",
-                "x86_64-unknown-linux-musl",
-            ]
-            is_full = entry.archive_flavor == "full"
-            if expects_full != is_full:
-                continue
+        if not matched_platform:
+            continue
 
-            if "://" in location:
-                urls = [location]
-            else:
-                urls = ["{}/{}".format(b_url, location) for b_url in base_download_urls]
+        v_dict = available_versions.setdefault(py_version, {})
+        if matched_platform in v_dict.get("sha256", {}):
+            continue
 
-            v_dict = available_versions.setdefault(py_version, {})
-            v_dict.setdefault("sha256", {})[matched_platform] = sha256
-            v_dict.setdefault("url", {})[matched_platform] = urls
-            if is_full:
-                v_dict.setdefault("strip_prefix", {})[matched_platform] = "python/install"
-            else:
-                v_dict.setdefault("strip_prefix", {})[matched_platform] = "python"
+        if "://" in location:
+            urls = [location]
+        else:
+            urls = ["{}/{}".format(b_url, location) for b_url in base_download_urls]
+
+        strip_prefix = "python/install" if entry.archive_flavor == "full" else "python"
+
+        v_dict.setdefault("sha256", {})[matched_platform] = sha256
+        v_dict.setdefault("url", {})[matched_platform] = urls
+        v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
 
 def _get_toolchain_config(*, mctx, modules, _fail = fail):
     """Computes the configs for toolchains.

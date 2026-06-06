@@ -75,14 +75,14 @@ def _test_dynamic_manifest_toolchains_impl(env, target):
     # Assert on the entire dictionary at once!
     env.expect.that_dict(version_info).contains_exactly({
         "sha256": {
-            "x86_64-unknown-linux-gnu": "01e607cf764b97d4d5d6f69fd1ff3d8a9a162513dde5c39e98260fce40fe220a",
+            "x86_64-unknown-linux-gnu": "8b14030dd3af9ea7f7c51b4c90feb04afd8a8f45435727e67b875270bd08f3bc",
         },
         "strip_prefix": {
-            "x86_64-unknown-linux-gnu": "python/install",
+            "x86_64-unknown-linux-gnu": "python",
         },
         "url": {
             "x86_64-unknown-linux-gnu": [
-                "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.99+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
+                "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.99+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
             ],
         },
     })
