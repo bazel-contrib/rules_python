@@ -1,0 +1,5 @@
+build --enable_runfiles
+common --experimental_isolated_extension_usages
+common --action_env=UV_EXTRA_INDEX_URL
+
+try-import %workspace%/user.bazelrc
