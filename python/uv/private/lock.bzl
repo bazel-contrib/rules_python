@@ -303,7 +303,9 @@ If not set, the project directory is auto-detected: when
 shortest directory path is selected. This makes `uv` read
 `[tool.uv]` settings (e.g. `no-build-isolation`,
 `exclude-dependencies`) from that `pyproject.toml`.
-{versionadded}VERSION_NEXT_FEATURE
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         ),
         "python_version": attr.string(
