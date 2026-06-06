@@ -57,6 +57,7 @@ def _override(
         register_all_versions = False,
         add_target_settings = [],
         add_runtime_manifest_urls = [],
+        add_runtime_manifest_files = [],
         runtime_manifest_sha = None):
     return struct(
         auth_patterns = auth_patterns,
@@ -67,6 +68,7 @@ def _override(
         register_all_versions = register_all_versions,
         add_target_settings = add_target_settings,
         add_runtime_manifest_urls = add_runtime_manifest_urls,
+        add_runtime_manifest_files = add_runtime_manifest_files,
         runtime_manifest_sha = runtime_manifest_sha,
     )
 

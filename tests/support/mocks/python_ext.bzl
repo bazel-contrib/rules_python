@@ -26,6 +26,7 @@ def _module(name = "rules_python", is_root = True, **tags):
 def _override(**kwargs):
     """Creates a mock python.override tag with default values."""
     attrs = {
+        "add_runtime_manifest_files": [],
         "add_runtime_manifest_urls": [],
         "add_target_settings": [],
         "available_python_versions": [],

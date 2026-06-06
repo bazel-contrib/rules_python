@@ -742,65 +742,85 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
 
             override.fn(tag = tag, _fail = _fail, default = default)
 
-def _populate_from_pbs_manifest(*, mctx, add_runtime_manifest_urls, runtime_manifest_sha = "", available_versions, _fail):
-    manifest_path = mctx.path("runtime_manifest")
-    result = mctx.download(
-        url = add_runtime_manifest_urls,
-        output = manifest_path,
-        sha256 = runtime_manifest_sha,
-    )
-    if not result.success:
-        _fail("Failed to download manifest from {}: {}".format(add_runtime_manifest_urls, result))
+def _populate_from_pbs_manifest(
+        *,
+        mctx,
+        add_runtime_manifest_urls = [],
+        add_runtime_manifest_files = [],
+        runtime_manifest_sha = "",
+        base_url = "",
+        available_versions,
+        _fail):
+    manifest_contents = []
+
+    if add_runtime_manifest_urls:
+        manifest_path = mctx.path("runtime_manifest")
+        result = mctx.download(
+            url = add_runtime_manifest_urls,
+            output = manifest_path,
+            sha256 = runtime_manifest_sha,
+        )
+        if not result.success:
+            _fail("Failed to download manifest from {}: {}".format(add_runtime_manifest_urls, result))
+            return
+        manifest_contents.append(mctx.read(manifest_path))
+
+    for manifest_file in add_runtime_manifest_files:
+        manifest_contents.append(mctx.read(manifest_file, watch = "yes"))
+
+    if not manifest_contents:
         return
 
-    content = mctx.read(manifest_path)
     base_download_urls = [url.rpartition("/")[0] for url in add_runtime_manifest_urls]
+    if not base_download_urls and base_url:
+        base_download_urls = [base_url]
 
-    parsed_entries = parse_sha_manifest(content)
+    for content in manifest_contents:
+        parsed_entries = parse_sha_manifest(content)
 
-    for entry in parsed_entries:
-        location = entry.location
-        sha256 = entry.sha256
-        py_version = entry.python_version
+        for entry in parsed_entries:
+            location = entry.location
+            sha256 = entry.sha256
+            py_version = entry.python_version
 
-        # Fallback to matching against PLATFORMS keys as before to ensure compatibility
-        # with rules_python expected platform keys.
-        matched_platform = None
-        for platform in PLATFORMS.keys():
-            if platform in location:
-                matched_platform = platform
-                break
+            # Fallback to matching against PLATFORMS keys as before to ensure compatibility
+            # with rules_python expected platform keys.
+            matched_platform = None
+            for platform in PLATFORMS.keys():
+                if platform in location:
+                    matched_platform = platform
+                    break
 
-        if not matched_platform:
-            continue
+            if not matched_platform:
+                continue
 
-        expects_full = matched_platform in [
-            "aarch64-apple-darwin",
-            "aarch64-unknown-linux-gnu",
-            "ppc64le-unknown-linux-gnu",
-            "riscv64-unknown-linux-gnu",
-            "s390x-unknown-linux-gnu",
-            "x86_64-apple-darwin",
-            "x86_64-pc-windows-msvc",
-            "x86_64-unknown-linux-gnu",
-            "x86_64-unknown-linux-musl",
-        ]
-        is_full = entry.flavor.endswith("-full")
-        if expects_full != is_full:
-            continue
+            expects_full = matched_platform in [
+                "aarch64-apple-darwin",
+                "aarch64-unknown-linux-gnu",
+                "ppc64le-unknown-linux-gnu",
+                "riscv64-unknown-linux-gnu",
+                "s390x-unknown-linux-gnu",
+                "x86_64-apple-darwin",
+                "x86_64-pc-windows-msvc",
+                "x86_64-unknown-linux-gnu",
+                "x86_64-unknown-linux-musl",
+            ]
+            is_full = entry.flavor.endswith("-full")
+            if expects_full != is_full:
+                continue
 
-        if "://" in location:
-            urls = [location]
-        else:
-            urls = ["{}/{}".format(base_url, location) for base_url in base_download_urls]
+            if "://" in location:
+                urls = [location]
+            else:
+                urls = ["{}/{}".format(b_url, location) for b_url in base_download_urls]
 
-        v_dict = available_versions.setdefault(py_version, {})
-        v_dict.setdefault("sha256", {})[matched_platform] = sha256
-        v_dict.setdefault("url", {})[matched_platform] = urls
-        if is_full:
-            v_dict.setdefault("strip_prefix", {})[matched_platform] = "python/install"
-        else:
-            v_dict.setdefault("strip_prefix", {})[matched_platform] = "python"
+            v_dict = available_versions.setdefault(py_version, {})
+            v_dict.setdefault("sha256", {})[matched_platform] = sha256
+            v_dict.setdefault("url", {})[matched_platform] = urls
+            if is_full:
+                v_dict.setdefault("strip_prefix", {})[matched_platform] = "python/install"
+            else:
+                v_dict.setdefault("strip_prefix", {})[matched_platform] = "python"
 
 def _get_toolchain_config(*, mctx, modules, _fail = fail):
     """Computes the configs for toolchains.
@@ -848,15 +868,17 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
         else:
             available_versions[py_version]["url"] = dict(url)
 
-    # Check for add_runtime_manifest_urls in override tags in root module
+    # Check for add_runtime_manifest_urls or add_runtime_manifest_files in override tags in root module
     root_module = modules[0] if modules else None
     if root_module and root_module.is_root:
         for tag in root_module.tags.override:
-            if tag.add_runtime_manifest_urls:
+            if tag.add_runtime_manifest_urls or tag.add_runtime_manifest_files:
                 _populate_from_pbs_manifest(
                     mctx = mctx,
                     add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
+                    add_runtime_manifest_files = tag.add_runtime_manifest_files,
                     runtime_manifest_sha = tag.runtime_manifest_sha,
+                    base_url = tag.base_url,
                     available_versions = available_versions,
                     _fail = _fail,
                 )
@@ -1186,6 +1208,19 @@ _override = tag_class(
 :::
 """,
     attrs = {
+        "add_runtime_manifest_files": attr.label_list(
+            mandatory = False,
+            allow_files = True,
+            doc = """
+Labels pointing to local python-build-standalone manifest files (e.g., `SHA256SUMS`).
+
+Example:
+`//my/custom/manifest:SHA256SUMS`
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "add_runtime_manifest_urls": attr.string_list(
             mandatory = False,
             doc = """
