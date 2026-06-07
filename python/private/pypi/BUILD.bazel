@@ -154,6 +154,7 @@ bzl_library(
         "@pythons_hub//:interpreters_bzl",
         "@pythons_hub//:versions_bzl",
         "@rules_python_internal//:rules_python_config_bzl",
+        "@toml.bzl//:toml",
     ],
 )
 

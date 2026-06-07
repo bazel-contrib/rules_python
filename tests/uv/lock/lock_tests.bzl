@@ -99,7 +99,7 @@ def lock_test_suite(name):
     lock(
         name = "uv_lock_test",
         srcs = ["testdata/pyproject.toml"],
-        out = "testdata/uv_lock_expected.lock",
+        out = "testdata/uv_lock_expected.uv.lock",
         tags = ["no-remote-exec"],
     )
 

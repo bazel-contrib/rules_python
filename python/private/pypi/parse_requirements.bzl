@@ -69,8 +69,7 @@ def parse_requirements(
         uv_lock: {type}`str | None` an optional label/file path to the uv.lock
             file. The ctx.read function will be used to read the contents.
             If provided, the function will use the uv.lock file as the primary
-            source for package metadata and perform a consistency check against
-            requirements files if both are provided.
+            source for package metadata.
         toml_decode: {type}`callable | None` A function to decode TOML
             content (e.g. `toml.decode`). Required when `uv_lock` is provided.
         logger: repo_utils.logger, a simple struct to log diagnostic messages.
@@ -89,15 +88,10 @@ def parse_requirements(
     """
     if uv_lock and toml_decode:
         uv_lock = toml_decode(ctx.read(uv_lock))
-        return _parse_requirements_with_uv_lock(
-            ctx = ctx,
-            requirements_by_platform = requirements_by_platform,
-            extra_pip_args = extra_pip_args,
-            platforms = platforms,
-            get_index_urls = get_index_urls,
-            evaluate_markers = evaluate_markers,
-            extract_url_srcs = extract_url_srcs,
+        return _parse_uv_lock(
             uv_lock = uv_lock,
+            all_platforms = _get_all_platforms(requirements_by_platform) if requirements_by_platform else sorted(platforms.keys()),
+            extra_pip_args = extra_pip_args,
             logger = logger,
         )
 
@@ -120,42 +114,11 @@ def _get_all_platforms(requirements_by_platform):
             all_platforms[p] = None
     return sorted(all_platforms)
 
-def _parse_requirements_with_uv_lock(
-        ctx,
-        *,
-        requirements_by_platform,
-        extra_pip_args,
-        platforms,
-        get_index_urls,
-        evaluate_markers,
-        extract_url_srcs,
-        uv_lock,
-        logger):
-    """Parse requirements using uv.lock as the primary source."""
-    if uv_lock:
-        return _parse_uv_lock_json(
-            uv_lock = uv_lock,
-            all_platforms = _get_all_platforms(requirements_by_platform) if requirements_by_platform else sorted(platforms.keys()),
-            extra_pip_args = extra_pip_args,
-            logger = logger,
-        )
-
-    return _parse_requirements_from_req_files(
-        ctx = ctx,
-        requirements_by_platform = requirements_by_platform,
-        extra_pip_args = extra_pip_args,
-        platforms = platforms,
-        get_index_urls = get_index_urls,
-        evaluate_markers = evaluate_markers,
-        extract_url_srcs = extract_url_srcs,
-        logger = logger,
-    )
-
-def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None):
-    """Parse uv.lock JSON and build the same return structs as parse_requirements.
+def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
+    """Parse decoded uv.lock TOML dict and build the same return structs as parse_requirements.
 
     Args:
-        uv_lock: {type}`str` A JSON-encoded string of the uv.lock contents.
+        uv_lock: {type}`dict` A decoded dictionary representing the uv.lock contents.
         all_platforms: {type}`list[str]` The list of all platform names.
         logger: {type}`struct` A logger for diagnostic messages.
         extra_pip_args: {type}`list[str] | None` Extra pip arguments to pass through.
@@ -164,7 +127,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None):
         {type}`list[struct]` The same format as {func}`parse_requirements`.
     """
     uv_packages = {}
-    for pkg in uv_lock["package"]:
+    for pkg in uv_lock.get("package", []):
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
@@ -295,8 +258,14 @@ def _parse_requirements_from_req_files(
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
 
+        # Parse the requirements file directly in starlark to get the information
+        # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
 
+        # Save parsed results from ALL files, even those with no matching
+        # platforms. This ensures the distributions dict (used for index URL
+        # queries) includes packages from all platform files, making the
+        # lockfile facts platform-independent.
         if file not in all_files_parsed:
             all_files_parsed[file] = parse_result.requirements
 
@@ -311,16 +280,22 @@ def _parse_requirements_from_req_files(
             for entry in parse_result.requirements:
                 requirement_line = entry[1]
 
+                # output all of the requirement lines that have a marker
                 if ";" in requirement_line:
                     reqs_with_env_markers.setdefault(requirement_line, []).append(plat)
             options[plat] = pip_args
 
+            # Parse the index URL from the requirement files
             index_url = argparse.index_url(pip_args, index_url)
             extra_index_urls = argparse.extra_index_url(pip_args, [])
             platform = argparse.platform(pip_args, [])
             if platform:
+                # No use of downloader if the user specifies "--platform" pip arg. This means that
+                # they intend to use pip to download the wheels
                 get_index_urls = None
 
+    # This may call to Python, so execute it early (before calling to the
+    # internet below) and ensure that we call it only once.
     resolved_marker_platforms = evaluate_markers(reqs_with_env_markers)
     logger.trace(lambda: "Evaluated env markers from:\n{}\n\nTo:\n{}".format(
         reqs_with_env_markers,
@@ -329,6 +304,12 @@ def _parse_requirements_from_req_files(
 
     reqs_by_name = {}
     for plat, parse_results in requirements.items():
+        # Replicate a surprising behavior that WORKSPACE builds allowed:
+        # Defining a repo with the same name multiple times, but only the last
+        # definition is respected.
+        # The requirement lines might have duplicate names because lines for extras
+        # are returned as just the base package name. e.g., `foo[bar]` results
+        # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
         requirements_dict = {}
         for entry in sorted(
             parse_results,
@@ -364,6 +345,10 @@ def _parse_requirements_from_req_files(
 
     index_urls = {}
     if get_index_urls:
+        # Collect all distributions from all requirements files irrespective
+        # of python_version and platform markers. This ensures that the index
+        # is queried for all packages, not just those matching the current
+        # platform's markers.
         distributions = {}
         for entries in all_files_parsed.values():
             for entry in entries:

@@ -80,3 +80,13 @@ When addressing PR review comments:
 4. Dead code removed (uv_pypi test data), tomli fallback restored
 5. toml2json removed in favor of pure Starlark toml.bzl decoder
 6. uv_lock.bzl and toml2json tool deleted
+
+## Second Review Cycle (May 27 comments)
+
+- **`python/uv/private/lock.bzl`**:
+  - Change `.lock` suffix check to `uv.lock` (in `_lock_run_impl` and docstrings).
+  - Rename `_template` attribute on `_lock_run` to `_pip_compile_template`.
+- **`python/private/pypi/parse_requirements.bzl`**:
+  - Restore helpful comments in `_parse_requirements_from_req_files` that were removed during refactoring.
+  - Remove stale comment in `parse_requirements` docstring about performing a consistency check against requirements files.
+  - Ensure `_parse_requirements_with_uv_lock` doesn't fall back to requirements parsing if `uv_lock` decodes to `{}` (an empty lock file has 0 packages, so it should return `[]`).

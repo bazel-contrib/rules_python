@@ -89,7 +89,7 @@ def _lock_impl(ctx):
     python = runtime.interpreter or runtime.interpreter_path
     python_files = runtime.files or depset()
 
-    is_uv_lock = ctx.attr.output.endswith(".lock")
+    is_uv_lock = ctx.attr.output.endswith("uv.lock")
     args = _args(ctx)
 
     if is_uv_lock:
@@ -100,12 +100,13 @@ def _lock_impl(ctx):
             "--no-cache",
         ])
 
+        src_dir = ctx.files.srcs[0].dirname if ctx.files.srcs else "."
+
         args.add_all(ctx.attr.args)
-        args.add("--python", python)
-        args.add_all(srcs)
+        args.run_info.extend(["--python", python])
+        args.run_shell.add("--directory", src_dir)
         args.run_shell.add("--no-progress")
         args.run_shell.add("--quiet")
-        args.run_shell.add(output)
         if ctx.files.build_constraints:
             fail("Can't specify build constraints files: {}".format(ctx.files.build_constraints))
 
@@ -143,7 +144,15 @@ def _lock_impl(ctx):
         mnemonic = "PyRequirementsLockUv"
         progress_message = "Creating a requirements.txt with uv: %{label}"
 
-    if ctx.files.existing_output:
+    if is_uv_lock:
+        src_dir = ctx.files.srcs[0].dirname if ctx.files.srcs else "."
+        python_path = getattr(python, "path", python)
+        command = 'export UV_PYTHON_PATH="$(pwd)/{python}" && "$@" --python "$UV_PYTHON_PATH" && cp "{src_dir}/uv.lock" "{output}"'.format(
+            python = python_path,
+            src_dir = src_dir,
+            output = output.path,
+        )
+    elif ctx.files.existing_output:
         command = '{python} -c {python_cmd} && "$@"'.format(
             python = getattr(python, "path", python),
             python_cmd = shell.quote(
@@ -277,10 +286,10 @@ def _lock_run_impl(ctx):
 
     info = ctx.attr.lock[_RunLockInfo]
 
-    if ctx.attr.output.endswith(".lock"):
+    if ctx.attr.output.endswith("uv.lock"):
         template = ctx.files._uv_lock_template[0]
     else:
-        template = ctx.files._template[0]
+        template = ctx.files._pip_compile_template[0]
 
     executable = ctx.actions.declare_file(ctx.label.name + ext)
     ctx.actions.expand_template(
@@ -322,7 +331,7 @@ _lock_run = rule(
 The output that we would be updated, relative to the package the macro is used in.
 """,
         ),
-        "_template": attr.label(
+        "_pip_compile_template": attr.label(
             default = "//python/uv/private:lock_template",
             doc = """\
 The template to be used for 'uv pip compile'. This is either .ps1 or bash
@@ -332,7 +341,7 @@ script depending on what the target platform is executed on.
         "_uv_lock_template": attr.label(
             default = "//python/uv/private:lock_uv_lock_template",
             doc = """\
-The template to be used for 'uv lock'. Used when output ends with '.lock'.
+The template to be used for 'uv lock'. Used when output ends with 'uv.lock'.
 """,
         ),
     },
