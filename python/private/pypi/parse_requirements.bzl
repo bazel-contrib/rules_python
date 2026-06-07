@@ -178,6 +178,8 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
             ))
         elif pkg.get("source", {}).get("git"):
             _add_vcs_entry(entry, version, pkg["source"])
+        elif pkg.get("source", {}).get("url"):
+            _add_direct_url_entry(entry, version, pkg["source"])
 
     ret = []
     for norm_name, info in sorted(uv_packages.items()):
@@ -227,6 +229,24 @@ def _add_vcs_entry(entry, version, source):
         source: {type}`dict` The source dict from uv.lock (e.g. {"git": url}).
     """
     url = source["git"]
+    _, _, filename = url.rpartition("/")
+    entry["src_entries"].append(struct(
+        version = version,
+        sha256 = "",
+        url = url,
+        filename = filename,
+        yanked = None,
+    ))
+
+def _add_direct_url_entry(entry, version, source):
+    """Add a direct URL entry from a uv.lock source.
+
+    Args:
+        entry: {type}`dict` The package entry being built.
+        version: {type}`str` The package version.
+        source: {type}`dict` The source dict from uv.lock (e.g. {"url": url}).
+    """
+    url = source["url"]
     _, _, filename = url.rpartition("/")
     entry["src_entries"].append(struct(
         version = version,

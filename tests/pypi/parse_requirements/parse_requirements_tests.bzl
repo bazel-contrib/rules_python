@@ -98,6 +98,7 @@ foo==0.0.3 --hash=sha256:deadbaaf
 foo[extra]==0.0.2 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
 """,
+        "uv_lock_direct_url": """{"package":[{"name":"foo","source":{"url":"https://example.com/foo.whl"},"version":"0.1.0"}]}""",
         "uv_lock_empty": """{"package":[]}""",
         "uv_lock_foo": """{"package":[{"dependencies":[{"extra":"extra","name":"bar"}],"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_bar": """{"package":[{"name":"bar","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"sdist":{"hash":"sha256:deadb00f","url":"https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz"}},{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
@@ -1265,6 +1266,34 @@ def _test_uv_lock_vcs_entry(env):
     ])
 
 _tests.append(_test_uv_lock_vcs_entry)
+
+def _test_uv_lock_direct_url(env):
+    """Test that direct URL source entries in uv.lock are handled correctly."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_direct_url",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.1.0",
+                    target_platforms = [],
+                    filename = "foo.whl",
+                    sha256 = "",
+                    url = "https://example.com/foo.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_direct_url)
 
 def _test_uv_lock_rules_python_pkg_not_skipped(env):
     """Test that 'rules_python' package is not skipped from uv.lock."""
