@@ -74,9 +74,9 @@ def py_repositories(transition_settings = []):
     )
     http_archive(
         name = "toml.bzl",
-        sha256 = "63633c762bdb4d836add5a9a81deeeae93c4b2edbd62ac032733020b5652b90a",
-        strip_prefix = "toml.bzl-0.4.0",
-        url = "https://github.com/jvolkman/toml.bzl/releases/download/v0.4.0/toml.bzl-v0.4.0.tar.gz",
+        sha256 = "46fab1d526b6da6ecb24b17b958d1f391c569053557daf2697eace3a593dcee9",
+        strip_prefix = "toml.bzl-0.4.1",
+        url = "https://github.com/jvolkman/toml.bzl/releases/download/v0.4.1/toml.bzl-v0.4.1.tar.gz",
     )
     http_archive(
         name = "package_metadata",

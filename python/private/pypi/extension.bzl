@@ -824,8 +824,14 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
         ),
         "uv_lock": attr.label(
             doc = """\
-(label, optional): A label pointing to the uv.lock file. If provided,
-the uv.lock file will be used as the primary source for package metadata.
+A label pointing to the `uv.lock` file. If provided,
+the `uv.lock` file will be used as the primary source for package metadata.
+
+:::{include} /_includes/experimental_api.md
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         ),
         "whl_modifications": attr.label_keyed_string_dict(

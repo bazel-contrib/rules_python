@@ -52,13 +52,9 @@ python.defaults(
 python.toolchain(
     python_version = "3.11",
 )
-python.toolchain(
-    python_version = "3.14",
-)
 use_repo(
     python,
     "python_3_11",
-    "python_3_14",
     "pythons_hub",
     python = "python_versions",
 )

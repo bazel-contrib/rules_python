@@ -147,8 +147,10 @@ def _lock_impl(ctx):
     if is_uv_lock:
         src_dir = ctx.files.srcs[0].dirname if ctx.files.srcs else "."
         python_path = getattr(python, "path", python)
-        command = 'export UV_PYTHON_PATH="$(pwd)/{python}" && "$@" --python "$UV_PYTHON_PATH" && cp "{src_dir}/uv.lock" "{output}"'.format(
-            python = python_path,
+        is_absolute = python_path.startswith("/") or (len(python_path) > 2 and python_path[1] == ":")
+        uv_python_path = python_path if is_absolute else "$(pwd)/" + python_path
+        command = 'export UV_PYTHON_PATH="{python}" && "$@" --python "$UV_PYTHON_PATH" && cp "{src_dir}/uv.lock" "{output}"'.format(
+            python = uv_python_path,
             src_dir = src_dir,
             output = output.path,
         )

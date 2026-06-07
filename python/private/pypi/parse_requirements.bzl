@@ -148,7 +148,7 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
 
         seen = {}
         for wheel in pkg.get("wheels", []):
-            sha256 = wheel.get("hash", "").replace("sha256:", "")
+            sha256 = wheel.get("hash", "").removeprefix("sha256:")
             url = wheel["url"]
             _, _, filename = url.rpartition("/")
             key = (filename, sha256)
@@ -166,7 +166,7 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
 
         sdist = pkg.get("sdist", None)
         if sdist:
-            sha256 = sdist.get("hash", "").replace("sha256:", "")
+            sha256 = sdist.get("hash", "").removeprefix("sha256:")
             url = sdist["url"]
             _, _, filename = url.rpartition("/")
             entry["src_entries"].append(struct(
