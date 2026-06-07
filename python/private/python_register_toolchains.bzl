@@ -15,13 +15,14 @@
 """This file contains repository rules and macros to support toolchain registration.
 """
 
+load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
 load(
     "//python:versions.bzl",
     "DEFAULT_RELEASE_BASE_URL",
     "MINOR_MAPPING",
     "PLATFORMS",
-    "TOOL_VERSIONS",
     "get_release_info",
+    "tool_versions_from_manifest_entries",
 )
 load(":coverage_deps.bzl", "coverage_dep")
 load(":full_version.bzl", "full_version")
@@ -104,7 +105,7 @@ def python_register_toolchains(
         )
 
     base_url = kwargs.pop("base_url", DEFAULT_RELEASE_BASE_URL)
-    tool_versions = tool_versions or TOOL_VERSIONS
+    tool_versions = tool_versions or tool_versions_from_manifest_entries(MANIFEST_ENTRIES)
     minor_mapping = minor_mapping or MINOR_MAPPING
 
     python_version = full_version(version = python_version, minor_mapping = minor_mapping)

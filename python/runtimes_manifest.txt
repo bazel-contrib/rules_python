@@ -1,3 +1,4 @@
+# Standalone runtimes manifest catalog
 87275619c2706affa4d1090d2ca3dad354b6d69f8b85dbfafe38785870751b9a  20251031/cpython-3.9.25+20251031-aarch64-apple-darwin-install_only.tar.gz
 6112d46355857680b81849764a6cf9f38cc4cd0d1cf29d432bc12fe5aeedf9d0  20251031/cpython-3.9.25+20251031-aarch64-unknown-linux-gnu-install_only.tar.gz
 828364b6f54fa45ac2dc91f8e45d5b74306372af374a9ef16eeb2ea81253ed3f  20251031/cpython-3.9.25+20251031-ppc64le-unknown-linux-gnu-install_only.tar.gz

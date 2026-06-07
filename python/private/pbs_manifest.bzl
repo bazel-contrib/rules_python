@@ -137,13 +137,12 @@ def parse_sha_manifest(content):
     results = []
     for line in content.split("\n"):
         line = line.strip()
-        if not line:
+        if not line or line.startswith("#"):
             continue
         parts = [p for p in line.split(" ") if p]
         if len(parts) != 2:
             continue
         sha256, filename = parts
-
         parsed = parse_filename(filename)
         if parsed:
             results.append(struct(

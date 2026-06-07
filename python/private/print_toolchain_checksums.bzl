@@ -1,7 +1,8 @@
 """Print the toolchain versions.
 """
 
-load("//python:versions.bzl", "TOOL_VERSIONS", "get_release_info")
+load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
+load("//python:versions.bzl", "get_release_info", "tool_versions_from_manifest_entries")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 
@@ -12,11 +13,13 @@ def print_toolchains_checksums(name):
         name: {type}`str`: the name of the runnable target.
     """
     by_version = {}
+    tool_versions = tool_versions_from_manifest_entries(MANIFEST_ENTRIES)
 
-    for python_version, metadata in TOOL_VERSIONS.items():
+    for python_version, metadata in tool_versions.items():
         by_version[python_version] = _commands_for_version(
             python_version = python_version,
             metadata = metadata,
+            tool_versions = tool_versions,
         )
 
     all_commands = sorted(
@@ -53,10 +56,10 @@ EOF
         executable = True,
     )
 
-def _commands_for_version(*, python_version, metadata):
+def _commands_for_version(*, python_version, metadata, tool_versions):
     lines = []
     first_platform = metadata["sha256"].keys()[0]
-    root, _, _ = get_release_info(first_platform, python_version)[1][0].rpartition("/")
+    root, _, _ = get_release_info(first_platform, python_version, tool_versions = tool_versions)[1][0].rpartition("/")
     sha_url = "{}/{}".format(root, "SHA256SUMS")
     prefix = metadata["strip_prefix"]
     prefix = render.indent(
@@ -78,7 +81,7 @@ def _commands_for_version(*, python_version, metadata):
             ),
         )
         for platform in metadata["sha256"].keys()
-        for release_url in get_release_info(platform, python_version)[1]
+        for release_url in get_release_info(platform, python_version, tool_versions = tool_versions)[1]
     ] + [
         "        },",
         "        \"strip_prefix\": {strip_prefix},".format(strip_prefix = prefix),

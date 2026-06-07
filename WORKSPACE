@@ -68,10 +68,11 @@ load("//:internal_dev_setup.bzl", "rules_python_internal_setup")
 
 rules_python_internal_setup()
 
-load("@pythons_hub//:versions.bzl", "PYTHON_VERSIONS")
 load("//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
 
 py_repositories()
+
+load("@pythons_hub//:versions.bzl", "PYTHON_VERSIONS")
 
 python_register_multi_toolchains(
     name = "python",

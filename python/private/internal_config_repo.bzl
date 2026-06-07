@@ -19,6 +19,7 @@ settings for rules to later use.
 """
 
 load("//python/private:text_util.bzl", "render")
+load(":pbs_manifest.bzl", "parse_sha_manifest")
 load(":repo_utils.bzl", "repo_utils")
 
 _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME = "RULES_PYTHON_DEPRECATION_WARNINGS"
@@ -49,13 +50,18 @@ package(
 )
 
 bzl_library(
-    name = "rules_python_config_bzl",
-    srcs = ["rules_python_config.bzl"]
+    name = "extra_transition_settings_bzl",
+    srcs = ["extra_transition_settings.bzl"],
 )
 
 bzl_library(
-    name = "extra_transition_settings_bzl",
-    srcs = ["extra_transition_settings.bzl"],
+    name = "manifest_tool_versions_bzl",
+    srcs = ["manifest_tool_versions.bzl"],
+)
+
+bzl_library(
+    name = "rules_python_config_bzl",
+    srcs = ["rules_python_config.bzl"],
 )
 """
 
@@ -130,6 +136,13 @@ def _internal_config_repo_impl(rctx):
         _TRANSITION_SETTINGS_DEBUG_TEMPLATE.format(lines = "\n".join(debug_lines)),
     )
 
+    if rctx.attr.workspace_mode:
+        content = rctx.read(rctx.path(Label("//python:runtimes_manifest.txt")))
+        entries = parse_sha_manifest(content)
+        rctx.file("manifest_tool_versions.bzl", _render_manifest_entries(entries))
+    else:
+        rctx.file("manifest_tool_versions.bzl", "MANIFEST_ENTRIES = []\n")
+
     return None
 
 internal_config_repo = repository_rule(
@@ -139,8 +152,12 @@ internal_config_repo = repository_rule(
     attrs = {
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),
+        "workspace_mode": attr.bool(default = False),
     },
 )
 
 def _bool_from_environ(rctx, key, default):
     return bool(int(rctx.getenv(key, default)))
+
+def _render_manifest_entries(entries):
+    return "MANIFEST_ENTRIES = {}\n".format(render.list(entries, value_repr = render.struct))

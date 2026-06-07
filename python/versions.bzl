@@ -329,3 +329,54 @@ def gen_python_config_settings(name = ""):
             flag_values = PLATFORMS[platform].flag_values,
             constraint_values = PLATFORMS[platform].compatible_with,
         )
+
+def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE_URL):
+    """Converts parsed manifest entries into the TOOL_VERSIONS dictionary format.
+
+    Args:
+        entries: {type}`list[struct]` the parsed manifest entries.
+        base_url: {type}`str` fallback base URL for standalone distributions.
+
+    Returns:
+        {type}`dict[str, dict]` the tool versions map.
+    """
+    available_versions = {}
+    entries = sorted(
+        entries,
+        key = lambda e: {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(getattr(e, "archive_flavor", ""), 4),
+    )
+
+    for entry in entries:
+        location = getattr(entry, "location", "")
+        sha256 = getattr(entry, "sha256", "")
+        py_version = getattr(entry, "python_version", "")
+
+        matched_platform = None
+        for platform in PLATFORMS.keys():
+            if platform in location:
+                matched_platform = platform
+                break
+
+        if not matched_platform:
+            continue
+
+        archive_flavor = getattr(entry, "archive_flavor", "")
+        if archive_flavor not in ["install_only", "install_only_stripped", "full"]:
+            continue
+
+        v_dict = available_versions.setdefault(py_version, {})
+        if matched_platform in v_dict.get("sha256", {}):
+            continue
+
+        if "://" in location:
+            urls = [location]
+        else:
+            urls = ["{}/{}".format(base_url, location)]
+
+        strip_prefix = "python/install" if archive_flavor == "full" else "python"
+
+        v_dict.setdefault("sha256", {})[matched_platform] = sha256
+        v_dict.setdefault("url", {})[matched_platform] = urls
+        v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
+
+    return available_versions
