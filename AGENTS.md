@@ -207,3 +207,9 @@ e.g.
 ```
 load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility
 ```
+
+### CI Failure Inspection
+
+When inspecting CI failures, if the failure is due to a network error
+downloading a repository, check if that rule set is mirrored on
+mirror.bazel.build. If so, add it to the downloader config.
