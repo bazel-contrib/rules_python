@@ -18,6 +18,11 @@ alias(
     actual = "//python:none",
 )
 
+alias(
+    name = "extra_toolchains",
+    actual = "//python:none",
+)
+
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),

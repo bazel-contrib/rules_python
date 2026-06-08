@@ -109,6 +109,29 @@ def _test_basic_zip_impl(env, target):
 
 _tests.append(_test_basic_zip)
 
+def _test_config_settings_extra_toolchains(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+        config_settings = {
+            "//command_line_option:extra_toolchains": "{tc},{tc}".format(tc = CC_TOOLCHAIN),
+        },
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_extra_toolchains_impl,
+        target = name + "_subject",
+    )
+
+def _test_config_settings_extra_toolchains_impl(env, target):
+    # If we got here, it means analysis succeeded, which implies the transition
+    # successfully parsed the CSV string into a list.
+    env.expect.that_target(target).has_provider(PyInfo)
+
+_tests.append(_test_config_settings_extra_toolchains)
+
 def _test_cross_compile_to_unix(name, config):
     rt_util.helper_target(
         config.rule,
