@@ -101,21 +101,21 @@ def _lock_impl(ctx):
     if not ctx.attr.strip_extras:
         args.add("--no-strip-extras")
 
-    project = None
+    project = ctx.attr.project
 
-    # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
-    # we see that is named "pyproject.toml"
-    for src in srcs:
-        if src.basename == "pyproject.toml":
-            if not project:
-                project = src.dirname
-            elif len(project) > len(src.dirname):
-                # select the shortest match
-                project = src.dirname
+    if not project:
+        # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
+        # we see that is named "pyproject.toml"
+        for src in srcs:
+            if src.basename == "pyproject.toml":
+                if not project:
+                    project = src.dirname
+                elif len(project) > len(src.dirname):
+                    # select the shortest match
+                    project = src.dirname
 
-    # Allow the attribute to override the project and if we have no pyproject.toml files, fallback
-    # to the pkg where the lock rule has been defined.
-    project = ctx.attr.project or project or pkg
+    if not project:
+        project = pkg
 
     args.add("--project", project)
 
