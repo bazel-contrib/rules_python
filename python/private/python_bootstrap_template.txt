@@ -568,7 +568,7 @@ def main():
   print_verbose("VENV_REL_SITE_PACKAGES:", VENV_REL_SITE_PACKAGES)
   print_verbose("WORKSPACE_NAME:", WORKSPACE_NAME )
   print_verbose("bootstrap sys.executable:", sys.executable)
-  print_verbose("bootstrap sys._base_executable:", sys._base_executable)
+  print_verbose("bootstrap sys._base_executable:", getattr(sys, "_base_executable", "unknown"))
   print_verbose("bootstrap sys.version:", sys.version)
 
   args = sys.argv[1:]

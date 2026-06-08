@@ -2,7 +2,6 @@ import unittest
 
 
 class NamespacePackagesTest(unittest.TestCase):
-
     def test_extras_propagated(self):
         import pkg
 

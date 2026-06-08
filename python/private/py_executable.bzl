@@ -424,7 +424,7 @@ WARNING: Target: {}
 
         # On Windows, the main executable has an "exe" extension, so
         # here we re-use the un-extensioned name for the bootstrap output.
-        bootstrap_output = ctx.actions.declare_file(base_executable_name)
+        bootstrap_output = ctx.actions.declare_file(base_executable_name, sibling = executable)
 
         # The launcher looks for the non-zip executable next to
         # itself, so add it to the default outputs.
@@ -1578,9 +1578,6 @@ def _write_build_data(ctx):
         executable = action_exe,
         arguments = [action_args],
         env = {
-            # Include config mode so that binaries can detect if they're
-            # being used as a build tool or not, allowing for runtime optimizations.
-            "CONFIG_MODE": "EXEC" if _is_tool_config(ctx) else "TARGET",
             "INFO_FILE": info_file.path if info_file else "",
             "OUTPUT": build_data.path,
             # Include this so it's explicit, otherwise, one has to detect

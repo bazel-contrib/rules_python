@@ -1,8 +1,9 @@
 import importlib.resources
 from xml.etree import ElementTree
 
-import tests.sphinx_stardoc as sphinx_stardoc
 from absl.testing import absltest, parameterized
+
+import tests.sphinx_stardoc as sphinx_stardoc
 
 
 class SphinxOutputTest(parameterized.TestCase):
@@ -49,21 +50,65 @@ class SphinxOutputTest(parameterized.TestCase):
         ("short_provider", "LangInfo", "provider.html#LangInfo"),
         ("short_tag_class", "myext.mytag", "module_extension.html#myext.mytag"),
         ("full_norepo_func", "//lang:function.bzl%myfunc", "function.html#myfunc"),
-        ("full_norepo_func_arg", "//lang:function.bzl%myfunc.arg1", "function.html#myfunc.arg1"),
+        (
+            "full_norepo_func_arg",
+            "//lang:function.bzl%myfunc.arg1",
+            "function.html#myfunc.arg1",
+        ),
         ("full_norepo_rule", "//lang:rule.bzl%my_rule", "rule.html#my_rule"),
-        ("full_norepo_rule_attr", "//lang:rule.bzl%my_rule.ra1", "rule.html#my_rule.ra1"),
-        ("full_norepo_provider", "//lang:provider.bzl%LangInfo", "provider.html#LangInfo"),
+        (
+            "full_norepo_rule_attr",
+            "//lang:rule.bzl%my_rule.ra1",
+            "rule.html#my_rule.ra1",
+        ),
+        (
+            "full_norepo_provider",
+            "//lang:provider.bzl%LangInfo",
+            "provider.html#LangInfo",
+        ),
         ("full_norepo_aspect", "//lang:aspect.bzl%myaspect", "aspect.html#myaspect"),
         ("full_norepo_target", "//lang:relativetarget", "target.html#relativetarget"),
-        ("full_repo_func", "@testrepo//lang:function.bzl%myfunc", "function.html#myfunc"),
-        ("full_repo_func_arg", "@testrepo//lang:function.bzl%myfunc.arg1", "function.html#myfunc.arg1"),
+        (
+            "full_repo_func",
+            "@testrepo//lang:function.bzl%myfunc",
+            "function.html#myfunc",
+        ),
+        (
+            "full_repo_func_arg",
+            "@testrepo//lang:function.bzl%myfunc.arg1",
+            "function.html#myfunc.arg1",
+        ),
         ("full_repo_rule", "@testrepo//lang:rule.bzl%my_rule", "rule.html#my_rule"),
-        ("full_repo_rule_attr", "@testrepo//lang:rule.bzl%my_rule.ra1", "rule.html#my_rule.ra1"),
-        ("full_repo_provider", "@testrepo//lang:provider.bzl%LangInfo", "provider.html#LangInfo"),
-        ("full_repo_aspect", "@testrepo//lang:aspect.bzl%myaspect", "aspect.html#myaspect"),
-        ("full_repo_target", "@testrepo//lang:relativetarget", "target.html#relativetarget"),
-        ("tag_class_attr_using_attr_role", "myext.mytag.ta1", "module_extension.html#myext.mytag.ta1"),
-        ("tag_class_attr_using_attr_role_just_attr_name", "ta1", "module_extension.html#myext.mytag.ta1"),
+        (
+            "full_repo_rule_attr",
+            "@testrepo//lang:rule.bzl%my_rule.ra1",
+            "rule.html#my_rule.ra1",
+        ),
+        (
+            "full_repo_provider",
+            "@testrepo//lang:provider.bzl%LangInfo",
+            "provider.html#LangInfo",
+        ),
+        (
+            "full_repo_aspect",
+            "@testrepo//lang:aspect.bzl%myaspect",
+            "aspect.html#myaspect",
+        ),
+        (
+            "full_repo_target",
+            "@testrepo//lang:relativetarget",
+            "target.html#relativetarget",
+        ),
+        (
+            "tag_class_attr_using_attr_role",
+            "myext.mytag.ta1",
+            "module_extension.html#myext.mytag.ta1",
+        ),
+        (
+            "tag_class_attr_using_attr_role_just_attr_name",
+            "ta1",
+            "module_extension.html#myext.mytag.ta1",
+        ),
         ("file_without_repo", "//lang:rule.bzl", "rule.html"),
         ("file_with_repo", "@testrepo//lang:rule.bzl", "rule.html"),
         ("package_absolute", "//lang", "target.html"),

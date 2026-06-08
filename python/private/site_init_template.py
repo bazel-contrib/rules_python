@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """site initialization logic for Bazel-built py_binary targets."""
+
 import os
 import os.path
 import sys
@@ -130,7 +131,6 @@ def _setup_sys_path():
     """Perform Bazel/binary specific sys.path setup."""
     _print_verbose("site init: initial sys.path:\n", "\n".join(sys.path))
     seen = set(sys.path)
-    python_path_entries = []
 
     def _maybe_add_path(path, reason):
         if path in seen:

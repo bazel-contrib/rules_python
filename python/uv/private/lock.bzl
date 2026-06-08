@@ -144,38 +144,102 @@ def _lock_impl(ctx):
         mnemonic = "PyRequirementsLockUv"
         progress_message = "Creating a requirements.txt with uv: %{label}"
 
+    if ctx.attr.is_windows:
+        ext = ".bat"
+        lines = ["@echo off"]
+    else:
+        ext = ".sh"
+        lines = ["#!/usr/bin/env bash", "set -euo pipefail"]
+
+    python_path = getattr(python, "path", python)
+    is_absolute = python_path.startswith("/") or (len(python_path) > 2 and python_path[1] == ":")
+    uv_python_path = python_path if is_absolute else "$(pwd)/" + python_path
+
     if is_uv_lock:
         src_dir = ctx.files.srcs[0].dirname if ctx.files.srcs else "."
-        python_path = getattr(python, "path", python)
-        is_absolute = python_path.startswith("/") or (len(python_path) > 2 and python_path[1] == ":")
-        uv_python_path = python_path if is_absolute else "$(pwd)/" + python_path
-        command = 'export UV_PYTHON_PATH="{python}" && "$@" --python "$UV_PYTHON_PATH" && cp "{src_dir}/uv.lock" "{output}"'.format(
-            python = uv_python_path,
-            src_dir = src_dir,
-            output = output.path,
-        )
+        if ctx.attr.is_windows:
+            lines.append('"%~dp0{uv}" lock --no-python-downloads --no-cache --python "{py}" --directory "{src}" --no-progress --quiet'.format(
+                uv = getattr(uv, "path", uv).replace("/", "\\"),
+                py = uv_python_path.replace("/", "\\"),
+                src = src_dir.replace("/", "\\"),
+            ))
+            lines.append('copy /Y "{}\\uv.lock" "{}"'.format(
+                src_dir.replace("/", "\\"),
+                getattr(output, "path", output).replace("/", "\\"),
+            ))
+        else:
+            lines.append('export UV_PYTHON_PATH="{}"'.format(uv_python_path))
+            lines.append('"$@" --python "$UV_PYTHON_PATH"')
+            lines.append('cp "{}/uv.lock" "{}"'.format(src_dir, getattr(output, "path", output)))
     elif ctx.files.existing_output:
-        command = '{python} -c {python_cmd} && "$@"'.format(
-            python = getattr(python, "path", python),
-            python_cmd = shell.quote(
-                "from shutil import copy; copy(\"{src}\", \"{dst}\")".format(
+        python_cmd = "from shutil import copy; copy(\"{src}\", \"{dst}\")".format(
+            src = ctx.files.existing_output[0].path,
+            dst = getattr(output, "path", output),
+        )
+        if ctx.attr.is_windows:
+            lines.append(
+                "\"{py}\" -c \"from shutil import copy; copy(\"\"{src}\"\", \"\"{dst}\"\")\"".format(
+                    py = python_path,
                     src = ctx.files.existing_output[0].path,
-                    dst = output.path,
+                    dst = getattr(output, "path", output),
                 ),
+            )
+        else:
+            lines.append("{py} -c '{cmd}'".format(
+                py = python_path,
+                cmd = python_cmd,
+            ))
+
+    if ctx.attr.is_windows:
+        # Build the command line with backslash paths for CMD.
+        # args.run_info has most args; add the output/progress/quiet
+        # args that were only added directly to args.run_shell.
+        def _quote(arg):
+            if hasattr(arg, "path"):
+                arg = arg.path.replace("/", "\\")
+            else:
+                arg = str(arg)
+            return '"' + arg.replace('"', '""') + '"'
+
+        bat_args = args.run_info + [
+            "--output-file",
+            output,
+            "--no-progress",
+            "--quiet",
+        ]
+        lines.append(" ".join([_quote(a) for a in bat_args]))
+
+        # Normalize CRLF line endings in the output on Windows.
+        lines.append(
+            "\"{py}\" -c \"import pathlib;p=pathlib.Path(r\"\"{dst}\"\");p.write_bytes(p.read_bytes().replace(b'\\r\\n', b'\\n'))\"".format(
+                py = python_path,
+                dst = output.path,
             ),
         )
     else:
-        command = '"$@"'
+        lines.append('exec "$@"')
+
+    script = ctx.actions.declare_file(ctx.label.name + "_lock" + ext)
+    if ctx.attr.is_windows:
+        content = "\r\n".join(lines) + "\r\n"
+    else:
+        content = "\n".join(lines) + "\n"
+    ctx.actions.write(output = script, content = content, is_executable = True)
 
     srcs = srcs + ctx.files.build_constraints + ctx.files.constraints
 
-    ctx.actions.run_shell(
-        command = command,
-        mnemonic = mnemonic,
+    ctx.actions.run(
+        executable = script,
         inputs = srcs + ctx.files.existing_output,
-        outputs = [output],
-        arguments = [args.run_shell],
-        tools = [uv, python_files],
+        outputs = [output] if hasattr(output, "path") else [ctx.actions.declare_file(output.path)],
+        arguments = [args.run_shell] if not ctx.attr.is_windows else [],
+        tools = [
+            uv,
+            python_files,
+            script,
+        ],
+        use_default_shell_env = True,
+        mnemonic = mnemonic,
         progress_message = progress_message,
         env = ctx.attr.env,
     )
@@ -239,6 +303,7 @@ modifications and the locking is not done from scratch.
             doc = "Public, see the docs in the macro.",
             default = True,
         ),
+        "is_windows": attr.bool(mandatory = True),
         "output": attr.string(
             doc = "Public, see the docs in the macro.",
             mandatory = True,
@@ -275,7 +340,7 @@ The string to input for the 'uv pip compile'.
 def _lock_run_impl(ctx):
     if ctx.attr.is_windows:
         path_sep = "\\"
-        ext = ".exe"
+        ext = ".bat"
     else:
         path_sep = "/"
         ext = ""
@@ -284,7 +349,12 @@ def _lock_run_impl(ctx):
         if hasattr(arg, "short_path"):
             arg = arg.short_path
 
-        return shell.quote(arg.replace("/", path_sep))
+        arg = arg.replace("/", path_sep)
+        if ctx.attr.is_windows:
+            # On Windows, CMD uses double quotes for quoting, and internal
+            # double quotes are escaped by doubling them.
+            return '"' + arg.replace('"', '""') + '"'
+        return shell.quote(arg)
 
     info = ctx.attr.lock[_RunLockInfo]
 
@@ -485,6 +555,10 @@ def lock(
         env = env,
         existing_output = maybe_out,
         generate_hashes = generate_hashes,
+        is_windows = select({
+            "@platforms//os:windows": True,
+            "//conditions:default": False,
+        }),
         python_version = python_version,
         srcs = srcs,
         strip_extras = strip_extras,

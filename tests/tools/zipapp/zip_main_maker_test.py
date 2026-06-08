@@ -36,7 +36,7 @@ class ZipMainMakerTest(unittest.TestCase):
             f.write(f"rf-file|0|file1.txt|{file1_path}\n")
             f.write(f"rf-file|0|file2.txt|{file2_path}\n")
             f.write(f"rf-symlink|1|symlink.txt|{symlink_path}\n")
-            f.write(f"rf-empty|empty_file.txt\n")
+            f.write("rf-empty|empty_file.txt\n")
 
         argv = [
             "zip_main_maker.py",
@@ -58,7 +58,7 @@ class ZipMainMakerTest(unittest.TestCase):
         line1 = f"rf-file|0|file1.txt|{file1_path}"
         line2 = f"rf-file|0|file2.txt|{file2_path}"
         line3 = f"rf-symlink|1|symlink.txt|{symlink_path}"
-        line4 = f"rf-empty|empty_file.txt"
+        line4 = "rf-empty|empty_file.txt"
 
         # Sort lines like the program does
         lines = sorted([line1, line2, line3, line4])

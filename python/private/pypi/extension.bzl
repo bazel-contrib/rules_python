@@ -358,7 +358,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     simpleapi_cache = simpleapi_cache,
                     # TODO @aignas 2025-09-06: do not use kwargs
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
-                    evaluate_markers_fn = kwargs.get("evaluate_markers", None),
                     available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
                     logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name, mod = mod),
                 )

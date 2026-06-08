@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import io
-import re
 
 from absl.testing import absltest
 from google.protobuf import text_format

@@ -275,6 +275,7 @@ def _python_impl(module_ctx):
         register_result = python_register_toolchains(
             name = toolchain_info.name,
             _internal_bzlmod_toolchain_call = True,
+            _internal_module_ctx = module_ctx,
             **kwargs
         )
         if not register_result.impl_repos:

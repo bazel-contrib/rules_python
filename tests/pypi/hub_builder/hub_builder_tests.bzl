@@ -47,7 +47,6 @@ def hub_builder(
         config = None,
         minor_mapping = {},
         whl_overrides = {},
-        evaluate_markers_fn = None,
         simpleapi_download_fn = None,
         log_printer = None,
         available_interpreters = {}):
@@ -87,7 +86,6 @@ def hub_builder(
             "python_3_15_host": "unit_test_interpreter_target",
         },
         simpleapi_download_fn = simpleapi_download_fn or (lambda *a, **k: {}),
-        evaluate_markers_fn = evaluate_markers_fn,
         logger = repo_utils.logger(
             struct(
                 getenv = {
@@ -441,17 +439,7 @@ def _test_simple_with_markers(env):
         ("linux", "x86_64"): "torch==2.4.1+cpu",
     }
     for (host_os, host_arch), want_requirement in sub_tests.items():
-        builder = hub_builder(
-            env,
-            evaluate_markers_fn = lambda requirements: {
-                key: [
-                    platform
-                    for platform in platforms
-                    if ("x86_64" in platform and "platform_machine ==" in key) or ("x86_64" not in platform and "platform_machine !=" in key)
-                ]
-                for key, platforms in requirements.items()
-            },
-        )
+        builder = hub_builder(env)
         builder.pip_parse(
             mocks.mctx(
                 mock_files = {

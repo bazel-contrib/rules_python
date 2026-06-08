@@ -725,7 +725,7 @@ class _MockFile:
         tmpdir = os.environ.get("TEST_TMPDIR")
         self._path = os.path.join(tempfile.mkdtemp(dir=tmpdir), self._name)
         with open(self._path, "wt", encoding="utf-8", newline="\n") as f:
-            f.writelines(l + "\n" for l in self._contents)
+            f.writelines(l + "\n" for l in self._contents)  # noqa: E741
         return self
 
     def __exit__(

@@ -24,7 +24,6 @@ import re
 import stat
 import sys
 import zipfile
-from collections.abc import Iterable
 from pathlib import Path
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -94,9 +93,7 @@ def normalize_pep440(version):
     substituted = re.sub(r"\{\w+\}", "0", version)
     delimiter = "." if "+" in substituted else "+"
     try:
-        return str(
-            packaging.version.Version(f"{substituted}{delimiter}{sanitized}")
-        )
+        return str(packaging.version.Version(f"{substituted}{delimiter}{sanitized}"))
     except packaging.version.InvalidVersion:
         return str(packaging.version.Version(f"0+{sanitized}"))
 
@@ -104,7 +101,7 @@ def normalize_pep440(version):
 def arcname_from(
     name: str,
     distribution_prefix: str,
-    strip_path_prefixes: Sequence[str] = (),
+    strip_path_prefixes: Sequence[str] = (),  # noqa: F821
     add_path_prefix: str = "",
 ) -> str:
     """Return the within-archive name for a given file path name.
@@ -120,9 +117,7 @@ def arcname_from(
     # Always use unix path separators.
     normalized_arcname = name.replace(os.path.sep, "/")
     # Don't manipulate names filenames in the .distinfo or .data directories.
-    if distribution_prefix and normalized_arcname.startswith(
-        distribution_prefix
-    ):
+    if distribution_prefix and normalized_arcname.startswith(distribution_prefix):
         return normalized_arcname
     for prefix in strip_path_prefixes:
         if normalized_arcname.startswith(prefix):
@@ -205,9 +200,7 @@ class _WhlFile(zipfile.ZipFile):
         self.writestr(zinfo, contents)
         hash = hashlib.sha256()
         hash.update(contents)
-        self._add_to_record(
-            filename, self._serialize_digest(hash), len(contents)
-        )
+        self._add_to_record(filename, self._serialize_digest(hash), len(contents))
 
     def _serialize_digest(self, hash) -> str:
         # https://www.python.org/dev/peps/pep-0376/#record
@@ -244,9 +237,7 @@ class _WhlFile(zipfile.ZipFile):
         filename = filename.lstrip("/")
         # Some RECORDs like torch have *all* filenames quoted and we must minimize diff.
         # Otherwise, we quote only when necessary (e.g. for filenames with commas).
-        quoting = (
-            csv.QUOTE_ALL if self.quote_all_filenames else csv.QUOTE_MINIMAL
-        )
+        quoting = csv.QUOTE_ALL if self.quote_all_filenames else csv.QUOTE_MINIMAL
         with io.StringIO() as buf:
             csv.writer(buf, quoting=quoting).writerow([filename])
             return buf.getvalue().strip()
@@ -288,8 +279,8 @@ class WheelMaker(object):
         self._strip_path_prefixes = strip_path_prefixes
         self._add_path_prefix = add_path_prefix
         self._compress = compress
-        self._wheelname_fragment_distribution_name = (
-            escape_filename_distribution_name(self._name)
+        self._wheelname_fragment_distribution_name = escape_filename_distribution_name(
+            self._name
         )
 
         self._distribution_prefix = (
@@ -350,9 +341,7 @@ class WheelMaker(object):
 Wheel-Version: 1.0
 Generator: bazel-wheelmaker 1.0
 Root-Is-Purelib: {}
-""".format(
-            "true" if self._platform == "any" else "false"
-        )
+""".format("true" if self._platform == "any" else "false")
         for tag in self.disttags():
             wheel_contents += "Tag: %s\n" % tag
         self._whlfile.add_string(self.distinfo_path("WHEEL"), wheel_contents)
@@ -361,9 +350,7 @@ Root-Is-Purelib: {}
         """Write METADATA file to the distribution."""
         # https://www.python.org/dev/peps/pep-0566/
         # https://packaging.python.org/specifications/core-metadata/
-        metadata = re.sub(
-            "^Name: .*$", "Name: %s" % name, metadata, flags=re.MULTILINE
-        )
+        metadata = re.sub("^Name: .*$", "Name: %s" % name, metadata, flags=re.MULTILINE)
         metadata += "Version: %s\n\n" % self._version
         # setuptools seems to insert UNKNOWN as description when none is
         # provided.
@@ -389,6 +376,9 @@ def get_files_to_package(input_files):
 
 def get_new_requirement_line(reqs_text: str, extra: str) -> str:
     """Formats a requirement text into a Requires-Dist metadata line."""
+    # This is not imported at the top of the file due to the reliance
+    # on this file in the `whl_library` repository rule which does not
+    # provide `packaging` but does import symbols defined here.
     from packaging.requirements import Requirement
 
     req = Requirement(reqs_text.strip())
@@ -442,9 +432,7 @@ def resolve_argument_stamp(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Builds a python wheel")
-    metadata_group = parser.add_argument_group(
-        "Wheel name, version and platform"
-    )
+    metadata_group = parser.add_argument_group("Wheel name, version and platform")
     metadata_group.add_argument(
         "--name", required=True, type=str, help="Name of the distribution"
     )
@@ -560,7 +548,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args(sys.argv[1:])
 
 
-def _parse_file_pairs(content: List[str]) -> List[List[str]]:
+def _parse_file_pairs(content: List[str]) -> List[List[str]]:  # noqa: F821
     """
     Parse ; delimited lists of files into a 2D list.
     """
@@ -629,11 +617,6 @@ def main() -> None:
 
         metadata = arguments.metadata_file.read_text(encoding="utf-8")
 
-        # This is not imported at the top of the file due to the reliance
-        # on this file in the `whl_library` repository rule which does not
-        # provide `packaging` but does import symbols defined here.
-        from packaging.requirements import Requirement
-
         # Search for any `Requires-Dist` entries that refer to other files and
         # expand them.
 
@@ -643,9 +626,7 @@ def main() -> None:
 
             if not meta_line[len("Requires-Dist: ") :].startswith("@"):
                 # This is a normal requirement.
-                package, _, extra = meta_line[
-                    len("Requires-Dist: ") :
-                ].rpartition(";")
+                package, _, extra = meta_line[len("Requires-Dist: ") :].rpartition(";")
                 if not package:
                     # This is when the package requirement does not have markers.
                     continue
@@ -660,9 +641,7 @@ def main() -> None:
             extra = extra.strip()
 
             reqs = []
-            for reqs_line in (
-                Path(file).read_text(encoding="utf-8").splitlines()
-            ):
+            for reqs_line in Path(file).read_text(encoding="utf-8").splitlines():
                 reqs_text = reqs_line.strip()
                 if not reqs_text or reqs_text.startswith(("#", "-")):
                     continue

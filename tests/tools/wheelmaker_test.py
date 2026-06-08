@@ -35,14 +35,10 @@ class QuoteAllFilenamesTest(unittest.TestCase):
     def test_quote_all_quotes_filenames_with_commas(self) -> None:
         """Filenames with commas are always quoted, regardless of quote_all_filenames."""
         whl = self._make_whl_file(quote_all=True)
-        self.assertEqual(
-            whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"'
-        )
+        self.assertEqual(whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"')
 
         whl = self._make_whl_file(quote_all=False)
-        self.assertEqual(
-            whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"'
-        )
+        self.assertEqual(whl._quote_filename("foo,bar/baz.py"), '"foo,bar/baz.py"')
 
 
 @dataclass
@@ -145,9 +141,7 @@ class GetNewRequirementLineTest(unittest.TestCase):
         self.assertEqual(result, "Requires-Dist: requests>=2.0")
 
     def test_requirement_and_extra(self):
-        result = wheelmaker.get_new_requirement_line(
-            "requests>=2.0", "extra=='dev'"
-        )
+        result = wheelmaker.get_new_requirement_line("requests>=2.0", "extra=='dev'")
         self.assertEqual(result, "Requires-Dist: requests>=2.0; extra=='dev'")
 
     def test_requirement_with_url(self):

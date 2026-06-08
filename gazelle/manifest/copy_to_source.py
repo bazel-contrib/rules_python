@@ -6,7 +6,6 @@ Run like:
 
 import os
 import shutil
-import stat
 import sys
 from pathlib import Path
 
@@ -20,7 +19,9 @@ def copy_to_source(generated_relative_path: Path, target_relative_path: Path) ->
     generated_absolute_path = Path.cwd() / generated_relative_path
 
     # Similarly, the target is relative to the source directory.
-    target_absolute_path = os.environ["BUILD_WORKSPACE_DIRECTORY"] / target_relative_path
+    target_absolute_path = (
+        os.environ["BUILD_WORKSPACE_DIRECTORY"] / target_relative_path
+    )
 
     print(f"Copying {generated_absolute_path} to {target_absolute_path}")
     target_absolute_path.parent.mkdir(parents=True, exist_ok=True)

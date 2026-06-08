@@ -2,7 +2,6 @@ import unittest
 
 
 class NamespacePackagesTest(unittest.TestCase):
-
     def test_both_importable(self):
         import nspkg
         import nspkg.subpkg1

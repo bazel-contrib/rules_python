@@ -173,6 +173,7 @@ def pip_compile(
         name = name + ".update",
         env = env,
         python_version = kwargs.get("python_version", None),
+        target_compatible_with = kwargs.get("target_compatible_with", []),
         **attrs
     )
 
