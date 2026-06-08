@@ -101,20 +101,21 @@ def _lock_impl(ctx):
     if not ctx.attr.strip_extras:
         args.add("--no-strip-extras")
 
-    project = ctx.attr.project
-
-    if not project:
+    project = None
+    if ctx.attr.project:
+        project = ctx.attr.project
+    else:
         # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
         # we see that is named "pyproject.toml"
         for src in srcs:
             if src.basename == "pyproject.toml":
-                if not project:
+                if project == None:
                     project = src.dirname
                 elif len(project) > len(src.dirname):
                     # select the shortest match
                     project = src.dirname
 
-    if not project:
+    if project == None:
         project = pkg
 
     args.add("--project", project)
