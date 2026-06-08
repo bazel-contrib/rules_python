@@ -216,6 +216,7 @@ bzl_library(
     name = "internal_config_repo_bzl",
     srcs = ["internal_config_repo.bzl"],
     deps = [
+        ":pbs_manifest_bzl",
         ":repo_utils_bzl",
         ":text_util_bzl",
     ],
@@ -298,12 +299,12 @@ bzl_library(
         ":bazel_tools_bzl",
         ":coverage_deps_bzl",
         ":full_version_bzl",
-        ":internal_config_repo_bzl",
         ":python_repository_bzl",
         ":repo_utils_bzl",
         ":toolchains_repo_bzl",
         "//python:versions_bzl",
         "//python/private/pypi:deps_bzl",
+        "@rules_python_internal//:manifest_tool_versions_bzl",
     ],
 )
 
@@ -332,6 +333,7 @@ bzl_library(
     name = "pythons_hub_bzl",
     srcs = ["pythons_hub.bzl"],
     deps = [
+        ":pbs_manifest_bzl",
         ":py_toolchain_suite_bzl",
         ":text_util_bzl",
         "//python:versions_bzl",
