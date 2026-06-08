@@ -446,10 +446,15 @@ def apply_config_settings_attr(settings, attr):
         if key.package == "command_line_option":
             if value == "INHERIT":
                 continue
-            else:
-                str_key = "//command_line_option:" + key.name
+            str_key = "//command_line_option:" + key.name
+            if key.name == "extra_toolchains":
+                if value == "":
+                    value = []
+                else:
+                    value = [v.strip() for v in value.split(",") if v.strip()]
         else:
             str_key = str(key)
+
         settings[str_key] = value
     return settings
 
