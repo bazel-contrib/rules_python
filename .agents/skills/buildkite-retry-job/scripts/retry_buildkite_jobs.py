@@ -68,12 +68,12 @@ def main():
 
     for job in failed_jobs:
         job_id = job.get("id")
-        job_name = job.get("name", "Unknown")
+        job_name = job.get("name") or "Unknown"
 
         if (
             args.job_name
             and args.job_name.lower() not in job_name.lower()
-            and args.job_name.lower() not in job.get("step_key", "").lower()
+            and args.job_name.lower() not in (job.get("step_key") or "").lower()
         ):
             continue
 

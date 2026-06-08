@@ -86,6 +86,7 @@ def parse_requirements(
         return _parse_uv_lock(
             uv_lock = uv_lock,
             all_platforms = _get_all_platforms(requirements_by_platform) if requirements_by_platform else sorted(platforms.keys()),
+            platforms = platforms,
             extra_pip_args = extra_pip_args,
             logger = logger,
         )
@@ -108,12 +109,13 @@ def _get_all_platforms(requirements_by_platform):
             all_platforms[p] = None
     return sorted(all_platforms)
 
-def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
+def _parse_uv_lock(uv_lock, all_platforms, platforms, logger, extra_pip_args = None):
     """Parse decoded uv.lock TOML dict and build the same return structs as parse_requirements.
 
     Args:
         uv_lock: {type}`dict` A decoded dictionary representing the uv.lock contents.
         all_platforms: {type}`list[str]` The list of all platform names.
+        platforms: {type}`dict` The target platform descriptions.
         logger: {type}`struct` A logger for diagnostic messages.
         extra_pip_args: {type}`list[str] | None` Extra pip arguments to pass through.
 
@@ -122,6 +124,22 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
     """
     uv_packages = {}
     for pkg in uv_lock.get("package", []):
+        valid_platforms = []
+        if all_platforms:
+            markers = pkg.get("resolution-markers", [])
+            for plat_name in all_platforms:
+                plat_env = platforms.get(plat_name)
+                if not markers or not plat_env:
+                    valid_platforms.append(plat_name)
+                else:
+                    for m in markers:
+                        if evaluate(m, env = plat_env.env):
+                            valid_platforms.append(plat_name)
+                            break
+
+            if not valid_platforms:
+                continue
+
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
@@ -140,40 +158,79 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
             if extra not in entry["extras"]:
                 entry["extras"][extra] = None
 
-        seen = {}
+        wheels = []
         for wheel in pkg.get("wheels", []):
             sha256 = wheel.get("hash", "").removeprefix("sha256:")
             url = wheel["url"]
             _, _, filename = url.rpartition("/")
-            key = (filename, sha256)
-            if key not in seen:
-                seen[key] = None
+            wheels.append(struct(
+                filename = filename,
+                sha256 = sha256,
+                url = url,
+                target_platforms = [],
+            ))
+
+        matched_by_any = {}
+        if all_platforms:
+            for plat_name in valid_platforms:
+                plat_env = platforms.get(plat_name)
+                if not plat_env or not getattr(plat_env, "whl_platform_tags", None):
+                    for w in wheels:
+                        if plat_name not in w.target_platforms:
+                            w.target_platforms.append(plat_name)
+                    matched_by_any[plat_name] = None
+                elif wheels:
+                    selected = select_whl(
+                        whls = wheels,
+                        python_version = plat_env.env["python_full_version"],
+                        implementation_name = plat_env.env.get("implementation_name", "cpython"),
+                        whl_abi_tags = plat_env.whl_abi_tags,
+                        whl_platform_tags = plat_env.whl_platform_tags,
+                        logger = logger,
+                    )
+                    if selected:
+                        if plat_name not in selected.target_platforms:
+                            selected.target_platforms.append(plat_name)
+                        matched_by_any[plat_name] = None
+
+        seen = {}
+        for w in wheels:
+            if not all_platforms or w.target_platforms:
+                key = (w.filename, w.sha256)
+                if key not in seen:
+                    seen[key] = None
+                    entry["src_entries"].append(struct(
+                        version = version,
+                        sha256 = w.sha256,
+                        url = w.url,
+                        filename = w.filename,
+                        # NOTE @aignas 2026-05-17: we don't know if it is yanked because we are not
+                        # checking the SimpleAPI, maybe we should?
+                        yanked = None,
+                        target_platforms = w.target_platforms,
+                    ))
+
+        fallback_platforms = [p for p in valid_platforms if p not in matched_by_any] if all_platforms else []
+        sdist = pkg.get("sdist", None)
+        if sdist:
+            if not all_platforms or fallback_platforms:
+                sha256 = sdist.get("hash", "").removeprefix("sha256:")
+                url = sdist["url"]
+                _, _, filename = url.rpartition("/")
                 entry["src_entries"].append(struct(
                     version = version,
                     sha256 = sha256,
                     url = url,
                     filename = filename,
-                    # NOTE @aignas 2026-05-17: we don't know if it is yanked because we are not
-                    # checking the SimpleAPI, maybe we should?
                     yanked = None,
+                    target_platforms = fallback_platforms,
                 ))
-
-        sdist = pkg.get("sdist", None)
-        if sdist:
-            sha256 = sdist.get("hash", "").removeprefix("sha256:")
-            url = sdist["url"]
-            _, _, filename = url.rpartition("/")
-            entry["src_entries"].append(struct(
-                version = version,
-                sha256 = sha256,
-                url = url,
-                filename = filename,
-                yanked = None,
-            ))
         elif pkg.get("source", {}).get("git"):
-            _add_vcs_entry(entry, version, pkg["source"])
+            if not all_platforms or fallback_platforms:
+                _add_vcs_entry(entry, version, pkg["source"], fallback_platforms)
         elif pkg.get("source", {}).get("url"):
-            _add_direct_url_entry(entry, version, pkg["source"])
+            if not all_platforms or fallback_platforms:
+                _add_direct_url_entry(entry, version, pkg["source"], fallback_platforms)
 
     ret = []
     for norm_name, info in sorted(uv_packages.items()):
@@ -192,7 +249,7 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
                 distribution = info["distribution"],
                 extra_pip_args = extra_pip_args or [],
                 requirement_line = requirement_line,
-                target_platforms = list(all_platforms),
+                target_platforms = src_entry.target_platforms,
                 filename = src_entry.filename,
                 sha256 = src_entry.sha256,
                 url = src_entry.url,
@@ -214,13 +271,14 @@ def _parse_uv_lock(uv_lock, all_platforms, logger, extra_pip_args = None):
     logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
     return ret
 
-def _add_vcs_entry(entry, version, source):
+def _add_vcs_entry(entry, version, source, valid_platforms):
     """Add a VCS entry from a uv.lock source.
 
     Args:
         entry: {type}`dict` The package entry being built.
         version: {type}`str` The package version.
         source: {type}`dict` The source dict from uv.lock (e.g. {"git": url}).
+        valid_platforms: {type}`list[str]` Valid target platforms.
     """
     url = source["git"]
     _, _, filename = url.rpartition("/")
@@ -230,15 +288,17 @@ def _add_vcs_entry(entry, version, source):
         url = url,
         filename = filename,
         yanked = None,
+        target_platforms = valid_platforms,
     ))
 
-def _add_direct_url_entry(entry, version, source):
+def _add_direct_url_entry(entry, version, source, valid_platforms):
     """Add a direct URL entry from a uv.lock source.
 
     Args:
         entry: {type}`dict` The package entry being built.
         version: {type}`str` The package version.
         source: {type}`dict` The source dict from uv.lock (e.g. {"url": url}).
+        valid_platforms: {type}`list[str]` Valid target platforms.
     """
     url = source["url"]
     _, _, filename = url.rpartition("/")
@@ -248,6 +308,7 @@ def _add_direct_url_entry(entry, version, source):
         url = url,
         filename = filename,
         yanked = None,
+        target_platforms = valid_platforms,
     ))
 
 def _parse_requirements_from_req_files(
