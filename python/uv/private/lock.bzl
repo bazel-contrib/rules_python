@@ -118,7 +118,8 @@ def _lock_impl(ctx):
     if project == None:
         project = pkg
 
-    args.add("--project", project)
+    if project:
+        args.add_all([project], before_each = "--project")
 
     args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
     args.add_all(ctx.files.constraints, before_each = "--constraints")
