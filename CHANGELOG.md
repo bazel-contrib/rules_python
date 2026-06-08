@@ -54,6 +54,8 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-removed}
 ### Removed
+* (build_data) Removed CONFIG_MODE from build data
+  ([#3793](https://github.com/bazel-contrib/rules_python/issues/3793)).
 * (coverage) Support for python 3.8 has been dropped from the bundled
   `coverage.py` wheel set, since coverage.py 7.6.2 dropped it.
 
@@ -101,6 +103,12 @@ END_UNRELEASED_TEMPLATE
   PyPI download and supports PyPI mirror implementations that do not support the root
   index functionality. Fixes
   ([#3769](https://github.com/bazel-contrib/rules_python/pull/3769)).
+* (uv) allow user overwrite the build environment using `--action_env` to allow
+  setting authentication for the index URL.
+  ([#3405](https://github.com/bazel-contrib/rules_python/issues/3405))
+* (uv) fix the execution of the `uv pip compile` in the sandbox. Work
+  towards better supporting `uv` out of the box on our platforms.
+  ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
 
 {#v0-0-0-added}
 ### Added

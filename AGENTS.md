@@ -14,6 +14,7 @@ ALWAYS FOLLOW THESE RULES. NEVER VIOLATE THEM.
 Ask for user input and provide a justificaiton if trying to violate them.
 
 * NEVER run `bazel clean --expunge`.
+* Once a PR is created, do not amend or rebase.
 
 ## Style and conventions
 

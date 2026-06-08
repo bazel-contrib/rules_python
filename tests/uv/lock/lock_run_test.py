@@ -1,3 +1,4 @@
+import os
 import subprocess
 import tempfile
 import unittest
@@ -9,15 +10,59 @@ rfiles = runfiles.Create()
 
 
 def _relative_rpath(path: str) -> Path:
-    p = (Path("_main") / "tests" / "uv" / "lock" / path).as_posix()
-    rpath = rfiles.Rlocation(p)
-    if not rpath:
-        raise ValueError(f"Could not find file: {p}")
+    """Find file in runfiles, handling Windows .bat/.exe wrappers."""
+    # On Windows, try executable extensions first to avoid matching symlink
+    # entries in the runfiles manifest that point to non-executable files
+    # (e.g. a Python source file instead of the .exe launcher).
+    exts = (".exe", ".bat", "") if os.name == "nt" else ("", ".exe", ".bat")
+    for ext in exts:
+        p = (Path("_main") / "tests" / "uv" / "lock" / (path + ext)).as_posix()
+        rpath = rfiles.Rlocation(p)
+        if rpath:
+            rp = Path(rpath)
+            if rp.exists():
+                return rp
 
-    return Path(rpath)
+    # Fallback: look in runfiles directory directly (handles .bat wrappers on
+    # Windows where Rlocation may return a runfiles link that doesn't exist)
+    runfiles_dir = os.environ.get("RUNFILES_DIR")
+    if runfiles_dir:
+        exts = (".exe", ".bat", "") if os.name == "nt" else ("", ".bat", ".exe")
+        for ext in exts:
+            rp = Path(runfiles_dir, "_main", "tests", "uv", "lock", path + ext)
+            if rp.exists():
+                return rp
+
+    raise ValueError(f"Could not find file in runfiles: {path}")
+
+
+def _run_binary(path: Path, **kwargs):
+    """Run a binary, handling Windows .bat files."""
+    if os.name == "nt":
+        return subprocess.run(
+            ["cmd.exe", "/c", str(path)],
+            **kwargs,
+        )
+    return subprocess.run(path, **kwargs)
 
 
 class LockTests(unittest.TestCase):
+    def _subprocess_env(self, workspace_dir: Path) -> dict[str, str]:
+        env = {
+            "BUILD_WORKSPACE_DIRECTORY": str(workspace_dir),
+        }
+        # Inherit specific env vars needed for finding runfiles on Windows
+        for key in (
+            "PATH",
+            "RUNFILES_DIR",
+            "RUNFILES_MANIFEST_FILE",
+            "SYSTEMROOT",
+            "PATHEXT",
+        ):
+            if key in os.environ:
+                env[key] = os.environ[key]
+        return env
+
     def test_requirements_updating_for_the_first_time(self):
         # Given
         copier_path = _relative_rpath("requirements_new_file.update")
@@ -30,19 +75,18 @@ class LockTests(unittest.TestCase):
             self.assertFalse(
                 want_path.exists(), "The path should not exist after the test"
             )
-            output = subprocess.run(
+            output = _run_binary(
                 copier_path,
                 capture_output=True,
-                env={
-                    "BUILD_WORKSPACE_DIRECTORY": f"{workspace_dir}",
-                },
+                env=self._subprocess_env(workspace_dir),
             )
 
             # Then
             self.assertEqual(0, output.returncode, output.stderr)
+            stdout = output.stdout.decode("utf-8").replace("\\", "/")
             self.assertIn(
                 "cp <bazel-sandbox>/tests/uv/lock/requirements_new_file",
-                output.stdout.decode("utf-8"),
+                stdout,
             )
             self.assertTrue(want_path.exists(), "The path should exist after the test")
             self.assertNotEqual(want_path.read_text(), "")
@@ -69,19 +113,18 @@ class LockTests(unittest.TestCase):
                 want_text + "\n\n"
             )  # Write something else to see that it is restored
 
-            output = subprocess.run(
+            output = _run_binary(
                 copier_path,
                 capture_output=True,
-                env={
-                    "BUILD_WORKSPACE_DIRECTORY": f"{workspace_dir}",
-                },
+                env=self._subprocess_env(workspace_dir),
             )
 
             # Then
             self.assertEqual(0, output.returncode)
+            stdout = output.stdout.decode("utf-8").replace("\\", "/")
             self.assertIn(
                 "cp <bazel-sandbox>/tests/uv/lock/requirements",
-                output.stdout.decode("utf-8"),
+                stdout,
             )
             self.assertEqual(want_path.read_text(), want_text)
 
@@ -100,12 +143,10 @@ class LockTests(unittest.TestCase):
             self.assertFalse(
                 want_path.exists(), "The path should not exist after the test"
             )
-            output = subprocess.run(
+            output = _run_binary(
                 copier_path,
                 capture_output=True,
-                env={
-                    "BUILD_WORKSPACE_DIRECTORY": f"{workspace_dir}",
-                },
+                env=self._subprocess_env(workspace_dir),
             )
 
             # Then
@@ -141,12 +182,10 @@ class LockTests(unittest.TestCase):
                 want_text + "\n\n"
             )  # Write something else to see that it is restored
 
-            output = subprocess.run(
+            output = _run_binary(
                 copier_path,
                 capture_output=True,
-                env={
-                    "BUILD_WORKSPACE_DIRECTORY": f"{workspace_dir}",
-                },
+                env=self._subprocess_env(workspace_dir),
             )
 
             # Then
