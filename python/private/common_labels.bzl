@@ -14,6 +14,7 @@ labels = struct(
     # NOTE: Special target; see definition for details.
     ENABLE_RUNFILES = str(Label("//command_line_option:enable_runfiles")),
     EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain")),
+    EXTRA_TOOLCHAINS = str(Label("//command_line_option:extra_toolchains")),
     NONE = str(Label("//python:none")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
     PIP_WHL_OSX_VERSION = str(Label("//python/config_settings:pip_whl_osx_version")),
