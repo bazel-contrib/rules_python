@@ -1,5 +1,6 @@
 common --deleted_packages=examples/bzlmod_build_file_generation
 common --deleted_packages=examples/bzlmod_build_file_generation/runfiles
+common --experimental_downloader_config=downloader_config.cfg
 
 test --test_output=errors
 
