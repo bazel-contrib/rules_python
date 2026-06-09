@@ -1,5 +1,6 @@
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("//python/uv:lock.bzl", "lock")
+load("//tests/support:support.bzl", "NOT_WINDOWS")
 
 # This test verifies that the `lock` rule automatically passes `--project` to `uv pip compile` based
 # on the package directory, so that `[tool.uv]` settings from a `pyproject.toml` in the same
@@ -22,4 +23,5 @@ diff_test(
     timeout = "short",
     file1 = ":requirements",
     file2 = "requirements.txt",
+    target_compatible_with = NOT_WINDOWS,
 )

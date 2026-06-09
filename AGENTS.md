@@ -150,6 +150,8 @@ This repository contains 3 Bazel bzlmod modules.
  * `gazelle/` is for the `@rules_python_gazelle_plugin` module.
  * All other code is part of `@rules_python`.
 
+`tests/support/` contains utility code and helpers for testing.
+
 
 `python/config_settings/BUILD.bazel` contains build flags that are part of the
 public API. DO NOT add, remove, or modify these build flags unless specifically
