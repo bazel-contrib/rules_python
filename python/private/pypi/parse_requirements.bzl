@@ -282,6 +282,17 @@ def _add_vcs_entry(entry, version, source, valid_platforms):
     """
     url = source["git"]
     _, _, filename = url.rpartition("/")
+    if not url.startswith("git+"):
+        url = "git+" + url
+
+    rev = source.get("rev") or source.get("commit")
+    if rev:
+        url = "{}@{}".format(url, rev)
+
+    subdir = source.get("subdirectory")
+    if subdir:
+        url = "{}#subdirectory={}".format(url, subdir)
+
     entry["src_entries"].append(struct(
         version = version,
         sha256 = "",

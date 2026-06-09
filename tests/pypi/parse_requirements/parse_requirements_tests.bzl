@@ -106,7 +106,7 @@ bar==0.0.1 --hash=sha256:deadb00f
         "uv_lock_foo_sdist": """{"package":[{"name":"foo","sdist":{"hash":"sha256:feedcafe","url":"https://files.pythonhosted.org/packages/foo-0.0.1.tar.gz"},"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0"}]}""",
         "uv_lock_foo_with_extras": """{"package":[{"name":"foo","provides-extras":["extra"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
-        "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo.git"},"version":"0.1.0"}]}""",
+        "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo.git","rev":"main","subdirectory":"pkg"},"version":"0.1.0"}]}""",
         "uv_lock_rules_python_pkg": """{"package":[{"name":"rules_python","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl"}]}]}""",
     }
 
@@ -1224,7 +1224,7 @@ def _test_uv_lock_vcs_entry(env):
                     target_platforms = [],
                     filename = "foo.git",
                     sha256 = "",
-                    url = "https://github.com/org/foo.git",
+                    url = "git+https://github.com/org/foo.git@main#subdirectory=pkg",
                     yanked = None,
                 ),
             ],
