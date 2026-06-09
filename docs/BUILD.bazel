@@ -170,8 +170,8 @@ sphinx_build_binary(
         labels.BOOTSTRAP_IMPL: "script",
         labels.VENVS_SITE_PACKAGES: "yes",
         labels.PY_FREETHREADED: "yes",
-        labels.PYTHON_VERSION: "3.14",
     },
+    python_version = "3.14",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
         "@dev_pip//myst_parser",
