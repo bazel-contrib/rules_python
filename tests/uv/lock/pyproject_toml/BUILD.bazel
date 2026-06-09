@@ -1,0 +1,30 @@
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("//python/uv:lock.bzl", "lock")
+
+# This test verifies that the `lock` rule automatically passes `--project` to `uv pip compile` based
+# on the package directory, so that `[tool.uv]` settings from a `pyproject.toml` in the same
+# directory are applied. It will exclude a particular dependency from the lock-file, so it will be
+# easy to see if we have any issues.
+lock(
+    name = "requirements",
+    srcs = ["pyproject.toml"],
+    out = "requirements.txt",
+    build_constraints = [
+        "//tests/uv/lock:testdata/build_constraints.txt",
+        "//tests/uv/lock:testdata/build_constraints2.txt",
+    ],
+    constraints = [
+        "//tests/uv/lock:testdata/constraints.txt",
+        "//tests/uv/lock:testdata/constraints2.txt",
+    ],
+    # It seems that the CI remote executors for the RBE do not have network
+    # connectivity due to current CI setup.
+    tags = ["no-remote-exec"],
+)
+
+diff_test(
+    name = "requirements_test",
+    timeout = "short",
+    file1 = ":requirements",
+    file2 = "requirements.txt",
+)

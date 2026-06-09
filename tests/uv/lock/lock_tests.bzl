@@ -108,6 +108,7 @@ def lock_test_suite(name):
         name = name,
         tests = [
             ":requirements_test",
+            "//tests/uv/lock/pyproject_toml:requirements_test",
             ":requirements_run_tests",
             ":uv_lock_test_check",
         ],
