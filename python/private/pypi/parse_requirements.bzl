@@ -411,29 +411,32 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
     whls = []
     sdist = None
 
-    # First try to find distributions by SHA256 if provided
-    shas_to_use = requirement.srcs.shas
-    if not shas_to_use:
-        version = requirement.srcs.version
-        shas_to_use = index_urls.sha256s_by_version.get(version, [])
-        logger.warn(lambda: "requirement file has been generated without hashes, will use all hashes for the given version {} that could find on the index:\n    {}".format(version, shas_to_use))
+    if hasattr(index_urls, "local_override_whls"):
+        whls = index_urls.local_override_whls
+    else:
+        # First try to find distributions by SHA256 if provided
+        shas_to_use = requirement.srcs.shas
+        if not shas_to_use:
+            version = requirement.srcs.version
+            shas_to_use = index_urls.sha256s_by_version.get(version, [])
+            logger.warn(lambda: "requirement file has been generated without hashes, will use all hashes for the given version {} that could find on the index:\n    {}".format(version, shas_to_use))
 
-    for sha256 in shas_to_use:
-        # For now if the artifact is marked as yanked we just ignore it.
-        #
-        # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
+        for sha256 in shas_to_use:
+            # For now if the artifact is marked as yanked we just ignore it.
+            #
+            # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
 
-        maybe_whl = index_urls.whls.get(sha256)
-        if maybe_whl and maybe_whl.yanked == None:
-            whls.append(maybe_whl)
-            continue
+            maybe_whl = index_urls.whls.get(sha256)
+            if maybe_whl and maybe_whl.yanked == None:
+                whls.append(maybe_whl)
+                continue
 
-        maybe_sdist = index_urls.sdists.get(sha256)
-        if maybe_sdist and maybe_sdist.yanked == None:
-            sdist = maybe_sdist
-            continue
+            maybe_sdist = index_urls.sdists.get(sha256)
+            if maybe_sdist and maybe_sdist.yanked == None:
+                sdist = maybe_sdist
+                continue
 
-        logger.warn(lambda: "Could not find a whl or an sdist with sha256={}".format(sha256))
+            logger.warn(lambda: "Could not find a whl or an sdist with sha256={}".format(sha256))
 
     yanked = {}
     for dist in whls + [sdist]:
