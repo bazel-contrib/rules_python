@@ -71,7 +71,8 @@ def _args(ctx):
     )
 
 def _lock_impl(ctx):
-    srcs = ctx.files.srcs
+    srcs = [] + ctx.files.srcs
+
     fname = "{}.out".format(ctx.label.name)
     python_version = ctx.attr.python_version
     if python_version:
@@ -99,6 +100,27 @@ def _lock_impl(ctx):
         args.add("--generate-hashes")
     if not ctx.attr.strip_extras:
         args.add("--no-strip-extras")
+
+    project = None
+    if ctx.attr.project:
+        project = ctx.attr.project
+    else:
+        # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
+        # we see that is named "pyproject.toml"
+        for src in srcs:
+            if src.basename == "pyproject.toml":
+                if project == None:
+                    project = src.dirname
+                elif len(project) > len(src.dirname):
+                    # select the shortest match
+                    project = src.dirname
+
+    if project == None:
+        project = pkg
+
+    if project:
+        args.add_all([project], before_each = "--project")
+
     args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
     args.add_all(ctx.files.constraints, before_each = "--constraints")
     args.add_all(ctx.attr.args)
@@ -275,6 +297,19 @@ modifications and the locking is not done from scratch.
             doc = "Public, see the docs in the macro.",
             mandatory = True,
         ),
+        "project": attr.string(
+            doc = """\
+Overrides the `--project` directory passed to `uv pip compile`.
+If not set, the project directory is auto-detected: when
+`pyproject.toml` files are in {obj}`lock.srcs`, the one with the
+shortest directory path is selected. This makes `uv` read
+`[tool.uv]` settings (e.g. `no-build-isolation`,
+`exclude-dependencies`) from that `pyproject.toml`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "python_version": attr.string(
             doc = "Public, see the docs in the macro.",
         ),
@@ -438,6 +473,7 @@ def lock(
         env = None,
         generate_hashes = True,
         python_version = None,
+        project = None,
         strip_extras = False,
         **kwargs):
     """Pin the requirements based on the src files.
@@ -484,6 +520,16 @@ def lock(
             function, but sometimes one may want to not have the extras if you
             are compiling the requirements file for using it as a constraints
             file. Defaults to `False`.
+        project: {type}`str | None` overrides the `--project` directory
+            passed to `uv pip compile`. By default the project directory
+            is auto-detected: when {obj}`lock.srcs` contains
+            `pyproject.toml` files, the one with the shortest directory
+            path is selected. This causes `uv` to read `[tool.uv]`
+            settings such as `no-build-isolation` and
+            `exclude-dependencies` from that `pyproject.toml`. If no
+            `pyproject.toml` is in `srcs` and no `project` is given, the
+            Bazel package directory is used as fallback.
+            {versionadded}VERSION_NEXT_FEATURE
         python_version: {type}`str | None` the python_version to transition to
             when locking the requirements. Defaults to the default python version
             configured by the {obj}`python` module extension.
@@ -509,6 +555,7 @@ def lock(
         env = env,
         existing_output = maybe_out,
         generate_hashes = generate_hashes,
+        project = project,
         is_windows = select({
             "@platforms//os:windows": True,
             "//conditions:default": False,

@@ -44,6 +44,8 @@ common --enable_bzlmod
 
 # Local disk cache greatly speeds up builds if the regular cache is lost
 common --disk_cache=~/.cache/bazel/bazel-disk-cache
+# Drop `experimental_` prefix once Bazel 7 is no longer supported
+common --experimental_downloader_config=downloader_config.cfg
 
 
 # Additional config to use for readthedocs builds.

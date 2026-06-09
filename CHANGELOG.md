@@ -109,6 +109,8 @@ END_UNRELEASED_TEMPLATE
 * (uv) fix the execution of the `uv pip compile` in the sandbox. Work
   towards better supporting `uv` out of the box on our platforms.
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+* (uv) automatically pass the `--project` parameter based on the source files.
+  ([#3087](https://github.com/bazel-contrib/rules_python/issues/3087))
 
 {#v0-0-0-added}
 ### Added
