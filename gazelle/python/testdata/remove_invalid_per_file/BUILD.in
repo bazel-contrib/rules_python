@@ -1,0 +1,36 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+# gazelle:python_generation_mode file
+
+py_library(
+    name = "bar",
+    srcs = ["bar.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
+    name = "deleted_lib",
+    srcs = ["deleted.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "remove_invalid_per_file_bin",
+    srcs = ["__main__.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "deleted_bin",
+    srcs = ["deleted_bin.py"],
+)
+
+py_test(
+    name = "bar_test",
+    srcs = ["bar_test.py"],
+)
+
+py_test(
+    name = "deleted_test",
+    srcs = ["deleted_test.py"],
+)
