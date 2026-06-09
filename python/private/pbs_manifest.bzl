@@ -101,8 +101,8 @@ def parse_filename(filename):
     return {
         "arch": arch,
         "archive_flavor": archive_flavor,
+        "build_flavor": flavor,
         "build_version": build_version,
-        "flavor": flavor,
         "freethreaded": freethreaded,
         "libc": libc,
         "location": filename,
@@ -125,7 +125,7 @@ def parse_sha_manifest(content):
         - archive_flavor: Release asset archive type (e.g., "full", "install_only").
         - build_version: Standalone release date (e.g., "20260414").
         - location: Full package filename or URL (e.g., "cpython-3.11.15..." or "https://...").
-        - flavor: Build configuration flavor (e.g., "install_only").
+        - build_flavor: Build configuration flavor (e.g., "debug", "pgo+lto").
         - freethreaded: Whether the build is free-threaded (boolean).
         - libc: C library type (e.g., "gnu", "musl", "msvc", or "").
         - microarch: Microarchitecture level (e.g., "v2", "v3", or "").
