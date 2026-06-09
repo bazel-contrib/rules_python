@@ -15,12 +15,11 @@
 """whl_library aliases for multi_pip_parse."""
 
 load("//python/private:full_version.bzl", "full_version")
-load(":render_pkg_aliases.bzl", "NO_MATCH_ERROR_MESSAGE_TEMPLATE")
 
 def _whl_library_alias_impl(rctx):
     rules_python = rctx.attr._rules_python_workspace.repo_name
     if rctx.attr.default_version:
-        default_repo_prefix = rctx.attr.version_map[rctx.attr.default_version]
+        default_repo_prefix = rctx.attr.version_map.get(rctx.attr.default_version, None)
     else:
         default_repo_prefix = None
     version_map = rctx.attr.version_map.items()
@@ -70,16 +69,18 @@ alias(
         ))
 
     alias.append("    },")  # Close select expression condition dict
-    if not default_repo_prefix:
-        supported_versions = sorted([python_version for python_version, _ in version_map])
-        alias.append('    no_match_error="""{}""",'.format(
-            NO_MATCH_ERROR_MESSAGE_TEMPLATE.format(
-                supported_versions = ", ".join(supported_versions),
-                rules_python = rules_python,
-            ),
-        ))
     alias.append("    ),")  # Close the select expression
     alias.append('    visibility = ["//visibility:public"],')
+    if not default_repo_prefix:
+        alias.append("    target_compatible_with = select({")
+        for [python_version, _] in version_map:
+            alias.append("""\
+            "@{rules_python}//python/config_settings:is_python_{full_python_version}": [],""".format(
+                full_python_version = full_version(version = python_version, minor_mapping = minor_mapping),
+                rules_python = rules_python,
+            ))
+        alias.append('        "//conditions:default": ["@platforms//:incompatible"],')
+        alias.append("    }),")  # Close the select expression
     alias.append(")")  # Close the alias() expression
     return "\n".join(alias)
 
@@ -93,7 +94,7 @@ whl_library_alias = repository_rule(
                   "from `version_map` don't match. This allows the default " +
                   "(version unaware) rules to match and select a wheel. If " +
                   "not specified, then the default rules won't be able to " +
-                  "resolve a wheel and an error will occur.",
+                  "resolve a wheel and the target will be incompatible.",
         ),
         "minor_mapping": attr.string_dict(mandatory = True),
         "version_map": attr.string_dict(mandatory = True),
