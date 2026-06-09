@@ -878,6 +878,21 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
                     _fail = _fail,
                 )
 
+    # Check for add_runtime_manifest_urls or add_runtime_manifest_files in override tags in root module
+    root_module = modules[0] if modules else None
+    if root_module and root_module.is_root:
+        for tag in root_module.tags.override:
+            if tag.add_runtime_manifest_urls or tag.add_runtime_manifest_files:
+                _populate_from_pbs_manifest(
+                    mctx = mctx,
+                    add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
+                    add_runtime_manifest_files = tag.add_runtime_manifest_files,
+                    runtime_manifest_sha = tag.runtime_manifest_sha,
+                    base_url = tag.base_url,
+                    available_versions = available_versions,
+                    _fail = _fail,
+                )
+
     default = {
         "base_url": DEFAULT_RELEASE_BASE_URL,
         "platforms": dict(PLATFORMS),  # Copy so it's mutable.
