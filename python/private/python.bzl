@@ -742,6 +742,17 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
 
             override.fn(tag = tag, _fail = _fail, default = default)
 
+def _manifest_entry_sort_key(entry):
+    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(entry.archive_flavor, 4)
+    microarch = entry.microarch
+    if not microarch:
+        microarch_rank = 0
+    elif microarch.startswith("v") and microarch[1:].isdigit():
+        microarch_rank = int(microarch[1:])
+    else:
+        microarch_rank = 999
+    return (flavor_rank, microarch_rank)
+
 def _populate_from_pbs_manifest(
         *,
         mctx,
@@ -783,7 +794,7 @@ def _populate_from_pbs_manifest(
     # Preference is given to install_only because its smaller
     entries = sorted(
         entries,
-        key = lambda e: {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(e.archive_flavor, 4),
+        key = _manifest_entry_sort_key,
     )
 
     for entry in entries:
@@ -793,13 +804,13 @@ def _populate_from_pbs_manifest(
 
         # Fallback to matching against PLATFORMS keys as before to ensure compatibility
         # with rules_python expected platform keys.
-        matched_platform = None
-        for platform in PLATFORMS.keys():
-            if platform in location:
-                matched_platform = platform
-                break
+        matched_platform = "{}-{}-{}".format(entry.arch, entry.vendor, entry.os)
+        if entry.libc:
+            matched_platform += "-" + entry.libc
+        if entry.freethreaded:
+            matched_platform += "-freethreaded"
 
-        if not matched_platform:
+        if matched_platform not in PLATFORMS:
             continue
 
         if entry.archive_flavor not in ["install_only", "install_only_stripped", "full"]:

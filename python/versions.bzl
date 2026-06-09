@@ -330,6 +330,17 @@ def gen_python_config_settings(name = ""):
             constraint_values = PLATFORMS[platform].compatible_with,
         )
 
+def _manifest_entry_sort_key(entry):
+    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(entry.archive_flavor, 4)
+    microarch = entry.microarch
+    if not microarch:
+        microarch_rank = 0
+    elif microarch.startswith("v") and microarch[1:].isdigit():
+        microarch_rank = int(microarch[1:])
+    else:
+        microarch_rank = 999
+    return (flavor_rank, microarch_rank)
+
 def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE_URL):
     """Converts parsed manifest entries into the TOOL_VERSIONS dictionary format.
 
@@ -343,24 +354,24 @@ def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE
     available_versions = {}
     entries = sorted(
         entries,
-        key = lambda e: {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(getattr(e, "archive_flavor", ""), 4),
+        key = _manifest_entry_sort_key,
     )
 
     for entry in entries:
-        location = getattr(entry, "location", "")
-        sha256 = getattr(entry, "sha256", "")
-        py_version = getattr(entry, "python_version", "")
+        location = entry.location
+        sha256 = entry.sha256
+        py_version = entry.python_version
 
-        matched_platform = None
-        for platform in PLATFORMS.keys():
-            if platform in location:
-                matched_platform = platform
-                break
+        matched_platform = "{}-{}-{}".format(entry.arch, entry.vendor, entry.os)
+        if entry.libc:
+            matched_platform += "-" + entry.libc
+        if entry.freethreaded:
+            matched_platform += "-freethreaded"
 
-        if not matched_platform:
+        if matched_platform not in PLATFORMS:
             continue
 
-        archive_flavor = getattr(entry, "archive_flavor", "")
+        archive_flavor = entry.archive_flavor
         if archive_flavor not in ["install_only", "install_only_stripped", "full"]:
             continue
 
