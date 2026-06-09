@@ -31,6 +31,11 @@ into the sentence, not verbatim.
 When adding `{versionadded}` or `{versionchanged}` sections, add them add the
 end of the documentation text.
 
+### PR Updates
+
+Once a PR is created, create new commits and merges. Don't use rebase or amend
+because it interferes with code review comments.
+
 ### PR descriptions
 
 Follow the advice in `CONTRIBUTING.md` for PR descriptions. PR descriptions
@@ -215,3 +220,18 @@ load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility
 When inspecting CI failures, if the failure is due to a network error
 downloading a repository, check if that rule set is mirrored on
 mirror.bazel.build. If so, add it to the downloader config.
+
+### CI Flakiness and Monitoring
+
+CI is known to have flakey network issues. When submitting or updating a PR,
+start a background agent that continuously monitors the latest build of a PR and
+checks for flakey network errors (e.g., 504 gateway errors).
+
+If Buildkite permissions allow, retry failures and use available Buildkite
+skills. If permissions do not allow, modify `.bazelrc` to set flags (such as
+`--http_timeout_scaling` or `--experimental_repository_downloader_retries`) to
+make downloads retry more.
+
+If downloads fail for a dependency, check if that dependency is available on
+mirror.bazel.build and, if so, add it to downloader_config.cfg if it isn't
+already there.
