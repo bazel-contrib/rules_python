@@ -32,8 +32,8 @@ def _test_parse_filename_baseline_impl(env, target):
     env.expect.that_dict(parsed1).contains_exactly({
         "arch": "x86_64",
         "archive_flavor": "install_only",
+        "build_flavor": "",
         "build_version": "20260414",
-        "flavor": "",
         "freethreaded": False,
         "libc": "gnu",
         "location": "cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
@@ -48,8 +48,8 @@ def _test_parse_filename_baseline_impl(env, target):
     env.expect.that_dict(parsed2).contains_exactly({
         "arch": "x86_64",
         "archive_flavor": "full",
+        "build_flavor": "lto",
         "build_version": "20260414",
-        "flavor": "lto",
         "freethreaded": False,
         "libc": "musl",
         "location": "cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst",
@@ -64,8 +64,8 @@ def _test_parse_filename_baseline_impl(env, target):
     env.expect.that_dict(parsed3).contains_exactly({
         "arch": "aarch64",
         "archive_flavor": "full",
+        "build_flavor": "pgo+lto",
         "build_version": "20260414",
-        "flavor": "pgo+lto",
         "freethreaded": True,
         "libc": "",
         "location": "cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst",
@@ -84,8 +84,8 @@ def _test_parse_filename_baseline_impl(env, target):
     env.expect.that_dict(parsed5).contains_exactly({
         "arch": "x86_64",
         "archive_flavor": "install_only",
+        "build_flavor": "",
         "build_version": "20260414",
-        "flavor": "",
         "freethreaded": False,
         "libc": "gnu",
         "location": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
@@ -127,8 +127,8 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
     env.expect.that_dict(structs.to_dict(parsed[0])).contains_exactly({
         "arch": "x86_64",
         "archive_flavor": "install_only",
+        "build_flavor": "",
         "build_version": "20260414",
-        "flavor": "",
         "freethreaded": False,
         "libc": "gnu",
         "location": "cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
@@ -142,8 +142,8 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
     env.expect.that_dict(structs.to_dict(parsed[2])).contains_exactly({
         "arch": "x86_64",
         "archive_flavor": "full",
+        "build_flavor": "lto",
         "build_version": "20260414",
-        "flavor": "lto",
         "freethreaded": False,
         "libc": "musl",
         "location": "https://example.com/cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst",
@@ -157,8 +157,8 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
     env.expect.that_dict(structs.to_dict(parsed[3])).contains_exactly({
         "arch": "aarch64",
         "archive_flavor": "full",
+        "build_flavor": "pgo+lto",
         "build_version": "20260414",
-        "flavor": "pgo+lto",
         "freethreaded": True,
         "libc": "",
         "location": "cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst",

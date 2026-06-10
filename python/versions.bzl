@@ -15,6 +15,7 @@
 """The Python versions we use for the toolchains.
 """
 
+load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
 load("//python/private:platform_info.bzl", "platform_info")
 
 # Values present in the @platforms//os package
@@ -55,9 +56,6 @@ _ASTRAL_PREFIX = "https://releases.astral.sh/github/python-build-standalone/rele
 #   },
 #
 # It is possible to provide lists in "url". It is also possible to provide patches or patch_strip.
-#
-# buildifier: disable=unsorted-dict-items
-TOOL_VERSIONS = {}
 
 # buildifier: disable=unsorted-dict-items
 MINOR_MAPPING = {
@@ -225,7 +223,7 @@ def _generate_platforms():
 
 PLATFORMS = _generate_platforms()
 
-def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_URL, tool_versions = TOOL_VERSIONS):
+def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_URL, tool_versions = None):
     """Resolve the release URL for the requested interpreter version
 
     Args:
@@ -237,6 +235,8 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
     Returns:
         A tuple of (filename, url, archive strip prefix, patches, patch_strip)
     """
+    if tool_versions == None:
+        tool_versions = TOOL_VERSIONS
 
     base_urls = [base_url]
     if base_url == DEFAULT_RELEASE_BASE_URL or base_url.startswith(_GITHUB_PREFIX):
@@ -391,3 +391,5 @@ def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE
         v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
 
     return available_versions
+
+TOOL_VERSIONS = tool_versions_from_manifest_entries(MANIFEST_ENTRIES)
