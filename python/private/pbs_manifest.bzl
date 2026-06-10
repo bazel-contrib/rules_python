@@ -15,15 +15,15 @@ def parse_filename(filename):
     """
     basename = filename.rpartition("/")[-1]
     if basename.endswith(".tar.zst"):
-        name = basename.removesuffix(".tar.zst")
+        name = basename[:-8]  # len(".tar.zst") == 8
     elif basename.endswith(".tar.gz"):
-        name = basename.removesuffix(".tar.gz")
+        name = basename[:-7]  # len(".tar.gz") == 7
     else:
         return None
 
     if not name.startswith("cpython-"):
         return None
-    name = name.removeprefix("cpython-")
+    name = name[8:]  # len("cpython-") == 8
 
     left, plus, tail = name.partition("+")
     if plus:
