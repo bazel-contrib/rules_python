@@ -1,6 +1,8 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load(":mylib.bzl", "my_py_binary", "my_py_test")
 
 # gazelle:python_generation_mode file
+# gazelle:map_kind py_binary my_py_binary :mylib.bzl
+# gazelle:map_kind py_test my_py_test :mylib.bzl
 
 # Valid py_library — bar.py exists on disk, should be kept.
 py_library(
@@ -16,27 +18,20 @@ py_library(
     visibility = ["//:__subpackages__"],
 )
 
-# Valid py_binary — __main__.py exists on disk, should be kept.
-py_binary(
-    name = "remove_invalid_per_file_bin",
-    srcs = ["__main__.py"],
-    visibility = ["//:__subpackages__"],
-)
-
-# Stale py_binary — deleted_bin.py does not exist, should be removed.
-py_binary(
+# Stale mapped py_binary — deleted_bin.py does not exist, should be removed.
+my_py_binary(
     name = "deleted_bin",
     srcs = ["deleted_bin.py"],
 )
 
-# Valid py_test — bar_test.py exists on disk, should be kept.
-py_test(
+# Valid mapped py_test — bar_test.py exists on disk, should be kept.
+my_py_test(
     name = "bar_test",
     srcs = ["bar_test.py"],
 )
 
-# Stale py_test — deleted_test.py does not exist, should be removed.
-py_test(
+# Stale mapped py_test — deleted_test.py does not exist, should be removed.
+my_py_test(
     name = "deleted_test",
     srcs = ["deleted_test.py"],
 )
