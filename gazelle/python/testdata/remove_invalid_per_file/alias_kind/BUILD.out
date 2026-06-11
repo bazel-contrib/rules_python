@@ -23,9 +23,13 @@ my_py_library(
 my_py_test(
     name = "bar_test",
     srcs = ["bar_test.py"],
+    visibility = ["//:__subpackages__"],
 )
 
 # Stale aliased py_test — deleted_test.py does not exist, should be removed.
 # TODO: Known limitation: not fully deleted until gazelle is bumped to include
 # https://github.com/bazel-contrib/bazel-gazelle/pull/2362
-my_py_test(name = "deleted_test")
+my_py_test(
+    name = "deleted_test",
+    visibility = ["//:__subpackages__"],
+)

@@ -24,6 +24,7 @@ my_py_library(
 my_py_test(
     name = "bar_test",
     srcs = ["bar_test.py"],
+    visibility = ["//:__subpackages__"],
 )
 
 # Stale aliased py_test — deleted_test.py does not exist, should be removed.
@@ -32,4 +33,5 @@ my_py_test(
 my_py_test(
     name = "deleted_test",
     srcs = ["deleted_test.py"],
+    visibility = ["//:__subpackages__"],
 )

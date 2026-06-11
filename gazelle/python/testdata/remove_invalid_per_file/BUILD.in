@@ -27,16 +27,19 @@ py_binary(
 py_binary(
     name = "deleted_bin",
     srcs = ["deleted_bin.py"],
+    visibility = ["//:__subpackages__"],
 )
 
 # Valid py_test — bar_test.py exists on disk, should be kept.
 py_test(
     name = "bar_test",
     srcs = ["bar_test.py"],
+    visibility = ["//:__subpackages__"],
 )
 
 # Stale py_test — deleted_test.py does not exist, should be removed.
 py_test(
     name = "deleted_test",
     srcs = ["deleted_test.py"],
+    visibility = ["//:__subpackages__"],
 )
