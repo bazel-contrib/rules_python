@@ -1140,7 +1140,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
-            "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "direct_without_sha==0.0.1",
             "sha256": "",
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
