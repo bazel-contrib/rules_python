@@ -14,7 +14,7 @@
 
 ""
 
-load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING")
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
@@ -141,7 +141,7 @@ def _test_full_version(name):
         name = name,
         tests = {
             v.replace(".", "_"): (v, v)
-            for v in MINOR_MAPPING.values()
+            for v in PYTHON_VERSIONS
         },
     )
 

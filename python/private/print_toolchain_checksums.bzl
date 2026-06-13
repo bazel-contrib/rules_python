@@ -1,7 +1,7 @@
 """Print the toolchain versions.
 """
 
-load("//python:versions.bzl", "MANIFEST_ENTRIES", "get_release_info", "tool_versions_from_manifest_entries")
+load("//python:versions.bzl", "TOOL_VERSIONS", "get_release_info")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 
@@ -12,7 +12,7 @@ def print_toolchains_checksums(name):
         name: {type}`str`: the name of the runnable target.
     """
     by_version = {}
-    tool_versions = tool_versions_from_manifest_entries(MANIFEST_ENTRIES)
+    tool_versions = TOOL_VERSIONS
 
     for python_version, metadata in tool_versions.items():
         by_version[python_version] = _commands_for_version(

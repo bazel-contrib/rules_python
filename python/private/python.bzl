@@ -18,7 +18,7 @@ load("@bazel_features//:features.bzl", "bazel_features")
 load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
-load(":pbs_manifest.bzl", "parse_sha_manifest")
+load(":pbs_manifest.bzl", "parse_runtime_manifest")
 load(":platform_info.bzl", "platform_info")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
@@ -788,7 +788,7 @@ def _populate_from_pbs_manifest(
 
     entries = []
     for content in manifest_contents:
-        entries.extend(parse_sha_manifest(content))
+        entries.extend(parse_runtime_manifest(content))
 
     # We don't model archive_flavor via flags yet, so have to pick one.
     # Preference is given to install_only because its smaller
@@ -857,7 +857,7 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
     available_versions = {}
     _populate_from_pbs_manifest(
         mctx = mctx,
-        add_runtime_manifest_files = [Label("//python:runtimes_manifest.txt")],
+        add_runtime_manifest_files = [Label("//python/private:runtimes_manifest.txt")],
         base_url = DEFAULT_RELEASE_BASE_URL,
         available_versions = available_versions,
         _fail = _fail,

@@ -15,15 +15,15 @@ def parse_filename(filename):
     """
     basename = filename.rpartition("/")[-1]
     if basename.endswith(".tar.zst"):
-        name = basename[:-8]  # len(".tar.zst") == 8
+        name = basename.removesuffix(".tar.zst")
     elif basename.endswith(".tar.gz"):
-        name = basename[:-7]  # len(".tar.gz") == 7
+        name = basename.removesuffix(".tar.gz")
     else:
         return None
 
     if not name.startswith("cpython-"):
         return None
-    name = name[8:]  # len("cpython-") == 8
+    name = name.removeprefix("cpython-")
 
     left, plus, tail = name.partition("+")
     if plus:
@@ -112,7 +112,7 @@ def parse_filename(filename):
         "vendor": vendor,
     }
 
-def parse_sha_manifest(content):
+def parse_runtime_manifest(content):
     """Parses the SHA256SUMS file content into a list of structs.
 
     Args:

@@ -15,7 +15,7 @@
 "Repo rule used by bzlmod extension to create a repo that has a map of Python interpreters and their labels"
 
 load("//python:versions.bzl", "PLATFORMS")
-load(":pbs_manifest.bzl", "parse_sha_manifest")
+load(":pbs_manifest.bzl", "parse_runtime_manifest")
 load(":text_util.bzl", "render")
 load(":toolchains_repo.bzl", "toolchain_suite_content")
 
@@ -121,8 +121,8 @@ def _hub_repo_impl(rctx):
 
     python_versions = rctx.attr.python_versions
     if not python_versions and not rctx.attr.toolchain_python_versions:
-        content = rctx.read(rctx.path(Label("//python:runtimes_manifest.txt")))
-        entries = parse_sha_manifest(content)
+        content = rctx.read(rctx.path(Label("//python/private:runtimes_manifest.txt")))
+        entries = parse_runtime_manifest(content)
         python_versions_str = render.list(sorted({getattr(e, "python_version", ""): None for e in entries if getattr(e, "python_version", "")}))
 
     else:

@@ -47,12 +47,6 @@ local_repository(
     path = "..",
 )
 
-load("@rules_python//python/private:internal_config_repo.bzl", "internal_config_repo")  # buildifier: disable=bzl-visibility
-
-internal_config_repo(
-    name = "rules_python_internal",
-)
-
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()

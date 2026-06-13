@@ -4,7 +4,7 @@ load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
-load("//python/private:pbs_manifest.bzl", "parse_filename", "parse_sha_manifest")  # buildifier: disable=bzl-visibility
+load("//python/private:pbs_manifest.bzl", "parse_filename", "parse_runtime_manifest")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -97,7 +97,7 @@ def _test_parse_filename_baseline_impl(env, target):
 
 _tests.append(_test_parse_filename_baseline)
 
-def _test_parse_sha_manifest(name):
+def _test_parse_runtime_manifest(name):
     """Sets up the manifest file parsing test.
 
     Args:
@@ -110,10 +110,10 @@ def _test_parse_sha_manifest(name):
     analysis_test(
         name = name,
         target = name + "_subject",
-        impl = _test_parse_sha_manifest_impl,
+        impl = _test_parse_runtime_manifest_impl,
     )
 
-def _test_parse_sha_manifest_impl(env, target):
+def _test_parse_runtime_manifest_impl(env, target):
     _ = target  # @unused
     content = """
 8b14030dd3af9ea7f7c51b4c90feb04afd8a8f45435727e67b875270bd08f3bc   cpython-3.11.15+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
@@ -121,7 +121,7 @@ a57ffd435652092d16b30e783f9826c55e9c64b0f0a72cbae0a9f39e663137fb       cpython-3
 ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://example.com/cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst
 1111111111111111111111111111111111111111111111111111111111111111  cpython-3.13.13+20260414-aarch64-apple-darwin-freethreaded+pgo+lto-full.tar.zst
 """
-    parsed = parse_sha_manifest(content)
+    parsed = parse_runtime_manifest(content)
     env.expect.that_collection(parsed).has_size(4)
 
     env.expect.that_dict(structs.to_dict(parsed[0])).contains_exactly({
@@ -169,9 +169,9 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
         "vendor": "apple",
     })
 
-_tests.append(_test_parse_sha_manifest)
+_tests.append(_test_parse_runtime_manifest)
 
-def parse_sha_manifest_test_suite(name):
+def parse_runtime_manifest_test_suite(name):
     """Defines the test suite for manifest parsing.
 
     Args:

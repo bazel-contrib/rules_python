@@ -19,7 +19,6 @@ common --experimental_downloader_config=downloader_config.cfg
 common --http_timeout_scaling=10.0
 common --experimental_repository_downloader_retries=10
 
-
 common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
 

@@ -15,7 +15,7 @@
 """The Python versions we use for the toolchains.
 """
 
-load("//python/private:pbs_manifest.bzl", "parse_sha_manifest")
+load("//python/private:pbs_manifest.bzl", "parse_runtime_manifest")
 load("//python/private:platform_info.bzl", "platform_info")
 
 ##load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
@@ -35,30 +35,6 @@ DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone
 _GITHUB_PREFIX = "https://github.com/astral-sh/python-build-standalone/releases/download"
 _LEGACY_GITHUB_PREFIX = "https://github.com/indygreg/python-build-standalone/releases/download"
 _ASTRAL_PREFIX = "https://releases.astral.sh/github/python-build-standalone/releases/download"
-
-# When updating the versions and releases, run the following command to get
-# the hashes:
-#   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version={major}.{minor}.{patch}
-#
-# To print hashes for all of the specified versions, run:
-#   bazel run //python/private:print_toolchains_checksums --//python/config_settings:python_version=""
-#
-# Note, to users looking at how to specify their tool versions, coverage_tool version for each
-# interpreter can be specified by:
-#   "3.8.10": {
-#       "url": "20210506/cpython-{python_version}-{platform}-pgo+lto-20210506T0943.tar.zst",
-#       "sha256": {
-#           "x86_64-apple-darwin": "8d06bec08db8cdd0f64f4f05ee892cf2fcbc58cfb1dd69da2caab78fac420238",
-#           "x86_64-unknown-linux-gnu": "aec8c4c53373b90be7e2131093caa26063be6d9d826f599c935c0e1042af3355",
-#       },
-#       "coverage_tool": {
-#           "x86_64-apple-darwin": "<label_for_darwin>"",
-#           "x86_64-unknown-linux-gnu": "<label_for_linux>"",
-#       },
-#       "strip_prefix": "python",
-#   },
-#
-# It is possible to provide lists in "url". It is also possible to provide patches or patch_strip.
 
 # buildifier: disable=unsorted-dict-items
 MINOR_MAPPING = {
@@ -344,7 +320,7 @@ def _manifest_entry_sort_key(entry):
         microarch_rank = 999
     return (flavor_rank, microarch_rank)
 
-def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE_URL):
+def _tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE_URL):
     """Converts parsed manifest entries into the TOOL_VERSIONS dictionary format.
 
     Args:
@@ -395,6 +371,4 @@ def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE
 
     return available_versions
 
-MANIFEST_ENTRIES = parse_sha_manifest(MANIFEST_TEXT)
-
-TOOL_VERSIONS = tool_versions_from_manifest_entries(MANIFEST_ENTRIES)
+TOOL_VERSIONS = _tool_versions_from_manifest_entries(parse_runtime_manifest(MANIFEST_TEXT))

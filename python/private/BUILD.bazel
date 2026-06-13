@@ -31,7 +31,11 @@ package(
 
 licenses(["notice"])
 
-exports_files(["runtime_env_toolchain_interpreter.sh"])
+exports_files([
+    "runtime_env_toolchain_interpreter.sh",
+    "runtimes_manifest.txt",
+    "runtimes_manifest_workspace.bzl",
+])
 
 filegroup(
     name = "distribution",
@@ -905,4 +909,10 @@ py_library(
 
 sentinel(
     name = "sentinel",
+)
+
+py_binary(
+    name = "sync_runtimes_manifest_workspace",
+    srcs = ["tools/sync_runtimes_manifest_workspace.py"],
+    visibility = ["//:__subpackages__"],
 )
