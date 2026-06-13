@@ -15,19 +15,7 @@ def parse_args():
     )
     parser.add_argument(
         "job",
-        nargs="?",
-        help="The key or name of the CI job to emulate (e.g., ubuntu_workspace). Ignored if --all-compatible is passed.",
-    )
-    parser.add_argument(
-        "--all-compatible",
-        action="store_true",
-        help="Run all CI jobs from presubmit.yml that are compatible with the current OS.",
-    )
-    parser.add_argument(
-        "--keep-going",
-        "-k",
-        action="store_true",
-        help="When running --all-compatible, continue executing subsequent jobs even if one fails.",
+        help="The key or name of the CI job to emulate (e.g., ubuntu_workspace).",
     )
     return parser.parse_args()
 
@@ -58,19 +46,6 @@ def resolve_bazel_version(task_bazel):
     if not task_bazel or task_bazel.startswith("${{"):
         return None
     return task_bazel
-
-
-def is_os_compatible(platform_str):
-    if not platform_str:
-        return False
-    p = platform_str.lower()
-    if sys.platform.startswith("linux"):
-        return "ubuntu" in p or "debian" in p or "rbe" in p or "linux" in p
-    if sys.platform.startswith("darwin"):
-        return "mac" in p or "darwin" in p
-    if sys.platform.startswith("win"):
-        return "win" in p
-    return False
 
 
 def execute_ci_job(job_key, task, repo_root):
@@ -154,52 +129,9 @@ def main():
         )
         sys.exit(1)
 
-    if args.all_compatible:
-        compatible_jobs = [
-            key
-            for key, config in tasks.items()
-            if is_os_compatible(config.get("platform"))
-        ]
-        print(
-            f"🚀 Found {len(compatible_jobs)} CI jobs compatible with current OS ({sys.platform}):"
-        )
-        for j in sorted(compatible_jobs):
-            print(f"  • {j}")
-
-        results = {}
-        for job_key in sorted(compatible_jobs):
-            success = execute_ci_job(job_key, tasks[job_key], repo_root)
-            results[job_key] = success
-            if not success and not args.keep_going:
-                print(
-                    f"\n❌ Aborting subsequent jobs due to failure in '{job_key}'. Use --keep-going to continue.",
-                    file=sys.stderr,
-                )
-                break
-
-        print(f"\n{'=' * 80}\n📊 CI REPLICATION SUMMARY\n{'=' * 80}")
-        failed = [j for j, res in results.items() if not res]
-        passed = [j for j, res in results.items() if res]
-        for j in sorted(results.keys()):
-            status = "✅ PASSED" if results[j] else "❌ FAILED"
-            print(f"  • {j.ljust(60)} {status}")
-
-        if failed:
-            print(
-                f"\n❌ {len(failed)} out of {len(results)} executed CI jobs failed.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        else:
-            print(f"\n🎉 {len(passed)} CI jobs executed successfully!")
-            sys.exit(0)
-
-    # If no job specified and not --all-compatible, print available jobs and exit
+    # If no job specified, print available jobs and exit
     if not args.job:
-        print(
-            "❌ Error: No CI job specified. Provide a job key or use --all-compatible.\n",
-            file=sys.stderr,
-        )
+        print("❌ Error: No CI job specified. Provide a job key.\n", file=sys.stderr)
         print("📋 Available CI Job Keys:", file=sys.stderr)
         for key in sorted(tasks.keys()):
             name = tasks[key].get("name", key)
