@@ -117,11 +117,15 @@ def main():
                 for job in jobs:
                     jstate = job.get("state", "unknown")
                     exit_status = job.get("exit_status")
-                    is_failed = jstate in ["failed", "failing"] or (
-                        exit_status != 0 and exit_status is not None
-                    )
-                    is_passed = jstate in ["passed", "success"] or (
-                        jstate == "finished" and exit_status == 0
+                    is_soft_failed = job.get("soft_failed") is True
+                    is_failed = (
+                        jstate in ["failed", "failing"]
+                        or (exit_status != 0 and exit_status is not None)
+                    ) and not is_soft_failed
+                    is_passed = (
+                        jstate in ["passed", "success"]
+                        or (jstate == "finished" and exit_status == 0)
+                        or is_soft_failed
                     )
                     is_running = jstate in ["running", "scheduled"]
 
@@ -147,10 +151,11 @@ def main():
                     jkey = f"bk_{jid}"
 
                     exit_status = job.get("exit_status")
+                    is_soft_failed = job.get("soft_failed") is True
                     is_failed = (
                         jstate in ["failed", "failing"]
                         or (exit_status != 0 and exit_status is not None)
-                    ) and "rolling" not in jname.lower()
+                    ) and not is_soft_failed
 
                     if is_failed and jkey not in monitored:
                         print(

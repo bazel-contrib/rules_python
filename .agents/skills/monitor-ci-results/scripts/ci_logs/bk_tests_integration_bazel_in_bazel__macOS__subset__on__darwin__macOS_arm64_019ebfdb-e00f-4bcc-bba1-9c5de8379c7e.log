@@ -1,647 +1,0 @@
-_bk;t=1781335322046~~~ Running agent environment hook
-_bk;t=1781335322046[90m$[0m /opt/homebrew/etc/buildkite-agent/hooks/environment
-_bk;t=1781335322248[90m# SSL_CERT_FILE added[0m
-_bk;t=1781335322248[90m# BUILDKITE_ARTIFACT_UPLOAD_DESTINATION is now "gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e"[0m
-_bk;t=1781335322248[90m# BUILDKITE_GS_APPLICATION_CREDENTIALS added[0m
-_bk;t=1781335322248[90m# JAVA_TOOL_OPTIONS added[0m
-_bk;t=1781335322248[90m# ANDROID_NDK_HOME added[0m
-_bk;t=1781335322248[90m# ANDROID_HOME added[0m
-_bk;t=1781335322248[90m# COURSIER_OPTS added[0m
-_bk;t=1781335322248~~~ Preparing working directory
-_bk;t=1781335322248[90m# Creating "/Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python"[0m
-_bk;t=1781335322248[90m$[0m cd /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python
-_bk;t=1781335322248[90m$[0m cd /usr/local/var/bazelbuild
-_bk;t=1781335323416[90m# Updating existing repository mirror to find commit 92c48e57c6353feb0452ad82f7cfc2c744616fa4[0m
-_bk;t=1781335323426[90m# Fetching and mirroring pull request head from GitHub. This will be retried if it fails, as the pull request head might not be available yet — GitHub creates them asynchronously[0m
-_bk;t=1781335323426[90m$[0m git --git-dir=/usr/local/var/bazelbuild/https---github-com-bazel-contrib-rules-python-git fetch -- origin refs/pull/3812/head
-_bk;t=1781335323568remote: Enumerating objects: 13, done.[K_bk;t=1781335323568
-_bk;t=1781335323568remote: Counting objects:   7% (1/13)[K_bk;t=1781335323568remote: Counting objects:  15% (2/13)[K_bk;t=1781335323568remote: Counting objects:  23% (3/13)[K_bk;t=1781335323568remote: Counting objects:  30% (4/13)[K_bk;t=1781335323568remote: Counting objects:  38% (5/13)[K_bk;t=1781335323568remote: Counting objects:  46% (6/13)[K_bk;t=1781335323568remote: Counting objects:  53% (7/13)[K_bk;t=1781335323568remote: Counting objects:  61% (8/13)[K_bk;t=1781335323568remote: Counting objects:  69% (9/13)[K_bk;t=1781335323568remote: Counting objects:  76% (10/13)[K_bk;t=1781335323568remote: Counting objects:  84% (11/13)[K_bk;t=1781335323568remote: Counting objects:  92% (12/13)[K_bk;t=1781335323568remote: Counting objects: 100% (13/13)[K_bk;t=1781335323568remote: Counting objects: 100% (13/13), done.[K_bk;t=1781335323568
-_bk;t=1781335323568remote: Compressing objects:  50% (1/2)[K_bk;t=1781335323568remote: Compressing objects: 100% (2/2)[K_bk;t=1781335323568remote: Compressing objects: 100% (2/2), done.[K_bk;t=1781335323568
-_bk;t=1781335323568remote: Total 7 (delta 4), reused 7 (delta 4), pack-reused 0 (from 0)[K_bk;t=1781335323568
-_bk;t=1781335323574Unpacking objects:  14% (1/7)Unpacking objects:  28% (2/7)Unpacking objects:  42% (3/7)Unpacking objects:  57% (4/7)Unpacking objects:  71% (5/7)Unpacking objects:  85% (6/7)Unpacking objects: 100% (7/7)Unpacking objects: 100% (7/7), 1.03 KiB | 210.00 KiB/s, done.
-_bk;t=1781335323605From https://github.com/bazel-contrib/rules_python
-_bk;t=1781335323605 * branch                refs/pull/3812/head -> FETCH_HEAD
-_bk;t=1781335323605   76028c350..92c48e57c  refs/pull/3812/head -> refs/pull/3812/head
-_bk;t=1781335323610[90m$[0m cd /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python
-_bk;t=1781335323610[90m$[0m git clone -v --reference /usr/local/var/bazelbuild/https---github-com-bazel-contrib-rules-python-git -- https://github.com/bazel-contrib/rules_python.git .
-_bk;t=1781335323621Cloning into '.'...
-_bk;t=1781335323661POST git-upload-pack (182 bytes)
-_bk;t=1781335324056[90m$[0m git clean -ffxdq
-_bk;t=1781335324078[90m# Fetch and checkout pull request head from GitHub[0m
-_bk;t=1781335324078[90m$[0m git fetch -v --prune -- origin refs/pull/3812/head 92c48e57c6353feb0452ad82f7cfc2c744616fa4
-_bk;t=1781335324121POST git-upload-pack (402 bytes)
-_bk;t=1781335324160From https://github.com/bazel-contrib/rules_python
-_bk;t=1781335324160 * branch                refs/pull/3812/head -> FETCH_HEAD
-_bk;t=1781335324160 * branch                92c48e57c6353feb0452ad82f7cfc2c744616fa4 -> FETCH_HEAD
-_bk;t=1781335324177[90m# FETCH_HEAD is now `92c48e57c6353feb0452ad82f7cfc2c744616fa4`[0m
-_bk;t=1781335324177[90m$[0m git checkout -f 92c48e57c6353feb0452ad82f7cfc2c744616fa4
-_bk;t=1781335324219Note: switching to '92c48e57c6353feb0452ad82f7cfc2c744616fa4'.
-_bk;t=1781335324219
-_bk;t=1781335324219You are in 'detached HEAD' state. You can look around, make experimental
-_bk;t=1781335324219changes and commit them, and you can discard any commits you make in this
-_bk;t=1781335324219state without impacting any branches by switching back to a branch.
-_bk;t=1781335324219
-_bk;t=1781335324219If you want to create a new branch to retain commits you create, you may
-_bk;t=1781335324219do so (now or later) by using -c with the switch command. Example:
-_bk;t=1781335324219
-_bk;t=1781335324219  git switch -c <new-branch-name>
-_bk;t=1781335324219
-_bk;t=1781335324219Or undo this operation with:
-_bk;t=1781335324219
-_bk;t=1781335324219  git switch -
-_bk;t=1781335324219
-_bk;t=1781335324219Turn off this advice by setting config variable advice.detachedHead to false
-_bk;t=1781335324219
-_bk;t=1781335324219HEAD is now at 92c48e57c feat(skills): Output swarm summary and job IDs in monitor_remote_ci
-_bk;t=1781335324220[90m# Cleaning again to catch any post-checkout changes[0m
-_bk;t=1781335324220[90m$[0m git clean -ffxdq
-_bk;t=1781335324244[90m# Checking to see if git commit information needs to be sent to Buildkite...[0m
-_bk;t=1781335324244[90m# BUILDKITE_COMMIT is already resolved and meta-data populated, skipping[0m
-_bk;t=1781335324244~~~ Running commands
-_bk;t=1781335324244[90m$[0m which python3
-_bk;t=1781335324244python3 -V
-_bk;t=1781335324244curl -q --noproxy '*' -sS https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/bazelci.py?1781335317 -o bazelci.py && curl -q --noproxy '*' -sS https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/collect_metrics.py?1781335317 -o collect_metrics.py
-_bk;t=1781335324244python3 bazelci.py runner --task=integration_test_bazelinbazel_macos
-_bk;t=1781335324248/opt/homebrew/bin/python3
-_bk;t=1781335324255Python 3.12.11
-_bk;t=1781335324460
-_bk;t=1781335324460
-_bk;t=1781335324460--- :xcode: Activating Xcode 26.0...
-_bk;t=1781335324460
-_bk;t=1781335324460
-_bk;t=1781335324460/usr/bin/sudo /usr/bin/xcode-select --switch /Applications/Xcode26.0.app
-_bk;t=1781335324482/usr/bin/sudo /usr/bin/xcodebuild -runFirstLaunch
-_bk;t=1781335324638
-_bk;t=1781335324638
-_bk;t=1781335324638--- :bazel: Using latest Bazel release
-_bk;t=1781335324638
-_bk;t=1781335324638
-_bk;t=1781335324638bazel --version
-_bk;t=17813353251842026/06/13 09:22:05 Downloading https://releases.bazel.build/9.1.1/release/bazel-9.1.1-darwin-arm64...
-_bk;t=1781335325218                                       Downloading: 0 MB out of 57 MB (0%)                                       Downloading: 0 MB out of 57 MB (1%)                                       Downloading: 1 MB out of 57 MB (1%)                                       Downloading: 1 MB out of 57 MB (2%)                                       Downloading: 1 MB out of 57 MB (3%)                                       Downloading: 2 MB out of 57 MB (3%)                                       Downloading: 2 MB out of 57 MB (4%)                                       Downloading: 2 MB out of 57 MB (5%)                                       Downloading: 3 MB out of 57 MB (5%)                                       Downloading: 3 MB out of 57 MB (6%)                                       Downloading: 4 MB out of 57 MB (6%)                                       Downloading: 4 MB out of 57 MB (7%)                                       Downloading: 4 MB out of 57 MB (8%)                                       Downloading: 5 MB out of 57 MB (8%)                                       Downloading: 5 MB out of 57 MB (9%)                                       Downloading: 5 MB out of 57 MB (10%)                                       Downloading: 6 MB out of 57 MB (10%)                                       Downloading: 6 MB out of 57 MB (11%)                                       Downloading: 6 MB out of 57 MB (12%)                                       Downloading: 7 MB out of 57 MB (12%)                                       Downloading: 7 MB out of 57 MB (13%)                                       Downloading: 8 MB out of 57 MB (13%)                                       Downloading: 8 MB out of 57 MB (14%)                                       Downloading: 8 MB out of 57 MB (15%)                                       Downloading: 9 MB out of 57 MB (15%)                                       Downloading: 9 MB out of 57 MB (16%)                                       Downloading: 9 MB out of 57 MB (17%)                                       Downloading: 10 MB out of 57 MB (17%)                                       Downloading: 10 MB out of 57 MB (18%)                                       Downloading: 10 MB out of 57 MB (19%)                                       Downloading: 11 MB out of 57 MB (19%)                                       Downloading: 11 MB out of 57 MB (20%)                                       Downloading: 12 MB out of 57 MB (20%)                                       Downloading: 12 MB out of 57 MB (21%)                                       Downloading: 12 MB out of 57 MB (22%)                                       Downloading: 13 MB out of 57 MB (22%)                                       Downloading: 13 MB out of 57 MB (23%)                                       Downloading: 13 MB out of 57 MB (24%)                                       Downloading: 14 MB out of 57 MB (24%)                                       Downloading: 14 MB out of 57 MB (25%)                                       Downloading: 14 MB out of 57 MB (26%)                                       Downloading: 15 MB out of 57 MB (26%)                                       Downloading: 15 MB out of 57 MB (27%)                                       Downloading: 16 MB out of 57 MB (27%)                                       Downloading: 16 MB out of 57 MB (28%)                                       Downloading: 16 MB out of 57 MB (29%)                                       Downloading: 17 MB out of 57 MB (29%)                                       Downloading: 17 MB out of 57 MB (30%)                                       Downloading: 17 MB out of 57 MB (31%)                                       Downloading: 18 MB out of 57 MB (31%)                                       Downloading: 18 MB out of 57 MB (32%)                                       Downloading: 19 MB out of 57 MB (33%)                                       Downloading: 19 MB out of 57 MB (34%)                                       Downloading: 20 MB out of 57 MB (34%)                                       Downloading: 20 MB out of 57 MB (35%)                                       Downloading: 20 MB out of 57 MB (36%)                                       Downloading: 21 MB out of 57 MB (36%)                                       Downloading: 21 MB out of 57 MB (37%)                                       Downloading: 21 MB out of 57 MB (38%)                                       Downloading: 22 MB out of 57 MB (38%)                                       Downloading: 22 MB out of 57 MB (39%)                                       Downloading: 23 MB out of 57 MB (39%)                                       Downloading: 23 MB out of 57 MB (40%)                                       Downloading: 23 MB out of 57 MB (41%)                                       Downloading: 24 MB out of 57 MB (41%)                                       Downloading: 24 MB out of 57 MB (42%)                                       Downloading: 24 MB out of 57 MB (43%)                                       Downloading: 25 MB out of 57 MB (43%)                                       Downloading: 25 MB out of 57 MB (44%)                                       Downloading: 25 MB out of 57 MB (45%)                                       Downloading: 26 MB out of 57 MB (45%)                                       Downloading: 26 MB out of 57 MB (46%)                                       Downloading: 27 MB out of 57 MB (46%)                                       Downloading: 27 MB out of 57 MB (47%)                                       Downloading: 27 MB out of 57 MB (48%)                                       Downloading: 28 MB out of 57 MB (48%)                                       Downloading: 28 MB out of 57 MB (49%)                                       Downloading: 28 MB out of 57 MB (50%)                                       Downloading: 29 MB out of 57 MB (50%)                                       Downloading: 29 MB out of 57 MB (51%)                                       Downloading: 29 MB out of 57 MB (52%)                                       Downloading: 30 MB out of 57 MB (52%)                                       Downloading: 30 MB out of 57 MB (53%)                                       Downloading: 31 MB out of 57 MB (53%)                                       Downloading: 31 MB out of 57 MB (54%)                                       Downloading: 31 MB out of 57 MB (55%)                                       Downloading: 32 MB out of 57 MB (55%)                                       Downloading: 32 MB out of 57 MB (56%)                                       Downloading: 32 MB out of 57 MB (57%)                                       Downloading: 33 MB out of 57 MB (57%)                                       Downloading: 33 MB out of 57 MB (58%)                                       Downloading: 33 MB out of 57 MB (59%)                                       Downloading: 34 MB out of 57 MB (59%)                                       Downloading: 34 MB out of 57 MB (60%)                                       Downloading: 35 MB out of 57 MB (60%)                                       Downloading: 35 MB out of 57 MB (61%)                                       Downloading: 35 MB out of 57 MB (62%)                                       Downloading: 36 MB out of 57 MB (62%)                                       Downloading: 36 MB out of 57 MB (63%)                                       Downloading: 36 MB out of 57 MB (64%)                                       Downloading: 37 MB out of 57 MB (64%)                                       Downloading: 37 MB out of 57 MB (65%)                                       Downloading: 38 MB out of 57 MB (66%)                                       Downloading: 38 MB out of 57 MB (67%)                                       Downloading: 39 MB out of 57 MB (67%)                                       Downloading: 39 MB out of 57 MB (68%)                                       Downloading: 39 MB out of 57 MB (69%)                                       Downloading: 40 MB out of 57 MB (69%)                                       Downloading: 40 MB out of 57 MB (70%)                                       Downloading: 40 MB out of 57 MB (71%)                                       Downloading: 41 MB out of 57 MB (71%)                                       Downloading: 41 MB out of 57 MB (72%)                                       Downloading: 42 MB out of 57 MB (72%)                                       Downloading: 42 MB out of 57 MB (73%)                                       Downloading: 42 MB out of 57 MB (74%)                                       Downloading: 43 MB out of 57 MB (74%)                                       Downloading: 43 MB out of 57 MB (75%)                                       Downloading: 43 MB out of 57 MB (76%)                                       Downloading: 44 MB out of 57 MB (76%)                                       Downloading: 44 MB out of 57 MB (77%)                                       Downloading: 44 MB out of 57 MB (78%)                                       Downloading: 45 MB out of 57 MB (78%)                                       Downloading: 45 MB out of 57 MB (79%)                                       Downloading: 46 MB out of 57 MB (79%)                                       Downloading: 46 MB out of 57 MB (80%)                                       Downloading: 46 MB out of 57 MB (81%)                                       Downloading: 47 MB out of 57 MB (81%)                                       Downloading: 47 MB out of 57 MB (82%)                                       Downloading: 47 MB out of 57 MB (83%)                                       Downloading: 48 MB out of 57 MB (83%)                                       Downloading: 48 MB out of 57 MB (84%)                                       Downloading: 48 MB out of 57 MB (85%)                                       Downloading: 49 MB out of 57 MB (85%)                                       Downloading: 49 MB out of 57 MB (86%)                                       Downloading: 50 MB out of 57 MB (86%)                                       Downloading: 50 MB out of 57 MB (87%)                                       Downloading: 50 MB out of 57 MB (88%)                                       Downloading: 51 MB out of 57 MB (88%)                                       Downloading: 51 MB out of 57 MB (89%)                                       Downloading: 51 MB out of 57 MB (90%)                                       Downloading: 52 MB out of 57 MB (90%)                                       Downloading: 52 MB out of 57 MB (91%)                                       Downloading: 52 MB out of 57 MB (92%)                                       Downloading: 53 MB out of 57 MB (92%)                                       Downloading: 53 MB out of 57 MB (93%)                                       Downloading: 54 MB out of 57 MB (93%)                                       Downloading: 54 MB out of 57 MB (94%)                                       Downloading: 54 MB out of 57 MB (95%)                                       Downloading: 55 MB out of 57 MB (95%)                                       Downloading: 55 MB out of 57 MB (96%)                                       Downloading: 55 MB out of 57 MB (97%)                                       Downloading: 56 MB out of 57 MB (97%)                                       Downloading: 56 MB out of 57 MB (98%)                                       Downloading: 57 MB out of 57 MB (99%)                                       Downloading: 57 MB out of 57 MB (100%)
-_bk;t=1781335325970bazel 9.1.1
-_bk;t=1781335325971bazel --host_jvm_args=-Djava.net.preferIPv6Addresses=true info output_base
-_bk;t=1781335326503Extracting Bazel installation...
-_bk;t=1781335327273Starting local Bazel server (9.1.1) and connecting to it...
-_bk;t=1781335327273WARNING: ignoring JAVA_TOOL_OPTIONS in environment.
-_bk;t=1781335329364WARNING: Option 'experimental_downloader_config' is deprecated: Use --downloader_config instead
-_bk;t=1781335329364INFO: Invocation ID: 5418b96d-1dd0-45de-b627-d6bca42fbb1d
-_bk;t=1781335329398
-_bk;t=1781335329398
-_bk;t=1781335329398--- :information_source: Bazel Info
-_bk;t=1781335329398
-_bk;t=1781335329398
-_bk;t=1781335329398bazel --host_jvm_args=-Djava.net.preferIPv6Addresses=true --nosystem_rc --nohome_rc version
-_bk;t=1781335329926WARNING: The following rc files are no longer being read, please transfer their contents or import their path into one of the standard rc files:
-_bk;t=1781335329926/etc/bazel.bazelrc
-_bk;t=1781335329963WARNING: Running Bazel server needs to be killed, because the following startup options are different:
-_bk;t=1781335329963  - Only in old server: --host_jvm_args=-Djava.net.preferIPv6Addresses=true -Djava.net.preferIPv6Addresses=true
-_bk;t=1781335329963  - Only in new server: 
-_bk;t=1781335330309Starting local Bazel server (9.1.1) and connecting to it...
-_bk;t=1781335330309WARNING: ignoring JAVA_TOOL_OPTIONS in environment.
-_bk;t=1781335331065WARNING: Option 'experimental_downloader_config' is deprecated: Use --downloader_config instead
-_bk;t=1781335331065INFO: Invocation ID: e942680b-1cc3-4226-ad7f-5a68fdab4761
-_bk;t=1781335331093Bazelisk version: v1.26.0
-_bk;t=1781335331093Build label: 9.1.1
-_bk;t=1781335331093Build target: @@//src/main/java/com/google/devtools/build/lib/bazel:BazelServer
-_bk;t=1781335331093Build time: Wed Jun 03 15:47:00 2026 (1780501620)
-_bk;t=1781335331093Build timestamp: 1780501620
-_bk;t=1781335331093Build timestamp as int: 1780501620
-_bk;t=1781335331093
-_bk;t=1781335331093bazel --host_jvm_args=-Djava.net.preferIPv6Addresses=true --nosystem_rc --nohome_rc info
-_bk;t=1781335331601WARNING: The following rc files are no longer being read, please transfer their contents or import their path into one of the standard rc files:
-_bk;t=1781335331601/etc/bazel.bazelrc
-_bk;t=1781335331660[35mWARNING: [0mOption 'experimental_downloader_config' is deprecated: Use --downloader_config instead
-_bk;t=1781335331660[32mINFO: [0mInvocation ID: 82b75b6f-3ca2-4350-94d0-e474ea0e6c27
-_bk;t=1781335331723[35mWARNING: [0m/Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/MODULE.bazel:1:7: The attribute 'compatibility_level' in module() is a no-op and will be removed in a future Bazel release. Please remove it from your MODULE.bazel file.
-_bk;t=1781335332595[35mWARNING: [0mFor repository 'bazel_features', the root module requires module version bazel_features@1.21.0, but got bazel_features@1.42.1 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335332595[35mWARNING: [0mFor repository 'platforms', the root module requires module version platforms@0.0.11, but got platforms@1.0.0 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335332595[35mWARNING: [0mFor repository 'com_google_protobuf', the root module requires module version protobuf@29.0-rc2, but got protobuf@33.4 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335332595[35mWARNING: [0mFor repository 'rules_shell', the root module requires module version rules_shell@0.3.0, but got rules_shell@0.6.1 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335332919bazel-bin: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335332919bazel-genfiles: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335332919bazel-testlogs: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs
-_bk;t=1781335332920character-encoding: file.encoding = ISO-8859-1, defaultCharset = ISO-8859-1, sun.jnu.encoding = UTF-8
-_bk;t=1781335332920command_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/command.log
-_bk;t=1781335332920committed-heap-size: 100MB
-_bk;t=1781335332920execution_root: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main
-_bk;t=1781335332921gc-count: 15
-_bk;t=1781335332921gc-time: 28ms
-_bk;t=1781335332922install_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/install/fbbece01a6c11cdb572a5102a635ab10
-_bk;t=1781335332922java-home: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/install/fbbece01a6c11cdb572a5102a635ab10/embedded_tools/jdk
-_bk;t=1781335332922java-runtime: OpenJDK Runtime Environment (build 25.0.2+10-LTS) by Azul Systems, Inc.
-_bk;t=1781335332922java-vm: OpenJDK 64-Bit Server VM (build 25.0.2+10-LTS, mixed mode) by Azul Systems, Inc.
-_bk;t=1781335332922local_resources: RAM=32768MB, CPU=6.0
-_bk;t=1781335332923max-heap-size: 8589MB
-_bk;t=1781335332923output_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b
-_bk;t=1781335332923output_path: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out
-_bk;t=1781335332923package_path: %workspace%
-_bk;t=1781335332923release: release 9.1.1
-_bk;t=1781335332923repository_cache: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/cache/repos/v1
-_bk;t=1781335332924server_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/java.log.177c7787-c7ce-49b5-9e4c-fb4592c50e64.buildkite.log.java.20260613-092210.73226
-_bk;t=1781335332924server_pid: 73226
-_bk;t=1781335332925used-heap-size: 38MB
-_bk;t=1781335332925workspace: /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python
-_bk;t=1781335332932[0m
-_bk;t=1781335332934
-_bk;t=1781335332934--- :information_source: Environment Variables
-_bk;t=1781335332934
-_bk;t=1781335332934
-_bk;t=1781335332934BUILDKITE_CONFIG_PATH=(/opt/homebrew/etc/buildkite-agent/buildkite-agent.cfg)
-_bk;t=1781335332934BUILDKITE_AGENT_META_DATA_OS_VERSION=(15.7.2)
-_bk;t=1781335332934BUILDKITE_SIGNAL_GRACE_PERIOD_SECONDS=(9)
-_bk;t=1781335332934BUILDKITE_BUILD_CREATOR=(Richard Levasseur)
-_bk;t=1781335332934BUILDKITE_LAST_HOOK_EXIT_STATUS=(0)
-_bk;t=1781335332934BUILDKITE_AGENT_EXPERIMENT=()
-_bk;t=1781335332934SSL_CERT_FILE=(/opt/homebrew/lib/python3.12/site-packages/certifi/cacert.pem)
-_bk;t=1781335332934BUILDKITE_AGENT_PID=(73155)
-_bk;t=1781335332934ANDROID_HOME=(/Users/buildkite/android-sdk-macosx)
-_bk;t=1781335332934TERM=(xterm-256color)
-_bk;t=1781335332934SHELL=(/bin/zsh)
-_bk;t=1781335332934BUILDKITE_RETRY_COUNT=(0)
-_bk;t=1781335332934BUILDKITE_NO_HTTP2=(false)
-_bk;t=1781335332934BUILDKITE_ENV_FILE=(/tmp/job-env-019ebfdb-e00f-4bcc-bba1-9c5de8379c7e2144443939)
-_bk;t=1781335332934BUILDKITE_ENV_JSON_FILE=(/tmp/job-env-json-019ebfdb-e00f-4bcc-bba1-9c5de8379c7e2641349067)
-_bk;t=1781335332934BUILDKITE_ARTIFACT_PATHS=()
-_bk;t=1781335332934GOOGLE_APPLICATION_CREDENTIALS=(/opt/homebrew/etc/buildkite-agent/bazel.json)
-_bk;t=1781335332934BUILDKITE_GIT_FETCH_FLAGS=(-v --prune)
-_bk;t=1781335332934BUILDKITE_CANCEL_GRACE_PERIOD=(10)
-_bk;t=1781335332934BUILDKITE_SOURCE=(webhook)
-_bk;t=1781335332934BUILDKITE_ARTIFACT_UPLOAD_DESTINATION=(gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e)
-_bk;t=1781335332934BUILDKITE_AGENT_DEBUG=(false)
-_bk;t=1781335332934BUILDKITE_GIT_CLONE_MIRROR_FLAGS=(-v --bare)
-_bk;t=1781335332934BUILDKITE_SCRIPT_PATH=(which python3
-_bk;t=1781335332934python3 -V
-_bk;t=1781335332934curl -q --noproxy '*' -sS https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/bazelci.py?1781335317 -o bazelci.py && curl -q --noproxy '*' -sS https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/collect_metrics.py?1781335317 -o collect_metrics.py
-_bk;t=1781335332934python3 bazelci.py runner --task=integration_test_bazelinbazel_macos)
-_bk;t=1781335332934BUILDKITE_ORGANIZATION_SLUG=(bazel)
-_bk;t=1781335332934BUILDKITE_AGENT_META_DATA_MACHINE_TYPE=(applevirtualmachine1)
-_bk;t=1781335332934BUILDKITE_LOCAL_HOOKS_ENABLED=(true)
-_bk;t=1781335332934BUILDKITE_COMMIT_RESOLVED=(true)
-_bk;t=1781335332934BUILDKITE_AGENT_ACCESS_TOKEN=([REDACTED])
-_bk;t=1781335332934BUILDKITE_PROJECT_SLUG=(bazel/rules-python-python)
-_bk;t=1781335332934GIT_TERMINAL_PROMPT=(0)
-_bk;t=1781335332934BUILDKITE_SOCKETS_PATH=(/Users/buildkite/.buildkite-agent/sockets)
-_bk;t=1781335332934USER=(buildkite)
-_bk;t=1781335332934BUILDKITE_COMPUTE_TYPE=(self-hosted)
-_bk;t=1781335332934SUDO_USER=(root)
-_bk;t=1781335332934BUILDKITE_ORGANIZATION_ID=(586ac9dd-b547-4a52-9d73-9e3a43ff74f9)
-_bk;t=1781335332934SUDO_UID=(0)
-_bk;t=1781335332934BUILDKITE_PULL_REQUEST_BASE_BRANCH=(main)
-_bk;t=1781335332934BUILDKITE_BUILD_CREATOR_EMAIL=(richardlev@gmail.com)
-_bk;t=1781335332934BUILDKITE_PROJECT_PROVIDER=(github)
-_bk;t=1781335332934BUILDKITE_STEP_KEY=()
-_bk;t=1781335332934BUILDKITE_PULL_REQUEST_REPO=(https://github.com/rickeylev/rules_python.git)
-_bk;t=1781335332934BUILDKITE_PLUGINS_ENABLED=(true)
-_bk;t=1781335332934BUILDKITE_GS_APPLICATION_CREDENTIALS=(/opt/homebrew/etc/buildkite-agent/bazel.json)
-_bk;t=1781335332934BUILDKITE_BUILD_CREATOR_TEAMS=(bazel:bcr-maintainers:rules-python)
-_bk;t=1781335332934BUILDKITE_AGENT_DEBUG_HTTP=(false)
-_bk;t=1781335332934BUILDKITE_PULL_REQUEST=(3812)
-_bk;t=1781335332934BUILDKITE_GIT_MIRRORS_LOCK_TIMEOUT=(300)
-_bk;t=1781335332934BUILDKITE_AGENT_ENDPOINT=(https://agent.buildkite.com/v3)
-_bk;t=1781335332934BUILDKITE_HOOKS_PATH=(/opt/homebrew/etc/buildkite-agent/hooks)
-_bk;t=1781335332934BUILDKITE_GIT_CLEAN_FLAGS=(-ffxdq)
-_bk;t=1781335332934BUILDKITE_GITHUB_ACTION=(synchronize)
-_bk;t=1781335332934BUILDKITE_REQUEST_HEADER_BUILDKITE_PIPELINES_SHARD_ID=(011)
-_bk;t=1781335332934BUILDKITE_GITHUB_EVENT=(pull_request)
-_bk;t=1781335332934BUILDKITE_BUILD_ID=(019ebfdb-afc0-4350-be53-56e1e1dcf7df)
-_bk;t=1781335332934PATH=(/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin)
-_bk;t=1781335332934MAIL=(/var/mail/root)
-_bk;t=1781335332934BUILDKITE_TRIGGERED_FROM_BUILD_NUMBER=()
-_bk;t=1781335332934BUILDKITE_REDACTED_VARS=(*_PASSWORD,*_SECRET,*_TOKEN,*_PRIVATE_KEY,*_ACCESS_KEY,*_SECRET_KEY,*_CONNECTION_STRING)
-_bk;t=1781335332934BUILDKITE_GIT_MIRRORS_PATH=(/usr/local/var/bazelbuild)
-_bk;t=1781335332934BUILDKITE_PIPELINE_ID=(129d6763-fb91-4bbb-a401-9dd80746c991)
-_bk;t=1781335332934COURSIER_OPTS=(-Djava.net.preferIPv6Addresses=true)
-_bk;t=1781335332934BUILDKITE_BUILD_AUTHOR_EMAIL=(richardlev@gmail.com)
-_bk;t=1781335332934PWD=(/Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python)
-_bk;t=1781335332934BUILDKITE_MESSAGE=(refactor(toolchains): register runtimes using manifest)
-_bk;t=1781335332934BUILDKITE_SHELL=(/bin/bash -e -c)
-_bk;t=1781335332934BUILDKITE_PIPELINE_PROVIDER=(github)
-_bk;t=1781335332934BUILDKITE_GIT_SUBMODULES=(true)
-_bk;t=1781335332934BUILDKITE_REBUILT_FROM_BUILD_NUMBER=()
-_bk;t=1781335332934BUILDKITE_GIT_MIRRORS_SKIP_UPDATE=(false)
-_bk;t=1781335332934BUILDKITE_BUILD_NUMBER=(15720)
-_bk;t=1781335332934BUILDKITE_AGENT_META_DATA_QUEUE=(macos_arm64)
-_bk;t=1781335332934BAZEL_BUCKET_TYPE=(untrusted)
-_bk;t=1781335332934BUILDKITE_SSH_KEYSCAN=(true)
-_bk;t=1781335332934BUILDKITE_AGENT_META_DATA_KIND=(worker)
-_bk;t=1781335332935BUILDKITE_TRIGGERED_FROM_BUILD_PIPELINE_SLUG=()
-_bk;t=1781335332935BUILDKITE_PLUGINS_PATH=(/usr/local/var/buildkite-agent/plugins)
-_bk;t=1781335332935BUILDKITE_LABEL=(tests/integration bazel-in-bazel: macOS (subset) on :darwin: macOS arm64)
-_bk;t=1781335332935BUILDKITE_BUILD_URL=(https://buildkite.com/bazel/rules-python-python/builds/15720)
-_bk;t=1781335332935BUILDKITE_PULL_REQUEST_LABELS=()
-_bk;t=1781335332935BUILDKITE_JOB_ID=(019ebfdb-e00f-4bcc-bba1-9c5de8379c7e)
-_bk;t=1781335332935BUILDKITE_PIPELINE_SLUG=(rules-python-python)
-_bk;t=1781335332935BUILDKITE_AGENT_ID=(019ebfda-eb3c-4605-a88b-fe2ba441ed63)
-_bk;t=1781335332935JAVA_TOOL_OPTIONS=(-Djava.net.preferIPv6Addresses=true)
-_bk;t=1781335332935SHLVL=(1)
-_bk;t=1781335332935SUDO_COMMAND=(/usr/bin/env GOOGLE_APPLICATION_CREDENTIALS=/opt/homebrew/etc/buildkite-agent/bazel.json PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/bin:/bin:/usr/sbin:/sbin BUILDKITE_AGENT_DISCONNECT_AFTER_JOB=true BUILDKITE_AGENT_DISCONNECT_AFTER_IDLE_TIMEOUT=82800 BUILDKITE_AGENT_NAME=bk-macos-arm64-1u9v BUILDKITE_AGENT_PRIORITY=0 BUILDKITE_AGENT_TOKEN=f411f9d8498d4f9762e554835e81a24e2cd9a15fa6740b1276 BUILDKITE_AGENT_TAGS=queue=macos_arm64,kind=worker,os=macos,os-version=15.7.2,machine-type=applevirtualmachine1 BUILDKITE_BUILD_PATH=/Users/buildkite/builds BUILDKITE_CONFIG_PATH=/opt/homebrew/etc/buildkite-agent/buildkite-agent.cfg BUILDKITE_GIT_MIRRORS_PATH=/usr/local/var/bazelbuild BUILDKITE_GIT_CLONE_MIRROR_FLAGS=-v --bare BAZEL_BUCKET_TYPE=untrusted /opt/homebrew/bin/buildkite-agent start)
-_bk;t=1781335332935HOME=(/Users/buildkite)
-_bk;t=1781335332935BUILDKITE_TRIGGERED_FROM_BUILD_ID=()
-_bk;t=1781335332935BUILDKITE_REPO_MIRROR=(/usr/local/var/bazelbuild/https---github-com-bazel-contrib-rules-python-git)
-_bk;t=1781335332935BUILDKITE_AGENT_JOB_API_SOCKET=(/Users/buildkite/.buildkite-agent/sockets/job-api/73160-62344.sock)
-_bk;t=1781335332935BUILDKITE_COMMAND=(which python3
-_bk;t=1781335332935python3 -V
-_bk;t=1781335332935curl -q --noproxy '*' -sS https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/bazelci.py?1781335317 -o bazelci.py && curl -q --noproxy '*' -sS https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/collect_metrics.py?1781335317 -o collect_metrics.py
-_bk;t=1781335332935python3 bazelci.py runner --task=integration_test_bazelinbazel_macos)
-_bk;t=1781335332935BUILDKITE_BIN_PATH=(/opt/homebrew/bin)
-_bk;t=1781335332935CI=(true)
-_bk;t=1781335332935BUILDKITE_REPO=(https://github.com/bazel-contrib/rules_python.git)
-_bk;t=1781335332935BUILDKITE_TRACE_CONTEXT_ENCODING=(gob)
-_bk;t=1781335332935BUILDKITE=(true)
-_bk;t=1781335332935BUILDKITE_STEP_ID=(019ebfdb-dede-4457-be66-235b16e82f9c)
-_bk;t=1781335332935LOGNAME=(buildkite)
-_bk;t=1781335332935BUILDKITE_ADDITIONAL_HOOKS_PATHS=()
-_bk;t=1781335332935BUILDKITE_TAG=()
-_bk;t=1781335332935BUILDKITE_BRANCH=(rickeylev:register-builtin-runtimes-manifest)
-_bk;t=1781335332935BUILDKITE_TIMEOUT=(480)
-_bk;t=1781335332935BUILDKITE_PIPELINE_TEAMS=(bazel:rules-python)
-_bk;t=1781335332935BUILDKITE_AGENT_DISABLE_WARNINGS_FOR=()
-_bk;t=1781335332935BUILDKITE_REBUILT_FROM_BUILD_ID=()
-_bk;t=1781335332935BUILDKITE_BUILD_CHECKOUT_PATH=(/Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python)
-_bk;t=1781335332935BUILDKITE_AGENT_NAME=(bk-macos-arm64-1u9v)
-_bk;t=1781335332935BUILDKITE_COMMAND_EVAL=(true)
-_bk;t=1781335332935BUILDKITE_AGENT_JOB_API_TOKEN=([REDACTED])
-_bk;t=1781335332935BUILDKITE_PLUGIN_VALIDATION=(false)
-_bk;t=1781335332935BUILDKITE_AGENT_META_DATA_OS=(macos)
-_bk;t=1781335332935ANDROID_NDK_HOME=(/Users/buildkite/android-ndk-r15c)
-_bk;t=1781335332935SUDO_GID=(0)
-_bk;t=1781335332935BUILDKITE_STRICT_SINGLE_HOOKS=(false)
-_bk;t=1781335332935BUILDKITE_GIT_CHECKOUT_FLAGS=(-f)
-_bk;t=1781335332935BUILDKITE_COMMIT=(92c48e57c6353feb0452ad82f7cfc2c744616fa4)
-_bk;t=1781335332935BUILDKITE_PIPELINE_NAME=(rules_python :python:)
-_bk;t=1781335332935BUILDKITE_GIT_CLONE_FLAGS=(-v)
-_bk;t=1781335332935BUILDKITE_BUILD_PATH=(/Users/buildkite/builds)
-_bk;t=1781335332935BUILDKITE_BUILD_AUTHOR=(Richard Levasseur)
-_bk;t=1781335332935BUILDKITE_PIPELINE_DEFAULT_BRANCH=(main)
-_bk;t=1781335332935_=(/opt/homebrew/bin/python3)
-_bk;t=1781335332935__CF_USER_TEXT_ENCODING=(0x1F6:0:0)
-_bk;t=1781335332935LC_CTYPE=(C.UTF-8)
-_bk;t=1781335332935BAZELCI_TASK=(integration_test_bazelinbazel_macos)
-_bk;t=1781335332935BAZELISK_USER_AGENT=(Bazelisk/BazelCI)
-_bk;t=1781335332935OUTPUT_BASE=(/Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b)
-_bk;t=1781335332935
-_bk;t=1781335332935
-_bk;t=1781335332935--- :dart: Calculating targets
-_bk;t=1781335332935
-_bk;t=1781335332935
-_bk;t=1781335332935
-_bk;t=1781335332935
-_bk;t=1781335332935--- :bazel: Computing flags for build step
-_bk;t=1781335332935
-_bk;t=1781335332935
-_bk;t=1781335333017Adding to platform cache key: b'bazel'
-_bk;t=1781335333017Adding to platform cache key: b'cache-poisoning-20250808'
-_bk;t=1781335333017Adding to platform cache key: b'macos_arm64'
-_bk;t=1781335333017Adding to platform cache key: b'15.7.2\n'
-_bk;t=1781335333017Adding to platform cache key: b'/Applications/Xcode26.0.app/Contents/Developer\n'
-_bk;t=1781335333017Adding to platform cache key: b'Xcode 26.0\nBuild version 17A324\n'
-_bk;t=1781335333017
-_bk;t=1781335333017
-_bk;t=1781335333017+++ :bazel: Build (9.1.1)
-_bk;t=1781335333017
-_bk;t=1781335333017
-_bk;t=1781335333017bazel --host_jvm_args=-Djava.net.preferIPv6Addresses=true build --show_progress_rate_limit=5 --curses=yes --color=yes --terminal_columns=143 --show_timestamps --verbose_failures --jobs=6 --announce_rc --experimental_repository_cache_hardlinks --disk_cache= --experimental_build_event_json_file_path_conversion=false --build_event_json_file=/tmp/tmpwsin4oco/build_bep.json --jvmopt=-Djava.net.preferIPv6Addresses --remote_cache=https://storage.googleapis.com/bazel-untrusted-build-cache --google_default_credentials --remote_timeout=3600 --remote_max_connections=200 --remote_default_exec_properties=cache-silo-key=510a78257642ea06c9c48744309a610f57ed4a56da61ac67fbb66db9c58ab6cb --build_tag_filters=integration-test --test_env=HOME --test_env=BAZELISK_USER_AGENT --test_env=COURSIER_OPTS --test_env=JAVA_TOOL_OPTIONS --test_env=SSL_CERT_FILE -- //tests/integration:subset
-_bk;t=1781335333561WARNING: Running Bazel server needs to be killed, because the following startup options are different:
-_bk;t=1781335333561  - Only in old server: 
-_bk;t=1781335333561  - Only in new server: --host_jvm_args=-Djava.net.preferIPv6Addresses=true -Djava.net.preferIPv6Addresses=true
-_bk;t=1781335333902Starting local Bazel server (9.1.1) and connecting to it...
-_bk;t=1781335333902WARNING: ignoring JAVA_TOOL_OPTIONS in environment.
-_bk;t=1781335334877(09:22:14) [35mWARNING: [0mOption 'experimental_downloader_config' is deprecated: Use --downloader_config instead
-_bk;t=1781335334879(09:22:14) [35mWARNING: [0mOption 'experimental_build_event_json_file_path_conversion' is deprecated: Use --build_event_json_file_path_conversion instead
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mInvocation ID: 11239ebc-d274-413a-b184-1bf5cc2827c2
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mReading 'startup' options from /private/etc/bazel.bazelrc: --host_jvm_args=-Djava.net.preferIPv6Addresses=true
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mReading 'startup' options from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc: --windows_enable_symlinks
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mOptions provided by the client:
-_bk;t=1781335334879  Inherited 'common' options: --isatty=1 --terminal_columns=160
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mReading rc options for 'build' from /private/etc/bazel.bazelrc:
-_bk;t=1781335334879  Inherited 'common' options: --jvmopt=-Djava.net.preferIPv6Addresses
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mReading rc options for 'build' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc.deleted_packages:
-_bk;t=1781335334879  Inherited 'common' options: --deleted_packages=examples/build_file_generation --deleted_packages=examples/build_file_generation/random_number_generator --deleted_packages=examples/bzlmod --deleted_packages=examples/bzlmod/entry_points --deleted_packages=examples/bzlmod/entry_points/tests --deleted_packages=examples/bzlmod/libs/my_lib --deleted_packages=examples/bzlmod/other_module --deleted_packages=examples/bzlmod/other_module/other_module/pkg --deleted_packages=examples/bzlmod/patches --deleted_packages=examples/bzlmod/runfiles --deleted_packages=examples/bzlmod/tests --deleted_packages=examples/bzlmod/tests/other_module --deleted_packages=examples/bzlmod/whl_mods --deleted_packages=examples/multi_python_versions/libs/my_lib --deleted_packages=examples/multi_python_versions/requirements --deleted_packages=examples/multi_python_versions/tests --deleted_packages=examples/pip_parse --deleted_packages=examples/pip_parse_vendored --deleted_packages=gazelle --deleted_packages=gazelle/examples/bzlmod_build_file_generation --deleted_packages=gazelle/examples/bzlmod_build_file_generation/other_module/other_module/pkg --deleted_packages=gazelle/examples/bzlmod_build_file_generation/runfiles --deleted_packages=gazelle/manifest --deleted_packages=gazelle/manifest/generate --deleted_packages=gazelle/manifest/hasher --deleted_packages=gazelle/manifest/test --deleted_packages=gazelle/modules_mapping --deleted_packages=gazelle/python --deleted_packages=gazelle/pythonconfig --deleted_packages=gazelle/python/private --deleted_packages=tests/integration/bzlmod_lockfile --deleted_packages=tests/integration/compile_pip_requirements --deleted_packages=tests/integration/compile_pip_requirements_test_from_external_repo --deleted_packages=tests/integration/custom_commands --deleted_packages=tests/integration/local_toolchains --deleted_packages=tests/integration/pip_parse --deleted_packages=tests/integration/pip_parse/empty --deleted_packages=tests/integration/pip_parse_isolated --deleted_packages=tests/integration/py_cc_toolchain_registered --deleted_packages=tests/integration/runtime_manifests --deleted_packages=tests/integration/toolchain_target_settings --deleted_packages=tests/integration/uv_lock --deleted_packages=tests/modules/another_module --deleted_packages=tests/modules/other --deleted_packages=tests/modules/other/nspkg_delta --deleted_packages=tests/modules/other/nspkg_gamma --deleted_packages=tests/modules/other/nspkg_single --deleted_packages=tests/modules/other/simple_v1 --deleted_packages=tests/modules/other/simple_v2 --deleted_packages=tests/modules/other/with_external_data
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mReading rc options for 'build' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc:
-_bk;t=1781335334879  Inherited 'common' options: --incompatible_disallow_struct_provider_syntax --incompatible_use_plus_in_repo_names --enable_platform_specific_config --incompatible_strict_action_env=false --enable_bzlmod --disk_cache=~/.cache/bazel/bazel-disk-cache --experimental_downloader_config=downloader_config.cfg --http_timeout_scaling=10.0 --experimental_repository_downloader_retries=10 --incompatible_python_disallow_native_rules --incompatible_no_implicit_file_export
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mReading rc options for 'build' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc:
-_bk;t=1781335334879  'build' options: --incompatible_default_to_explicit_init_py --//python/config_settings:incompatible_default_to_explicit_init_py=True --enable_runfiles --lockfile_mode=update
-_bk;t=1781335334879(09:22:14) [32mINFO: [0mFound applicable config definition build:macos in file /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc: --copt=-Wno-deprecated-declarations --copt=-Wno-stringop-overread --copt=-Wno-sign-compare --host_copt=-Wno-deprecated-declarations --host_copt=-Wno-stringop-overread --host_copt=-Wno-sign-compare
-_bk;t=1781335334912(09:22:14) [32mINFO: [0mCurrent date is 2026-06-13
-_bk;t=1781335334912(09:22:14) 
-_bk;t=1781335334912[1A[K_bk;t=1781335334912(09:22:14) [32mComputing main repo mapping:[0m 
-_bk;t=1781335334934[1A[K_bk;t=1781335334934(09:22:14) [35mWARNING: [0m/Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/MODULE.bazel:1:7: The attribute 'compatibility_level' in module() is a no-op and will be removed in a future Bazel release. Please remove it from your MODULE.bazel file.
-_bk;t=1781335334934(09:22:14) [32mComputing main repo mapping:[0m 
-_bk;t=1781335335068[1A[K_bk;t=1781335335068(09:22:15) [35mWARNING: [0mFor repository 'bazel_features', the root module requires module version bazel_features@1.21.0, but got bazel_features@1.42.1 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335335068(09:22:15) [32mComputing main repo mapping:[0m 
-_bk;t=1781335335068[1A[K_bk;t=1781335335068(09:22:15) [35mWARNING: [0mFor repository 'platforms', the root module requires module version platforms@0.0.11, but got platforms@1.0.0 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335335068(09:22:15) [32mComputing main repo mapping:[0m 
-_bk;t=1781335335068[1A[K_bk;t=1781335335068(09:22:15) [35mWARNING: [0mFor repository 'com_google_protobuf', the root module requires module version protobuf@29.0-rc2, but got protobuf@33.4 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335335068(09:22:15) [32mComputing main repo mapping:[0m 
-_bk;t=1781335335068[1A[K_bk;t=1781335335068(09:22:15) [35mWARNING: [0mFor repository 'rules_shell', the root module requires module version rules_shell@0.3.0, but got rules_shell@0.6.1 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335335068(09:22:15) [32mComputing main repo mapping:[0m 
-_bk;t=1781335335646[1A[K_bk;t=1781335335646(09:22:15) [32mLoading:[0m 
-_bk;t=1781335335655[1A[K_bk;t=1781335335655(09:22:15) [32mLoading:[0m 1 packages loaded
-_bk;t=1781335336199[1A[K_bk;t=1781335336199(09:22:16) [32mAnalyzing:[0m 0 targets (6 packages loaded, 6 targets configured)
-_bk;t=1781335336207[1A[K_bk;t=1781335336207(09:22:16) [32mAnalyzing:[0m 0 targets (6 packages loaded, 6 targets configured)
-_bk;t=1781335336207
-_bk;t=1781335336221[1A[K_bk;t=1781335336221[1A[K_bk;t=1781335336221(09:22:16) [32mINFO: [0mFound 0 targets...
-_bk;t=1781335336221(09:22:16) [32mAnalyzing:[0m 0 targets (6 packages loaded, 6 targets configured)
-_bk;t=1781335336221
-_bk;t=1781335336238[1A[K_bk;t=1781335336238[1A[K_bk;t=1781335336238(09:22:16) [32mINFO: [0mElapsed time: 2.700s, Critical Path: 0.01s
-_bk;t=1781335336238(09:22:16) [32mAnalyzing:[0m 0 targets (6 packages loaded, 6 targets configured)
-_bk;t=1781335336238
-_bk;t=1781335336238[1A[K_bk;t=1781335336238[1A[K_bk;t=1781335336238(09:22:16) [32mINFO: [0m1 process: 1 internal.
-_bk;t=1781335336238(09:22:16) [32mAnalyzing:[0m 0 targets (6 packages loaded, 6 targets configured)
-_bk;t=1781335336238
-_bk;t=1781335336238[1A[K_bk;t=1781335336238[1A[K_bk;t=1781335336238(09:22:16) [32mINFO: [0mBuild completed successfully, 1 total action
-_bk;t=1781335336238(09:22:16) [32mINFO:[0m 
-_bk;t=1781335336238[1A[K_bk;t=1781335336238(09:22:16) [32mINFO:[0m 
-_bk;t=1781335336271[1A[K_bk;t=1781335336271(09:22:16) [32mINFO: [0mBuild Event Protocol files produced successfully.
-_bk;t=1781335336272[0mcurl -q --noproxy '*' -sSL https://github.com/bazelbuild/continuous-integration/releases/download/agent-0.2.7/bazelci-agent-0.2.7-aarch64-apple-darwin -o /tmp/tmpwsin4oco/bazelci-agent
-_bk;t=1781335336279
-_bk;t=1781335336279
-_bk;t=1781335336279--- :bazel: Computing flags for test step
-_bk;t=1781335336279
-_bk;t=1781335336279
-_bk;t=1781335336335/tmp/tmpwsin4oco/bazelci-agent artifact upload --debug --mode=buildkite --build_event_json_file=/tmp/tmpwsin4oco/test_bep.json
-_bk;t=1781335336371Adding to platform cache key: b'bazel'
-_bk;t=1781335336371Adding to platform cache key: b'cache-poisoning-20250808'
-_bk;t=1781335336371Adding to platform cache key: b'macos_arm64'
-_bk;t=1781335336371Adding to platform cache key: b'15.7.2\n'
-_bk;t=1781335336371Adding to platform cache key: b'/Applications/Xcode26.0.app/Contents/Developer\n'
-_bk;t=1781335336371Adding to platform cache key: b'Xcode 26.0\nBuild version 17A324\n'
-_bk;t=1781335336371
-_bk;t=1781335336371
-_bk;t=1781335336371+++ :bazel: Test (9.1.1)
-_bk;t=1781335336371
-_bk;t=1781335336371
-_bk;t=1781335336371bazel --host_jvm_args=-Djava.net.preferIPv6Addresses=true test --flaky_test_attempts=3 --build_tests_only --local_test_jobs=3 --show_progress_rate_limit=5 --curses=yes --color=yes --terminal_columns=143 --show_timestamps --verbose_failures --jobs=6 --announce_rc --experimental_repository_cache_hardlinks --disk_cache= --experimental_build_event_json_file_path_conversion=false --build_event_json_file=/tmp/tmpwsin4oco/test_bep.json --jvmopt=-Djava.net.preferIPv6Addresses --remote_cache=https://storage.googleapis.com/bazel-untrusted-build-cache --google_default_credentials --remote_timeout=3600 --remote_max_connections=200 --remote_default_exec_properties=cache-silo-key=510a78257642ea06c9c48744309a610f57ed4a56da61ac67fbb66db9c58ab6cb --test_tag_filters=integration-test --jobs=2 --local_test_jobs=2 --test_env=HOME --test_env=BAZELISK_USER_AGENT --test_env=COURSIER_OPTS --test_env=JAVA_TOOL_OPTIONS --test_env=SSL_CERT_FILE --sandbox_writable_path=/Users/buildkite/Library/Caches/bazelisk -- //tests/integration:subset
-_bk;t=1781335336926(09:22:16) [35mWARNING: [0mOption 'experimental_downloader_config' is deprecated: Use --downloader_config instead
-_bk;t=1781335336926(09:22:16) [35mWARNING: [0mOption 'experimental_build_event_json_file_path_conversion' is deprecated: Use --build_event_json_file_path_conversion instead
-_bk;t=1781335336926(09:22:16) [32mINFO: [0mInvocation ID: 7133c34a-2865-4989-836d-692f2d126876
-_bk;t=1781335336926(09:22:16) [32mINFO: [0mReading 'startup' options from /private/etc/bazel.bazelrc: --host_jvm_args=-Djava.net.preferIPv6Addresses=true
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mReading 'startup' options from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc: --windows_enable_symlinks
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mOptions provided by the client:
-_bk;t=1781335336927  Inherited 'common' options: --isatty=1 --terminal_columns=160
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mReading rc options for 'test' from /private/etc/bazel.bazelrc:
-_bk;t=1781335336927  Inherited 'common' options: --jvmopt=-Djava.net.preferIPv6Addresses
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mReading rc options for 'test' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc.deleted_packages:
-_bk;t=1781335336927  Inherited 'common' options: --deleted_packages=examples/build_file_generation --deleted_packages=examples/build_file_generation/random_number_generator --deleted_packages=examples/bzlmod --deleted_packages=examples/bzlmod/entry_points --deleted_packages=examples/bzlmod/entry_points/tests --deleted_packages=examples/bzlmod/libs/my_lib --deleted_packages=examples/bzlmod/other_module --deleted_packages=examples/bzlmod/other_module/other_module/pkg --deleted_packages=examples/bzlmod/patches --deleted_packages=examples/bzlmod/runfiles --deleted_packages=examples/bzlmod/tests --deleted_packages=examples/bzlmod/tests/other_module --deleted_packages=examples/bzlmod/whl_mods --deleted_packages=examples/multi_python_versions/libs/my_lib --deleted_packages=examples/multi_python_versions/requirements --deleted_packages=examples/multi_python_versions/tests --deleted_packages=examples/pip_parse --deleted_packages=examples/pip_parse_vendored --deleted_packages=gazelle --deleted_packages=gazelle/examples/bzlmod_build_file_generation --deleted_packages=gazelle/examples/bzlmod_build_file_generation/other_module/other_module/pkg --deleted_packages=gazelle/examples/bzlmod_build_file_generation/runfiles --deleted_packages=gazelle/manifest --deleted_packages=gazelle/manifest/generate --deleted_packages=gazelle/manifest/hasher --deleted_packages=gazelle/manifest/test --deleted_packages=gazelle/modules_mapping --deleted_packages=gazelle/python --deleted_packages=gazelle/pythonconfig --deleted_packages=gazelle/python/private --deleted_packages=tests/integration/bzlmod_lockfile --deleted_packages=tests/integration/compile_pip_requirements --deleted_packages=tests/integration/compile_pip_requirements_test_from_external_repo --deleted_packages=tests/integration/custom_commands --deleted_packages=tests/integration/local_toolchains --deleted_packages=tests/integration/pip_parse --deleted_packages=tests/integration/pip_parse/empty --deleted_packages=tests/integration/pip_parse_isolated --deleted_packages=tests/integration/py_cc_toolchain_registered --deleted_packages=tests/integration/runtime_manifests --deleted_packages=tests/integration/toolchain_target_settings --deleted_packages=tests/integration/uv_lock --deleted_packages=tests/modules/another_module --deleted_packages=tests/modules/other --deleted_packages=tests/modules/other/nspkg_delta --deleted_packages=tests/modules/other/nspkg_gamma --deleted_packages=tests/modules/other/nspkg_single --deleted_packages=tests/modules/other/simple_v1 --deleted_packages=tests/modules/other/simple_v2 --deleted_packages=tests/modules/other/with_external_data
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mReading rc options for 'test' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc:
-_bk;t=1781335336927  Inherited 'common' options: --incompatible_disallow_struct_provider_syntax --incompatible_use_plus_in_repo_names --enable_platform_specific_config --incompatible_strict_action_env=false --enable_bzlmod --disk_cache=~/.cache/bazel/bazel-disk-cache --experimental_downloader_config=downloader_config.cfg --http_timeout_scaling=10.0 --experimental_repository_downloader_retries=10 --incompatible_python_disallow_native_rules --incompatible_no_implicit_file_export
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mReading rc options for 'test' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc:
-_bk;t=1781335336927  Inherited 'build' options: --incompatible_default_to_explicit_init_py --//python/config_settings:incompatible_default_to_explicit_init_py=True --enable_runfiles --lockfile_mode=update
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mReading rc options for 'test' from /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc:
-_bk;t=1781335336927  'test' options: --test_output=errors
-_bk;t=1781335336927(09:22:16) [32mINFO: [0mFound applicable config definition build:macos in file /Users/buildkite/builds/bk-macos-arm64-1u9v/bazel/rules-python-python/.bazelrc: --copt=-Wno-deprecated-declarations --copt=-Wno-stringop-overread --copt=-Wno-sign-compare --host_copt=-Wno-deprecated-declarations --host_copt=-Wno-stringop-overread --host_copt=-Wno-sign-compare
-_bk;t=1781335336952(09:22:16) [32mINFO: [0mCurrent date is 2026-06-13
-_bk;t=1781335336952(09:22:16) 
-_bk;t=1781335336952[1A[K_bk;t=1781335336952(09:22:16) [32mComputing main repo mapping:[0m 
-_bk;t=1781335336998[1A[K_bk;t=1781335336998(09:22:16) [35mWARNING: [0mFor repository 'bazel_features', the root module requires module version bazel_features@1.21.0, but got bazel_features@1.42.1 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335336998(09:22:16) [32mComputing main repo mapping:[0m 
-_bk;t=1781335336999[1A[K_bk;t=1781335336999(09:22:16) [35mWARNING: [0mFor repository 'platforms', the root module requires module version platforms@0.0.11, but got platforms@1.0.0 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335336999(09:22:16) [32mComputing main repo mapping:[0m 
-_bk;t=1781335336999[1A[K_bk;t=1781335336999(09:22:16) [35mWARNING: [0mFor repository 'com_google_protobuf', the root module requires module version protobuf@29.0-rc2, but got protobuf@33.4 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335336999(09:22:16) [32mComputing main repo mapping:[0m 
-_bk;t=1781335336999[1A[K_bk;t=1781335336999(09:22:16) [35mWARNING: [0mFor repository 'rules_shell', the root module requires module version rules_shell@0.3.0, but got rules_shell@0.6.1 in the resolved dependency graph. Please update the version in your MODULE.bazel or set --check_direct_dependencies=off
-_bk;t=1781335336999(09:22:16) [32mComputing main repo mapping:[0m 
-_bk;t=1781335337048[1A[K_bk;t=1781335337048(09:22:17) [32mLoading:[0m 
-_bk;t=1781335337050[1A[K_bk;t=1781335337050(09:22:17) [32mLoading:[0m 0 packages loaded
-_bk;t=1781335337078[1A[K_bk;t=1781335337078(09:22:17) [32mAnalyzing:[0m 3 targets (0 packages loaded, 0 targets configured)
-_bk;t=1781335337079[1A[K_bk;t=1781335337079(09:22:17) [32mAnalyzing:[0m 3 targets (0 packages loaded, 0 targets configured)
-_bk;t=1781335337079
-_bk;t=1781335342090[1A[K_bk;t=1781335342090[1A[K_bk;t=1781335342090(09:22:22) [32mAnalyzing:[0m 3 targets (114 packages loaded, 12721 targets configured)
-_bk;t=1781335342090[32m[13 / 13][0m no actions running
-_bk;t=1781335342090    Fetching repository @@+python+python_3_11_15_aarch64-apple-darwin; Running python_repository.FixUpDyldIdPath
-_bk;t=1781335342090    Fetching repository @@rules_cc++cc_configure_extension+local_config_cc; starting
-_bk;t=1781335342090    Fetching repository @@+pip+pypiserver; starting
-_bk;t=1781335347700[1A[K_bk;t=1781335347700[1A[K_bk;t=1781335347700[1A[K_bk;t=1781335347700[1A[K_bk;t=1781335347700[1A[K_bk;t=1781335347700(09:22:27) [32mAnalyzing:[0m 3 targets (130 packages loaded, 15704 targets configured)
-_bk;t=1781335347700    currently loading: @@bazel_tools+xcode_configure_extension+local_config_xcode//
-_bk;t=1781335347700[32m[13 / 13][0m no actions running
-_bk;t=1781335347758[1A[K_bk;t=1781335347758[1A[K_bk;t=1781335347758[1A[K_bk;t=1781335347758(09:22:27) [32mINFO: [0mAnalyzed 3 targets (132 packages loaded, 15716 targets configured).
-_bk;t=1781335347758(09:22:27) [32m[13 / 13][0m no actions running
-_bk;t=1781335355093[1A[K_bk;t=1781335355093(09:22:35) [32m[29 / 30][0m Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 6s local, remote-cache
-_bk;t=1781335356141[1A[K_bk;t=1781335356141(09:22:36) [31m[1mFAIL: [0m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0 (Exit 1) (see /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_1.log)
-_bk;t=1781335356141(09:22:36) [32m[29 / 30][0m Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 7s local, remote-cache
-_bk;t=1781335356661buildkite-agent artifact upload --content-type text/plain;charset=utf-8 tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_1.log
-_bk;t=1781335356682[38;5;48m2026-06-13 09:22:36 INFO  [0m [0mFound 1 files that match "tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_1.log"[0m
-_bk;t=1781335356683[38;5;48m2026-06-13 09:22:36 INFO  [0m [0mUploading to Google Cloud Storage ("gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e"), using your agent configuration[0m
-_bk;t=1781335356683[38;5;48m2026-06-13 09:22:36 INFO  [0m [0mCreating (0-1)/1 artifacts[0m
-_bk;t=1781335356815[38;5;48m2026-06-13 09:22:36 INFO  [0m [0mUploading 019ebfdc-7611-4721-a8c8-9202fe0ed8d8 tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_1.log (4.5 KiB)[0m
-_bk;t=1781335357383[38;5;48m2026-06-13 09:22:37 INFO  [0m [0mArtifact uploads completed successfully[0m
-_bk;t=1781335361338[1A[K_bk;t=1781335361338(09:22:41) [32m[29 / 30][0m Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 12s local, remote-cache
-_bk;t=1781335362011[1A[K_bk;t=1781335362011(09:22:42) [31m[1mFAIL: [0m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0 (Exit 1) (see /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_2.log)
-_bk;t=1781335362011(09:22:42) [32m[29 / 30][0m Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 13s local, remote-cache
-_bk;t=1781335362719buildkite-agent artifact upload --content-type text/plain;charset=utf-8 tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_2.log
-_bk;t=1781335362744[38;5;48m2026-06-13 09:22:42 INFO  [0m [0mFound 1 files that match "tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_2.log"[0m
-_bk;t=1781335362745[38;5;48m2026-06-13 09:22:42 INFO  [0m [0mUploading to Google Cloud Storage ("gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e"), using your agent configuration[0m
-_bk;t=1781335362745[38;5;48m2026-06-13 09:22:42 INFO  [0m [0mCreating (0-1)/1 artifacts[0m
-_bk;t=1781335362862[38;5;48m2026-06-13 09:22:42 INFO  [0m [0mUploading 019ebfdc-8dae-438e-98f0-13a4125befc4 tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_2.log (4.4 KiB)[0m
-_bk;t=1781335363451[38;5;48m2026-06-13 09:22:43 INFO  [0m [0mArtifact uploads completed successfully[0m
-_bk;t=1781335367339[1A[K_bk;t=1781335367339(09:22:47) [32m[29 / 30][0m Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 18s local, remote-cache
-_bk;t=1781335367948[1A[K_bk;t=1781335367948(09:22:47) [31m[1mFAIL: [0m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0 (Exit 1) (see /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test.log)
-_bk;t=1781335367948(09:22:47) [32m[29 / 30][0m Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 19s local, remote-cache
-_bk;t=1781335367957[1A[K_bk;t=1781335367957
-_bk;t=1781335367957[31m[1mFAILED: [0m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0 (Summary)
-_bk;t=1781335367957      /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test.log
-_bk;t=1781335367957      /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_1.log
-_bk;t=1781335367957      /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_2.log
-_bk;t=1781335367957(09:22:47) [32m[29 / 30][0m 1 / 3 tests, [31m[1m1 failed[0m;[0m  1 action[0m; last test: [31m[1m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0[0m[0m
-_bk;t=1781335367957    Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 19s local, remote-cache
-_bk;t=1781335367965[1A[K_bk;t=1781335367965[1A[K_bk;t=1781335367965(09:22:47) [32mINFO: [0mFrom Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0:
-_bk;t=1781335367965==================== Test output for //tests/integration:bzlmod_lockfile_test_bazel_9.1.0:
-_bk;t=17813353679652026/06/13 07:22:29 Downloading https://releases.bazel.build/9.1.0/release/bazel-9.1.0-darwin-arm64...
-_bk;t=1781335367965$TEST_TMPDIR defined, some defaults will be overridden
-_bk;t=1781335367965Extracting Bazel installation...
-_bk;t=1781335367965Starting local Bazel server (9.1.0) and connecting to it...
-_bk;t=1781335367965WARNING: ignoring JAVA_TOOL_OPTIONS in environment.
-_bk;t=1781335367965bazel-bin: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335367965bazel-genfiles: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335367965bazel-testlogs: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs
-_bk;t=1781335367965character-encoding: file.encoding = ISO-8859-1, defaultCharset = ISO-8859-1, sun.jnu.encoding = UTF-8
-_bk;t=1781335367965command_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/command.log
-_bk;t=1781335367965committed-heap-size: 293MB
-_bk;t=1781335367965execution_root: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main
-_bk;t=1781335367965gc-count: 11
-_bk;t=1781335367965gc-time: 18ms
-_bk;t=1781335367965install_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/install/361ca53cfe6da546a2cd9cfd78b31378
-_bk;t=1781335367965java-home: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/install/361ca53cfe6da546a2cd9cfd78b31378/embedded_tools/jdk
-_bk;t=1781335367965java-runtime: OpenJDK Runtime Environment (build 25.0.2+10-LTS) by Azul Systems, Inc.
-_bk;t=1781335367965java-vm: OpenJDK 64-Bit Server VM (build 25.0.2+10-LTS, mixed mode) by Azul Systems, Inc.
-_bk;t=1781335367965local_resources: RAM=32768MB, CPU=6.0
-_bk;t=1781335367965max-heap-size: 8589MB
-_bk;t=1781335367965output_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c
-_bk;t=1781335367965output_path: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out
-_bk;t=1781335367965package_path: %workspace%
-_bk;t=1781335367965release: release 9.1.0
-_bk;t=1781335367965repository_cache: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/cache/repos/v1
-_bk;t=1781335367965server_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/java.log.177c7787-c7ce-49b5-9e4c-fb4592c50e64.buildkite.log.java.20260613-072232.73761
-_bk;t=1781335367965server_pid: 73761
-_bk;t=1781335367965used-heap-size: 99MB
-_bk;t=1781335367965workspace: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/tests/integration/bzlmod_lockfile_test_bazel_9.1.0.runfiles/_main/tests/integration/bzlmod_lockfile
-_bk;t=1781335367965$TEST_TMPDIR defined, some defaults will be overridden
-_bk;t=1781335367965Computing main repo mapping: 
-_bk;t=1781335367965Loading: 
-_bk;t=1781335367965Loading: 0 packages loaded
-_bk;t=1781335367965Analyzing: target //:test_dummy (1 packages loaded, 0 targets configured)
-_bk;t=1781335367965Analyzing: target //:test_dummy (1 packages loaded, 1 target configured)
-_bk;t=1781335367965
-_bk;t=1781335367965ERROR: Analysis of target '//:test_dummy' failed; build aborted: MODULE.bazel.lock is no longer up-to-date because the implementation of the extension '@@rules_python+//python/uv:uv.bzl%uv' or one of its transitive .bzl files has changed. Please run `bazel mod deps --lockfile_mode=update` to update your lockfile.
-_bk;t=1781335367965INFO: Elapsed time: 0.655s, Critical Path: 0.02s
-_bk;t=1781335367965INFO: 1 process: 1 internal.
-_bk;t=1781335367965ERROR: Build did NOT complete successfully
-_bk;t=1781335367965FAILED: 
-_bk;t=1781335367965ERROR: No test targets were found, yet testing was requested
-_bk;t=1781335367965================================================================================
-_bk;t=1781335367965==================== Test output for //tests/integration:bzlmod_lockfile_test_bazel_9.1.0:
-_bk;t=1781335367965$TEST_TMPDIR defined, some defaults will be overridden
-_bk;t=1781335367965Extracting Bazel installation...
-_bk;t=1781335367965Starting local Bazel server (9.1.0) and connecting to it...
-_bk;t=1781335367965WARNING: ignoring JAVA_TOOL_OPTIONS in environment.
-_bk;t=1781335367965bazel-bin: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335367965bazel-genfiles: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335367965bazel-testlogs: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs
-_bk;t=1781335367965character-encoding: file.encoding = ISO-8859-1, defaultCharset = ISO-8859-1, sun.jnu.encoding = UTF-8
-_bk;t=1781335367965command_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/command.log
-_bk;t=1781335367965committed-heap-size: 75MB
-_bk;t=1781335367965execution_root: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main
-_bk;t=1781335367965gc-count: 14
-_bk;t=1781335367965gc-time: 25ms
-_bk;t=1781335367965install_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/install/361ca53cfe6da546a2cd9cfd78b31378
-_bk;t=1781335367965java-home: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/install/361ca53cfe6da546a2cd9cfd78b31378/embedded_tools/jdk
-_bk;t=1781335367965java-runtime: OpenJDK Runtime Environment (build 25.0.2+10-LTS) by Azul Systems, Inc.
-_bk;t=1781335367965java-vm: OpenJDK 64-Bit Server VM (build 25.0.2+10-LTS, mixed mode) by Azul Systems, Inc.
-_bk;t=1781335367965local_resources: RAM=32768MB, CPU=6.0
-_bk;t=1781335367965max-heap-size: 8589MB
-_bk;t=1781335367965output_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c
-_bk;t=1781335367965output_path: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out
-_bk;t=1781335367965package_path: %workspace%
-_bk;t=1781335367965release: release 9.1.0
-_bk;t=1781335367965repository_cache: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/cache/repos/v1
-_bk;t=1781335367965server_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/java.log.177c7787-c7ce-49b5-9e4c-fb4592c50e64.buildkite.log.java.20260613-072238.73886
-_bk;t=1781335367965server_pid: 73886
-_bk;t=1781335367965used-heap-size: 24MB
-_bk;t=1781335367965workspace: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/tests/integration/bzlmod_lockfile_test_bazel_9.1.0.runfiles/_main/tests/integration/bzlmod_lockfile
-_bk;t=1781335367965$TEST_TMPDIR defined, some defaults will be overridden
-_bk;t=1781335367965Computing main repo mapping: 
-_bk;t=1781335367965Loading: 
-_bk;t=1781335367965Loading: 0 packages loaded
-_bk;t=1781335367965Analyzing: target //:test_dummy (1 packages loaded, 0 targets configured)
-_bk;t=1781335367965Analyzing: target //:test_dummy (1 packages loaded, 1 target configured)
-_bk;t=1781335367965
-_bk;t=1781335367965ERROR: Analysis of target '//:test_dummy' failed; build aborted: MODULE.bazel.lock is no longer up-to-date because the implementation of the extension '@@rules_python+//python/uv:uv.bzl%uv' or one of its transitive .bzl files has changed. Please run `bazel mod deps --lockfile_mode=update` to update your lockfile.
-_bk;t=1781335367965INFO: Elapsed time: 0.665s, Critical Path: 0.02s
-_bk;t=1781335367965INFO: 1 process: 1 internal.
-_bk;t=1781335367965ERROR: Build did NOT complete successfully
-_bk;t=1781335367965FAILED: 
-_bk;t=1781335367965ERROR: No test targets were found, yet testing was requested
-_bk;t=1781335367965================================================================================
-_bk;t=1781335367965==================== Test output for //tests/integration:bzlmod_lockfile_test_bazel_9.1.0:
-_bk;t=1781335367966$TEST_TMPDIR defined, some defaults will be overridden
-_bk;t=1781335367966Extracting Bazel installation...
-_bk;t=1781335367966Starting local Bazel server (9.1.0) and connecting to it...
-_bk;t=1781335367966WARNING: ignoring JAVA_TOOL_OPTIONS in environment.
-_bk;t=1781335367966bazel-bin: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335367966bazel-genfiles: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin
-_bk;t=1781335367966bazel-testlogs: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs
-_bk;t=1781335367966character-encoding: file.encoding = ISO-8859-1, defaultCharset = ISO-8859-1, sun.jnu.encoding = UTF-8
-_bk;t=1781335367966command_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/command.log
-_bk;t=1781335367966committed-heap-size: 100MB
-_bk;t=1781335367966execution_root: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main
-_bk;t=1781335367966gc-count: 15
-_bk;t=1781335367966gc-time: 23ms
-_bk;t=1781335367966install_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/install/361ca53cfe6da546a2cd9cfd78b31378
-_bk;t=1781335367966java-home: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/install/361ca53cfe6da546a2cd9cfd78b31378/embedded_tools/jdk
-_bk;t=1781335367966java-runtime: OpenJDK Runtime Environment (build 25.0.2+10-LTS) by Azul Systems, Inc.
-_bk;t=1781335367966java-vm: OpenJDK 64-Bit Server VM (build 25.0.2+10-LTS, mixed mode) by Azul Systems, Inc.
-_bk;t=1781335367966local_resources: RAM=32768MB, CPU=6.0
-_bk;t=1781335367966max-heap-size: 8589MB
-_bk;t=1781335367966output_base: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c
-_bk;t=1781335367966output_path: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/execroot/_main/bazel-out
-_bk;t=1781335367966package_path: %workspace%
-_bk;t=1781335367966release: release 9.1.0
-_bk;t=1781335367966repository_cache: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/cache/repos/v1
-_bk;t=1781335367966server_log: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/_tmp/02e058aa481f8dddbf733e4e8ed9135f/_bazel_buildkite/24d8c61319a6d43c1fdd2553ba24682c/java.log.177c7787-c7ce-49b5-9e4c-fb4592c50e64.buildkite.log.java.20260613-072244.74020
-_bk;t=1781335367966server_pid: 74020
-_bk;t=1781335367966used-heap-size: 28MB
-_bk;t=1781335367966workspace: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/tests/integration/bzlmod_lockfile_test_bazel_9.1.0.runfiles/_main/tests/integration/bzlmod_lockfile
-_bk;t=1781335367966$TEST_TMPDIR defined, some defaults will be overridden
-_bk;t=1781335367966Computing main repo mapping: 
-_bk;t=1781335367966Loading: 
-_bk;t=1781335367966Loading: 0 packages loaded
-_bk;t=1781335367966Analyzing: target //:test_dummy (1 packages loaded, 0 targets configured)
-_bk;t=1781335367966Analyzing: target //:test_dummy (1 packages loaded, 1 target configured)
-_bk;t=1781335367966
-_bk;t=1781335367966ERROR: Analysis of target '//:test_dummy' failed; build aborted: MODULE.bazel.lock is no longer up-to-date because the implementation of the extension '@@rules_python+//python/uv:uv.bzl%uv' or one of its transitive .bzl files has changed. Please run `bazel mod deps --lockfile_mode=update` to update your lockfile.
-_bk;t=1781335367966INFO: Elapsed time: 0.651s, Critical Path: 0.02s
-_bk;t=1781335367966INFO: 1 process: 1 internal.
-_bk;t=1781335367966ERROR: Build did NOT complete successfully
-_bk;t=1781335367966FAILED: 
-_bk;t=1781335367966ERROR: No test targets were found, yet testing was requested
-_bk;t=1781335367966================================================================================
-_bk;t=1781335367966(09:22:47) [32m[29 / 30][0m 1 / 3 tests, [31m[1m1 failed[0m;[0m  1 action[0m; last test: [31m[1m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0[0m[0m
-_bk;t=1781335367966    Testing //tests/integration:bzlmod_lockfile_test_bazel_9.1.0; 19s local, remote-cache
-_bk;t=1781335368802buildkite-agent artifact upload --content-type text/plain;charset=utf-8 tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test.log
-_bk;t=1781335368825[38;5;48m2026-06-13 09:22:48 INFO  [0m [0mFound 1 files that match "tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test.log"[0m
-_bk;t=1781335368825[38;5;48m2026-06-13 09:22:48 INFO  [0m [0mUploading to Google Cloud Storage ("gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e"), using your agent configuration[0m
-_bk;t=1781335368825[38;5;48m2026-06-13 09:22:48 INFO  [0m [0mCreating (0-1)/1 artifacts[0m
-_bk;t=1781335368931[38;5;48m2026-06-13 09:22:48 INFO  [0m [0mUploading 019ebfdc-a566-4c8b-9e5d-596047139e1a tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test.log (4.4 KiB)[0m
-_bk;t=1781335369486[38;5;48m2026-06-13 09:22:49 INFO  [0m [0mArtifact uploads completed successfully[0m
-_bk;t=1781335377019[1A[K_bk;t=1781335377019[1A[K_bk;t=1781335377019(09:22:57) [32m[30 / 31][0m 1 / 3 tests, [31m[1m1 failed[0m;[0m  1 action[0m; last test: [31m[1m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0[0m[0m
-_bk;t=1781335377019    Testing //tests/integration:uv_lock_test_bazel_self; 8s local, remote-cache
-_bk;t=1781335382021[1A[K_bk;t=1781335382021[1A[K_bk;t=1781335382021(09:23:02) [32m[30 / 31][0m 1 / 3 tests, [31m[1m1 failed[0m;[0m  1 action[0m; last test: [31m[1m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0[0m[0m
-_bk;t=1781335382021    Testing //tests/integration:uv_lock_test_bazel_self; 13s local, remote-cache
-_bk;t=1781335386746[1A[K_bk;t=1781335386746[1A[K_bk;t=1781335386746(09:23:06) [35mWARNING: [0m//tests/integration:uv_lock_test_bazel_self: Skipping uploading outputs because of concurrent modifications with --guard_against_concurrent_changes enabled: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/tests/integration/uv_lock/requirements.txt was modified during execution
-_bk;t=1781335386746(09:23:06) [32m[30 / 31][0m 1 / 3 tests, [31m[1m1 failed[0m;[0m  1 action[0m; last test: [31m[1m//tests/integration:bzlmod_lockfile_test_bazel_9.1.0[0m[0m
-_bk;t=1781335386746    Testing //tests/integration:uv_lock_test_bazel_self; 18s local, remote-cache
-_bk;t=1781335389005[1A[K_bk;t=1781335389005[1A[K_bk;t=1781335389005(09:23:09) [32mINFO: [0mFound 3 test targets...
-_bk;t=1781335389005(09:23:09) [32m[32 / 32][0m 3 / 3 tests, [31m[1m1 failed[0m;[0m no actions running[0m; last test: [32m//tests/integration:local_toolchains_test_bazel_self[0m
-_bk;t=1781335389030[1A[K_bk;t=1781335389030(09:23:09) [32mINFO: [0mElapsed time: 52.140s, Critical Path: 20.38s
-_bk;t=1781335389030(09:23:09) [32m[32 / 32][0m 3 / 3 tests, [31m[1m1 failed[0m;[0m no actions running[0m; last test: [32m//tests/integration:local_toolchains_test_bazel_self[0m
-_bk;t=1781335389031[1A[K_bk;t=1781335389031(09:23:09) [32mINFO: [0m32 processes: 3 remote cache hit, 28 internal, 8 local.
-_bk;t=1781335389031(09:23:09) [32m[32 / 32][0m 3 / 3 tests, [31m[1m1 failed[0m;[0m no actions running[0m; last test: [32m//tests/integration:local_toolchains_test_bazel_self[0m
-_bk;t=1781335389031[1A[K_bk;t=1781335389031(09:23:09) [32mINFO: [0mBuild completed, 1 test FAILED, 32 total actions
-_bk;t=1781335389031(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389031[1A[K_bk;t=1781335389031(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389034[1A[K_bk;t=1781335389034//tests/integration:local_toolchains_test_bazel_self            [0m[32m(cached) PASSED[0m in 12.2s
-_bk;t=1781335389034(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389034[1A[K_bk;t=1781335389034//tests/integration:uv_lock_test_bazel_self                              [0m[32mPASSED[0m in 18.3s
-_bk;t=1781335389034(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389035[1A[K_bk;t=1781335389035//tests/integration:bzlmod_lockfile_test_bazel_9.1.0                     [0m[31m[1mFAILED[0m in 3 out of 3 in 6.6s
-_bk;t=1781335389035  Stats over 3 runs: max = 6.6s, min = 4.9s, avg = 5.5s, dev = 0.7s
-_bk;t=1781335389035(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389035[1A[K_bk;t=1781335389035  /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test.log
-_bk;t=1781335389035(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389035[1A[K_bk;t=1781335389035  /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_1.log
-_bk;t=1781335389035(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389035[1A[K_bk;t=1781335389035  /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/tests/integration/bzlmod_lockfile_test_bazel_9.1.0/test_attempts/attempt_2.log
-_bk;t=1781335389035(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389036[1A[K_bk;t=1781335389036
-_bk;t=1781335389036(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389036[1A[K_bk;t=1781335389036Executed 2 out of 3 tests: 2 tests pass and [0m[31m[1m1 fails locally[0m.
-_bk;t=1781335389036(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389036[1A[K_bk;t=1781335389036There were tests whose specified size is too big. Use the --test_verbose_timeout_warnings command line option to see which ones these are.
-_bk;t=1781335389036(09:23:09) [32mINFO:[0m 
-_bk;t=1781335389058[1A[K_bk;t=1781335389058(09:23:09) [32mINFO: [0mBuild Event Protocol files produced successfully.
-_bk;t=1781335389058[0mbazel --host_jvm_args=-Djava.net.preferIPv6Addresses=true info output_base
-_bk;t=1781335389613WARNING: Option 'experimental_downloader_config' is deprecated: Use --downloader_config instead
-_bk;t=1781335389613INFO: Invocation ID: 9310cb2b-3e5d-443c-a707-820f6a2ae4fc
-_bk;t=1781335389631
-_bk;t=1781335389631
-_bk;t=1781335389631--- :gcloud: Uploading log file: /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/java.log
-_bk;t=1781335389631
-_bk;t=1781335389631
-_bk;t=1781335389631buildkite-agent artifact upload /Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/java.log
-_bk;t=1781335389654[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mFound 1 files that match "/Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/java.log"[0m
-_bk;t=1781335389654[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mUploading to Google Cloud Storage ("gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e"), using your agent configuration[0m
-_bk;t=1781335389654[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mCreating (0-1)/1 artifacts[0m
-_bk;t=1781335389742buildkite-agent artifact upload /tmp/tmpwsin4oco/test_bep.json
-_bk;t=1781335389758[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mUploading 019ebfdc-f6bf-422f-85b8-292aa782fafb Users/buildkite/Library/Caches/bazel/_bazel_buildkite/e016996177214c13db6094ea61cc7f6b/java.log (121 KiB)[0m
-_bk;t=1781335389768[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mFound 1 files that match "/tmp/tmpwsin4oco/test_bep.json"[0m
-_bk;t=1781335389768[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mUploading to Google Cloud Storage ("gs://bazel-untrusted-buildkite-artifacts/019ebfdb-e00f-4bcc-bba1-9c5de8379c7e"), using your agent configuration[0m
-_bk;t=1781335389768[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mCreating (0-1)/1 artifacts[0m
-_bk;t=1781335389875[38;5;48m2026-06-13 09:23:09 INFO  [0m [0mUploading 019ebfdc-f733-48fc-a196-09fc8aad3101 tmp/tmpwsin4oco/test_bep.json (304 KiB)[0m
-_bk;t=1781335390532[38;5;48m2026-06-13 09:23:10 INFO  [0m [0mArtifact uploads completed successfully[0m
-_bk;t=1781335390683[38;5;48m2026-06-13 09:23:10 INFO  [0m [0mArtifact uploads completed successfully[0m
-_bk;t=1781335390690bazel test failed with exit code 3
-_bk;t=1781335390736^^^ +++
-_bk;t=1781335390736[31m🚨 Error: The command exited with status 3[0m
-_bk;t=1781335390736^^^ +++
-_bk;t=1781335390736user command error: exit status 3
