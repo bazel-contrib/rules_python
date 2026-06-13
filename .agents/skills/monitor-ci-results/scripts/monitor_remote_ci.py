@@ -137,11 +137,44 @@ def main():
 
             if "buildkite" in name.lower() and link:
                 jobs = get_buildkite_jobs(link)
+
+                passed = 0
+                failed = 0
+                running = 0
+                other = 0
+
+                for job in jobs:
+                    jstate = job.get("state", "unknown")
+                    exit_status = job.get("exit_status")
+                    is_failed = jstate in ["failed", "failing"] or (
+                        exit_status != 0 and exit_status is not None
+                    )
+                    is_passed = jstate in ["passed", "success"] or (
+                        jstate == "finished" and exit_status == 0
+                    )
+                    is_running = jstate in ["running", "scheduled"]
+
+                    if is_failed:
+                        failed += 1
+                    elif is_passed:
+                        passed += 1
+                    elif is_running:
+                        running += 1
+                    else:
+                        other += 1
+
+                print(
+                    f"📊 Buildkite Swarm Summary: {len(jobs)} total jobs "
+                    f"(Passed: {passed}, Failed: {failed}, Running: {running}, Other: {other})"
+                )
+
                 for job in jobs:
                     jname = job.get("name", "unknown_job")
                     jstate = job.get("state", "unknown")
                     jid = job.get("id", "")
                     jkey = f"bk_{jid}"
+
+                    print(f"  • Job ID: {jid} | State: {jstate} | Name: '{jname}'")
 
                     exit_status = job.get("exit_status")
                     is_failed = jstate in ["failed", "failing"] or (
