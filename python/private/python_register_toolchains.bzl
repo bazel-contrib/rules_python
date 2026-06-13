@@ -17,7 +17,7 @@
 
 load(
     "//python:versions.bzl",
-    "DEFAULT_RELEASE_BASE_URL",
+    "DEFAULT_RELEASE_BASE_URLS",
     "MINOR_MAPPING",
     "PLATFORMS",
     "TOOL_VERSIONS",
@@ -103,7 +103,7 @@ def python_register_toolchains(
             name = "coverage_dep",
         )
 
-    base_url = kwargs.pop("base_url", DEFAULT_RELEASE_BASE_URL)
+    base_urls = kwargs.pop("base_urls", DEFAULT_RELEASE_BASE_URLS)
     tool_versions = tool_versions or TOOL_VERSIONS
     minor_mapping = minor_mapping or MINOR_MAPPING
 
@@ -122,7 +122,12 @@ def python_register_toolchains(
             continue
 
         loaded_platforms.append(platform)
-        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(platform, python_version, base_url, tool_versions)
+        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(
+            platform,
+            python_version,
+            base_urls = base_urls,
+            tool_versions = tool_versions,
+        )
 
         # allow passing in a tool version
         coverage_tool = None

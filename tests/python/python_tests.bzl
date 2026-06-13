@@ -47,7 +47,7 @@ def _test_default_from_rules_python_when_rules_python_is_root(env):
     env.expect.that_dict(py.config.minor_mapping).contains_exactly(MINOR_MAPPING)
     env.expect.that_collection(py.config.kwargs).has_size(0)
     env.expect.that_collection(py.config.default.keys()).contains_exactly([
-        "base_url",
+        "base_urls",
         "tool_versions",
         "platforms",
     ])
@@ -459,7 +459,7 @@ def _test_add_new_version(env):
                             "3.13.1",
                             "3.13.99",
                         ],
-                        base_url = "",
+                        base_urls = [],
                         minor_mapping = {
                             "3.13": "3.13.99",
                         },
@@ -545,7 +545,7 @@ def _test_register_all_versions(env):
                             "3.13.1",
                             "3.13.99",
                         ],
-                        base_url = "",
+                        base_urls = [],
                         register_all_versions = True,
                     ),
                 ],
@@ -615,7 +615,7 @@ def _test_ignore_unsupported_versions(env):
                             "3.13.0",
                             "3.13.1",
                         ],
-                        base_url = "",
+                        base_urls = [],
                         minor_mapping = {
                             "3.12": "3.12.4",
                             "3.13": "3.13.1",
@@ -689,7 +689,7 @@ def _test_add_patches(env):
                 override = [
                     python_ext.override(
                         available_python_versions = ["3.13.0"],
-                        base_url = "",
+                        base_urls = [],
                         minor_mapping = {
                             "3.13": "3.13.0",
                         },
@@ -766,8 +766,8 @@ def _test_fail_two_overrides(env):
                 name = "my_module",
                 is_root = True,
                 override = [
-                    python_ext.override(base_url = "foo"),
-                    python_ext.override(base_url = "bar"),
+                    python_ext.override(base_urls = ["foo"]),
+                    python_ext.override(base_urls = ["bar"]),
                 ],
                 toolchain = [python_ext.toolchain(python_version = "3.13")],
             ),

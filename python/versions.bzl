@@ -30,11 +30,16 @@ FREETHREADED = "-freethreaded"
 MUSL = "-musl"
 INSTALL_ONLY = "install_only"
 
-DEFAULT_RELEASE_BASE_URL = "https://github.com/astral-sh/python-build-standalone/releases/download"
-
 _GITHUB_PREFIX = "https://github.com/astral-sh/python-build-standalone/releases/download"
 _LEGACY_GITHUB_PREFIX = "https://github.com/indygreg/python-build-standalone/releases/download"
 _ASTRAL_PREFIX = "https://releases.astral.sh/github/python-build-standalone/releases/download"
+
+DEFAULT_RELEASE_BASE_URL = _GITHUB_PREFIX
+DEFAULT_RELEASE_BASE_URLS = [
+    _GITHUB_PREFIX,
+    _ASTRAL_PREFIX,
+    _LEGACY_GITHUB_PREFIX,
+]
 
 # buildifier: disable=unsorted-dict-items
 MINOR_MAPPING = {
@@ -202,13 +207,13 @@ def _generate_platforms():
 
 PLATFORMS = _generate_platforms()
 
-def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_URL, tool_versions = None):
+def get_release_info(platform, python_version, base_urls = DEFAULT_RELEASE_BASE_URLS, tool_versions = None):
     """Resolve the release URL for the requested interpreter version
 
     Args:
         platform: The platform string for the interpreter
         python_version: The version of the interpreter to get
-        base_url: The URL to prepend to the 'url' attr in the tool_versions dict
+        base_urls: The list of URLs to prepend to the 'url' attr in the tool_versions dict
         tool_versions: A dict listing the interpreter versions, their SHAs and URL
 
     Returns:
@@ -217,13 +222,26 @@ def get_release_info(platform, python_version, base_url = DEFAULT_RELEASE_BASE_U
     if tool_versions == None:
         tool_versions = TOOL_VERSIONS
 
-    base_urls = [base_url]
-    if base_url == DEFAULT_RELEASE_BASE_URL or base_url.startswith(_GITHUB_PREFIX):
-        suffix = base_url[len(_GITHUB_PREFIX):]
-        base_urls.append(_ASTRAL_PREFIX + suffix)
-    elif base_url.startswith(_LEGACY_GITHUB_PREFIX):
-        suffix = base_url[len(_LEGACY_GITHUB_PREFIX):]
-        base_urls.append(_ASTRAL_PREFIX + suffix)
+    if type(base_urls) == type(""):
+        base_urls = [base_urls]
+    elif base_urls == None:
+        base_urls = DEFAULT_RELEASE_BASE_URLS
+
+    expanded_base_urls = []
+    for b_url in base_urls:
+        if b_url not in expanded_base_urls:
+            expanded_base_urls.append(b_url)
+        if b_url.startswith(_GITHUB_PREFIX):
+            suffix = b_url[len(_GITHUB_PREFIX):]
+            a_url = _ASTRAL_PREFIX + suffix
+            if a_url not in expanded_base_urls:
+                expanded_base_urls.append(a_url)
+        elif b_url.startswith(_LEGACY_GITHUB_PREFIX):
+            suffix = b_url[len(_LEGACY_GITHUB_PREFIX):]
+            a_url = _ASTRAL_PREFIX + suffix
+            if a_url not in expanded_base_urls:
+                expanded_base_urls.append(a_url)
+    base_urls = expanded_base_urls
 
     url = tool_versions[python_version]["url"]
 

@@ -30,7 +30,7 @@ def _override(**kwargs):
         "add_runtime_manifest_urls": [],
         "add_target_settings": [],
         "available_python_versions": [],
-        "base_url": "https://github.com/astral-sh/python-build-standalone/releases/download",
+        "base_urls": ["https://github.com/astral-sh/python-build-standalone/releases/download"],
         "ignore_root_user_error": True,
         "minor_mapping": {},
         "register_all_versions": False,

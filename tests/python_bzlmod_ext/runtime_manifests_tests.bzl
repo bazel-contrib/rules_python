@@ -109,7 +109,7 @@ def _test_dynamic_manifest_files_impl(env, target):
                 add_runtime_manifest_files = [
                     Label("//:SHA256SUMS"),
                 ],
-                base_url = "https://example.com/dl",
+                base_urls = ["https://example.com/dl"],
                 register_all_versions = True,
             ),
         ],

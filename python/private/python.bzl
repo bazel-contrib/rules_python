@@ -15,7 +15,7 @@
 "Python toolchain module extensions for use with bzlmod."
 
 load("@bazel_features//:features.bzl", "bazel_features")
-load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URL", "PLATFORMS")
+load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URLS", "PLATFORMS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
 load(":pbs_manifest.bzl", "parse_runtime_manifest")
@@ -714,7 +714,7 @@ def _process_global_overrides(*, tag, default, _fail = fail):
         default["add_target_settings"] = list(tag.add_target_settings)
 
     forwarded_attrs = sorted(AUTH_ATTRS) + [
-        "base_url",
+        "base_urls",
         "register_all_versions",
     ]
     for key in forwarded_attrs:
@@ -759,7 +759,7 @@ def _populate_from_pbs_manifest(
         add_runtime_manifest_urls = [],
         add_runtime_manifest_files = [],
         runtime_manifest_sha = "",
-        base_url = "",
+        base_urls = [],
         available_versions,
         _fail):
     manifest_contents = []
@@ -783,8 +783,8 @@ def _populate_from_pbs_manifest(
         return
 
     base_download_urls = [url.rpartition("/")[0] for url in add_runtime_manifest_urls]
-    if not base_download_urls and base_url:
-        base_download_urls = [base_url]
+    if not base_download_urls and base_urls:
+        base_download_urls = list(base_urls)
 
     entries = []
     for content in manifest_contents:
@@ -858,7 +858,7 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
     _populate_from_pbs_manifest(
         mctx = mctx,
         add_runtime_manifest_files = [Label("//python/private:runtimes_manifest.txt")],
-        base_url = DEFAULT_RELEASE_BASE_URL,
+        base_urls = DEFAULT_RELEASE_BASE_URLS,
         available_versions = available_versions,
         _fail = _fail,
     )
@@ -873,7 +873,7 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
                     add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
                     add_runtime_manifest_files = tag.add_runtime_manifest_files,
                     runtime_manifest_sha = tag.runtime_manifest_sha,
-                    base_url = tag.base_url,
+                    base_urls = tag.base_urls,
                     available_versions = available_versions,
                     _fail = _fail,
                 )
@@ -888,13 +888,13 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
                     add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
                     add_runtime_manifest_files = tag.add_runtime_manifest_files,
                     runtime_manifest_sha = tag.runtime_manifest_sha,
-                    base_url = tag.base_url,
+                    base_urls = tag.base_urls,
                     available_versions = available_versions,
                     _fail = _fail,
                 )
 
     default = {
-        "base_url": DEFAULT_RELEASE_BASE_URL,
+        "base_urls": DEFAULT_RELEASE_BASE_URLS,
         "platforms": dict(PLATFORMS),  # Copy so it's mutable.
         "tool_versions": available_versions,
     }
@@ -1284,10 +1284,10 @@ This attribute is usually used in order to ensure that no unexpected transitive
 dependencies are introduced.
 """,
         ),
-        "base_url": attr.string(
+        "base_urls": attr.string_list(
             mandatory = False,
-            doc = "The base URL to be used when downloading toolchains.",
-            default = DEFAULT_RELEASE_BASE_URL,
+            doc = "The base URLs to be used when downloading toolchains.",
+            default = DEFAULT_RELEASE_BASE_URLS,
         ),
         "ignore_root_user_error": attr.bool(
             default = True,
