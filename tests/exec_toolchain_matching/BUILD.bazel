@@ -65,6 +65,7 @@ define_py_runtime(
 # call that was being evaluated.
 py_exec_tools_toolchain(
     name = "exec_3.12",
+    exec_compatible_with = ["@platforms//os:macos"],
 )
 
 py_exec_tools_toolchain(
