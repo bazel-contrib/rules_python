@@ -1,8 +1,7 @@
 """Print the toolchain versions.
 """
 
-load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
-load("//python:versions.bzl", "get_release_info", "tool_versions_from_manifest_entries")
+load("//python:versions.bzl", "MANIFEST_ENTRIES", "get_release_info", "tool_versions_from_manifest_entries")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 

@@ -46,7 +46,6 @@ def rules_python_internal_deps():
         transition_settings = [
             str(Label("//tests/multi_pypi:external_deps_name")),
         ],
-        workspace_mode = True,
     )
 
     # Sphinxdocs doesn't support workspace mode, but we have to define it

@@ -51,7 +51,6 @@ load("@rules_python//python/private:internal_config_repo.bzl", "internal_config_
 
 internal_config_repo(
     name = "rules_python_internal",
-    workspace_mode = True,
 )
 
 load("@rules_python//python:repositories.bzl", "py_repositories")

@@ -15,10 +15,10 @@
 """This file contains repository rules and macros to support toolchain registration.
 """
 
-load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
 load(
     "//python:versions.bzl",
     "DEFAULT_RELEASE_BASE_URL",
+    "MANIFEST_ENTRIES",
     "MINOR_MAPPING",
     "PLATFORMS",
     "get_release_info",

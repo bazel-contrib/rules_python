@@ -658,6 +658,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "runtimes_manifest_workspace_bzl",
+    srcs = ["runtimes_manifest_workspace.bzl"],
+)
+
+bzl_library(
     name = "sentinel_bzl",
     srcs = ["sentinel.bzl"],
 )
