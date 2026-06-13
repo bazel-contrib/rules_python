@@ -165,7 +165,7 @@ def main():
 
                 build_id = link.split("/")[-1].split("#")[0]
                 print(
-                    f"📊 Buildkite Swarm Summary (Build #{build_id}): {len(jobs)} total jobs "
+                    f"Buildkite #{build_id}: {len(jobs)} total jobs "
                     f"(Passed: {passed}, Failed: {failed}, Running: {running}, Other: {other})"
                 )
 
