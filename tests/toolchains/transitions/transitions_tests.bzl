@@ -49,7 +49,7 @@ TestInfo = provider(
     fields = {"got": "", "want": ""},
 )
 
-def _subject_impl(ctx):
+def _impl(ctx):
     if ctx.attr.skip:
         return [TestInfo(got = "", want = "")]
 
@@ -74,38 +74,14 @@ def _subject_impl(ctx):
         ),
     ]
 
-_transition_subject = rule(
-    implementation = _subject_impl,
-    attrs = {
-        "skip": attr.bool(
-            doc = "Whether to skip the test",
-        ),
-        "want_version": attr.string(
-            doc = "The python version that we actually expect to receive.",
-        ),
-    },
-    toolchains = [
-        config_common.toolchain_type(
-            EXEC_TOOLS_TOOLCHAIN_TYPE,
-            mandatory = False,
-        ),
-    ],
-)
-
-def _driver_impl(ctx):
-    return [ctx.attr.subject[0][TestInfo]]
-
 _simple_transition = rule(
-    implementation = _driver_impl,
+    implementation = _impl,
     attrs = {
         "python_version": attr.string(
             doc = "The input python version which we transition on.",
         ),
         "skip": attr.bool(
             doc = "Whether to skip the test",
-        ),
-        "subject": attr.label(
-            cfg = _python_version_transition,
         ),
         "want_version": attr.string(
             doc = "The python version that we actually expect to receive.",
@@ -114,28 +90,27 @@ _simple_transition = rule(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
+    toolchains = [
+        config_common.toolchain_type(
+            EXEC_TOOLS_TOOLCHAIN_TYPE,
+            mandatory = False,
+        ),
+    ],
+    cfg = _python_version_transition,
 )
 
 def _test_transitions(*, name, tests, skip = False):
     """A reusable rule so that we can split the tests."""
     targets = {}
     for test_name, (input_version, want_version) in tests.items():
-        subject_name = "{}_{}_subject".format(name, test_name)
         target_name = "{}_{}".format(name, test_name)
         targets["python_" + test_name] = target_name
-        rt_util.helper_target(
-            _transition_subject,
-            name = subject_name,
-            want_version = want_version,
-            skip = skip,
-        )
         rt_util.helper_target(
             _simple_transition,
             name = target_name,
             python_version = input_version,
             want_version = want_version,
             skip = skip,
-            subject = subject_name,
         )
 
     analysis_test(
