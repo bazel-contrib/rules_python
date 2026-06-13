@@ -163,8 +163,9 @@ def main():
                     else:
                         other += 1
 
+                build_id = link.split("/")[-1].split("#")[0]
                 print(
-                    f"📊 Buildkite Swarm Summary: {len(jobs)} total jobs "
+                    f"📊 Buildkite Swarm Summary (Build #{build_id}): {len(jobs)} total jobs "
                     f"(Passed: {passed}, Failed: {failed}, Running: {running}, Other: {other})"
                 )
 
