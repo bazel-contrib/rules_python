@@ -17,7 +17,6 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load(":bazel_config_mode.bzl", "bazel_config_mode")
-load(":print_toolchain_checksums.bzl", "print_toolchains_checksums")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":sentinel.bzl", "sentinel")
 load(":stamp.bzl", "stamp_build_setting")
@@ -866,8 +865,6 @@ bool_flag(
     # This is only because it is an implicit dependency by the toolchains.
     visibility = ["//visibility:public"],
 )
-
-print_toolchains_checksums(name = "print_toolchains_checksums")
 
 # Used for py_console_script_gen rule
 py_binary(
