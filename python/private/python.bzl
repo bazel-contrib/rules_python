@@ -1227,6 +1227,10 @@ Labels pointing to local python-build-standalone manifest files (e.g., `SHA256SU
 Example:
 `//my/custom/manifest:SHA256SUMS`
 
+:::{seealso}
+[Manifest file format documentation](https://rules-python.readthedocs.io/en/latest/toolchains.html#manifest-file-format)
+:::
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
@@ -1241,6 +1245,10 @@ Example:
 
 Note that `/latest/` can be used in place of a specific release date (e.g., `20260414`) to automatically use the latest release:
 `https://github.com/astral-sh/python-build-standalone/releases/latest/download/SHA256SUMS`
+
+:::{seealso}
+[Manifest file format documentation](https://rules-python.readthedocs.io/en/latest/toolchains.html#manifest-file-format)
+:::
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
