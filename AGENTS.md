@@ -15,6 +15,7 @@ Ask for user input and provide a justificaiton if trying to violate them.
 
 * NEVER run `bazel clean --expunge`.
 * Once a PR is created, do not amend or rebase.
+* Do not add Bazel copyright to new or existing files.
 
 ## Style and conventions
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Copyright 2026 The Bazel Authors. All rights reserved.
 
 import argparse
 import os
