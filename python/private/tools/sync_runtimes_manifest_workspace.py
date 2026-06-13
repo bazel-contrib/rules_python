@@ -32,7 +32,7 @@ MANIFEST_TEXT = """
         old_content = ""
 
     if new_content != old_content:
-        with open(bzl_path, "w", encoding="utf-8") as f:
+        with open(bzl_path, "w", encoding="utf-8", newline="\n") as f:
             f.write(new_content)
         return True
 
