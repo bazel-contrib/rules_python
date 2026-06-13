@@ -165,7 +165,7 @@ def main():
                             f"⚠️ Remote CI Buildkite Job '{jname}' completed with errors!\n\n"
                             f"Build ID: {build_id} | Job ID: {jid}\n"
                             f"Log URL: {job.get('log_url', link)}\n\n"
-                            f"Please start a background task or run the analyze-ci-failure skill to analyze this failure!"
+                            f"Please start a subagent to run the analyze-ci-failure skill and analyze this failure!"
                         )
                         subprocess.run(
                             [
@@ -185,7 +185,7 @@ def main():
                 msg = (
                     f"⚠️ Remote CI GitHub Check '{name}' completed with errors!\n\n"
                     f"Link: {link}\n\n"
-                    f"Please start a background task or run the analyze-ci-failure skill to analyze this failure!"
+                    f"Please start a subagent to run the analyze-ci-failure skill and analyze this failure!"
                 )
                 subprocess.run(
                     [
