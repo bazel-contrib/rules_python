@@ -74,6 +74,11 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (gazelle) `py_library` and `py_test` targets with missing source files can now be
+  removed by Gazelle ([#3375](https://github.com/bazel-contrib/rules_python/issues/3375)). 
+  However `map_kind` and `alias_kind` will not be removed unless people are running a 
+  gazelle version that includes 
+  [bazel-gazelle#2362](https://github.com/bazel-contrib/bazel-gazelle/pull/2362)
 * (bootstrap) Fixed a potential race condition with symlink creation during
   startup.
 * (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
