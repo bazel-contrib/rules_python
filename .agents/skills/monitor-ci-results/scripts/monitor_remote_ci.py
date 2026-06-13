@@ -174,8 +174,6 @@ def main():
                     jid = job.get("id", "")
                     jkey = f"bk_{jid}"
 
-                    print(f"  • Job ID: {jid} | State: {jstate} | Name: '{jname}'")
-
                     exit_status = job.get("exit_status")
                     is_failed = jstate in ["failed", "failing"] or (
                         exit_status != 0 and exit_status is not None
