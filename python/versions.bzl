@@ -15,8 +15,11 @@
 """The Python versions we use for the toolchains.
 """
 
-load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
+load("//python/private:pbs_manifest.bzl", "parse_sha_manifest")
 load("//python/private:platform_info.bzl", "platform_info")
+
+##load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
+load("//python/private:runtimes_manifest_workspace.bzl", "MANIFEST_TEXT")
 
 # Values present in the @platforms//os package
 MACOS_NAME = "osx"
@@ -391,5 +394,7 @@ def tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE
         v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
 
     return available_versions
+
+MANIFEST_ENTRIES = parse_sha_manifest(MANIFEST_TEXT)
 
 TOOL_VERSIONS = tool_versions_from_manifest_entries(MANIFEST_ENTRIES)
