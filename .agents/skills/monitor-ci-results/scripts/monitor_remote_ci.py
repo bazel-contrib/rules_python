@@ -4,7 +4,6 @@
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -61,31 +60,6 @@ def get_buildkite_jobs(build_url):
     return []
 
 
-def download_buildkite_log(job, output_path):
-    log_url = job.get("log_url")
-    if not log_url:
-        jid = job.get("id")
-        log_url = f"https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/15716/jobs/{jid}/download.txt"
-
-    if not log_url.endswith("/download.txt") and "buildkite.com" in log_url:
-        log_url = re.sub(r"/log$", "/download.txt", log_url)
-
-    req = urllib.request.Request(log_url, headers={"User-Agent": "ci-monitor"})
-    try:
-        with urllib.request.urlopen(req) as resp:
-            content = resp.read()
-            with open(output_path, "wb") as f:
-                f.write(content)
-        return True
-    except Exception as e:
-        print(f"⚠️ Failed to download log from {log_url}: {e}", file=sys.stderr)
-        with open(output_path, "w") as f:
-            f.write(
-                f"Failed to download log from {log_url}: {e}\nRaw job metadata:\n{json.dumps(job, indent=2)}"
-            )
-        return False
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Monitor remote CI for failures and trigger analysis."
@@ -107,8 +81,6 @@ def main():
     args = parser.parse_args()
 
     skill_dir = os.path.abspath(os.path.dirname(__file__))
-    logs_dir = os.path.join(skill_dir, "ci_logs")
-    os.makedirs(logs_dir, exist_ok=True)
 
     state_file = os.path.join(skill_dir, f"monitored_state_pr_{args.pr}.json")
     monitored = {}
@@ -122,7 +94,6 @@ def main():
     print(
         f"🚀 Starting continuous remote CI monitoring for PR #{args.pr} every {args.interval}s..."
     )
-    analyzer_script = os.path.join(skill_dir, "analyze_ci_failure.py")
 
     for i in range(args.max_iterations):
         print(
@@ -176,56 +147,50 @@ def main():
                     jkey = f"bk_{jid}"
 
                     exit_status = job.get("exit_status")
-                    is_failed = jstate in ["failed", "failing"] or (
-                        exit_status != 0 and exit_status is not None
-                    )
+                    is_failed = (
+                        jstate in ["failed", "failing"]
+                        or (exit_status != 0 and exit_status is not None)
+                    ) and "rolling" not in jname.lower()
 
                     if is_failed and jkey not in monitored:
                         print(
-                            f"🚨 New Buildkite job error detected: '{jname}' (ID: {jid})"
+                            f"🚨 Notifying failure for Buildkite job '{jname}' (ID: {jid})..."
                         )
-                        log_path = os.path.join(
-                            logs_dir,
-                            f"bk_{re.sub(r'[^a-zA-Z0-9]', '_', jname)}_{jid}.log",
+                        msg = (
+                            f"⚠️ Remote CI Buildkite Job '{jname}' completed with errors!\n\n"
+                            f"Build ID: {build_id} | Job ID: {jid}\n"
+                            f"Log URL: {job.get('log_url', link)}\n\n"
+                            f"Please start a background task or run the analyze-ci-failure skill to analyze this failure!"
                         )
-                        download_buildkite_log(job, log_path)
-
-                        print(f"🚀 Starting background analysis task for '{jname}'...")
-                        subprocess.Popen(
+                        subprocess.run(
                             [
-                                sys.executable,
-                                analyzer_script,
-                                jname,
-                                log_path,
+                                "agentapi",
+                                "send-message",
+                                "--title=CI Job Failed",
                                 args.conv_id,
+                                msg,
                             ]
                         )
-
                         monitored[jkey] = time.time()
                         with open(state_file, "w") as f:
                             json.dump(monitored, f)
 
             elif state in ["FAILURE", "failed"] and name not in monitored:
-                print(f"🚨 New GitHub check error detected: '{name}'")
-                log_path = os.path.join(
-                    logs_dir, f"gh_{re.sub(r'[^a-zA-Z0-9]', '_', name)}.log"
+                print(f"🚨 Notifying failure for GitHub check '{name}'...")
+                msg = (
+                    f"⚠️ Remote CI GitHub Check '{name}' completed with errors!\n\n"
+                    f"Link: {link}\n\n"
+                    f"Please start a background task or run the analyze-ci-failure skill to analyze this failure!"
                 )
-                with open(log_path, "w") as f:
-                    f.write(
-                        f"GitHub Check '{name}' failed.\nLink: {link}\nState: {state}\n"
-                    )
-
-                print(f"🚀 Starting background analysis task for '{name}'...")
-                subprocess.Popen(
+                subprocess.run(
                     [
-                        sys.executable,
-                        analyzer_script,
-                        name,
-                        log_path,
+                        "agentapi",
+                        "send-message",
+                        "--title=CI Check Failed",
                         args.conv_id,
+                        msg,
                     ]
                 )
-
                 monitored[name] = time.time()
                 with open(state_file, "w") as f:
                     json.dump(monitored, f)
