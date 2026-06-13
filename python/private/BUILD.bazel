@@ -304,7 +304,6 @@ bzl_library(
         ":toolchains_repo_bzl",
         "//python:versions_bzl",
         "//python/private/pypi:deps_bzl",
-        "@rules_python_internal//:manifest_tool_versions_bzl",
     ],
 )
 
