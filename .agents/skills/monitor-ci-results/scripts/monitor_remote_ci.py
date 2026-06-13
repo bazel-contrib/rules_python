@@ -143,7 +143,12 @@ def main():
                     jid = job.get("id", "")
                     jkey = f"bk_{jid}"
 
-                    if jstate in ["failed", "failing"] and jkey not in monitored:
+                    exit_status = job.get("exit_status")
+                    is_failed = jstate in ["failed", "failing"] or (
+                        exit_status != 0 and exit_status is not None
+                    )
+
+                    if is_failed and jkey not in monitored:
                         print(
                             f"🚨 New Buildkite job error detected: '{jname}' (ID: {jid})"
                         )
