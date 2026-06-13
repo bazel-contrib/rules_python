@@ -42,7 +42,6 @@ def py_repositories(transition_settings = []):
         internal_config_repo,
         name = "rules_python_internal",
         transition_settings = transition_settings,
-        workspace_mode = True,
     )
     maybe(
         hub_repo,
