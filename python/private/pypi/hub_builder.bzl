@@ -493,9 +493,11 @@ def _create_whl_repos(
             ),
             logger = logger,
         ),
+        uv_lock = getattr(pip_attr, "uv_lock", None),
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(pip_attr.python_version),
+        toml_decode = getattr(self._config, "toml_decode", None),
         logger = logger,
     )
 

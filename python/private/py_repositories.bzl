@@ -73,6 +73,12 @@ def py_repositories(transition_settings = []):
         urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
     )
     http_archive(
+        name = "toml.bzl",
+        sha256 = "46fab1d526b6da6ecb24b17b958d1f391c569053557daf2697eace3a593dcee9",
+        strip_prefix = "toml.bzl-0.4.1",
+        url = "https://github.com/jvolkman/toml.bzl/releases/download/v0.4.1/toml.bzl-v0.4.1.tar.gz",
+    )
+    http_archive(
         name = "package_metadata",
         sha256 = "8f27dc7393e3f3bdc793bdc4ba36d67a63c22cc9d38cc65d3204654974ea4563",
         strip_prefix = "supply-chain-0.0.7/metadata",

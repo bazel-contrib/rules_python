@@ -85,64 +85,86 @@ def _lock_impl(ctx):
     toolchain_info = ctx.toolchains[UV_TOOLCHAIN_TYPE]
     uv = toolchain_info.uv_toolchain_info.uv[DefaultInfo].files_to_run.executable
 
-    args = _args(ctx)
-    args.add_all([
-        uv,
-        "pip",
-        "compile",
-        "--no-python-downloads",
-        "--no-cache",
-    ])
-    pkg = ctx.label.package
-    update_target = ctx.attr.update_target
-    args.add("--custom-compile-command", "bazel run //{}:{}".format(pkg, update_target))
-    if ctx.attr.generate_hashes:
-        args.add("--generate-hashes")
-    if not ctx.attr.strip_extras:
-        args.add("--no-strip-extras")
-
-    project = None
-    if ctx.attr.project:
-        project = ctx.attr.project
-    else:
-        # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
-        # we see that is named "pyproject.toml"
-        for src in srcs:
-            if src.basename == "pyproject.toml":
-                if project == None:
-                    project = src.dirname
-                elif len(project) > len(src.dirname):
-                    # select the shortest match
-                    project = src.dirname
-
-    if project == None:
-        project = pkg
-
-    if project:
-        args.add_all([project], before_each = "--project")
-
-    args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
-    args.add_all(ctx.files.constraints, before_each = "--constraints")
-    args.add_all(ctx.attr.args)
-
     exec_tools = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
     runtime = exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime
     python = runtime.interpreter or runtime.interpreter_path
     python_files = runtime.files or depset()
-    args.add("--python", python)
-    args.add_all(srcs)
 
-    args.run_shell.add("--output-file", output)
+    is_uv_lock = ctx.attr.output.endswith("uv.lock")
+    args = _args(ctx)
 
-    # These arguments does not change behaviour, but it reduces the output from
-    # the command, which is especially verbose in stderr.
-    args.run_shell.add("--no-progress")
-    args.run_shell.add("--quiet")
+    if is_uv_lock:
+        args.add_all([
+            uv,
+            "lock",
+            "--no-python-downloads",
+            "--no-cache",
+        ])
 
-    # Generate a wrapper script that copies the existing output (if any) and
-    # then runs uv. On POSIX, args are forwarded via exec "$@". On Windows,
-    # the full command line is embedded in the .bat file with backslash paths
-    # (CMD doesn't recognize forward slashes in executable paths).
+        src_dir = ctx.files.srcs[0].dirname if ctx.files.srcs else "."
+
+        args.add_all(ctx.attr.args)
+        args.run_info.extend(["--python", python])
+        args.run_shell.add("--directory", src_dir)
+        args.run_shell.add("--no-progress")
+        args.run_shell.add("--quiet")
+        if ctx.files.build_constraints:
+            fail("Can't specify build constraints files: {}".format(ctx.files.build_constraints))
+
+        if ctx.files.constraints:
+            fail("Can't specify constraints files: {}".format(ctx.files.constraints))
+
+        mnemonic = "PyUvLock"
+        progress_message = "Creating a uv.lock with uv: %{label}"
+    else:
+        args.add_all([
+            uv,
+            "pip",
+            "compile",
+            "--no-python-downloads",
+            "--no-cache",
+        ])
+        pkg = ctx.label.package
+        update_target = ctx.attr.update_target
+        args.add("--custom-compile-command", "bazel run //{}:{}".format(pkg, update_target))
+
+        if ctx.attr.generate_hashes:
+            args.add("--generate-hashes")
+        if not ctx.attr.strip_extras:
+            args.add("--no-strip-extras")
+
+        project = None
+        if ctx.attr.project:
+            project = ctx.attr.project
+        else:
+            # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
+            # we see that is named "pyproject.toml"
+            for src in srcs:
+                if src.basename == "pyproject.toml":
+                    if project == None:
+                        project = src.dirname
+                    elif len(project) > len(src.dirname):
+                        # select the shortest match
+                        project = src.dirname
+
+        if project == None:
+            project = pkg
+
+        if project:
+            args.add_all([project], before_each = "--project")
+
+        args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
+        args.add_all(ctx.files.constraints, before_each = "--constraints")
+
+        args.add_all(ctx.attr.args)
+        args.add("--python", python)
+        args.add_all(srcs)
+        args.run_shell.add("--output-file", output)
+        args.run_shell.add("--no-progress")
+        args.run_shell.add("--quiet")
+        mnemonic = "PyRequirementsLockUv"
+        progress_message = "Creating a requirements.txt with uv: %{label}"
+
     if ctx.attr.is_windows:
         ext = ".bat"
         lines = ["@echo off"]
@@ -151,19 +173,36 @@ def _lock_impl(ctx):
         lines = ["#!/usr/bin/env bash", "set -euo pipefail"]
 
     python_path = getattr(python, "path", python)
+    is_absolute = python_path.startswith("/") or (len(python_path) > 2 and python_path[1] == ":")
+    uv_python_path = python_path if is_absolute else "$(pwd)/" + python_path
 
-    if ctx.files.existing_output:
+    if is_uv_lock:
+        src_dir = ctx.files.srcs[0].dirname if ctx.files.srcs else "."
+        if ctx.attr.is_windows:
+            lines.append('"%~dp0{uv}" lock --no-python-downloads --no-cache --python "{py}" --directory "{src}" --no-progress --quiet'.format(
+                uv = getattr(uv, "path", uv).replace("/", "\\"),
+                py = uv_python_path.replace("/", "\\"),
+                src = src_dir.replace("/", "\\"),
+            ))
+            lines.append('copy /Y "{}\\uv.lock" "{}"'.format(
+                src_dir.replace("/", "\\"),
+                getattr(output, "path", output).replace("/", "\\"),
+            ))
+        else:
+            lines.append('export UV_PYTHON_PATH="{}"'.format(uv_python_path))
+            lines.append('"$@" --python "$UV_PYTHON_PATH"')
+            lines.append('cp "{}/uv.lock" "{}"'.format(src_dir, getattr(output, "path", output)))
+    elif ctx.files.existing_output:
         python_cmd = "from shutil import copy; copy(\"{src}\", \"{dst}\")".format(
             src = ctx.files.existing_output[0].path,
-            dst = output.path,
+            dst = getattr(output, "path", output),
         )
         if ctx.attr.is_windows:
-            # In batch files, use "" to escape internal double quotes.
             lines.append(
                 "\"{py}\" -c \"from shutil import copy; copy(\"\"{src}\"\", \"\"{dst}\"\")\"".format(
                     py = python_path,
                     src = ctx.files.existing_output[0].path,
-                    dst = output.path,
+                    dst = getattr(output, "path", output),
                 ),
             )
         else:
@@ -213,23 +252,16 @@ def _lock_impl(ctx):
     ctx.actions.run(
         executable = script,
         inputs = srcs + ctx.files.existing_output,
-        mnemonic = "PyRequirementsLockUv",
-        outputs = [output],
-        # On Windows, the command line is embedded directly in the .bat
-        # script (with backslash paths). On POSIX, args are forwarded via
-        # exec "$@" in the .sh script.
+        outputs = [output] if hasattr(output, "path") else [ctx.actions.declare_file(output.path)],
         arguments = [args.run_shell] if not ctx.attr.is_windows else [],
         tools = [
             uv,
             python_files,
             script,
         ],
-        # User reported being unable to add `--action_env` and get it to work.
-        # Without this flag.
-        #
-        # Ref: https://app.slack.com/client/TA4K1KQ87/CA306CEV6
         use_default_shell_env = True,
-        progress_message = "Creating a requirements.txt with uv: %{label}",
+        mnemonic = mnemonic,
+        progress_message = progress_message,
         env = ctx.attr.env,
     )
 
@@ -359,9 +391,15 @@ def _lock_run_impl(ctx):
         return shell.quote(arg)
 
     info = ctx.attr.lock[_RunLockInfo]
+
+    if ctx.attr.output.endswith("uv.lock"):
+        template = ctx.files._uv_lock_template[0]
+    else:
+        template = ctx.files._pip_compile_template[0]
+
     executable = ctx.actions.declare_file(ctx.label.name + ext)
     ctx.actions.expand_template(
-        template = ctx.files._template[0],
+        template = template,
         substitutions = {
             '"{{args}}"': " ".join([_maybe_path(arg) for arg in info.args]),
             "{{src_out}}": "{}/{}".format(ctx.label.package, ctx.attr.output).replace(
@@ -399,11 +437,17 @@ _lock_run = rule(
 The output that we would be updated, relative to the package the macro is used in.
 """,
         ),
-        "_template": attr.label(
+        "_pip_compile_template": attr.label(
             default = "//python/uv/private:lock_template",
             doc = """\
 The template to be used for 'uv pip compile'. This is either .ps1 or bash
 script depending on what the target platform is executed on.
+""",
+        ),
+        "_uv_lock_template": attr.label(
+            default = "//python/uv/private:lock_uv_lock_template",
+            doc = """\
+The template to be used for 'uv lock'. Used when output ends with 'uv.lock'.
 """,
         ),
     },
@@ -513,7 +557,8 @@ def lock(
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
         generate_hashes: {type}`bool` Generate hashes for all of the
-            requirements. This is a must if you want to use
+            requirements. Only meaningful for `requirements.txt` style output.
+            This is a must if you want to use
             {attr}`pip.parse.experimental_index_url`. Defaults to `True`.
         strip_extras: {type}`bool` whether to strip extras from the output.
             Currently `rules_python` requires `--no-strip-extras` to properly

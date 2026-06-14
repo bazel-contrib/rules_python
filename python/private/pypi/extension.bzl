@@ -17,6 +17,7 @@
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("@toml.bzl", "toml")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
@@ -34,7 +35,7 @@ def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
 
     This creates the JSON files used to modify the creation of different wheels.
-"""
+    """
     for hub_name, whl_maps in whl_mods_dict.items():
         whl_mods = {}
 
@@ -251,6 +252,7 @@ def build_config(
             for name, values in defaults["platforms"].items()
         },
         enable_pipstar_extract = enable_pipstar_extract,
+        toml_decode = toml.decode,
     )
 
 def parse_modules(
@@ -816,6 +818,18 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
 :::
 
 :::{versionadded} 1.8.0
+:::
+""",
+        ),
+        "uv_lock": attr.label(
+            doc = """\
+A label pointing to the `uv.lock` file. If provided,
+the `uv.lock` file will be used as the primary source for package metadata.
+
+:::{include} /_includes/experimental_api.md
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
         ),
