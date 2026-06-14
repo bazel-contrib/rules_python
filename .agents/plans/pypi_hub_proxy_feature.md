@@ -75,9 +75,12 @@ config_setting(
 ```
 
 #### 2. `@pypi//foo/BUILD.bazel` (PyPI Package Subpackage)
-Each PyPI package subpackage defines exactly the same standard aliases (`pkg`,
-`whl`, `data`, `dist_info`, `extracted_wheel_files`), resolving dynamically to
-the concrete hub based on the root private configuration settings:
+Each PyPI package subpackage defines the standard aliases (`pkg`, `whl`, `data`,
+`dist_info`, `extracted_wheel_files`), plus a complete **union of all custom
+`extra_hub_aliases`** defined across all concrete hubs. 
+
+Each alias resolves dynamically to the active concrete hub based on the root
+private configuration settings:
 
 ```starlark
 package(default_visibility = ["//visibility:public"])
@@ -107,7 +110,18 @@ alias(
     }),
 )
 
-# ... same for data, dist_info, extracted_wheel_files ...
+# ... standard aliases for data, dist_info, extracted_wheel_files ...
+
+# 3. Unionized custom extra alias (defined in pypi_a but missing in pypi_b):
+alias(
+    name = "my_custom_tool",
+    actual = select({
+        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:my_custom_tool",
+        # Unrepresented branch routes to execution failure target:
+        "//:_is_pypi_hub_pypi_b": "//:_missing_package_error_pypi_b_foo",
+        "//conditions:default": "@pypi_a//foo:my_custom_tool",
+    }),
+)
 ```
 
 ### Disjoint Hub Packages & Execution-Phase Failure
@@ -256,6 +270,9 @@ The integration test suite will assert:
     a target depending on an unrepresented missing package succeeds, while
     `bazel run` on that target gracefully fails during execution with the exact
     synthesized error message.
+5.  **Unionized Extra Hub Aliases**: Author a test asserting that a binary
+    successfully runs using a custom `extra_hub_aliases` target resolved
+    through the `@pypi` proxy.
 
 ## 4. Execution Steps
 
