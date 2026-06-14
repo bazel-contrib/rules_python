@@ -51,3 +51,26 @@ See the [Bazel documentation for --enable_runfiles](https://bazel.build/referenc
 
 The special value `INHERIT` can be specified to use the existing flag value.
 :::
+
+## extra_toolchains
+
+:::{bzl:target} extra_toolchains
+
+Special target for the Bazel-builtin `//command_line_option:extra_toolchains`
+flag.
+
+See the [Bazel documentation for --extra_toolchains](https://bazel.build/reference/command-line-reference#flag--extra_toolchains).
+
+The special value `INHERIT` can be specified to use the existing flag value.
+
+:::{note}
+Unlike the normal Bazel built-in flag, which accepts a list of labels, this
+pseudo-flag must be specified as a single, comma-separated string when set
+using the `config_settings` attribute. For example:
+
+```python
+"//command_line_option:extra_toolchains": "//my/tc1,//my/tc2"
+```
+:::
+:::
+

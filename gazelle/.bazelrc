@@ -1,5 +1,9 @@
 common --deleted_packages=examples/bzlmod_build_file_generation
 common --deleted_packages=examples/bzlmod_build_file_generation/runfiles
+common --experimental_downloader_config=downloader_config.cfg
+common --http_timeout_scaling=10.0
+common --experimental_repository_downloader_retries=10
+
 
 test --test_output=errors
 

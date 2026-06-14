@@ -45,6 +45,28 @@ native_test(
 )
 ```
 
+### `[tool.uv]` settings support
+
+When a `pyproject.toml` file is included in {attr}`lock.srcs`, the
+`--project` flag is automatically passed to `uv pip compile` using the
+directory of the shortest-path `pyproject.toml`. This causes `uv` to
+read `[tool.uv]` settings such as `no-build-isolation`,
+`exclude-dependencies`, and `[tool.uv.workspace]` from that file.
+
+If the auto-detection doesn't select the right project (e.g. in complex
+workspace layouts), use the `project` parameter to override it:
+
+```starlark
+lock(
+    name = "requirements",
+    srcs = [
+        "pyproject.toml",
+        "requirements.in",
+    ],
+    project = "subproject",
+)
+```
+
 EXPERIMENTAL: This is experimental and may be changed without notice.
 """
 

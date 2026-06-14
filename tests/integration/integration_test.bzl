@@ -21,14 +21,14 @@ load(
 )
 load("//python:py_test.bzl", "py_test")
 
-def _test_runner(*, name, bazel_version, py_main, bzlmod):
+def _test_runner(*, name, bazel_version, py_main, bzlmod, py_deps):
     if py_main:
         test_runner = "{}_bazel_{}_py_runner".format(name, bazel_version)
         py_test(
             name = test_runner,
             srcs = [py_main],
             main = py_main,
-            deps = [":runner_lib"],
+            deps = [":runner_lib"] + py_deps,
             # Hide from ... patterns; should only be run as part
             # of the bazel integration test
             tags = ["manual"],
@@ -46,6 +46,7 @@ def rules_python_integration_test(
         bzlmod = True,
         tags = None,
         py_main = None,
+        py_deps = None,
         bazel_versions = None,
         **kwargs):
     """Runs a bazel-in-bazel integration test.
@@ -60,6 +61,7 @@ def rules_python_integration_test(
         py_main: Optional `.py` file to run tests using. When specified, a
             python based test runner is used, and this source file is the main
             entry point and responsible for executing tests.
+        py_deps: Optional test runner deps to use for setup.
         bazel_versions: `list[str] | None`, the bazel versions to test. I
             not specified, defaults to all configured bazel versions.
         **kwargs: Passed to the upstream `bazel_integration_tests` rule.
@@ -91,6 +93,7 @@ def rules_python_integration_test(
             name = name,
             bazel_version = bazel_version,
             py_main = py_main,
+            py_deps = py_deps or [],
             bzlmod = bzlmod,
         )
         bazel_integration_test(

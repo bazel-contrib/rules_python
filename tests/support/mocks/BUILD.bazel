@@ -10,4 +10,10 @@ bzl_library(
     srcs = ["mocks.bzl"],
 )
 
+bzl_library(
+    name = "python_ext_bzl",
+    srcs = ["python_ext.bzl"],
+    deps = [":mocks_bzl"],
+)
+
 mocks_test_suite(name = "mocks_tests")

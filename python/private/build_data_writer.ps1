@@ -1,7 +1,6 @@
 $OutputPath = $env:OUTPUT
 $Lines = @(
     "TARGET $env:TARGET",
-    "CONFIG_MODE $env:CONFIG_MODE",
     "STAMPED $env:STAMPED"
 )
 
