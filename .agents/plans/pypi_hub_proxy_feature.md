@@ -1,13 +1,20 @@
 # Implementation Plan: Canonical Automatic PyPI Proxy Hub
 
-This document defines the locked, production-ready architectural and testing
-specifications for implementing dynamic PyPI dependency resolution in
+This document defines the locked, production-ready architectural, Starlark API,
+and testing specifications for implementing dynamic PyPI dependency resolution in
 `rules_python`.
 
 ## 1. Architectural Strategy: The Canonical `@pypi` Proxy
 
 The `pip` bzlmod extension will automatically synthesize a canonical `@pypi`
 proxy repository rule that orchestrates routing to underlying concrete hubs.
+
+### Bzlmod-Exclusive Scope
+
+The Unified PyPI Hub Proxy is an **exclusive feature of `bzlmod`**. Legacy
+`WORKSPACE` evaluations using independent `pip_parse` repository macros are not
+supported, as bzlmod's module extension architecture provides the required
+centralized coordination to inspect and interlink cross-module hubs.
 
 ### Automatic Proxy Construction & Collision Logic
 
@@ -100,32 +107,38 @@ alias(
     }),
 )
 
-alias(
-    name = "data",
-    actual = select({
-        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:data",
-        "//:_is_pypi_hub_pypi_b": "@pypi_b//foo:data",
-        "//conditions:default": "@pypi_a//foo:data",
-    }),
-)
+# ... same for data, dist_info, extracted_wheel_files ...
+```
 
-alias(
-    name = "dist_info",
-    actual = select({
-        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:dist_info",
-        "//:_is_pypi_hub_pypi_b": "@pypi_b//foo:dist_info",
-        "//conditions:default": "@pypi_a//foo:dist_info",
-    }),
-)
+### Disjoint Hub Packages & Execution-Phase Failure
 
+If a package exists in one concrete hub but is missing in another (e.g., `scipy`
+is in `pypi_b` but not `pypi_a`), our proxy synthesizes a package subpackage for
+the union of all packages. 
+
+To ensure that `bazel cquery` and `bazel query` successfully analyze over the
+entire transitive build graph without failing, unrepresented select branches
+must route to a dedicated **execution-phase error rule**.
+
+```starlark
+# In @pypi//scipy/BUILD.bazel
 alias(
-    name = "extracted_wheel_files",
+    name = "pkg",
     actual = select({
-        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:extracted_wheel_files",
-        "//:_is_pypi_hub_pypi_b": "@pypi_b//foo:extracted_wheel_files",
-        "//conditions:default": "@pypi_a//foo:extracted_wheel_files",
+        # Routes to execution-phase action failure target:
+        "//:_is_pypi_hub_pypi_a": "//:_missing_package_error_pypi_a_scipy",
+        "//:_is_pypi_hub_pypi_b": "@pypi_b//scipy:pkg",
+        "//conditions:default": "//:_missing_package_error_pypi_a_scipy",
     }),
 )
+```
+
+The synthesized `//:_missing_package_error_XX` rule in `@pypi//BUILD.bazel`
+returns standard Starlark Python providers so analysis/cquery passes, but
+registers a build action that fails when executed:
+
+```
+Dependency Error: Third-party package 'scipy' is not available when building under PyPI hub 'pypi_a'.
 ```
 
 ### Fallback Hub Precedence (`"auto"`)
@@ -211,6 +224,16 @@ py_binary(
 )
 ```
 
+### Analysis Cache & Memory Best Practices
+
+Because transitions fork the Bazel configuration, building targets with highly
+diversified `config_settings` across large build graphs will result in
+re-analysis and re-compilation of shared dependencies. 
+
+We will include explicit documentation guidelines advising users to keep their
+`pypi_hub` transition configurations localized and minimized to preserve Bazel
+caching and memory efficiency.
+
 ## 3. Integration Testing Specification
 
 We will construct a comprehensive Bazel-in-Bazel integration test suite in
@@ -229,6 +252,10 @@ The integration test suite will assert:
     `bazel run --//python/config_settings:pypi_hub=pypi_b //:bin_default`
     successfully forces the executable to run using imports resolved from
     `pypi_b`.
+4.  **Disjoint Execution Failure**: Author a test asserting `bazel cquery` over
+    a target depending on an unrepresented missing package succeeds, while
+    `bazel run` on that target gracefully fails during execution with the exact
+    synthesized error message.
 
 ## 4. Execution Steps
 
@@ -236,9 +263,8 @@ The integration test suite will assert:
     `common_labels.bzl` and `transition_labels.bzl`.
 2.  **Phase 2**: Update `python/private/pypi/extension.bzl` to synthesize the
     canonical `pypi` proxy repository rule.
-3.  **Phase 3**: Implement `proxy_hub_repository` rule (or equivalent generation
-    logic) that builds the root `config_setting` package and individual PyPI
-    package subpackages.
+3.  **Phase 3**: Implement `missing_package_error` execution failure rule and
+    the `proxy_hub_repository` generation logic.
 4.  **Phase 4**: Author the Bazel-in-Bazel integration test suite in
     `tests/integration/unified_pypi/`.
 5.  **Phase 5**: Run all tests and verify full pass before PR submission.
