@@ -16,6 +16,7 @@ _BASE_TRANSITION_LABELS = [
     labels.PIP_WHL_OSX_VERSION,
     labels.PRECOMPILE,
     labels.PRECOMPILE_SOURCE_RETENTION,
+    labels.PYPI_HUB,
     labels.PYTHON_SRC,
     labels.PYTHON_VERSION,
     labels.PY_FREETHREADED,

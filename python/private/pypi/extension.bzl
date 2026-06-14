@@ -26,9 +26,28 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
+load(":proxy_hub_repository.bzl", "proxy_hub_repository")
 load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":whl_library.bzl", "whl_library")
+
+def _whl_mods_repo_impl(rctx):
+    rctx.file("BUILD.bazel", "")
+    for whl_name, mods in rctx.attr.whl_mods.items():
+        rctx.file("{}.json".format(whl_name), mods)
+
+_whl_mods_repo = repository_rule(
+    doc = """\
+This rule creates json files based on the whl_mods attribute.
+""",
+    implementation = _whl_mods_repo_impl,
+    attrs = {
+        "whl_mods": attr.string_dict(
+            mandatory = True,
+            doc = "JSON endcoded string that is provided to wheel_builder.py",
+        ),
+    },
+)
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -213,6 +232,8 @@ def build_config(
         for tag in mod.tags.default:
             platform = tag.platform
             if platform:
+                if not tag.config_settings:
+                    fail("pip.default tag for platform '%s' requires 'config_settings' attribute to be specified." % platform)
                 specific_config = defaults["platforms"].setdefault(platform, {})
                 _configure(
                     specific_config,
@@ -404,8 +425,18 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
 
+    default_hub = None
+    for mod in module_ctx.modules:
+        if not mod.is_root:
+            continue
+        for tag in mod.tags.default:
+            if default_hub != None:
+                fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
+            default_hub = tag.default_hub
+
     return struct(
         config = config,
+        default_hub = default_hub,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         facts = simpleapi_cache.get_facts(),
@@ -513,6 +544,36 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
+    hubs = sorted(mods.hub_whl_map.keys())
+    if "pypi" not in mods.hub_whl_map:
+        packages = {}
+        for hub_name in hubs:
+            for pkg_name in mods.exposed_packages.get(hub_name, []):
+                norm_pkg = normalize_name(pkg_name)
+                if norm_pkg not in packages:
+                    packages[norm_pkg] = {"extra_aliases": {}, "hubs": []}
+                if hub_name not in packages[norm_pkg]["hubs"]:
+                    packages[norm_pkg]["hubs"].append(hub_name)
+
+                # accumulate extra aliases
+                extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
+                for alias_name in extra:
+                    if alias_name not in packages[norm_pkg]["extra_aliases"]:
+                        packages[norm_pkg]["extra_aliases"][alias_name] = []
+                    if hub_name not in packages[norm_pkg]["extra_aliases"][alias_name]:
+                        packages[norm_pkg]["extra_aliases"][alias_name].append(hub_name)
+
+        proxy_config = json.encode({
+            "default_hub": mods.default_hub,
+            "hubs": hubs,
+            "packages": packages,
+        })
+
+        proxy_hub_repository(
+            name = "pypi",
+            proxy_config = proxy_config,
+        )
+
     # The code is smart to not return facts if we don't support the mechanism for that.
     # Hence we should not pass it to the metadata
     if mods.facts:
@@ -535,11 +596,13 @@ Either this or {attr}`env` `platform_machine` key should be specified.
 """,
     ),
     "config_settings": attr.label_list(
-        mandatory = True,
         doc = """\
 The list of labels to `config_setting` targets that need to be matched for the platform to be
-selected.
+selected. Mandatory if platform is specified.
 """,
+    ),
+    "default_hub": attr.string(
+        doc = "The name of the concrete PyPI hub to use by default when pypi_hub is 'auto'.",
     ),
     "env": attr.string_dict(
         doc = """\
@@ -972,24 +1035,6 @@ create different modifications based on the type of attribute. Previously to bzl
 JSON files where referred to as annotations, and were renamed to whl_modifications in this
 extension.
 """,
-        ),
-    },
-)
-
-def _whl_mods_repo_impl(rctx):
-    rctx.file("BUILD.bazel", "")
-    for whl_name, mods in rctx.attr.whl_mods.items():
-        rctx.file("{}.json".format(whl_name), mods)
-
-_whl_mods_repo = repository_rule(
-    doc = """\
-This rule creates json files based on the whl_mods attribute.
-""",
-    implementation = _whl_mods_repo_impl,
-    attrs = {
-        "whl_mods": attr.string_dict(
-            mandatory = True,
-            doc = "JSON endcoded string that is provided to wheel_builder.py",
         ),
     },
 )

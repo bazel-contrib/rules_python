@@ -144,6 +144,7 @@ bzl_library(
         ":pep508_env_bzl",
         ":pip_repository_attrs_bzl",
         ":platform_bzl",
+        ":proxy_hub_repository_bzl",
         ":pypi_cache_bzl",
         ":simpleapi_download_bzl",
         ":whl_library_bzl",
@@ -223,6 +224,14 @@ bzl_library(
 bzl_library(
     name = "labels_bzl",
     srcs = ["labels.bzl"],
+)
+
+bzl_library(
+    name = "missing_package_bzl",
+    srcs = ["missing_package.bzl"],
+    deps = [
+        "//python/private:reexports_bzl",
+    ],
 )
 
 bzl_library(
@@ -393,6 +402,16 @@ bzl_library(
     deps = [
         "//python/private:repo_utils_bzl",
         "@bazel_skylib//lib:types",
+    ],
+)
+
+bzl_library(
+    name = "proxy_hub_repository_bzl",
+    srcs = ["proxy_hub_repository.bzl"],
+    deps = [
+        ":missing_package_bzl",
+        "//python/private:common_labels_bzl",
+        "//python/private:text_util_bzl",
     ],
 )
 
