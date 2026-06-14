@@ -61,6 +61,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (bzlmod) How default runtimes are registered has changed to use a manifest
+  of SHAs and URLs. `TOOL_VERSIONS` in `python/versions.bzl` is now empty under
+  bzlmod.
 * (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
   The go version was also bumped from 1.21.13 to 1.22.9.
 * (gazelle) `python_generate_pyi_deps` and `python_generate_pyi_srcs` now
@@ -74,6 +77,11 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (gazelle) `py_library` and `py_test` targets with missing source files can now be
+  removed by Gazelle ([#3375](https://github.com/bazel-contrib/rules_python/issues/3375)). 
+  However `map_kind` and `alias_kind` will not be removed unless people are running a 
+  gazelle version that includes 
+  [bazel-gazelle#2362](https://github.com/bazel-contrib/bazel-gazelle/pull/2362)
 * (bootstrap) Fixed a potential race condition with symlink creation during
   startup.
 * (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
@@ -114,6 +122,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-added}
 ### Added
+* (toolchains) Support dynamically fetching and registering Python runtimes
+  from a python-build-standalone manifest file using
+  `python.override(add_runtime_manifest_urls = ..., runtime_manifest_sha = ...)`.
 * (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
   adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set

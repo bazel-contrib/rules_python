@@ -1,254 +1,94 @@
 #!/usr/bin/env python3
+
 import argparse
 import json
 import re
 import subprocess
 import sys
-import urllib.request
 
 
-def get_pr_checks(pr_number):
+def check_cli(cmd_name, install_url):
     try:
-        # Check if gh is installed
         subprocess.run(
-            ["gh", "--version"],
+            [cmd_name, "--version"],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-    except FileNotFoundError:
+    except Exception:
         print(
-            "Error: 'gh' (GitHub CLI) is not installed or not in PATH.", file=sys.stderr
+            f"❌ Error: '{cmd_name}' CLI is not installed or not in PATH.",
+            file=sys.stderr,
         )
-        sys.exit(1)
-    except subprocess.CalledProcessError:
-        print("Error: 'gh' command failed. Is it installed?", file=sys.stderr)
+        print(f"Please install it from {install_url}", file=sys.stderr)
         sys.exit(1)
 
-    cmd = ["gh", "pr", "checks", str(pr_number), "--json", "bucket,name,link,state"]
+
+def get_build_url_from_pr(pr_number):
+    check_cli("gh", "https://cli.github.com/")
+    cmd = ["gh", "pr", "checks", str(pr_number), "--json", "name,link"]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return json.loads(result.stdout)
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        checks = json.loads(res.stdout)
+        for c in checks:
+            link = c.get("link", "")
+            if "buildkite.com" in link:
+                return link.split("#")[0]
+        print(f"❌ No Buildkite checks found for PR #{pr_number}.", file=sys.stderr)
+        sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"Error fetching PR checks: {e.stderr}", file=sys.stderr)
+        print(f"❌ Error fetching PR checks: {e.stderr}", file=sys.stderr)
         sys.exit(1)
 
 
-def get_buildkite_build_url(checks):
-    for check in checks:
-        # Looking for Buildkite check. The name usually contains "buildkite"
-        if "buildkite" in check.get("name", "").lower():
-            return check.get("link")
-    return None
-
-
-def fetch_buildkite_data(build_url):
-    # Convert https://buildkite.com/org/pipeline/builds/number
-    # to https://buildkite.com/org/pipeline/builds/number.json
-    if not build_url.endswith(".json"):
-        json_url = build_url + ".json"
-    else:
-        json_url = build_url
-
-    try:
-        with urllib.request.urlopen(json_url) as response:
-            if response.status != 200:
-                print(
-                    f"Error fetching data from {json_url}: Status {response.status}",
-                    file=sys.stderr,
-                )
-                return None
-            data = json.loads(response.read().decode())
-    except Exception as e:
-        print(f"Error fetching data from {json_url}: {e}", file=sys.stderr)
-        return None
-
-    # If jobs list is truncated or empty but statistics says there are more jobs,
-    # try to fetch from /data/jobs.json
-    jobs = data.get("jobs", [])
-    jobs_count = data.get("statistics", {}).get("jobs_count", 0)
-
-    if len(jobs) < jobs_count:
-        # Try fetching from /data/jobs.json
-        # Build URL might have .json already from the check above
-        base_url = build_url
-        if base_url.endswith(".json"):
-            base_url = base_url[:-5]
-
-        jobs_url = f"{base_url}/data/jobs.json"
-        try:
-            with urllib.request.urlopen(jobs_url) as response:
-                if response.status == 200:
-                    jobs_data = json.loads(response.read().decode())
-                    if isinstance(jobs_data, list):
-                        data["jobs"] = jobs_data
-                    elif isinstance(jobs_data, dict) and "records" in jobs_data:
-                        data["jobs"] = jobs_data["records"]
-        except Exception as e:
-            print(
-                f"Warning: Could not fetch detailed jobs from {jobs_url}: {e}",
-                file=sys.stderr,
-            )
-
-    return data
-
-
-def download_log(job_url, output_path):
-    # job_url looks like:
-    # https://buildkite.com/bazel/rules-python-python/builds/15594#019e879b-...
-    # We need to transform it to:
-    # https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/15594/jobs/{job_id}/download.txt
-
-    if "#" in job_url:
-        base, job_id = job_url.split("#")
-        base = base.rstrip("/")
-
-        # Parse the path segments: https://buildkite.com/org/pipeline/builds/N
-        # Rebuild with the /organizations/org/pipelines/pipeline/ format which
-        # supports the /jobs/{id}/download.txt log URL without auth.
-        parts = base.split("/")
-        # parts = ["https:", "", "buildkite.com", "org", "pipeline", "builds", "N"]
-        if len(parts) >= 7 and parts[2] == "buildkite.com":
-            org = parts[3]
-            pipeline = parts[4]
-            build_num = parts[6] if len(parts) >= 7 else ""
-            raw_url = (
-                f"https://buildkite.com/organizations/{org}"
-                f"/pipelines/{pipeline}"
-                f"/builds/{build_num}"
-                f"/jobs/{job_id}/download.txt"
-            )
-        else:
-            raw_url = f"{base}/jobs/{job_id}/download.txt"
-    else:
-        print(f"Could not parse job URL for download: {job_url}", file=sys.stderr)
-        return False
-
-    try:
-        with urllib.request.urlopen(raw_url) as response:
-            if response.status != 200:
-                print(
-                    f"Error downloading log from {raw_url}: Status {response.status}",
-                    file=sys.stderr,
-                )
-                return False
-            with open(output_path, "wb") as f:
-                f.write(response.read())
-        return True
-    except Exception as e:
-        print(f"Error downloading log from {raw_url}: {e}", file=sys.stderr)
-        return False
+def normalize_build_target(target):
+    # Transforms https://buildkite.com/bazel/rules-python-python/builds/15707
+    # into bazel/rules-python-python/15707
+    m = re.search(r"buildkite\.com/([^/]+)/([^/]+)/builds/(\d+)", target)
+    if m:
+        return f"{m.group(1)}/{m.group(2)}/{m.group(3)}"
+    return target
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Get Buildkite CI results for a PR.")
-    parser.add_argument("pr_number", help="The PR number.")
+    parser = argparse.ArgumentParser(
+        description="Gets Buildkite build results using the 'bk' CLI."
+    )
+    parser.add_argument(
+        "pr", help="PR number, Build URL, or Build ID (org/pipeline/build)"
+    )
     parser.add_argument(
         "--jobs",
-        action="append",
-        help="Filter by job name (regex match). Can be specified multiple times.",
+        help="Glob-style filtering of job names to display or download",
     )
-    parser.add_argument(
-        "--download",
-        action="store_true",
-        help="If exactly one job is matched, download its log to a local file.",
-    )
-
+    parser.add_argument("--download", action="store_true", help="Download job logs")
     args = parser.parse_args()
 
-    pr_display = args.pr_number
-    if "pull/" in pr_display:
-        pr_display = pr_display.split("pull/")[1].split("#")[0].split("/")[0]
+    check_cli("bk", "https://github.com/buildkite/cli")
 
-    print(f"Fetching checks for PR #{pr_display}...", file=sys.stderr)
-    checks = get_pr_checks(args.pr_number)
+    target = args.pr
+    if target.isdigit() and len(target) < 10:
+        print(f"🔍 Inspecting PR #{target} via gh to find Buildkite URL...")
+        target = get_build_url_from_pr(target)
 
-    build_url = get_buildkite_build_url(checks)
-    if not build_url:
-        print("No Buildkite check found for this PR.", file=sys.stderr)
-        sys.exit(1)
+    build_id = normalize_build_target(target)
+    print(f"🚀 Querying Buildkite for build: {build_id}\n")
 
-    print(f"Found Buildkite URL: {build_url}", file=sys.stderr)
-
-    data = fetch_buildkite_data(build_url)
-    if not data:
-        sys.exit(1)
-
-    build_state = data.get("state", "Unknown")
-    print(f"Build State: {build_state}")
-
-    jobs = data.get("jobs", [])
-    jobs_count = data.get("statistics", {}).get("jobs_count", 0)
-
-    print(f"Total jobs reported: {jobs_count}")
-    print(f"Jobs found in data: {len(jobs)}")
-
-    if jobs_count != len(jobs):
+    # Run bk build view
+    res = subprocess.run(["bk", "build", "view", build_id])
+    if res.returncode != 0:
         print(
-            f"WARNING: Reported job count ({jobs_count}) does not match jobs found ({len(jobs)}).",
+            f"❌ Failed to view build '{build_id}' via 'bk' CLI.",
             file=sys.stderr,
         )
-
-    print("-" * 40)
-
-    filtered_jobs = []
-    if args.jobs:
-        for job in jobs:
-            job_name = job.get("name")
-            if not job_name:
-                continue
-            for pattern in args.jobs:
-                if re.search(pattern, job_name, re.IGNORECASE):
-                    filtered_jobs.append(job)
-                    break
-    else:
-        filtered_jobs = jobs
-
-    for job in filtered_jobs:
-        name = job.get("name", "Unknown")
-        state = job.get("state", "Unknown")
-        path = job.get("path")
-        full_url = f"https://buildkite.com{path}" if path else "N/A"
-
-        passed = job.get("passed", False)
-        outcome = job.get("outcome")
-
-        if passed:
-            result_str = "PASSED"
-        elif outcome:
-            result_str = outcome.upper()
-        else:
-            result_str = state.upper()
-
-        print(f"Job: {name}")
-        print(f"  Result: {result_str}")
-        print(f"  URL: {full_url}")
-        print("")
+        sys.exit(res.returncode)
 
     if args.download:
-        if len(filtered_jobs) == 1:
-            job = filtered_jobs[0]
-            name = job.get("name", "unknown_job")
-            # Sanitize name for filename
-            safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", name)
-            output_path = f"{safe_name}.log"
-
-            path = job.get("path")
-            if path:
-                full_url = f"https://buildkite.com{path}"
-                print(f"Downloading log for '{name}'...", file=sys.stderr)
-                if download_log(full_url, output_path):
-                    print(f"Downloaded log to: {output_path}")
-                else:
-                    print("Failed to download log.", file=sys.stderr)
-            else:
-                print("Job has no URL path, cannot download.", file=sys.stderr)
-        elif len(filtered_jobs) == 0:
-            print("No jobs matched to download.", file=sys.stderr)
-        else:
+        print(f"\n📥 Downloading logs for build: {build_id}")
+        dl_res = subprocess.run(["bk", "build", "download", build_id])
+        if dl_res.returncode != 0:
             print(
-                f"Matched {len(filtered_jobs)} jobs. Please filter to exactly one job to download.",
-                file=sys.stderr,
+                "⚠️ 'bk build download' failed or not supported. Try using 'bk job log <job-id>' for specific jobs."
             )
 
 

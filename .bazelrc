@@ -46,6 +46,9 @@ common --enable_bzlmod
 common --disk_cache=~/.cache/bazel/bazel-disk-cache
 # Drop `experimental_` prefix once Bazel 7 is no longer supported
 common --experimental_downloader_config=downloader_config.cfg
+common --http_timeout_scaling=10.0
+common --experimental_repository_downloader_retries=10
+
 
 
 # Additional config to use for readthedocs builds.

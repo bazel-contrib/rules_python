@@ -105,6 +105,10 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
+    name = "runtime_manifests_test",
+)
+
+rules_python_integration_test(
     name = "custom_commands_test",
     py_main = "custom_commands_test.py",
 )
