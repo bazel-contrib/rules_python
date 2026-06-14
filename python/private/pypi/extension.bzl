@@ -232,24 +232,25 @@ def build_config(
         for tag in mod.tags.default:
             platform = tag.platform
             if platform:
-                if not tag.config_settings:
+                is_deletion = not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker)
+                if not is_deletion and not tag.config_settings:
                     fail("pip.default tag for platform '%s' requires 'config_settings' attribute to be specified." % platform)
-                specific_config = defaults["platforms"].setdefault(platform, {})
-                _configure(
-                    specific_config,
-                    arch_name = tag.arch_name,
-                    config_settings = tag.config_settings,
-                    env = tag.env,
-                    os_name = tag.os_name,
-                    marker = tag.marker,
-                    name = platform.replace("-", "_").lower(),
-                    whl_abi_tags = tag.whl_abi_tags,
-                    whl_platform_tags = tag.whl_platform_tags,
-                    override = mod.is_root,
-                )
-
-                if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker):
-                    defaults["platforms"].pop(platform)
+                if is_deletion:
+                    defaults["platforms"].pop(platform, None)
+                else:
+                    specific_config = defaults["platforms"].setdefault(platform, {})
+                    _configure(
+                        specific_config,
+                        arch_name = tag.arch_name,
+                        config_settings = tag.config_settings,
+                        env = tag.env,
+                        os_name = tag.os_name,
+                        marker = tag.marker,
+                        name = platform.replace("-", "_").lower(),
+                        whl_abi_tags = tag.whl_abi_tags,
+                        whl_platform_tags = tag.whl_platform_tags,
+                        override = mod.is_root,
+                    )
 
             _configure(
                 defaults,

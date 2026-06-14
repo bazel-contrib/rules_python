@@ -44,6 +44,7 @@ def _default(
         arch_name = None,
         auth_patterns = None,
         config_settings = None,
+        default_hub = None,
         env = None,
         index_url = None,
         marker = None,
@@ -56,6 +57,7 @@ def _default(
         arch_name = arch_name,
         auth_patterns = auth_patterns or {},
         config_settings = config_settings,
+        default_hub = default_hub,
         env = env or {},
         index_url = index_url or "",
         marker = marker or "",
@@ -104,6 +106,7 @@ def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
         parse_modules(**kwargs),
         attrs = dict(
+            default_hub = subjects.str,
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
             hub_whl_map = subjects.dict,
