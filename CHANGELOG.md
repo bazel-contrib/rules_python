@@ -47,12 +47,12 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
-{#v0-0-0}
-## Unreleased
+{#v2-0-3}
+## [2.0.3] - 2026-06-15
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[2.0.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.3
 
-{#v0-0-0-fixed}
+{#v2-0-3-fixed}
 ### Fixed
 * (pypi) Assume that all of the packages are available on a particular hub if
   there is only a single PyPI compatible index to be used. This saves us an expensive
