@@ -9,9 +9,9 @@ def _missing_package_error_impl(ctx):
     # Register an action that fails when Bazel attempts to stage/build this file
     ctx.actions.run_shell(
         outputs = [out],
-        command = "echo 'Dependency Error: PyPI package \"{}\" is not available when building under PyPI hub \"{}\".' >&2 && exit 1".format(
-            ctx.attr.package_name,
-            ctx.attr.hub_name,
+        command = "echo 'ERROR: PyPI package \"{pkg}\" is not available{hub_clause}.' >&2 && exit 1".format(
+            pkg = ctx.attr.package_name,
+            hub_clause = (' when building under PyPI hub "%s"' % ctx.attr.hub_name) if ctx.attr.hub_name else " because no PyPI hub or default hub is requested",
         ),
     )
 

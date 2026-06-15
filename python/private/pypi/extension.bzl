@@ -28,7 +28,7 @@ load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
-load(":unified_hub_repository.bzl", "unified_hub_repository")
+load(":unified_hub_repo.bzl", "unified_hub_repo")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_repo_impl(rctx):
@@ -478,7 +478,7 @@ def _create_unified_hub_repo(mods):
                 if hub_name not in extra_aliases[qual_alias]:
                     extra_aliases[qual_alias].append(hub_name)
 
-    unified_hub_repository(
+    unified_hub_repo(
         name = "pypi",
         default_hub = mods.default_hub or (hubs[0] if hubs else ""),
         extra_aliases = extra_aliases,
