@@ -26,9 +26,9 @@ load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
-load(":proxy_hub_repository.bzl", "proxy_hub_repository")
 load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
+load(":unified_hub_repository.bzl", "unified_hub_repository")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_repo_impl(rctx):
@@ -454,6 +454,38 @@ You cannot use both the additive_build_content and additive_build_content_file a
         },
     )
 
+def _create_unified_hub_repo(mods):
+    if "pypi" in mods.hub_whl_map:
+        return
+
+    hubs = sorted(mods.hub_whl_map.keys())
+    packages = {}
+    extra_aliases = {}
+
+    for hub_name in hubs:
+        for pkg_name in mods.exposed_packages.get(hub_name, []):
+            norm_pkg = normalize_name(pkg_name)
+            if norm_pkg not in packages:
+                packages[norm_pkg] = []
+            if hub_name not in packages[norm_pkg]:
+                packages[norm_pkg].append(hub_name)
+
+            extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
+            for alias_name in extra:
+                qual_alias = "%s:%s" % (norm_pkg, alias_name)
+                if qual_alias not in extra_aliases:
+                    extra_aliases[qual_alias] = []
+                if hub_name not in extra_aliases[qual_alias]:
+                    extra_aliases[qual_alias].append(hub_name)
+
+    unified_hub_repository(
+        name = "pypi",
+        default_hub = mods.default_hub or (hubs[0] if hubs else ""),
+        extra_aliases = extra_aliases,
+        hubs = hubs,
+        packages = packages,
+    )
+
 def _pip_impl(module_ctx):
     """Implementation of a class tag that creates the pip hub and corresponding pip spoke whl repositories.
 
@@ -545,35 +577,7 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    hubs = sorted(mods.hub_whl_map.keys())
-    if "pypi" not in mods.hub_whl_map:
-        packages = {}
-        for hub_name in hubs:
-            for pkg_name in mods.exposed_packages.get(hub_name, []):
-                norm_pkg = normalize_name(pkg_name)
-                if norm_pkg not in packages:
-                    packages[norm_pkg] = {"extra_aliases": {}, "hubs": []}
-                if hub_name not in packages[norm_pkg]["hubs"]:
-                    packages[norm_pkg]["hubs"].append(hub_name)
-
-                # accumulate extra aliases
-                extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
-                for alias_name in extra:
-                    if alias_name not in packages[norm_pkg]["extra_aliases"]:
-                        packages[norm_pkg]["extra_aliases"][alias_name] = []
-                    if hub_name not in packages[norm_pkg]["extra_aliases"][alias_name]:
-                        packages[norm_pkg]["extra_aliases"][alias_name].append(hub_name)
-
-        proxy_config = json.encode({
-            "default_hub": mods.default_hub,
-            "hubs": hubs,
-            "packages": packages,
-        })
-
-        proxy_hub_repository(
-            name = "pypi",
-            proxy_config = proxy_config,
-        )
+    _create_unified_hub_repo(mods)
 
     # The code is smart to not return facts if we don't support the mechanism for that.
     # Hence we should not pass it to the metadata

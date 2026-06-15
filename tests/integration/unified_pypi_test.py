@@ -29,7 +29,7 @@ class UnifiedPypiTest(runner.TestCase):
         )
         self.assert_result_matches(
             result,
-            'Dependency Error: Third-party package "six" is not available when building under PyPI hub "pypi_a".',
+            'Dependency Error: PyPI package "six" is not available when building under PyPI hub "pypi_a".',
         )
 
     def test_sibling_extra_alias_cquery_succeeds_but_build_fails(self):
@@ -42,7 +42,7 @@ class UnifiedPypiTest(runner.TestCase):
         )
         self.assert_result_matches(
             result,
-            'Dependency Error: Third-party package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b".',
+            'Dependency Error: PyPI package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b".',
         )
 
 

@@ -1,20 +1,5 @@
-# Copyright 2026 The Bazel Authors. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""Repository rule for creating the canonical Unified PyPI Hub."""
 
-"""Repository rule for creating the canonical Unified PyPI Proxy Hub."""
-
-load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
 
 _ROOT_BUILD_TMPL = """\
@@ -26,7 +11,7 @@ package(default_visibility = ["//visibility:public"])
 _CONFIG_SETTING_TMPL = """\
 config_setting(
     name = "_is_pypi_hub_{hub_name}",
-    flag_values = {{"{pypi_hub_flag}": "{hub_name}"}},
+    flag_values = {{"@rules_python//python/config_settings:pypi_hub": "{hub_name}"}},
 )
 """
 
@@ -63,25 +48,30 @@ _STANDARD_ALIASES = [
     "extracted_wheel_files",
 ]
 
-def _impl(rctx):
-    config = json.decode(rctx.attr.proxy_config)
-    hubs = config["hubs"]
-    default_hub = config.get("default_hub") or (hubs[0] if hubs else None)
+def _unified_hub_repository_impl(rctx):
+    hubs = rctx.attr.hubs
+    default_hub = rctx.attr.default_hub
+    if not default_hub:
+        fail("default_hub must be specified.")
 
     # 1. Generate Root BUILD.bazel with shared config settings
     config_settings = "\n".join([
-        _CONFIG_SETTING_TMPL.format(
-            hub_name = hub,
-            pypi_hub_flag = rctx.attr._pypi_hub_flag,
-        )
+        _CONFIG_SETTING_TMPL.format(hub_name = hub)
         for hub in hubs
     ])
     rctx.file("BUILD.bazel", _ROOT_BUILD_TMPL.format(config_settings = config_settings))
 
-    # 2. Generate package subpackages
-    for pkg_name, pkg_data in config["packages"].items():
-        pkg_hubs = pkg_data["hubs"]
-        extra_aliases = pkg_data.get("extra_aliases", {})
+    # 2. Organize extra aliases by package
+    extra_aliases_by_pkg = {}
+    for qual_alias, alias_hubs in rctx.attr.extra_aliases.items():
+        if ":" not in qual_alias:
+            fail("extra_aliases keys must be in 'pkg:alias' format.")
+        pkg, alias = qual_alias.split(":", 1)
+        extra_aliases_by_pkg.setdefault(pkg, {})[alias] = alias_hubs
+
+    # 3. Generate package subpackages
+    for pkg_name, pkg_hubs in rctx.attr.packages.items():
+        extra_aliases = extra_aliases_by_pkg.get(pkg_name, {})
         all_aliases = _STANDARD_ALIASES + sorted(extra_aliases.keys())
 
         missing_errors = {}
@@ -113,9 +103,8 @@ def _impl(rctx):
                     select_map["//:_is_pypi_hub_" + hub] = ":{}".format(err_target)
 
             # //conditions:default fallback
-            default_supported = default_hub and \
-                                ((alias_name in _STANDARD_ALIASES and default_hub in pkg_hubs) or
-                                 (alias_name not in _STANDARD_ALIASES and default_hub in extra_aliases.get(alias_name, [])))
+            default_supported = (alias_name in _STANDARD_ALIASES and default_hub in pkg_hubs) or \
+                                (alias_name not in _STANDARD_ALIASES and default_hub in extra_aliases.get(alias_name, []))
 
             if default_supported:
                 select_map["//conditions:default"] = "@{hub}//{pkg}:{alias}".format(
@@ -123,7 +112,7 @@ def _impl(rctx):
                     pkg = pkg_name,
                     alias = alias_name,
                 )
-            elif default_hub:
+            else:
                 err_target = "_missing_{alias}_in_{hub}".format(alias = alias_name, hub = default_hub)
                 if err_target not in missing_errors:
                     missing_errors[err_target] = _MISSING_ERR_TMPL.format(
@@ -146,16 +135,24 @@ def _impl(rctx):
             ),
         )
 
-proxy_hub_repository = repository_rule(
-    implementation = _impl,
+unified_hub_repository = repository_rule(
+    implementation = _unified_hub_repository_impl,
     attrs = {
-        "proxy_config": attr.string(
+        "default_hub": attr.string(
             mandatory = True,
-            doc = "Serialized JSON string containing hubs, default_hub, and packages.",
+            doc = "The fallback PyPI hub to use when no hub is requested.",
         ),
-        "_pypi_hub_flag": attr.string(
-            default = labels.PYPI_HUB,
+        "extra_aliases": attr.string_list_dict(
+            doc = "Dictionary mapping 'package:alias' to a list of hubs that support it.",
+        ),
+        "hubs": attr.string_list(
+            mandatory = True,
+            doc = "List of all concrete PyPI hub names.",
+        ),
+        "packages": attr.string_list_dict(
+            mandatory = True,
+            doc = "Dictionary mapping package names to a list of hubs that contain them.",
         ),
     },
-    doc = "Private repository rule creating the canonical automatic Unified PyPI Hub Proxy.",
+    doc = "Private repository rule creating the canonical automatic Unified PyPI Hub.",
 )
