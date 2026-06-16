@@ -252,10 +252,14 @@ invokes `unittest` or `pytest`). When that happens, the test does nothing and
 silently passes.
 
 When enabled, a validation action statically analyzes the main module and
-fails the build if its top-level body is "inert" -- i.e. it only contains
-definitions, imports, assignments, and docstrings, with nothing that actually
-runs tests (such as an `if __name__ == "__main__":` guard that invokes a test
-runner).
+fails the build if it defines test classes or functions but its top-level body
+is "inert" -- i.e. it only contains definitions, imports, assignments, and
+docstrings, with nothing that actually runs tests (such as an
+`if __name__ == "__main__":` guard that invokes a test runner).
+
+A module that defines no classes or functions at all (for example, one that
+only imports other modules) is always allowed, since it isn't the
+"defined some tests but forgot to run them" case this check targets.
 
 This is only applicable to `py_test` targets that have a `main` source file;
 targets using `main_module` are not checked.

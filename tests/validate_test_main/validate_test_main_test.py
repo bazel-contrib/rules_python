@@ -17,18 +17,18 @@ import ast
 import textwrap
 import unittest
 
-from python.private.py_test_main_validator import module_runs_something
+from python.private.py_test_main_validator import module_runs_tests
 
 
-def _runs_something(source: str) -> bool:
+def _runs_tests(source: str) -> bool:
     tree = ast.parse(textwrap.dedent(source))
-    return module_runs_something(tree)
+    return module_runs_tests(tree)
 
 
-class ModuleRunsSomethingTest(unittest.TestCase):
-    def test_only_definitions_is_inert(self):
+class ModuleRunsTestsTest(unittest.TestCase):
+    def test_only_definitions_is_rejected(self):
         self.assertFalse(
-            _runs_something(
+            _runs_tests(
                 """
                 import unittest
 
@@ -39,9 +39,9 @@ class ModuleRunsSomethingTest(unittest.TestCase):
             )
         )
 
-    def test_definitions_with_assignments_is_inert(self):
+    def test_definitions_with_assignments_is_rejected(self):
         self.assertFalse(
-            _runs_something(
+            _runs_tests(
                 """
                 import unittest
 
@@ -56,15 +56,9 @@ class ModuleRunsSomethingTest(unittest.TestCase):
             )
         )
 
-    def test_empty_module_is_inert(self):
-        self.assertFalse(_runs_something(""))
-
-    def test_docstring_only_is_inert(self):
-        self.assertFalse(_runs_something('"""A module docstring."""'))
-
-    def test_global_statement_is_inert(self):
+    def test_global_statement_with_definition_is_rejected(self):
         self.assertFalse(
-            _runs_something(
+            _runs_tests(
                 """
                 global x
 
@@ -78,9 +72,9 @@ class ModuleRunsSomethingTest(unittest.TestCase):
     @unittest.skipUnless(
         hasattr(ast, "TypeAlias"), "PEP 695 type aliases require Python 3.12+"
     )
-    def test_type_alias_is_inert(self):
+    def test_type_alias_with_definition_is_rejected(self):
         self.assertFalse(
-            _runs_something(
+            _runs_tests(
                 """
                 type Alias = int
 
@@ -91,9 +85,38 @@ class ModuleRunsSomethingTest(unittest.TestCase):
             )
         )
 
-    def test_if_name_main_guard_runs_something(self):
+    def test_import_only_module_is_allowed(self):
+        # A module that defines nothing and only imports other modules is not
+        # the "defined but never run" case, so it is allowed.
         self.assertTrue(
-            _runs_something(
+            _runs_tests(
+                """
+                import my_tests
+                from my_pkg.tests import suite
+                """
+            )
+        )
+
+    def test_imports_and_assignments_without_definitions_is_allowed(self):
+        self.assertTrue(
+            _runs_tests(
+                """
+                import my_tests
+
+                CONSTANT = 5
+                """
+            )
+        )
+
+    def test_empty_module_is_allowed(self):
+        self.assertTrue(_runs_tests(""))
+
+    def test_docstring_only_is_allowed(self):
+        self.assertTrue(_runs_tests('"""A module docstring."""'))
+
+    def test_if_name_main_guard_runs_tests(self):
+        self.assertTrue(
+            _runs_tests(
                 """
                 import unittest
 
@@ -107,9 +130,9 @@ class ModuleRunsSomethingTest(unittest.TestCase):
             )
         )
 
-    def test_bare_call_runs_something(self):
+    def test_bare_call_runs_tests(self):
         self.assertTrue(
-            _runs_something(
+            _runs_tests(
                 """
                 import pytest
                 pytest.main()
@@ -117,9 +140,9 @@ class ModuleRunsSomethingTest(unittest.TestCase):
             )
         )
 
-    def test_top_level_loop_runs_something(self):
+    def test_top_level_loop_runs_tests(self):
         self.assertTrue(
-            _runs_something(
+            _runs_tests(
                 """
                 def f(): pass
 

@@ -35,6 +35,10 @@ class ValidateTestMainTest(runner.TestCase):
         """A main that invokes a runner should build when validation is on."""
         self.run_bazel("build", f"{_FLAG}=enabled", "//:good_test")
 
+    def test_import_only_test_builds_when_enabled(self):
+        """A main that only imports (defines nothing) is allowed when on."""
+        self.run_bazel("build", f"{_FLAG}=enabled", "//:import_only_test")
+
     def test_inert_test_builds_when_disabled(self):
         """Validation is off by default, so even an inert test builds."""
         self.run_bazel("build", f"{_FLAG}=disabled", "//:inert_test")

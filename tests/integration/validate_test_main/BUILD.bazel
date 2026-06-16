@@ -26,3 +26,10 @@ py_test(
     name = "good_test",
     srcs = ["good_test.py"],
 )
+
+# A test whose main module defines nothing and only imports. This is allowed
+# even with validation enabled, since it isn't the "defined but never run" case.
+py_test(
+    name = "import_only_test",
+    srcs = ["import_only_test.py"],
+)

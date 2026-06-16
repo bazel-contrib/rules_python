@@ -25,6 +25,11 @@ run anything (definitions, imports, assignments, docstrings, ``pass``). A
 single active statement -- a bare call, a loop, or the conventional
 ``if __name__ == "__main__":`` guard -- is enough to consider the module able
 to run tests.
+
+As an exception, a module that defines no classes or functions at all (for
+example, one that only imports other modules) is always allowed: it isn't the
+"defined some tests but forgot to run them" case this check targets, and it
+may legitimately rely on import side effects.
 """
 
 import argparse
@@ -70,6 +75,28 @@ def _is_inert_statement(node: ast.stmt) -> bool:
 def module_runs_something(tree: ast.Module) -> bool:
     """Returns True if the module body has at least one active statement."""
     return any(not _is_inert_statement(node) for node in tree.body)
+
+
+def _defines_test_code(tree: ast.Module) -> bool:
+    """Returns True if the module defines any top-level class or function."""
+    return any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        for node in tree.body
+    )
+
+
+def module_runs_tests(tree: ast.Module) -> bool:
+    """Returns True if the module appears able to run tests (or isn't checked).
+
+    The check targets the specific pitfall of defining test classes/functions
+    but never running them. A module that defines no classes or functions at
+    all (for example, one that only imports other modules) is not subject to
+    the check and is always allowed, since it isn't the "defined but never run"
+    case and may legitimately rely on import side effects.
+    """
+    if module_runs_something(tree):
+        return True
+    return not _defines_test_code(tree)
 
 
 def _format_error(label: str, src_name: str) -> str:
@@ -140,7 +167,7 @@ def main(args) -> int:
             out.write("")
         return 0
 
-    if not module_runs_something(tree):
+    if not module_runs_tests(tree):
         sys.stderr.write(_format_error(options.label, src_name) + "\n")
         return 1
 
