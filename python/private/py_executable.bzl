@@ -1364,7 +1364,10 @@ def _maybe_add_test_main_validation(ctx, main_py, output_groups):
         execution_requirements = execution_requirements,
         toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE,
     )
-    output_groups["_validation"] = depset([validation_output])
+    if "_validation" in output_groups:
+        output_groups["_validation"] = depset([validation_output], transitive = [output_groups["_validation"]])
+    else:
+        output_groups["_validation"] = depset([validation_output])
 
 def _get_build_info(ctx, cc_toolchain):
     build_info_files = py_internal.cc_toolchain_build_info_files(cc_toolchain)
