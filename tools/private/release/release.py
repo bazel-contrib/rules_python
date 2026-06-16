@@ -102,31 +102,161 @@ def determine_next_version():
         return f"{major}.{minor}.{patch + 1}"
 
 
-def update_changelog(version, release_date, changelog_path="CHANGELOG.md"):
-    """Performs the version replacements in CHANGELOG.md."""
+def parse_news_entries(news_dir="news"):
+    """Parses news entries from the news directory.
 
+    Args:
+        news_dir: The directory containing news files.
+
+    Returns:
+        A tuple of (entries, processed_files), where:
+            - entries is a dict mapping category (lowercase) to a list of formatted markdown strings.
+            - processed_files is a list of pathlib.Path objects of the processed files.
+    """
+    news_path = pathlib.Path(news_dir)
+    if not news_path.exists():
+        return {}, []
+
+    entries = {}
+    processed_files = []
+    files = [p for p in news_path.iterdir() if p.is_file() and p.suffix == ".md"]
+
+    # Sort to ensure deterministic order (by ID if numeric, else filename)
+    def sort_key(path):
+        name = path.name
+        parts = name.split(".")
+        if len(parts) >= 2:
+            try:
+                return (int(parts[0]), name)
+            except ValueError:
+                return (float("inf"), name)
+        return (float("inf"), name)
+
+    files.sort(key=sort_key)
+
+    for p in files:
+        parts = p.name.split(".")
+        if len(parts) < 3:
+            continue
+        category = parts[1].lower()
+        try:
+            content = p.read_text(encoding="utf-8").strip()
+        except (IOError, UnicodeDecodeError):
+            continue
+        if not content:
+            continue
+
+        # Format as list item if not already
+        if not (content.startswith("* ") or content.startswith("- ")):
+            content = f"* {content}"
+
+        if category not in entries:
+            entries[category] = []
+        entries[category].append(content)
+        processed_files.append(p)
+
+    return entries, processed_files
+
+
+def generate_release_block(version, release_date, news_entries):
+    """Generates the markdown block for the release."""
     header_version = version.replace(".", "-")
+    lines = [
+        f"{{#v{header_version}}}",
+        f"## [{version}] - {release_date}",
+        "",
+        f"[{version}]: https://github.com/bazel-contrib/rules_python/releases/tag/{version}",
+        "",
+    ]
 
+    # Standard categories in preferred order
+    category_order = ["removed", "changed", "fixed", "added"]
+    # Add any other categories found
+    for cat in news_entries:
+        if cat not in category_order:
+            category_order.append(cat)
+
+    for cat in category_order:
+        if cat in news_entries and news_entries[cat]:
+            lines.append(f"{{#v{header_version}-{cat}}}")
+            lines.append(f"### {cat.capitalize()}")
+            for entry in news_entries[cat]:
+                lines.append(entry)
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def update_changelog(
+    version, release_date, changelog_path="CHANGELOG.md", news_dir="news"
+):
+    """Performs the version replacements in CHANGELOG.md."""
     changelog_path_obj = pathlib.Path(changelog_path)
-    lines = changelog_path_obj.read_text().splitlines()
+    changelog_content = changelog_path_obj.read_text(encoding="utf-8")
 
-    new_lines = []
-    after_template = False
-    before_already_released = True
-    for line in lines:
-        if "END_UNRELEASED_TEMPLATE" in line:
-            after_template = True
-        if re.match("#v[1-9]-", line):
-            before_already_released = False
+    news_entries, processed_files = parse_news_entries(news_dir)
 
-        if after_template and before_already_released:
-            line = line.replace("## Unreleased", f"## [{version}] - {release_date}")
-            line = line.replace("v0-0-0", f"v{header_version}")
-            line = line.replace("0.0.0", version)
+    if news_entries:
+        # Extract template
+        template_match = re.search(
+            r"BEGIN_UNRELEASED_TEMPLATE\s*\n(.*?)\n\s*END_UNRELEASED_TEMPLATE",
+            changelog_content,
+            re.DOTALL,
+        )
+        if not template_match:
+            raise RuntimeError(
+                "Could not find BEGIN_UNRELEASED_TEMPLATE in CHANGELOG.md"
+            )
 
-        new_lines.append(line)
+        unreleased_template = template_match.group(1).strip()
+        new_release_block = generate_release_block(version, release_date, news_entries)
 
-    changelog_path_obj.write_text("\n".join(new_lines))
+        replacement = f"{unreleased_template}\n\n{new_release_block}\n"
+
+        # Replace the active Unreleased section
+        # We look for the block between END_UNRELEASED_TEMPLATE and the first released version
+        pattern = r"(END_UNRELEASED_TEMPLATE\s*\n-->\s*\n)(.*?)(\n\s*\{#v(?!0-0-0)\d+-\d+-\d+\})"
+
+        if not re.search(pattern, changelog_content, re.DOTALL):
+            raise RuntimeError(
+                "Could not find active Unreleased section to replace in CHANGELOG.md"
+            )
+
+        new_content = re.sub(
+            pattern,
+            r"\g<1>" + replacement + r"\g<3>",
+            changelog_content,
+            flags=re.DOTALL,
+        )
+        changelog_path_obj.write_text(new_content, encoding="utf-8")
+
+        # Remove processed news files
+        for p in processed_files:
+            p.unlink()
+        print(f"Removed {len(processed_files)} processed news files.")
+    else:
+        # Fallback to old behavior
+        print("No news entries found, falling back to manual changelog update...")
+        header_version = version.replace(".", "-")
+        lines = changelog_content.splitlines()
+
+        new_lines = []
+        after_template = False
+        before_already_released = True
+        for line in lines:
+            if "END_UNRELEASED_TEMPLATE" in line:
+                after_template = True
+            if re.match("#v[1-9]-", line):
+                before_already_released = False
+
+            if after_template and before_already_released:
+                line = line.replace("## Unreleased", f"## [{version}] - {release_date}")
+                line = line.replace("v0-0-0", f"v{header_version}")
+                line = line.replace("0.0.0", version)
+
+            new_lines.append(line)
+
+        changelog_path_obj.write_text("\n".join(new_lines), encoding="utf-8")
 
 
 def replace_version_next(version):

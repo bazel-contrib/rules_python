@@ -101,6 +101,113 @@ class ReleaserTest(unittest.TestCase):
         self.assertIn("{#v1-23-4-added}", new_content)
         self.assertIn("{#v1-23-4-removed}", new_content)
 
+    def test_update_changelog_with_news(self):
+        # Arrange
+        changelog = f"""
+# Changelog
+
+{_UNRELEASED_TEMPLATE}
+
+{{#v0-0-0}}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+{{#v0-0-0-removed}}
+### Removed
+* Nothing removed.
+
+{{#v0-0-0-changed}}
+### Changed
+* Nothing changed.
+
+{{#v0-0-0-fixed}}
+### Fixed
+* Nothing fixed.
+
+{{#v0-0-0-added}}
+### Added
+* Nothing added.
+
+{{#v2-0-2}}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{{#v2-0-2-added}}
+### Added
+* (toolchains) Some older change.
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+
+        # Create news files
+        (news_dir / "123.fixed.md").write_text("Fixed a bug in the compiler")
+        # Test that it handles prefixing "* " if not present
+        (news_dir / "456.added.md").write_text("* Added a new feature for Python 3.13")
+        # Empty file should be ignored
+        (news_dir / "789.changed.md").write_text("")
+        # Invalid name should be ignored
+        (news_dir / "invalid_name.md").write_text("Should be ignored")
+
+        # Act
+        releaser.update_changelog(
+            "3.0.0",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        # 1. News files should be deleted (except ignored ones)
+        self.assertFalse((news_dir / "123.fixed.md").exists())
+        self.assertFalse((news_dir / "456.added.md").exists())
+        # Empty file is ignored, but wait, does parse_news_entries process it?
+        # If it is empty, parse_news_entries skips it and doesn't add to processed_files, so it remains!
+        # Let's check if that's what we want. Yes, only processed files are deleted.
+        self.assertTrue((news_dir / "789.changed.md").exists())
+        self.assertTrue((news_dir / "invalid_name.md").exists())
+
+        new_content = changelog_path.read_text()
+
+        # 2. Unreleased template comment should still be there
+        self.assertIn(
+            _UNRELEASED_TEMPLATE, new_content, msg=f"ACTUAL:\n\n{new_content}\n\n"
+        )
+
+        # 3. A fresh active Unreleased section should be present
+        self.assertIn("{#v0-0-0}", new_content)
+        self.assertIn("## Unreleased", new_content)
+        self.assertIn("{#v0-0-0-fixed}\n### Fixed\n* Nothing fixed.", new_content)
+
+        # 4. The new release section should be present
+        self.assertIn("{#v3-0-0}", new_content)
+        self.assertIn("## [3.0.0] - 2026-06-16", new_content)
+        self.assertIn(
+            "[3.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/3.0.0",
+            new_content,
+        )
+
+        # 5. Correct categories and content
+        self.assertIn(
+            "{#v3-0-0-fixed}\n### Fixed\n* Fixed a bug in the compiler", new_content
+        )
+        self.assertIn(
+            "{#v3-0-0-added}\n### Added\n* Added a new feature for Python 3.13",
+            new_content,
+        )
+
+        # 6. Omitted categories should NOT be present in the new release
+        self.assertNotIn("{#v3-0-0-removed}", new_content)
+        self.assertNotIn("{#v3-0-0-changed}", new_content)
+
+        # 7. Old release should still be there
+        self.assertIn("{#v2-0-2}", new_content)
+        self.assertIn("## [2.0.2] - 2026-05-14", new_content)
+
     def test_replace_version_next(self):
         # Arrange
         mock_file_content = """
