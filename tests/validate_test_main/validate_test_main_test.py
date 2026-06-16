@@ -85,6 +85,62 @@ class ModuleRunsTestsTest(unittest.TestCase):
             )
         )
 
+    def test_type_checking_block_with_definition_is_rejected(self):
+        # `if TYPE_CHECKING:` guarding typing-only imports is inert; with a test
+        # definition and no runner, the module is still rejected.
+        self.assertFalse(
+            _runs_tests(
+                """
+                from typing import TYPE_CHECKING
+                import unittest
+
+                if TYPE_CHECKING:
+                    from typing import Any
+
+                class MyTest(unittest.TestCase):
+                    def test_foo(self):
+                        pass
+                """
+            )
+        )
+
+    def test_try_except_import_error_with_definition_is_rejected(self):
+        # `try: import foo except ImportError:` optional imports are inert.
+        self.assertFalse(
+            _runs_tests(
+                """
+                try:
+                    import foo
+                except ImportError:
+                    foo = None
+
+                import unittest
+
+                class MyTest(unittest.TestCase):
+                    def test_foo(self):
+                        pass
+                """
+            )
+        )
+
+    def test_if_block_invoking_runner_runs_tests(self):
+        # A runner call inside an `if` body must still count as active.
+        self.assertTrue(
+            _runs_tests(
+                """
+                import sys
+                import unittest
+
+                class MyTest(unittest.TestCase):
+                    def test_foo(self):
+                        pass
+
+                if "--run" in sys.argv:
+                    unittest.main()
+                """
+            )
+        )
+
     def test_import_only_module_is_allowed(self):
         # A module that defines nothing and only imports other modules is not
         # the "defined but never run" case, so it is allowed.

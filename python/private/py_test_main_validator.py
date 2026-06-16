@@ -24,7 +24,9 @@ module body is "inert", i.e. every top-level statement is one that does not
 run anything (definitions, imports, assignments, docstrings, ``pass``). A
 single active statement -- a bare call, a loop, or the conventional
 ``if __name__ == "__main__":`` guard -- is enough to consider the module able
-to run tests.
+to run tests. Top-level ``if`` and ``try`` blocks are inspected recursively, so
+common guards like ``if TYPE_CHECKING:`` or ``try: import foo except
+ImportError:`` (whose branches are themselves inert) don't bypass the check.
 
 As an exception, a module that defines no classes or functions at all (for
 example, one that only imports other modules) is always allowed: it isn't the
@@ -58,6 +60,13 @@ if hasattr(ast, "TypeAlias"):
 
 _INERT_NODE_TYPES = tuple(_INERT_NODE_TYPES)
 
+# `ast.TryStar` (PEP 654, `try/except*`) only exists on Python 3.11+.
+_TRY_NODE_TYPES = (ast.Try, ast.TryStar) if hasattr(ast, "TryStar") else (ast.Try,)
+
+
+def _all_inert(nodes) -> bool:
+    return all(_is_inert_statement(node) for node in nodes)
+
 
 def _is_inert_statement(node: ast.stmt) -> bool:
     """Returns True if the top-level statement does not run any test code."""
@@ -68,6 +77,25 @@ def _is_inert_statement(node: ast.stmt) -> bool:
     # no-op expression statements.
     if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
         return True
+
+    # An `if` whose branches are entirely inert, e.g. the very common
+    # `if TYPE_CHECKING:` guard around typing-only imports. The condition itself
+    # is intentionally ignored: a guard expression doesn't run tests, and a
+    # runner call in a branch body is still detected as active by the recursion.
+    if isinstance(node, ast.If):
+        return _all_inert(node.body) and _all_inert(node.orelse)
+
+    # A `try` (or `try/except*`) whose body, handlers, else, and finally are all
+    # inert, e.g. the common `try: import foo except ImportError: ...` optional
+    # import pattern.
+    if isinstance(node, _TRY_NODE_TYPES):
+        if not (
+            _all_inert(node.body)
+            and _all_inert(node.orelse)
+            and _all_inert(node.finalbody)
+        ):
+            return False
+        return all(_all_inert(handler.body) for handler in node.handlers)
 
     return False
 
