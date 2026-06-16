@@ -28,21 +28,7 @@ BEGIN_UNRELEASED_TEMPLATE
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
-{#v0-0-0-removed}
-### Removed
-* Nothing removed.
-
-{#v0-0-0-changed}
-### Changed
-* Nothing changed.
-
-{#v0-0-0-fixed}
-### Fixed
-* Nothing fixed.
-
-{#v0-0-0-added}
-### Added
-* Nothing added.
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
 
 END_UNRELEASED_TEMPLATE
 -->
@@ -52,71 +38,7 @@ END_UNRELEASED_TEMPLATE
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
-{#v0-0-0-removed}
-### Removed
-* (coverage) Support for python 3.8 has been dropped from the bundled
-  `coverage.py` wheel set, since coverage.py 7.6.2 dropped it.
-
-{#v0-0-0-changed}
-### Changed
-* (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
-  The go version was also bumped from 1.21.13 to 1.22.9.
-* (gazelle) `python_generate_pyi_deps` and `python_generate_pyi_srcs` now
-  default to `true`.
-* (pypi) The data files of a wheel (bin, includes, etc) are now always included
-  as a library's data dependencies.
-* (coverage) When `configure_coverage_tool = True` is set but the bundled
-  `coverage.py` wheel set has no entry for the requested python version and
-  platform, a warning is now printed instead of silently producing an empty
-  coverage report.
-
-{#v0-0-0-fixed}
-### Fixed
-* (bootstrap) Fixed a potential race condition with symlink creation during
-  startup.
-* (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
-  targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
-* (entry_point) From now on `mypy` type checking will be skipped on the generated
-  files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
-* (pypi) Support `--experimental_isolated_extension_usages`
-  ([#3668](https://github.com/bazel-contrib/rules_python/issues/3668)).
-* (uv) use the astral.sh mirror as the preferred url for binary downloads,
-  with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
-  from the dist-manifest contents.
-* (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
-  installed wheel targets, except when built from sdist
-  ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
-* (system_python) Fix AttributeError exception on Debian 10 Buster
-  python installations which may not set `sys._base_executable`
-  ([#3774](https://github.com/bazel-contrib/rules_python/issues/3774)).
-* (windows) Fix `py_test`/`py_binary` failure when the target name contains
-  path separators; the bootstrap stub is now declared as a sibling of the
-  `.exe` launcher
-  ([#3789](https://github.com/bazel-contrib/rules_python/issues/3789)).
-* Fix the forwarding of `target_compatible_with` from `compile_pip_requirements`
-  towards the underlying `*.update` target.
-  ([#3787](https://github.com/bazel-contrib/rules_python/pull/3787))
-* (pypi) Assume that all of the packages are available on a particular hub if
-  there is only a single PyPI compatible index to be used. This saves us an expensive
-  PyPI download and supports PyPI mirror implementations that do not support the root
-  index functionality. Fixes
-  ([#3769](https://github.com/bazel-contrib/rules_python/pull/3769)).
-
-{#v0-0-0-added}
-### Added
-* (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
-  adding `config_setting` labels to all registered toolchains.
-* (windows) Full venv support for Windows is available. Set
-  {obj}`--venvs_site_packages=yes` to enable.
-* (test/binaries) When {obj}`--venv_site_packages=yes` is enabled,
-  wheel `data`, `bin`, and `include` files are populated into the venv.
-* (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
-  Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
-* (gazelle) Support alias_kind directive.
-  Fixes [#3183](https://github.com/bazel-contrib/rules_python/issues/3183).
-* (pypi) `package_metadata` support, fixes 
-  [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
-* (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
 
 {#v2-0-2}
 ## [2.0.2] - 2026-05-14

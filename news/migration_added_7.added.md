@@ -1,0 +1,1 @@
+(coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.

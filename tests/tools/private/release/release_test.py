@@ -16,21 +16,7 @@ BEGIN_UNRELEASED_TEMPLATE
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
-{#v0-0-0-changed}
-### Changed
-* Nothing changed.
-
-{#v0-0-0-fixed}
-### Fixed
-* Nothing fixed.
-
-{#v0-0-0-added}
-### Added
-* Nothing added.
-
-{#v0-0-0-removed}
-### Removed
-* Nothing removed.
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
 
 END_UNRELEASED_TEMPLATE
 -->
@@ -181,7 +167,10 @@ class ReleaserTest(unittest.TestCase):
         # 3. A fresh active Unreleased section should be present
         self.assertIn("{#v0-0-0}", new_content)
         self.assertIn("## Unreleased", new_content)
-        self.assertIn("{#v0-0-0-fixed}\n### Fixed\n* Nothing fixed.", new_content)
+        self.assertIn(
+            "Unreleased changes are tracked as individual files in the [news/](./news) directory.",
+            new_content,
+        )
 
         # 4. The new release section should be present
         self.assertIn("{#v3-0-0}", new_content)
