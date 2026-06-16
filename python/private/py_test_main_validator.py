@@ -96,6 +96,10 @@ def _is_inert_statement(node: ast.stmt) -> bool:
 
     # Bare expression statements: docstrings and other no-op expressions are
     # inert; a call/await/yield (e.g. `unittest.main()`) runs code.
+    # Assert statements are inert unless their condition or message runs code.
+    if isinstance(node, ast.Assert):
+        return not (_expression_runs_code(node.test) or _expression_runs_code(node.msg))
+
     if isinstance(node, ast.Expr):
         return not _expression_runs_code(node.value)
 
