@@ -114,6 +114,8 @@ END_UNRELEASED_TEMPLATE
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
 * (uv) automatically pass the `--project` parameter based on the source files.
   ([#3087](https://github.com/bazel-contrib/rules_python/issues/3087))
+* (coverage) handle nested coverage collection
+  ([#3823](https://github.com/bazel-contrib/rules_python/pull/3823))
 
 {#v0-0-0-added}
 ### Added
