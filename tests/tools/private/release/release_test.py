@@ -262,6 +262,81 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 
         self.assertIn(expected_fixed_section, new_content)
 
+    def test_update_changelog_read_failure(self):
+        # Arrange
+        original_read_text = pathlib.Path.read_text
+
+        with patch("pathlib.Path.read_text", autospec=True) as mock_read_text:
+
+            def side_effect(path_self, *args, **kwargs):
+                if "bad_file.fixed.md" in str(path_self):
+                    raise IOError("Simulated read error")
+                return original_read_text(path_self, *args, **kwargs)
+
+            mock_read_text.side_effect = side_effect
+
+            changelog = f"""
+# Changelog
+
+{_UNRELEASED_TEMPLATE}
+
+{{#v0-0-0}}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
+
+{{#v2-0-2}}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{{#v2-0-2-added}}
+### Added
+* (toolchains) Some older change.
+"""
+            changelog_path = self.tmpdir / "CHANGELOG.md"
+            changelog_path.write_text(changelog)
+
+            news_dir = self.tmpdir / "news"
+            news_dir.mkdir()
+
+            # Create the bad file (must exist so it is found by iterdir)
+            bad_file = news_dir / "bad_file.fixed.md"
+            bad_file.write_text("some content that won't be read")
+
+            # Create a good file too
+            good_file = news_dir / "good_file.fixed.md"
+            good_file.write_text("* (sub) Good fix")
+
+            # Act
+            releaser.update_changelog(
+                "3.0.0",
+                "2026-06-16",
+                changelog_path=changelog_path,
+                news_dir=news_dir,
+            )
+
+            # Assert
+            # Both files should be deleted
+            self.assertFalse(bad_file.exists())
+            self.assertFalse(good_file.exists())
+
+            new_content = changelog_path.read_text()
+
+            # The bad file should be included as a fallback (no sub-category, so it sorts first)
+            # Expected order in Fixed:
+            # 1. Could not read news file: bad_file.fixed.md
+            # 2. (sub) Good fix
+
+            expected_fixed_section = (
+                "### Fixed\n"
+                "* Could not read news file: bad_file.fixed.md\n"
+                "* (sub) Good fix\n"
+            )
+            self.assertIn(expected_fixed_section, new_content)
+
     def test_replace_version_next(self):
         # Arrange
         mock_file_content = """

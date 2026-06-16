@@ -142,7 +142,8 @@ def parse_news_entries(news_dir="news"):
         try:
             content = p.read_text(encoding="utf-8").strip()
         except (IOError, UnicodeDecodeError):
-            continue
+            content = f"Could not read news file: {p.name}"
+
         if not content:
             continue
 
