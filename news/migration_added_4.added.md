@@ -1,2 +1,1 @@
-(runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
-  Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
+(coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.

@@ -197,6 +197,71 @@ class ReleaserTest(unittest.TestCase):
         self.assertIn("{#v2-0-2}", new_content)
         self.assertIn("## [2.0.2] - 2026-05-14", new_content)
 
+    def test_update_changelog_sorting(self):
+        # Arrange
+        changelog = f"""
+# Changelog
+
+{_UNRELEASED_TEMPLATE}
+
+{{#v0-0-0}}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
+
+{{#v2-0-2}}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{{#v2-0-2-added}}
+### Added
+* (toolchains) Some older change.
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+
+        # Create news files with different sub-categories and some without
+        (news_dir / "1.fixed.md").write_text("* (zebra) Zebra fix")
+        (news_dir / "2.fixed.md").write_text("* (apple) Apple fix")
+        (news_dir / "3.fixed.md").write_text("No subcategory B")
+        (news_dir / "4.fixed.md").write_text("* (apple) Another apple fix")
+        (news_dir / "5.fixed.md").write_text("No subcategory A")
+
+        # Act
+        releaser.update_changelog(
+            "3.0.0",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        new_content = changelog_path.read_text()
+
+        # Expected order in Fixed section:
+        # 1. No subcategory A
+        # 2. No subcategory B
+        # 3. (apple) Another apple fix
+        # 4. (apple) Apple fix
+        # 5. (zebra) Zebra fix
+
+        expected_fixed_section = (
+            "### Fixed\n"
+            "* No subcategory A\n"
+            "* No subcategory B\n"
+            "* (apple) Another apple fix\n"
+            "* (apple) Apple fix\n"
+            "* (zebra) Zebra fix\n"
+        )
+
+        self.assertIn(expected_fixed_section, new_content)
+
     def test_replace_version_next(self):
         # Arrange
         mock_file_content = """

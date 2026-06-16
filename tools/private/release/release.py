@@ -180,7 +180,19 @@ def generate_release_block(version, release_date, news_entries):
         if cat in news_entries and news_entries[cat]:
             lines.append(f"{{#v{header_version}-{cat}}}")
             lines.append(f"### {cat.capitalize()}")
-            for entry in news_entries[cat]:
+
+            # Sort entries by sub-category, then by content
+            def get_sub_category(content):
+                match = re.match(r"^(?:\*|-)\s*\(([^)]+)\)", content)
+                if match:
+                    return match.group(1).lower()
+                return ""
+
+            sorted_entries = sorted(
+                news_entries[cat], key=lambda e: (get_sub_category(e), e)
+            )
+
+            for entry in sorted_entries:
                 lines.append(entry)
             lines.append("")
 

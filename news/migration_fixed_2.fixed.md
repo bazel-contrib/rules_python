@@ -1,2 +1,3 @@
-(gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
-  targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
+(uv) use the astral.sh mirror as the preferred url for binary downloads,
+  with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
+  from the dist-manifest contents.
