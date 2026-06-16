@@ -121,19 +121,6 @@ def parse_news_entries(news_dir="news"):
     processed_files = []
     files = [p for p in news_path.iterdir() if p.is_file() and p.suffix == ".md"]
 
-    # Sort to ensure deterministic order (by ID if numeric, else filename)
-    def sort_key(path):
-        name = path.name
-        parts = name.split(".")
-        if len(parts) >= 2:
-            try:
-                return (int(parts[0]), name)
-            except ValueError:
-                return (float("inf"), name)
-        return (float("inf"), name)
-
-    files.sort(key=sort_key)
-
     for p in files:
         parts = p.name.split(".")
         if len(parts) < 3:
