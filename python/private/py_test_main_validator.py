@@ -108,7 +108,11 @@ def _is_inert_statement(node: ast.stmt) -> bool:
     # is intentionally ignored: a guard expression doesn't run tests, and a
     # runner call in a branch body is still detected as active by the recursion.
     if isinstance(node, ast.If):
-        return not _expression_runs_code(node.test) and _all_inert(node.body) and _all_inert(node.orelse)
+        return (
+            not _expression_runs_code(node.test)
+            and _all_inert(node.body)
+            and _all_inert(node.orelse)
+        )
 
     # A `try` (or `try/except*`) whose body, handlers, else, and finally are all
     # inert, e.g. the common `try: import foo except ImportError: ...` optional
