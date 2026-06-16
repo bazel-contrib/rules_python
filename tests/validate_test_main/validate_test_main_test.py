@@ -69,6 +69,36 @@ class ModuleRunsTestsTest(unittest.TestCase):
             )
         )
 
+    def test_assert_statement_with_definition_is_rejected(self):
+        # A bare `assert` with an inert condition runs no tests.
+        self.assertFalse(
+            _runs_tests(
+                """
+                assert True
+
+                class MyTest:
+                    def test_foo(self):
+                        pass
+                """
+            )
+        )
+
+    def test_assert_statement_with_active_expression_runs_tests(self):
+        # An assert whose condition runs a call actually runs the tests.
+        self.assertTrue(
+            _runs_tests(
+                """
+                import unittest
+
+                class MyTest(unittest.TestCase):
+                    def test_foo(self):
+                        pass
+
+                assert unittest.main()
+                """
+            )
+        )
+
     @unittest.skipUnless(
         hasattr(ast, "TypeAlias"), "PEP 695 type aliases require Python 3.12+"
     )
