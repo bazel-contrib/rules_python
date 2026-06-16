@@ -103,10 +103,10 @@ def _is_inert_statement(node: ast.stmt) -> bool:
     if isinstance(node, ast.Expr):
         return not _expression_runs_code(node.value)
 
-    # An `if` whose branches are entirely inert, e.g. the very common
-    # `if TYPE_CHECKING:` guard around typing-only imports. The condition itself
-    # is intentionally ignored: a guard expression doesn't run tests, and a
-    # runner call in a branch body is still detected as active by the recursion.
+    # An `if` whose condition and branches are entirely inert, e.g. the very
+    # common `if TYPE_CHECKING:` guard around typing-only imports. A call in the
+    # condition (e.g. `if feature_enabled():`) or a runner call in a branch body
+    # makes it active.
     if isinstance(node, ast.If):
         return (
             not _expression_runs_code(node.test)
