@@ -31,10 +31,9 @@ import argparse
 import ast
 import sys
 
-
 # Statement node types that do not, on their own, run any test code. A module
 # whose top-level body consists solely of these is considered inert.
-_INERT_NODE_TYPES = (
+_INERT_NODE_TYPES = [
     ast.FunctionDef,
     ast.AsyncFunctionDef,
     ast.ClassDef,
@@ -43,8 +42,16 @@ _INERT_NODE_TYPES = (
     ast.Assign,
     ast.AnnAssign,
     ast.AugAssign,
+    ast.Global,
     ast.Pass,
-)
+]
+
+# `ast.TypeAlias` (PEP 695, e.g. `type Alias = int`) only exists on Python
+# 3.12+. Add it dynamically so the validator still imports on older versions.
+if hasattr(ast, "TypeAlias"):
+    _INERT_NODE_TYPES.append(ast.TypeAlias)
+
+_INERT_NODE_TYPES = tuple(_INERT_NODE_TYPES)
 
 
 def _is_inert_statement(node: ast.stmt) -> bool:
@@ -79,7 +86,7 @@ def _format_error(label: str, src_name: str) -> str:
         "invoke a test runner such as unittest or pytest. Add code that runs "
         "your tests, for example:\n"
         "\n"
-        "    if __name__ == \"__main__\":\n"
+        '    if __name__ == "__main__":\n'
         "        unittest.main()\n"
         "\n"
         "or use a main module that invokes a runner (e.g. pytest.main()).\n"

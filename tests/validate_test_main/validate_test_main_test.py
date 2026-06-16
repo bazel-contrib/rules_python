@@ -62,6 +62,35 @@ class ModuleRunsSomethingTest(unittest.TestCase):
     def test_docstring_only_is_inert(self):
         self.assertFalse(_runs_something('"""A module docstring."""'))
 
+    def test_global_statement_is_inert(self):
+        self.assertFalse(
+            _runs_something(
+                """
+                global x
+
+                class MyTest:
+                    def test_foo(self):
+                        pass
+                """
+            )
+        )
+
+    @unittest.skipUnless(
+        hasattr(ast, "TypeAlias"), "PEP 695 type aliases require Python 3.12+"
+    )
+    def test_type_alias_is_inert(self):
+        self.assertFalse(
+            _runs_something(
+                """
+                type Alias = int
+
+                class MyTest:
+                    def test_foo(self):
+                        pass
+                """
+            )
+        )
+
     def test_if_name_main_guard_runs_something(self):
         self.assertTrue(
             _runs_something(
