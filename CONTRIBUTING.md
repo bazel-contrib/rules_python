@@ -186,11 +186,11 @@ Create a `.md` file in the `news/` directory. The filename must follow the forma
     *   `fixed`: For bug fixes.
     *   `removed`: For removed features or behavior.
 
-The content of the file should be a brief, human-friendly description of the change, formatted as a bullet point. If your change is specific to a subsystem, prefix it with the subsystem in parentheses, e.g., `* (gazelle) Fixed handling of...`.
+The content of the file should be a brief, human-friendly description of the change. Do not include a leading bullet point (e.g. `*` or `-`), as this is automatically added during assembly. If your change is specific to a subsystem, prefix it with the subsystem in parentheses, e.g., `(gazelle) Fixed handling of...`.
 
 Example: `news/1234.fixed.md`
 ```markdown
-* (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary` targets.
+(gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary` targets.
 ```
 
 Do not edit `CHANGELOG.md` directly for unreleased changes.
