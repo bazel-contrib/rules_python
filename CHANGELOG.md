@@ -135,6 +135,12 @@ END_UNRELEASED_TEMPLATE
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 * (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+* (py_test) Added an opt-in safeguard against `py_test` targets that silently
+  pass without running any tests. Set
+  {obj}`--@rules_python//python/config_settings:validate_test_main=enabled` to
+  fail the build when a test's main module only contains inert top-level
+  statements (definitions, imports, assignments) and never invokes a test
+  runner ([#3824](https://github.com/bazel-contrib/rules_python/issues/3824)).
 
 {#v2-0-3}
 ## [2.0.3] - 2026-06-15

@@ -57,12 +57,13 @@ load(
     "runfiles_root_path",
 )
 load(":common_labels.bzl", "labels")
-load(":flags.bzl", "BootstrapImplFlag", "VenvsUseDeclareSymlinkFlag", "read_possibly_native_flag")
+load(":flags.bzl", "BootstrapImplFlag", "ValidateTestMainFlag", "VenvsUseDeclareSymlinkFlag", "read_possibly_native_flag")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_executable_info.bzl", "PyExecutableInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkKind")
 load(":py_internal.bzl", "py_internal")
+load(":py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
@@ -1167,6 +1168,11 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         main_py = determine_main(ctx)
     else:
         main_py = None
+
+    # Keep a reference to the main source file (before it may be replaced with a
+    # precompiled pyc below) so the test-main validation can statically analyze
+    # the original source.
+    main_py_source = main_py
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
     precompile_result = maybe_precompile(ctx, direct_sources)
 
@@ -1285,9 +1291,80 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         implicit_pyc_source_files = implicit_pyc_source_files,
         imports = imports,
     )
-    _add_provider_output_group_info(providers, py_info, exec_result.output_groups)
+    output_groups = dict(exec_result.output_groups)
+    if is_test:
+        _maybe_add_test_main_validation(ctx, main_py_source, output_groups)
+    _add_provider_output_group_info(providers, py_info, output_groups)
 
     return providers
+
+def _maybe_add_test_main_validation(ctx, main_py, output_groups):
+    """Adds a validation action that checks the test main actually runs tests.
+
+    This is a safeguard against the common pitfall of defining test classes or
+    functions but forgetting to invoke a test runner, which causes the test to
+    silently pass without running anything. See the
+    `//python/config_settings:validate_test_main` flag.
+
+    Args:
+        ctx: Rule ctx.
+        main_py: File or None; the main entry point source file. None when the
+            target uses `main_module` (which can't be statically analyzed here).
+        output_groups: dict[str, depset[File]]; mutated in place to add the
+            `_validation` output group when a validation action is created.
+    """
+    if not ValidateTestMainFlag.is_enabled(ctx):
+        return
+
+    # `main_module` targets execute a module by name; there's no single source
+    # file to statically analyze, so the check doesn't apply.
+    if main_py == None:
+        return
+
+    exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
+    if exec_tools_toolchain == None or exec_tools_toolchain.exec_tools.exec_interpreter == None:
+        fail(
+            "Validating py_test main modules requires the exec tools toolchain " +
+            "with an exec interpreter, but none was found. Either register one " +
+            "or set --@rules_python//python/config_settings:validate_test_main=disabled.",
+        )
+
+    exec_tools = exec_tools_toolchain.exec_tools
+    validator = ctx.attr._validate_test_main
+    program_info = validator[PyInterpreterProgramInfo]
+    interpreter = exec_tools.exec_interpreter[DefaultInfo].files_to_run
+    validator_files_to_run = validator[DefaultInfo].files_to_run
+
+    validation_output = ctx.actions.declare_file(ctx.label.name + "_validate_test_main.txt")
+
+    args = ctx.actions.args()
+    args.add_all(program_info.interpreter_args)
+    args.add(validator_files_to_run.executable)
+    args.add("--src", main_py)
+    args.add("--src_name", main_py.short_path)
+    args.add("--label", str(ctx.label))
+    args.add("--output", validation_output)
+
+    execution_requirements = {}
+    if testing.ExecutionInfo in validator:
+        execution_requirements = validator[testing.ExecutionInfo].requirements
+
+    ctx.actions.run(
+        executable = interpreter,
+        arguments = [args],
+        inputs = [main_py],
+        outputs = [validation_output],
+        tools = [validator_files_to_run],
+        mnemonic = "PyValidateTestMain",
+        progress_message = "Validating py_test main %{label}",
+        env = program_info.env | {
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONSAFEPATH": "1",
+        },
+        execution_requirements = execution_requirements,
+        toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE,
+    )
+    output_groups["_validation"] = depset([validation_output])
 
 def _get_build_info(ctx, cc_toolchain):
     build_info_files = py_internal.cc_toolchain_build_info_files(cc_toolchain)

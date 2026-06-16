@@ -535,6 +535,14 @@ environment when the test is executed by bazel test.
                 "@platforms//os:watchos",
             ],
         ),
+        "_validate_test_main": lambda: attrb.Label(
+            default = "//python/private:py_test_main_validator",
+            cfg = "exec",
+        ),
+        "_validate_test_main_flag": lambda: attrb.Label(
+            default = labels.VALIDATE_TEST_MAIN,
+            providers = [BuildSettingInfo],
+        ),
     })
 
 # Attributes specific to Python test-equivalent executable rules. Such rules may

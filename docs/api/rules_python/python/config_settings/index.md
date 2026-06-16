@@ -242,6 +242,40 @@ The `auto` value
 The `omit_if_generated_source` value was removed
 ::::
 
+::::{bzl:flag} validate_test_main
+Determines if `py_test` runs a build-time validation that its main module
+actually runs tests.
+
+A common `py_test` pitfall is to define test classes or functions but forget
+to add code that runs them (for example, assuming `py_test` automatically
+invokes `unittest` or `pytest`). When that happens, the test does nothing and
+silently passes.
+
+When enabled, a validation action statically analyzes the main module and
+fails the build if its top-level body is "inert" -- i.e. it only contains
+definitions, imports, assignments, and docstrings, with nothing that actually
+runs tests (such as an `if __name__ == "__main__":` guard that invokes a test
+runner).
+
+This is only applicable to `py_test` targets that have a `main` source file;
+targets using `main_module` are not checked.
+
+Values:
+
+* `auto`: (default) Automatically decide the effective value; the current
+  behavior is `disabled`.
+* `enabled`: Run the validation action.
+* `disabled`: Don't run the validation action.
+
+:::{note}
+Enabling this requires the exec tools toolchain (with an exec interpreter) to
+be registered, which is the case for the default hermetic toolchains.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} py_linux_libc
 Set what libc is used for the target platform. This will affect which whl binaries will be pulled and what toolchain will be auto-detected. Currently `rules_python` only supplies toolchains compatible with `glibc`.
 
