@@ -38,17 +38,15 @@ import argparse
 import ast
 import sys
 
-# Statement node types that do not, on their own, run any test code. A module
-# whose top-level body consists solely of these is considered inert.
+# Statement node types that never run any code on their own, regardless of
+# their contents. A module whose top-level body consists solely of these (and
+# inert assignments/expressions/guards, see below) is considered inert.
 _INERT_NODE_TYPES = [
     ast.FunctionDef,
     ast.AsyncFunctionDef,
     ast.ClassDef,
     ast.Import,
     ast.ImportFrom,
-    ast.Assign,
-    ast.AnnAssign,
-    ast.AugAssign,
     ast.Global,
     ast.Pass,
 ]
@@ -63,6 +61,24 @@ _INERT_NODE_TYPES = tuple(_INERT_NODE_TYPES)
 # `ast.TryStar` (PEP 654, `try/except*`) only exists on Python 3.11+.
 _TRY_NODE_TYPES = (ast.Try, ast.TryStar) if hasattr(ast, "TryStar") else (ast.Try,)
 
+# Expression node types whose evaluation runs code (and thus may run tests).
+# `await`/`yield` can't appear at the module top level, but are included for
+# completeness when walking nested expressions.
+_ACTIVE_EXPR_NODE_TYPES = (ast.Call, ast.Await, ast.Yield, ast.YieldFrom)
+
+
+def _expression_runs_code(value) -> bool:
+    """Returns True if evaluating the expression would invoke/await/yield.
+
+    Note this walks the expression as written; it does not try to model what
+    actually executes (e.g. a call inside a `lambda` body won't run until the
+    lambda is called). Erring toward "runs code" keeps the safeguard from
+    flagging valid tests.
+    """
+    if value is None:
+        return False
+    return any(isinstance(child, _ACTIVE_EXPR_NODE_TYPES) for child in ast.walk(value))
+
 
 def _all_inert(nodes) -> bool:
     return all(_is_inert_statement(node) for node in nodes)
@@ -73,10 +89,15 @@ def _is_inert_statement(node: ast.stmt) -> bool:
     if isinstance(node, _INERT_NODE_TYPES):
         return True
 
-    # Bare constant expressions: docstrings, `...` (Ellipsis), and similar
-    # no-op expression statements.
-    if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
-        return True
+    # Assignments are inert unless their value runs code, e.g.
+    # `exit_code = unittest.main()` actually runs the tests.
+    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        return not _expression_runs_code(node.value)
+
+    # Bare expression statements: docstrings and other no-op expressions are
+    # inert; a call/await/yield (e.g. `unittest.main()`) runs code.
+    if isinstance(node, ast.Expr):
+        return not _expression_runs_code(node.value)
 
     # An `if` whose branches are entirely inert, e.g. the very common
     # `if TYPE_CHECKING:` guard around typing-only imports. The condition itself

@@ -123,6 +123,38 @@ class ModuleRunsTestsTest(unittest.TestCase):
             )
         )
 
+    def test_definitions_with_active_assignment_runs_tests(self):
+        # An assignment whose value runs a call actually runs the tests.
+        self.assertTrue(
+            _runs_tests(
+                """
+                import unittest
+
+                class MyTest(unittest.TestCase):
+                    def test_foo(self):
+                        pass
+
+                exit_code = unittest.main()
+                """
+            )
+        )
+
+    def test_definitions_with_active_expression_runs_tests(self):
+        self.assertTrue(
+            _runs_tests(
+                """
+                import sys
+                import unittest
+
+                class MyTest(unittest.TestCase):
+                    def test_foo(self):
+                        pass
+
+                sys.exit(unittest.main())
+                """
+            )
+        )
+
     def test_if_block_invoking_runner_runs_tests(self):
         # A runner call inside an `if` body must still count as active.
         self.assertTrue(
