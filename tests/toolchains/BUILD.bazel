@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load(":defs.bzl", "define_toolchain_tests")
@@ -37,4 +38,19 @@ build_test(
     targets = [
         "@python_3_11//:python_headers",
     ],
+)
+
+# Verify that runtimes_manifest_workspace.bzl exactly matches runtimes_manifest.txt
+genrule(
+    name = "gen_expected_runtimes_manifest_workspace",
+    srcs = ["//python/private:runtimes_manifest.txt"],
+    outs = ["expected_runtimes_manifest_workspace.bzl"],
+    cmd = "$(execpath //python/private:sync_runtimes_manifest_workspace) $(location //python/private:runtimes_manifest.txt) $@",
+    tools = ["//python/private:sync_runtimes_manifest_workspace"],
+)
+
+diff_test(
+    name = "runtimes_manifest_workspace_sync_test",
+    file1 = "//python/private:runtimes_manifest_workspace.bzl",
+    file2 = ":expected_runtimes_manifest_workspace.bzl",
 )

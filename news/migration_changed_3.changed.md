@@ -1,2 +1,2 @@
-(pypi) The data files of a wheel (bin, includes, etc) are now always included
-  as a library's data dependencies.
+(gazelle) `python_generate_pyi_deps` and `python_generate_pyi_srcs` now
+  default to `true`.

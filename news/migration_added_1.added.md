@@ -1,2 +1,3 @@
-(toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
-  adding `config_setting` labels to all registered toolchains.
+(toolchains) Support dynamically fetching and registering Python runtimes
+  from a python-build-standalone manifest file using
+  `python.override(add_runtime_manifest_urls = ..., runtime_manifest_sha = ...)`.

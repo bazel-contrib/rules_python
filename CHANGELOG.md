@@ -40,6 +40,19 @@ END_UNRELEASED_TEMPLATE
 
 Unreleased changes are tracked as individual files in the [news/](./news) directory.
 
+
+{#v2-0-3}
+## [2.0.3] - 2026-06-15
+
+[2.0.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.3
+
+{#v2-0-3-fixed}
+### Fixed
+* (pypi) Assume that all of the packages are available on a particular hub if
+  there is only a single PyPI compatible index to be used. This saves us an expensive
+  PyPI download and supports PyPI mirror implementations that do not support the root
+  index functionality. Fixes [#3769](https://github.com/bazel-contrib/rules_python/pull/3769).
+
 {#v2-0-2}
 ## [2.0.2] - 2026-05-14
 

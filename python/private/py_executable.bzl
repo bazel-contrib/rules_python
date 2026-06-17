@@ -1578,9 +1578,6 @@ def _write_build_data(ctx):
         executable = action_exe,
         arguments = [action_args],
         env = {
-            # Include config mode so that binaries can detect if they're
-            # being used as a build tool or not, allowing for runtime optimizations.
-            "CONFIG_MODE": "EXEC" if _is_tool_config(ctx) else "TARGET",
             "INFO_FILE": info_file.path if info_file else "",
             "OUTPUT": build_data.path,
             # Include this so it's explicit, otherwise, one has to detect

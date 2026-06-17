@@ -1,2 +1,2 @@
-(windows) Full venv support for Windows is available. Set
-  {obj}`--venvs_site_packages=yes` to enable.
+(toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
+  adding `config_setting` labels to all registered toolchains.

@@ -593,26 +593,53 @@ func (py *Python) getRulesWithInvalidSrcs(args language.GenerateArgs, validFiles
 		validFilesMap[file] = struct{}{}
 	}
 
+	// allFilesMap extends validFilesMap with all regular files on disk.
+	// py_binary uses validFilesMap (main modules + generated files), while py_library
+	// and py_test use allFilesMap since any file is a valid src for them.
+	allFilesMap := make(map[string]struct{}, len(validFilesMap)+len(args.RegularFiles))
+	for file := range validFilesMap {
+		allFilesMap[file] = struct{}{}
+	}
+	for _, file := range args.RegularFiles {
+		allFilesMap[file] = struct{}{}
+	}
+
 	isTarget := func(src string) bool {
 		return strings.HasPrefix(src, "@") || strings.HasPrefix(src, "//") || strings.HasPrefix(src, ":")
 	}
 	for _, existingRule := range args.File.Rules {
-		if !kindMatches(args.Config, existingRule, pyBinaryKind) {
+		var matchedKind string
+		var filesMap map[string]struct{}
+		if kindMatches(args.Config, existingRule, pyBinaryKind) {
+			matchedKind = pyBinaryKind
+			filesMap = validFilesMap
+		} else if kindMatches(args.Config, existingRule, pyLibraryKind) {
+			matchedKind = pyLibraryKind
+			filesMap = allFilesMap
+		} else if kindMatches(args.Config, existingRule, pyTestKind) {
+			matchedKind = pyTestKind
+			filesMap = allFilesMap
+		} else {
+			continue
+		}
+
+		srcs := existingRule.AttrStrings("srcs")
+		if len(srcs) == 0 {
 			continue
 		}
 		var hasValidSrcs bool
-		for _, src := range existingRule.AttrStrings("srcs") {
+		for _, src := range srcs {
 			if isTarget(src) {
 				hasValidSrcs = true
 				break
 			}
-			if _, ok := validFilesMap[src]; ok {
+			if _, ok := filesMap[src]; ok {
 				hasValidSrcs = true
 				break
 			}
 		}
 		if !hasValidSrcs {
-			invalidRules = append(invalidRules, newTargetBuilder(pyBinaryKind, existingRule.Name(), "", "", nil, false).build())
+			invalidRules = append(invalidRules, newTargetBuilder(matchedKind, existingRule.Name(), "", "", nil, false).build())
 		}
 	}
 	return invalidRules

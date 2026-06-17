@@ -1,1 +1,2 @@
-(coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+(test/binaries) When {obj}`--venv_site_packages=yes` is enabled,
+  wheel `data`, `bin`, and `include` files are populated into the venv.
