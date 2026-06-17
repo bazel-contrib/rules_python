@@ -102,30 +102,33 @@ def determine_next_version():
         return f"{major}.{minor}.{patch + 1}"
 
 
-def parse_news_entries(news_dir="news"):
-    """Parses news entries from the news directory.
-
-    Args:
-        news_dir: The directory containing news files.
-
-    Returns:
-        A tuple of (entries, processed_files), where:
-            - entries is a dict mapping category (lowercase) to a list of formatted markdown strings.
-            - processed_files is a list of pathlib.Path objects of the processed files.
-    """
+def _get_news_files(news_dir):
+    """Returns a list of news files matching the <id>.<category>.md pattern."""
     news_path = pathlib.Path(news_dir)
     if not news_path.exists():
-        return {}, []
+        return []
 
-    entries = {}
-    processed_files = []
-    files = [p for p in news_path.iterdir() if p.is_file() and p.suffix == ".md"]
-
-    for p in files:
+    valid_files = []
+    for p in news_path.iterdir():
+        if not p.is_file():
+            continue
+        if p.suffix != ".md":
+            continue
         parts = p.name.split(".")
         if len(parts) < 3:
             continue
+        valid_files.append(p)
+
+    return valid_files
+
+
+def parse_new_files(news_files):
+    """Parses news files and groups them by category."""
+    entries = {}
+    for p in news_files:
+        parts = p.name.split(".")
         category = parts[1].lower()
+
         try:
             content = p.read_text(encoding="utf-8").strip()
         except (IOError, UnicodeDecodeError):
@@ -141,9 +144,8 @@ def parse_news_entries(news_dir="news"):
         if category not in entries:
             entries[category] = []
         entries[category].append(content)
-        processed_files.append(p)
 
-    return entries, processed_files
+    return entries
 
 
 def generate_release_block(version, release_date, news_entries):
@@ -187,21 +189,17 @@ def generate_release_block(version, release_date, news_entries):
     return "\n".join(lines)
 
 
-def update_changelog(
-    version, release_date, changelog_path="CHANGELOG.md", news_dir="news"
-):
-    """Performs the version replacements in CHANGELOG.md."""
+def add_entries_to_changelog(changelog_path, version, entries, release_date):
+    """Adds or merges news entries into CHANGELOG.md."""
     changelog_path_obj = pathlib.Path(changelog_path)
     changelog_content = changelog_path_obj.read_text(encoding="utf-8")
-
-    news_entries, processed_files = parse_news_entries(news_dir)
 
     header_version = version.replace(".", "-")
     version_anchor = f"{{#v{header_version}}}"
     version_exists = version_anchor in changelog_content
 
     if version_exists:
-        if not news_entries:
+        if not entries:
             print(
                 f"Version {version} already exists and no news entries found"
                 " to merge. Doing nothing."
@@ -271,10 +269,10 @@ def update_changelog(
 
         # Merge news entries
         merged_entries = dict(existing_entries)
-        for cat, entries in news_entries.items():
+        for cat, cat_entries in entries.items():
             if cat not in merged_entries:
                 merged_entries[cat] = []
-            merged_entries[cat].extend(entries)
+            merged_entries[cat].extend(cat_entries)
 
         # Reconstruct categories
         reconstructed_lines = []
@@ -316,13 +314,8 @@ def update_changelog(
         )
         changelog_path_obj.write_text(new_content, encoding="utf-8")
 
-        # Remove processed news files
-        for p in processed_files:
-            p.unlink()
-        print(f"Removed {len(processed_files)} processed news files.")
-
     else:
-        if news_entries:
+        if entries:
             print(
                 f"Version {version} does not exist in changelog. Creating new"
                 " release section from news entries..."
@@ -339,9 +332,7 @@ def update_changelog(
                 )
 
             unreleased_template = template_match.group(1).strip()
-            new_release_block = generate_release_block(
-                version, release_date, news_entries
-            )
+            new_release_block = generate_release_block(version, release_date, entries)
 
             replacement = f"{unreleased_template}\n\n{new_release_block}\n"
 
@@ -361,11 +352,6 @@ def update_changelog(
                 flags=re.DOTALL,
             )
             changelog_path_obj.write_text(new_content, encoding="utf-8")
-
-            # Remove processed news files
-            for p in processed_files:
-                p.unlink()
-            print(f"Removed {len(processed_files)} processed news files.")
         else:
             # Fallback to old behavior
             print(
@@ -394,6 +380,22 @@ def update_changelog(
                 new_lines.append(line)
 
             changelog_path_obj.write_text("\n".join(new_lines), encoding="utf-8")
+
+
+def update_changelog(
+    version, release_date, changelog_path="CHANGELOG.md", news_dir="news"
+):
+    """Performs the version replacements in CHANGELOG.md."""
+    news_files = _get_news_files(news_dir)
+    entries = parse_new_files(news_files)
+
+    add_entries_to_changelog(changelog_path, version, entries, release_date)
+
+    # Delete news files after successful update
+    for p in news_files:
+        p.unlink()
+    if news_files:
+        print(f"Removed {len(news_files)} processed news files.")
 
 
 def replace_version_next(version):

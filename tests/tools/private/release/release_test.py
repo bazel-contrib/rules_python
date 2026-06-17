@@ -148,13 +148,11 @@ class ReleaserTest(unittest.TestCase):
         )
 
         # Assert
-        # 1. News files should be deleted (except ignored ones)
+        # 1. News files matching the pattern should be deleted (even empty ones)
         self.assertFalse((news_dir / "123.fixed.md").exists())
         self.assertFalse((news_dir / "456.added.md").exists())
-        # Empty file is ignored, but wait, does parse_news_entries process it?
-        # If it is empty, parse_news_entries skips it and doesn't add to processed_files, so it remains!
-        # Let's check if that's what we want. Yes, only processed files are deleted.
-        self.assertTrue((news_dir / "789.changed.md").exists())
+        self.assertFalse((news_dir / "789.changed.md").exists())
+        # Invalid name does not match pattern -> NOT deleted
         self.assertTrue((news_dir / "invalid_name.md").exists())
 
         new_content = changelog_path.read_text()
