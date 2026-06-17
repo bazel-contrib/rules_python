@@ -1,0 +1,6 @@
+package(default_visibility = ["//:__subpackages__"])
+
+filegroup(
+    name = "news_files",
+    srcs = glob(["**"]),
+)

@@ -308,32 +308,23 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
             good_file = news_dir / "good_file.fixed.md"
             good_file.write_text("* (sub) Good fix")
 
-            # Act
-            releaser.update_changelog(
-                "3.0.0",
-                "2026-06-16",
-                changelog_path=changelog_path,
-                news_dir=news_dir,
-            )
+            # Act & Assert
+            # It should raise IOError
+            with self.assertRaises(IOError):
+                releaser.update_changelog(
+                    "3.0.0",
+                    "2026-06-16",
+                    changelog_path=changelog_path,
+                    news_dir=news_dir,
+                )
 
-            # Assert
-            # Both files should be deleted
-            self.assertFalse(bad_file.exists())
-            self.assertFalse(good_file.exists())
+            # Both files should still exist (no deletion on failure!)
+            self.assertTrue(bad_file.exists())
+            self.assertTrue(good_file.exists())
 
+            # Changelog should not be modified
             new_content = changelog_path.read_text()
-
-            # The bad file should be included as a fallback (no sub-category, so it sorts first)
-            # Expected order in Fixed:
-            # 1. Could not read news file: bad_file.fixed.md
-            # 2. (sub) Good fix
-
-            expected_fixed_section = (
-                "### Fixed\n"
-                "* Could not read news file: bad_file.fixed.md\n"
-                "* (sub) Good fix\n"
-            )
-            self.assertIn(expected_fixed_section, new_content)
+            self.assertEqual(changelog, new_content)
 
     def test_update_changelog_merge_existing(self):
         # Arrange
