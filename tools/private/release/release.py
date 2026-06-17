@@ -196,35 +196,121 @@ def update_changelog(
 
     news_entries, processed_files = parse_news_entries(news_dir)
 
-    if news_entries:
-        # Extract template
-        template_match = re.search(
-            r"BEGIN_UNRELEASED_TEMPLATE\s*\n(.*?)\n\s*END_UNRELEASED_TEMPLATE",
-            changelog_content,
-            re.DOTALL,
+    header_version = version.replace(".", "-")
+    version_anchor = f"{{#v{header_version}}}"
+    version_exists = version_anchor in changelog_content
+
+    if version_exists:
+        if not news_entries:
+            print(
+                f"Version {version} already exists and no news entries found"
+                " to merge. Doing nothing."
+            )
+            return
+
+        print(f"Version {version} already exists in changelog. Merging news entries...")
+        # Extract the existing version block
+        # Match from the version anchor to the next version anchor (or end of file)
+        pattern = (
+            r"(?P<anchor>\{#v"
+            + re.escape(header_version)
+            + r"\})(?P<content>.*?)(?=\n\s*\{#v(?!0-0-0)\d+-\d+-\d+\}|\Z)"
         )
-        if not template_match:
+        match = re.search(pattern, changelog_content, re.DOTALL)
+        if not match:
             raise RuntimeError(
-                "Could not find BEGIN_UNRELEASED_TEMPLATE in CHANGELOG.md"
+                f"Could not find content for existing version {version} in CHANGELOG.md"
             )
 
-        unreleased_template = template_match.group(1).strip()
-        new_release_block = generate_release_block(version, release_date, news_entries)
+        content_block = match.group("content")
 
-        replacement = f"{unreleased_template}\n\n{new_release_block}\n"
+        # Split content_block into header and categories
+        category_anchor_pattern = (
+            r"\{#v" + re.escape(header_version) + r"-(?P<cat>[a-z]+)\}"
+        )
+        match_cat = re.search(category_anchor_pattern, content_block)
+        if match_cat:
+            header_end_idx = match_cat.start()
+            header_str = content_block[:header_end_idx]
+            categories_str = content_block[header_end_idx:]
+        else:
+            header_str = content_block
+            categories_str = ""
 
-        # Replace the active Unreleased section
-        # We look for the block between END_UNRELEASED_TEMPLATE and the first released version
-        pattern = r"(END_UNRELEASED_TEMPLATE\s*\n-->\s*\n)(.*?)(\n\s*\{#v(?!0-0-0)\d+-\d+-\d+\})"
+        # Parse existing categories
+        existing_entries = {}
+        if categories_str:
+            cat_matches = list(re.finditer(category_anchor_pattern, categories_str))
+            for i, m in enumerate(cat_matches):
+                cat = m.group("cat")
+                start_idx = m.end()
+                end_idx = (
+                    cat_matches[i + 1].start()
+                    if i + 1 < len(cat_matches)
+                    else len(categories_str)
+                )
+                cat_content = categories_str[start_idx:end_idx].strip()
 
-        if not re.search(pattern, changelog_content, re.DOTALL):
-            raise RuntimeError(
-                "Could not find active Unreleased section to replace in CHANGELOG.md"
-            )
+                lines = cat_content.splitlines()
+                cat_entries = []
+                current_entry = []
+                for line in lines:
+                    line_stripped = line.strip()
+                    if not line_stripped or line_stripped.startswith("### "):
+                        continue
+                    if line_stripped.startswith("* ") or line_stripped.startswith("- "):
+                        if current_entry:
+                            cat_entries.append("\n".join(current_entry))
+                        current_entry = [line]
+                    else:
+                        if current_entry:
+                            current_entry.append(line)
+                if current_entry:
+                    cat_entries.append("\n".join(current_entry))
+                existing_entries[cat] = cat_entries
 
+        # Merge news entries
+        merged_entries = dict(existing_entries)
+        for cat, entries in news_entries.items():
+            if cat not in merged_entries:
+                merged_entries[cat] = []
+            merged_entries[cat].extend(entries)
+
+        # Reconstruct categories
+        reconstructed_lines = []
+        category_order = ["removed", "changed", "fixed", "added"]
+        for cat in merged_entries:
+            if cat not in category_order:
+                category_order.append(cat)
+
+        for cat in category_order:
+            if cat in merged_entries and merged_entries[cat]:
+                reconstructed_lines.append(f"{{#v{header_version}-{cat}}}")
+                reconstructed_lines.append(f"### {cat.capitalize()}")
+
+                def get_sub_category(content):
+                    match_sub = re.match(r"^(?:\*|-)\s*\(([^)]+)\)", content)
+                    if match_sub:
+                        return match_sub.group(1).lower()
+                    return ""
+
+                sorted_entries = sorted(
+                    merged_entries[cat], key=lambda e: (get_sub_category(e), e)
+                )
+
+                for entry in sorted_entries:
+                    reconstructed_lines.append(entry)
+                reconstructed_lines.append("")
+
+        new_categories_str = "\n".join(reconstructed_lines)
+        new_release_block = (
+            header_str.rstrip() + "\n\n" + new_categories_str.strip() + "\n"
+        )
+
+        # Replace in changelog
         new_content = re.sub(
             pattern,
-            r"\g<1>" + replacement + r"\g<3>",
+            r"\g<anchor>\n" + new_release_block.strip() + "\n",
             changelog_content,
             flags=re.DOTALL,
         )
@@ -234,29 +320,80 @@ def update_changelog(
         for p in processed_files:
             p.unlink()
         print(f"Removed {len(processed_files)} processed news files.")
+
     else:
-        # Fallback to old behavior
-        print("No news entries found, falling back to manual changelog update...")
-        header_version = version.replace(".", "-")
-        lines = changelog_content.splitlines()
+        if news_entries:
+            print(
+                f"Version {version} does not exist in changelog. Creating new"
+                " release section from news entries..."
+            )
+            # Extract template
+            template_match = re.search(
+                r"BEGIN_UNRELEASED_TEMPLATE\s*\n(.*?)\n\s*END_UNRELEASED_TEMPLATE",
+                changelog_content,
+                re.DOTALL,
+            )
+            if not template_match:
+                raise RuntimeError(
+                    "Could not find BEGIN_UNRELEASED_TEMPLATE in CHANGELOG.md"
+                )
 
-        new_lines = []
-        after_template = False
-        before_already_released = True
-        for line in lines:
-            if "END_UNRELEASED_TEMPLATE" in line:
-                after_template = True
-            if re.match("#v[1-9]-", line):
-                before_already_released = False
+            unreleased_template = template_match.group(1).strip()
+            new_release_block = generate_release_block(
+                version, release_date, news_entries
+            )
 
-            if after_template and before_already_released:
-                line = line.replace("## Unreleased", f"## [{version}] - {release_date}")
-                line = line.replace("v0-0-0", f"v{header_version}")
-                line = line.replace("0.0.0", version)
+            replacement = f"{unreleased_template}\n\n{new_release_block}\n"
 
-            new_lines.append(line)
+            # Replace the active Unreleased section
+            pattern = r"(END_UNRELEASED_TEMPLATE\s*\n-->\s*\n)(.*?)(\n\s*\{#v(?!0-0-0)\d+-\d+-\d+\})"
 
-        changelog_path_obj.write_text("\n".join(new_lines), encoding="utf-8")
+            if not re.search(pattern, changelog_content, re.DOTALL):
+                raise RuntimeError(
+                    "Could not find active Unreleased section to replace in"
+                    " CHANGELOG.md"
+                )
+
+            new_content = re.sub(
+                pattern,
+                r"\g<1>" + replacement + r"\g<3>",
+                changelog_content,
+                flags=re.DOTALL,
+            )
+            changelog_path_obj.write_text(new_content, encoding="utf-8")
+
+            # Remove processed news files
+            for p in processed_files:
+                p.unlink()
+            print(f"Removed {len(processed_files)} processed news files.")
+        else:
+            # Fallback to old behavior
+            print(
+                f"No news entries found and version {version} does not exist."
+                " Falling back to manual changelog update..."
+            )
+            header_version = version.replace(".", "-")
+            lines = changelog_content.splitlines()
+
+            new_lines = []
+            after_template = False
+            before_already_released = True
+            for line in lines:
+                if "END_UNRELEASED_TEMPLATE" in line:
+                    after_template = True
+                if re.match("#v[1-9]-", line):
+                    before_already_released = False
+
+                if after_template and before_already_released:
+                    line = line.replace(
+                        "## Unreleased", f"## [{version}] - {release_date}"
+                    )
+                    line = line.replace("v0-0-0", f"v{header_version}")
+                    line = line.replace("0.0.0", version)
+
+                new_lines.append(line)
+
+            changelog_path_obj.write_text("\n".join(new_lines), encoding="utf-8")
 
 
 def replace_version_next(version):

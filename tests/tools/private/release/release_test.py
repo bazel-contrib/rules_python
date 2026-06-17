@@ -337,6 +337,78 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
             )
             self.assertIn(expected_fixed_section, new_content)
 
+    def test_update_changelog_merge_existing(self):
+        # Arrange
+        changelog = f"""
+# Changelog
+
+{_UNRELEASED_TEMPLATE}
+
+{{#v0-0-0}}
+## Unreleased
+
+[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
+
+{{#v2-0-3}}
+## [2.0.3] - 2026-06-15
+
+[2.0.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.3
+
+{{#v2-0-3-fixed}}
+### Fixed
+* (pypi) Old fix
+  multi-line detail
+* (pypi) Z old fix
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+
+        # Create news files to merge
+        # 1. New fix in same category (should merge and sort)
+        (news_dir / "1.fixed.md").write_text("(pypi) New fix")
+        # 2. New entry in new category (should create category)
+        (news_dir / "2.added.md").write_text("(toolchains) New feature")
+
+        # Act
+        releaser.update_changelog(
+            "2.0.3",
+            "2026-06-15",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        # News files should be deleted
+        self.assertFalse((news_dir / "1.fixed.md").exists())
+        self.assertFalse((news_dir / "2.added.md").exists())
+
+        new_content = changelog_path.read_text()
+
+        # Expected merged and sorted Fixed section:
+        # 1. (pypi) New fix (New < Old)
+        # 2. (pypi) Old fix (with its multi-line detail!)
+        # 3. (pypi) Z old fix
+        expected_fixed_section = (
+            "### Fixed\n"
+            "* (pypi) New fix\n"
+            "* (pypi) Old fix\n"
+            "  multi-line detail\n"
+            "* (pypi) Z old fix\n"
+        )
+        self.assertIn(expected_fixed_section, new_content)
+
+        # Expected created Added section:
+        expected_added_section = "### Added\n* (toolchains) New feature\n"
+        self.assertIn(expected_added_section, new_content)
+
+        # Active Unreleased section should NOT be touched (should still be empty/pointing to news)
+        self.assertIn("Unreleased changes are tracked as individual files", new_content)
+
     def test_replace_version_next(self):
         # Arrange
         mock_file_content = """
