@@ -122,7 +122,7 @@ def _get_news_files(news_dir):
     return valid_files
 
 
-def parse_new_files(news_files):
+def _parse_new_files(news_files):
     """Parses news files and groups them by category."""
     entries = {}
     for p in news_files:
@@ -189,7 +189,7 @@ def generate_release_block(version, release_date, news_entries):
     return "\n".join(lines)
 
 
-def add_entries_to_changelog(changelog_path, version, entries, release_date):
+def _add_news_to_changelog(changelog_path, version, entries, release_date):
     """Adds or merges news entries into CHANGELOG.md."""
     changelog_path_obj = pathlib.Path(changelog_path)
     changelog_content = changelog_path_obj.read_text(encoding="utf-8")
@@ -387,9 +387,9 @@ def update_changelog(
 ):
     """Performs the version replacements in CHANGELOG.md."""
     news_files = _get_news_files(news_dir)
-    entries = parse_new_files(news_files)
+    entries = _parse_new_files(news_files)
 
-    add_entries_to_changelog(changelog_path, version, entries, release_date)
+    _add_news_to_changelog(changelog_path, version, entries, release_date)
 
     # Delete news files after successful update
     for p in news_files:
