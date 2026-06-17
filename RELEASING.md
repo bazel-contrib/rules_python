@@ -13,11 +13,21 @@ These are the steps for a regularly scheduled release from HEAD.
 ### Steps
 
 1. Update the changelog and replace the version placeholders by running the
-   release tool. The next version number will by automatically determined
-   based on the presence of `VERSION_NEXT_*` placeholders and git tags.
+   release tool. The next version number will be automatically determined
+   based on the presence of `VERSION_NEXT_*` placeholders and git tags. The
+   tool will read all news entry files in the `news/` directory, assemble
+   them into the changelog, and delete the processed news files.
 
    ```shell
    bazel run //tools/private/release
+   ```
+
+   If you want to append news entries to an already existing release section in
+   the changelog (for example, to update a drafted release or a release
+   branch), you can specify the version explicitly:
+
+   ```shell
+   bazel run //tools/private/release -- X.Y.Z
    ```
 
 1. Send these changes for review and get them merged.
@@ -72,11 +82,10 @@ gh workflow run release.yml --ref <TAG> -f publish_to_pypi=false
 API changes and new features bump the minor, and those with only bug fixes and
 other minor changes bump the patch digit.
 
-The release tool will automatically determine the next version number. To find
-if there were any features added or incompatible changes made, review
-[CHANGELOG.md](CHANGELOG.md) and the commit history. This can be done using
-github by going to the url:
-`https://github.com/bazel-contrib/rules_python/compare/<VERSION>...main`.
+The release tool will automatically determine the next version number based on
+the `VERSION_NEXT_*` placeholders in the codebase. To see what changes are
+being accumulated for the next release, review the pending news entries in the
+`news/` directory.
 
 ## Patch release with cherry picks
 
