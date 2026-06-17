@@ -61,6 +61,9 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-changed}
 ### Changed
+* (bzlmod) How default runtimes are registered has changed to use a manifest
+  of SHAs and URLs. `TOOL_VERSIONS` in `python/versions.bzl` is now empty under
+  bzlmod.
 * (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
   The go version was also bumped from 1.21.13 to 1.22.9.
 * (gazelle) `python_generate_pyi_deps` and `python_generate_pyi_srcs` now
@@ -74,6 +77,11 @@ END_UNRELEASED_TEMPLATE
 
 {#v0-0-0-fixed}
 ### Fixed
+* (gazelle) `py_library` and `py_test` targets with missing source files can now be
+  removed by Gazelle ([#3375](https://github.com/bazel-contrib/rules_python/issues/3375)). 
+  However `map_kind` and `alias_kind` will not be removed unless people are running a 
+  gazelle version that includes 
+  [bazel-gazelle#2362](https://github.com/bazel-contrib/bazel-gazelle/pull/2362)
 * (bootstrap) Fixed a potential race condition with symlink creation during
   startup.
 * (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
@@ -98,11 +106,6 @@ END_UNRELEASED_TEMPLATE
 * Fix the forwarding of `target_compatible_with` from `compile_pip_requirements`
   towards the underlying `*.update` target.
   ([#3787](https://github.com/bazel-contrib/rules_python/pull/3787))
-* (pypi) Assume that all of the packages are available on a particular hub if
-  there is only a single PyPI compatible index to be used. This saves us an expensive
-  PyPI download and supports PyPI mirror implementations that do not support the root
-  index functionality. Fixes
-  ([#3769](https://github.com/bazel-contrib/rules_python/pull/3769)).
 * (uv) allow user overwrite the build environment using `--action_env` to allow
   setting authentication for the index URL.
   ([#3405](https://github.com/bazel-contrib/rules_python/issues/3405))
@@ -111,6 +114,8 @@ END_UNRELEASED_TEMPLATE
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
 * (uv) automatically pass the `--project` parameter based on the source files.
   ([#3087](https://github.com/bazel-contrib/rules_python/issues/3087))
+* (coverage) handle nested coverage collection
+  ([#3823](https://github.com/bazel-contrib/rules_python/pull/3823))
 
 {#v0-0-0-added}
 ### Added
@@ -132,6 +137,18 @@ END_UNRELEASED_TEMPLATE
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 * (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+
+{#v2-0-3}
+## [2.0.3] - 2026-06-15
+
+[2.0.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.3
+
+{#v2-0-3-fixed}
+### Fixed
+* (pypi) Assume that all of the packages are available on a particular hub if
+  there is only a single PyPI compatible index to be used. This saves us an expensive
+  PyPI download and supports PyPI mirror implementations that do not support the root
+  index functionality. Fixes [#3769](https://github.com/bazel-contrib/rules_python/pull/3769).
 
 {#v2-0-2}
 ## [2.0.2] - 2026-05-14

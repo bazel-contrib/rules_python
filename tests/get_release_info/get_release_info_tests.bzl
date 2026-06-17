@@ -63,6 +63,7 @@ def _test_astral_mirror(env):
     expected_urls = [
         "https://github.com/astral-sh/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
         "https://releases.astral.sh/github/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
+        "https://github.com/indygreg/python-build-standalone/releases/download/20230826/cpython-3.11.5+20230826-x86_64-unknown-linux-gnu-install_only.tar.gz",
     ]
 
     _, urls, _, _, _ = get_release_info(
@@ -95,7 +96,7 @@ def _test_astral_mirror_legacy(env):
     _, urls, _, _, _ = get_release_info(
         platform = "x86_64-unknown-linux-gnu",
         python_version = "3.11.5",
-        base_url = "https://github.com/indygreg/python-build-standalone/releases/download",
+        base_urls = ["https://github.com/indygreg/python-build-standalone/releases/download"],
         tool_versions = tool_versions,
     )
 

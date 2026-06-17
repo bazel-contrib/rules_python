@@ -1,0 +1,37 @@
+load(":mylib.bzl", "my_py_binary", "my_py_test")
+
+# gazelle:python_generation_mode file
+# gazelle:map_kind py_binary my_py_binary :mylib.bzl
+# gazelle:map_kind py_test my_py_test :mylib.bzl
+
+# Valid py_library — bar.py exists on disk, should be kept.
+py_library(
+    name = "bar",
+    srcs = ["bar.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+# Stale py_library — deleted.py does not exist, should be removed.
+py_library(
+    name = "deleted_lib",
+    srcs = ["deleted.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+# Stale mapped py_binary — deleted_bin.py does not exist, should be removed.
+my_py_binary(
+    name = "deleted_bin",
+    srcs = ["deleted_bin.py"],
+)
+
+# Valid mapped py_test — bar_test.py exists on disk, should be kept.
+my_py_test(
+    name = "bar_test",
+    srcs = ["bar_test.py"],
+)
+
+# Stale mapped py_test — deleted_test.py does not exist, should be removed.
+my_py_test(
+    name = "deleted_test",
+    srcs = ["deleted_test.py"],
+)

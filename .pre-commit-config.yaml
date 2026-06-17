@@ -48,3 +48,20 @@ repos:
         entry: ./tools/update_deleted_packages.sh
         files: ^((examples|tests)/.*/(MODULE.bazel|WORKSPACE|WORKSPACE.bzlmod|BUILD.bazel)|.bazelrc)$
         pass_filenames: false
+      - id: sort-runtimes-manifest
+        name: Sort runtimes manifest
+        language: system
+        entry: ./python/private/tools/sort_manifest.py
+        files: ^python/private/runtimes_manifest\.txt$
+      - id: sync-runtimes-manifest
+        name: Sync runtimes manifest workspace
+        language: system
+        entry: ./python/private/tools/sync_runtimes_manifest_workspace.py
+        files: ^python/private/runtimes_manifest\.txt$
+        pass_filenames: false
+      - id: sync-downloader-configs
+        name: Sync downloader configs
+        language: system
+        entry: ./tools/private/sync_downloader_configs.py
+        files: downloader_config\.cfg$
+        pass_filenames: false

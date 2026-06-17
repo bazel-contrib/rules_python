@@ -19,7 +19,6 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:python.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
-load("//tests/support/mocks:mocks.bzl", "mocks")
 load("//tests/support/mocks:python_ext.bzl", "python_ext")
 
 _tests = []
@@ -36,7 +35,7 @@ def _rules_python_module(is_root = False):
 def _test_default_from_rules_python_when_rules_python_is_root(env):
     """Verify that rules_python (as root module) default is applied."""
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             _rules_python_module(is_root = True),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -48,7 +47,7 @@ def _test_default_from_rules_python_when_rules_python_is_root(env):
     env.expect.that_dict(py.config.minor_mapping).contains_exactly(MINOR_MAPPING)
     env.expect.that_collection(py.config.kwargs).has_size(0)
     env.expect.that_collection(py.config.default.keys()).contains_exactly([
-        "base_url",
+        "base_urls",
         "tool_versions",
         "platforms",
     ])
@@ -66,7 +65,7 @@ _tests.append(_test_default_from_rules_python_when_rules_python_is_root)
 def _test_default_from_rules_python_when_rules_python_is_not_root(env):
     """Verify that rules_python default applies when rules_python is not the root module."""
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             _rules_python_module(),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -85,7 +84,7 @@ _tests.append(_test_default_from_rules_python_when_rules_python_is_not_root)
 
 def _test_default_with_patch_version(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             modules = [
                 python_ext.module(
                     name = "alpha",
@@ -111,7 +110,7 @@ _tests.append(_test_default_with_patch_version)
 
 def _test_toolchain_ordering(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
@@ -161,7 +160,7 @@ _tests.append(_test_toolchain_ordering)
 
 def _test_default_from_defaults(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_root_module",
                 defaults = [python_ext.defaults(python_version = "3.11")],
@@ -192,7 +191,7 @@ _tests.append(_test_default_from_defaults)
 
 def _test_default_from_defaults_env(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_root_module",
                 defaults = [
@@ -229,7 +228,7 @@ _tests.append(_test_default_from_defaults_env)
 
 def _test_default_from_defaults_file(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_root_module",
                 defaults = [
@@ -265,7 +264,7 @@ _tests.append(_test_default_from_defaults_file)
 
 def _test_default_from_single_toolchain(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_root_module",
                 is_root = True,
@@ -281,7 +280,7 @@ _tests.append(_test_default_from_single_toolchain)
 
 def _test_defaults_overrides_single_toolchain(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_root_module",
                 defaults = [
@@ -301,7 +300,7 @@ _tests.append(_test_defaults_overrides_single_toolchain)
 
 def _test_defaults_overrides_toolchains_setting_is_default(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_root_module",
                 defaults = [python_ext.defaults(python_version = "3.13")],
@@ -324,7 +323,7 @@ _tests.append(_test_defaults_overrides_toolchains_setting_is_default)
 
 def _test_first_occurance_of_the_toolchain_wins(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             modules = [
                 python_ext.module(
                     name = "my_module",
@@ -380,7 +379,7 @@ _tests.append(_test_first_occurance_of_the_toolchain_wins)
 
 def _test_auth_overrides(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
@@ -422,7 +421,7 @@ _tests.append(_test_auth_overrides)
 
 def _test_add_target_settings(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
@@ -448,7 +447,7 @@ _tests.append(_test_add_target_settings)
 
 def _test_add_new_version(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
@@ -460,7 +459,7 @@ def _test_add_new_version(env):
                             "3.13.1",
                             "3.13.99",
                         ],
-                        base_url = "",
+                        base_urls = [],
                         minor_mapping = {
                             "3.13": "3.13.99",
                         },
@@ -534,7 +533,7 @@ _tests.append(_test_add_new_version)
 
 def _test_register_all_versions(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
@@ -546,7 +545,7 @@ def _test_register_all_versions(env):
                             "3.13.1",
                             "3.13.99",
                         ],
-                        base_url = "",
+                        base_urls = [],
                         register_all_versions = True,
                     ),
                 ],
@@ -605,7 +604,7 @@ _tests.append(_test_register_all_versions)
 
 def _test_ignore_unsupported_versions(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
@@ -616,7 +615,7 @@ def _test_ignore_unsupported_versions(env):
                             "3.13.0",
                             "3.13.1",
                         ],
-                        base_url = "",
+                        base_urls = [],
                         minor_mapping = {
                             "3.12": "3.12.4",
                             "3.13": "3.13.1",
@@ -683,14 +682,14 @@ _tests.append(_test_ignore_unsupported_versions)
 
 def _test_add_patches(env):
     py = parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
                 override = [
                     python_ext.override(
                         available_python_versions = ["3.13.0"],
-                        base_url = "",
+                        base_urls = [],
                         minor_mapping = {
                             "3.13": "3.13.0",
                         },
@@ -762,13 +761,13 @@ _tests.append(_test_add_patches)
 def _test_fail_two_overrides(env):
     errors = []
     parse_modules(
-        module_ctx = mocks.mctx(
+        module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
                 override = [
-                    python_ext.override(base_url = "foo"),
-                    python_ext.override(base_url = "bar"),
+                    python_ext.override(base_urls = ["foo"]),
+                    python_ext.override(base_urls = ["bar"]),
                 ],
                 toolchain = [python_ext.toolchain(python_version = "3.13")],
             ),
@@ -800,7 +799,7 @@ def _test_single_version_override_errors(env):
     ]:
         errors = []
         parse_modules(
-            module_ctx = mocks.mctx(
+            module_ctx = python_ext.mctx(
                 python_ext.module(
                     name = "my_module",
                     is_root = True,
@@ -853,7 +852,7 @@ def _test_single_version_platform_override_errors(env):
     ]:
         errors = []
         parse_modules(
-            module_ctx = mocks.mctx(
+            module_ctx = python_ext.mctx(
                 python_ext.module(
                     name = "my_module",
                     is_root = True,

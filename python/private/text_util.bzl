@@ -76,13 +76,14 @@ def _render_select(selects, *, no_match_error = None, key_repr = repr, value_rep
 
     return "{}({})".format(name, args)
 
-def _render_list(items, *, hanging_indent = ""):
+def _render_list(items, *, hanging_indent = "", value_repr = repr):
     """Convert a list to formatted text.
 
     Args:
         items: list of items.
         hanging_indent: str, indent to apply to second and following lines of
             the formatted text.
+        value_repr: callable, function to represent each item.
 
     Returns:
         The list pretty formatted as a string.
@@ -91,12 +92,12 @@ def _render_list(items, *, hanging_indent = ""):
         return "[]"
 
     if len(items) == 1:
-        return "[{}]".format(repr(items[0]))
+        return "[{}]".format(value_repr(items[0]))
 
     text = "\n".join([
         "[",
         _indent("\n".join([
-            "{},".format(repr(item))
+            "{},".format(value_repr(item))
             for item in items
         ])),
         "]",
@@ -180,6 +181,11 @@ def _render_dict_dict(d):
     lines.append("}")
     return "\n".join(lines)
 
+def _render_struct(value):
+    """Render a struct value."""
+    fields = {k: repr(getattr(value, k)) for k in sorted(dir(value)) if k not in ["to_json", "to_proto"]}
+    return _render_call("struct", **fields)
+
 render = struct(
     alias = _render_alias,
     dict = _render_dict,
@@ -192,6 +198,7 @@ render = struct(
     list = _render_list,
     select = _render_select,
     str = _render_str,
+    struct = _render_struct,
     toolchain_prefix = _toolchain_prefix,
     tuple = _render_tuple,
     string_list_dict = _render_string_list_dict,

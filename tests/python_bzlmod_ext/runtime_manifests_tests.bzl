@@ -5,7 +5,6 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python/private:python.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
-load("//tests/support/mocks:mocks.bzl", "mocks")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:python_ext.bzl", "python_ext")  # buildifier: disable=bzl-visibility
 
 _tests = []
@@ -52,7 +51,7 @@ def _test_dynamic_manifest_toolchains_impl(env, target):
     )
 
     # Pre-populate mock_files directly to bypass download output struct key mismatch in mock read lookups.
-    mock_mctx = mocks.mctx(
+    mock_mctx = python_ext.mctx(
         modules = [root_module],
         mock_files = {
             "runtime_manifest": """
@@ -110,7 +109,7 @@ def _test_dynamic_manifest_files_impl(env, target):
                 add_runtime_manifest_files = [
                     Label("//:SHA256SUMS"),
                 ],
-                base_url = "https://example.com/dl",
+                base_urls = ["https://example.com/dl"],
                 register_all_versions = True,
             ),
         ],
@@ -121,7 +120,7 @@ def _test_dynamic_manifest_files_impl(env, target):
         ],
     )
 
-    mock_mctx = mocks.mctx(
+    mock_mctx = python_ext.mctx(
         modules = [root_module],
         mock_files = {
             str(Label("//:SHA256SUMS")): """

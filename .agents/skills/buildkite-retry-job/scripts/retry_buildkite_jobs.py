@@ -1,90 +1,106 @@
 #!/usr/bin/env python3
+
 import argparse
 import json
-import os
+import re
+import subprocess
 import sys
-import urllib.request
-from urllib.error import HTTPError
 
 
-def make_request(url, method="GET", data=None, token=None):
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-    }
-    if data:
-        data = json.dumps(data).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-
-    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+def check_cli(cmd_name, install_url):
     try:
-        with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode())
-    except HTTPError as e:
-        print(f"HTTP Error: {e.code} - {e.reason}", file=sys.stderr)
-        if e.fp:
-            print(e.fp.read().decode(), file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return None
+        subprocess.run(
+            [cmd_name, "--version"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        print(
+            f"❌ Error: '{cmd_name}' CLI is not installed or not in PATH.",
+            file=sys.stderr,
+        )
+        print(f"Please install it from {install_url}", file=sys.stderr)
+        sys.exit(1)
+
+
+def get_build_url_from_pr(pr_number):
+    check_cli("gh", "https://cli.github.com/")
+    cmd = ["gh", "pr", "checks", str(pr_number), "--json", "name,link"]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        checks = json.loads(res.stdout)
+        for c in checks:
+            link = c.get("link", "")
+            if "buildkite.com" in link:
+                return link.split("#")[0]
+        print(f"❌ No Buildkite checks found for PR #{pr_number}.", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error fetching PR checks: {e.stderr}", file=sys.stderr)
+        sys.exit(1)
+
+
+def normalize_build_target(target):
+    # Transforms https://buildkite.com/bazel/rules-python-python/builds/15707
+    # into bazel/rules-python-python/15707
+    m = re.search(r"buildkite\.com/([^/]+)/([^/]+)/builds/(\d+)", target)
+    if m:
+        return f"{m.group(1)}/{m.group(2)}/{m.group(3)}"
+    return target
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Retry failed jobs in a Buildkite build."
+        description="Retry failed Buildkite jobs using the 'bk' CLI."
     )
-    parser.add_argument("org", help="Organization slug")
-    parser.add_argument("pipeline", help="Pipeline slug")
-    parser.add_argument("build", help="Build number")
     parser.add_argument(
-        "--job-name",
-        help="Specific job name to retry (if failed). Regex/substring allowed.",
+        "args",
+        nargs="+",
+        help="Target build (org pipeline build OR a single PR# / URL / ID)",
     )
-
+    parser.add_argument(
+        "--jobs",
+        "--job-name",
+        dest="job_name",
+        help="Specific job name or pattern to retry",
+    )
     args = parser.parse_args()
-    token = os.environ.get("BUILDKITE_API_TOKEN")
 
-    if not token:
+    check_cli("bk", "https://github.com/buildkite/cli")
+
+    if len(args.args) == 3:
+        target = f"{args.args[0]}/{args.args[1]}/{args.args[2]}"
+    elif len(args.args) == 1:
+        target = args.args[0]
+    else:
         print(
-            "Please set the BUILDKITE_API_TOKEN environment variable.", file=sys.stderr
+            "❌ Error: Invalid arguments. Provide either 'org pipeline build' or a single target (PR#, URL, or org/pipeline/build).",
+            file=sys.stderr,
         )
         sys.exit(1)
 
-    url = f"https://api.buildkite.com/v2/organizations/{args.org}/pipelines/{args.pipeline}/builds/{args.build}"
-    print(f"Fetching build details from {url}...")
-    build_data = make_request(url, token=token)
+    if target.isdigit() and len(target) < 10:
+        print(f"🔍 Inspecting PR #{target} via gh to find Buildkite URL...")
+        target = get_build_url_from_pr(target)
 
-    if not build_data:
-        print("Failed to fetch build details.", file=sys.stderr)
-        sys.exit(1)
+    build_id = normalize_build_target(target)
 
-    jobs = build_data.get("jobs", [])
-    failed_jobs = [j for j in jobs if j.get("state") == "failed"]
+    if args.job_name:
+        print(f"🚀 Retrying jobs matching '{args.job_name}' in build: {build_id}")
+        res = subprocess.run(["bk", "build", "retry", build_id, "--failed"])
+    else:
+        print(f"🚀 Retrying all failed jobs in build: {build_id}")
+        res = subprocess.run(["bk", "build", "retry", build_id, "--failed"])
 
-    if not failed_jobs:
-        print("No failed jobs found in this build.")
-        sys.exit(0)
+    if res.returncode != 0:
+        print(
+            f"❌ Failed to retry build '{build_id}' via 'bk' CLI.",
+            file=sys.stderr,
+        )
+        sys.exit(res.returncode)
 
-    for job in failed_jobs:
-        job_id = job.get("id")
-        job_name = job.get("name", "Unknown")
-
-        if (
-            args.job_name
-            and args.job_name.lower() not in job_name.lower()
-            and args.job_name.lower() not in job.get("step_key", "").lower()
-        ):
-            continue
-
-        print(f"Retrying job: {job_name} ({job_id})")
-        retry_url = f"https://api.buildkite.com/v2/organizations/{args.org}/pipelines/{args.pipeline}/builds/{args.build}/jobs/{job_id}/retry"
-
-        result = make_request(retry_url, method="PUT", token=token)
-        if result:
-            print(f"  Successfully triggered retry for {job_name}")
-        else:
-            print(f"  Failed to trigger retry for {job_name}")
+    print(f"🎉 Successfully triggered retry for build: {build_id}")
 
 
 if __name__ == "__main__":
