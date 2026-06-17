@@ -358,6 +358,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 ### Fixed
 * (pypi) Old fix
   multi-line detail
+  * nested bullet item
 * (pypi) Z old fix
 """
         changelog_path = self.tmpdir / "CHANGELOG.md"
@@ -396,6 +397,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
             "* (pypi) New fix\n"
             "* (pypi) Old fix\n"
             "  multi-line detail\n"
+            "  * nested bullet item\n"
             "* (pypi) Z old fix\n"
         )
         self.assertIn(expected_fixed_section, new_content)

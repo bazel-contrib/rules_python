@@ -102,6 +102,14 @@ def determine_next_version():
         return f"{major}.{minor}.{patch + 1}"
 
 
+def _get_sub_category(content):
+    """Extracts the sub-category in parentheses from the entry content."""
+    match = re.match(r"^(?:\*|-)\s*\(([^)]+)\)", content)
+    if match:
+        return match.group(1).lower()
+    return ""
+
+
 def _get_news_files(news_dir):
     """Returns a list of news files matching the <id>.<category>.md pattern."""
     news_path = pathlib.Path(news_dir)
@@ -172,14 +180,8 @@ def generate_release_block(version, release_date, news_entries):
             lines.append(f"### {cat.capitalize()}")
 
             # Sort entries by sub-category, then by content
-            def get_sub_category(content):
-                match = re.match(r"^(?:\*|-)\s*\(([^)]+)\)", content)
-                if match:
-                    return match.group(1).lower()
-                return ""
-
             sorted_entries = sorted(
-                news_entries[cat], key=lambda e: (get_sub_category(e), e)
+                news_entries[cat], key=lambda e: (_get_sub_category(e), e)
             )
 
             for entry in sorted_entries:
@@ -253,10 +255,9 @@ def _add_news_to_changelog(changelog_path, version, entries, release_date):
                 cat_entries = []
                 current_entry = []
                 for line in lines:
-                    line_stripped = line.strip()
-                    if not line_stripped or line_stripped.startswith("### "):
+                    if not line.strip() or line.strip().startswith("### "):
                         continue
-                    if line_stripped.startswith("* ") or line_stripped.startswith("- "):
+                    if line.startswith("* ") or line.startswith("- "):
                         if current_entry:
                             cat_entries.append("\n".join(current_entry))
                         current_entry = [line]
@@ -286,14 +287,8 @@ def _add_news_to_changelog(changelog_path, version, entries, release_date):
                 reconstructed_lines.append(f"{{#v{header_version}-{cat}}}")
                 reconstructed_lines.append(f"### {cat.capitalize()}")
 
-                def get_sub_category(content):
-                    match_sub = re.match(r"^(?:\*|-)\s*\(([^)]+)\)", content)
-                    if match_sub:
-                        return match_sub.group(1).lower()
-                    return ""
-
                 sorted_entries = sorted(
-                    merged_entries[cat], key=lambda e: (get_sub_category(e), e)
+                    merged_entries[cat], key=lambda e: (_get_sub_category(e), e)
                 )
 
                 for entry in sorted_entries:
