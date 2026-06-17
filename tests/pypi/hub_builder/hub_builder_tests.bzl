@@ -729,6 +729,31 @@ simple==0.0.1 --hash=sha256:deadb00f
             ],
             expect_url = "pypi.org/simple/",
         ),
+        # Regression: an unsubstituted ``$VAR`` template with the env var
+        # unset must expand to "" and fall back to the config default,
+        # rather than activating the experimental index-url path.
+        struct(
+            requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
+            experimental_index_url = "$RULES_PYTHON_PIP_INDEX_URL",
+            experimental_extra_index_urls = [],
+            envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
+            environ = {},
+            expect_index_url = "https://pypi.org/simple",
+            expect_extra_index_urls = [],
+            expect_url = "pypi.org/simple/",
+        ),
+        # When the env var is set, the resolved value drives the
+        # experimental index-url path.
+        struct(
+            requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
+            experimental_index_url = "${RULES_PYTHON_PIP_INDEX_URL:-}",
+            experimental_extra_index_urls = [],
+            envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
+            environ = {"RULES_PYTHON_PIP_INDEX_URL": "https://from-env.example.com/simple"},
+            expect_index_url = "https://from-env.example.com/simple",
+            expect_extra_index_urls = [],
+            expect_url = "from-env.example.com/simple/",
+        ),
     ]:
         got_kwargs = {}
 
@@ -756,6 +781,7 @@ simple==0.0.1 --hash=sha256:deadb00f
         )
         builder.pip_parse(
             _mock_mctx(
+                environ = getattr(test, "environ", {}),
                 mock_files = {
                     "requirements.txt": test.requirements_txt,
                 },
@@ -765,6 +791,7 @@ simple==0.0.1 --hash=sha256:deadb00f
                 python_version = "3.15",
                 experimental_index_url = test.experimental_index_url,
                 experimental_extra_index_urls = test.experimental_extra_index_urls,
+                envsubst = getattr(test, "envsubst", []),
                 requirements_lock = "requirements.txt",
                 target_platforms = [
                     "linux_x86_64",
@@ -785,23 +812,26 @@ simple==0.0.1 --hash=sha256:deadb00f
                 ],
             },
         })
+        want_whl_library = {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": test.expect_index_url,
+            "requirement": "simple==0.0.1",
+            "sha256": "deadb00f",
+            "urls": [test.expect_url],
+        }
+        if getattr(test, "envsubst", []):
+            want_whl_library["envsubst"] = test.envsubst
         pypi.whl_libraries().contains_exactly({
-            "pypi_315_simple_py3_none_any_deadb00f": {
-                "config_load": "@pypi//:config.bzl",
-                "dep_template": "@pypi//{name}:{target}",
-                "filename": "simple-0.0.1-py3-none-any.whl",
-                "index_url": test.expect_index_url,
-                "requirement": "simple==0.0.1",
-                "sha256": "deadb00f",
-                "urls": [test.expect_url],
-            },
+            "pypi_315_simple_py3_none_any_deadb00f": want_whl_library,
         })
         pypi.extra_aliases().contains_exactly({})
 
         env.expect.that_dict(got_kwargs).contains_exactly({
             "attr": struct(
                 auth_patterns = {},
-                envsubst = {},
+                envsubst = getattr(test, "envsubst", []),
                 extra_index_urls = test.expect_extra_index_urls,
                 index_url = test.expect_index_url,
                 index_url_overrides = {},
