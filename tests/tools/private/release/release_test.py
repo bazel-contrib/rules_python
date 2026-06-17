@@ -564,6 +564,69 @@ class DetermineNextVersionTest(unittest.TestCase):
 
         self.assertEqual(next_version, "1.3.0")
 
+    @patch("tools.private.release.release._get_current_branch")
+    @patch("tools.private.release.release._get_git_tags")
+    def test_determine_next_version_on_release_branch_with_existing_tags(
+        self, mock_get_tags, mock_get_branch
+    ):
+        mock_get_branch.return_value = "release/0.37"
+        mock_get_tags.return_value = ["0.37.0", "0.37.1", "0.36.0"]
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "0.37.2")
+
+    @patch("tools.private.release.release._get_current_branch")
+    @patch("tools.private.release.release._get_git_tags")
+    def test_determine_next_version_on_release_branch_no_tags(
+        self, mock_get_tags, mock_get_branch
+    ):
+        mock_get_branch.return_value = "release/0.38"
+        mock_get_tags.return_value = ["0.37.0"]  # No 0.38.x tags
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "0.38.0")
+
+    @patch("tools.private.release.release._get_current_branch")
+    @patch("tools.private.release.release._get_git_tags")
+    def test_determine_next_version_on_release_branch_with_active_rc(
+        self, mock_get_tags, mock_get_branch
+    ):
+        mock_get_branch.return_value = "release/0.37"
+        # 0.37.0-rc0 and rc1 exist, but no stable 0.37.0 yet
+        mock_get_tags.return_value = ["0.37.0-rc0", "0.37.0-rc1", "0.36.0"]
+
+        next_version = releaser.determine_next_version()
+
+        # Should target 0.37.0, not 0.37.1
+        self.assertEqual(next_version, "0.37.0")
+
+    @patch("tools.private.release.release._get_current_branch")
+    @patch("tools.private.release.release._get_git_tags")
+    def test_determine_next_version_on_release_branch_with_stable_and_active_patch_rc(
+        self, mock_get_tags, mock_get_branch
+    ):
+        mock_get_branch.return_value = "release/0.37"
+        # 0.37.0 stable exists, and 0.37.1-rc0 exists (but no stable 0.37.1 yet)
+        mock_get_tags.return_value = ["0.37.0", "0.37.1-rc0", "0.36.0"]
+
+        next_version = releaser.determine_next_version()
+
+        # Should target 0.37.1, not 0.37.2
+        self.assertEqual(next_version, "0.37.1")
+
+    @patch("tools.private.release.release._get_current_branch")
+    def test_determine_next_version_on_main_branch_fallback(self, mock_get_branch):
+        mock_get_branch.return_value = "main"
+        # Should fallback to default behavior (which uses mock_get_latest_version from setUp)
+        self.mock_get_latest_version.return_value = "1.2.3"
+        (self.tmpdir / "mock_file.bzl").write_text("no markers here")
+
+        next_version = releaser.determine_next_version()
+
+        self.assertEqual(next_version, "1.2.4")
+
 
 if __name__ == "__main__":
     unittest.main()

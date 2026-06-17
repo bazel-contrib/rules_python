@@ -91,8 +91,68 @@ def should_increment_minor():
     return False
 
 
-def determine_next_version():
-    """Determines the next version based on git tags and placeholders."""
+def _get_current_branch():
+    """Returns the current git branch name, or None if not in a git repo."""
+    try:
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode("utf-8")
+            .strip()
+        )
+    except subprocess.CalledProcessError:
+        return None
+
+
+def determine_next_version(branch_name=None):
+    """Determines the next version based on git tags and the current branch."""
+    if branch_name is None:
+        branch_name = _get_current_branch()
+
+    if branch_name:
+        release_match = re.match(r"^release/(\d+)\.(\d+)$", branch_name)
+        if release_match:
+            branch_major = int(release_match.group(1))
+            branch_minor = int(release_match.group(2))
+            print(
+                f"Detected release branch: {branch_name} (targeting"
+                f" {branch_major}.{branch_minor}.x)"
+            )
+
+            # Find all stable tags matching this major.minor prefix.
+            # Crucially, we ignore release candidates (RCs) here. If an RC is active
+            # (e.g. 0.37.0-rc0 exists but 0.37.0 stable does not), we want to continue
+            # targeting 0.37.0, NOT increment to 0.37.1.
+            tags = _get_git_tags()
+            matching_patches = []
+            for tag in tags:
+                tag = tag.strip()
+                m = re.match(rf"^{branch_major}\.{branch_minor}\.(\d+)$", tag)
+                if m:
+                    matching_patches.append(int(m.group(1)))
+
+            if matching_patches:
+                latest_patch = max(matching_patches)
+                next_version = f"{branch_major}.{branch_minor}.{latest_patch + 1}"
+                print(
+                    f"Latest tag on this branch is"
+                    f" {branch_major}.{branch_minor}.{latest_patch}. Next"
+                    f" version: {next_version}"
+                )
+                return next_version
+            else:
+                # No stable tags exist yet for this release branch (preparing X.Y.0,
+                # even if X.Y.0-rcN tags already exist)
+                next_version = f"{branch_major}.{branch_minor}.0"
+                print(
+                    f"No stable tags found for {branch_major}.{branch_minor}.x."
+                    f" Next version: {next_version}"
+                )
+                return next_version
+
+    # Fallback to default behavior (for main branch or other development branches)
     latest_version = get_latest_version()
     major, minor, patch = [int(n) for n in latest_version.split(".")]
 
