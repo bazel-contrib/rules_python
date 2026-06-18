@@ -37,14 +37,21 @@ END_UNRELEASED_TEMPLATE
 
 [0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
 
-{#v0-0-0-removed}
+Unreleased changes are tracked as individual files in the [news/](./news) directory.
+
+{#v2-1-0}
+## [2.1.0] - 2026-06-17
+
+[2.1.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.1.0
+
+{#v2-1-0-removed}
 ### Removed
 * (build_data) Removed CONFIG_MODE from build data
   ([#3793](https://github.com/bazel-contrib/rules_python/issues/3793)).
 * (coverage) Support for python 3.8 has been dropped from the bundled
   `coverage.py` wheel set, since coverage.py 7.6.2 dropped it.
 
-{#v0-0-0-changed}
+{#v2-1-0-changed}
 ### Changed
 * (bzlmod) How default runtimes are registered has changed to use a manifest
   of SHAs and URLs. `TOOL_VERSIONS` in `python/versions.bzl` is now empty under
@@ -60,7 +67,7 @@ END_UNRELEASED_TEMPLATE
   platform, a warning is now printed instead of silently producing an empty
   coverage report.
 
-{#v0-0-0-fixed}
+{#v2-1-0-fixed}
 ### Fixed
 * (gazelle) `py_library` and `py_test` targets with missing source files can now be
   removed by Gazelle ([#3375](https://github.com/bazel-contrib/rules_python/issues/3375)). 
@@ -102,8 +109,10 @@ END_UNRELEASED_TEMPLATE
 * (coverage) handle nested coverage collection
   ([#3823](https://github.com/bazel-contrib/rules_python/pull/3823))
 
-{#v0-0-0-added}
+{#v2-1-0-added}
 ### Added
+* (toolchain) Added {obj}`PyRuntimeInfo.interpreter_files_to_run` so action
+  consumers can execute an in-build runtime interpreter with its runfiles.
 * (toolchains) Support dynamically fetching and registering Python runtimes
   from a python-build-standalone manifest file using
   `python.override(add_runtime_manifest_urls = ..., runtime_manifest_sha = ...)`.

@@ -681,7 +681,7 @@ that are relative to the current package.
 {gh-pr}`3014`
 :::
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.1.0
 The default was changed from `false` to `true`. {gh-pr}`3753`
 :::
 
@@ -725,7 +725,7 @@ not write `pyi_deps`.
 {gh-pr}`3356`
 :::
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.1.0
 The default was changed from `false` to `true`. {gh-pr}`3753`
 :::
 

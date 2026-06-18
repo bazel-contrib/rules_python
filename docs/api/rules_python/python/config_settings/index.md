@@ -375,7 +375,7 @@ is created.
 
 ## Removed Flags
 
-:::{versionremoved} VERSION_NEXT_FEATURE
+:::{versionremoved} 2.1.0
 The following flags were removed:
 
 * `pip_whl`
