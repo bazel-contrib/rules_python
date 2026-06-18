@@ -529,7 +529,7 @@ def lock(
             `exclude-dependencies` from that `pyproject.toml`. If no
             `pyproject.toml` is in `srcs` and no `project` is given, the
             Bazel package directory is used as fallback.
-            {versionadded}2.1.0
+            {versionadded} 2.1.0
         python_version: {type}`str | None` the python_version to transition to
             when locking the requirements. Defaults to the default python version
             configured by the {obj}`python` module extension.
