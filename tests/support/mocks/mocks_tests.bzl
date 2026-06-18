@@ -9,7 +9,7 @@ def _test_path(env):
     p1 = mocks.path("a/b/c", mock_files = {"a/b/c": "data"})
     env.expect.that_bool(p1.exists).equals(True)
     env.expect.that_str(p1.basename).equals("c")
-    env.expect.that_str(p1.dirname).equals("a/b")
+    env.expect.that_str(p1.dirname._path).equals("a/b")
     env.expect.that_str(p1._path).equals("a/b/c")
 
     p2 = mocks.path("d/e/f", mock_files = {})
@@ -23,7 +23,7 @@ def _test_file(env):
     env.expect.that_str(f1.path).equals("a/b.txt")
     env.expect.that_str(f1.short_path).equals("a/b.txt")
     env.expect.that_str(f1.basename).equals("b.txt")
-    env.expect.that_str(f1.dirname).equals("a")
+    env.expect.that_str(f1.dirname._path).equals("a")
     env.expect.that_str(f1.extension).equals("txt")
     env.expect.that_bool(f1.is_source).equals(True)
     env.expect.that_str(str(f1.owner)).equals(str(Label("//:mock")))
