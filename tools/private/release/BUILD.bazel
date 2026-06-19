@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "changelog_news",
     srcs = ["changelog_news.py"],
-    visibility = ["//visibility:public"],
 )
 
 py_binary(
