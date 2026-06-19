@@ -230,21 +230,28 @@ def _repack_whl_windows(rctx, *, output):
     if not powershell_exe:
         fail("powershell not found on PATH")
 
+    script_path = rctx.path("repack_whl.ps1")
+
     # Use a temporary .zip file because Compress-Archive can fail when writing
     # directly to a .whl file on some Windows configurations, and to avoid
-    # archiving the output file itself.
-    cmd = (
-        "$files = Get-ChildItem -Path . -Exclude 'tmp.zip', '{output}'; " +
+    # archiving the output file or the script itself.
+    script_content = (
+        "$files = Get-ChildItem -Path . -Exclude 'tmp.zip', '{output}', 'repack_whl.ps1'; " +
         "Compress-Archive -Path $files -DestinationPath 'tmp.zip' -Force; " +
         "Move-Item -Path 'tmp.zip' -Destination '{output}' -Force"
     ).format(output = str(output))
+
+    rctx.write(script_path, script_content)
+
     repo_utils.execute_checked(
         rctx,
         op = "PatchWhl",
         arguments = [
             powershell_exe,
             "-NoProfile",
-            "-Command",
-            cmd,
+            "-File",
+            str(script_path),
         ],
     )
+
+    rctx.delete(script_path)
