@@ -366,6 +366,58 @@ This release body mentions the word unreleased and {#unreleased} anchor to test 
             new_content,
         )
 
+    def test_update_changelog_empty_news(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
+
+{#v2-0-2}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{#v2-0-2-added}
+### Added
+* (toolchains) Some older change.
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+
+        # Act
+        changelog_news.update_changelog(
+            "3.0.0",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        new_content = changelog_path.read_text()
+
+        # The new release section should be present and contain "No notable changes."
+        self.assertIn("{#v3-0-0}", new_content)
+        self.assertIn("## [3.0.0] - 2026-06-16", new_content)
+        self.assertIn(
+            "[3.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/3.0.0",
+            new_content,
+        )
+        self.assertIn("No notable changes.", new_content)
+
+        # Verify that we didn't accidentally create any categories
+        self.assertNotIn("{#v3-0-0-fixed}", new_content)
+        self.assertNotIn("{#v3-0-0-added}", new_content)
+
     def test_replace_version_next(self):
         # Arrange
         mock_file_content = """

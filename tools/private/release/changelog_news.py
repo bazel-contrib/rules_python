@@ -85,8 +85,10 @@ def generate_release_block(version, release_date, news_entries):
         if cat not in category_order:
             category_order.append(cat)
 
+    has_entries = False
     for cat in category_order:
         if cat in news_entries and news_entries[cat]:
+            has_entries = True
             lines.append(f"{{#v{header_version}-{cat}}}")
             lines.append(f"### {cat.capitalize()}")
 
@@ -98,6 +100,10 @@ def generate_release_block(version, release_date, news_entries):
             for entry in sorted_entries:
                 lines.append(entry)
             lines.append("")
+
+    if not has_entries:
+        lines.append("No notable changes.")
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -242,13 +248,6 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
         output_path.write_text(new_content, encoding="utf-8")
 
     else:
-        if not entries:
-            raise RuntimeError(
-                f"Version {version} does not exist in changelog and no news"
-                " entries were found. Releasing without news entries is not"
-                " supported."
-            )
-
         print(
             f"Version {version} does not exist in changelog. Creating new"
             " release section from news entries..."
