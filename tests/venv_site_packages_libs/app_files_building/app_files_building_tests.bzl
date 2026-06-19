@@ -2,10 +2,9 @@
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python:py_info.bzl", "PyInfo")
+load("//python:py_info.bzl", "PyInfo", "VenvSymlinkEntry", "VenvSymlinkKind")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
-load("//python/private:py_info.bzl", "VenvSymlinkEntry", "VenvSymlinkKind")  # buildifier: disable=bzl-visibility
 load("//python/private:venv_runfiles.bzl", "build_link_map", "get_venv_symlinks")  # buildifier: disable=bzl-visibility
 load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 
