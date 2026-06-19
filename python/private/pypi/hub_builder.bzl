@@ -1,5 +1,6 @@
 """A hub repository builder for incrementally building the hub configuration."""
 
+load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
@@ -177,7 +178,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         ))
         return
 
-    _set_get_index_urls(self, pip_attr)
+    _set_get_index_urls(self, module_ctx, pip_attr)
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
@@ -345,8 +346,17 @@ def _add_whl_library(self, *, python_version, whl, repo):
 
 ### end of setters, below we have various functions to implement the public methods
 
-def _set_get_index_urls(self, pip_attr):
-    default_index_url = pip_attr.experimental_index_url or self._config.index_url
+def _set_get_index_urls(self, mctx, pip_attr):
+    # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
+    # form is honored when deciding whether the experimental index-url mode is
+    # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
+    # is treated as truthy and the mode is forced on, even when the env var
+    # would expand to the empty string.
+    default_index_url = envsubst(
+        pip_attr.experimental_index_url,
+        pip_attr.envsubst,
+        mctx.getenv,
+    ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:

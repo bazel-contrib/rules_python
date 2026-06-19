@@ -196,6 +196,7 @@ bzl_library(
         ":requirements_files_by_platform_bzl",
         ":whl_config_setting_bzl",
         ":whl_repo_name_bzl",
+        "//python/private:envsubst_bzl",
         "//python/private:full_version_bzl",
         "//python/private:normalize_name_bzl",
         "//python/private:text_util_bzl",
