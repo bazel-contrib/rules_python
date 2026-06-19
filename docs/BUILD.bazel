@@ -17,6 +17,7 @@ load("@sphinxdocs//sphinxdocs:readthedocs.bzl", "readthedocs_install")
 load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load("@sphinxdocs//sphinxdocs:sphinx_docs_library.bzl", "sphinx_docs_library")
 load("@sphinxdocs//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
+load("//python:defs.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
@@ -36,6 +37,27 @@ _TARGET_COMPATIBLE_WITH = select({
     "@platforms//os:macos": [],
     "//conditions:default": ["@platforms//:incompatible"],
 }) if BZLMOD_ENABLED else ["@platforms//:incompatible"]
+
+py_binary(
+    name = "merge_changelog",
+    srcs = ["merge_changelog.py"],
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    deps = [
+        "//tools/private/release:changelog_news",
+    ],
+)
+
+genrule(
+    name = "merged_changelog",
+    srcs = [
+        "//:CHANGELOG.md",
+        "//news:news_files",
+    ],
+    outs = ["changelog.md"],
+    cmd = "$(location :merge_changelog) --changelog $(location //:CHANGELOG.md) --news-dir news --output $@",
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    tools = [":merge_changelog"],
+)
 
 # See README.md for instructions. Short version:
 # * `bazel run //docs:docs.serve` in a separate terminal
@@ -60,8 +82,8 @@ sphinx_docs(
         "html",
     ],
     renamed_srcs = {
-        "//:CHANGELOG.md": "changelog.md",
         "//:CONTRIBUTING.md": "contributing.md",
+        ":merged_changelog": "changelog.md",
         "@sphinxdocs//sphinxdocs/inventories:bazel_inventory": "bazel_inventory.inv",
     },
     sphinx = ":sphinx-build",

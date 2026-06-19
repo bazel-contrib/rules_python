@@ -5,18 +5,20 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.private.release import release as releaser
+from tools.private.release import changelog_news, release as releaser
 
 _UNRELEASED_TEMPLATE = """
 <!--
 BEGIN_UNRELEASED_TEMPLATE
 
-{#v0-0-0}
+{#unreleased}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 END_UNRELEASED_TEMPLATE
 -->
@@ -39,24 +41,24 @@ class ReleaserTest(unittest.TestCase):
 
 {_UNRELEASED_TEMPLATE}
 
-{{#v0-0-0}}
+{{#unreleased}}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-{{#v0-0-0-changed}}
+{{#unreleased-changed}}
 ### Changed
 * Nothing changed
 
-{{#v0-0-0-fixed}}
+{{#unreleased-fixed}}
 ### Fixed
 * Nothing fixed
 
-{{#v0-0-0-added}}
+{{#unreleased-added}}
 ### Added
 * Nothing added
 
-{{#v0-0-0-removed}}
+{{#unreleased-removed}}
 ### Removed
 * Nothing removed.
 """
@@ -64,7 +66,7 @@ class ReleaserTest(unittest.TestCase):
         changelog_path.write_text(changelog)
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "1.23.4",
             "2025-01-01",
             changelog_path=changelog_path,
@@ -94,24 +96,24 @@ class ReleaserTest(unittest.TestCase):
 
 {_UNRELEASED_TEMPLATE}
 
-{{#v0-0-0}}
+{{#unreleased}}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-{{#v0-0-0-removed}}
+{{#unreleased-removed}}
 ### Removed
 * Nothing removed.
 
-{{#v0-0-0-changed}}
+{{#unreleased-changed}}
 ### Changed
 * Nothing changed.
 
-{{#v0-0-0-fixed}}
+{{#unreleased-fixed}}
 ### Fixed
 * Nothing fixed.
 
-{{#v0-0-0-added}}
+{{#unreleased-added}}
 ### Added
 * Nothing added.
 
@@ -140,7 +142,7 @@ class ReleaserTest(unittest.TestCase):
         (news_dir / "invalid_name.md").write_text("Should be ignored")
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "3.0.0",
             "2026-06-16",
             changelog_path=changelog_path,
@@ -163,10 +165,12 @@ class ReleaserTest(unittest.TestCase):
         )
 
         # 3. A fresh active Unreleased section should be present
-        self.assertIn("{#v0-0-0}", new_content)
+        self.assertIn("{#unreleased}", new_content)
         self.assertIn("## Unreleased", new_content)
         self.assertIn(
-            "Unreleased changes are tracked as individual files in the [news/](./news) directory.",
+            "Unreleased changes are tracked as individual files in the [news/](./news)\n"
+            "directory, or view the [latest generated\n"
+            "changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).",
             new_content,
         )
 
@@ -202,12 +206,14 @@ class ReleaserTest(unittest.TestCase):
 
 {_UNRELEASED_TEMPLATE}
 
-{{#v0-0-0}}
+{{#unreleased}}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {{#v2-0-2}}
 ## [2.0.2] - 2026-05-14
@@ -232,7 +238,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
         (news_dir / "5.fixed.md").write_text("No subcategory A")
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "3.0.0",
             "2026-06-16",
             changelog_path=changelog_path,
@@ -278,12 +284,14 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 
 {_UNRELEASED_TEMPLATE}
 
-{{#v0-0-0}}
+{{#unreleased}}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {{#v2-0-2}}
 ## [2.0.2] - 2026-05-14
@@ -311,7 +319,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
             # Act & Assert
             # It should raise IOError
             with self.assertRaises(IOError):
-                releaser.update_changelog(
+                changelog_news.update_changelog(
                     "3.0.0",
                     "2026-06-16",
                     changelog_path=changelog_path,
@@ -333,12 +341,14 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 
 {_UNRELEASED_TEMPLATE}
 
-{{#v0-0-0}}
+{{#unreleased}}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {{#v2-0-3}}
 ## [2.0.3] - 2026-06-15
@@ -365,7 +375,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
         (news_dir / "2.added.md").write_text("(toolchains) New feature")
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "2.0.3",
             "2026-06-15",
             changelog_path=changelog_path,
