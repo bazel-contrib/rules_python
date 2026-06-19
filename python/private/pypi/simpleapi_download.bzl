@@ -171,6 +171,8 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
 
     found_on_index = {}
     for index_url, result in results.items():
+        if not result.success:
+            continue
         for pkg in sources:
             if pkg in found_on_index:
                 # We have already found the package, skip searching for it in
@@ -281,7 +283,7 @@ def _read_index_result(ctx, *, result, output, cache, cache_key, parse_index):
     content = ctx.read(output)
 
     output = parse_simpleapi_html(content = content, parse_index = parse_index)
-    if output:
+    if output != None:
         cache.setdefault(cache_key, output)
         return struct(success = True, output = output)
     else:

@@ -18,8 +18,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:pypi_cache.bzl", "pypi_cache")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:simpleapi_download.bzl", "simpleapi_download")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/pypi/extension:pip_parse.bzl", _parse = "pip_parse")
@@ -27,7 +27,7 @@ load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
-def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, mock_files = None):
+def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, mock_files = None, **kwargs):
     return mocks.mctx(
         os_name = os_name,
         arch_name = arch_name,
@@ -38,6 +38,7 @@ simple==0.0.1 \
     --hash=sha256:deadbeef \
     --hash=sha256:deadbaaf""",
         },
+        **kwargs
     )
 
 def hub_builder(
@@ -49,7 +50,8 @@ def hub_builder(
         whl_overrides = {},
         simpleapi_download_fn = None,
         log_printer = None,
-        available_interpreters = {}):
+        available_interpreters = {},
+        simpleapi_cache = None):
     builder = _hub_builder(
         name = "pypi",
         module_name = "unit_test",
@@ -96,7 +98,7 @@ def hub_builder(
             "unit-test",
             printer = log_printer,
         ),
-        simpleapi_cache = {},
+        simpleapi_cache = simpleapi_cache or pypi_cache(),
     )
     self = struct(
         build = lambda: env.expect.that_struct(
@@ -244,36 +246,23 @@ def _test_simple_extras_vs_no_extras(env):
 _tests.append(_test_simple_extras_vs_no_extras)
 
 def _test_simple_extras_vs_no_extras_simpleapi(env):
-    def mockread_simpleapi(*_, parse_index, **__):
-        if parse_index:
-            content = """\
-    <a href="/simple/>simple</a><br/>
-"""
-        else:
-            content = """\
-    <a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
-"""
-        return struct(
-            output = parse_simpleapi_html(
-                content = content,
-                parse_index = parse_index,
-            ),
-            success = True,
-        )
-
     builder = hub_builder(
         env,
-        simpleapi_download_fn = lambda *args, **kwargs: simpleapi_download(
-            read_simpleapi = mockread_simpleapi,
-            *args,
-            **kwargs
-        ),
+        simpleapi_download_fn = simpleapi_download,
     )
     builder.pip_parse(
         mocks.mctx(
             mock_files = {
                 "darwin.txt": "simple[foo]==0.0.1 --hash=sha256:deadbeef",
                 "win.txt": "simple==0.0.1 --hash=sha256:deadbeef",
+            },
+            mock_downloads = {
+                "https://example.com/": """\
+<a href="/simple/">simple</a>
+""",
+                "https://example.com/simple/": """\
+<a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">simple-0.0.1-py3-none-any.whl</a>
+""",
             },
         ),
         _parse(
@@ -484,13 +473,7 @@ def _test_simple_with_markers(env):
 _tests.append(_test_simple_with_markers)
 
 def _test_torch_experimental_index_url(env):
-    def mockread_simpleapi(*_, parse_index, **__):
-        if parse_index:
-            content = """\
-    <a href="/ignored/">torch</a>
-"""
-        else:
-            content = """\
+    torch_index_html = """\
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-linux_x86_64.whl#sha256=833490a28ac156762ed6adaa7c695879564fa2fd0dc51bcf3fdb2c7b47dc55e6">torch-2.4.1+cpu-cp310-cp310-linux_x86_64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp310-cp310-win_amd64.whl#sha256=1dd062d296fb78aa7cfab8690bf03704995a821b5ef69cfc807af5c0831b4202">torch-2.4.1+cpu-cp310-cp310-win_amd64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=2b03e20f37557d211d14e3fb3f71709325336402db132a1e0dd8b47392185baf">torch-2.4.1+cpu-cp311-cp311-linux_x86_64.whl</a><br/>
@@ -512,14 +495,6 @@ def _test_torch_experimental_index_url(env):
     <a href="/whl/cpu/torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=1495132f30f722af1a091950088baea383fe39903db06b20e6936fd99402803e">torch-2.4.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl</a><br/>
     <a href="/whl/cpu/torch-2.4.1-cp39-none-macosx_11_0_arm64.whl#sha256=a38de2803ee6050309aac032676536c3d3b6a9804248537e38e098d0e14817ec">torch-2.4.1-cp39-none-macosx_11_0_arm64.whl</a><br/>
 """
-
-        return struct(
-            output = parse_simpleapi_html(
-                content = content,
-                parse_index = parse_index,
-            ),
-            success = True,
-        )
 
     builder = hub_builder(
         env,
@@ -555,14 +530,16 @@ def _test_torch_experimental_index_url(env):
             "python_3_12_host": "unit_test_interpreter_target",
         },
         minor_mapping = {"3.12": "3.12.19"},
-        simpleapi_download_fn = lambda *args, **kwargs: simpleapi_download(
-            read_simpleapi = mockread_simpleapi,
-            *args,
-            **kwargs
-        ),
+        simpleapi_download_fn = simpleapi_download,
     )
     builder.pip_parse(
         mocks.mctx(
+            mock_downloads = {
+                "https://torch.index/": """\
+<a href="/ignored/">torch</a>
+""",
+                "https://torch.index/torch/": torch_index_html,
+            },
             mock_files = {
                 "universal.txt": """\
 torch==2.4.1 ; platform_machine != 'x86_64' \
@@ -732,33 +709,37 @@ simple==0.0.1 --hash=sha256:deadb00f
     ]:
         got_kwargs = {}
 
-        def mock_simpleapi_download(*_, **kwargs):
+        def mock_simpleapi_download(*args, **kwargs):
             got_kwargs.update(kwargs)
-            return {
-                "simple": struct(
-                    whls = {
-                        "deadb00f": struct(
-                            yanked = None,
-                            filename = "simple-0.0.1-py3-none-any.whl",
-                            sha256 = "deadb00f",
-                            url = test.expect_url,
-                        ),
-                    },
-                    sdists = {},
-                    sha256s_by_version = {},
-                    index_url = test.expect_index_url,
-                ),
-            }
+            return simpleapi_download(*args, **kwargs)
 
+        cache = pypi_cache()
         builder = hub_builder(
             env,
             simpleapi_download_fn = mock_simpleapi_download,
+            simpleapi_cache = cache,
         )
+
+        mock_downloads = {
+            test.expect_index_url + "/": """\
+<a href="/simple/">simple</a>
+""",
+            test.expect_index_url + "/simple/": """\
+<a href="{}#sha256=deadb00f">simple-0.0.1-py3-none-any.whl</a>
+""".format(test.expect_url),
+        }
+        for extra in test.experimental_extra_index_urls:
+            mock_downloads[extra.rstrip("/") + "/"] = ""
+        if "extra1" in test.requirements_txt:
+            mock_downloads["https://extra1.example.com/simple/"] = ""
+            mock_downloads["https://extra2.example.com/simple/"] = ""
+
         builder.pip_parse(
             _mock_mctx(
                 mock_files = {
                     "requirements.txt": test.requirements_txt,
                 },
+                mock_downloads = mock_downloads,
             ),
             _parse(
                 hub_name = "pypi",
@@ -790,7 +771,7 @@ simple==0.0.1 --hash=sha256:deadb00f
                 "config_load": "@pypi//:config.bzl",
                 "dep_template": "@pypi//{name}:{target}",
                 "filename": "simple-0.0.1-py3-none-any.whl",
-                "index_url": test.expect_index_url,
+                "index_url": test.expect_index_url + "/simple/",
                 "requirement": "simple==0.0.1",
                 "sha256": "deadb00f",
                 "urls": [test.expect_url],
@@ -810,7 +791,7 @@ simple==0.0.1 --hash=sha256:deadb00f
                     "simple": ["0.0.1"],
                 },
             ),
-            "cache": {},
+            "cache": cache,
             "parallel_download": False,
         })
 
@@ -913,68 +894,17 @@ simple==0.0.3 \
 _tests.append(_test_download_only_multiple)
 
 def _test_simple_get_index(env):
-    got_simpleapi_download_args = []
     got_simpleapi_download_kwargs = {}
 
-    def mocksimpleapi_download(*args, **kwargs):
-        got_simpleapi_download_args.extend(args)
+    def mock_simpleapi_download(*args, **kwargs):
         got_simpleapi_download_kwargs.update(kwargs)
-        return {
-            "plat_pkg": struct(
-                whls = {
-                    "deadb44f": struct(
-                        yanked = None,
-                        filename = "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
-                        sha256 = "deadb44f",
-                        url = "example2.org/index/plat_pkg/",
-                    ),
-                },
-                sdists = {},
-                sha256s_by_version = {
-                    "0.0.4": ["deadb44f"],
-                },
-                index_url = "https://pypi.org/simple",
-            ),
-            "simple": struct(
-                whls = {
-                    "deadb00f": struct(
-                        yanked = None,
-                        filename = "simple-0.0.1-py3-none-any.whl",
-                        sha256 = "deadb00f",
-                        url = "example2.org",
-                    ),
-                },
-                sdists = {
-                    "deadbeef": struct(
-                        yanked = None,
-                        filename = "simple-0.0.1.tar.gz",
-                        sha256 = "deadbeef",
-                        url = "example.org",
-                    ),
-                },
-                index_url = "https://pypi.org/simple",
-            ),
-            "some_other_pkg": struct(
-                whls = {
-                    "deadb33f": struct(
-                        yanked = None,
-                        filename = "some-other-pkg-0.0.1-py3-none-any.whl",
-                        sha256 = "deadb33f",
-                        url = "example2.org/index/some_other_pkg/",
-                    ),
-                },
-                sdists = {},
-                sha256s_by_version = {
-                    "0.0.1": ["deadb33f"],
-                    "0.0.3": ["deadbeef"],
-                },
-                index_url = "https://with_index_url",
-            ),
-        }
+        return simpleapi_download(*args, **kwargs)
 
+    cache = pypi_cache()
     builder = hub_builder(
         env,
-        simpleapi_download_fn = mocksimpleapi_download,
+        simpleapi_download_fn = mock_simpleapi_download,
+        simpleapi_cache = cache,
         whl_overrides = {
             "direct_without_sha": {
                 "my_patch": 1,
@@ -998,11 +928,31 @@ direct_sdist_without_sha @ some-archive/any-name.tar.gz
 git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
 """,
             },
+            mock_downloads = {
+                "https://pypi.org/simple/": """\
+<a href="/plat-pkg/">plat-pkg</a>
+<a href="/simple/">simple</a>
+""",
+                "https://pypi.org/simple/plat-pkg/": """\
+<a href="https://pypi.org/files/plat_pkg-0.0.4-py3-none-linux_x86_64.whl#sha256=deadb44f">plat_pkg-0.0.4-py3-none-linux_x86_64.whl</a>
+""",
+                "https://pypi.org/simple/simple/": """\
+<a href="https://pypi.org/files/simple-0.0.1-py3-none-any.whl#sha256=deadb00f">simple-0.0.1-py3-none-any.whl</a>
+<a href="https://pypi.org/files/simple-0.0.1.tar.gz#sha256=deadbeef">simple-0.0.1.tar.gz</a>
+""",
+                "https://with_index_url/": """\
+<a href="/some-other-pkg/">some-other-pkg</a>
+""",
+                "https://with_index_url/some-other-pkg/": """\
+<a href="https://with_index_url/files/some_other_pkg-0.0.1-py3-none-any.whl#sha256=deadb33f">some_other_pkg-0.0.1-py3-none-any.whl</a>
+""",
+            },
         ),
         _parse(
             hub_name = "pypi",
             python_version = "3.15",
             requirements_lock = "requirements.txt",
+            experimental_extra_index_urls = ["https://with_index_url"],
             extra_pip_args = [
                 "--extra-args-for-sdist-building",
             ],
@@ -1072,7 +1022,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             ],
         },
         "plat_pkg": {
-            "pypi_315_plat_py3_none_linux_x86_64_deadb44f": [
+            "pypi_315_plat_pkg_py3_none_linux_x86_64_deadb44f": [
                 whl_config_setting(
                     target_platforms = [
                         "cp315_linux_x86_64",
@@ -1097,7 +1047,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             ],
         },
         "some_other_pkg": {
-            "pypi_315_some_py3_none_any_deadb33f": [
+            "pypi_315_some_other_pkg_py3_none_any_deadb33f": [
                 whl_config_setting(
                     target_platforms = (
                         "cp315_linux_aarch64",
@@ -1160,23 +1110,32 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "pip_fallback==0.0.1",
         },
-        "pypi_315_plat_py3_none_linux_x86_64_deadb44f": {
+        "pypi_315_plat_pkg_py3_none_linux_x86_64_deadb44f": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
-            "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
-            "index_url": "https://pypi.org/simple",
+            "filename": "plat_pkg-0.0.4-py3-none-linux_x86_64.whl",
+            "index_url": "https://pypi.org/simple/plat-pkg/",
             "requirement": "plat_pkg==0.0.4",
             "sha256": "deadb44f",
-            "urls": ["example2.org/index/plat_pkg/"],
+            "urls": ["https://pypi.org/files/plat_pkg-0.0.4-py3-none-linux_x86_64.whl"],
         },
         "pypi_315_simple_py3_none_any_deadb00f": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
-            "index_url": "https://pypi.org/simple",
+            "index_url": "https://pypi.org/simple/simple/",
             "requirement": "simple==0.0.1",
             "sha256": "deadb00f",
-            "urls": ["example2.org"],
+            "urls": ["https://pypi.org/files/simple-0.0.1-py3-none-any.whl"],
+        },
+        "pypi_315_some_other_pkg_py3_none_any_deadb33f": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "some_other_pkg-0.0.1-py3-none-any.whl",
+            "index_url": "https://with_index_url/some-other-pkg/",
+            "requirement": "some_other_pkg==0.0.1",
+            "sha256": "deadb33f",
+            "urls": ["https://with_index_url/files/some_other_pkg-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_some_pkg_py3_none_any_deadbaaf": {
             "config_load": "@pypi//:config.bzl",
@@ -1186,15 +1145,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "sha256": "deadbaaf",
             "urls": ["example-direct.org/some_pkg-0.0.1-py3-none-any.whl"],
         },
-        "pypi_315_some_py3_none_any_deadb33f": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
-            "index_url": "https://with_index_url",
-            "requirement": "some_other_pkg==0.0.1",
-            "sha256": "deadb33f",
-            "urls": ["example2.org/index/some_other_pkg/"],
-        },
     })
     pypi.extra_aliases().contains_exactly({})
     env.expect.that_dict(got_simpleapi_download_kwargs).contains_exactly(
@@ -1202,7 +1152,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "attr": struct(
                 auth_patterns = {},
                 envsubst = {},
-                extra_index_urls = [],
+                extra_index_urls = ["https://with_index_url"],
                 index_url = "https://pypi.org/simple",
                 index_url_overrides = {},
                 netrc = None,
@@ -1213,7 +1163,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
                     "some_other_pkg": ["0.0.1"],
                 },
             ),
-            "cache": {},
+            "cache": cache,
             "parallel_download": False,
         },
     )

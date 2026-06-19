@@ -1,5 +1,12 @@
 """Mocks for repository_ctx, module_ctx, and File objects."""
 
+def _to_path_str(x):
+    if hasattr(x, "_path"):
+        return x._path
+    if hasattr(x, "path"):
+        return x.path
+    return str(x)
+
 def _path_new(path, mock_files = None):
     """Create a mock path object.
 
@@ -104,7 +111,7 @@ def _module_new(name, *, is_root = False, **tags):
 
 def _mctx_read(self, x, watch = None):
     _ = watch  # @unused
-    path_str = x._path if hasattr(x, "_path") else str(x)
+    path_str = _to_path_str(x)
     if path_str not in self.mock_files:
         fail("File not found in mock_files: " + path_str)
     return self.mock_files[path_str]
@@ -123,7 +130,7 @@ def _get_download_file_name(url, output = ""):
         {type}`string` The file name.
     """
     if output:
-        return str(output)
+        return _to_path_str(output)
     return str(url).split("?")[0].split("/")[-1]
 
 def _mctx_download(
@@ -251,6 +258,7 @@ def _mctx_new(
         os = struct(
             name = os_name,
             arch = arch_name,
+            environ = environ,
         ),
         modules = list(modules),
         path = lambda *a, **k: _mctx_path(self, *a, **k),
@@ -262,7 +270,7 @@ def _mctx_new(
     return self
 
 def _rctx_read(self, x):
-    path_str = x._path if hasattr(x, "_path") else str(x)
+    path_str = _to_path_str(x)
     if path_str not in self.mock_files:
         fail("File not found in mock_files: " + path_str)
 
@@ -286,11 +294,11 @@ def _rctx_path(self, x):
 
 def _rctx_file(self, path, content = "", executable = True, legacy_utf8 = True):
     _ = executable, legacy_utf8  # @unused
-    self.mock_files[str(path)] = content
+    self.mock_files[_to_path_str(path)] = content
 
 def _rctx_template(self, path, template, substitutions = {}, executable = True):
     _ = executable  # @unused
-    template_str = str(template)
+    template_str = _to_path_str(template)
     if template_str not in self.mock_files:
         fail("Template file not found: " + template_str)
 
@@ -298,7 +306,7 @@ def _rctx_template(self, path, template, substitutions = {}, executable = True):
     for key, value in substitutions.items():
         content = content.replace(key, value)
 
-    self.mock_files[str(path)] = content
+    self.mock_files[_to_path_str(path)] = content
 
 def _rctx_which(self, program):
     prog_str = str(program)
@@ -439,7 +447,7 @@ def _rctx_execute(
     return struct(return_code = 0, stdout = "", stderr = "")
 
 def _rctx_symlink(self, target, link_name):
-    self.mock_files[str(link_name)] = {"target": str(target), "type": "symlink"}
+    self.mock_files[_to_path_str(link_name)] = {"target": _to_path_str(target), "type": "symlink"}
 
 def _rctx_new(
         attr = None,
@@ -486,6 +494,7 @@ def _rctx_new(
         os = struct(
             name = os_name,
             arch = arch_name,
+            environ = environ,
         ),
         os_environ = environ,
         path = lambda *a, **k: _rctx_path(self, *a, **k),
