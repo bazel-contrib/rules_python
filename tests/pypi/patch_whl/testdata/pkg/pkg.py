@@ -1,0 +1,2 @@
+PATCHED = False
+DATA = "hello"
