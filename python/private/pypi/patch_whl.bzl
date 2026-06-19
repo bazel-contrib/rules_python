@@ -236,7 +236,7 @@ def _repack_whl_windows(rctx, *, output):
     cmd = (
         "$files = Get-ChildItem -Path . -Exclude 'tmp.zip', '{output}'; " +
         "Compress-Archive -Path $files -DestinationPath 'tmp.zip' -Force; " +
-        "Move-Item -Path 'tmp.zip' -DestinationPath '{output}' -Force"
+        "Move-Item -Path 'tmp.zip' -Destination '{output}' -Force"
     ).format(output = str(output))
     repo_utils.execute_checked(
         rctx,
