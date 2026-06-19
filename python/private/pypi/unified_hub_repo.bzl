@@ -1,7 +1,9 @@
 """Repository rule for creating the Unified PyPI Hub."""
 
+load("//python/private:text_util.bzl", "render")
+
 _ROOT_BUILD_TMPL = """\
-load("@rules_python//python/private/pypi:setup_unified_hub.bzl", "define_pypi_hub_flag_config_settings")
+load("@rules_python//python/private/pypi:unified_hub_setup.bzl", "define_pypi_hub_flag_config_settings")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,7 +14,7 @@ define_pypi_hub_flag_config_settings(
 """
 
 _PKG_BUILD_TMPL = """\
-load("@rules_python//python/private/pypi:setup_unified_hub.bzl", "define_pypi_package_targets")
+load("@rules_python//python/private/pypi:unified_hub_setup.bzl", "define_pypi_package_targets")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -27,7 +29,7 @@ define_pypi_package_targets(
 
 def _unified_hub_repo_impl(rctx):
     hubs = rctx.attr.hubs
-    default_hub = rctx.attr.default_hub
+    default_hub = rctx.attr.default_hub or None
 
     # 1. Generate Root BUILD.bazel with shared config settings
     rctx.file(
@@ -49,7 +51,7 @@ def _unified_hub_repo_impl(rctx):
         rctx.file(
             pkg_name + "/BUILD.bazel",
             _PKG_BUILD_TMPL.format(
-                default_hub = '"%s"' % default_hub if default_hub else "None",
+                default_hub = render.str(default_hub),
                 extra_aliases = extra_aliases,
                 hubs = hubs,
                 pkg_hubs = pkg_hubs,
@@ -61,7 +63,7 @@ unified_hub_repo = repository_rule(
     implementation = _unified_hub_repo_impl,
     attrs = {
         "default_hub": attr.string(
-            doc = "The fallback PyPI hub to use when no hub is requested.",
+            doc = "The PyPI hub to use when no other hub's conditions match.",
         ),
         "extra_aliases": attr.string_list_dict(
             doc = "Dictionary mapping 'package:alias' to a list of hubs that support it.",

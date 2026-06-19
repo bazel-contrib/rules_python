@@ -146,7 +146,7 @@ bzl_library(
         ":platform_bzl",
         ":pypi_cache_bzl",
         ":simpleapi_download_bzl",
-        ":unified_hub_repository_bzl",
+        ":unified_hub_repo_bzl",
         ":whl_library_bzl",
         "//python/private:auth_bzl",
         "//python/private:normalize_name_bzl",

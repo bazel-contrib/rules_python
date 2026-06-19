@@ -24,14 +24,14 @@ _STANDARD_ALIASES = [
 ]
 
 def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub = None):
-    """Defines the alias and missing package error targets for a PyPI package subpackage.
+    """Define the targets for a PyPI package in the unified PyPI hub.
 
     Args:
-        name: normalized PyPI package name, serving as the main apparent target name.
-        pkg_hubs: list of hubs that contain this standard package.
+        name: normalized PyPI package name, serving as the main target name.
+        pkg_hubs: list of hubs that contain this package.
         extra_aliases: dict mapping extra alias names to lists of hubs that support them.
         hubs: list of all concrete hub names.
-        default_hub: optional fallback hub name.
+        default_hub: the hub to use by default.
     """
     pkg_name = name
 
@@ -47,8 +47,10 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
     for alias_name in all_aliases:
         select_map = {}
         for hub in hubs:
-            is_supported = (alias_name in _STANDARD_ALIASES and hub in pkg_hubs) or \
-                           (alias_name not in _STANDARD_ALIASES and hub in extra_aliases.get(alias_name, []))
+            is_supported = (
+                (alias_name in _STANDARD_ALIASES and hub in pkg_hubs) or
+                (alias_name not in _STANDARD_ALIASES and hub in extra_aliases.get(alias_name, []))
+            )
 
             if is_supported:
                 select_map["//:_is_pypi_hub_" + hub] = "@{hub}//{pkg}:{alias}".format(
@@ -66,9 +68,11 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
                 select_map["//:_is_pypi_hub_" + hub] = ":{}".format(err_target)
 
         # //conditions:default fallback
-        default_supported = default_hub and \
-                            ((alias_name in _STANDARD_ALIASES and default_hub in pkg_hubs) or
-                             (alias_name not in _STANDARD_ALIASES and default_hub in extra_aliases.get(alias_name, [])))
+        default_supported = (
+            default_hub and
+            ((alias_name in _STANDARD_ALIASES and default_hub in pkg_hubs) or
+             (alias_name not in _STANDARD_ALIASES and default_hub in extra_aliases.get(alias_name, [])))
+        )
 
         if default_supported:
             select_map["//conditions:default"] = "@{hub}//{pkg}:{alias}".format(
