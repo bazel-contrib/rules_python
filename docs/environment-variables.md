@@ -151,7 +151,7 @@ When `1`, debug information about coverage behavior is printed to stderr.
 
 ## Removed Environment Variables
 
-:::{versionremoved} VERSION_NEXT_FEATURE
+:::{versionremoved} 2.1.0
 The following environment variables were removed:
 
 * `RULES_PYTHON_ENABLE_PYSTAR`: Used to enable the Starlark implementation of

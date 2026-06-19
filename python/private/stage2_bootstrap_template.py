@@ -406,7 +406,7 @@ source =
             yield
         finally:
             cov.stop()
-            lcov_path = os.path.join(coverage_dir, "pylcov.dat")
+            lcov_path = os.path.join(coverage_dir, "pylcov_{}.dat".format(unique_id))
             print_verbose_coverage("generating lcov from:", lcov_path)
             cov.lcov_report(
                 outfile=lcov_path,

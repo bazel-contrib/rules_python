@@ -105,9 +105,12 @@ def _module_new(name, *, is_root = False, **tags):
 def _mctx_read(self, x, watch = None):
     _ = watch  # @unused
     path_str = x._path if hasattr(x, "_path") else str(x)
-    if path_str not in self.mock_files:
-        fail("File not found in mock_files: " + path_str)
-    return self.mock_files[path_str]
+    if path_str in self.mock_files:
+        return self.mock_files[path_str]
+    for k, v in self.mock_files.items():
+        if k in path_str or k in path_str.replace(":", "/"):
+            return v
+    fail("File not found in mock_files: " + path_str)
 
 def _mctx_path(self, x):
     return _path_new(str(x), self.mock_files)

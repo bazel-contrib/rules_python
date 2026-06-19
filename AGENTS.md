@@ -15,6 +15,7 @@ Ask for user input and provide a justificaiton if trying to violate them.
 
 * NEVER run `bazel clean --expunge`.
 * Once a PR is created, do not amend or rebase.
+* Do not add Bazel copyright to new or existing files.
 
 ## Style and conventions
 
@@ -30,6 +31,11 @@ into the sentence, not verbatim.
 
 When adding `{versionadded}` or `{versionchanged}` sections, add them add the
 end of the documentation text.
+
+### PR Updates
+
+Once a PR is created, create new commits and merges. Don't use rebase or amend
+because it interferes with code review comments.
 
 ### PR descriptions
 
@@ -150,6 +156,8 @@ This repository contains 3 Bazel bzlmod modules.
  * `gazelle/` is for the `@rules_python_gazelle_plugin` module.
  * All other code is part of `@rules_python`.
 
+`tests/support/` contains utility code and helpers for testing.
+
 
 `python/config_settings/BUILD.bazel` contains build flags that are part of the
 public API. DO NOT add, remove, or modify these build flags unless specifically
@@ -207,3 +215,24 @@ e.g.
 ```
 load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility
 ```
+
+### CI Failure Inspection
+
+When inspecting CI failures, if the failure is due to a network error
+downloading a repository, check if that rule set is mirrored on
+mirror.bazel.build. If so, add it to the downloader config.
+
+### CI Flakiness and Monitoring
+
+CI is known to have flakey network issues. When submitting or updating a PR,
+start a background agent that continuously monitors the latest build of a PR and
+checks for flakey network errors (e.g., 504 gateway errors).
+
+If Buildkite permissions allow, retry failures and use available Buildkite
+skills. If permissions do not allow, modify `.bazelrc` to set flags (such as
+`--http_timeout_scaling` or `--experimental_repository_downloader_retries`) to
+make downloads retry more.
+
+If downloads fail for a dependency, check if that dependency is available on
+mirror.bazel.build and, if so, add it to downloader_config.cfg if it isn't
+already there.
