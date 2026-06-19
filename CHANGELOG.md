@@ -20,20 +20,6 @@ A brief description of the categories of changes:
 * Particular sub-systems are identified using parentheses, e.g. `(bzlmod)` or
   `(docs)`.
 
-<!--
-BEGIN_UNRELEASED_TEMPLATE
-
-{#unreleased}
-## Unreleased
-
-[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
-
-Unreleased changes are tracked as individual files in the [news/](./news)
-directory, or view the [latest generated
-changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
-
-END_UNRELEASED_TEMPLATE
--->
 {#unreleased}
 ## Unreleased
 

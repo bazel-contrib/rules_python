@@ -3,6 +3,14 @@
 import pathlib
 import re
 
+_UNRELEASED_TEMPLATE_BODY = """## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html)."""
+
 
 def _get_sub_category(content):
     """Extracts the sub-category in parentheses from the entry content."""
@@ -113,17 +121,7 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
             r"\{#v" + re.escape(header_version) + r"-(?P<cat>[a-z]+)\}"
         )
 
-    # Safety fix for duplicate anchors (like {#v0-0-0} in template vs active)
-    # We split the file by the template end marker if it exists, and only search/replace in the post-template part.
-    template_end = re.search(r"END_UNRELEASED_TEMPLATE\s*\n-->", changelog_content)
-    if template_end:
-        pre_content = changelog_content[: template_end.end()]
-        post_content = changelog_content[template_end.end() :]
-    else:
-        pre_content = ""
-        post_content = changelog_content
-
-    version_exists = version_anchor in post_content
+    version_exists = version_anchor in changelog_content
 
     if version_exists:
         if not entries and version != "unreleased":
@@ -135,13 +133,13 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
             return
 
         print(f"Version {version} already exists in changelog. Merging news entries...")
-        # Extract the existing version block from post_content
+        # Extract the existing version block
         pattern = (
             r"(?P<anchor>"
             + re.escape(version_anchor)
-            + r")(?P<content>.*?)(?=\n\s*\{#v(?!0-0-0)\d+-\d+-\d+\}|\Z)"
+            + r")(?P<content>.*?)(?=\n\s*\{#v\d+-\d+-\d+\}|\Z)"
         )
-        match = re.search(pattern, post_content, re.DOTALL)
+        match = re.search(pattern, changelog_content, re.DOTALL)
         if not match:
             raise RuntimeError(
                 f"Could not find content for existing version {version} in CHANGELOG.md"
@@ -157,7 +155,7 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
                 content_block,
             )
 
-        # category_anchor_pattern is defined at the top
+        # Parse existing categories
         match_cat = re.search(category_anchor_pattern, content_block)
         if match_cat:
             header_end_idx = match_cat.start()
@@ -167,7 +165,6 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
             header_str = content_block
             categories_str = ""
 
-        # Parse existing categories
         existing_entries = {}
         if categories_str:
             cat_matches = list(re.finditer(category_anchor_pattern, categories_str))
@@ -234,82 +231,51 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
                 header_str.rstrip() + "\n\nNo notable unreleased changes.\n"
             )
 
-        # Replace in post_content
-        new_post_content = re.sub(
+        # Replace in changelog_content
+        new_content = re.sub(
             pattern,
             r"\g<anchor>\n" + new_release_block.strip() + "\n",
-            post_content,
+            changelog_content,
+            count=1,
             flags=re.DOTALL,
         )
-        output_path.write_text(pre_content + new_post_content, encoding="utf-8")
+        output_path.write_text(new_content, encoding="utf-8")
 
     else:
-        if entries:
-            print(
-                f"Version {version} does not exist in changelog. Creating new"
-                " release section from news entries..."
+        if not entries:
+            raise RuntimeError(
+                f"Version {version} does not exist in changelog and no news"
+                " entries were found. Releasing without news entries is not"
+                " supported."
             )
-            # Extract template
-            template_match = re.search(
-                r"BEGIN_UNRELEASED_TEMPLATE\s*\n(.*?)\n\s*END_UNRELEASED_TEMPLATE",
-                changelog_content,
-                re.DOTALL,
+
+        print(
+            f"Version {version} does not exist in changelog. Creating new"
+            " release section from news entries..."
+        )
+        new_release_block = generate_release_block(version, release_date, entries)
+        replacement = (
+            f"{{#unreleased}}\n{_UNRELEASED_TEMPLATE_BODY}\n\n{new_release_block}\n"
+        )
+
+        # Replace the active Unreleased section (from {#unreleased} to the first release anchor)
+        pattern = (
+            r"(?P<anchor>\{#unreleased\})(?P<content>.*?)(?=\n\s*\{#v\d+-\d+-\d+\}|\Z)"
+        )
+
+        if not re.search(pattern, changelog_content, re.DOTALL):
+            raise RuntimeError(
+                "Could not find active Unreleased section to replace in CHANGELOG.md"
             )
-            if not template_match:
-                raise RuntimeError(
-                    "Could not find BEGIN_UNRELEASED_TEMPLATE in CHANGELOG.md"
-                )
 
-            unreleased_template = template_match.group(1).strip()
-            new_release_block = generate_release_block(version, release_date, entries)
-
-            replacement = f"{unreleased_template}\n\n{new_release_block}\n"
-
-            # Replace the active Unreleased section
-            pattern = r"(END_UNRELEASED_TEMPLATE\s*\n-->\s*\n)(.*?)(\n\s*\{#v(?!0-0-0)\d+-\d+-\d+\})"
-
-            if not re.search(pattern, changelog_content, re.DOTALL):
-                raise RuntimeError(
-                    "Could not find active Unreleased section to replace in"
-                    " CHANGELOG.md"
-                )
-
-            new_content = re.sub(
-                pattern,
-                r"\g<1>" + replacement + r"\g<3>",
-                changelog_content,
-                flags=re.DOTALL,
-            )
-            output_path.write_text(new_content, encoding="utf-8")
-        else:
-            # Fallback to old behavior
-            print(
-                f"No news entries found and version {version} does not exist."
-                " Falling back to manual changelog update..."
-            )
-            header_version = version.replace(".", "-")
-            lines = changelog_content.splitlines()
-
-            new_lines = []
-            after_template = False
-            before_already_released = True
-            for line in lines:
-                if "END_UNRELEASED_TEMPLATE" in line:
-                    after_template = True
-                if re.match("#v[1-9]-", line):
-                    before_already_released = False
-
-                if after_template and before_already_released:
-                    line = line.replace(
-                        "## Unreleased", f"## [{version}] - {release_date}"
-                    )
-                    line = line.replace("{#unreleased-", f"{{#v{header_version}-")
-                    line = line.replace("{#unreleased}", f"{{#v{header_version}}}")
-                    line = line.replace("unreleased", version)
-
-                new_lines.append(line)
-
-            output_path.write_text("\n".join(new_lines), encoding="utf-8")
+        new_content = re.sub(
+            pattern,
+            replacement,
+            changelog_content,
+            count=1,
+            flags=re.DOTALL,
+        )
+        output_path.write_text(new_content, encoding="utf-8")
 
 
 def merge_new_into_changelog(
