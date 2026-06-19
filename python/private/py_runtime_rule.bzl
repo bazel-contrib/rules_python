@@ -39,6 +39,7 @@ def _py_runtime_impl(ctx):
     runfiles = ctx.runfiles()
 
     hermetic = bool(interpreter)
+    interpreter_files_to_run = None
     if not hermetic:
         if runtime_files:
             fail("if 'interpreter_path' is given then 'files' must be empty")
@@ -46,9 +47,23 @@ def _py_runtime_impl(ctx):
             fail("interpreter_path must be an absolute path")
     else:
         interpreter_di = interpreter[DefaultInfo]
+        interpreter_file = None
 
-        if interpreter_di.files_to_run and interpreter_di.files_to_run.executable:
-            interpreter = interpreter_di.files_to_run.executable
+        if _is_singleton_depset(interpreter_di.files):
+            interpreter_file = interpreter_di.files.to_list()[0]
+
+        is_executable_source_file = (
+            interpreter_file and
+            interpreter_file.is_source and
+            interpreter_di.files_to_run and
+            interpreter_di.files_to_run.executable == interpreter_file
+        )
+
+        if is_executable_source_file:
+            # Source files Bazel treats as executable, e.g. direct file labels
+            # and filegroups: preserve historical runtime-file expansion, but
+            # do not expose a FilesToRunProvider.
+            interpreter = interpreter_file
             runfiles = runfiles.merge(interpreter_di.default_runfiles)
 
             runtime_files = depset(transitive = [
@@ -56,8 +71,22 @@ def _py_runtime_impl(ctx):
                 interpreter_di.default_runfiles.files,
                 runtime_files,
             ])
-        elif _is_singleton_depset(interpreter_di.files):
-            interpreter = interpreter_di.files.to_list()[0]
+        elif interpreter_di.files_to_run and interpreter_di.files_to_run.executable:
+            # Executable rule target: use the executable and preserve the full
+            # FilesToRunProvider so action consumers can stage its runfiles.
+            interpreter = interpreter_di.files_to_run.executable
+            interpreter_files_to_run = interpreter_di.files_to_run
+            runfiles = runfiles.merge(interpreter_di.default_runfiles)
+
+            runtime_files = depset(transitive = [
+                interpreter_di.files,
+                interpreter_di.default_runfiles.files,
+                runtime_files,
+            ])
+        elif interpreter_file:
+            # Non-executable rule with exactly one output: preserve the
+            # historical file-only interpreter behavior.
+            interpreter = interpreter_file
         else:
             fail("interpreter must be an executable target or must produce exactly one file.")
 
@@ -124,6 +153,7 @@ def _py_runtime_impl(ctx):
     py_runtime_info_kwargs.update(dict(
         implementation_name = ctx.attr.implementation_name,
         interpreter_version_info = interpreter_version_info,
+        interpreter_files_to_run = interpreter_files_to_run,
         pyc_tag = pyc_tag,
         stage2_bootstrap_template = ctx.file.stage2_bootstrap_template,
         zip_main_template = ctx.file.zip_main_template,

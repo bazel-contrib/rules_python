@@ -306,7 +306,7 @@ shortest directory path is selected. This makes `uv` read
 `[tool.uv]` settings (e.g. `no-build-isolation`,
 `exclude-dependencies`) from that `pyproject.toml`.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         ),
@@ -529,7 +529,7 @@ def lock(
             `exclude-dependencies` from that `pyproject.toml`. If no
             `pyproject.toml` is in `srcs` and no `project` is given, the
             Bazel package directory is used as fallback.
-            {versionadded}VERSION_NEXT_FEATURE
+            {versionadded} 2.1.0
         python_version: {type}`str | None` the python_version to transition to
             when locking the requirements. Defaults to the default python version
             configured by the {obj}`python` module extension.
