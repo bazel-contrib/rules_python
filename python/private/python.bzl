@@ -1231,7 +1231,7 @@ Example:
 [Manifest file format documentation](https://rules-python.readthedocs.io/en/latest/toolchains.html#manifest-file-format)
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         ),
@@ -1250,7 +1250,7 @@ Note that `/latest/` can be used in place of a specific release date (e.g., `202
 [Manifest file format documentation](https://rules-python.readthedocs.io/en/latest/toolchains.html#manifest-file-format)
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         ),
@@ -1274,7 +1274,7 @@ These settings are appended to the `target_settings` of all toolchains
 registered by the extension, including any that already have settings
 from `python.single_version_platform_override`.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         ),
@@ -1328,7 +1328,7 @@ The values in this mapping override the default values and do not replace them.
             doc = """
 SHA256 hash for the add_runtime_manifest_urls.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         ),

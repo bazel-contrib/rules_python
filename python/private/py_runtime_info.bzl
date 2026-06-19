@@ -261,7 +261,7 @@ interpreter in an action should use this field so Bazel can stage the
 interpreter together with its runfiles. This is `None` for platform runtimes
 using `interpreter_path` and for file-only interpreter targets.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         "interpreter_path": """
