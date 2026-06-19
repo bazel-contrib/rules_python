@@ -346,7 +346,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
 
 ### end of setters, below we have various functions to implement the public methods
 
-def _set_get_index_urls(self, module_ctx, pip_attr):
+def _set_get_index_urls(self, mctx, pip_attr):
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
     # form is honored when deciding whether the experimental index-url mode is
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
@@ -355,7 +355,7 @@ def _set_get_index_urls(self, module_ctx, pip_attr):
     default_index_url = envsubst(
         pip_attr.experimental_index_url,
         pip_attr.envsubst,
-        module_ctx.getenv,
+        mctx.getenv,
     ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
