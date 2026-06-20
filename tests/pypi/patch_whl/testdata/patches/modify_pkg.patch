@@ -1,0 +1,6 @@
+--- pkg.py
++++ pkg.py
+@@ -1,2 +1,2 @@
+-PATCHED = False
++PATCHED = True
+ DATA = "hello"
