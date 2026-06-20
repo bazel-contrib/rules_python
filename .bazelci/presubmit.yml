@@ -25,6 +25,8 @@ buildifier:
   bazel: 7.x
   skip_in_bazel_downstream_pipeline: "Bazel 7 required"
 .reusable_config: &reusable_config
+  environment:
+    USE_BAZEL_DIFF: "1"
   build_targets:
     - "--"
     - "..."
