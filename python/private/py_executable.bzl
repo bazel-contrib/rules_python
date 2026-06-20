@@ -1490,7 +1490,7 @@ def _get_base_runfiles_for_binary(
             """
 ======================================================================
 WARNING: Target {} is using implicit __init__.py creation.
-  This diabolic behavior is deprecated and will be removed in a
+  This diabolic behavior is deprecated and will be disabled by default in a
   future release.
   See https://github.com/bazel-contrib/rules_python/issues/2945
 
