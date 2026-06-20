@@ -94,6 +94,7 @@ sphinx_stardocs(
         "//python:py_exec_tools_info_bzl",
         "//python:py_exec_tools_toolchain_bzl",
         "//python:py_executable_info_bzl",
+        "//python:py_info_bzl",
         "//python:py_library_bzl",
         "//python:py_runtime_bzl",
         "//python:py_runtime_info_bzl",
