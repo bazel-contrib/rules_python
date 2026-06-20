@@ -250,7 +250,7 @@
     },
     "@@rules_python+//python/uv:uv.bzl%uv": {
       "general": {
-        "bzlTransitiveDigest": "46RcxJnhOapMeaxdcMm3RmVdNp1nPCewOOXoZyIbQ20=",
+        "bzlTransitiveDigest": "fXy6MwOX96XOqVP2atme3jv61A0uLjd9YtmAIYVLhYM=",
         "usagesDigest": "6yXGw7XDyXjOfqBL0SBu1YBEMMYPQzCE3jTzUCkxPgg=",
         "recordedInputs": [
           "REPO_MAPPING:rules_python+,bazel_tools bazel_tools",
