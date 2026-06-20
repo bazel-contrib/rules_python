@@ -445,14 +445,6 @@ bzl_library(
 )
 
 bzl_library(
-    name = "setup_unified_hub_bzl",
-    srcs = ["setup_unified_hub.bzl"],
-    deps = [
-        ":missing_package_bzl",
-    ],
-)
-
-bzl_library(
     name = "simpleapi_download_bzl",
     srcs = ["simpleapi_download.bzl"],
     deps = [
@@ -466,6 +458,17 @@ bzl_library(
 bzl_library(
     name = "unified_hub_repo_bzl",
     srcs = ["unified_hub_repo.bzl"],
+    deps = [
+        "//python/private:text_util_bzl",
+    ],
+)
+
+bzl_library(
+    name = "unified_hub_setup_bzl",
+    srcs = ["unified_hub_setup.bzl"],
+    deps = [
+        ":missing_package_bzl",
+    ],
 )
 
 bzl_library(
