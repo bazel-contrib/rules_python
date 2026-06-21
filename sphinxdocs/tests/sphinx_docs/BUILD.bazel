@@ -33,8 +33,8 @@ sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building
     deps = [
-        "@pypi//myst_parser",
-        "@pypi//sphinx",
+        "@dev_pip//myst_parser",
+        "@dev_pip//sphinx",
     ],
 )
 

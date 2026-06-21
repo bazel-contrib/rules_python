@@ -19,6 +19,6 @@ py_test(
     srcs = ["proto_to_markdown_test.py"],
     deps = [
         "//sphinxdocs/private:proto_to_markdown_lib",
-        "@pypi//absl_py",
+        "@dev_pip//absl_py",
     ],
 )

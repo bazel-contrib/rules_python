@@ -94,9 +94,9 @@ sphinx_build_binary(
     tags = ["manual"],  # Only needed as part of sphinx doc building
     deps = [
         "//sphinxdocs/src/sphinx_bzl",
-        "@pypi//myst_parser",
-        "@pypi//sphinx",
-        "@pypi//typing_extensions",  # Needed by sphinx_stardoc
+        "@dev_pip//myst_parser",
+        "@dev_pip//sphinx",
+        "@dev_pip//typing_extensions",  # Needed by sphinx_stardoc
     ],
 )
 
@@ -104,5 +104,5 @@ py_test(
     name = "sphinx_output_test",
     srcs = ["sphinx_output_test.py"],
     data = [":docs"],
-    deps = ["@pypi//absl_py"],
+    deps = ["@dev_pip//absl_py"],
 )
