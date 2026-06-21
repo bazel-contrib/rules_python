@@ -232,25 +232,22 @@ def build_config(
         for tag in mod.tags.default:
             platform = tag.platform
             if platform:
-                is_deletion = not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker)
-                if not is_deletion and not tag.config_settings:
-                    fail("pip.default tag for platform '%s' requires 'config_settings' attribute to be specified." % platform)
-                if is_deletion:
-                    defaults["platforms"].pop(platform, None)
-                else:
-                    specific_config = defaults["platforms"].setdefault(platform, {})
-                    _configure(
-                        specific_config,
-                        arch_name = tag.arch_name,
-                        config_settings = tag.config_settings,
-                        env = tag.env,
-                        os_name = tag.os_name,
-                        marker = tag.marker,
-                        name = platform.replace("-", "_").lower(),
-                        whl_abi_tags = tag.whl_abi_tags,
-                        whl_platform_tags = tag.whl_platform_tags,
-                        override = mod.is_root,
-                    )
+                specific_config = defaults["platforms"].setdefault(platform, {})
+                _configure(
+                    specific_config,
+                    arch_name = tag.arch_name,
+                    config_settings = tag.config_settings,
+                    env = tag.env,
+                    os_name = tag.os_name,
+                    marker = tag.marker,
+                    name = platform.replace("-", "_").lower(),
+                    whl_abi_tags = tag.whl_abi_tags,
+                    whl_platform_tags = tag.whl_platform_tags,
+                    override = mod.is_root,
+                )
+
+                if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker):
+                    defaults["platforms"].pop(platform)
 
             _configure(
                 defaults,
@@ -431,9 +428,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
         if not mod.is_root:
             continue
         for tag in mod.tags.default:
-            if default_hub != None:
-                fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
-            default_hub = tag.default_hub
+            if tag.default_hub:
+                if default_hub:
+                    fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
+                default_hub = tag.default_hub
 
     return struct(
         config = config,
@@ -459,6 +457,9 @@ def _create_unified_hub_repo(mods):
         return
 
     hubs = sorted(mods.hub_whl_map.keys())
+    if mods.default_hub and mods.default_hub not in hubs:
+        fail("default_hub '%s' is not a defined PyPI hub. Available hubs: %s" % (mods.default_hub, ", ".join(hubs)))
+
     packages = {}
     extra_aliases = {}
 

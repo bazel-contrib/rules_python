@@ -1,5 +1,6 @@
 """Integration test for Unified PyPI Hub dynamic dependency resolution."""
 
+import contextlib
 import unittest
 
 from tests.integration import runner
@@ -44,6 +45,34 @@ class UnifiedPypiTest(runner.TestCase):
             result,
             'ERROR: PyPI package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b".',
         )
+
+    @contextlib.contextmanager
+    def _temp_modify_file(self, path, new_content):
+        original_content = path.read_text()
+        path.write_text(new_content)
+        try:
+            yield
+        finally:
+            path.write_text(original_content)
+
+    def test_invalid_default_hub_fails_evaluation(self):
+        module_bazel = self.repo_root / "MODULE.bazel"
+        invalid_content = module_bazel.read_text().replace(
+            'pip.default(default_hub = "pypi_b")',
+            'pip.default(default_hub = "invalid_hub")',
+        )
+        with self._temp_modify_file(module_bazel, invalid_content):
+            # Run bazel cquery and expect it to fail during loading/extension phase
+            result = self.run_bazel("cquery", "//:test_default", check=False)
+            self.assertNotEqual(
+                result.exit_code,
+                0,
+                "Expected extension evaluation to fail due to invalid default_hub",
+            )
+            self.assert_result_matches(
+                result,
+                "default_hub 'invalid_hub' is not a defined PyPI hub",
+            )
 
 
 if __name__ == "__main__":

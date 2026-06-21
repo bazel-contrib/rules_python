@@ -44,7 +44,7 @@ def _default(
         arch_name = None,
         auth_patterns = None,
         config_settings = None,
-        default_hub = None,
+        default_hub = "",
         env = None,
         index_url = None,
         marker = None,
@@ -285,6 +285,40 @@ def _test_build_pipstar_platform(env):
     })
 
 _tests.append(_test_build_pipstar_platform)
+
+def _test_multiple_default_tags(env):
+    """Test that multiple pip.default tags do not trigger duplicate default hub failures.
+
+    Only when multiple tags explicitly define default_hub should it fail.
+    """
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                default = _default_tags_default + [
+                    _default(platform = "extra_custom_platform"),
+                ],
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+
+_tests.append(_test_multiple_default_tags)
 
 def extension_test_suite(name):
     """Create the test suite.
