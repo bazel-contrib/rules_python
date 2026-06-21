@@ -50,7 +50,8 @@ You can use the pip extension multiple times. This configuration will create
 multiple external repos that have no relation to one another and may result in
 downloading the same wheels numerous times.
 
-### Unified `@pypi` Hub for Multi-Hub Configurations
+(unified-pypi-hub)=
+## Unified `@pypi` Hub for Multi-Hub Configurations
 
 When you call the `pip` extension multiple times with different `hub_name`
 attributes, `rules_python` automatically generates a unified `@pypi` hub
@@ -65,7 +66,7 @@ consuming binary is using.
 #### Configuring the Unified Hub
 
 To configure the unified hub, define your concrete hubs as usual, and
-optionally designate a fallback default hub using the `pip.default` tag's
+optionally designate a default hub using the `pip.default` tag's
 `default_hub` attribute:
 
 ```starlark
@@ -109,6 +110,10 @@ bazel build --@rules_python//python/config_settings:pypi_hub=pypi_a //my:binary
 Shared library targets can simply depend on the unified hub (e.g.,
 `@pypi//numpy`), and the dependency will automatically resolve to the correct
 wheel version from the active hub during the build.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
+:::
 
 
 As with any repository rule or extension, if you would like to ensure that `pip_parse` is
@@ -394,10 +399,6 @@ Bazel will call this file like `cred_helper.sh get` and use the returned JSON to
 into whatever HTTP(S) request it performs against `example.com`.
 
 See the [Credential Helper Spec][cred-helper-spec] for more details.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
-:::
 
 
 [rfc7617]: https://datatracker.ietf.org/doc/html/rfc7617
