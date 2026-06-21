@@ -53,6 +53,10 @@ downloading the same wheels numerous times.
 (unified-pypi-hub)=
 ## Unified `@pypi` Hub for Multi-Hub Configurations
 
+:::{versionadded} VERSION_NEXT_FEATURE
+Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
+:::
+
 When you call the `pip` extension multiple times with different `hub_name`
 attributes, `rules_python` automatically generates a unified `@pypi` hub
 repository (unless one of your concrete hubs is explicitly named `"pypi"`).
@@ -111,9 +115,6 @@ Shared library targets can simply depend on the unified hub (e.g.,
 `@pypi//numpy`), and the dependency will automatically resolve to the correct
 wheel version from the active hub during the build.
 
-:::{versionadded} VERSION_NEXT_FEATURE
-Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
-:::
 
 
 As with any repository rule or extension, if you would like to ensure that `pip_parse` is

@@ -999,8 +999,8 @@ can be made to configure different Python versions, and will be grouped by
 the `hub_name` argument. This allows the same logical name, e.g. `@pip//numpy`
 to automatically resolve to different, Python version-specific, libraries.
 
-If you define multiple distinct hubs, a unified `@pypi` proxy repository is
-automatically generated to route dependencies dynamically. See
+A unified `@pypi` proxy repository is always generated (unless a hub is
+explicitly named "pypi") to route dependencies dynamically. See
 [Unified @pypi Hub](unified-pypi-hub) for details.
 
 pip.whl_mods:
@@ -1039,9 +1039,8 @@ This tag class reuses most of the attributes found in {bzl:obj}`pip_parse`.
 The exception is it does not use the arg 'repo_prefix'.  We set the repository
 prefix for the user and the alias arg is always True in bzlmod.
 
-If you define multiple distinct hubs, you can use the automatically generated
-[Unified @pypi Hub](unified-pypi-hub) repository to route package dependencies
-dynamically at build time.
+You can use the automatically generated [Unified @pypi Hub](unified-pypi-hub)
+repository to route package dependencies dynamically at build time.
 """,
         ),
         "whl_mods": tag_class(
