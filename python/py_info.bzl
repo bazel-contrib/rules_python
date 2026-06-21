@@ -14,6 +14,17 @@
 
 """Public entry point for PyInfo."""
 
-load("//python/private:py_info.bzl", _PyInfo = "PyInfo")
+load(
+    "//python/private:py_info.bzl",
+    _PyInfo = "PyInfo",
+    _VenvSymlinkEntry = "VenvSymlinkEntry",
+    _VenvSymlinkKind = "VenvSymlinkKind",
+)
 
 PyInfo = _PyInfo
+
+# buildifier: disable=name-conventions
+VenvSymlinkEntry = _VenvSymlinkEntry
+
+# buildifier: disable=name-conventions
+VenvSymlinkKind = _VenvSymlinkKind
