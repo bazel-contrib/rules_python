@@ -16,7 +16,7 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
-load("//python:py_info.bzl", "PyInfo")
+load("//python:py_info.bzl", "PyInfo", "VenvSymlinkKind")
 load("//python/private:py_info.bzl", "PyInfoBuilder")  # buildifier: disable=bzl-visibility
 load("//python/private:reexports.bzl", "BuiltinPyInfo")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_info_subject.bzl", "py_info_subject")
@@ -170,6 +170,12 @@ def _test_py_info_builder_impl(env, targets):
     builder.transitive_sources.add(trans)
     builder.merge_uses_shared_libraries(True)
 
+    symlink = builder.add_venv_symlink()
+    symlink.set_kind(VenvSymlinkKind.LIB)
+    symlink.set_venv_path("test_path")
+    symlink.set_link_to_path("test_target")
+    symlink.files.add(trans)
+
     builder.merge_target(targets.py1)
     builder.merge_targets([targets.py2])
 
@@ -247,6 +253,21 @@ def _test_py_info_builder_impl(env, targets):
                 "tests/base_rules/py_info/py6-trans.pyi",
             ])
 
+        if hasattr(actual, "venv_symlinks"):
+            entries = actual.venv_symlinks.to_list()
+            env.expect.that_int(len(entries)).equals(1)
+            entry = entries[0]
+            env.expect.that_str(entry.venv_path).equals("test_path")
+            env.expect.that_str(entry.link_to_path).equals("test_target")
+            env.expect.that_str(entry.kind).equals(VenvSymlinkKind.LIB)
+            env.expect.that_collection(entry.files.to_list()).contains_exactly([trans])
+            env.expect.that_bool(entry.package == None).equals(True)
+            env.expect.that_bool(entry.version == None).equals(True)
+            env.expect.that_bool(entry.link_to_file == None).equals(True)
+
+    check(builder.build())
+
+    # Call build() again to verify it doesn't duplicate/leak state
     check(builder.build())
     if BuiltinPyInfo != None:
         check(builder.build_builtin_py_info())
