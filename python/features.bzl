@@ -88,6 +88,7 @@ _TARGETS = {
     "//command_line_option:enable_runfiles": True,
     "//command_line_option:extra_toolchains": True,
     "//python/cc:current_py_cc_headers_abi3": True,
+    "//python/config_settings:pypi_hub": True,
 }
 
 features = struct(
