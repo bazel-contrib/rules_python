@@ -1,3 +1,14 @@
+load("//python:py_test.bzl", "py_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 load(":patch_whl_tests.bzl", "patch_whl_test_suite")
 
 patch_whl_test_suite(name = "patch_whl_tests")
+
+py_test(
+    name = "patch_whl_patch_test",
+    srcs = ["patch_whl_patch_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        "@patch_whl_pkg//:pkg",
+    ],
+)

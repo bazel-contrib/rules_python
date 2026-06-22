@@ -1485,6 +1485,25 @@ def _get_base_runfiles_for_binary(
     app_runfiles = app_runfiles.build(ctx)
 
     if _should_create_init_files(ctx):
+        # buildifier: disable=print
+        print(
+            """
+======================================================================
+WARNING: Target {} is using implicit __init__.py creation.
+  This diabolic behavior is deprecated and will be disabled by default in a
+  future release.
+  See https://github.com/bazel-contrib/rules_python/issues/2945
+
+  Ensure all __init__.py files are explicitly created and
+  added to the srcs or deps of your targets.
+
+  Disable implicit creation by setting:
+    legacy_create_init = 0
+  on the target, or globally by setting:
+    --incompatible_default_to_explicit_init_py
+======================================================================
+            """.rstrip().format(ctx.label),
+        )
         app_runfiles = _py_builtins.merge_runfiles_with_generated_inits_empty_files_supplier(
             ctx = ctx,
             runfiles = app_runfiles,

@@ -359,10 +359,10 @@ def _whl_library_impl(rctx):
             # build deps from PyPI (e.g. `flit_core`) if they are missing.
             extra_pip_args.extend(["--find-links", "."])
 
-    # When we already have a wheel and there are no patches, Python isn't used,
+    # When we already have a wheel, Python isn't used,
     # so there's no need to setup env vars to run Python, unless we need to
     # build an sdist or resolve a requirement.
-    if whl_path and not rctx.attr.whl_patches:
+    if whl_path:
         environment = {}
         args = []
         python_interpreter = None
@@ -420,12 +420,8 @@ def _whl_library_impl(rctx):
         if patches:
             whl_path = patch_whl(
                 rctx,
-                op = "whl_library.PatchWhl({}, {})".format(rctx.attr.name, rctx.attr.requirement),
-                python_interpreter = python_interpreter,
                 whl_path = whl_path,
                 patches = patches,
-                quiet = rctx.attr.quiet,
-                timeout = rctx.attr.timeout,
             )
 
     whl_extract(rctx, whl_path = whl_path, logger = logger)
