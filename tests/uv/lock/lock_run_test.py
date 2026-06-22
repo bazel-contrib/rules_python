@@ -226,6 +226,18 @@ class LockTests(unittest.TestCase):
             )
 
             # Then
+            if not want_path.exists():
+                print(f"\n--- {copier_path.name} FAILED TO CREATE FILE ---")
+                print(f"Stdout: {output.stdout.decode('utf-8', errors='replace')}")
+                print(f"Stderr: {output.stderr.decode('utf-8', errors='replace')}")
+                print(f"Return code: {output.returncode}")
+                print(f"Want path: {want_path}")
+                print("Workspace dir contents:")
+                for root, _, files in os.walk(workspace_dir):
+                    for f in files:
+                        print(os.path.join(root, f))
+                print("----------------------------------------\n")
+
             self.assertEqual(0, output.returncode, output.stderr)
             self.assertTrue(want_path.exists(), "The path should exist after the test")
             got_contents = want_path.read_text()
@@ -278,6 +290,18 @@ class LockTests(unittest.TestCase):
             )
 
             # Then
+            if not want_path.exists():
+                print(f"\n--- {copier_path.name} FAILED TO CREATE FILE ---")
+                print(f"Stdout: {output.stdout.decode('utf-8', errors='replace')}")
+                print(f"Stderr: {output.stderr.decode('utf-8', errors='replace')}")
+                print(f"Return code: {output.returncode}")
+                print(f"Want path: {want_path}")
+                print("Workspace dir contents:")
+                for root, _, files in os.walk(workspace_dir):
+                    for f in files:
+                        print(os.path.join(root, f))
+                print("----------------------------------------\n")
+
             self.assertEqual(0, output.returncode, output.stderr)
             self.assertTrue(want_path.exists(), "The path should exist after the test")
             got_contents = want_path.read_text()
