@@ -1,12 +1,18 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "changelog_news",
+    srcs = ["changelog_news.py"],
+)
 
 py_binary(
     name = "release",
     srcs = ["release.py"],
     main = "release.py",
     deps = [
+        ":changelog_news",
         "@dev_pip//packaging",
     ],
 )
