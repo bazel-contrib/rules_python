@@ -68,7 +68,10 @@ class LockTests(unittest.TestCase):
         run_script_path = _relative_rpath("requirements_new_file.run")
         content = run_script_path.read_text()
 
-        self.assertIn("#!/usr/bin/env bash", content)
+        if os.name == "nt":
+            self.assertIn("@echo off", content)
+        else:
+            self.assertIn("#!/usr/bin/env bash", content)
         self.assertIn("BUILD_WORKSPACE_DIRECTORY", content)
         self.assertIn("--no-progress", content)
         self.assertIn("--quiet", content)
@@ -79,7 +82,10 @@ class LockTests(unittest.TestCase):
         run_script_path = _relative_rpath("uv_lock_test.run")
         content = run_script_path.read_text()
 
-        self.assertIn("#!/usr/bin/env bash", content)
+        if os.name == "nt":
+            self.assertIn("@echo off", content)
+        else:
+            self.assertIn("#!/usr/bin/env bash", content)
         self.assertIn("--no-progress", content)
         self.assertIn("--quiet", content)
 
@@ -184,9 +190,13 @@ class LockTests(unittest.TestCase):
         run_script_path = _relative_rpath("requirements.run")
         content = run_script_path.read_text()
 
-        self.assertIn("#!/usr/bin/env bash", content)
+        if os.name == "nt":
+            self.assertIn("@echo off", content)
+            self.assertIn("%*", content)
+        else:
+            self.assertIn("#!/usr/bin/env bash", content)
+            self.assertIn('"$@"', content)
         self.assertIn("BUILD_WORKSPACE_DIRECTORY", content)
-        self.assertIn('"$@"', content)
         self.assertIn("--custom-compile-command", content)
         self.assertIn("--generate-hashes", content)
         self.assertIn("--no-strip-extras", content)

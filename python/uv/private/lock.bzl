@@ -167,10 +167,17 @@ def _common_lock(ctx, locker):
     # arguments are not passed on the command line.
     if is_windows:
         args_parts = []
-        for arg in args.run_info:
+        for i, arg in enumerate(args.run_info):
             if hasattr(arg, "path"):
                 arg = arg.path
-            a = arg.replace("/", "\\")
+
+            # Only use backslashes for the executable itself (first arg)
+            # to ensure CMD can run it, but keep forward slashes for arguments
+            # so that uv writes consistent paths in comments.
+            if i == 0:
+                a = arg.replace("/", "\\")
+            else:
+                a = arg
             a = a.replace('"', '""')
             args_parts.append('"' + a + '"')
 
