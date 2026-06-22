@@ -1,7 +1,7 @@
 @echo off
 if defined BUILD_WORKSPACE_DIRECTORY (
     "{{args}}" %*
-    exit /b 0
+    exit /b %ERRORLEVEL%
 )
 
 if exist "{{src_out}}" (

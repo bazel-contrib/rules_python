@@ -96,6 +96,53 @@ class LockTests(unittest.TestCase):
 
         self.assertNotIn("--output-file", content)
 
+    def test_debug_requirements_diff(self):
+        """Temporary test to print diff of generated vs expected requirements on Windows."""
+        expected_path = _relative_rpath("testdata/requirements.txt")
+        try:
+            # Pass "requirements.out" directly. We need to handle the case where
+            # _relative_rpath might append extensions on Windows.
+            # Actually, _relative_rpath has:
+            # exts = (".exe", ".bat", "") if os.name == "nt" else ...
+            # So on Windows it will try .exe, .bat, then empty.
+            # If "requirements.out" exists, the empty extension will match it.
+            generated_path = _relative_rpath("requirements.out")
+        except ValueError as e:
+            print(f"Could not find requirements.out: {e}")
+            # Dump runfiles directory to help debug if needed
+            runfiles_dir = os.environ.get("RUNFILES_DIR")
+            if runfiles_dir:
+                print(f"RUNFILES_DIR: {runfiles_dir}")
+                for root, _, files in os.walk(runfiles_dir):
+                    for f in files:
+                        if "requirements" in f:
+                            print(os.path.join(root, f))
+            raise
+
+        expected = expected_path.read_text()
+        generated = generated_path.read_text()
+
+        if expected != generated:
+            import difflib
+
+            diff = list(
+                difflib.unified_diff(
+                    expected.splitlines(keepends=True),
+                    generated.splitlines(keepends=True),
+                    fromfile="expected (testdata/requirements.txt)",
+                    tofile="generated (requirements.out)",
+                )
+            )
+            print("\n=== DIFF START ===")
+            print("".join(diff))
+            print("=== DIFF END ===\n")
+
+            # Also print representation to see line endings
+            print(f"Expected line endings: {repr(expected[:100])}")
+            print(f"Generated line endings: {repr(generated[:100])}")
+
+            self.assertEqual(expected, generated, "Files differ! See diff above.")
+
     def test_requirements_updating_for_the_first_time(self):
         # Given
         copier_path = _relative_rpath("requirements_new_file.update")

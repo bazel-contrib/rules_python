@@ -67,6 +67,7 @@ def lock_test_suite(name):
             "requirements.run",
             "testdata/requirements.txt",
             "uv_lock_test.run",
+            ":requirements",
         ],
         main = "lock_run_test.py",
         tags = [
