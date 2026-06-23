@@ -1,9 +1,11 @@
-import unittest
 import os
-from python.runfiles import runfiles
-from elftools.elf.elffile import ELFFile
-from elftools.elf.dynamic import DynamicSection
+import unittest
+
 import ext_shared
+from elftools.elf.dynamic import DynamicSection
+from elftools.elf.elffile import ELFFile
+
+from python.runfiles import runfiles
 
 
 class PyExtensionTest(unittest.TestCase):
