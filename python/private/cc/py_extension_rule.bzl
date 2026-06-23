@@ -12,6 +12,8 @@ load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 
 def _py_extension_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
+    repo_name = ctx.label.workspace_name or ctx.workspace_name
+    import_path = repo_name + "/" + ctx.label.package
     cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
@@ -20,11 +22,8 @@ def _py_extension_impl(ctx):
 
     # Collect CcInfo from all deps for compilation
     static_deps_infos = [dep[CcInfo] for dep in ctx.attr.static_deps]
-    dynamic_deps_infos = [dep[CcInfo] for dep in ctx.attr.dynamic_deps]
+    dynamic_deps_infos = [dep[CcSharedLibraryInfo] for dep in ctx.attr.dynamic_deps]
     external_deps_infos = [dep[CcInfo] for dep in ctx.attr.external_deps]
-    all_deps_cc_info = cc_common.merge_cc_infos(
-        cc_infos = static_deps_infos + dynamic_deps_infos + external_deps_infos,
-    )
 
     # Static deps are linked directly into the .so
     static_cc_info = cc_common.merge_cc_infos(
@@ -32,9 +31,10 @@ def _py_extension_impl(ctx):
     )
 
     # Dynamic deps are linked as shared libraries
-    dynamic_linking_context = cc_common.merge_cc_infos(
-        cc_infos = dynamic_deps_infos,
-    ).linking_context
+    linker_inputs = [dep.linker_input for dep in dynamic_deps_infos]
+    dynamic_linking_context = cc_common.create_linking_context(
+        linker_inputs = depset(linker_inputs),
+    )
 
     user_link_flags = []
     user_link_flags.append("-Wl,--export-dynamic-symbol=PyInit_{module_name}".format(
@@ -97,14 +97,26 @@ def _py_extension_impl(ctx):
     ))
 
     # Propagate CcInfo from dynamic and external deps, but not static ones.
+    dynamic_cc_info = CcInfo(linking_context = dynamic_linking_context)
     propagated_cc_info = cc_common.merge_cc_infos(
-        cc_infos = dynamic_deps_infos + external_deps_infos,
+        cc_infos = [dynamic_cc_info] + external_deps_infos,
     )
 
+    runfiles = ctx.runfiles(files = [py_dso])
+    transitive_runfiles = []
+    for dep in ctx.attr.static_deps + ctx.attr.dynamic_deps + ctx.attr.external_deps:
+        if DefaultInfo in dep:
+            transitive_runfiles.append(dep[DefaultInfo].default_runfiles)
+    runfiles = runfiles.merge_all(transitive_runfiles)
+
     return [
-        DefaultInfo(files = depset([py_dso])),
+        DefaultInfo(
+            files = depset([py_dso]),
+            runfiles = runfiles,
+        ),
         PyInfo(
             transitive_sources = depset([py_dso]),
+            imports = depset([import_path]),
         ),
         propagated_cc_info,
     ]
@@ -113,8 +125,8 @@ _MaybeBuiltinPyInfo = [[BuiltinPyInfo]] if BuiltinPyInfo != None else []
 
 PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     "dynamic_deps": lambda: attrb.LabelList(
-        providers = [CcInfo],
-        doc = "cc_library targets to be dynamically linked.",
+        providers = [CcSharedLibraryInfo],
+        doc = "cc_shared_library targets to be dynamically linked.",
         default = [],
     ),
     "external_deps": lambda: attrb.LabelList(
