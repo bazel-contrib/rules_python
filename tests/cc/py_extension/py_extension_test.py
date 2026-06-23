@@ -20,7 +20,7 @@ class PyExtensionTest(unittest.TestCase):
             self.assertTrue(isinstance(dynamic_section, DynamicSection))
 
             needed_libs = [tag.needed for tag in dynamic_section.iter_tags() if tag.entry.d_tag == 'DT_NEEDED']
-            self.assertIn('libdyn_dep_a.so', needed_libs)
+            self.assertIn('libadd_one_shared.so', needed_libs)
 
             # Check for the PyInit symbol
             dynsym_section = elf.get_section_by_name('.dynsym')
@@ -30,7 +30,7 @@ class PyExtensionTest(unittest.TestCase):
             self.assertIn('PyInit_ext_shared', symbols)
 
     def test_import_and_call(self):
-        self.assertEqual(ext_shared.my_c_function(), 42)
+        self.assertEqual(ext_shared.do_alpha(), 43)
 
 
 if __name__ == "__main__":
