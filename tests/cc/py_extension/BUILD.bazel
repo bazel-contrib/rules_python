@@ -22,7 +22,7 @@ py_extension(
 py_extension(
     name = "ext_shared",
     dynamic_deps = [
-        ":add_one",
+        ":add_one_shared",
     ],
     static_deps = [
         ":ext_shared_impl",
