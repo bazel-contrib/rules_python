@@ -519,6 +519,36 @@ def _test_py_runtime_info_provided_impl(env, target):
 
 _tests.append(_test_py_runtime_info_provided)
 
+def _test_venv_output_prefix_with_path_separators(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/foo/tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/bar/tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_venv_output_prefix_with_path_separators_impl,
+        targets = {
+            "bar": name + "/bar/tool",
+            "foo": name + "/foo/tool",
+        },
+    )
+
+def _test_venv_output_prefix_with_path_separators_impl(env, targets):
+    for target in [targets.foo, targets.bar]:
+        target = env.expect.that_target(target)
+        venv_name = "_{}.venv/pyvenv.cfg".format(target.meta.format_str("{name}").replace("/", "_"))
+        target.runfiles().contains_predicate(matching.str_endswith(venv_name))
+
+_tests.append(_test_venv_output_prefix_with_path_separators)
+
 def _test_windows_target_with_path_separators(name, config):
     rt_util.helper_target(
         config.rule,
