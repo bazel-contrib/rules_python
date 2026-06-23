@@ -306,9 +306,9 @@ def _create_executable(
     else:
         base_executable_name = executable.basename
 
-    # Venv outputs are package-relative, so targets like foo/tool and bar/tool
-    # need the full label name to avoid both declaring _tool.venv.
-    venv_output_prefix = ctx.label.name.replace("/", "_")
+    # Venv outputs are package-relative, so preserve the full target name to
+    # avoid collisions between targets like foo/tool, bar/tool, and foo_tool.
+    venv_output_prefix = ctx.label.name
     venv = None
 
     # The check for stage2_bootstrap_template is to support legacy
