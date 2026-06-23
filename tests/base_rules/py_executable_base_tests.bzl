@@ -551,8 +551,10 @@ def _test_venv_output_prefix_with_path_separators(name, config):
 def _test_venv_output_prefix_with_path_separators_impl(env, targets):
     for target in [targets.foo, targets.bar, targets.foo_underscore]:
         target = env.expect.that_target(target)
-        venv_name = "_{}.venv/pyvenv.cfg".format(target.meta.format_str("{name}"))
-        target.runfiles().contains_predicate(matching.str_endswith(venv_name))
+        venv_file = "*/_{}.venv/*site-packages/bazel.pth".format(
+            target.meta.format_str("{name}"),
+        )
+        target.runfiles().contains_predicate(matching.str_matches(venv_file))
 
 _tests.append(_test_venv_output_prefix_with_path_separators)
 
