@@ -75,8 +75,8 @@ def cherry_pick_abort():
 
 
 def status():
-    """Returns the output of git status."""
-    return run_cmd("git", "status")
+    """Returns the output of git status --porcelain."""
+    return run_cmd("git", "status", "--porcelain")
 
 
 def get_commit_sha(ref="HEAD", short=False):

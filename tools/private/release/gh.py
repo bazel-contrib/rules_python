@@ -171,7 +171,12 @@ def resolve_backport_commits(pending_items):
                 print(f"PR #{pr_num} is not merged (state: {state}). Gating.")
                 item["status"] = "unmerged-pr"
             else:
-                item["commit"] = pr_info["mergeCommit"]["oid"]
+                merge_commit = pr_info.get("mergeCommit")
+                if merge_commit and "oid" in merge_commit:
+                    item["commit"] = merge_commit["oid"]
+                else:
+                    print(f"PR #{pr_num} has no merge commit SHA. Gating.")
+                    item["status"] = "unmerged-pr"
         except Exception as e:
             print(f"Error resolving PR #{pr_num}: {e}. Gating.")
             item["status"] = "unmerged-pr"

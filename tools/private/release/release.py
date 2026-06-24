@@ -26,6 +26,8 @@ _EXCLUDE_PATTERNS = [
     "./tests/tools/private/release/*",
 ]
 
+_RELEASE_TITLE_RE = re.compile(r"Release\s+(\d+\.\d+\.\d+)", re.IGNORECASE)
+
 
 def _iter_version_placeholder_files():
     for root, dirs, files in os.walk(".", topdown=True):
@@ -571,6 +573,7 @@ def parse_checklist_state(body):
 
 def parse_backports(body):
     """Parses the ## Backports checklist section."""
+    body = body.replace("\r\n", "\n")
     match = re.search(
         r"## Backports\n(.*?)(?=\n##|\n---|\Z)", body, re.DOTALL | re.IGNORECASE
     )
@@ -645,7 +648,7 @@ def cmd_prepare(args):
             "Error: Local edits detected. Workspace must be completely clean"
             " before running release preparation."
         )
-        for line in status:
+        for line in status.splitlines():
             print(f"  {line}")
         return 1
     print("Pre-check passed: Workspace is clean.")
@@ -674,7 +677,7 @@ def cmd_prepare(args):
         return 0
 
     # Stage only modified files
-    for line in modified_files:
+    for line in modified_files.splitlines():
         file_path = line.strip().split()[-1]
         git.add(file_path)
 
@@ -779,12 +782,12 @@ def cmd_create_release_branch(args):
 
     # Extract version from issue title
     issue_title = gh.get_issue_title(args.issue)
-    version_match = re.search(r"[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?", issue_title)
+    version_match = _RELEASE_TITLE_RE.search(issue_title)
     if not version_match:
         print(f"Error: Could not parse version from issue title: {issue_title}")
         return 1
 
-    version = version_match.group(0).replace("v", "")
+    version = version_match.group(1)
     branch_version = ".".join(version.split(".")[:2])
     branch_name = f"release/{branch_version}"
 
@@ -834,12 +837,12 @@ def cmd_process_backports(args):
 
     # Determine branch name from issue title
     issue_title = gh.get_issue_title(args.issue)
-    version_match = re.search(r"[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?", issue_title)
+    version_match = _RELEASE_TITLE_RE.search(issue_title)
     if not version_match:
         print(f"Error: Could not parse version from issue title: {issue_title}")
         return 1
 
-    version = version_match.group(0).replace("v", "")
+    version = version_match.group(1)
     branch_version = ".".join(version.split(".")[:2])
     branch_name = f"release/{branch_version}"
 
@@ -965,12 +968,12 @@ def cmd_create_rc(args):
 
     # Resolve version and branch
     issue_title = gh.get_issue_title(args.issue)
-    version_match = re.search(r"[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?", issue_title)
+    version_match = _RELEASE_TITLE_RE.search(issue_title)
     if not version_match:
         print(f"Error: Could not parse version from issue title: {issue_title}")
         return 1
 
-    version = version_match.group(0).replace("v", "")
+    version = version_match.group(1)
     branch_version = ".".join(version.split(".")[:2])
     branch_name = f"release/{branch_version}"
 
