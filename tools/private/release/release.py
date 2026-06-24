@@ -26,7 +26,7 @@ _EXCLUDE_PATTERNS = [
     "./tests/tools/private/release/*",
 ]
 
-_RELEASE_TITLE_RE = re.compile(r"Release\s+(\d+\.\d+\.\d+)", re.IGNORECASE)
+_RELEASE_TITLE_RE = re.compile(r"Release (\d+\.\d+\.\d+)", re.IGNORECASE)
 
 
 def _iter_version_placeholder_files():
