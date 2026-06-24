@@ -358,7 +358,7 @@ to select the appropriate concrete PyPI hub (e.g., when fallback or disjoint pac
 
 Values:
 * `auto`: (default) Resolves dependencies using the fallback or first available hub.
-* `<hub_name>`: Explicitly forces resolution of packages from the specified concrete PyPI hub.
+* `<hub_name>`: Explicitly forces resolution of packages from the specified concrete PyPI hub (corresponding to a {obj}`pip.parse.hub_name` value).
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
