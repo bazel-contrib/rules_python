@@ -590,7 +590,7 @@ selected. Mandatory if platform is specified.
 """,
     ),
     "default_hub": attr.string(
-        doc = "The name of the concrete PyPI hub to use by default when {flag}`--venv=auto <venv>`.",
+        doc = "The name of the concrete PyPI hub to use by default when {flag}`--venv=auto`.",
     ),
     "env": attr.string_dict(
         doc = """\
