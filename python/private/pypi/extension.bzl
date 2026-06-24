@@ -31,24 +31,6 @@ load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
 load(":whl_library.bzl", "whl_library")
 
-def _whl_mods_repo_impl(rctx):
-    rctx.file("BUILD.bazel", "")
-    for whl_name, mods in rctx.attr.whl_mods.items():
-        rctx.file("{}.json".format(whl_name), mods)
-
-_whl_mods_repo = repository_rule(
-    doc = """\
-This rule creates json files based on the whl_mods attribute.
-""",
-    implementation = _whl_mods_repo_impl,
-    attrs = {
-        "whl_mods": attr.string_dict(
-            mandatory = True,
-            doc = "JSON endcoded string that is provided to wheel_builder.py",
-        ),
-    },
-)
-
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
 
@@ -1052,6 +1034,24 @@ create different modifications based on the type of attribute. Previously to bzl
 JSON files where referred to as annotations, and were renamed to whl_modifications in this
 extension.
 """,
+        ),
+    },
+)
+
+def _whl_mods_repo_impl(rctx):
+    rctx.file("BUILD.bazel", "")
+    for whl_name, mods in rctx.attr.whl_mods.items():
+        rctx.file("{}.json".format(whl_name), mods)
+
+_whl_mods_repo = repository_rule(
+    doc = """\
+This rule creates json files based on the whl_mods attribute.
+""",
+    implementation = _whl_mods_repo_impl,
+    attrs = {
+        "whl_mods": attr.string_dict(
+            mandatory = True,
+            doc = "JSON endcoded string that is provided to wheel_builder.py",
         ),
     },
 )
