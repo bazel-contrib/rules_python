@@ -17,11 +17,11 @@ _BASE_TRANSITION_LABELS = [
     labels.PIP_WHL_OSX_VERSION,
     labels.PRECOMPILE,
     labels.PRECOMPILE_SOURCE_RETENTION,
-    labels.PYPI_HUB,
     labels.PYTHON_SRC,
     labels.PYTHON_VERSION,
     labels.PY_FREETHREADED,
     labels.PY_LINUX_LIBC,
+    labels.VENV,
     labels.VENVS_SITE_PACKAGES,
     labels.VENVS_USE_DECLARE_SYMLINK,
 ]

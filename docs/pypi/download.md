@@ -101,12 +101,12 @@ use_repo(pip, "pypi")
 
 By default, the unified `@pypi` repository will resolve packages from the
 designated `default_hub`. You can dynamically switch the active hub for a build
-using the `--@rules_python//python/config_settings:pypi_hub` command-line flag
+using the `--@rules_python//python/config_settings:venv` command-line flag
 or via target transitions:
 
 ```bash
 # Build using packages from 'pypi_a'
-bazel build --@rules_python//python/config_settings:pypi_hub=pypi_a //my:binary
+bazel build --@rules_python//python/config_settings:venv=pypi_a //my:binary
 ```
 
 Shared library targets can simply depend on the unified hub (e.g.,

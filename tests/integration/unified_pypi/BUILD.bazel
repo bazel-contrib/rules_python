@@ -19,7 +19,7 @@ py_test(
     name = "test_a",
     srcs = ["test_a.py"],
     config_settings = {
-        "@rules_python//python/config_settings:pypi_hub": "pypi_a",
+        "@rules_python//python/config_settings:venv": "pypi_a",
     },
     deps = [
         "@pypi//colorama",
@@ -32,7 +32,7 @@ py_binary(
     name = "bin_extra_b",
     srcs = ["bin_extra_b.py"],
     config_settings = {
-        "@rules_python//python/config_settings:pypi_hub": "pypi_b",
+        "@rules_python//python/config_settings:venv": "pypi_b",
     },
     deps = ["@pypi//colorama:my_colorama"],
 )
@@ -42,7 +42,7 @@ py_binary(
     name = "bin_six_a",
     srcs = ["bin_six_a.py"],
     config_settings = {
-        "@rules_python//python/config_settings:pypi_hub": "pypi_a",
+        "@rules_python//python/config_settings:venv": "pypi_a",
     },
     deps = ["@pypi//six"],
 )

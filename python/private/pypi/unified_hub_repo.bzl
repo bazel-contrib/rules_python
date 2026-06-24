@@ -3,12 +3,12 @@
 load("//python/private:text_util.bzl", "render")
 
 _ROOT_BUILD_TMPL = """\
-load("@rules_python//python/private/pypi:unified_hub_setup.bzl", "define_pypi_hub_flag_config_settings")
+load("@rules_python//python/private/pypi:unified_hub_setup.bzl", "define_venv_flag_config_settings")
 
 package(default_visibility = ["//visibility:public"])
 
-define_pypi_hub_flag_config_settings(
-    name = "pypi_hub_config_settings",
+define_venv_flag_config_settings(
+    name = "venv_config_settings",
     hubs = {hubs},
 )
 """

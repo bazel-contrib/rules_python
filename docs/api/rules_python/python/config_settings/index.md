@@ -350,6 +350,20 @@ Values:
 
 ::::
 
+::::{bzl:flag} venv
+Determines which PyPI repository hub is used when resolving package dependencies.
+
+This flag is transitioned on automatically by executable targets (`py_binary`, `py_test`)
+to select the appropriate concrete PyPI hub (e.g., when fallback or disjoint packages exist across multiple hubs).
+
+Values:
+* `auto`: (default) Resolves dependencies using the fallback or first available hub.
+* `<hub_name>`: Explicitly forces resolution of packages from the specified concrete PyPI hub.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} venvs_use_declare_symlink
 
 Determines if relative symlinks are created using `declare_symlink()` at build
@@ -373,19 +387,6 @@ is created.
 :::
 ::::
 
-::::{bzl:flag} pypi_hub
-Determines which PyPI repository hub is used when resolving package dependencies.
-
-This flag is transitioned on automatically by executable targets (`py_binary`, `py_test`)
-to select the appropriate concrete PyPI hub (e.g., when fallback or disjoint packages exist across multiple hubs).
-
-Values:
-* `auto`: (default) Resolves dependencies using the fallback or first available hub.
-* `<hub_name>`: Explicitly forces resolution of packages from the specified concrete PyPI hub.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-::::
 
 ## Removed Flags
 

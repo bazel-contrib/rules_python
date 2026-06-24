@@ -149,7 +149,7 @@ string_flag(
 # pip.parse related flags
 
 string_flag(
-    name = "pypi_hub",
+    name = "venv",
     build_setting_default = "auto",
     # NOTE: Only public because it is used in pip hub repos and executable transitions.
     visibility = ["//visibility:public"],

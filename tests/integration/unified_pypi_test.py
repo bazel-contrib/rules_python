@@ -16,7 +16,7 @@ class UnifiedPypiTest(runner.TestCase):
     def test_cli_override(self):
         self.run_bazel(
             "run",
-            "--@rules_python//python/config_settings:pypi_hub=pypi_a",
+            "--@rules_python//python/config_settings:venv=pypi_a",
             "//:test_cli",
         )
 

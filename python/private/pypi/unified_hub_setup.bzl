@@ -2,7 +2,7 @@
 
 load("@rules_python//python/private/pypi:missing_package.bzl", "missing_package_error")
 
-def define_pypi_hub_flag_config_settings(name, hubs):
+def define_venv_flag_config_settings(name, hubs):
     """Defines the root config_settings for each PyPI spoke hub.
 
     Args:
@@ -11,8 +11,8 @@ def define_pypi_hub_flag_config_settings(name, hubs):
     """
     for hub in hubs:
         native.config_setting(
-            name = "_is_pypi_hub_" + hub,
-            flag_values = {"@rules_python//python/config_settings:pypi_hub": hub},
+            name = "_is_venv_" + hub,
+            flag_values = {"@rules_python//python/config_settings:venv": hub},
         )
 
 _STANDARD_ALIASES = [
@@ -53,7 +53,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
             )
 
             if is_supported:
-                select_map["//:_is_pypi_hub_" + hub] = "@{hub}//{pkg}:{alias}".format(
+                select_map["//:_is_venv_" + hub] = "@{hub}//{pkg}:{alias}".format(
                     hub = hub,
                     pkg = pkg_name,
                     alias = alias_name,
@@ -65,7 +65,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
                         "hub_name": hub,
                         "package_name": pkg_name if alias_name in _STANDARD_ALIASES else (pkg_name + ":" + alias_name),
                     }
-                select_map["//:_is_pypi_hub_" + hub] = ":{}".format(err_target)
+                select_map["//:_is_venv_" + hub] = ":{}".format(err_target)
 
         # //conditions:default fallback
         default_supported = (
