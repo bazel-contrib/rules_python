@@ -51,9 +51,15 @@ def _py_extension_impl(ctx):
         user_link_flags.append("-Wl,--allow-shlib-undefined")
 
     # todo: use toolchain to determine `abi3.` infix
-    # todo: use toolchain to determine platform extension (pyd, so, etc)
-    output_filename = "{module_name}.{ext}".format(
+    py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
+    py_runtime = py_toolchain.py3_runtime
+    cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
+    platform_tag, ext = _get_platform_and_extension(cc_toolchain)
+    output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
         module_name = module_name,
+        pyc_tag = py_runtime.pyc_tag,      # e.g. "cpython-311"
+        abi_flags = py_runtime.abi_flags,  # e.g. "" or "d"
+        platform = platform_tag,           # e.g. "x86_64-linux-gnu"
         ext = "so",
     )
     py_dso = ctx.actions.declare_file(output_filename)
@@ -160,3 +166,78 @@ def create_py_extension_rule_builder(**kwargs):
     return builder
 
 py_extension = create_py_extension_rule_builder().build()
+
+# Map Bazel's internal CPU names to PEP 3149 standard architecture names
+_BAZEL_CPU_TO_PEP_ARCH = {
+    "k8": "x86_64",
+    "amd64": "x86_64",
+    "x86_64": "x86_64",
+    "aarch64": "aarch64",
+    "arm64": "arm64",
+    "darwin": "x86_64",       # Historical Bazel Mac CPU
+    "darwin_x86_64": "x86_64",
+    "darwin_arm64": "arm64",
+    "x64_windows": "x86_64",
+    "arm64_windows": "arm64",
+}
+
+def _get_platform_and_extension(cc_toolchain):
+    """Derives the PEP 3149 platform tag and extension from the C++ toolchain.
+
+    Args:
+        cc_toolchain: The CcToolchainInfo provider (usually obtained via
+          ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc)
+
+    Returns:
+        A tuple of (platform_tag, extension)
+          e.g., ("x86_64-linux-gnu", "so") or ("win_amd64", "pyd")
+    """
+    # 1. Get the GNU target name (e.g., "local-linux-gnu" or "x86_64-unknown-linux-gnu")
+    target_name = cc_toolchain.target_gnu_system_name
+
+    # 2. Detect the OS family
+    is_windows = "windows" in target_name or "mingw" in target_name or "msvc" in target_name
+    is_mac = "apple" in target_name or "darwin" in target_name
+
+    # 3. Determine the extension for Python C extensions
+    # Windows uses .pyd; Unix (Linux/macOS) uses .so for Python modules
+    ext = "pyd" if is_windows else "so"
+
+    # 4. Parse the architecture from the target_name
+    # e.g., "x86_64-unknown-linux-gnu" -> "x86_64"
+    target_parts = target_name.split("-")
+    arch = target_parts[0]
+
+    # 5. Handle the "local" placeholder by falling back to cc_toolchain.cpu
+    if arch == "local":
+        cpu = cc_toolchain.cpu
+        # Resolve the Bazel CPU name to a standard PEP architecture
+        arch = _BAZEL_CPU_TO_PEP_ARCH.get(cpu, cpu)
+    # Normalize standard names if they came from a full target_name
+    elif arch == "amd64":
+        arch = "x86_64"
+    elif arch == "aarch64":
+        arch = "arm64" if is_mac else "aarch64"
+
+    # 6. Derive the PEP 3149 / PEP 425 platform tag
+    if is_windows:
+        platform_tag = "win_amd64" if arch == "x86_64" else "win32"
+    elif is_mac:
+        platform_tag = "darwin"
+    else:
+        # Linux/Unix: Reconstruct the triplet, dropping the vendor if present
+        os_part = "linux"
+        abi_part = "gnu"
+
+        if len(target_parts) == 4:
+            # [arch, vendor, os, abi]
+            os_part = target_parts[2]
+            abi_part = target_parts[3]
+        elif len(target_parts) == 3:
+            # [arch, os, abi]
+            os_part = target_parts[1]
+            abi_part = target_parts[2]
+
+        platform_tag = "{}-{}-{}".format(arch, os_part, abi_part)
+
+    return platform_tag, ext
