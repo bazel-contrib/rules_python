@@ -82,7 +82,6 @@ pip.parse(
     python_version = "3.11",
     requirements_lock = "//:requirements_a.txt",
 )
-use_repo(pip, "pypi_a")
 
 # Define concrete hub 'pypi_b'
 pip.parse(
@@ -90,7 +89,6 @@ pip.parse(
     python_version = "3.11",
     requirements_lock = "//:requirements_b.txt",
 )
-use_repo(pip, "pypi_b")
 
 # Designate 'pypi_b' as the default hub for the unified '@pypi' repository
 pip.default(default_hub = "pypi_b")
