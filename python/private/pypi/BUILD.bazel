@@ -467,6 +467,7 @@ bzl_library(
     name = "unified_hub_setup_bzl",
     srcs = ["unified_hub_setup.bzl"],
     deps = [
+        ":labels_bzl",
         ":missing_package_bzl",
     ],
 )

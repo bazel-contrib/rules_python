@@ -1,5 +1,13 @@
 """Helper functions for setting up targets within the Unified PyPI Hub repository."""
 
+load(
+    "@rules_python//python/private/pypi:labels.bzl",
+    "DATA_LABEL",
+    "DIST_INFO_LABEL",
+    "EXTRACTED_WHEEL_FILES",
+    "PY_LIBRARY_PUBLIC_LABEL",
+    "WHEEL_FILE_PUBLIC_LABEL",
+)
 load("@rules_python//python/private/pypi:missing_package.bzl", "missing_package_error")
 
 def define_venv_flag_config_settings(name, hubs):
@@ -16,11 +24,11 @@ def define_venv_flag_config_settings(name, hubs):
         )
 
 _STANDARD_ALIASES = [
-    "pkg",
-    "whl",
-    "data",
-    "dist_info",
-    "extracted_wheel_files",
+    PY_LIBRARY_PUBLIC_LABEL,
+    WHEEL_FILE_PUBLIC_LABEL,
+    DATA_LABEL,
+    DIST_INFO_LABEL,
+    EXTRACTED_WHEEL_FILES,
 ]
 
 def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub = None):
