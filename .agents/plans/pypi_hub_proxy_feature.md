@@ -2,7 +2,9 @@
 
 This document defines the locked, production-ready architectural, Starlark API,
 and testing specifications for implementing dynamic PyPI dependency resolution in
-`rules_python`.
+`rules_python` using the `venv` flag.
+
+---
 
 ## 1. Architectural Strategy: The Canonical `@pypi` Proxy
 
@@ -35,13 +37,15 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 # Concrete hubs defined for different execution contexts
 pip.parse(hub_name = "pypi_a", ...)
 pip.parse(hub_name = "pypi_b", ...)
-use_repo(pip, "pypi_a", "pypi_b")
+
+# Designate 'pypi_b' as the default hub for the unified '@pypi' repository
+pip.default(default_hub = "pypi_b")
 
 # The canonical proxy is automatically created unconditionally:
 use_repo(pip, "pypi")
 ```
 
-### Unified Pypi Hub
+### Unified PyPI Hub
 
 The canonical `@pypi` proxy repository matches exactly how concrete hubs create
 their directory structure: a root package for shared configuration settings, and
@@ -52,7 +56,7 @@ Here is a complete, representative code example of what the generated files in
 
 #### 1. `@pypi//BUILD.bazel` (Root Package)
 The root package contains the shared `config_setting` targets following the
-`_is_pypi_hub_<name>` private naming convention. Leading underscores are strictly
+`_is_venv_<name>` private naming convention. Leading underscores are strictly
 applied because these configuration settings are an internal implementation
 detail of the proxy repository and are not intended to be a public API.
 
@@ -60,16 +64,16 @@ detail of the proxy repository and are not intended to be a public API.
 package(default_visibility = ["//visibility:public"])
 
 config_setting(
-    name = "_is_pypi_hub_pypi_a",
+    name = "_is_venv_pypi_a",
     flag_values = {
-        "@rules_python//python/config_settings:pypi_hub": "pypi_a",
+        "@rules_python//python/config_settings:venv": "pypi_a",
     },
 )
 
 config_setting(
-    name = "_is_pypi_hub_pypi_b",
+    name = "_is_venv_pypi_b",
     flag_values = {
-        "@rules_python//python/config_settings:pypi_hub": "pypi_b",
+        "@rules_python//python/config_settings:venv": "pypi_b",
     },
 )
 ```
@@ -93,20 +97,20 @@ alias(
 alias(
     name = "pkg",
     actual = select({
-        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:pkg",
-        "//:_is_pypi_hub_pypi_b": "@pypi_b//foo:pkg",
-        # When pypi_hub is "auto" (unset), it defaults to the first defined
-        # concrete hub (or designated fallback via pip.default).
-        "//conditions:default": "@pypi_a//foo:pkg",
+        "//:_is_venv_pypi_a": "@pypi_a//foo:pkg",
+        "//:_is_venv_pypi_b": "@pypi_b//foo:pkg",
+        # When venv is "auto" (unset), it defaults to the designated fallback
+        # (or first defined concrete hub).
+        "//conditions:default": "@pypi_b//foo:pkg",
     }),
 )
 
 alias(
     name = "whl",
     actual = select({
-        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:whl",
-        "//:_is_pypi_hub_pypi_b": "@pypi_b//foo:whl",
-        "//conditions:default": "@pypi_a//foo:whl",
+        "//:_is_venv_pypi_a": "@pypi_a//foo:whl",
+        "//:_is_venv_pypi_b": "@pypi_b//foo:whl",
+        "//conditions:default": "@pypi_b//foo:whl",
     }),
 )
 
@@ -116,9 +120,9 @@ alias(
 alias(
     name = "my_custom_tool",
     actual = select({
-        "//:_is_pypi_hub_pypi_a": "@pypi_a//foo:my_custom_tool",
+        "//:_is_venv_pypi_a": "@pypi_a//foo:my_custom_tool",
         # Unrepresented branch routes to execution failure target:
-        "//:_is_pypi_hub_pypi_b": "//:_missing_package_error_pypi_b_foo",
+        "//:_is_venv_pypi_b": "//:_missing_package_error_pypi_b_foo",
         "//conditions:default": "@pypi_a//foo:my_custom_tool",
     }),
 )
@@ -140,9 +144,9 @@ alias(
     name = "pkg",
     actual = select({
         # Routes to execution-phase action failure target:
-        "//:_is_pypi_hub_pypi_a": "//:_missing_package_error_pypi_a_scipy",
-        "//:_is_pypi_hub_pypi_b": "@pypi_b//scipy:pkg",
-        "//conditions:default": "//:_missing_package_error_pypi_a_scipy",
+        "//:_is_venv_pypi_a": "//:_missing_package_error_pypi_a_scipy",
+        "//:_is_venv_pypi_b": "@pypi_b//scipy:pkg",
+        "//conditions:default": "@pypi_b//scipy:pkg",
     }),
 )
 ```
@@ -167,11 +171,13 @@ the proxy resolves to a concrete hub using the following precedence:
     concrete hub** parsed during extension evaluation (e.g., `pypi_a`).
 
 ```starlark
-# Optional: explicitly override the "auto" fallback hub
+# Explicitly override the "auto" fallback hub
 pip.default(
     default_hub = "pypi_b", 
 )
 ```
+
+---
 
 ## 2. Core Rule Integration: `config_settings` Transitions
 
@@ -184,7 +190,7 @@ In `python/config_settings/BUILD.bazel`:
 
 ```starlark
 string_flag(
-    name = "pypi_hub",
+    name = "venv",
     build_setting_default = "auto", # Default value is "auto"
     visibility = ["//visibility:public"],
 )
@@ -192,14 +198,14 @@ string_flag(
 
 In `python/private/common_labels.bzl`:
 ```starlark
-    PYPI_HUB = str(Label("//python/config_settings:pypi_hub")),
+    VENV = str(Label("//python/config_settings:venv")),
 ```
 
 In `python/private/transition_labels.bzl`:
 ```starlark
 _BASE_TRANSITION_LABELS = [
     # ... existing transition labels ...
-    labels.PYPI_HUB,
+    labels.VENV,
 ]
 ```
 
@@ -222,18 +228,18 @@ py_library(
 Binaries change the active hub by transitioning the build setting:
 
 ```starlark
-# Resolves @pypi -> pypi_a (first defined / designated fallback)
+# Resolves @pypi -> pypi_b (default hub / designated fallback)
 py_binary(
     name = "bin_default",
     deps = [":common"],
 )
 
-# Resolves @pypi -> pypi_b via transition
+# Resolves @pypi -> pypi_a via transition
 py_binary(
-    name = "bin_b",
+    name = "bin_a",
     deps = [":common"],
     config_settings = {
-        "//python/config_settings:pypi_hub": "pypi_b",
+        "//python/config_settings:venv": "pypi_a",
     },
 )
 ```
@@ -245,8 +251,10 @@ diversified `config_settings` across large build graphs will result in
 re-analysis and re-compilation of shared dependencies. 
 
 We will include explicit documentation guidelines advising users to keep their
-`pypi_hub` transition configurations localized and minimized to preserve Bazel
+`venv` transition configurations localized and minimized to preserve Bazel
 caching and memory efficiency.
+
+---
 
 ## 3. Integration Testing Specification
 
@@ -256,27 +264,28 @@ transitions.
 
 The integration test suite will assert:
 1.  **`"auto"` Precedence**: Author a test asserting `bazel run //:bin_default`
-    correctly inherits `"auto"` and resolves dependencies from the first
-    defined concrete hub (or designated fallback).
+    correctly inherits `"auto"` and resolves dependencies from the designated fallback.
 2.  **Transitional Resolution**: Author a test asserting two binary targets in
     the same package with different `config_settings` successfully resolve
     dependencies and execute against their respective concrete hubs (`pypi_a`
     vs `pypi_b`).
 3.  **Command Line Override**: Author a test asserting
-    `bazel run --//python/config_settings:pypi_hub=pypi_b //:bin_default`
+    `bazel run --//python/config_settings:venv=pypi_a //:bin_default`
     successfully forces the executable to run using imports resolved from
-    `pypi_b`.
+    `pypi_a`.
 4.  **Disjoint Execution Failure**: Author a test asserting `bazel cquery` over
     a target depending on an unrepresented missing package succeeds, while
     `bazel run` on that target gracefully fails during execution with the exact
     synthesized error message.
 5.  **Unionized Extra Hub Aliases**: Author a test asserting that a binary
     successfully runs using a custom `extra_hub_aliases` target resolved
-    through the `@pypi` proxy.
+    through the `@pypi proxy`.
+
+---
 
 ## 4. Execution Steps
 
-1.  **Phase 1**: Define `pypi_hub` `string_flag` and register it in
+1.  **Phase 1**: Define `venv` `string_flag` and register it in
     `common_labels.bzl` and `transition_labels.bzl`.
 2.  **Phase 2**: Update `python/private/pypi/extension.bzl` to synthesize the
     canonical `pypi` proxy repository rule.
