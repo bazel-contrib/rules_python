@@ -204,6 +204,7 @@ def build_config(
     Returns:
         A struct with the configuration.
     """
+    default_hub = None
     defaults = {
         "platforms": default_platforms(),
     }
@@ -212,6 +213,12 @@ def build_config(
             continue
 
         for tag in mod.tags.default:
+            if tag.default_hub:
+                if mod.is_root:
+                    if default_hub:
+                        fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
+                    default_hub = tag.default_hub
+
             platform = tag.platform
             if platform:
                 specific_config = defaults["platforms"].setdefault(platform, {})
@@ -245,6 +252,7 @@ def build_config(
 
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
+        default_hub = default_hub,
         index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
         netrc = defaults.get("netrc", None),
         platforms = {
@@ -405,19 +413,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
 
-    default_hub = None
-    for mod in module_ctx.modules:
-        if not mod.is_root:
-            continue
-        for tag in mod.tags.default:
-            if tag.default_hub:
-                if default_hub:
-                    fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
-                default_hub = tag.default_hub
-
     return struct(
         config = config,
-        default_hub = default_hub,
+        default_hub = config.default_hub,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         facts = simpleapi_cache.get_facts(),
