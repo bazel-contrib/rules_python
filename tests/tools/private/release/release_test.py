@@ -5,22 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.private.release import release as releaser
-
-_UNRELEASED_TEMPLATE = """
-<!--
-BEGIN_UNRELEASED_TEMPLATE
-
-{#v0-0-0}
-## Unreleased
-
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
-
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
-
-END_UNRELEASED_TEMPLATE
--->
-"""
+from tools.private.release import changelog_news, release as releaser
 
 
 class ReleaserTest(unittest.TestCase):
@@ -33,94 +18,37 @@ class ReleaserTest(unittest.TestCase):
         # NOTE: On windows, this must be done before files are deleted.
         self.addCleanup(os.chdir, self.original_cwd)
 
-    def test_update_changelog(self):
-        changelog = f"""
-# Changelog
-
-{_UNRELEASED_TEMPLATE}
-
-{{#v0-0-0}}
-## Unreleased
-
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
-
-{{#v0-0-0-changed}}
-### Changed
-* Nothing changed
-
-{{#v0-0-0-fixed}}
-### Fixed
-* Nothing fixed
-
-{{#v0-0-0-added}}
-### Added
-* Nothing added
-
-{{#v0-0-0-removed}}
-### Removed
-* Nothing removed.
-"""
-        changelog_path = self.tmpdir / "CHANGELOG.md"
-        changelog_path.write_text(changelog)
-
-        # Act
-        releaser.update_changelog(
-            "1.23.4",
-            "2025-01-01",
-            changelog_path=changelog_path,
-        )
-
-        # Assert
-        new_content = changelog_path.read_text()
-
-        self.assertIn(
-            _UNRELEASED_TEMPLATE, new_content, msg=f"ACTUAL:\n\n{new_content}\n\n"
-        )
-        self.assertIn("## [1.23.4] - 2025-01-01", new_content)
-        self.assertIn(
-            "[1.23.4]: https://github.com/bazel-contrib/rules_python/releases/tag/1.23.4",
-            new_content,
-        )
-        self.assertIn("{#v1-23-4}", new_content)
-        self.assertIn("{#v1-23-4-changed}", new_content)
-        self.assertIn("{#v1-23-4-fixed}", new_content)
-        self.assertIn("{#v1-23-4-added}", new_content)
-        self.assertIn("{#v1-23-4-removed}", new_content)
-
     def test_update_changelog_with_news(self):
         # Arrange
-        changelog = f"""
-# Changelog
+        changelog = """# Changelog
 
-{_UNRELEASED_TEMPLATE}
-
-{{#v0-0-0}}
+{#unreleased}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-{{#v0-0-0-removed}}
+{#unreleased-removed}
 ### Removed
 * Nothing removed.
 
-{{#v0-0-0-changed}}
+{#unreleased-changed}
 ### Changed
 * Nothing changed.
 
-{{#v0-0-0-fixed}}
+{#unreleased-fixed}
 ### Fixed
 * Nothing fixed.
 
-{{#v0-0-0-added}}
+{#unreleased-added}
 ### Added
 * Nothing added.
 
-{{#v2-0-2}}
+{#v2-0-2}
 ## [2.0.2] - 2026-05-14
 
 [2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
 
-{{#v2-0-2-added}}
+{#v2-0-2-added}
 ### Added
 * (toolchains) Some older change.
 """
@@ -140,7 +68,7 @@ class ReleaserTest(unittest.TestCase):
         (news_dir / "invalid_name.md").write_text("Should be ignored")
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "3.0.0",
             "2026-06-16",
             changelog_path=changelog_path,
@@ -157,20 +85,17 @@ class ReleaserTest(unittest.TestCase):
 
         new_content = changelog_path.read_text()
 
-        # 2. Unreleased template comment should still be there
-        self.assertIn(
-            _UNRELEASED_TEMPLATE, new_content, msg=f"ACTUAL:\n\n{new_content}\n\n"
-        )
-
-        # 3. A fresh active Unreleased section should be present
-        self.assertIn("{#v0-0-0}", new_content)
+        # 2. A fresh active Unreleased section should be present
+        self.assertIn("{#unreleased}", new_content)
         self.assertIn("## Unreleased", new_content)
         self.assertIn(
-            "Unreleased changes are tracked as individual files in the [news/](./news) directory.",
+            "Unreleased changes are tracked as individual files in the [news/](./news)\n"
+            "directory, or view the [latest generated\n"
+            "changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).",
             new_content,
         )
 
-        # 4. The new release section should be present
+        # 3. The new release section should be present
         self.assertIn("{#v3-0-0}", new_content)
         self.assertIn("## [3.0.0] - 2026-06-16", new_content)
         self.assertIn(
@@ -178,7 +103,7 @@ class ReleaserTest(unittest.TestCase):
             new_content,
         )
 
-        # 5. Correct categories and content
+        # 4. Correct categories and content
         self.assertIn(
             "{#v3-0-0-fixed}\n### Fixed\n* Fixed a bug in the compiler", new_content
         )
@@ -187,34 +112,33 @@ class ReleaserTest(unittest.TestCase):
             new_content,
         )
 
-        # 6. Omitted categories should NOT be present in the new release
+        # 5. Omitted categories should NOT be present in the new release
         self.assertNotIn("{#v3-0-0-removed}", new_content)
         self.assertNotIn("{#v3-0-0-changed}", new_content)
 
-        # 7. Old release should still be there
+        # 6. Old release should still be there
         self.assertIn("{#v2-0-2}", new_content)
         self.assertIn("## [2.0.2] - 2026-05-14", new_content)
 
     def test_update_changelog_sorting(self):
         # Arrange
-        changelog = f"""
-# Changelog
+        changelog = """# Changelog
 
-{_UNRELEASED_TEMPLATE}
-
-{{#v0-0-0}}
+{#unreleased}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
-{{#v2-0-2}}
+{#v2-0-2}
 ## [2.0.2] - 2026-05-14
 
 [2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
 
-{{#v2-0-2-added}}
+{#v2-0-2-added}
 ### Added
 * (toolchains) Some older change.
 """
@@ -232,7 +156,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
         (news_dir / "5.fixed.md").write_text("No subcategory A")
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "3.0.0",
             "2026-06-16",
             changelog_path=changelog_path,
@@ -273,24 +197,23 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 
             mock_read_text.side_effect = side_effect
 
-            changelog = f"""
-# Changelog
+            changelog = """# Changelog
 
-{_UNRELEASED_TEMPLATE}
-
-{{#v0-0-0}}
+{#unreleased}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
-{{#v2-0-2}}
+{#v2-0-2}
 ## [2.0.2] - 2026-05-14
 
 [2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
 
-{{#v2-0-2-added}}
+{#v2-0-2-added}
 ### Added
 * (toolchains) Some older change.
 """
@@ -311,7 +234,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
             # Act & Assert
             # It should raise IOError
             with self.assertRaises(IOError):
-                releaser.update_changelog(
+                changelog_news.update_changelog(
                     "3.0.0",
                     "2026-06-16",
                     changelog_path=changelog_path,
@@ -328,24 +251,23 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 
     def test_update_changelog_merge_existing(self):
         # Arrange
-        changelog = f"""
-# Changelog
+        changelog = """# Changelog
 
-{_UNRELEASED_TEMPLATE}
-
-{{#v0-0-0}}
+{#unreleased}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-Unreleased changes are tracked as individual files in the [news/](./news) directory.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
-{{#v2-0-3}}
+{#v2-0-3}
 ## [2.0.3] - 2026-06-15
 
 [2.0.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.3
 
-{{#v2-0-3-fixed}}
+{#v2-0-3-fixed}
 ### Fixed
 * (pypi) Old fix
   multi-line detail
@@ -365,7 +287,7 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
         (news_dir / "2.added.md").write_text("(toolchains) New feature")
 
         # Act
-        releaser.update_changelog(
+        changelog_news.update_changelog(
             "2.0.3",
             "2026-06-15",
             changelog_path=changelog_path,
@@ -399,6 +321,102 @@ Unreleased changes are tracked as individual files in the [news/](./news) direct
 
         # Active Unreleased section should NOT be touched (should still be empty/pointing to news)
         self.assertIn("Unreleased changes are tracked as individual files", new_content)
+
+    def test_update_changelog_does_not_leak(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
+
+{#v2-0-2}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+This release body mentions the word unreleased and {#unreleased} anchor to test leaks.
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+        (news_dir / "1.fixed.md").write_text("Some fix")
+
+        # Act
+        changelog_news.update_changelog(
+            "3.0.0",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        new_content = changelog_path.read_text()
+
+        # The 2.0.2 body should NOT be modified
+        self.assertIn(
+            "This release body mentions the word unreleased and {#unreleased} anchor to test leaks.",
+            new_content,
+        )
+
+    def test_update_changelog_empty_news(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
+
+{#v2-0-2}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{#v2-0-2-added}
+### Added
+* (toolchains) Some older change.
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+
+        # Act
+        changelog_news.update_changelog(
+            "3.0.0",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        new_content = changelog_path.read_text()
+
+        # The new release section should be present and contain "No notable changes."
+        self.assertIn("{#v3-0-0}", new_content)
+        self.assertIn("## [3.0.0] - 2026-06-16", new_content)
+        self.assertIn(
+            "[3.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/3.0.0",
+            new_content,
+        )
+        self.assertIn("No notable changes.", new_content)
+
+        # Verify that we didn't accidentally create any categories
+        self.assertNotIn("{#v3-0-0-fixed}", new_content)
+        self.assertNotIn("{#v3-0-0-added}", new_content)
 
     def test_replace_version_next(self):
         # Arrange
