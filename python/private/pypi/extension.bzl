@@ -361,12 +361,30 @@ You cannot use both the additive_build_content and additive_build_content_file a
             if hub_name == "pypi":
                 if is_pypi_hub_reserved:
                     renamed_name = mod.name + "_pypi"
-                    print("WARNING: The PyPI hub name 'pypi' is reserved (module '{}'). The hub was renamed to '{}'. Please rename your hub.".format(mod.name, renamed_name))  # buildifier: disable=print
+                    print(
+                        (
+                            "WARNING: The PyPI hub name 'pypi' is reserved " +
+                            "(module '{}'). The hub was renamed to '{}'. " +
+                            "Please rename your hub."
+                        ).format(
+                            mod.name,
+                            renamed_name,
+                        ),
+                    )  # buildifier: disable=print
                     hub_name = renamed_name
                     if not renamed_default_hub:
                         renamed_default_hub = hub_name
                 else:
-                    print("WARNING: The PyPI hub name 'pypi' is reserved (module '{}'). Please rename your hub, otherwise a future release will rename it to '{}_pypi'.".format(mod.name, mod.name))  # buildifier: disable=print
+                    print(
+                        (
+                            "WARNING: The PyPI hub name 'pypi' is reserved " +
+                            "(module '{}'). Please rename your hub, otherwise " +
+                            "a future release will rename it to '{}_pypi'."
+                        ).format(
+                            mod.name,
+                            mod.name,
+                        ),
+                    )  # buildifier: disable=print
 
             if hub_name not in pip_hub_map:
                 builder = hub_builder(
