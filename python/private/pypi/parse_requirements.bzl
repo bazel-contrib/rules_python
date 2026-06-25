@@ -41,7 +41,7 @@ def parse_requirements(
         *,
         requirements_by_platform = {},
         extra_pip_args = [],
-        platforms = {},
+        platforms,
         get_index_urls = None,
         extract_url_srcs = True,
         uv_lock = None,
@@ -51,7 +51,8 @@ def parse_requirements(
 
     Args:
         ctx: A context that has .read function that would read contents from a label.
-        platforms: The target platform descriptions.
+        platforms: The target platform descriptions. Cannot be empty and needs to have
+            at least the host platform and the definitions.
         requirements_by_platform (label_keyed_string_dict): a way to have
             different package versions (or different packages) for different
             os, arch combinations.
@@ -161,6 +162,10 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     extras_map = uv_lock_extras_map(uv_lock)
 
     uv_packages = {}
+
+    if not platforms:
+        fail("BUG: platforms must be configured")
+
     for pkg in uv_lock["package"]:
         name = pkg["name"]
         version = pkg["version"]
@@ -181,7 +186,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             pkg_platforms = [
                 p
                 for p in all_platforms
-                if p in platforms and evaluate(marker_expr, env = platforms[p].env)
+                if evaluate(marker_expr, env = platforms[p].env)
             ]
         else:
             pkg_platforms = list(all_platforms)
@@ -224,75 +229,56 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
                 source = pkg["source"],
             )
 
-        if platforms:
-            plat_to_src = {}
-            for p in pkg_platforms:
-                platform = platforms.get(p)
-                if not platform:
-                    continue
+        plat_to_src = {}
+        for p in pkg_platforms:
+            platform = platforms.get(p)
+            if not platform:
+                continue
 
-                best_wheel = None
-                if candidates:
-                    best_wheel = select_whl(
-                        whls = candidates,
-                        python_version = platform.env.get("python_full_version", "3"),
-                        whl_platform_tags = platform.whl_platform_tags,
-                        whl_abi_tags = platform.whl_abi_tags,
-                        implementation_name = platform.env.get("implementation_name", "cpython"),
-                        limit = 1,
-                        logger = logger,
-                    )
-
-                if best_wheel:
-                    plat_to_src[p] = best_wheel
-                elif sdist_struct:
-                    plat_to_src[p] = sdist_struct
-                elif git_struct:
-                    plat_to_src[p] = git_struct
-
-            # Group platforms by resolved source
-            src_to_plats = {}
-            for p, src in plat_to_src.items():
-                key = src.filename + src.sha256
-                src_to_plats.setdefault(key, struct(src = src, plats = [])).plats.append(p)
-
-            # Build resolved_srcs
-            for key, val in src_to_plats.items():
-                src = val.src
-                plats = sorted(val.plats)
-                requirement_line = "{name}{extras}=={version}".format(
-                    name = name,
-                    extras = extra_str,
-                    version = version,
+            best_wheel = None
+            if candidates:
+                best_wheel = select_whl(
+                    whls = candidates,
+                    python_version = platform.env.get("python_full_version", "3"),
+                    whl_platform_tags = platform.whl_platform_tags,
+                    whl_abi_tags = platform.whl_abi_tags,
+                    implementation_name = platform.env.get("implementation_name", "cpython"),
+                    limit = 1,
+                    logger = logger,
                 )
-                entry["resolved_srcs"].append(struct(
-                    distribution = name,
-                    extra_pip_args = extra_pip_args or [],
-                    requirement_line = requirement_line,
-                    target_platforms = plats,
-                    filename = src.filename,
-                    sha256 = src.sha256,
-                    url = src.url,
-                    yanked = None,
-                ))
-        else:
-            # No platforms, expose everything for all pkg_platforms
-            for src in candidates + ([sdist_struct] if sdist_struct else []) + ([git_struct] if git_struct else []):
-                requirement_line = "{name}{extras}=={version}".format(
-                    name = name,
-                    extras = extra_str,
-                    version = version,
-                )
-                entry["resolved_srcs"].append(struct(
-                    distribution = name,
-                    extra_pip_args = extra_pip_args or [],
-                    requirement_line = requirement_line,
-                    target_platforms = list(pkg_platforms),
-                    filename = src.filename,
-                    sha256 = src.sha256,
-                    url = src.url,
-                    yanked = None,
-                ))
+
+            if best_wheel:
+                plat_to_src[p] = best_wheel
+            elif sdist_struct:
+                plat_to_src[p] = sdist_struct
+            elif git_struct:
+                plat_to_src[p] = git_struct
+
+        # Group platforms by resolved source
+        src_to_plats = {}
+        for p, src in plat_to_src.items():
+            key = src.filename + src.sha256
+            src_to_plats.setdefault(key, struct(src = src, plats = [])).plats.append(p)
+
+        # Build resolved_srcs
+        for key, val in src_to_plats.items():
+            src = val.src
+            plats = sorted(val.plats)
+            requirement_line = "{name}{extras}=={version}".format(
+                name = name,
+                extras = extra_str,
+                version = version,
+            )
+            entry["resolved_srcs"].append(struct(
+                distribution = name,
+                extra_pip_args = extra_pip_args or [],
+                requirement_line = requirement_line,
+                target_platforms = plats,
+                filename = src.filename,
+                sha256 = src.sha256,
+                url = src.url,
+                yanked = None,
+            ))
 
     ret = []
     for norm_name, info in sorted(uv_packages.items()):
