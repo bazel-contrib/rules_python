@@ -50,18 +50,25 @@ def _py_extension_impl(ctx):
     if ctx.attr.external_deps:
         user_link_flags.append("-Wl,--allow-shlib-undefined")
 
-    # todo: use toolchain to determine `abi3.` infix
-    py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
-    py_runtime = py_toolchain.py3_runtime
-    cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
-    platform_tag, ext = _get_platform_and_extension(cc_toolchain)
-    output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
-        module_name = module_name,
-        pyc_tag = py_runtime.pyc_tag,      # e.g. "cpython-311"
-        abi_flags = py_runtime.abi_flags,  # e.g. "" or "d"
-        platform = platform_tag,           # e.g. "x86_64-linux-gnu"
-        ext = "so",
-    )
+    ext = _get_extension(cc_toolchain)
+    use_py_limited_api = ctx.attr.py_limited_api and ctx.attr.py_limited_api != "none"
+    if use_py_limited_api:
+        output_filename = "{module_name}.abi3.{ext}".format(
+            module_name=module_name,
+            ext=ext,
+        )
+    else:
+        py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
+        py_runtime = py_toolchain.py3_runtime
+        cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
+        platform_tag = _get_platform(cc_toolchain)
+        output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
+            module_name = module_name,
+            pyc_tag = py_runtime.pyc_tag,      # e.g. "cpython-311"
+            abi_flags = py_runtime.abi_flags,  # e.g. "" or "d"
+            platform = platform_tag,           # e.g. "x86_64-linux-gnu"
+            ext = "so",
+        )
     py_dso = ctx.actions.declare_file(output_filename)
 
     static_linking_context = static_cc_info.linking_context
@@ -148,6 +155,12 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     "copts": lambda: attrb.StringList(),
     "linkopts": lambda: attrb.StringList(),
     "module_name": lambda: attrb.String(),
+    "py_limited_api": lambda: attrb.String(
+        doc = ("Minimum Python version to target for the Limited API (e.g., '3.8'). " +
+               "Set to 'none' (the default) to disable the Limited API and build a " +
+               "version-specific extension."),
+        default = "none"
+    ),
 }
 
 def create_py_extension_rule_builder(**kwargs):
@@ -181,34 +194,48 @@ _BAZEL_CPU_TO_PEP_ARCH = {
     "arm64_windows": "arm64",
 }
 
-def _get_platform_and_extension(cc_toolchain):
-    """Derives the PEP 3149 platform tag and extension from the C++ toolchain.
+def _get_extension(cc_toolchain):
+    """
+    Derives the appropriate file extension from the C++ toolchain.
 
     Args:
         cc_toolchain: The CcToolchainInfo provider (usually obtained via
           ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc)
 
     Returns:
-        A tuple of (platform_tag, extension)
-          e.g., ("x86_64-linux-gnu", "so") or ("win_amd64", "pyd")
+        The extension, e.g. "so" or "pyd"
     """
-    # 1. Get the GNU target name (e.g., "local-linux-gnu" or "x86_64-unknown-linux-gnu")
+
+    # Windows uses .pyd; Unix (Linux/macOS) uses .so for Python modules
+    target_name = cc_toolchain.target_gnu_system_name
+    is_windows = "windows" in target_name or "mingw" in target_name or "msvc" in target_name
+    ext = "pyd" if is_windows else "so"
+    return ext
+
+
+def _get_platform(cc_toolchain):
+    """Derives the PEP 3149 platform tag from the C++ toolchain.
+
+    Args:
+        cc_toolchain: The CcToolchainInfo provider (usually obtained via
+          ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc)
+
+    Returns:
+        The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
+    """
+    # Get the GNU target name (e.g., "local-linux-gnu" or "x86_64-unknown-linux-gnu")
     target_name = cc_toolchain.target_gnu_system_name
 
-    # 2. Detect the OS family
+    # Detect the OS family
     is_windows = "windows" in target_name or "mingw" in target_name or "msvc" in target_name
     is_mac = "apple" in target_name or "darwin" in target_name
 
-    # 3. Determine the extension for Python C extensions
-    # Windows uses .pyd; Unix (Linux/macOS) uses .so for Python modules
-    ext = "pyd" if is_windows else "so"
-
-    # 4. Parse the architecture from the target_name
+    # Parse the architecture from the target_name
     # e.g., "x86_64-unknown-linux-gnu" -> "x86_64"
     target_parts = target_name.split("-")
     arch = target_parts[0]
 
-    # 5. Handle the "local" placeholder by falling back to cc_toolchain.cpu
+    # Handle the "local" placeholder by falling back to cc_toolchain.cpu
     if arch == "local":
         cpu = cc_toolchain.cpu
         # Resolve the Bazel CPU name to a standard PEP architecture
@@ -219,7 +246,7 @@ def _get_platform_and_extension(cc_toolchain):
     elif arch == "aarch64":
         arch = "arm64" if is_mac else "aarch64"
 
-    # 6. Derive the PEP 3149 / PEP 425 platform tag
+    # Derive the PEP 3149 / PEP 425 platform tag
     if is_windows:
         platform_tag = "win_amd64" if arch == "x86_64" else "win32"
     elif is_mac:
@@ -240,4 +267,4 @@ def _get_platform_and_extension(cc_toolchain):
 
         platform_tag = "{}-{}-{}".format(arch, os_part, abi_part)
 
-    return platform_tag, ext
+    return platform_tag

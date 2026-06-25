@@ -93,6 +93,24 @@ cc_library(
     hdrs = ["add_one_helper.h"],
 )
 
+py_extension(
+    name = "ext_limited",
+    static_deps = [":ext_limited_impl"],
+    py_limited_api = '3.8'
+)
+
+cc_library(
+    name = "ext_limited_impl",
+    srcs = ["ext_limited.c"],
+    copts = [
+        "-fPIC",
+        "-fvisibility=hidden",
+    ],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
 py_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
