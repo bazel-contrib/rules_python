@@ -102,6 +102,7 @@ py_extension(
 cc_library(
     name = "ext_limited_impl",
     srcs = ["ext_limited.c"],
+    defines = ["Py_LIMITED_API=0x3080000"],
     copts = [
         "-fPIC",
         "-fvisibility=hidden",
@@ -110,6 +111,26 @@ cc_library(
         "@rules_python//python/cc:current_py_cc_headers",
     ],
 )
+
+
+# test cases:
+# py_limited_api
+#   - 3.8 -> 3.8    ok
+#   - 3.8 -> 3.9
+#   - 3.9 -> 3.8
+#   - 3.9 -> 3.9    ok
+#   - none -> 3.8
+#   - 3.8 -> none   fail
+#   - 3.8 -> nopy   ok
+#   - none -> none  ok?
+#   - none -> nopy  ok?
+# invalid values for version string
+#   - 2.x
+#   - 3.0 and 3.1
+#   - 4.x
+#   - not version string, e.g. "asdf"
+#   - patch versions? 3.8.4 ?
+#   - empty string or null?
 
 py_test(
     name = "py_extension_test",

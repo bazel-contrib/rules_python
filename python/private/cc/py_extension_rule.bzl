@@ -53,6 +53,9 @@ def _py_extension_impl(ctx):
     ext = _get_extension(cc_toolchain)
     use_py_limited_api = ctx.attr.py_limited_api and ctx.attr.py_limited_api != "none"
     if use_py_limited_api:
+        # check that all dependencies have compatible API versions, if defined
+        _check_limited_api_compatibility(ctx, ctx.attr.py_limited_api)
+
         output_filename = "{module_name}.abi3.{ext}".format(
             module_name=module_name,
             ext=ext,
@@ -156,9 +159,29 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     "linkopts": lambda: attrb.StringList(),
     "module_name": lambda: attrb.String(),
     "py_limited_api": lambda: attrb.String(
-        doc = ("Minimum Python version to target for the Limited API (e.g., '3.8'). " +
-               "Set to 'none' (the default) to disable the Limited API and build a " +
-               "version-specific extension."),
+        doc = """\
+            The minimum Python version to target for the Limited API (e.g., '3.8').
+
+            If set to a version string (e.g., '3.8') instead of 'none':
+              - Configures the output filename to use the simple '.abi3' suffix (e.g.,
+                'ext.abi3.so').
+              - Strictly validates that all linked C++ dependencies (static_deps,
+                dynamic_deps, etc.) are binary-compatible with this target version,
+                failing the build if a dependency is missing the 'Py_LIMITED_API' define
+                or targets a newer version.
+
+            Note: Since the py_extension rule only links pre-compiled libraries, you must
+            manually add the preprocessor macro to the cc_library targets that compile your
+            C/C++ sources, for example:
+                cc_library(
+                    name = "my_impl",
+                    srcs = ["my_code.c"],
+                    defines = ["Py_LIMITED_API=0x03080000"],
+                    ...
+                )
+
+            Set to 'none' (the default) to build a standard, version-specific extension.
+            """,
         default = "none"
     ),
 }
@@ -211,7 +234,6 @@ def _get_extension(cc_toolchain):
     is_windows = "windows" in target_name or "mingw" in target_name or "msvc" in target_name
     ext = "pyd" if is_windows else "so"
     return ext
-
 
 def _get_platform(cc_toolchain):
     """Derives the PEP 3149 platform tag from the C++ toolchain.
@@ -268,3 +290,106 @@ def _get_platform(cc_toolchain):
         platform_tag = "{}-{}-{}".format(arch, os_part, abi_part)
 
     return platform_tag
+
+
+def _version_to_hex(version_str):
+    """Converts a version string like '3.10' to Python's version hex '0x030a0000'."""
+    parts = version_str.split(".")
+    if len(parts) != 2:
+        fail("Invalid py_limited_api version '{}', expected 'major.minor' format (e.g., '3.8')".format(version_str))
+
+    major = int(parts[0])
+    minor = int(parts[1])
+
+    if major != 3:
+        fail("Python Limited API is only supported for Python 3.2+ (got Python {})".format(major))
+    if minor < 2:
+        fail("Python Limited API is only supported for Python 3.2+ (got 3.{})".format(minor))
+
+    # Format the minor version as a 2-digit hex (e.g., 10 -> "0a")
+    # Starlark doesn't seem to support %02x formatting
+
+    return "0x03%x%x0000" % (int(minor/16), minor%16)
+
+
+def _check_limited_api_compatibility(ctx, ext_version_str):
+    """Validates that all C++ dependencies are binary-compatible with the extension's Limited API target."""
+    if ext_version_str == "none":
+        return
+
+    ext_version_hex = _version_to_hex(ext_version_str)
+    ext_version_val = int(ext_version_hex, 16)
+
+    # Collect all dependencies that might propagate CcInfo
+    deps = []
+    deps.extend(ctx.attr.static_deps)
+    deps.extend(ctx.attr.dynamic_deps)
+    deps.extend(ctx.attr.external_deps)
+
+    for dep in deps:
+        if CcInfo not in dep:
+            continue
+
+        comp_ctx = dep[CcInfo].compilation_context
+
+        # Detect if the dependency has access to Python headers
+        has_python_headers = False
+        for header in comp_ctx.headers.to_list():
+            if header.basename == "Python.h":
+                has_python_headers = True
+                break
+
+        # Inspect the propagated defines
+        has_limited_api_define = False
+        limited_api_define_value = None
+
+        for define in comp_ctx.defines.to_list():
+            if define.startswith("Py_LIMITED_API="):
+                has_limited_api_define = True
+                limited_api_define_value = define.split("=")[1]
+            elif define == "Py_LIMITED_API":
+                has_limited_api_define = True
+                limited_api_define_value = "unspecified"
+
+        # Enforce the compatibility contract
+
+        # Contract Rule A: If the library uses Python, it MUST use the Limited API
+        if has_python_headers and not has_limited_api_define:
+            fail((
+                "\nERROR: Unsafe Python C API usage in dependency:\n" +
+                "  Dependency '{dep}' includes Python headers (contains 'Python.h')\n" +
+                "  but does NOT define 'Py_LIMITED_API'.\n" +
+                "  This will link unstable Python symbols into your Stable ABI extension.\n" +
+                "  Please add: defines = [\"Py_LIMITED_API={ext_hex}\"] to '{dep}'."
+            ).format(
+                dep = dep.label,
+                ext_hex = ext_version_hex,
+            ))
+
+        # Contract Rule B: If the Limited API is defined, it must be version-safe
+        if has_limited_api_define:
+            if limited_api_define_value == "unspecified":
+                fail((
+                    "\nERROR: Unsafe Python Limited API definition in dependency\n" +
+                    "  Dependency '{dep}' defines 'Py_LIMITED_API' without a version hex.\n" +
+                    "  Please change it to specify the target version explicitly, " +
+                    "for example: defines = [\"Py_LIMITED_API={ext_hex}\"]"
+                ).format(
+                    dep = dep.label,
+                    ext_hex = ext_version_hex,
+                ))
+            else:
+                dep_version_val = int(limited_api_define_value, 16)
+                if dep_version_val > ext_version_val:
+                    fail((
+                        "\nERROR: Incompatible Python Limited API targets detected\n" +
+                        "  Extension '{self}' targets version '{ext_ver}' ({ext_hex}).\n" +
+                        "  Dependency '{dep}' targets a NEWER version ({dep_hex}).\n" +
+                        "  You cannot link a newer Limited API library into an older extension."
+                    ).format(
+                        self = ctx.label,
+                        ext_ver = ext_version_str,
+                        ext_hex = ext_version_hex,
+                        dep = dep.label,
+                        dep_hex = limited_api_define_value,
+            ))

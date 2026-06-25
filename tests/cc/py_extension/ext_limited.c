@@ -1,11 +1,11 @@
 #include <Python.h>
 
 static PyObject* get_limited_api_version(PyObject* self, PyObject* args) {
-    return PyUnicode_FromFormat("0x%X", Py_LIMITED_API);
+    return PyUnicode_FromFormat("0x%08x", Py_LIMITED_API);
 }
 
 static PyMethodDef ModuleMethods[] = {
-    {"get_limited_api_version", do_alpha, METH_NOARGS, "Get the version of the limited API this extension was compiled against.."},
+    {"get_limited_api_version", get_limited_api_version, METH_NOARGS, "Get the version of the limited API this extension was compiled against."},
     {NULL, NULL, 0, NULL}
 };
 
