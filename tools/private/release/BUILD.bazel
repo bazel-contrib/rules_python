@@ -9,7 +9,12 @@ py_library(
 
 py_binary(
     name = "release",
-    srcs = ["release.py"],
+    srcs = [
+        "gh.py",
+        "git.py",
+        "release.py",
+        "utils.py",
+    ],
     main = "release.py",
     deps = [
         ":changelog_news",

@@ -1,0 +1,48 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_test.bzl", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_test(
+    name = "test_default",
+    srcs = ["test_default.py"],
+    deps = ["@pypi//colorama"],
+)
+
+py_test(
+    name = "test_cli",
+    srcs = ["test_cli.py"],
+    deps = ["@pypi//colorama"],
+)
+
+py_test(
+    name = "test_a",
+    srcs = ["test_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_a",
+    },
+    deps = [
+        "@pypi//colorama",
+        "@pypi//colorama:my_colorama",
+    ],
+)
+
+# Sibling extra alias failure target (my_colorama is missing in pypi_b):
+py_binary(
+    name = "bin_extra_b",
+    srcs = ["bin_extra_b.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b",
+    },
+    deps = ["@pypi//colorama:my_colorama"],
+)
+
+# Disjoint package failure target (six is missing in pypi_a):
+py_binary(
+    name = "bin_six_a",
+    srcs = ["bin_six_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_a",
+    },
+    deps = ["@pypi//six"],
+)
