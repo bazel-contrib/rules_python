@@ -122,8 +122,41 @@ bar==0.0.1 --hash=sha256:deadb00f
 
 _tests = []
 
+def _make_platforms(platform_names):
+    """Create minimal platform structs for testing, matching py3-none-any wheels."""
+    platforms = {}
+    for name in platform_names:
+        platforms[name] = struct(
+            env = pep508_env(python_version = "3.11.0", os = "linux", arch = "x86_64"),
+            whl_abi_tags = ["none"],
+            whl_platform_tags = ["any"],
+        )
+    return platforms
+
 def parse_requirements(debug = False, **kwargs):
+    """Get requirements by calling the original parse_requirements.
+
+    Args:
+      debug: If True, set verbosity to TRACE.
+      **kwargs: forwarded to the underlying function.
+
+    Returns:
+      The result of the underlying parse_requirements call.
+    """
     kwargs.setdefault("toml_decode", json.decode)
+
+    # Provide default platforms when not specified.
+    if "platforms" not in kwargs:
+        if "requirements_by_platform" in kwargs:
+            platform_names = {}
+            for _plats in kwargs["requirements_by_platform"].values():
+                for _p in _plats:
+                    platform_names[_p] = None
+            platform_names = sorted(platform_names)
+            kwargs["platforms"] = _make_platforms(platform_names)
+        elif "uv_lock" in kwargs:
+            kwargs["platforms"] = _make_platforms(["linux_x86_64"])
+
     return _parse_requirements(
         ctx = _mock_ctx(),
         logger = repo_utils.logger(struct(
@@ -1055,20 +1088,10 @@ def _test_uv_lock_primary_source(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
-                    yanked = None,
-                ),
-                struct(
-                    distribution = "foo",
-                    extra_pip_args = [],
-                    requirement_line = "foo==0.0.1",
-                    target_platforms = [],
-                    filename = "foo-0.0.1.tar.gz",
-                    sha256 = "feedcafe",
-                    url = "https://files.pythonhosted.org/packages/foo-0.0.1.tar.gz",
                     yanked = None,
                 ),
             ],
@@ -1093,7 +1116,7 @@ def _test_uv_lock_primary_source_multiple_versions(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1103,7 +1126,7 @@ def _test_uv_lock_primary_source_multiple_versions(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.2",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.2-py3-none-any.whl",
                     sha256 = "deadb11f",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl",
@@ -1131,7 +1154,7 @@ def _test_uv_lock_primary_source_with_extras(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo[extra]==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1159,7 +1182,7 @@ def _test_uv_lock_primary_source_includes_virtual(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1225,7 +1248,7 @@ def _test_uv_lock_vcs_entry(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.1.0",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo.git",
                     sha256 = "",
                     url = "https://github.com/org/foo.git",
@@ -1253,7 +1276,7 @@ def _test_uv_lock_rules_python_pkg_not_skipped(env):
                     distribution = "rules_python",
                     extra_pip_args = [],
                     requirement_line = "rules_python==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "rules_python-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl",
@@ -1314,7 +1337,7 @@ def _test_uv_lock_multiple_packages(env):
                     distribution = "bar",
                     extra_pip_args = [],
                     requirement_line = "bar==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "bar-0.0.1.tar.gz",
                     sha256 = "deadb00f",
                     url = "https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz",
@@ -1332,7 +1355,7 @@ def _test_uv_lock_multiple_packages(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1361,7 +1384,7 @@ def _test_uv_lock_with_extra_pip_args(env):
                     distribution = "foo",
                     extra_pip_args = ["--index-url=example.org"],
                     requirement_line = "foo==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1421,7 +1444,7 @@ def _test_uv_lock_extras_optional_deps(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo[extra1,extra2]==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1449,7 +1472,7 @@ def _test_uv_lock_extras_dep_edge(env):
                     distribution = "bar",
                     extra_pip_args = [],
                     requirement_line = "bar[extra1]==0.0.2",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "bar-0.0.2-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/bar-0.0.2-py3-none-any.whl",
@@ -1467,7 +1490,7 @@ def _test_uv_lock_extras_dep_edge(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "baadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
@@ -1586,7 +1609,7 @@ def _test_uv_lock_requires_dist_extras(env):
                     distribution = "foo",
                     extra_pip_args = [],
                     requirement_line = "foo[all]==0.0.1",
-                    target_platforms = [],
+                    target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
