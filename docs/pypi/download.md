@@ -67,6 +67,14 @@ useful in monorepos where shared library targets need to depend on PyPI
 packages without knowing which specific hub or requirements lock file the
 consuming binary is using.
 
+#### Reserved `"pypi"` Hub Name
+
+The hub name `"pypi"` is **reserved** for the automatically generated unified
+hub repository. Defining a concrete hub named `"pypi"` will cause a collision.
+
+For details on how this collision is handled and resolved via environment
+variables, see the {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` documentation.
+
 #### Configuring the Unified Hub
 
 To configure the unified hub, define your concrete hubs as usual, and

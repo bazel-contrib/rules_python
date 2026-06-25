@@ -352,9 +352,22 @@ You cannot use both the additive_build_content and additive_build_content_file a
     pip_hub_map = {}
     simpleapi_cache = pypi_cache(mctx = module_ctx)
 
+    is_pypi_hub_reserved = module_ctx.getenv("RULES_PYTHON_PYPI_HUB_RESERVED", "0") == "1"
+    renamed_default_hub = None
+
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
             hub_name = pip_attr.hub_name
+            if hub_name == "pypi":
+                if is_pypi_hub_reserved:
+                    renamed_name = mod.name + "_pypi"
+                    print("WARNING: The PyPI hub name 'pypi' is reserved (module '{}'). The hub was renamed to '{}'. Please rename your hub.".format(mod.name, renamed_name))  # buildifier: disable=print
+                    hub_name = renamed_name
+                    if not renamed_default_hub:
+                        renamed_default_hub = hub_name
+                else:
+                    print("WARNING: The PyPI hub name 'pypi' is reserved (module '{}'). Please rename your hub.".format(mod.name))  # buildifier: disable=print
+
             if hub_name not in pip_hub_map:
                 builder = hub_builder(
                     name = hub_name,
@@ -368,7 +381,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
                     logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name, mod = mod),
                 )
-                pip_hub_map[pip_attr.hub_name] = builder
+                pip_hub_map[hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
                 # We cannot have two hubs with the same name in different
                 # modules.
@@ -384,7 +397,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 ))
 
             else:
-                builder = pip_hub_map[pip_attr.hub_name]
+                builder = pip_hub_map[hub_name]
 
             builder.pip_parse(
                 module_ctx,
@@ -415,7 +428,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     return struct(
         config = config,
-        default_hub = config.default_hub,
+        default_hub = config.default_hub or renamed_default_hub,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         facts = simpleapi_cache.get_facts(),
@@ -791,6 +804,11 @@ https://packaging.python.org/en/latest/specifications/simple-repository-api/
             doc = """
 The name of the repo pip dependencies will be accessible from.
 
+The hub name `"pypi"` is reserved for the automatically generated
+[Unified @pypi Hub](unified-pypi-hub) repository. Please choose a different name
+for your concrete hubs. See [Unified @pypi Hub](unified-pypi-hub) for how to
+handle collisions.
+
 This name must be unique between modules; unless your module is guaranteed to
 always be the root module, it's highly recommended to include your module name
 in the hub name. Repo mapping, `use_repo(..., pip="my_modules_pip_deps")`, can
@@ -806,6 +824,12 @@ is not required. Each hub is a separate resolution of pip dependencies. This
 means if different programs need different versions of some library, separate
 hubs can be created, and each program can use its respective hub's targets.
 Targets from different hubs should not be used together.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Using the hub name `"pypi"` is deprecated and is changed to
+`{module_name}_pypi` depending on the
+{envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` environment variable.
+:::
 """,
         ),
         "parallel_download": attr.bool(
@@ -966,6 +990,7 @@ other tags in this extension.""",
 )
 
 pypi = module_extension(
+    environ = ["RULES_PYTHON_PYPI_HUB_RESERVED"],
     doc = """\
 This extension is used to make dependencies from pip available.
 
@@ -982,6 +1007,10 @@ to automatically resolve to different, Python version-specific, libraries.
 A unified `@pypi` proxy repository is always generated (unless a hub is
 explicitly named "pypi") to route dependencies dynamically. See
 [Unified @pypi Hub](unified-pypi-hub) for details.
+
+Environment Variables:
+- `RULES_PYTHON_PYPI_HUB_RESERVED`: Enable fallback renaming for reserved hub name collisions.
+  See the {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` documentation for details.
 
 pip.whl_mods:
 This tag class is used to help create JSON files to describe modifications to
