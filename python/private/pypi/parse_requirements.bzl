@@ -389,7 +389,7 @@ def _resolve_single_version(src_entries, distribution, extra_pip_args, extra_str
             plat_to_entry[p] = src_entries[0]
             continue
         best = select_whl(
-            whls = [struct(filename = s.filename) for s in src_entries if s.filename.endswith(".whl")],
+            whls = [s for s in src_entries if s.filename.endswith(".whl")],
             python_version = platform.env.get("python_full_version", "3"),
             whl_platform_tags = platform.whl_platform_tags,
             whl_abi_tags = platform.whl_abi_tags,
@@ -398,14 +398,7 @@ def _resolve_single_version(src_entries, distribution, extra_pip_args, extra_str
             logger = logger,
         )
         if best != None:
-            matched = False
-            for s in src_entries:
-                if s.filename == best.filename:
-                    plat_to_entry[p] = s
-                    matched = True
-                    break
-            if not matched and src_entries:
-                plat_to_entry[p] = src_entries[0]
+            plat_to_entry[p] = best
         elif src_entries:
             plat_to_entry[p] = src_entries[0]
 
