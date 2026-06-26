@@ -380,7 +380,7 @@ def _check_limited_api_compatibility(ctx, ext_version_str):
                     ext_hex = ext_version_hex,
                 ))
             else:
-                dep_version_val = int(limited_api_define_value, 16)
+                dep_version_val = int(limited_api_define_value.rstrip("ULul"), 16)
                 if dep_version_val > ext_version_val:
                     fail((
                         "\nERROR: Incompatible Python Limited API targets detected\n" +
