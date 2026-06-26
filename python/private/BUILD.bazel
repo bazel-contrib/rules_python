@@ -840,6 +840,52 @@ bzl_library(
 )
 
 bzl_library(
+    name = "interpreter",
+    srcs = ["interpreter.bzl"],
+    deps = [
+        ":common",
+        ":sentinel_impl",
+        ":toolchain_types",
+        "//python:py_runtime_info",
+        "@bazel_skylib//lib:paths",
+    ],
+)
+
+bzl_library(
+    name = "py_cc_toolchain_rule",
+    srcs = ["py_cc_toolchain_rule.bzl"],
+    deps = [
+        ":common_labels",
+        ":py_cc_toolchain_info",
+        ":sentinel_impl",
+        "@bazel_skylib//rules:common_settings",
+        "@rules_cc//cc/common",
+    ],
+)
+
+bzl_library(
+    name = "py_exec_tools_toolchain",
+    srcs = ["py_exec_tools_toolchain.bzl"],
+    deps = [
+        ":common_labels",
+        ":py_exec_tools_info",
+        ":sentinel_impl",
+        ":toolchain_types",
+        "@bazel_skylib//lib:paths",
+        "@bazel_skylib//rules:common_settings",
+    ],
+)
+
+bzl_library(
+    name = "py_interpreter_program",
+    srcs = ["py_interpreter_program.bzl"],
+    deps = [
+        ":sentinel_impl",
+        "@bazel_skylib//rules:common_settings",
+    ],
+)
+
+bzl_library(
     name = "bzlmod_enabled",
     srcs = ["bzlmod_enabled.bzl"],
 )
@@ -865,18 +911,6 @@ bzl_library(
 )
 
 bzl_library(
-    name = "interpreter",
-    srcs = ["interpreter.bzl"],
-    deps = [
-        ":common",
-        ":sentinel_impl",
-        ":toolchain_types",
-        "//python:py_runtime_info",
-        "@bazel_skylib//lib:paths",
-    ],
-)
-
-bzl_library(
     name = "normalize_name",
     srcs = ["normalize_name.bzl"],
 )
@@ -897,18 +931,6 @@ bzl_library(
 )
 
 bzl_library(
-    name = "py_cc_toolchain_rule",
-    srcs = ["py_cc_toolchain_rule.bzl"],
-    deps = [
-        ":common_labels",
-        ":py_cc_toolchain_info",
-        ":sentinel_impl",
-        "@bazel_skylib//rules:common_settings",
-        "@rules_cc//cc/common",
-    ],
-)
-
-bzl_library(
     name = "py_console_script_gen",
     srcs = ["py_console_script_gen.bzl"],
 )
@@ -919,30 +941,8 @@ bzl_library(
 )
 
 bzl_library(
-    name = "py_exec_tools_toolchain",
-    srcs = ["py_exec_tools_toolchain.bzl"],
-    deps = [
-        ":common_labels",
-        ":py_exec_tools_info",
-        ":sentinel_impl",
-        ":toolchain_types",
-        "@bazel_skylib//lib:paths",
-        "@bazel_skylib//rules:common_settings",
-    ],
-)
-
-bzl_library(
     name = "py_executable_info",
     srcs = ["py_executable_info.bzl"],
-)
-
-bzl_library(
-    name = "py_interpreter_program",
-    srcs = ["py_interpreter_program.bzl"],
-    deps = [
-        ":sentinel_impl",
-        "@bazel_skylib//rules:common_settings",
-    ],
 )
 
 bzl_library(
