@@ -11,5 +11,8 @@ basis:
 * Fetch `upstream/main` (`git fetch upstream main`).
 * Base any new branch or worktree upon `upstream/main` (e.g.,
   `git checkout -b <branch> upstream/main`).
-* Set the upstream branch to `upstream/main`
-  (`git branch --set-upstream-to=upstream/main`).
+* Run the workspace helper script to configure upstream tracking and safe
+  pushing:
+  ```bash
+  .agents/scripts/setup_upstream.sh <branch>
+  ```
