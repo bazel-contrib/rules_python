@@ -63,3 +63,17 @@ bzl_library(
     srcs = ["py_cc_toolchain_info.bzl"],
     deps = ["//python/private:py_cc_toolchain_info"],
 )
+
+alias(
+    name = "py_cc_toolchain_bzl",
+    actual = ":py_cc_toolchain",
+    deprecation = "Use //python/cc:py_cc_toolchain instead",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "py_cc_toolchain_info_bzl",
+    actual = ":py_cc_toolchain_info",
+    deprecation = "Use //python/cc:py_cc_toolchain_info instead",
+    visibility = ["//visibility:public"],
+)

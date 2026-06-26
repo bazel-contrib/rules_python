@@ -365,8 +365,7 @@ bzl_library(
         "//python:py_runtime",
         "//python:py_runtime_pair",
         "//python/cc:py_cc_toolchain",
-        "@rules_cc//cc:cc_import",
-        "@rules_cc//cc:cc_library",
+        "@rules_cc//cc:core_rules",
     ],
 )
 
@@ -379,6 +378,7 @@ bzl_library(
     ],
 )
 
+# keep
 bzl_library(
     name = "internal_dev_deps",
     srcs = ["internal_dev_deps.bzl"],
@@ -386,7 +386,6 @@ bzl_library(
         ":runtime_env_repo",
         "//python/private/pypi:whl_library",
         "//tests/support/whl_from_dir:whl_from_dir_repo",
-        "@bazel_ci_rules//:rbe_repo",
     ],
 )
 
@@ -410,8 +409,7 @@ bzl_library(
     srcs = ["local_runtime_repo_setup.bzl"],
     deps = [
         "@bazel_skylib//lib:selects",
-        "@rules_cc//cc:cc_import",
-        "@rules_cc//cc:cc_library",
+        "@rules_cc//cc:core_rules",
         "@rules_python//python:py_runtime",
         "@rules_python//python:py_runtime_pair",
         "@rules_python//python/cc:py_cc_toolchain",
@@ -639,7 +637,7 @@ bzl_library(
         ":text_util",
         ":toolchain_types",
         "@bazel_skylib//lib:selects",
-        "@platforms//host:constraints",
+        "@platforms//host:constraints_lib",
     ],
 )
 
@@ -743,7 +741,7 @@ bzl_library(
         "//python:py_runtime",
         "//python:py_runtime_pair",
         "//python/cc:py_cc_toolchain",
-        "@rules_cc//cc:cc_library",
+        "@rules_cc//cc:core_rules",
     ],
 )
 

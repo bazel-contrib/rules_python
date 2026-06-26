@@ -21,6 +21,11 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:utils.bzl //python/private:bazel_tools
 # Prevent Gazelle from incorrectly stripping the .bzl suffix from the toml.bzl repo name
 # gazelle:resolve starlark @toml.bzl//:toml.bzl @toml.bzl//:toml
+# Override Gazelle's incorrect default resolution for platforms host constraints Starlark library
+# gazelle:resolve starlark @platforms//host:constraints.bzl @platforms//host:constraints_lib
+# Override Gazelle's incorrect default resolution for rules_cc Starlark libraries
+# gazelle:resolve starlark @rules_cc//cc:cc_import.bzl @rules_cc//cc:core_rules
+# gazelle:resolve starlark @rules_cc//cc:cc_library.bzl @rules_cc//cc:core_rules
 # gazelle:exclude tests
 # gazelle:exclude examples
 
@@ -90,6 +95,7 @@ bzl_library(
     ],
 )
 
+# keep
 bzl_library(
     name = "internal_dev_setup",
     srcs = ["internal_dev_setup.bzl"],
@@ -104,11 +110,8 @@ bzl_library(
         "//tests/support/whl_from_dir:whl_from_dir_repo",
         "@bazel_features//:deps",
         "@bazel_skylib//:workspace",
-        "@cgrindel_bazel_starlib//:deps",
-        "@com_google_protobuf//:protobuf_deps",
         "@rules_bazel_integration_test//bazel_integration_test:deps",
         "@rules_bazel_integration_test//bazel_integration_test:repo_defs",
-        "@rules_shell//shell:repositories",
     ],
 )
 
