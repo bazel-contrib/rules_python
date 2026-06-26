@@ -28,6 +28,9 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # gazelle:resolve starlark @rules_cc//cc:cc_library.bzl @rules_cc//cc:core_rules
 # gazelle:exclude tests
 # gazelle:exclude examples
+# gazelle:exclude internal_dev_setup.bzl
+# gazelle:exclude internal_dev_deps.bzl
+# gazelle:exclude python/private/internal_dev_deps.bzl
 
 package(default_visibility = ["//visibility:public"])
 
@@ -81,38 +84,6 @@ filegroup(
         "@bazel_tools//tools/python:utils.bzl",
     ],
     visibility = ["//visibility:public"],
-)
-
-bzl_library(
-    name = "internal_dev_deps",
-    srcs = ["internal_dev_deps.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "//python/private:internal_config_repo",
-        "@bazel_tools//tools/build_defs/repo:http.bzl",
-        "@bazel_tools//tools/build_defs/repo:local.bzl",
-        "@bazel_tools//tools/build_defs/repo:utils.bzl",
-    ],
-)
-
-# keep
-bzl_library(
-    name = "internal_dev_setup",
-    srcs = ["internal_dev_setup.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        ":version",
-        "//python:versions",
-        "//python/private:pythons_hub",
-        "//python/private:runtime_env_repo",
-        "//python/private/pypi:deps",
-        "//python/private/pypi:whl_library",
-        "//tests/support/whl_from_dir:whl_from_dir_repo",
-        "@bazel_features//:deps",
-        "@bazel_skylib//:workspace",
-        "@rules_bazel_integration_test//bazel_integration_test:deps",
-        "@rules_bazel_integration_test//bazel_integration_test:repo_defs",
-    ],
 )
 
 # keep

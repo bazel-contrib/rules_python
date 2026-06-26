@@ -378,17 +378,6 @@ bzl_library(
     ],
 )
 
-# keep
-bzl_library(
-    name = "internal_dev_deps",
-    srcs = ["internal_dev_deps.bzl"],
-    deps = [
-        ":runtime_env_repo",
-        "//python/private/pypi:whl_library",
-        "//tests/support/whl_from_dir:whl_from_dir_repo",
-    ],
-)
-
 bzl_library(
     name = "is_standalone_interpreter",
     srcs = ["is_standalone_interpreter.bzl"],
