@@ -136,6 +136,32 @@ py_reconfig_test(
     main = "sys_path_order_test.py",
 )
 
+genrule(
+    name = "stdlib_shadowing_outputs",
+    outs = [
+        "shutil.py",
+        "types.py",
+    ],
+    cmd = """
+cat > $(@D)/shutil.py <<'PY'
+raise RuntimeError("target output shutil.py shadowed the stdlib shutil module")
+PY
+cat > $(@D)/types.py <<'PY'
+raise RuntimeError("target output types.py shadowed the stdlib types module")
+PY
+""",
+)
+
+py_reconfig_test(
+    name = "stdlib_shadowing_system_python_test",
+    srcs = [
+        "stdlib_shadowing_test.py",
+        ":stdlib_shadowing_outputs",
+    ],
+    bootstrap_impl = "system_python",
+    main = "stdlib_shadowing_test.py",
+)
+
 py_reconfig_test(
     name = "main_module_test",
     srcs = ["main_module.py"],
