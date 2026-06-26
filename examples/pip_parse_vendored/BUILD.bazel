@@ -1,4 +1,3 @@
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
@@ -52,7 +51,7 @@ write_file(
 sh_binary(
     name = "vendor_requirements",
     srcs = ["update.sh"],
-    data = [":requirement"],
+    data = [":requirement_bzl"],
 )
 
 # Similarly ensures that the requirements.bzl file is updated
@@ -75,10 +74,4 @@ py_test(
 build_test(
     name = "test_requirement_lists",
     targets = all_requirements + all_whl_requirements + all_data_requirements,
-)
-
-bzl_library(
-    name = "requirements.clean",
-    srcs = ["requirements.clean.bzl"],
-    visibility = ["//visibility:public"],
 )

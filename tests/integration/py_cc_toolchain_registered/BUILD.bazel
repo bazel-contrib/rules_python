@@ -1,5 +1,3 @@
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-
 # Copyright 2024 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +17,3 @@ load(":defs.bzl", "py_cc_toolchain_available_test")
 # Simple test to verify that the py_cc_toolchain is registered and available
 # by default (for bzlmod) and when users setup a hermetic toolchain (workspace)
 py_cc_toolchain_available_test(name = "py_cc_toolchain_available_test")
-
-bzl_library(
-    name = "defs",
-    srcs = ["defs.bzl"],
-    visibility = ["//visibility:public"],
-)

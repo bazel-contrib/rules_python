@@ -1,14 +1,7 @@
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 
 py_binary(
     name = "directory_writer",
     srcs = ["directory_writer.py"],
     visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "wheel_utils",
-    srcs = ["wheel_utils.bzl"],
-    visibility = ["//examples/wheel:__subpackages__"],
 )
