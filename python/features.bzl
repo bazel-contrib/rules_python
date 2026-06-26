@@ -81,6 +81,15 @@ def _features_typedef():
 
     :::{versionadded} 1.9.0
     ::::
+
+    ::::{field} loadable_symbols
+    :type: dict[str, list[str]]
+
+    A map of bzl paths to the list of public symbols they export.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
     """
 
 _TARGETS = {
@@ -93,6 +102,7 @@ _TARGETS = {
     "//python/cc:current_py_cc_headers_abi3": True,
     "//python/cc:py_cc_toolchain": True,
     "//python/cc:py_cc_toolchain_info": True,
+    "//python/config_settings:venv": True,
     "//python/entry_points:py_console_script_binary": True,
     "//python/local_toolchains:repos": True,
     "//python:defs": True,
@@ -116,10 +126,20 @@ _TARGETS = {
     "//python:versions": True,
 }
 
+_LOADABLE_SYMBOLS = {
+    "//python:py_info.bzl": [
+        # keep sorted
+        "PyInfo",
+        "VenvSymlinkEntry",
+        "VenvSymlinkKind",
+    ],
+}
+
 features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
     headers_abi3 = True,
+    loadable_symbols = _LOADABLE_SYMBOLS,
     precompile = True,
     py_info_venv_symlinks = True,
     targets = _TARGETS,

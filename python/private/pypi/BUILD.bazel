@@ -89,13 +89,10 @@ bzl_library(
     deps = ["@bazel_skylib//lib:selects"],
 )
 
-# keep
 bzl_library(
     name = "deps",
     srcs = ["deps.bzl"],
-    deps = [
-        "//python/private:bazel_tools",
-    ],
+    deps = ["//python/private:bazel_tools"],
 )
 
 bzl_library(
@@ -120,6 +117,7 @@ bzl_library(
     ],
 )
 
+# keep
 bzl_library(
     name = "extension",
     srcs = ["extension.bzl"],
@@ -132,6 +130,7 @@ bzl_library(
         ":platform",
         ":pypi_cache",
         ":simpleapi_download",
+        ":unified_hub_repo",
         ":whl_library",
         "//python/private:auth",
         "//python/private:normalize_name",
@@ -139,6 +138,7 @@ bzl_library(
         "@pythons_hub//:interpreters",
         "@pythons_hub//:versions",
         "@rules_python_internal//:rules_python_config",
+        "@toml.bzl//:toml",
     ],
 )
 
@@ -181,6 +181,7 @@ bzl_library(
         ":requirements_files_by_platform",
         ":whl_config_setting",
         ":whl_repo_name",
+        "//python/private:envsubst",
         "//python/private:full_version",
         "//python/private:normalize_name",
         "//python/private:repo_utils",
@@ -197,6 +198,15 @@ bzl_library(
         ":render_pkg_aliases",
         ":whl_config_setting",
         "//python/private:text_util",
+    ],
+)
+
+bzl_library(
+    name = "missing_package",
+    srcs = ["missing_package.bzl"],
+    deps = [
+        "//python/private:py_info",
+        "//python/private:reexports",
     ],
 )
 
@@ -227,6 +237,7 @@ bzl_library(
         ":select_whl",
         "//python/private:normalize_name",
         "//python/private:repo_utils",
+        "//python/uv/private:uv_lock_to_requirements",
     ],
 )
 
@@ -244,7 +255,6 @@ bzl_library(
     srcs = ["patch_whl.bzl"],
     deps = [
         ":parse_whl_name",
-        ":pypi_repo_utils",
         "//python/private:repo_utils",
         "@rules_python_internal//:rules_python_config",
     ],
@@ -394,6 +404,21 @@ bzl_library(
         "//python/private:auth",
         "//python/private:envsubst",
         "//python/private:normalize_name",
+    ],
+)
+
+bzl_library(
+    name = "unified_hub_repo",
+    srcs = ["unified_hub_repo.bzl"],
+    deps = ["//python/private:text_util"],
+)
+
+bzl_library(
+    name = "unified_hub_setup",
+    srcs = ["unified_hub_setup.bzl"],
+    deps = [
+        "@rules_python//python/private/pypi:labels",
+        "@rules_python//python/private/pypi:missing_package",
     ],
 )
 

@@ -119,6 +119,11 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
+    name = "unified_pypi_test",
+    py_main = "unified_pypi_test.py",
+)
+
+rules_python_integration_test(
     name = "uv_lock_test",
     py_deps = [
         "@pypiserver//pypiserver",

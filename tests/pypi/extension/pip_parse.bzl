@@ -30,6 +30,7 @@ def pip_parse(
         target_platforms = [],
         simpleapi_skip = [],
         timeout = 600,
+        uv_lock = None,
         whl_modifications = {},
         **kwargs):
     """A simple helper for testing to simulate the PyPI extension parse tag class"""
@@ -61,6 +62,7 @@ def pip_parse(
         requirements_lock = requirements_lock,
         requirements_windows = requirements_windows,
         timeout = timeout,
+        uv_lock = uv_lock,
         whl_modifications = whl_modifications,
         parallel_download = False,
         experimental_index_url_overrides = {},

@@ -306,6 +306,9 @@ def _create_executable(
     else:
         base_executable_name = executable.basename
 
+    # Venv outputs are package-relative, so preserve the full target name to
+    # avoid collisions between targets like foo/tool, bar/tool, and foo_tool.
+    venv_output_prefix = ctx.label.name
     venv = None
 
     # The check for stage2_bootstrap_template is to support legacy
@@ -318,7 +321,7 @@ def _create_executable(
     ):
         venv = _create_venv(
             ctx,
-            output_prefix = base_executable_name,
+            output_prefix = venv_output_prefix,
             imports = imports,
             runtime_details = runtime_details,
             add_runfiles_root_to_sys_path = (
@@ -1485,6 +1488,25 @@ def _get_base_runfiles_for_binary(
     app_runfiles = app_runfiles.build(ctx)
 
     if _should_create_init_files(ctx):
+        # buildifier: disable=print
+        print(
+            """
+======================================================================
+WARNING: Target {} is using implicit __init__.py creation.
+  This diabolic behavior is deprecated and will be disabled by default in a
+  future release.
+  See https://github.com/bazel-contrib/rules_python/issues/2945
+
+  Ensure all __init__.py files are explicitly created and
+  added to the srcs or deps of your targets.
+
+  Disable implicit creation by setting:
+    legacy_create_init = 0
+  on the target, or globally by setting:
+    --incompatible_default_to_explicit_init_py
+======================================================================
+            """.rstrip().format(ctx.label),
+        )
         app_runfiles = _py_builtins.merge_runfiles_with_generated_inits_empty_files_supplier(
             ctx = ctx,
             runfiles = app_runfiles,
