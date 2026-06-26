@@ -13,7 +13,9 @@ load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 def _py_extension_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
     repo_name = ctx.label.workspace_name or ctx.workspace_name
-    import_path = repo_name + "/" + ctx.label.package
+    import_path = repo_name
+    if ctx.label.package:
+        import_path = repo_name + "/" + ctx.label.package
     cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
