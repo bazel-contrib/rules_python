@@ -97,6 +97,21 @@ foo==0.0.3 --hash=sha256:deadbaaf
 foo[extra]==0.0.2 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
 """,
+        "uv_lock_empty": """{"package":[]}""",
+        "uv_lock_foo": """{"package":[{"dependencies":[{"extra":"extra","name":"bar"}],"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_bar": """{"package":[{"name":"bar","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"sdist":{"hash":"sha256:deadb00f","url":"https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz"}},{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_dep_extra": """{"package":[{"name":"bar","version":"0.0.2","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/bar-0.0.2-py3-none-any.whl"}]},{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"dependencies":[{"name":"bar","extra":["extra1"]}],"wheels":[{"hash":"sha256:baadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_multi_versions": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.2","wheels":[{"hash":"sha256:deadb11f","url":"https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_multi_wheel_dedup": """{"package":[{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:aaa","url":"https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl"},{"hash":"sha256:bbb","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_only": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.2"}]}""",
+        "uv_lock_foo_optional_deps": """{"package":[{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"optional-dependencies":{"extra1":[],"extra2":[]},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_requires_dist_extras": """{"package":[{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"root-pkg","source":{"virtual":"."},"version":"0.0.0","dependencies":[{"name":"foo"}],"metadata":{"requires-dist":[{"name":"foo","extras":["all"]}]}}]}""",
+        "uv_lock_foo_resolution_markers_dedup": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","resolution-markers":["sys_platform == 'linux'"],"wheels":[{"hash":"sha256:aaa","url":"https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl"},{"hash":"sha256:bbb","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.2","resolution-markers":["sys_platform == 'darwin'"],"wheels":[{"hash":"sha256:ccc","url":"https://files.pythonhosted.org/packages/foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl"},{"hash":"sha256:ddd","url":"https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_sdist": """{"package":[{"name":"foo","sdist":{"hash":"sha256:feedcafe","url":"https://files.pythonhosted.org/packages/foo-0.0.1.tar.gz"},"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0"}]}""",
+        "uv_lock_foo_with_extras": """{"package":[{"name":"foo","provides-extras":["extra"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo.git"},"version":"0.1.0"}]}""",
+        "uv_lock_rules_python_pkg": """{"package":[{"name":"rules_python","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl"}]}]}""",
     }
 
     return mocks.mctx(
@@ -107,7 +122,41 @@ bar==0.0.1 --hash=sha256:deadb00f
 
 _tests = []
 
+def _make_platforms(platform_names):
+    """Create minimal platform structs for testing, matching py3-none-any wheels."""
+    platforms = {}
+    for name in platform_names:
+        platforms[name] = struct(
+            env = pep508_env(python_version = "3.11.0", os = "linux", arch = "x86_64"),
+            whl_abi_tags = ["none"],
+            whl_platform_tags = ["any"],
+        )
+    return platforms
+
 def parse_requirements(debug = False, **kwargs):
+    """Get requirements by calling the original parse_requirements.
+
+    Args:
+      debug: If True, set verbosity to TRACE.
+      **kwargs: forwarded to the underlying function.
+
+    Returns:
+      The result of the underlying parse_requirements call.
+    """
+    kwargs.setdefault("toml_decode", json.decode)
+
+    # Provide default platforms when not specified.
+    if "platforms" not in kwargs:
+        if "requirements_by_platform" in kwargs:
+            platform_names = {}
+            for _plats in kwargs["requirements_by_platform"].values():
+                for _p in _plats:
+                    platform_names[_p] = None
+            platform_names = sorted(platform_names)
+            kwargs["platforms"] = _make_platforms(platform_names)
+        elif "uv_lock" in kwargs:
+            kwargs["platforms"] = _make_platforms(["linux_x86_64"])
+
     return _parse_requirements(
         ctx = _mock_ctx(),
         logger = repo_utils.logger(struct(
@@ -991,6 +1040,593 @@ def _test_get_index_urls_all_versions(env):
     ])
 
 _tests.append(_test_get_index_urls_all_versions)
+
+def _test_uv_lock_consistent(env):
+    """Test that uv_lock with requirements_by_platform uses correct platforms."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_lock": ["linux_x86_64", "windows_x86_64"],
+        },
+        uv_lock = "uv_lock_foo_with_extras",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.1",
+                    target_platforms = ["linux_x86_64", "windows_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_consistent)
+
+def _test_uv_lock_primary_source(env):
+    """Test that uv.lock can be used as the sole source without requirements files."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_sdist",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_primary_source)
+
+def _test_uv_lock_primary_source_multiple_versions(env):
+    """Test that uv.lock with multiple versions of the same package works."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_multi_versions",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.2",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.2-py3-none-any.whl",
+                    sha256 = "deadb11f",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_primary_source_multiple_versions)
+
+def _test_uv_lock_primary_source_with_extras(env):
+    """Test that uv.lock extras are included in requirement lines."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_with_extras",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_primary_source_with_extras)
+
+def _test_uv_lock_primary_source_includes_virtual(env):
+    """Test that virtual packages in uv.lock are included."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_virtual",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "virtual_pkg",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_primary_source_includes_virtual)
+
+def _test_uv_lock_cross_consistent(env):
+    """Test that the uv.lock and requirements work together for cross-platform."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_lock": ["linux_x86_64", "windows_x86_64"],
+        },
+        uv_lock = "uv_lock_foo_with_extras",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra]==0.0.1",
+                    target_platforms = ["linux_x86_64", "windows_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_cross_consistent)
+
+def _test_uv_lock_vcs_entry(env):
+    """Test that VCS entries in uv.lock are handled without crashing."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_git_vcs",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.1.0",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo.git",
+                    sha256 = "",
+                    url = "https://github.com/org/foo.git",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_vcs_entry)
+
+def _test_uv_lock_rules_python_pkg_not_skipped(env):
+    """Test that 'rules_python' package is not skipped from uv.lock."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_rules_python_pkg",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "rules_python",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "rules_python",
+                    extra_pip_args = [],
+                    requirement_line = "rules_python==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "rules_python-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_rules_python_pkg_not_skipped)
+
+def _test_uv_lock_no_consistency_check(env):
+    """Test that uv.lock is used as the primary source when both uv.lock and requirements exist."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_lock": ["linux_x86_64"],
+        },
+        uv_lock = "uv_lock_foo",
+    )
+
+    # The result comes from uv.lock (no extras since uv_lock_foo doesn't have provides-extras)
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_no_consistency_check)
+
+def _test_uv_lock_multiple_packages(env):
+    """Test that multiple packages from uv.lock are all returned."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_bar",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = [],
+                    requirement_line = "bar==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "bar-0.0.1.tar.gz",
+                    sha256 = "deadb00f",
+                    url = "https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_multiple_packages)
+
+def _test_uv_lock_with_extra_pip_args(env):
+    """Test that extra_pip_args are passed through with uv.lock."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo",
+        extra_pip_args = ["--index-url=example.org"],
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = ["--index-url=example.org"],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_with_extra_pip_args)
+
+def _test_uv_lock_multi_os_with_requirements(env):
+    """Test that uv.lock works with requirements_by_platform for multi-platform."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_foo": ["linux_aarch64"],
+            "requirements_lock": ["linux_x86_64", "windows_x86_64"],
+        },
+        uv_lock = "uv_lock_foo",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_aarch64", "linux_x86_64", "windows_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_multi_os_with_requirements)
+
+def _test_uv_lock_extras_optional_deps(env):
+    """Test that extras from optional-dependencies in uv.lock are included."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_optional_deps",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[extra1,extra2]==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_extras_optional_deps)
+
+def _test_uv_lock_extras_dep_edge(env):
+    """Test that dep extra edges in uv.lock add extras to the dependency."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_dep_extra",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = [],
+                    requirement_line = "bar[extra1]==0.0.2",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "bar-0.0.2-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/bar-0.0.2-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "baadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_extras_dep_edge)
+
+def _test_uv_lock_wheel_dedup_single_version(env):
+    """Test that overlapping wheels for a single version are deduplicated to one per platform."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_multi_wheel_dedup",
+        platforms = {
+            "cp39_linux_x86_64": struct(
+                env = pep508_env(python_version = "3.9.0", os = "linux", arch = "x86_64"),
+                whl_abi_tags = ["none", "abi3", "cp39"],
+                whl_platform_tags = ["any", "linux_x86_64", "manylinux_*_x86_64"],
+            ),
+        },
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["cp39_linux_x86_64"],
+                    filename = "foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
+                    sha256 = "aaa",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_wheel_dedup_single_version)
+
+def _test_uv_lock_wheel_dedup_resolution_markers(env):
+    """Test that resolution-markers filtering and wheel dedup work together.
+
+    Two versions of foo with resolution-markers for different platforms.
+    Each version has a platform-specific wheel and a generic py3-none-any wheel.
+    The dedup should pick the platform-specific wheel for each platform and
+    the resolution-markers should split versions across platforms.
+    """
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_resolution_markers_dedup",
+        platforms = {
+            "cp39_linux_x86_64": struct(
+                env = pep508_env(python_version = "3.9.0", os = "linux", arch = "x86_64"),
+                whl_abi_tags = ["none", "abi3", "cp39"],
+                whl_platform_tags = ["any", "linux_x86_64", "manylinux_*_x86_64"],
+            ),
+            "cp39_osx_aarch64": struct(
+                env = pep508_env(python_version = "3.9.0", os = "osx", arch = "aarch64"),
+                whl_abi_tags = ["none", "abi3", "cp39"],
+                whl_platform_tags = ["any", "macosx_*_arm64"],
+            ),
+        },
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = True,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["cp39_linux_x86_64"],
+                    filename = "foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
+                    sha256 = "aaa",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
+                    yanked = None,
+                ),
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.2",
+                    target_platforms = ["cp39_osx_aarch64"],
+                    filename = "foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl",
+                    sha256 = "ccc",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_wheel_dedup_resolution_markers)
+
+def _test_uv_lock_requires_dist_extras(env):
+    """Test that extras from metadata.requires-dist appear in requirement_line."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_requires_dist_extras",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo[all]==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "deadbeef",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "root_pkg",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_requires_dist_extras)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.

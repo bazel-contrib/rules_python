@@ -1,4 +1,5 @@
 load(":lock_tests.bzl", "lock_test_suite")
+load(":uv_lock_to_requirements_tests.bzl", "uv_lock_to_requirements_test_suite")
 
 exports_files(
     glob(["testdata/*"]),
@@ -7,4 +8,8 @@ exports_files(
 
 lock_test_suite(
     name = "lock_tests",
+)
+
+uv_lock_to_requirements_test_suite(
+    name = "uv_lock_to_requirements_tests",
 )

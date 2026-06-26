@@ -223,3 +223,12 @@ lock(
     python_version = "3.9",
     visibility = ["//:__subpackages__"],
 )
+
+# Run bazel run //docs:uv_lock.update
+lock(
+    name = "uv_lock",
+    srcs = ["pyproject.toml"],
+    out = "uv.lock",
+    python_version = "3.9",
+    visibility = ["//:__subpackages__"],
+)

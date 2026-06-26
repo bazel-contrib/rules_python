@@ -306,6 +306,9 @@ def _create_executable(
     else:
         base_executable_name = executable.basename
 
+    # Venv outputs are package-relative, so preserve the full target name to
+    # avoid collisions between targets like foo/tool, bar/tool, and foo_tool.
+    venv_output_prefix = ctx.label.name
     venv = None
 
     # The check for stage2_bootstrap_template is to support legacy
@@ -318,7 +321,7 @@ def _create_executable(
     ):
         venv = _create_venv(
             ctx,
-            output_prefix = base_executable_name,
+            output_prefix = venv_output_prefix,
             imports = imports,
             runtime_details = runtime_details,
             add_runfiles_root_to_sys_path = (

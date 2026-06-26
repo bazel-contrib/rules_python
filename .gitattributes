@@ -4,3 +4,5 @@ tests/uv/lock/testdata/requirements.txt text eol=lf
 python/private/pypi/venv_entry_point_template.bat text eol=lf
 python/private/runtimes_manifest_workspace.bzl text eol=lf
 python/private/runtimes_manifest.txt text eol=lf
+
+*.bat text eol=crlf

@@ -50,6 +50,79 @@ You can use the pip extension multiple times. This configuration will create
 multiple external repos that have no relation to one another and may result in
 downloading the same wheels numerous times.
 
+(unified-pypi-hub)=
+## Unified `@pypi` Hub for Multi-Hub Configurations
+
+:::{versionadded} VERSION_NEXT_FEATURE
+Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
+:::
+
+When you call the `pip` extension multiple times with different `hub_name`
+attributes, `rules_python` automatically generates a unified `@pypi` hub
+repository (unless one of your concrete hubs is explicitly named `"pypi"`).
+
+This unified `@pypi` repository acts as a dynamic proxy that routes package
+dependencies to the active concrete hub at build time. This is especially
+useful in monorepos where shared library targets need to depend on PyPI
+packages without knowing which specific hub or requirements lock file the
+consuming binary is using.
+
+#### Reserved `"pypi"` Hub Name
+
+The hub name `"pypi"` is **reserved** for the automatically generated unified
+hub repository. Defining a concrete hub named `"pypi"` will cause a collision.
+
+For details on how this collision is handled and resolved via environment
+variables, see the {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` documentation.
+
+#### Configuring the Unified Hub
+
+To configure the unified hub, define your concrete hubs as usual, and
+optionally designate a default hub using the `pip.default` tag's
+`default_hub` attribute:
+
+```starlark
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Define concrete hub 'pypi_a'
+pip.parse(
+    hub_name = "pypi_a",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_a.txt",
+)
+
+# Define concrete hub 'pypi_b'
+pip.parse(
+    hub_name = "pypi_b",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_b.txt",
+)
+
+# Designate 'pypi_b' as the default hub for the unified '@pypi' repository
+pip.default(default_hub = "pypi_b")
+
+# Import the unified hub repository
+use_repo(pip, "pypi")
+```
+
+#### Dynamic Routing at Build Time
+
+By default, the unified `@pypi` repository will resolve packages from the
+designated `default_hub`. You can dynamically switch the active hub for a build
+using the `--@rules_python//python/config_settings:venv` command-line flag
+or via target transitions:
+
+```bash
+# Build using packages from 'pypi_a'
+bazel build --@rules_python//python/config_settings:venv=pypi_a //my:binary
+```
+
+Shared library targets can simply depend on the unified hub (e.g.,
+`@pypi//numpy`), and the dependency will automatically resolve to the correct
+wheel version from the active hub during the build.
+
+
+
 As with any repository rule or extension, if you would like to ensure that `pip_parse` is
 re-executed to pick up a non-hermetic change to your environment (e.g., updating your system
 `python` interpreter), you can force it to re-execute by running `bazel sync --only [pip_parse
@@ -333,6 +406,7 @@ Bazel will call this file like `cred_helper.sh get` and use the returned JSON to
 into whatever HTTP(S) request it performs against `example.com`.
 
 See the [Credential Helper Spec][cred-helper-spec] for more details.
+
 
 [rfc7617]: https://datatracker.ietf.org/doc/html/rfc7617
 [cred-helper-design]: https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md

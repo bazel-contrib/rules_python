@@ -519,6 +519,45 @@ def _test_py_runtime_info_provided_impl(env, target):
 
 _tests.append(_test_py_runtime_info_provided)
 
+def _test_venv_output_prefix_with_path_separators(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/foo/tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/bar/tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/foo_tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_venv_output_prefix_with_path_separators_impl,
+        targets = {
+            "bar": name + "/bar/tool",
+            "foo": name + "/foo/tool",
+            "foo_underscore": name + "/foo_tool",
+        },
+    )
+
+def _test_venv_output_prefix_with_path_separators_impl(env, targets):
+    for target in [targets.foo, targets.bar, targets.foo_underscore]:
+        target = env.expect.that_target(target)
+        venv_file = "*/_{}.venv/*site-packages/bazel.pth".format(
+            target.meta.format_str("{name}"),
+        )
+        target.runfiles().contains_predicate(matching.str_matches(venv_file))
+
+_tests.append(_test_venv_output_prefix_with_path_separators)
+
 def _test_windows_target_with_path_separators(name, config):
     rt_util.helper_target(
         config.rule,

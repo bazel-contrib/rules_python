@@ -149,6 +149,13 @@ string_flag(
 # pip.parse related flags
 
 string_flag(
+    name = "venv",
+    build_setting_default = "auto",
+    # NOTE: Only public because it is used in pip hub repos and executable transitions.
+    visibility = ["//visibility:public"],
+)
+
+string_flag(
     name = "pip_whl_osx_version",
     build_setting_default = "",
     # NOTE: Only public because it is used in pip hub repos.
