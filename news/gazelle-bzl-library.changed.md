@@ -1,4 +1,3 @@
-(bzl_library) Migrated `bzl_library` targets to be managed by Gazelle using the
-`bazel-skylib` Gazelle plugin. Public targets have been renamed to match their
-file names (without the `_bzl` suffix), and deprecated aliases have been
-created for backwards compatibility.
+(bzl_library) Standardized `bzl_library` targets to match their corresponding
+Starlark file names (removing the legacy `_bzl` suffix). Deprecated aliases
+have been created for all public targets to ensure backwards compatibility.

@@ -53,19 +53,9 @@ bzl_library(
     srcs = ["extra_transition_settings.bzl"],
 )
 
-alias(
-    name = "extra_transition_settings_bzl",
-    actual = ":extra_transition_settings",
-)
-
 bzl_library(
     name = "rules_python_config",
     srcs = ["rules_python_config.bzl"],
-)
-
-alias(
-    name = "rules_python_config_bzl",
-    actual = ":rules_python_config",
 )
 """
 
