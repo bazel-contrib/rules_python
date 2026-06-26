@@ -1,0 +1,15 @@
+---
+trigger: always_on
+---
+
+# Workspace Rules
+
+To avoid confusion from using outdated code states, when starting a new
+conversation/session or when first starting a new branch or worktree, unless
+explicitly instructed otherwise, ensure the latest upstream code is used as the
+basis:
+* Fetch `upstream/main` (`git fetch upstream main`).
+* Base any new branch or worktree upon `upstream/main` (e.g.,
+  `git checkout -b <branch> upstream/main`).
+* Set the upstream branch to `upstream/main`
+  (`git branch --set-upstream-to=upstream/main`).
