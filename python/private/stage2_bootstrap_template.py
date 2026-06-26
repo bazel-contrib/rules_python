@@ -545,9 +545,8 @@ def main():
         #
         # To replicate this behavior, we add main's directory within the runfiles
         # when safe path or isolated mode isn't enabled.
-        if (
-            not getattr(sys.flags, "safe_path", False)
-            and not getattr(sys.flags, "isolated", False)
+        if not getattr(sys.flags, "safe_path", False) and not getattr(
+            sys.flags, "isolated", False
         ):
             prepend_path_entries = [
                 os.path.join(runfiles_root, os.path.dirname(main_rel_path))
