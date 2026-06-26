@@ -65,7 +65,6 @@ def _py_extension_impl(ctx):
     else:
         py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
         py_runtime = py_toolchain.py3_runtime
-        cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
         platform_tag = _get_platform(cc_toolchain)
         output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
             module_name = module_name,
