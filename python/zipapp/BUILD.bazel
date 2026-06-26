@@ -19,6 +19,7 @@ bzl_library(
     ],
 )
 
+# keep
 bzl_library(
     name = "py_zipapp_test",
     srcs = ["py_zipapp_test.bzl"],

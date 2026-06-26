@@ -124,6 +124,7 @@ go_test(
     ],
 )
 
+# keep
 bzl_library(
     name = "gazelle_test",
     srcs = ["gazelle_test.bzl"],

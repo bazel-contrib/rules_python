@@ -395,6 +395,7 @@ alias(
     deprecation = "Use //python:py_runtime_pair instead",
 )
 
+# keep
 bzl_library(
     name = "py_test",
     srcs = ["py_test.bzl"],
