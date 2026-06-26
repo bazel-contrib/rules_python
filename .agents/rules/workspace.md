@@ -14,5 +14,5 @@ basis:
 * Run the workspace helper script to configure upstream tracking and safe
   pushing:
   ```bash
-  .agents/scripts/create_triangle_branch.sh <branch>
+  .agents/scripts/setup_triangle_branch.sh <branch>
   ```
