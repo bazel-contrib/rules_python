@@ -122,8 +122,7 @@ def _py_extension_impl(ctx):
     runfiles = ctx.runfiles(files = [py_dso])
     transitive_runfiles = []
     for dep in ctx.attr.static_deps + ctx.attr.dynamic_deps + ctx.attr.external_deps:
-        if DefaultInfo in dep:
-            transitive_runfiles.append(dep[DefaultInfo].default_runfiles)
+        transitive_runfiles.append(dep[DefaultInfo].default_runfiles)
     runfiles = runfiles.merge_all(transitive_runfiles)
 
     return [
