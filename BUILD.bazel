@@ -19,6 +19,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # gazelle:resolve starlark @com_google_protobuf//bazel:py_proto_library.bzl @com_google_protobuf//bazel:py_proto_library_bzl
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:http.bzl //python/private:bazel_tools
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:utils.bzl //python/private:bazel_tools
+# Prevent Gazelle from incorrectly stripping the .bzl suffix from the toml.bzl repo name
 # gazelle:resolve starlark @toml.bzl//:toml.bzl @toml.bzl//:toml
 # gazelle:exclude tests
 
