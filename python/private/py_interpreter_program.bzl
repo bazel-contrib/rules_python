@@ -15,7 +15,7 @@
 """Internal only bootstrap level binary-like rule."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("//python/private:sentinel.bzl", "SentinelInfo")
+load("//python/private:sentinel_impl.bzl", "SentinelInfo")
 
 PyInterpreterProgramInfo = provider(
     doc = "Information about how to run a program with an external interpreter.",

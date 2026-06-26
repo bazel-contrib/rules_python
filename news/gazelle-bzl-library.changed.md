@@ -1,3 +1,3 @@
-(bzl_library) Standardized `bzl_library` targets to match their corresponding
-Starlark file names (removing the legacy `_bzl` suffix). Deprecated aliases
-have been created for all public targets to ensure backwards compatibility.
+Renamed most public bzl_library targets from `{foo}_bzl` to `{foo}` to follow
+gazelle naming conventions. Deprecated aliases are left for backwards
+compatibility.
