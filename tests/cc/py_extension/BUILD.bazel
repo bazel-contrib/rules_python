@@ -1,9 +1,11 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("//python:py_test.bzl", "py_test")
 
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
 load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
+load(":py_limited_api_tests.bzl", "py_limited_api_test_suite")
 
 package(
     default_testonly = True,
@@ -21,7 +23,7 @@ py_extension(
 py_extension(
     name = "ext_shared",
     dynamic_deps = [
-        ":add_one",
+        ":add_one_shared",
     ],
     static_deps = [
         ":ext_shared_impl",
@@ -92,6 +94,25 @@ cc_library(
     hdrs = ["add_one_helper.h"],
 )
 
+py_extension(
+    name = "ext_limited",
+    static_deps = [":ext_limited_impl"],
+    py_limited_api = '3.8'
+)
+
+cc_library(
+    name = "ext_limited_impl",
+    srcs = ["ext_limited.c"],
+    defines = ["Py_LIMITED_API=0x3080000"],
+    copts = [
+        "-fPIC",
+        "-fvisibility=hidden",
+    ],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
 py_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
@@ -104,4 +125,8 @@ py_test(
 
 py_extension_analysis_test_suite(
     name = "py_extension_analysis_tests",
+)
+
+py_limited_api_test_suite(
+    name = "py_limited_api_tests",
 )
