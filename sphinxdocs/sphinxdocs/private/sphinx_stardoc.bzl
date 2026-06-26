@@ -171,7 +171,7 @@ def sphinx_stardoc(
         **common_kwargs
     )
 
-    stardoc_name = internal_name + "_stardoc"
+    stardoc_name = internal_name + "__stardoc"
 
     # NOTE: The .binaryproto suffix is an optimization. It makes the stardoc()
     # call avoid performing a copy of the output to the desired name.
@@ -186,7 +186,7 @@ def sphinx_stardoc(
         **common_kwargs
     )
 
-    pb2md_name = internal_name + "_pb2md"
+    pb2md_name = internal_name + "__pb2md"
     _stardoc_proto_to_markdown(
         name = pb2md_name,
         src = stardoc_pb,

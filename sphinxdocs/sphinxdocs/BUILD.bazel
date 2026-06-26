@@ -42,29 +42,55 @@ bool_flag(
 )
 
 bzl_library(
-    name = "sphinx_bzl",
+    name = "sphinx",
     srcs = ["sphinx.bzl"],
     visibility = ["//visibility:public"],
-    deps = ["//sphinxdocs/private:sphinx_bzl"],
+    deps = ["//sphinxdocs/private:sphinx"],
 )
 
 bzl_library(
-    name = "sphinx_docs_library_bzl",
+    name = "sphinx_docs_library",
     srcs = ["sphinx_docs_library.bzl"],
     visibility = ["//visibility:public"],
-    deps = ["//sphinxdocs/private:sphinx_docs_library_macro_bzl"],
+    deps = ["//sphinxdocs/private:sphinx_docs_library_macro"],
 )
 
 bzl_library(
-    name = "sphinx_stardoc_bzl",
+    name = "sphinx_stardoc",
     srcs = ["sphinx_stardoc.bzl"],
     visibility = ["//visibility:public"],
-    deps = ["//sphinxdocs/private:sphinx_stardoc_bzl"],
+    deps = ["//sphinxdocs/private:sphinx_stardoc"],
 )
 
 bzl_library(
-    name = "readthedocs_bzl",
+    name = "readthedocs",
     srcs = ["readthedocs.bzl"],
     visibility = ["//visibility:public"],
-    deps = ["//sphinxdocs/private:readthedocs_bzl"],
+    deps = ["//sphinxdocs/private:readthedocs"],
+)
+
+# ========= Deprecated aliases for backwards compatibility =========
+
+alias(
+    name = "sphinx_bzl",
+    actual = ":sphinx",
+    deprecation = "Use //sphinxdocs:sphinx instead",
+)
+
+alias(
+    name = "sphinx_docs_library_bzl",
+    actual = ":sphinx_docs_library",
+    deprecation = "Use //sphinxdocs:sphinx_docs_library instead",
+)
+
+alias(
+    name = "sphinx_stardoc_bzl",
+    actual = ":sphinx_stardoc",
+    deprecation = "Use //sphinxdocs:sphinx_stardoc instead",
+)
+
+alias(
+    name = "readthedocs_bzl",
+    actual = ":readthedocs",
+    deprecation = "Use //sphinxdocs:readthedocs instead",
 )

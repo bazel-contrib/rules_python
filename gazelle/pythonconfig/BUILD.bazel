@@ -9,9 +9,9 @@ go_library(
     importpath = "github.com/bazel-contrib/rules_python/gazelle/pythonconfig",
     visibility = ["//visibility:public"],
     deps = [
-        "//manifest",
-        "@bazel_gazelle//label:go_default_library",
-        "@com_github_emirpasic_gods//lists/singlylinkedlist",
+        "//gazelle/manifest",
+        "@bazel_gazelle//label",
+        "@com_github_emirpasic_gods//lists/singlylinkedlist:go_default_library",
     ],
 )
 

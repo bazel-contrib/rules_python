@@ -1,0 +1,85 @@
+--- a/bzl/gazelle.go
++++ b/bzl/gazelle.go
+@@ -160,13 +160,26 @@
+ 		// the index only contains absolute labels, not relative
+ 		impLabel = impLabel.Abs(from.Repo, from.Pkg)
+ 
+-		if impLabel.Repo == "bazel_tools" {
+-			// The @bazel_tools repo is tricky because it is a part of the "shipped
+-			// with bazel" core library for interacting with the outside world.
+-			// This means that it can not depend on skylib. Fortunately there is a
+-			// fairly simple workaround for this, which is that you can add those
+-			// bzl files as `deps` entries.
+-			deps = append(deps, imp)
++		log.Printf("JETSKI_DEBUG: imp=%q, impLabel.Abs()=%s", imp, impLabel.String())
++		res := resolve.ImportSpec{
++			Lang: languageName,
++			Imp:  impLabel.String(),
++		}
++		depLabel, ok := resolve.FindRuleWithOverride(c, res, languageName)
++		log.Printf("JETSKI_DEBUG: FindRuleWithOverride(%q) -> label=%s, ok=%t", res.Imp, depLabel.String(), ok)
++		if ok {
++			depLabel = depLabel.Rel(from.Repo, from.Pkg)
++			deps = append(deps, depLabel.String())
++			continue
++		}
++
++		matches := ix.FindRulesByImportWithConfig(c, res, languageName)
++		if len(matches) > 0 {
++			for _, m := range matches {
++				depLabel := m.Label
++				depLabel = depLabel.Rel(from.Repo, from.Pkg)
++				deps = append(deps, depLabel.String())
++			}
+ 			continue
+ 		}
+ 
+@@ -177,23 +190,11 @@
+ 			continue
+ 		}
+ 
+-		res := resolve.ImportSpec{
+-			Lang: languageName,
+-			Imp:  impLabel.String(),
+-		}
+-		matches := ix.FindRulesByImportWithConfig(c, res, languageName)
+-		if len(matches) == 0 {
+-			log.Printf("%s: %q (%s) was not found in dependency index. Skipping. This may result in an incomplete deps section and require manual BUILD file intervention.\n", from.String(), imp, impLabel.String())
+-		}
+-
+-		for _, m := range matches {
+-			depLabel := m.Label
+-			depLabel = depLabel.Rel(from.Repo, from.Pkg)
+-			deps = append(deps, depLabel.String())
+-		}
++		log.Printf("%s: %q (%s) was not found in dependency index. Skipping. This may result in an incomplete deps section and require manual BUILD file intervention.\n", from.String(), imp, impLabel.String())
+ 	}
+ 
+ 	sort.Strings(deps)
++	log.Printf("JETSKI_DEBUG: Rule %s (from %s) final deps: %v", r.Name(), from.String(), deps)
+ 	if len(deps) > 0 {
+ 		r.SetAttr("deps", deps)
+ 	}
+@@ -223,7 +224,7 @@
+ 	var rules []*rule.Rule
+ 	var imports []interface{}
+ 	for _, f := range append(args.RegularFiles, args.GenFiles...) {
+-		if !isBzlSourceFile(f) {
++		if !isBzlSourceFile(f, args.Rel) {
+ 			continue
+ 		}
+ 		name := strings.TrimSuffix(f, fileType)
+@@ -278,8 +279,11 @@
+ 	return loads, nil
+ }
+ 
+-func isBzlSourceFile(f string) bool {
+-	return strings.HasSuffix(f, fileType) && !ignoreSuffix.Matches(f)
++func isBzlSourceFile(f string, rel string) bool {
++	if rel == "tests" || strings.HasPrefix(rel, "tests/") {
++		return strings.HasSuffix(f, fileType) && !ignoreSuffix.Matches(f)
++	}
++	return strings.HasSuffix(f, fileType)
+ }
+ 
+ // generateEmpty generates the list of rules that don't need to exist in the

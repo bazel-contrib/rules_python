@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 # Copyright 2022 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,4 +55,21 @@ diff_test(
     name = "runtimes_manifest_workspace_sync_test",
     file1 = "//python/private:runtimes_manifest_workspace.bzl",
     file2 = ":expected_runtimes_manifest_workspace.bzl",
+)
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//python:versions",
+        "//python/private:version",
+        "//tests/support:py_reconfig",
+    ],
+)
+
+bzl_library(
+    name = "expected_runtimes_manifest_workspace",
+    srcs = ["expected_runtimes_manifest_workspace.bzl"],
+    visibility = ["//visibility:public"],
 )

@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 package(
     default_visibility = ["//:__subpackages__"],
 )
@@ -82,4 +84,9 @@ platform(
         "@platforms//os:linux",
         "@platforms//cpu:s390x",
     ],
+)
+
+bzl_library(
+    name = "platforms",
+    srcs = ["platforms.bzl"],
 )

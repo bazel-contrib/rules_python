@@ -18,46 +18,41 @@ package(
     default_visibility = ["//:__subpackages__"],
 )
 
-bzl_library(
-    name = "api_bzl",
-    srcs = ["api.bzl"],
-    visibility = ["//visibility:public"],
-    deps = ["//python/private/api:api_bzl"],
-)
-
-bzl_library(
-    name = "attr_builders_bzl",
-    srcs = ["attr_builders.bzl"],
-    deps = ["//python/private:attr_builders_bzl"],
-)
-
-bzl_library(
-    name = "executables_bzl",
-    srcs = ["executables.bzl"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//python/private:py_binary_rule_bzl",
-        "//python/private:py_executable_bzl",
-        "//python/private:py_test_rule_bzl",
-    ],
-)
-
-bzl_library(
-    name = "libraries_bzl",
-    srcs = ["libraries.bzl"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//python/private:py_library_bzl",
-    ],
-)
-
-bzl_library(
-    name = "rule_builders_bzl",
-    srcs = ["rule_builders.bzl"],
-    deps = ["//python/private:rule_builders_bzl"],
-)
-
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),
+)
+
+bzl_library(
+    name = "api",
+    srcs = ["api.bzl"],
+    deps = ["//python/private/api"],
+)
+
+bzl_library(
+    name = "attr_builders",
+    srcs = ["attr_builders.bzl"],
+    deps = ["//python/private:attr_builders"],
+)
+
+bzl_library(
+    name = "executables",
+    srcs = ["executables.bzl"],
+    deps = [
+        "//python/private:py_binary_rule",
+        "//python/private:py_executable",
+        "//python/private:py_test_rule",
+    ],
+)
+
+bzl_library(
+    name = "libraries",
+    srcs = ["libraries.bzl"],
+    deps = ["//python/private:py_library"],
+)
+
+bzl_library(
+    name = "rule_builders",
+    srcs = ["rule_builders.bzl"],
+    deps = ["//python/private:rule_builders"],
 )

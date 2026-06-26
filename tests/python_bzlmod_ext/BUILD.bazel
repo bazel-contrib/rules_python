@@ -1,7 +1,19 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load(":test_helpers.bzl", "register_python_bzlmod_ext_tests")
 
 register_python_bzlmod_ext_tests(
     name = "python_bzlmod_ext_tests",
     parse_runtime_manifest_name = "parse_runtime_manifest_tests",
     runtime_manifests_name = "runtime_manifests_tests",
+)
+
+bzl_library(
+    name = "test_helpers",
+    srcs = ["test_helpers.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":parse_runtime_manifest_tests",
+        ":runtime_manifests_tests",
+        "//python/private:bzlmod_enabled",
+    ],
 )

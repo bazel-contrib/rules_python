@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":gazelle_test.bzl", "gazelle_test")
@@ -29,20 +30,20 @@ go_library(
     importpath = "github.com/bazel-contrib/rules_python/gazelle/python",
     visibility = ["//visibility:public"],
     deps = [
-        "//pythonconfig",
-        "@bazel_gazelle//config:go_default_library",
-        "@bazel_gazelle//label:go_default_library",
-        "@bazel_gazelle//language:go_default_library",
-        "@bazel_gazelle//repo:go_default_library",
-        "@bazel_gazelle//resolve:go_default_library",
-        "@bazel_gazelle//rule:go_default_library",
+        "//gazelle/pythonconfig",
+        "@bazel_gazelle//config",
+        "@bazel_gazelle//label",
+        "@bazel_gazelle//language",
+        "@bazel_gazelle//repo",
+        "@bazel_gazelle//resolve",
+        "@bazel_gazelle//rule",
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_bmatcuk_doublestar_v4//:doublestar",
-        "@com_github_emirpasic_gods//lists/singlylinkedlist",
-        "@com_github_emirpasic_gods//sets/treeset",
-        "@com_github_emirpasic_gods//utils",
-        "@com_github_smacker_go_tree_sitter//:go-tree-sitter",
-        "@com_github_smacker_go_tree_sitter//python",
+        "@com_github_emirpasic_gods//lists/singlylinkedlist:go_default_library",
+        "@com_github_emirpasic_gods//sets/treeset:go_default_library",
+        "@com_github_emirpasic_gods//utils:go_default_library",
+        "@com_github_smacker_go_tree_sitter//:go_default_library",
+        "@com_github_smacker_go_tree_sitter//python:go_default_library",
         "@org_golang_x_sync//errgroup",
     ],
 )
@@ -121,4 +122,17 @@ go_test(
     deps = [
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+bzl_library(
+    name = "gazelle_test",
+    srcs = ["gazelle_test.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["@io_bazel_rules_go//go:def"],
+)
+
+bzl_library(
+    name = "extensions",
+    srcs = ["extensions.bzl"],
+    visibility = ["//visibility:public"],
 )

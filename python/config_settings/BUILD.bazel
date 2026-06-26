@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load("@rules_python_internal//:rules_python_config.bzl", "config")
@@ -209,4 +210,22 @@ string_flag(
     build_setting_default = "python",
     scope = "universal",
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "config_settings",
+    srcs = ["config_settings.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//python/private:config_settings"],
+)
+
+bzl_library(
+    name = "transition",
+    srcs = ["transition.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//python:py_binary",
+        "//python/private:deprecation",
+        "//python/private:text_util",
+    ],
 )

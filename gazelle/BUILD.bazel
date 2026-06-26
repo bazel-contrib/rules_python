@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 # Gazelle configuration options.
 # See https://github.com/bazelbuild/bazel-gazelle#running-gazelle-with-bazel
@@ -35,4 +36,27 @@ filegroup(
         "//pythonconfig:distribution",
     ],
     visibility = ["@rules_python//:__pkg__"],
+)
+
+bzl_library(
+    name = "deps",
+    srcs = ["deps.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//:deps",
+        "@bazel_tools//tools/build_defs/repo:http.bzl",
+    ],
+)
+
+bzl_library(
+    name = "internal_dev_deps",
+    srcs = ["internal_dev_deps.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["@bazel_tools//tools/build_defs/repo:http.bzl"],
+)
+
+bzl_library(
+    name = "def",
+    srcs = ["def.bzl"],
+    visibility = ["//visibility:public"],
 )

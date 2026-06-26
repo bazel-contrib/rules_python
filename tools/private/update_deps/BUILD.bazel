@@ -34,10 +34,10 @@ py_binary(
     name = "update_coverage_deps",
     srcs = ["update_coverage_deps.py"],
     data = [
-        "//python/private:coverage_deps",
+        "//python/private:coverage_deps_filegroup",
     ],
     env = {
-        "UPDATE_FILE": "$(rlocationpath //python/private:coverage_deps)",
+        "UPDATE_FILE": "$(rlocationpath //python/private:coverage_deps_filegroup)",
     },
     imports = ["../../.."],
     deps = [

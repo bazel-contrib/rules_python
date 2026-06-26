@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 # Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,4 +45,11 @@ build_test(
         ":twine",
         ":twine_pkg",
     ],
+)
+
+bzl_library(
+    name = "simple_macro",
+    srcs = ["simple_macro.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//python/entry_points:py_console_script_binary"],
 )

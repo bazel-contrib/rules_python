@@ -7,14 +7,14 @@ filegroup(
     visibility = ["//python/private:__pkg__"],
 )
 
-bzl_library(
-    name = "whl_filegroup_bzl",
-    srcs = ["whl_filegroup.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
 py_binary(
     name = "extract_wheel_files",
     srcs = ["extract_wheel_files.py"],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "whl_filegroup",
+    srcs = ["whl_filegroup.bzl"],
+    visibility = ["//python:__subpackages__"],
 )

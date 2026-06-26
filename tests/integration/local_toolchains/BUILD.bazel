@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 # Copyright 2024 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,4 +86,21 @@ py_test(
     name = "echo_test",
     srcs = ["echo_test.py"],
     deps = [":echo_ext"],
+)
+
+bzl_library(
+    name = "py_extension",
+    srcs = ["py_extension.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_skylib//rules:copy_file",
+        "@rules_cc//cc:cc_binary",
+        "@rules_python//python:defs",
+    ],
+)
+
+bzl_library(
+    name = "pbs_archive",
+    srcs = ["pbs_archive.bzl"],
+    visibility = ["//visibility:public"],
 )

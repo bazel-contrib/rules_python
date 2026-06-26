@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 # Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -171,4 +173,13 @@ fake_cc_toolchain_config(
     name = "windows_toolchain_config",
     target_cpu = "windows_x86_64",
     toolchain_identifier = "windows-toolchain",
+)
+
+bzl_library(
+    name = "fake_cc_toolchain_config",
+    srcs = ["fake_cc_toolchain_config.bzl"],
+    deps = [
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/toolchains:cc_toolchain_config_info",
+    ],
 )

@@ -31,14 +31,30 @@ load("@@{rules_python}//python/private:py_toolchain_suite.bzl", "py_toolchain_su
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 bzl_library(
-    name = "interpreters_bzl",
+    name = "interpreters",
     srcs = ["interpreters.bzl"],
     visibility = ["@rules_python//:__subpackages__"],
 )
 
+# deprecated: use :interpreters instead
+alias(
+    name = "interpreters_bzl",
+    actual = ":interpreters",
+    deprecation = "Use :interpreters instead. The _bzl suffix targets are deprecated and will be removed in a future release.",
+    visibility = ["@rules_python//:__subpackages__"],
+)
+
 bzl_library(
-    name = "versions_bzl",
+    name = "versions",
     srcs = ["versions.bzl"],
+    visibility = ["@rules_python//:__subpackages__"],
+)
+
+# deprecated: use :versions instead
+alias(
+    name = "versions_bzl",
+    actual = ":versions",
+    deprecation = "Use :versions instead. The _bzl suffix targets are deprecated and will be removed in a future release.",
     visibility = ["@rules_python//:__subpackages__"],
 )
 

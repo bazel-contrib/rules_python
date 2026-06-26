@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+# gazelle:resolve starlark @rules_cc//cc/common:cc_info.bzl @rules_cc//cc/common:common
+# gazelle:resolve starlark @rules_cc//cc/common:cc_common.bzl @rules_cc//cc/common:common
+# gazelle:resolve starlark @com_google_protobuf//bazel:py_proto_library.bzl @com_google_protobuf//bazel:py_proto_library_bzl
+# gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:http.bzl //python/private:bazel_tools
+# gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:utils.bzl //python/private:bazel_tools
 
 package(default_visibility = ["//visibility:public"])
 
@@ -52,12 +59,6 @@ filegroup(
     ],
 )
 
-bzl_library(
-    name = "version_bzl",
-    srcs = ["version.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
 # Reexport of all bzl files used to allow downstream rules to generate docs
 # without shipping with a dependency on Skylib
 filegroup(
@@ -72,4 +73,53 @@ filegroup(
         "@bazel_tools//tools/python:utils.bzl",
     ],
     visibility = ["//visibility:public"],
+)
+
+gazelle_binary(
+    name = "gazelle_bin",
+    languages = DEFAULT_LANGUAGES + [
+        "@bazel_skylib_gazelle_plugin//bzl",
+    ],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_bin",
+)
+
+bzl_library(
+    name = "internal_dev_deps",
+    srcs = ["internal_dev_deps.bzl"],
+    deps = [
+        "//python/private:internal_config_repo",
+        "@bazel_tools//tools/build_defs/repo:http.bzl",
+        "@bazel_tools//tools/build_defs/repo:local.bzl",
+        "@bazel_tools//tools/build_defs/repo:utils.bzl",
+    ],
+)
+
+bzl_library(
+    name = "internal_dev_setup",
+    srcs = ["internal_dev_setup.bzl"],
+    deps = [
+        ":version",
+        "//python:versions",
+        "//python/private:pythons_hub",
+        "//python/private:runtime_env_repo",
+        "//python/private/pypi:deps",
+        "//python/private/pypi:whl_library",
+        "//tests/support/whl_from_dir:whl_from_dir_repo",
+        "@bazel_features//:deps",
+        "@bazel_skylib//:workspace",
+        "@cgrindel_bazel_starlib//:deps",
+        "@com_google_protobuf//:protobuf_deps",
+        "@rules_bazel_integration_test//bazel_integration_test:deps",
+        "@rules_bazel_integration_test//bazel_integration_test:repo_defs",
+        "@rules_shell//shell:repositories",
+    ],
+)
+
+bzl_library(
+    name = "version",
+    srcs = ["version.bzl"],
 )
