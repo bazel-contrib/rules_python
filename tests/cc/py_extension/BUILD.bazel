@@ -5,6 +5,7 @@ load("//python:py_test.bzl", "py_test")
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
 load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
+load(":py_limited_api_tests.bzl", "py_limited_api_test_suite")
 
 package(
     default_testonly = True,
@@ -112,26 +113,6 @@ cc_library(
     ],
 )
 
-
-# test cases:
-# py_limited_api
-#   - 3.8 -> 3.8    ok
-#   - 3.8 -> 3.9
-#   - 3.9 -> 3.8
-#   - 3.9 -> 3.9    ok
-#   - none -> 3.8
-#   - 3.8 -> none   fail
-#   - 3.8 -> nopy   ok
-#   - none -> none  ok?
-#   - none -> nopy  ok?
-# invalid values for version string
-#   - 2.x
-#   - 3.0 and 3.1
-#   - 4.x
-#   - not version string, e.g. "asdf"
-#   - patch versions? 3.8.4 ?
-#   - empty string or null?
-
 py_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
@@ -144,4 +125,8 @@ py_test(
 
 py_extension_analysis_test_suite(
     name = "py_extension_analysis_tests",
+)
+
+py_limited_api_test_suite(
+    name = "py_limited_api_tests",
 )
