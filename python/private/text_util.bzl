@@ -107,6 +107,18 @@ def _render_list(items, *, hanging_indent = "", value_repr = repr):
     return text
 
 def _render_str(value):
+    """Render a string value.
+
+    If value is None, it is automatically rendered as the Starlark literal `None`.
+
+    Args:
+        value: str or None.
+
+    Returns:
+        The value represented as Starlark source text.
+    """
+    if value == None:
+        return "None"
     return repr(value)
 
 def _render_string_list_dict(value):

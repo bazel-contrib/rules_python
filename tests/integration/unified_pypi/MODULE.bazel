@@ -1,0 +1,48 @@
+module(name = "unified_pypi")
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.11")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.whl_mods(
+    additive_build_content = """\
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "my_colorama",
+    deps = [":pkg"],
+)
+""",
+    hub_name = "whl_mods_hub",
+    whl_name = "colorama",
+)
+use_repo(pip, "whl_mods_hub")
+
+# pypi_a has colorama and an extra alias
+pip.parse(
+    extra_hub_aliases = {"colorama": ["my_colorama"]},
+    hub_name = "pypi_a",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_a.txt",
+    whl_modifications = {
+        "@whl_mods_hub//:colorama.json": "colorama",
+    },
+)
+use_repo(pip, "pypi_a")
+
+# pypi_b has colorama and six, and acts as designated fallback
+pip.parse(
+    hub_name = "pypi_b",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_b.txt",
+)
+use_repo(pip, "pypi_b")
+
+pip.default(default_hub = "pypi_b")
+use_repo(pip, "pypi")

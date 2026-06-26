@@ -15,6 +15,7 @@
 ""
 
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@bazel_skylib//rules:native_binary.bzl", "native_test")
 load("//python/uv:lock.bzl", "lock")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
@@ -65,6 +66,8 @@ def lock_test_suite(name):
             "requirements.update",
             "requirements.run",
             "testdata/requirements.txt",
+            "uv_lock_test.run",
+            ":requirements",
         ],
         main = "lock_run_test.py",
         tags = [
@@ -87,11 +90,28 @@ def lock_test_suite(name):
         file2 = "testdata/requirements.txt",
     )
 
+    lock(
+        name = "uv_lock_test",
+        srcs = ["testdata/pyproject.toml"],
+        out = "testdata/uv_lock_expected.lock",
+        tags = ["no-remote-exec"],
+    )
+
+    native_test(
+        name = "uv_lock_test_check",
+        src = ":uv_lock_test.update",
+        target_compatible_with = select({
+            "@platforms//os:windows": ["@platforms//:incompatible"],
+            "//conditions:default": [],
+        }),
+    )
+
     native.test_suite(
         name = name,
         tests = [
             ":requirements_test",
             "//tests/uv/lock/pyproject_toml:requirements_test",
             ":requirements_run_tests",
+            ":uv_lock_test_check",
         ],
     )

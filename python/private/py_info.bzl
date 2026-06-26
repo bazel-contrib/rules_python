@@ -116,6 +116,240 @@ PEP440 standard.
     },
 )
 
+def _VenvSymlinkEntryBuilder_typedef():
+    """Builder for VenvSymlinkEntry.
+
+    To create an instance, use {obj}`PyInfoBuilder.add_venv_symlink()`.
+
+    :::{field} files
+    :type: DepsetBuilder[File]
+    :::
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    """
+
+def _VenvSymlinkEntryBuilder():
+    # buildifier: disable=uninitialized
+    self = struct(
+        _state = {
+            "kind": None,
+            "link_to_file": None,
+            "link_to_path": None,
+            "package": None,
+            "venv_path": None,
+            "version": None,
+        },
+        files = builders.DepsetBuilder(),
+        get_kind = lambda: _VenvSymlinkEntryBuilder_get_kind(self),
+        set_kind = lambda k: _VenvSymlinkEntryBuilder_set_kind(self, k),
+        get_link_to_file = lambda: _VenvSymlinkEntryBuilder_get_link_to_file(self),
+        set_link_to_file = lambda f: _VenvSymlinkEntryBuilder_set_link_to_file(self, f),
+        get_link_to_path = lambda: _VenvSymlinkEntryBuilder_get_link_to_path(self),
+        set_link_to_path = lambda p: _VenvSymlinkEntryBuilder_set_link_to_path(self, p),
+        get_package = lambda: _VenvSymlinkEntryBuilder_get_package(self),
+        set_package = lambda p: _VenvSymlinkEntryBuilder_set_package(self, p),
+        get_venv_path = lambda: _VenvSymlinkEntryBuilder_get_venv_path(self),
+        set_venv_path = lambda p: _VenvSymlinkEntryBuilder_set_venv_path(self, p),
+        get_version = lambda: _VenvSymlinkEntryBuilder_get_version(self),
+        set_version = lambda v: _VenvSymlinkEntryBuilder_set_version(self, v),
+        build = lambda: _VenvSymlinkEntryBuilder_build(self),
+    )
+    return self
+
+def _VenvSymlinkEntryBuilder_get_kind(self):
+    """Get the kind of the symlink.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`string` One of the {obj}`VenvSymlinkKind` values.
+    """
+    return self._state["kind"]
+
+def _VenvSymlinkEntryBuilder_get_link_to_file(self):
+    """Get the file that the symlink points to.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`File | None`
+    """
+    return self._state["link_to_file"]
+
+def _VenvSymlinkEntryBuilder_get_link_to_path(self):
+    """Get the runfiles-root relative path that the symlink points to.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`string | None`
+    """
+    return self._state["link_to_path"]
+
+def _VenvSymlinkEntryBuilder_get_package(self):
+    """Get the PyPI package name that the code originates from.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`string | None`
+    """
+    return self._state["package"]
+
+def _VenvSymlinkEntryBuilder_get_venv_path(self):
+    """Get the path relative to the kind directory within the venv.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`string`
+    """
+    return self._state["venv_path"]
+
+def _VenvSymlinkEntryBuilder_get_version(self):
+    """Get the PyPI package version that the code originates from.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`string | None`
+    """
+    return self._state["version"]
+
+def _VenvSymlinkEntryBuilder_set_kind(self, kind):
+    """Set the kind of the symlink.
+
+    Args:
+        self: implicitly added.
+        kind: {type}`string` One of the {obj}`VenvSymlinkKind` values.
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder` self.
+    """
+    _check_arg_type("kind", "string", kind)
+    self._state["kind"] = kind
+    return self
+
+def _VenvSymlinkEntryBuilder_set_link_to_file(self, link_to_file):
+    """Set the file that the symlink points to.
+
+    Args:
+        self: implicitly added.
+        link_to_file: {type}`File | None`
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder` self.
+    """
+    if link_to_file != None:
+        _check_arg_type("link_to_file", "File", link_to_file)
+    self._state["link_to_file"] = link_to_file
+    return self
+
+def _VenvSymlinkEntryBuilder_set_link_to_path(self, link_to_path):
+    """Set the runfiles-root relative path that the symlink points to.
+
+    Args:
+        self: implicitly added.
+        link_to_path: {type}`string | None`
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder` self.
+    """
+    if link_to_path != None:
+        _check_arg_type("link_to_path", "string", link_to_path)
+    self._state["link_to_path"] = link_to_path
+    return self
+
+def _VenvSymlinkEntryBuilder_set_package(self, package):
+    """Set the PyPI package name that the code originates from.
+
+    Args:
+        self: implicitly added.
+        package: {type}`string | None`
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder` self.
+    """
+    if package != None:
+        _check_arg_type("package", "string", package)
+    self._state["package"] = package
+    return self
+
+def _VenvSymlinkEntryBuilder_set_venv_path(self, venv_path):
+    """Set the path relative to the kind directory within the venv.
+
+    Args:
+        self: implicitly added.
+        venv_path: {type}`string`
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder` self.
+    """
+    _check_arg_type("venv_path", "string", venv_path)
+    self._state["venv_path"] = venv_path
+    return self
+
+def _VenvSymlinkEntryBuilder_set_version(self, version):
+    """Set the PyPI package version that the code originates from.
+
+    Args:
+        self: implicitly added.
+        version: {type}`string | None`
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder` self.
+    """
+    if version != None:
+        _check_arg_type("version", "string", version)
+    self._state["version"] = version
+    return self
+
+def _VenvSymlinkEntryBuilder_build(self):
+    """Builds into a {obj}`VenvSymlinkEntry` object.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`VenvSymlinkEntry`
+    """
+    if not self._state["venv_path"]:
+        fail("venv_path must be set")
+    return VenvSymlinkEntry(
+        files = self.files.build(),
+        kind = self._state["kind"],
+        link_to_file = self._state["link_to_file"],
+        link_to_path = self._state["link_to_path"],
+        package = self._state["package"],
+        venv_path = self._state["venv_path"],
+        version = self._state["version"],
+    )
+
+# buildifier: disable=name-conventions
+VenvSymlinkEntryBuilder = struct(
+    TYPEDEF = _VenvSymlinkEntryBuilder_typedef,
+    build = _VenvSymlinkEntryBuilder_build,
+    get_kind = _VenvSymlinkEntryBuilder_get_kind,
+    set_kind = _VenvSymlinkEntryBuilder_set_kind,
+    get_link_to_file = _VenvSymlinkEntryBuilder_get_link_to_file,
+    set_link_to_file = _VenvSymlinkEntryBuilder_set_link_to_file,
+    get_link_to_path = _VenvSymlinkEntryBuilder_get_link_to_path,
+    set_link_to_path = _VenvSymlinkEntryBuilder_set_link_to_path,
+    get_package = _VenvSymlinkEntryBuilder_get_package,
+    set_package = _VenvSymlinkEntryBuilder_set_package,
+    get_venv_path = _VenvSymlinkEntryBuilder_get_venv_path,
+    set_venv_path = _VenvSymlinkEntryBuilder_set_venv_path,
+    get_version = _VenvSymlinkEntryBuilder_get_version,
+    set_version = _VenvSymlinkEntryBuilder_set_version,
+)
+
 def _check_arg_type(name, required_type, value):
     """Check that a value is of an expected type."""
     value_type = type(value)
@@ -409,6 +643,8 @@ def _PyInfoBuilder_new():
         _has_py2_only_sources = [False],
         _has_py3_only_sources = [False],
         _uses_shared_libraries = [False],
+        _venv_symlink_builders = [],
+        add_venv_symlink = lambda *a, **k: _PyInfoBuilder_add_venv_symlink(self, *a, **k),
         build = lambda *a, **k: _PyInfoBuilder_build(self, *a, **k),
         build_builtin_py_info = lambda *a, **k: _PyInfoBuilder_build_builtin_py_info(self, *a, **k),
         direct_original_sources = builders.DepsetBuilder(),
@@ -437,6 +673,22 @@ def _PyInfoBuilder_new():
         venv_symlinks = builders.DepsetBuilder(),
     )
     return self
+
+def _PyInfoBuilder_add_venv_symlink(self):
+    """Create and return a new VenvSymlinkEntryBuilder.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`VenvSymlinkEntryBuilder`
+    """
+    entry_builder = _VenvSymlinkEntryBuilder()
+    self._venv_symlink_builders.append(entry_builder)
+    return entry_builder
 
 def _PyInfoBuilder_get_has_py3_only_sources(self):
     """Get the `has_py3_only_sources` value.
@@ -649,6 +901,11 @@ def _PyInfoBuilder_build(self):
     Returns:
         {type}`PyInfo`
     """
+    venv_symlinks = depset(
+        direct = [b.build() for b in self._venv_symlink_builders],
+        transitive = [self.venv_symlinks.build()],
+    )
+
     return _EffectivePyInfo(
         has_py2_only_sources = self._has_py2_only_sources[0],
         has_py3_only_sources = self._has_py3_only_sources[0],
@@ -663,7 +920,7 @@ def _PyInfoBuilder_build(self):
         transitive_original_sources = self.transitive_original_sources.build(),
         transitive_pyc_files = self.transitive_pyc_files.build(),
         transitive_pyi_files = self.transitive_pyi_files.build(),
-        venv_symlinks = self.venv_symlinks.build(),
+        venv_symlinks = venv_symlinks,
     )
 
 def _PyInfoBuilder_build_builtin_py_info(self):
@@ -692,6 +949,7 @@ def _PyInfoBuilder_build_builtin_py_info(self):
 PyInfoBuilder = struct(
     TYPEDEF = _PyInfoBuilder_typedef,
     new = _PyInfoBuilder_new,
+    add_venv_symlink = _PyInfoBuilder_add_venv_symlink,
     build = _PyInfoBuilder_build,
     build_builtin_py_info = _PyInfoBuilder_build_builtin_py_info,
     get_has_py2_only_sources = _PyInfoBuilder_get_has_py2_only_sources,

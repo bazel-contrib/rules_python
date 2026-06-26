@@ -1,0 +1,4 @@
+pkg.py,sha256=abc,123
+pkg-1.0.dist-info/METADATA,sha256=def,456
+pkg-1.0.dist-info/WHEEL,sha256=ghi,789
+pkg-1.0.dist-info/RECORD,,

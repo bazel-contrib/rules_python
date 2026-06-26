@@ -44,6 +44,7 @@ def _default(
         arch_name = None,
         auth_patterns = None,
         config_settings = None,
+        default_hub = "",
         env = None,
         index_url = None,
         marker = None,
@@ -56,6 +57,7 @@ def _default(
         arch_name = arch_name,
         auth_patterns = auth_patterns or {},
         config_settings = config_settings,
+        default_hub = default_hub,
         env = env or {},
         index_url = index_url or "",
         marker = marker or "",
@@ -104,6 +106,7 @@ def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
         parse_modules(**kwargs),
         attrs = dict(
+            default_hub = subjects.str,
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
             hub_whl_map = subjects.dict,
@@ -282,6 +285,155 @@ def _test_build_pipstar_platform(env):
     })
 
 _tests.append(_test_build_pipstar_platform)
+
+def _test_multiple_default_tags(env):
+    """Test that multiple pip.default tags do not trigger duplicate default hub failures.
+
+    Only when multiple tags explicitly define default_hub should it fail.
+    """
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                default = _default_tags_default + [
+                    _default(platform = "extra_custom_platform"),
+                ],
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+
+_tests.append(_test_multiple_default_tags)
+
+def _test_name_collision_no_env(env):
+    """Test that a hub named 'pypi' is NOT renamed when the env var is not set."""
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            environ = {},  # Env var NOT set
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    # The hub name remains 'pypi'
+    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+    pypi.default_hub().equals(None)
+
+_tests.append(_test_name_collision_no_env)
+
+def _test_name_collision_with_env(env):
+    """Test that a hub named 'pypi' is silently renamed to module_name_pypi and routed as default_hub when the env var is set."""
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            environ = {"RULES_PYTHON_PYPI_HUB_RESERVED": "1"},
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    # The hub name is renamed to 'rules_python_pypi'
+    pypi.exposed_packages().contains_exactly({"rules_python_pypi": ["simple"]})
+
+    # It is used as the default_hub
+    pypi.default_hub().equals("rules_python_pypi")
+
+_tests.append(_test_name_collision_with_env)
+
+def _test_default_hub_precedence(env):
+    """Test that pip.default(default_hub = ...) has precedence over the fallback renamed default hub."""
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                default = _default_tags_default + [
+                    _default(
+                        platform = "extra_custom_platform",
+                        default_hub = "other_pypi",
+                    ),
+                ],
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                    _parse(
+                        hub_name = "other_pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            environ = {"RULES_PYTHON_PYPI_HUB_RESERVED": "1"},
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    # The hub named 'pypi' is renamed to 'rules_python_pypi'
+    pypi.exposed_packages().contains_exactly({
+        "other_pypi": ["simple"],
+        "rules_python_pypi": ["simple"],
+    })
+
+    # But the default_hub remains 'other_pypi' because pip.default has higher precedence!
+    pypi.default_hub().equals("other_pypi")
+
+_tests.append(_test_default_hub_precedence)
 
 def extension_test_suite(name):
     """Create the test suite.
