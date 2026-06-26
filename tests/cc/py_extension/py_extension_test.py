@@ -11,7 +11,7 @@ from python.runfiles import runfiles
 class PyExtensionTest(unittest.TestCase):
     def test_inspect_elf(self):
         r = runfiles.Create()
-        ext_path = r.Rlocation("rules_python/tests/cc/py_extension/ext_shared.so")
+        ext_path = r.Rlocation("rules_python/tests/cc/py_extension/ext_shared.cpython-311-x86_64-linux-gnu.so")
         self.assertTrue(
             os.path.exists(ext_path), f"Could not find ext_shared.so at {ext_path}"
         )
