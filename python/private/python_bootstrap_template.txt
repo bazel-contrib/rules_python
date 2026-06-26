@@ -14,8 +14,14 @@ import sys
 # directory contains files with stdlib names, such as shutil.py or types.py.
 #
 # Python 3.11 introduced PYTHONSAFEPATH (-P), which disables the unsafe prepend.
-# In that case, sys.path[0] is not the script directory and should be preserved.
-if not getattr(sys.flags, "safe_path", False) and sys.path:
+# Isolated mode (-I) also disables it, including on older interpreters without
+# safe_path. In either case, sys.path[0] is not the script directory and should
+# be preserved.
+if (
+    not getattr(sys.flags, "safe_path", False) and
+    not getattr(sys.flags, "isolated", False) and
+    sys.path
+):
   del sys.path[0]
 
 # Generated file from @rules_python//python/private:python_bootstrap_template.txt
