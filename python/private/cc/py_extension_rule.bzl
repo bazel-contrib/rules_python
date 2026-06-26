@@ -159,29 +159,30 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     "linkopts": lambda: attrb.StringList(),
     "module_name": lambda: attrb.String(),
     "py_limited_api": lambda: attrb.String(
-        doc = """\
-            The minimum Python version to target for the Limited API (e.g., '3.8').
+        doc = """
+The minimum Python version to target for the Limited API (e.g., '3.8').
 
-            If set to a version string (e.g., '3.8') instead of 'none':
-              - Configures the output filename to use the simple '.abi3' suffix (e.g.,
-                'ext.abi3.so').
-              - Strictly validates that all linked C++ dependencies (static_deps,
-                dynamic_deps, etc.) are binary-compatible with this target version,
-                failing the build if a dependency is missing the 'Py_LIMITED_API' define
-                or targets a newer version.
+If set to a version string (e.g., '3.8') instead of 'none':
+  - Configures the output filename to use the simple '.abi3' suffix
+    (e.g., 'ext.abi3.so').
+  - Strictly validates that all linked C++ dependencies (static_deps,
+    dynamic_deps, etc.) are binary-compatible with this target version,
+    failing the build if a dependency is missing the 'Py_LIMITED_API'
+    define or targets a newer version.
 
-            Note: Since the py_extension rule only links pre-compiled libraries, you must
-            manually add the preprocessor macro to the cc_library targets that compile your
-            C/C++ sources, for example:
-                cc_library(
-                    name = "my_impl",
-                    srcs = ["my_code.c"],
-                    defines = ["Py_LIMITED_API=0x03080000"],
-                    ...
-                )
+Note: Since the py_extension rule only links pre-compiled libraries,
+you must manually add the preprocessor macro to the cc_library targets
+that compile your C/C++ sources, for example:
+    cc_library(
+        name = "my_impl",
+        srcs = ["my_code.c"],
+        defines = ["Py_LIMITED_API=0x03080000"],
+        ...
+    )
 
-            Set to 'none' (the default) to build a standard, version-specific extension.
-            """,
+Set to 'none' (the default) to build a standard, version-specific
+extension.
+""",
         default = "none"
     ),
 }
