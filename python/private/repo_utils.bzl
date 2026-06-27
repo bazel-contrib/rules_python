@@ -202,7 +202,7 @@ def _execute_internal(
             output = _outputs_to_str(result, log_stdout = log_stdout, log_stderr = log_stderr),
         ))
 
-    result_kwargs = {k: getattr(result, k) for k in dir(result)}
+    result_kwargs = {k: getattr(result, k) for k in dir(result) if k not in ["to_json", "to_proto"]}
     return struct(
         describe_failure = lambda: _execute_describe_failure(
             op = op,
