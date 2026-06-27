@@ -30,6 +30,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # gazelle:exclude examples
 # gazelle:exclude internal_dev_setup.bzl
 # gazelle:exclude internal_dev_deps.bzl
+# gazelle:exclude python/private/common
 # gazelle:exclude python/private/internal_dev_deps.bzl
 
 package(default_visibility = ["//visibility:public"])

@@ -66,6 +66,7 @@ copy_file(
 )
 
 # gazelle:exclude testdata/
+# gazelle:exclude extensions.bzl
 
 gazelle_test(
     name = "python_test",
@@ -130,10 +131,4 @@ bzl_library(
     srcs = ["gazelle_test.bzl"],
     visibility = ["//visibility:public"],
     deps = ["@io_bazel_rules_go//go:def"],
-)
-
-bzl_library(
-    name = "extensions",
-    srcs = ["extensions.bzl"],
-    visibility = ["//visibility:public"],
 )

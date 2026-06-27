@@ -11,7 +11,13 @@ bzl_library(
     name = "repos",
     srcs = ["repos.bzl"],
     deps = [
-        "@rules_python//python/private:local_runtime_repo",
-        "@rules_python//python/private:local_runtime_toolchains_repo",
+        "//python/private:local_runtime_repo",
+        "//python/private:local_runtime_toolchains_repo",
     ],
+)
+
+alias(
+    name = "repos_bzl",
+    actual = ":repos",
+    deprecation = "Use //python/local_toolchains:repos instead",
 )

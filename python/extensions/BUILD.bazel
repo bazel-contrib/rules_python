@@ -45,3 +45,21 @@ bzl_library(
     srcs = ["python.bzl"],
     deps = ["//python/private:python"],
 )
+
+alias(
+    name = "config_bzl",
+    actual = ":config",
+    deprecation = "Use //python/extensions:config instead",
+)
+
+alias(
+    name = "pip_bzl",
+    actual = ":pip",
+    deprecation = "Use //python/extensions:pip instead",
+)
+
+alias(
+    name = "python_bzl",
+    actual = ":python",
+    deprecation = "Use //python/extensions:python instead",
+)

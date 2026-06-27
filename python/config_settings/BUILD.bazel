@@ -222,14 +222,14 @@ string_flag(
 bzl_library(
     name = "config_settings",
     srcs = ["config_settings.bzl"],
-    visibility = ["//visibility:public"],
+    visibility = ["//:__subpackages__"],
     deps = ["//python/private:config_settings"],
 )
 
 bzl_library(
     name = "transition",
     srcs = ["transition.bzl"],
-    visibility = ["//visibility:public"],
+    visibility = ["//:__subpackages__"],
     deps = [
         "//python:py_binary",
         "//python/private:deprecation",

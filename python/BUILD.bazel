@@ -77,6 +77,7 @@ filegroup(
 
 # ========= Core rules =========
 
+# @unused
 exports_files([
     "defs.bzl",
     "python.bzl",  # Deprecated, please use defs.bzl
@@ -104,6 +105,7 @@ exports_files([
 #             ":py3_on_arm": ...,
 #             ...
 #         }),
+#         ...
 #         ...
 #     )
 #
@@ -204,6 +206,11 @@ alias(
     name = "defs_bzl",
     actual = ":defs",
     deprecation = "Use //python:defs instead",
+)
+
+bzl_library(
+    name = "features",
+    srcs = ["features.bzl"],
 )
 
 alias(
@@ -408,6 +415,11 @@ alias(
     deprecation = "Use //python:py_test instead",
 )
 
+bzl_library(
+    name = "python",
+    srcs = ["python.bzl"],
+)
+
 alias(
     name = "python_bzl",
     actual = ":python",
@@ -446,14 +458,4 @@ alias(
     name = "versions_bzl",
     actual = ":versions",
     deprecation = "Use //python:versions instead",
-)
-
-bzl_library(
-    name = "features",
-    srcs = ["features.bzl"],
-)
-
-bzl_library(
-    name = "python",
-    srcs = ["python.bzl"],
 )

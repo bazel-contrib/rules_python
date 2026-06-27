@@ -348,9 +348,3 @@ uv_dev.configure(
 #     name = "experimental_python_import_all_repositories",
 #     starlark_flag = "//python/config_settings:experimental_python_import_all_repositories",
 # )
-
-single_version_override(
-    module_name = "bazel_skylib_gazelle_plugin",
-    patch_strip = 1,
-    patches = ["//patches:bazel_skylib_gazelle_plugin.patch"],
-)

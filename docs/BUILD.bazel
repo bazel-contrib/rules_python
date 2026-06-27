@@ -116,6 +116,7 @@ sphinx_stardocs(
         "//python:py_exec_tools_info",
         "//python:py_exec_tools_toolchain",
         "//python:py_executable_info",
+        "//python:py_info",
         "//python:py_library",
         "//python:py_runtime",
         "//python:py_runtime_info",
