@@ -1,5 +1,6 @@
 """Utility functions for the release tool."""
 
+import shlex
 import subprocess
 
 
@@ -10,7 +11,7 @@ def run_cmd(*args, check=True, capture_output=True):
     a detailed note explaining the failure to preserve the stack trace.
     """
     cmd = [str(arg) for arg in args]
-    print(f"Running: {' '.join(cmd)}")
+    print(f"Running: {shlex.join(cmd)}")
     try:
         result = subprocess.run(
             cmd,
@@ -21,7 +22,7 @@ def run_cmd(*args, check=True, capture_output=True):
         )
         return result.stdout.strip() if capture_output else None
     except subprocess.CalledProcessError as e:
-        note = f"Error running command: {' '.join(cmd)}"
+        note = f"Error running command: {shlex.join(cmd)}"
         if capture_output:
             note += f"\nStdout: {e.stdout}\nStderr: {e.stderr}"
         e.add_note(note)

@@ -227,7 +227,10 @@ def update_task_in_body(body, task_name, checked, metadata):
             updated_lines.append(line)
 
     if not found:
-        raise ValueError(f"Task '{task_name}' not found in issue body.")
+        raise ValueError(
+            f"Task '{task_name}' not found in issue body. "
+            f"Expected format: '- [ ] {task_name}' or '- [x] {task_name}' (optionally followed by '| key=value')"
+        )
 
     return "\n".join(updated_lines)
 
@@ -787,7 +790,7 @@ def cmd_promote_rc(args):
     issue_num = args.issue
     if not issue_num:
         try:
-            issue_num = gh.resolve_issue_number(version)
+            issue_num = gh.find_release_tracking_issue(version)
         except Exception as e:
             print(f"Error: Could not query GitHub to find tracking issue: {e}")
             return 1
@@ -822,6 +825,20 @@ def cmd_promote_rc(args):
 
     print(f"Updating tracking issue #{issue_num} checklist...")
     gh.update_issue_body(issue_num, updated_body)
+
+    print(f"Posting comment to tracking issue #{issue_num}...")
+    import urllib.parse
+
+    release_url = f"{_REPO_URL}/releases/tag/{version}"
+    bcr_query = f'is:pr ("bazel-contrib/rules_python" in:title) ("@{version}" in:title)'
+    bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q={urllib.parse.quote(bcr_query)}"
+    comment_body = (
+        f"Version {version} has been tagged.\n\n"
+        f"- **Release Page**: {release_url}\n"
+        f"- **BCR PR Search**: [{bcr_query}]({bcr_search_url})"
+    )
+    gh.post_issue_comment(issue_num, comment_body)
+
     return 0
 
 

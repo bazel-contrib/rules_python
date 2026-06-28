@@ -710,13 +710,19 @@ class CmdPromoteRcTest(unittest.TestCase):
         self.mock_gh.update_issue_body.assert_called_once_with(
             123, expected_updated_body
         )
+        expected_comment = (
+            "Version 2.0.0 has been tagged.\n\n"
+            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0\n"
+            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.0" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)'
+        )
+        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
 
     def test_promote_rc_resolve_issue_success(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=None)
         self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
-        self.mock_gh.resolve_issue_number.return_value = 123
+        self.mock_gh.find_release_tracking_issue.return_value = 123
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         initial_body = "- [ ] Tag Final"
         self.mock_gh.get_issue_body.return_value = initial_body
@@ -726,12 +732,24 @@ class CmdPromoteRcTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(result, 0)
-        self.mock_gh.resolve_issue_number.assert_called_once_with("2.0.0")
+        self.mock_gh.find_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
         self.mock_git.checkout.assert_not_called()
         self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
         self.mock_git.push.assert_called_once_with("upstream", "2.0.0")
         self.mock_gh.get_issue_body.assert_called_once_with(123)
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.0 commit=abcdef12"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+        expected_comment = (
+            "Version 2.0.0 has been tagged.\n\n"
+            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0\n"
+            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.0" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)'
+        )
+        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
 
     def test_promote_rc_defaults_to_determine_next_version(self):
         # Arrange
@@ -762,6 +780,12 @@ class CmdPromoteRcTest(unittest.TestCase):
         self.mock_gh.update_issue_body.assert_called_once_with(
             123, expected_updated_body
         )
+        expected_comment = (
+            "Version 2.0.1 has been tagged.\n\n"
+            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1\n"
+            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.1" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.1%22%20in%3Atitle%29)'
+        )
+        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
 
     def test_promote_rc_tag_already_exists(self):
         # Arrange
@@ -785,14 +809,14 @@ class CmdPromoteRcTest(unittest.TestCase):
         args = MagicMock(version="2.0.0", issue=None)
         self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
-        self.mock_gh.resolve_issue_number.return_value = None
+        self.mock_gh.find_release_tracking_issue.return_value = None
 
         # Act
         result = releaser.cmd_promote_rc(args)
 
         # Assert
         self.assertEqual(result, 1)
-        self.mock_gh.resolve_issue_number.assert_called_once_with("2.0.0")
+        self.mock_gh.find_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_git.checkout.assert_not_called()
         self.mock_git.tag.assert_not_called()
         self.mock_git.push.assert_not_called()
