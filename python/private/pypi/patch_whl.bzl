@@ -80,6 +80,7 @@ def patch_whl(rctx, *, whl_path, patches):
         rctx,
         archive = whl_input,
         supports_whl_extraction = rp_config.supports_whl_extraction,
+        extract_needs_chmod = rp_config.extract_needs_chmod,
     )
 
     if not patches:

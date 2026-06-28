@@ -202,7 +202,7 @@ def _execute_internal(
             output = _outputs_to_str(result, log_stdout = log_stdout, log_stderr = log_stderr),
         ))
 
-    result_kwargs = {k: getattr(result, k) for k in dir(result)}
+    result_kwargs = {k: getattr(result, k) for k in dir(result) if k not in ["to_json", "to_proto"]}
     return struct(
         describe_failure = lambda: _execute_describe_failure(
             op = op,
@@ -511,7 +511,7 @@ def _get_platforms_cpu_name(mrctx):
         return "riscv64"
     return arch
 
-def _extract(mrctx, *, archive, supports_whl_extraction = False, **kwargs):
+def _extract(mrctx, *, archive, supports_whl_extraction = False, extract_needs_chmod = False, **kwargs):
     """Extract an archive
 
     TODO: remove when the earliest supported bazel version is at least 8.3.
@@ -532,6 +532,26 @@ def _extract(mrctx, *, archive, supports_whl_extraction = False, **kwargs):
     if archive_original:
         if not mrctx.delete(archive):
             fail("Failed to remove the symlink after extracting")
+
+    if extract_needs_chmod:
+        _maybe_fix_permissions(mrctx, whl_path = archive)
+
+def _maybe_fix_permissions(mrctx, *, whl_path, logger = None):
+    if not logger and hasattr(mrctx, "attr"):
+        logger = _logger(mrctx)
+    elif not logger:
+        fail("logger must be specified when using 'module_ctx'")
+
+    os_name = _get_platforms_os_name(mrctx)
+    if os_name != "windows":
+        result = _execute_unchecked(
+            mrctx,
+            op = "Fixing wheel permissions {}".format(whl_path),
+            arguments = ["chmod", "-R", "a+rX", "."],
+            logger = logger,
+        )
+        if result.return_code != 0:
+            logger.warn(lambda: "Failed to fix file permissions: {}".format(result.stderr))
 
 def _rename(mrctx, src, dest):
     """Rename a file or directory.
@@ -575,6 +595,7 @@ repo_utils = struct(
     get_platforms_os_name = _get_platforms_os_name,
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
+    maybe_fix_permissions = _maybe_fix_permissions,
     mkdir = _mkdir,
     norm_path = _norm_path,
     relative_to = _relative_to,
