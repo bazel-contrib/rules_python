@@ -1,5 +1,4 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary")
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":gazelle_test.bzl", "gazelle_test")
@@ -67,6 +66,8 @@ copy_file(
 
 # gazelle:exclude testdata/
 # gazelle:exclude extensions.bzl
+# Exclude test-only Starlark helper from Gazelle to avoid generating an unnecessary bzl_library
+# gazelle:exclude gazelle_test.bzl
 
 gazelle_test(
     name = "python_test",
@@ -123,12 +124,4 @@ go_test(
     deps = [
         "@com_github_stretchr_testify//assert",
     ],
-)
-
-# keep
-bzl_library(
-    name = "gazelle_test",
-    srcs = ["gazelle_test.bzl"],
-    visibility = ["//visibility:public"],
-    deps = ["@io_bazel_rules_go//go:def"],
 )
