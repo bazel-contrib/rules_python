@@ -4,6 +4,7 @@ package(
     default_visibility = ["//:__subpackages__"],
 )
 
+# Marked manual because we don't need CI to build them.
 gazelle_binary(
     name = "gazelle_bin",
     languages = [
