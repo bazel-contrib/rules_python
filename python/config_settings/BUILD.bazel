@@ -17,7 +17,8 @@ load(
 load("//python/private/pypi:flags.bzl", "define_pypi_internal_flags")
 load(":config_settings.bzl", "construct_config_settings")
 
-# Exclude Starlark files from Gazelle processing to avoid generating bzl_library targets
+# We don't generate bzl_library for these because they aren't public targets
+# and should be moved
 # gazelle:exclude config_settings.bzl
 # gazelle:exclude transition.bzl
 
