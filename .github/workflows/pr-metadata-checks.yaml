@@ -8,6 +8,7 @@ on:
       - reopened
       - labeled
       - unlabeled
+      - edited
 
 jobs:
   blocks-do-not-merge:
