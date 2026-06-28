@@ -4,7 +4,7 @@ package(
     default_visibility = ["//:__subpackages__"],
 )
 
-# Marked manual because we don't need CI to build them.
+# Marked manual to avoid building in CI, which fails due to copt settings.
 gazelle_binary(
     name = "gazelle_bin",
     languages = [
@@ -13,6 +13,7 @@ gazelle_binary(
     tags = ["manual"],
 )
 
+# Marked manual to avoid building in CI, which fails due to copt settings.
 gazelle(
     name = "gazelle",
     gazelle = ":gazelle_bin",
