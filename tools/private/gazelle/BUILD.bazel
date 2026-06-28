@@ -4,18 +4,18 @@ package(
     default_visibility = ["//:__subpackages__"],
 )
 
-# Marked manual to avoid building in CI, which fails due to copt settings.
 gazelle_binary(
     name = "gazelle_bin",
     languages = [
         "@bazel_skylib_gazelle_plugin//bzl",
     ],
+    # Marked manual to avoid building in CI, which fails due to copt settings.
     tags = ["manual"],
 )
 
-# Marked manual to avoid building in CI, which fails due to copt settings.
 gazelle(
     name = "gazelle",
     gazelle = ":gazelle_bin",
+    # Marked manual to avoid building in CI, which fails due to copt settings.
     tags = ["manual"],
 )
