@@ -18,7 +18,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":common_labels.bzl", "labels")
 load(":py_exec_tools_info.bzl", "PyExecToolsInfo")
-load(":sentinel.bzl", "SentinelInfo")
+load(":sentinel_impl.bzl", "SentinelInfo")
 load(":toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 
 def _py_exec_tools_toolchain_impl(ctx):

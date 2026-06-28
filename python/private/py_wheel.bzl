@@ -18,7 +18,7 @@ load(":attributes.bzl", "CONFIG_SETTINGS_ATTR", "apply_config_settings_attr")
 load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
 load(":rule_builders.bzl", "ruleb")
-load(":stamp.bzl", "is_stamping_enabled")
+load(":stamp_impl.bzl", "is_stamping_enabled")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":version.bzl", "version")
 

@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 exports_files([
@@ -11,8 +12,8 @@ go_library(
     importpath = "github.com/bazel-contrib/rules_python/gazelle/manifest",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_emirpasic_gods//sets/treeset",
-        "@in_gopkg_yaml_v2//:yaml_v2",
+        "@com_github_emirpasic_gods//sets/treeset:go_default_library",
+        "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )
 
@@ -31,4 +32,15 @@ filegroup(
         "//manifest/test:distribution",
     ],
     visibility = ["//:__pkg__"],
+)
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_skylib//rules:diff_test",
+        "@io_bazel_rules_go//go:def",
+        "@rules_python//python:defs_bzl",
+    ],
 )

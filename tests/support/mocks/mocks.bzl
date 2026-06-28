@@ -185,7 +185,7 @@ def _mctx_download(
         return struct(success = True, wait = lambda: struct(success = True))
     return struct(success = False, wait = lambda: struct(success = False))
 
-def _mctx_report_progress(self, message):
+def _mrctx_report_progress(self, message):
     self.report_progress_calls.append(message)
     return None
 
@@ -259,7 +259,7 @@ def _mctx_new(
         path = lambda *a, **k: _mctx_path(self, *a, **k),
         read = lambda *a, **k: _mctx_read(self, *a, **k),
         download = lambda *a, **k: _mctx_download(self, *a, **k),
-        report_progress = lambda *a, **k: _mctx_report_progress(self, *a, **k),
+        report_progress = lambda *a, **k: _mrctx_report_progress(self, *a, **k),
         add_module = lambda **k: _mctx_add_module(self, **k),
     )
     return self
@@ -439,6 +439,7 @@ def _rctx_execute(
         environment,
         custom_reporter,
     )  # @unused
+    self.execute_calls.append(arguments)
     return struct(return_code = 0, stdout = "", stderr = "")
 
 def _rctx_symlink(self, target, link_name):
@@ -485,7 +486,10 @@ def _rctx_new(
         mock_which = mock_which,
         mock_downloads = mock_downloads,
         mock_extracts = mock_extracts,
+        execute_calls = [],
+        report_progress_calls = [],
         attr = struct(**attr),
+        name = attr.get("name", "mock"),
         os = struct(
             name = os_name,
             arch = arch_name,
@@ -494,10 +498,12 @@ def _rctx_new(
         path = lambda *a, **k: _rctx_path(self, *a, **k),
         read = lambda *a, **k: _rctx_read(self, *a, **k),
         file = lambda *a, **k: _rctx_file(self, *a, **k),
+        getenv = environ.get,
         template = lambda *a, **k: _rctx_template(self, *a, **k),
         which = lambda *a, **k: _rctx_which(self, *a, **k),
         download = lambda *a, **k: _rctx_download(self, *a, **k),
         extract = lambda *a, **k: _rctx_extract(self, *a, **k),
+        delete = lambda x: True,
         download_and_extract = lambda *a, **k: _rctx_download_and_extract(
             self,
             *a,
@@ -505,6 +511,7 @@ def _rctx_new(
         ),
         execute = lambda *a, **k: _rctx_execute(self, *a, **k),
         symlink = lambda *a, **k: _rctx_symlink(self, *a, **k),
+        report_progress = lambda *a, **k: _mrctx_report_progress(self, *a, **k),
     )
 
     return self

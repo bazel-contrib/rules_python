@@ -10,8 +10,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//manifest",
-        "@bazel_gazelle//label:go_default_library",
-        "@com_github_emirpasic_gods//lists/singlylinkedlist",
+        "@bazel_gazelle//label",
+        "@com_github_emirpasic_gods//lists/singlylinkedlist:go_default_library",
     ],
 )
 

@@ -20,8 +20,9 @@ filegroup(
     visibility = ["//python:__subpackages__"],
 )
 
+# keep
 bzl_library(
-    name = "py_internal_renamed_bzl",
+    name = "py_internal_renamed",
     srcs = ["py_internal_renamed.bzl"],
-    visibility = ["//python/private:__pkg__"],
+    visibility = ["//:__subpackages__"],
 )
