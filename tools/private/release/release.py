@@ -740,7 +740,7 @@ def cmd_create_rc(args):
         return 0
 
     print(f"Tagging and pushing next RC: {next_rc}...")
-    git.tag(next_rc)
+    git.tag(next_rc, "HEAD")
     git.push("origin", next_rc)
 
     commit_sha = git.get_commit_sha("HEAD")
@@ -771,46 +771,58 @@ def cmd_promote_rc(args):
     if version is None:
         version = determine_next_version()
 
-    git.fetch("--tags", "--force")
+    # Fetch from upstream to ensure we have the latest tags
+    git.fetch("upstream", tags=True, force=True)
     latest_rc = get_latest_rc_tag(version)
     if not latest_rc:
         print(f"Error: No release candidate tags found matching {version}-rc*")
         return 1
 
-    print(f"Promoting {latest_rc} to final release {version}...")
-    git.checkout(latest_rc)
+    # Verify final tag doesn't already exist
+    if git.tag_exists(version):
+        print(f"Error: Final tag {version} already exists.")
+        return 1
 
-    commit_sha = git.get_commit_sha("HEAD")
-
-    if not git.tag_exists(version):
-        git.tag(version)
-        git.push("origin", version)
-    else:
-        print(f"Final tag {version} already exists.")
-
-    # Resolve issue number
+    # Verify issue can be found
     issue_num = args.issue
     if not issue_num:
         try:
             issue_num = gh.resolve_issue_number(version)
         except Exception as e:
-            print(f"Warning: Could not query GitHub to find tracking issue: {e}")
+            print(f"Error: Could not query GitHub to find tracking issue: {e}")
+            return 1
+        if not issue_num:
+            print(f"Error: Could not find tracking issue for version {version}.")
+            return 1
 
-    if issue_num:
-        print(f"Updating tracking issue #{issue_num} checklist...")
-        body = gh.get_issue_body(issue_num)
-        metadata = {"status": "done", "tag": version, "commit": commit_sha[:8]}
+    # Get commit SHA of the RC tag (which will be the same for the final tag)
+    commit_sha = git.get_commit_sha(latest_rc)
+
+    # Verify issue is in the right format by trying to prepare the update
+    print(f"Verifying tracking issue #{issue_num} format...")
+    body = gh.get_issue_body(issue_num)
+    metadata = {"status": "done", "tag": version, "commit": commit_sha[:8]}
+    try:
         updated_body = update_task_in_body(
             body, "Tag Final", checked=True, metadata=metadata
         )
-        gh.update_issue_body(issue_num, updated_body)
-        print("Checklist updated successfully.")
-        return 0
-    else:
-        print(
-            "Error: No active tracking issue found or specified. Checklist was not updated."
-        )
+    except ValueError as e:
+        print(f"Error: Tracking issue #{issue_num} is malformed: {e}")
         return 1
+
+    # All pre-conditions met, perform modifications
+    print(
+        f"Promoting {latest_rc} to final release {version} (commit"
+        f" {commit_sha[:8]}) using tracking issue #{issue_num}..."
+    )
+
+    # Tag the specific commit without checkout, and push to upstream
+    git.tag(version, commit_sha)
+    git.push("upstream", version)
+
+    print(f"Updating tracking issue #{issue_num} checklist...")
+    gh.update_issue_body(issue_num, updated_body)
+    return 0
 
 
 def create_parser():

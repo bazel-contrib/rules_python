@@ -59,9 +59,9 @@ def merge(commit_ref, ff_only=True):
     run_cmd(*cmd, capture_output=False)
 
 
-def tag(tag_name):
-    """Creates a local tag pointing to HEAD."""
-    run_cmd("git", "tag", tag_name, capture_output=False)
+def tag(tag_name, commit_ref):
+    """Creates a local tag pointing to a specific commit."""
+    run_cmd("git", "tag", tag_name, commit_ref, capture_output=False)
 
 
 def cherry_pick(sha):

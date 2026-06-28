@@ -687,7 +687,6 @@ class CmdPromoteRcTest(unittest.TestCase):
         self.mock_git.get_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         self.mock_git.tag_exists.return_value = False
-
         initial_body = "- [ ] Tag Final"
         self.mock_gh.get_issue_body.return_value = initial_body
 
@@ -696,11 +695,12 @@ class CmdPromoteRcTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(result, 0)
-        self.mock_git.fetch.assert_called_once_with("--tags", "--force")
-        self.mock_git.checkout.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.fetch.assert_called_once_with("upstream", tags=True, force=True)
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.checkout.assert_not_called()
         self.mock_git.tag_exists.assert_called_once_with("2.0.0")
-        self.mock_git.tag.assert_called_once_with("2.0.0")
-        self.mock_git.push.assert_called_once_with("origin", "2.0.0")
+        self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
+        self.mock_git.push.assert_called_once_with("upstream", "2.0.0")
 
         # Verify issue update
         self.mock_gh.get_issue_body.assert_called_once_with(123)
@@ -711,6 +711,28 @@ class CmdPromoteRcTest(unittest.TestCase):
             123, expected_updated_body
         )
 
+    def test_promote_rc_resolve_issue_success(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None)
+        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = False
+        self.mock_gh.resolve_issue_number.return_value = 123
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_gh.resolve_issue_number.assert_called_once_with("2.0.0")
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
+        self.mock_git.push.assert_called_once_with("upstream", "2.0.0")
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+
     def test_promote_rc_defaults_to_determine_next_version(self):
         # Arrange
         args = MagicMock(version=None, issue=123)
@@ -718,7 +740,6 @@ class CmdPromoteRcTest(unittest.TestCase):
         self.mock_git.get_tags.return_value = ["2.0.0", "2.0.1-rc0"]
         self.mock_git.get_commit_sha.return_value = "12345678"
         self.mock_git.tag_exists.return_value = False
-
         initial_body = "- [ ] Tag Final"
         self.mock_gh.get_issue_body.return_value = initial_body
 
@@ -730,9 +751,10 @@ class CmdPromoteRcTest(unittest.TestCase):
         self.mock_git.get_current_branch.assert_called_once()
         self.assertTrue(self.mock_git.get_tags.call_count >= 2)
 
-        self.mock_git.checkout.assert_called_once_with("2.0.1-rc0")
-        self.mock_git.tag.assert_called_once_with("2.0.1")
-        self.mock_git.push.assert_called_once_with("origin", "2.0.1")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.1-rc0")
+        self.mock_git.tag.assert_called_once_with("2.0.1", "12345678")
+        self.mock_git.push.assert_called_once_with("upstream", "2.0.1")
 
         expected_updated_body = (
             "- [x] Tag Final | status=done tag=2.0.1 commit=12345678"
@@ -745,26 +767,56 @@ class CmdPromoteRcTest(unittest.TestCase):
         # Arrange
         args = MagicMock(version="2.0.0", issue=123)
         self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
-        self.mock_git.get_commit_sha.return_value = "abcdef123456"
         self.mock_git.tag_exists.return_value = True
 
-        initial_body = "- [ ] Tag Final"
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.get_issue_body.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+
+    def test_promote_rc_issue_not_found(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None)
+        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = False
+        self.mock_gh.resolve_issue_number.return_value = None
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.resolve_issue_number.assert_called_once_with("2.0.0")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.get_issue_body.assert_not_called()
+
+    def test_promote_rc_issue_malformed(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = False
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        initial_body = "malformed body"
         self.mock_gh.get_issue_body.return_value = initial_body
 
         # Act
         result = releaser.cmd_promote_rc(args)
 
         # Assert
-        self.assertEqual(result, 0)
+        self.assertEqual(result, 1)
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+        self.mock_git.checkout.assert_not_called()
         self.mock_git.tag.assert_not_called()
         self.mock_git.push.assert_not_called()
-        self.mock_gh.get_issue_body.assert_called_once_with(123)
-        expected_updated_body = (
-            "- [x] Tag Final | status=done tag=2.0.0 commit=abcdef12"
-        )
-        self.mock_gh.update_issue_body.assert_called_once_with(
-            123, expected_updated_body
-        )
+        self.mock_gh.update_issue_body.assert_not_called()
 
     def test_promote_rc_no_rc_found(self):
         # Arrange
