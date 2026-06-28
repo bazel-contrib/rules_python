@@ -117,12 +117,6 @@ bzl_library(
     deps = ["//python/private:text_util"],
 )
 
-bzl_library(
-    name = "toolchain_types",
-    srcs = ["toolchain_types.bzl"],
-    visibility = ["//python/uv:__subpackages__"],
-)
-
 # keep
 bzl_library(
     name = "uv_lock_to_requirements",
@@ -131,6 +125,12 @@ bzl_library(
         "//python/private:__subpackages__",
         "//python/uv:__subpackages__",
     ],
+)
+
+bzl_library(
+    name = "toolchain_types",
+    srcs = ["toolchain_types.bzl"],
+    visibility = ["//python/uv:__subpackages__"],
 )
 
 bzl_library(

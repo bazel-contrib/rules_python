@@ -209,11 +209,6 @@ alias(
     deprecation = "Use //python:defs instead",
 )
 
-bzl_library(
-    name = "features",
-    srcs = ["features.bzl"],
-)
-
 alias(
     name = "features_bzl",
     actual = ":features",
@@ -416,11 +411,6 @@ alias(
     deprecation = "Use //python:py_test instead",
 )
 
-bzl_library(
-    name = "python",
-    srcs = ["python.bzl"],
-)
-
 alias(
     name = "python_bzl",
     actual = ":python",
@@ -459,4 +449,14 @@ alias(
     name = "versions_bzl",
     actual = ":versions",
     deprecation = "Use //python:versions instead",
+)
+
+bzl_library(
+    name = "features",
+    srcs = ["features.bzl"],
+)
+
+bzl_library(
+    name = "python",
+    srcs = ["python.bzl"],
 )
