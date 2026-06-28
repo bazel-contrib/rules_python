@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -9,9 +10,11 @@ gazelle_binary(
     languages = [
         "@bazel_skylib_gazelle_plugin//bzl",
     ],
+    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
 )
 
 gazelle(
     name = "gazelle",
     gazelle = ":gazelle_bin",
+    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
 )
