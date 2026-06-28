@@ -124,6 +124,8 @@ backwards-compatibility aliases if they are renamed:
 *   `//python:python`
 *   `//python:repositories`
 *   `//python:versions`
+*   `//python/cc:py_cc_toolchain`
+*   `//python/cc:py_cc_toolchain_info`
 *   `//python/entry_points:py_console_script_binary`
 *   `//python/extensions:config`
 *   `//python/extensions:pip`
