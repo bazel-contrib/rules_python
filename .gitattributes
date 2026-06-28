@@ -3,3 +3,5 @@ tools/publish/*.txt linguist-generated=true
 tests/uv/lock/testdata/requirements.txt text eol=lf
 python/private/runtimes_manifest_workspace.bzl text eol=lf
 python/private/runtimes_manifest.txt text eol=lf
+
+*.bat text eol=crlf

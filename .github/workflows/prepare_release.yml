@@ -1,0 +1,36 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    # Allow manual triggering to prepare the release immediately
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  prepare_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Release Preparation Pipeline
+        run: |
+          # Manual trigger: run full preparation
+          bazel run //tools/private/release -- prepare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -28,6 +28,7 @@ behavior.
 
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/uv/private:uv_lock_to_requirements.bzl", "uv_lock_extras_map")  # buildifier: disable=bzl-visibility
 load(":argparse.bzl", "argparse")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
@@ -40,15 +41,18 @@ def parse_requirements(
         *,
         requirements_by_platform = {},
         extra_pip_args = [],
-        platforms = {},
+        platforms,
         get_index_urls = None,
         extract_url_srcs = True,
+        uv_lock = None,
+        toml_decode = None,
         logger):
     """Get the requirements with platforms that the requirements apply to.
 
     Args:
         ctx: A context that has .read function that would read contents from a label.
-        platforms: The target platform descriptions.
+        platforms: The target platform descriptions. Cannot be empty and needs to have
+            at least the host platform and the definitions.
         requirements_by_platform (label_keyed_string_dict): a way to have
             different package versions (or different packages) for different
             os, arch combinations.
@@ -59,28 +63,248 @@ def parse_requirements(
             distribution names to query.
         extract_url_srcs: A boolean to enable extracting URLs from requirement
             lines to enable using bazel downloader.
+        uv_lock: {type}`str | None` an optional label/file path to the uv.lock
+            file. The ctx.read function will be used to read the contents.
+            If provided, the function will use the uv.lock file as the primary
+            source for package metadata and perform a consistency check against
+            requirements files if both are provided.
+        toml_decode: {type}`callable | None` A function to decode TOML
+            content (e.g. `toml.decode`). Required when `uv_lock` is provided.
         logger: repo_utils.logger, a simple struct to log diagnostic messages.
 
     Returns:
-        {type}`dict[str, list[struct]]` where the key is the distribution name and the struct
-        contains the following attributes:
-         * `distribution`: {type}`str` The non-normalized distribution name.
-         * `srcs`: {type}`struct` The parsed requirement line for easier Simple
-           API downloading (see `index_sources` return value).
-         * `target_platforms`: {type}`list[str]` Target platforms that this package is for.
-             The format is `cp3{minor}_{os}_{arch}`.
+        {type}`list[struct]` where each struct contains the following attributes:
+         * `name`: {type}`str` The normalized distribution name.
          * `is_exposed`: {type}`bool` `True` if the package should be exposed via the hub
            repository.
-         * `extra_pip_args`: {type}`list[str]` pip args to use in case we are
-           not using the bazel downloader to download the archives. This should
-           be passed to {obj}`whl_library`.
-         * `whls`: {type}`list[struct]` The list of whl entries that can be
-           downloaded using the bazel downloader.
-         * `sdist`: {type}`list[struct]` The sdist that can be downloaded using
-           the bazel downloader.
-
-        The second element is extra_pip_args should be passed to `whl_library`.
+         * `is_multiple_versions`: {type}`bool` `True` if multiple versions have been
+           specified for this package.
+         * `index_url`: {type}`str` The index URL used to download the package.
+         * `srcs`: {type}`list[struct]` A list of per-distribution source entries, each
+           containing: `distribution`, `extra_pip_args`, `requirement_line`,
+           `target_platforms`, `filename`, `sha256`, `url`, `yanked`.
     """
+    if uv_lock and toml_decode:
+        uv_lock = toml_decode(ctx.read(uv_lock))
+        return _parse_requirements_with_uv_lock(
+            ctx = ctx,
+            requirements_by_platform = requirements_by_platform,
+            extra_pip_args = extra_pip_args,
+            platforms = platforms,
+            get_index_urls = get_index_urls,
+            extract_url_srcs = extract_url_srcs,
+            uv_lock = uv_lock,
+            logger = logger,
+        )
+
+    return _parse_requirements_from_req_files(
+        ctx = ctx,
+        requirements_by_platform = requirements_by_platform,
+        extra_pip_args = extra_pip_args,
+        platforms = platforms,
+        get_index_urls = get_index_urls,
+        extract_url_srcs = extract_url_srcs,
+        logger = logger,
+    )
+
+def _get_all_platforms(requirements_by_platform):
+    """Get the set of all platform names from requirements_by_platform."""
+    all_platforms = {}
+    for plats in requirements_by_platform.values():
+        for p in plats:
+            all_platforms[p] = None
+    return sorted(all_platforms)
+
+def _parse_requirements_with_uv_lock(
+        ctx,
+        *,
+        requirements_by_platform,
+        extra_pip_args,
+        platforms,
+        get_index_urls,
+        extract_url_srcs,
+        uv_lock,
+        logger):
+    """Parse requirements using uv.lock as the primary source."""
+    if uv_lock:
+        return _parse_uv_lock_json(
+            uv_lock = uv_lock,
+            all_platforms = _get_all_platforms(requirements_by_platform) if requirements_by_platform else sorted(platforms.keys()),
+            platforms = platforms,
+            extra_pip_args = extra_pip_args,
+            logger = logger,
+        )
+
+    return _parse_requirements_from_req_files(
+        ctx = ctx,
+        requirements_by_platform = requirements_by_platform,
+        extra_pip_args = extra_pip_args,
+        platforms = platforms,
+        get_index_urls = get_index_urls,
+        extract_url_srcs = extract_url_srcs,
+        logger = logger,
+    )
+
+def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, platforms = {}):
+    """Parse uv.lock JSON and build the same return structs as parse_requirements.
+
+    Args:
+        uv_lock: {type}`dict` The decoded uv.lock contents.
+        all_platforms: {type}`list[str]` The list of all platform names.
+        logger: {type}`struct` A logger for diagnostic messages.
+        extra_pip_args: {type}`list[str] | None` Extra pip arguments to pass through.
+        platforms: {type}`dict[str, struct]` A dict of platform name to platform info
+            (containing `.env` with PEP 508 marker environment).
+
+    Returns:
+        {type}`list[struct]` The same format as {func}`parse_requirements`.
+    """
+    extras_map = uv_lock_extras_map(uv_lock)
+
+    uv_packages = {}
+
+    if not platforms:
+        fail("BUG: platforms must be configured")
+
+    for pkg in uv_lock["package"]:
+        name = pkg["name"]
+        version = pkg["version"]
+        norm_name = normalize_name(name)
+        entry = uv_packages.setdefault(norm_name, {
+            "distribution": name,
+            "resolved_srcs": [],
+            "versions": {},
+        })
+        entry["versions"][version] = None
+
+        pkg_extras = sorted(extras_map.get(name, []))
+        extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
+
+        markers = pkg.get("resolution-markers", [])
+        if markers:
+            marker_expr = " or ".join(markers)
+            pkg_platforms = [
+                p
+                for p in all_platforms
+                if evaluate(marker_expr, env = platforms[p].env)
+            ]
+        else:
+            pkg_platforms = list(all_platforms)
+
+        # Prepare candidates
+        candidates = []
+        for wheel in pkg.get("wheels", []):
+            url = wheel["url"]
+            _, _, filename = url.rpartition("/")
+            sha256 = wheel.get("hash", "").replace("sha256:", "")
+            candidates.append(struct(
+                filename = filename,
+                url = url,
+                sha256 = sha256,
+                kind = "wheel",
+            ))
+
+        sdist_struct = None
+        sdist = pkg.get("sdist", None)
+        if sdist:
+            url = sdist["url"]
+            _, _, filename = url.rpartition("/")
+            sha256 = sdist.get("hash", "").replace("sha256:", "")
+            sdist_struct = struct(
+                filename = filename,
+                url = url,
+                sha256 = sha256,
+                kind = "sdist",
+            )
+
+        git_struct = None
+        if pkg.get("source", {}).get("git"):
+            url = pkg["source"]["git"]
+            _, _, filename = url.rpartition("/")
+            git_struct = struct(
+                filename = filename,
+                url = url,
+                sha256 = "",
+                kind = "git",
+                source = pkg["source"],
+            )
+
+        plat_to_src = {}
+        for p in pkg_platforms:
+            platform = platforms.get(p)
+            if not platform:
+                continue
+
+            best_wheel = None
+            if candidates:
+                best_wheel = select_whl(
+                    whls = candidates,
+                    python_version = platform.env.get("python_full_version", "3"),
+                    whl_platform_tags = platform.whl_platform_tags,
+                    whl_abi_tags = platform.whl_abi_tags,
+                    implementation_name = platform.env.get("implementation_name", "cpython"),
+                    limit = 1,
+                    logger = logger,
+                )
+
+            if best_wheel:
+                plat_to_src[p] = best_wheel
+            elif sdist_struct:
+                plat_to_src[p] = sdist_struct
+            elif git_struct:
+                plat_to_src[p] = git_struct
+
+        # Group platforms by resolved source
+        src_to_plats = {}
+        for p, src in plat_to_src.items():
+            key = src.filename + src.sha256
+            src_to_plats.setdefault(key, struct(src = src, plats = [])).plats.append(p)
+
+        # Build resolved_srcs
+        for key, val in src_to_plats.items():
+            src = val.src
+            plats = sorted(val.plats)
+            requirement_line = "{name}{extras}=={version}".format(
+                name = name,
+                extras = extra_str,
+                version = version,
+            )
+            entry["resolved_srcs"].append(struct(
+                distribution = name,
+                extra_pip_args = extra_pip_args or [],
+                requirement_line = requirement_line,
+                target_platforms = plats,
+                filename = src.filename,
+                sha256 = src.sha256,
+                url = src.url,
+                yanked = None,
+            ))
+
+    ret = []
+    for norm_name, info in sorted(uv_packages.items()):
+        versions = sorted(info["versions"].keys())
+        item = struct(
+            name = norm_name,
+            is_exposed = True,
+            is_multiple_versions = len(versions) > 1,
+            index_url = "",
+            srcs = info["resolved_srcs"],
+        )
+        ret.append(item)
+
+    logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
+    return ret
+
+def _parse_requirements_from_req_files(
+        ctx,
+        *,
+        requirements_by_platform,
+        extra_pip_args,
+        platforms,
+        get_index_urls,
+        extract_url_srcs,
+        logger):
+    """Parse requirements from requirements.txt files (existing behavior)."""
     options = {}
     requirements = {}
     all_files_parsed = {}
@@ -90,14 +314,8 @@ def parse_requirements(
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
 
-        # Parse the requirements file directly in starlark to get the information
-        # needed for the whl_library declarations later.
         parse_result = parse_requirements_txt(contents)
 
-        # Save parsed results from ALL files, even those with no matching
-        # platforms. This ensures the distributions dict (used for index URL
-        # queries) includes packages from all platform files, making the
-        # lockfile facts platform-independent.
         if file not in all_files_parsed:
             all_files_parsed[file] = parse_result.requirements
 
@@ -133,23 +351,18 @@ def parse_requirements(
 
             options[plat] = pip_args
 
+            index_url = argparse.index_url(pip_args, index_url)
+            extra_index_urls = argparse.extra_index_url(pip_args, [])
+            platform = argparse.platform(pip_args, [])
+            if platform:
+                get_index_urls = None
+
+    reqs_by_name = {}
     requirements_by_platform = {}
     for plat, parse_results in requirements.items():
-        # Replicate a surprising behavior that WORKSPACE builds allowed:
-        # Defining a repo with the same name multiple times, but only the last
-        # definition is respected.
-        # The requirement lines might have duplicate names because lines for extras
-        # are returned as just the base package name. e.g., `foo[bar]` results
-        # in an entry like `("foo", "foo[bar] == 1.0 ...")`.
         requirements_dict = {}
         for entry in sorted(
             parse_results,
-            # Get the longest match and fallback to original WORKSPACE sorting,
-            # which should get us the entry with most extras.
-            #
-            # FIXME @aignas 2024-05-13: The correct behaviour might be to get an
-            # entry with all aggregated extras, but it is unclear if we
-            # should do this now.
             key = lambda x: (len(x[1].partition("==")[0]), x),
         ):
             req_line = entry[1]
@@ -157,32 +370,28 @@ def parse_requirements(
 
             requirements_dict[req.name] = entry
 
-        extra_pip_args = options[plat]
+        extra_pip_args_for_plat = options[plat]
 
         for distribution, requirement_line in requirements_dict.values():
-            for_whl = requirements_by_platform.setdefault(
+            for_whl = reqs_by_name.setdefault(
                 normalize_name(distribution),
                 {},
             )
 
             for_req = for_whl.setdefault(
-                (requirement_line, ",".join(extra_pip_args)),
+                (requirement_line, ",".join(extra_pip_args_for_plat)),
                 struct(
                     distribution = distribution,
                     srcs = index_sources(requirement_line),
                     requirement_line = requirement_line,
                     target_platforms = [],
-                    extra_pip_args = extra_pip_args,
+                    extra_pip_args = extra_pip_args_for_plat,
                 ),
             )
             for_req.target_platforms.append(plat)
 
     index_urls = {}
     if get_index_urls:
-        # Collect all distributions from all requirements files irrespective
-        # of python_version and platform markers. This ensures that the index
-        # is queried for all packages, not just those matching the current
-        # platform's markers.
         distributions = {}
         for entries in all_files_parsed.values():
             for entry in entries:
@@ -203,7 +412,7 @@ def parse_requirements(
         )
 
     ret = []
-    for name, reqs in sorted(requirements_by_platform.items()):
+    for name, reqs in sorted(reqs_by_name.items()):
         requirement_target_platforms = {}
         for r in reqs.values():
             for p in r.target_platforms:
@@ -219,22 +428,7 @@ def parse_requirements(
             logger = logger,
         )
 
-        # FIXME @aignas 2025-11-24: we can get the list of target platforms here
-        #
-        # However it is likely that we may stop exposing packages like torch in here
-        # which do not have wheels for all osx platforms.
-        #
-        # If users specify the target platforms accurately, then it is a different
-        # (better) story, but we may not be able to guarantee this
-        #
-        # target_platforms = [
-        #     p
-        #     for dist in package_srcs
-        #     for p in dist.target_platforms
-        # ]
-
         item = struct(
-            # Return normalized names
             name = normalize_name(name),
             is_exposed = len(requirement_target_platforms) == len(requirements),
             is_multiple_versions = len(reqs.values()) > 1,

@@ -1,0 +1,35 @@
+name: On PR Merged (Release Prepared)
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  on_pr_merged:
+    # Run only if the release-prepared PR was merged
+    if: |
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'release-prepared')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Mark Prepare Release Complete
+        run: |
+          # Run the complete-prepare subcommand in the release tool to cleanly update checklist metadata
+          bazel run //tools/private/release -- \
+            complete-prepare --pr ${{ github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
