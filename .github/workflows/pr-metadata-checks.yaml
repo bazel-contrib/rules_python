@@ -44,7 +44,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           echo "Checking for blocked files..."
-          changed_files=$(gh pr diff "$PR_NUMBER" --name-only)
+          # We use --repo to avoid needing actions/checkout.
+          # This keeps the job lightweight and avoids "not a git repository" errors.
+          changed_files=$(gh pr diff "$PR_NUMBER" --name-only --repo "${{ github.repository }}")
           blocked_files=$(echo "$changed_files" | grep -E '^.agents/(plans|scratch)(/|$)' || true)
           if [ -n "$blocked_files" ]; then
             echo "::error::Files in .agents/plans and" \
