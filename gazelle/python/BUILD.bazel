@@ -30,7 +30,7 @@ go_library(
     importpath = "github.com/bazel-contrib/rules_python/gazelle/python",
     visibility = ["//visibility:public"],
     deps = [
-        "//gazelle/pythonconfig",
+        "//pythonconfig",
         "@bazel_gazelle//config",
         "@bazel_gazelle//label",
         "@bazel_gazelle//language",

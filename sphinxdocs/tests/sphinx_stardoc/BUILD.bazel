@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_python//python:py_test.bzl", "py_test")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
@@ -47,8 +48,8 @@ build_test(
 sphinx_stardocs(
     name = "simple_bzl_docs",
     srcs = [
-        ":bzl_rule",
-        ":bzl_typedef",
+        ":bzl_rule_bzl",
+        ":bzl_typedef_bzl",
     ],
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
 )
@@ -57,7 +58,7 @@ sphinx_stardoc(
     name = "bzl_function",
     src = ":bzl_function.bzl",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
-    deps = [":func_and_providers"],
+    deps = [":func_and_providers_bzl"],
 )
 
 sphinx_stardoc(
@@ -65,7 +66,26 @@ sphinx_stardoc(
     src = ":bzl_providers.bzl",
     prefix = "addprefix_",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
-    deps = [":func_and_providers"],
+    deps = [":func_and_providers_bzl"],
+)
+
+bzl_library(
+    name = "func_and_providers_bzl",
+    srcs = [
+        "bzl_function.bzl",
+        "bzl_providers.bzl",
+    ],
+)
+
+bzl_library(
+    name = "bzl_rule_bzl",
+    srcs = ["bzl_rule.bzl"],
+    deps = [":func_and_providers_bzl"],
+)
+
+bzl_library(
+    name = "bzl_typedef_bzl",
+    srcs = ["bzl_typedef.bzl"],
 )
 
 # A bzl_library with multiple sources
@@ -73,7 +93,7 @@ sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building
     deps = [
-        "//sphinxdocs/src/sphinx",
+        "//sphinxdocs/src/sphinx_bzl",
         "@dev_pip//myst_parser",
         "@dev_pip//sphinx",
         "@dev_pip//typing_extensions",  # Needed by sphinx_stardoc

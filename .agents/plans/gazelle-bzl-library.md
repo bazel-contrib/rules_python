@@ -95,6 +95,12 @@ examples completely pristine.
 *   **Patches & Overrides:** Patching dependencies is strictly prohibited.
     Consequently, using `single_version_override` (or any other module
     overrides) to apply patches in `MODULE.bazel` is not permitted.
+*   **Sphinxdocs & Gazelle Release Dependency:** `sphinxdocs` and the code
+    under `gazelle/` are released separately from `rules_python`. They
+    cannot refer to unreleased changes in `rules_python`. Thus, they must
+    refer to the old target names in `rules_python` (using the `_bzl`
+    suffix, e.g., `@rules_python//python:py_binary_bzl` and
+    `@rules_python//python:defs_bzl`).
 
 ## 6. Public bzl_library Targets
 

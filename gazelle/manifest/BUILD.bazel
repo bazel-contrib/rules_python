@@ -41,6 +41,6 @@ bzl_library(
     deps = [
         "@bazel_skylib//rules:diff_test",
         "@io_bazel_rules_go//go:def",
-        "@rules_python//python:defs",
+        "@rules_python//python:defs_bzl",
     ],
 )

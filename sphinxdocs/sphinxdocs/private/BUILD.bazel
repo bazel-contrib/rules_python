@@ -74,7 +74,7 @@ bzl_library(
         "@bazel_skylib//rules:build_test",
         "@bazel_skylib//rules:common_settings",
         "@io_bazel_stardoc//stardoc:stardoc_lib",
-        "@rules_python//python:py_binary",
+        "@rules_python//python:py_binary_bzl",
     ],
 )
 
@@ -98,7 +98,7 @@ bzl_library(
     srcs = ["readthedocs.bzl"],
     deps = [
         ":util",
-        "@rules_python//python:py_binary",
+        "@rules_python//python:py_binary_bzl",
     ],
 )
 
