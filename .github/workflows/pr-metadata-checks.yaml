@@ -1,0 +1,57 @@
+name: "PR Metadata Checks"
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+
+jobs:
+  blocks-do-not-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for "do not merge" label
+        if: "contains(github.event.pull_request.labels.*.name, 'do not merge')"
+        run: |
+          echo "::error::This PR has the 'do not merge' label" \
+               "and cannot be merged."
+          exit 1
+
+      - name: Check PR description for DO NOT SUBMIT/MERGE
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          echo "Checking PR description..."
+          if echo "$PR_BODY" | grep -Ei "DO NOT SUBMIT|DO NOT MERGE"; then
+            echo "::error::This PR description contains" \
+                 "'DO NOT SUBMIT' or 'DO NOT MERGE'" \
+                 "and cannot be merged."
+            exit 1
+          fi
+          echo "PR description is clean."
+
+  block-transient-agent-files:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check for blocked files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Checking for blocked files..."
+          changed_files=$(gh pr diff "$PR_NUMBER" --name-only)
+          blocked_files=$(echo "$changed_files" | grep -E '^.agents/(plans|scratch)(/|$)' || true)
+          if [ -n "$blocked_files" ]; then
+            echo "::error::Files in .agents/plans and" \
+                 ".agents/scratch are permitted in PRs to" \
+                 "facilitate discussion, but are not allowed" \
+                 "to be merged. Please remove them before merging:"
+            echo "$blocked_files"
+            exit 1
+          fi
+          echo "No blocked files found."
