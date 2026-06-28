@@ -502,8 +502,7 @@ def _create_unified_hub_repo(mods):
                 if hub_name not in extra_aliases[qual_alias]:
                     extra_aliases[qual_alias].append(hub_name)
 
-    for dep_name, extra_targets in mods.declared_deps.items():
-        norm_pkg = normalize_name(dep_name)
+    for norm_pkg, extra_targets in mods.declared_deps.items():
         if norm_pkg not in packages:
             packages[norm_pkg] = []
 

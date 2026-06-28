@@ -472,6 +472,60 @@ def _test_extension_dep(env):
 
 _tests.append(_test_extension_dep)
 
+def _test_extension_dep_coexists_with_concrete_hub(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "my_module",
+                parse = [
+                    _parse(
+                        hub_name = "pypi_a",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+                dep = [
+                    _dep(
+                        name = "simple",
+                        extra_targets = ["extra-target"],
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.declared_deps().contains_exactly({"simple": {"extra-target": None}})
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["simple"]})
+    pypi.hub_group_map().contains_exactly({"pypi_a": {}})
+    pypi.hub_whl_map().contains_exactly({"pypi_a": {
+        "simple": {
+            "pypi_a_315_simple": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+    }})
+    pypi.whl_libraries().contains_exactly({
+        "pypi_a_315_simple": {
+            "config_load": "@pypi_a//:config.bzl",
+            "dep_template": "@pypi_a//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        },
+    })
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_extension_dep_coexists_with_concrete_hub)
+
 def extension_test_suite(name):
     """Create the test suite.
 
