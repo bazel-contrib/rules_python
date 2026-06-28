@@ -3,7 +3,7 @@ import pathlib
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from tools.private.release import changelog_news, release as releaser
 
@@ -528,6 +528,33 @@ class GetLatestVersionTest(unittest.TestCase):
             releaser.get_latest_version()
 
 
+class GetLatestRcTagTest(unittest.TestCase):
+    @patch("tools.private.release.release.git.get_tags")
+    def test_get_latest_rc_tag_no_tags(self, mock_get_tags):
+        mock_get_tags.return_value = []
+        self.assertIsNone(releaser.get_latest_rc_tag("2.0.0"))
+
+    @patch("tools.private.release.release.git.get_tags")
+    def test_get_latest_rc_tag_no_matching_tags(self, mock_get_tags):
+        mock_get_tags.return_value = ["1.0.0", "2.0.0", "v2.0.0-rc0", "2.1.0-rc0"]
+        self.assertIsNone(releaser.get_latest_rc_tag("2.0.0"))
+
+    @patch("tools.private.release.release.git.get_tags")
+    def test_get_latest_rc_tag_success(self, mock_get_tags):
+        mock_get_tags.return_value = [
+            "2.0.0-rc0",
+            "2.0.0-rc2",
+            "2.0.0-rc1",
+            "2.1.0-rc0",
+        ]
+        self.assertEqual(releaser.get_latest_rc_tag("2.0.0"), "2.0.0-rc2")
+
+    @patch("tools.private.release.release.git.get_tags")
+    def test_get_latest_rc_tag_ignores_v_prefix(self, mock_get_tags):
+        mock_get_tags.return_value = ["v2.0.0-rc0", "2.0.0-rc1"]
+        self.assertEqual(releaser.get_latest_rc_tag("2.0.0"), "2.0.0-rc1")
+
+
 class DetermineNextVersionTest(unittest.TestCase):
     def setUp(self):
         self.tmpdir = pathlib.Path(tempfile.mkdtemp())
@@ -646,6 +673,112 @@ class DetermineNextVersionTest(unittest.TestCase):
         next_version = releaser.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
+
+
+class CmdPromoteRcTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_git = patch("tools.private.release.release.git").start()
+        self.mock_gh = patch("tools.private.release.release.gh").start()
+        self.addCleanup(patch.stopall)
+
+    def test_promote_rc_success(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        self.mock_git.tag_exists.return_value = False
+
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("--tags", "--force")
+        self.mock_git.checkout.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.tag_exists.assert_called_once_with("2.0.0")
+        self.mock_git.tag.assert_called_once_with("2.0.0")
+        self.mock_git.push.assert_called_once_with("origin", "2.0.0")
+
+        # Verify issue update
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.0 commit=abcdef12"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+
+    def test_promote_rc_defaults_to_determine_next_version(self):
+        # Arrange
+        args = MagicMock(version=None, issue=123)
+        self.mock_git.get_current_branch.return_value = "release/2.0"
+        self.mock_git.get_tags.return_value = ["2.0.0", "2.0.1-rc0"]
+        self.mock_git.get_commit_sha.return_value = "12345678"
+        self.mock_git.tag_exists.return_value = False
+
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.get_current_branch.assert_called_once()
+        self.assertTrue(self.mock_git.get_tags.call_count >= 2)
+
+        self.mock_git.checkout.assert_called_once_with("2.0.1-rc0")
+        self.mock_git.tag.assert_called_once_with("2.0.1")
+        self.mock_git.push.assert_called_once_with("origin", "2.0.1")
+
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.1 commit=12345678"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+
+    def test_promote_rc_tag_already_exists(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        self.mock_git.tag_exists.return_value = True
+
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.0 commit=abcdef12"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+
+    def test_promote_rc_no_rc_found(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_tags.return_value = []
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_gh.get_issue_body.assert_not_called()
 
 
 if __name__ == "__main__":

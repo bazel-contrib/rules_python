@@ -76,7 +76,7 @@ def get_latest_version():
 def get_latest_rc_tag(version):
     """Queries git tags and returns the highest RC tag for the version."""
     tags = git.get_tags()
-    pattern = rf"^v{re.escape(version)}-rc\d+$"
+    pattern = rf"^{re.escape(version)}-rc\d+$"
     rc_tags = [tag.strip() for tag in tags if re.match(pattern, tag.strip())]
     if not rc_tags:
         return None
@@ -770,25 +770,23 @@ def cmd_promote_rc(args):
     version = args.version
     if version is None:
         version = determine_next_version()
-    version = version.replace("v", "")
-    final_tag = f"v{version}"
 
     git.fetch("--tags", "--force")
     latest_rc = get_latest_rc_tag(version)
     if not latest_rc:
-        print(f"Error: No release candidate tags found matching v{version}-rc*")
+        print(f"Error: No release candidate tags found matching {version}-rc*")
         return 1
 
-    print(f"Promoting {latest_rc} to final release {final_tag}...")
+    print(f"Promoting {latest_rc} to final release {version}...")
     git.checkout(latest_rc)
 
     commit_sha = git.get_commit_sha("HEAD")
 
-    if not git.tag_exists(final_tag):
-        git.tag(final_tag)
-        git.push("origin", final_tag)
+    if not git.tag_exists(version):
+        git.tag(version)
+        git.push("origin", version)
     else:
-        print(f"Final tag {final_tag} already exists.")
+        print(f"Final tag {version} already exists.")
 
     # Resolve issue number
     issue_num = args.issue
@@ -801,7 +799,7 @@ def cmd_promote_rc(args):
     if issue_num:
         print(f"Updating tracking issue #{issue_num} checklist...")
         body = gh.get_issue_body(issue_num)
-        metadata = {"status": "done", "tag": final_tag, "commit": commit_sha[:8]}
+        metadata = {"status": "done", "tag": version, "commit": commit_sha[:8]}
         updated_body = update_task_in_body(
             body, "Tag Final", checked=True, metadata=metadata
         )
