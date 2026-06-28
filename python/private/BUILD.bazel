@@ -74,37 +74,6 @@ define_uncachable_version_file(
     name = "uncachable_version_file",
 )
 
-# @bazel_tools can't define bzl_library itself, so we just put a wrapper around it.
-# keep
-bzl_library(
-    name = "bazel_tools",
-    srcs = [
-        # This set of sources is overly broad, but it's the only public
-        # target available across Bazel versions that has all the necessary
-        # sources.
-        "@bazel_tools//tools:bzl_srcs",
-    ],
-)
-
-# keep
-bzl_library(
-    name = "rules_cc_srcs",
-    srcs = [
-        # rules_cc 0.0.13 and earlier load cc_proto_libary (and thus protobuf@),
-        # but their bzl srcs targets don't transitively refer to protobuf.
-        "@com_google_protobuf//:bzl_srcs",
-        # NOTE: As of rules_cc 0.10, cc:bzl_srcs no longer contains
-        # everything and sub-targets must be used instead
-        "@rules_cc//cc:bzl_srcs",
-        "@rules_cc//cc/common",
-        "@rules_cc//cc/toolchains:toolchain_rules",
-    ],
-    deps = [
-        ":bazel_tools",
-        "@rules_cc//cc/common",
-    ],
-)
-
 # Needed to define bzl_library targets for docgen. (We don't define the
 # bzl_library target here because it'd give our users a transitive dependency
 # on Skylib.)
@@ -277,6 +246,25 @@ bzl_library(
 )
 
 bzl_library(
+    name = "auth",
+    srcs = ["auth.bzl"],
+    deps = ["//python/private:bazel_tools"],
+)
+
+# @bazel_tools can't define bzl_library itself, so we just put a wrapper around it.
+# Keep this target because Gazelle does not automatically generate bzl_library targets for external repositories like @bazel_tools.
+# keep
+bzl_library(
+    name = "bazel_tools",
+    srcs = [
+        # This set of sources is overly broad, but it's the only public
+        # target available across Bazel versions that has all the necessary
+        # sources.
+        "@bazel_tools//tools:bzl_srcs",
+    ],
+)
+
+bzl_library(
     name = "builders",
     srcs = ["builders.bzl"],
     deps = ["@bazel_skylib//lib:types"],
@@ -289,6 +277,11 @@ bzl_library(
         ":bzlmod_enabled",
         "@bazel_skylib//lib:types",
     ],
+)
+
+bzl_library(
+    name = "bzlmod_enabled",
+    srcs = ["bzlmod_enabled.bzl"],
 )
 
 bzl_library(
@@ -316,6 +309,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "common_labels",
+    srcs = ["common_labels.bzl"],
+)
+
+bzl_library(
     name = "config_settings",
     srcs = ["config_settings.bzl"],
     deps = [
@@ -323,6 +321,16 @@ bzl_library(
         ":version",
         "@bazel_skylib//lib:selects",
         "@bazel_skylib//rules:common_settings",
+    ],
+)
+
+bzl_library(
+    name = "coverage_deps",
+    srcs = ["coverage_deps.bzl"],
+    deps = [
+        ":repo_utils",
+        ":version_label",
+        "//python/private:bazel_tools",
     ],
 )
 
@@ -348,12 +356,27 @@ bzl_library(
 )
 
 bzl_library(
+    name = "enum",
+    srcs = ["enum.bzl"],
+)
+
+bzl_library(
+    name = "envsubst",
+    srcs = ["envsubst.bzl"],
+)
+
+bzl_library(
     name = "flags",
     srcs = ["flags.bzl"],
     deps = [
         ":enum",
         "@bazel_skylib//rules:common_settings",
     ],
+)
+
+bzl_library(
+    name = "full_version",
+    srcs = ["full_version.bzl"],
 )
 
 bzl_library(
@@ -375,6 +398,18 @@ bzl_library(
     deps = [
         ":repo_utils",
         ":text_util",
+    ],
+)
+
+bzl_library(
+    name = "interpreter",
+    srcs = ["interpreter.bzl"],
+    deps = [
+        ":common",
+        ":sentinel_impl",
+        ":toolchain_types",
+        "//python:py_runtime_info",
+        "@bazel_skylib//lib:paths",
     ],
 )
 
@@ -416,6 +451,21 @@ bzl_library(
 )
 
 bzl_library(
+    name = "normalize_name",
+    srcs = ["normalize_name.bzl"],
+)
+
+bzl_library(
+    name = "pbs_manifest",
+    srcs = ["pbs_manifest.bzl"],
+)
+
+bzl_library(
+    name = "platform_info",
+    srcs = ["platform_info.bzl"],
+)
+
+bzl_library(
     name = "precompile",
     srcs = ["precompile.bzl"],
     deps = [
@@ -452,6 +502,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "py_cc_toolchain_info",
+    srcs = ["py_cc_toolchain_info.bzl"],
+)
+
+bzl_library(
     name = "py_cc_toolchain_macro",
     srcs = ["py_cc_toolchain_macro.bzl"],
     deps = [
@@ -461,11 +516,46 @@ bzl_library(
 )
 
 bzl_library(
+    name = "py_cc_toolchain_rule",
+    srcs = ["py_cc_toolchain_rule.bzl"],
+    deps = [
+        ":common_labels",
+        ":py_cc_toolchain_info",
+        ":sentinel_impl",
+        "@bazel_skylib//rules:common_settings",
+        "@rules_cc//cc/common",
+    ],
+)
+
+bzl_library(
     name = "py_console_script_binary",
     srcs = ["py_console_script_binary.bzl"],
     deps = [
         ":py_console_script_gen",
         "//python:py_binary",
+    ],
+)
+
+bzl_library(
+    name = "py_console_script_gen",
+    srcs = ["py_console_script_gen.bzl"],
+)
+
+bzl_library(
+    name = "py_exec_tools_info",
+    srcs = ["py_exec_tools_info.bzl"],
+)
+
+bzl_library(
+    name = "py_exec_tools_toolchain",
+    srcs = ["py_exec_tools_toolchain.bzl"],
+    deps = [
+        ":common_labels",
+        ":py_exec_tools_info",
+        ":sentinel_impl",
+        ":toolchain_types",
+        "@bazel_skylib//lib:paths",
+        "@bazel_skylib//rules:common_settings",
     ],
 )
 
@@ -501,6 +591,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "py_executable_info",
+    srcs = ["py_executable_info.bzl"],
+)
+
+bzl_library(
     name = "py_info",
     srcs = ["py_info.bzl"],
     deps = [
@@ -512,7 +607,16 @@ bzl_library(
 bzl_library(
     name = "py_internal",
     srcs = ["py_internal.bzl"],
-    deps = ["//tools/build_defs/python/private:py_internal_renamed"],
+    deps = ["//tools/build_defs/python/private:py_internal_renamed_bzl"],
+)
+
+bzl_library(
+    name = "py_interpreter_program",
+    srcs = ["py_interpreter_program.bzl"],
+    deps = [
+        ":sentinel_impl",
+        "@bazel_skylib//rules:common_settings",
+    ],
 )
 
 bzl_library(
@@ -559,6 +663,23 @@ bzl_library(
         ":builders",
         ":py_info",
     ],
+)
+
+bzl_library(
+    name = "py_repositories",
+    srcs = ["py_repositories.bzl"],
+    deps = [
+        ":internal_config_repo",
+        ":pythons_hub",
+        "//python:versions",
+        "//python/private:bazel_tools",
+        "//python/private/pypi:deps",
+    ],
+)
+
+bzl_library(
+    name = "py_runtime_info",
+    srcs = ["py_runtime_info.bzl"],
 )
 
 bzl_library(
@@ -627,6 +748,20 @@ bzl_library(
         ":toolchain_types",
         "@bazel_skylib//lib:selects",
         "@platforms//host:constraints_lib",
+    ],
+)
+
+bzl_library(
+    name = "py_wheel",
+    srcs = ["py_wheel.bzl"],
+    deps = [
+        ":attributes",
+        ":py_info",
+        ":py_package",
+        ":rule_builders",
+        ":stamp_impl",
+        ":transition_labels",
+        ":version",
     ],
 )
 
@@ -706,11 +841,36 @@ bzl_library(
 )
 
 bzl_library(
+    name = "repo_utils",
+    srcs = ["repo_utils.bzl"],
+)
+
+bzl_library(
     name = "rule_builders",
     srcs = ["rule_builders.bzl"],
     deps = [
         ":builders_util",
         "@bazel_skylib//lib:types",
+    ],
+)
+
+# Keep this target because Gazelle does not automatically generate or maintain composite bzl_library targets. We need this to group external dependency sources.
+# keep
+bzl_library(
+    name = "rules_cc_srcs",
+    srcs = [
+        # rules_cc 0.0.13 and earlier load cc_proto_libary (and thus protobuf@),
+        # but their bzl srcs targets don't transitively refer to protobuf.
+        "@com_google_protobuf//:bzl_srcs",
+        # NOTE: As of rules_cc 0.10, cc:bzl_srcs no longer contains
+        # everything and sub-targets must be used instead
+        "@rules_cc//cc:bzl_srcs",
+        "@rules_cc//cc/common",
+        "@rules_cc//cc/toolchains:toolchain_rules",
+    ],
+    deps = [
+        ":bazel_tools",
+        "@rules_cc//cc/common",
     ],
 )
 
@@ -735,12 +895,37 @@ bzl_library(
 )
 
 bzl_library(
+    name = "runtimes_manifest_workspace",
+    srcs = ["runtimes_manifest_workspace.bzl"],
+)
+
+bzl_library(
+    name = "sentinel_impl",
+    srcs = ["sentinel_impl.bzl"],
+)
+
+bzl_library(
+    name = "stamp_impl",
+    srcs = ["stamp_impl.bzl"],
+)
+
+bzl_library(
+    name = "text_util",
+    srcs = ["text_util.bzl"],
+)
+
+bzl_library(
     name = "toolchain_aliases",
     srcs = ["toolchain_aliases.bzl"],
     deps = [
         "//python:versions",
         "@bazel_skylib//lib:selects",
     ],
+)
+
+bzl_library(
+    name = "toolchain_types",
+    srcs = ["toolchain_types.bzl"],
 )
 
 bzl_library(
@@ -781,189 +966,6 @@ bzl_library(
         ":util",
         "@bazel_skylib//lib:paths",
     ],
-)
-
-bzl_library(
-    name = "auth",
-    srcs = ["auth.bzl"],
-    deps = ["//python/private:bazel_tools"],
-)
-
-bzl_library(
-    name = "coverage_deps",
-    srcs = ["coverage_deps.bzl"],
-    deps = [
-        ":repo_utils",
-        ":version_label",
-        "//python/private:bazel_tools",
-    ],
-)
-
-bzl_library(
-    name = "py_repositories",
-    srcs = ["py_repositories.bzl"],
-    deps = [
-        ":internal_config_repo",
-        ":pythons_hub",
-        "//python:versions",
-        "//python/private:bazel_tools",
-        "//python/private/pypi:deps",
-    ],
-)
-
-bzl_library(
-    name = "py_wheel",
-    srcs = ["py_wheel.bzl"],
-    deps = [
-        ":attributes",
-        ":py_info",
-        ":py_package",
-        ":rule_builders",
-        ":stamp_impl",
-        ":transition_labels",
-        ":version",
-    ],
-)
-
-bzl_library(
-    name = "interpreter",
-    srcs = ["interpreter.bzl"],
-    deps = [
-        ":common",
-        ":sentinel_impl",
-        ":toolchain_types",
-        "//python:py_runtime_info",
-        "@bazel_skylib//lib:paths",
-    ],
-)
-
-bzl_library(
-    name = "py_cc_toolchain_rule",
-    srcs = ["py_cc_toolchain_rule.bzl"],
-    deps = [
-        ":common_labels",
-        ":py_cc_toolchain_info",
-        ":sentinel_impl",
-        "@bazel_skylib//rules:common_settings",
-        "@rules_cc//cc/common",
-    ],
-)
-
-bzl_library(
-    name = "py_exec_tools_toolchain",
-    srcs = ["py_exec_tools_toolchain.bzl"],
-    deps = [
-        ":common_labels",
-        ":py_exec_tools_info",
-        ":sentinel_impl",
-        ":toolchain_types",
-        "@bazel_skylib//lib:paths",
-        "@bazel_skylib//rules:common_settings",
-    ],
-)
-
-bzl_library(
-    name = "py_interpreter_program",
-    srcs = ["py_interpreter_program.bzl"],
-    deps = [
-        ":sentinel_impl",
-        "@bazel_skylib//rules:common_settings",
-    ],
-)
-
-bzl_library(
-    name = "bzlmod_enabled",
-    srcs = ["bzlmod_enabled.bzl"],
-)
-
-bzl_library(
-    name = "common_labels",
-    srcs = ["common_labels.bzl"],
-)
-
-bzl_library(
-    name = "enum",
-    srcs = ["enum.bzl"],
-)
-
-bzl_library(
-    name = "envsubst",
-    srcs = ["envsubst.bzl"],
-)
-
-bzl_library(
-    name = "full_version",
-    srcs = ["full_version.bzl"],
-)
-
-bzl_library(
-    name = "normalize_name",
-    srcs = ["normalize_name.bzl"],
-)
-
-bzl_library(
-    name = "pbs_manifest",
-    srcs = ["pbs_manifest.bzl"],
-)
-
-bzl_library(
-    name = "platform_info",
-    srcs = ["platform_info.bzl"],
-)
-
-bzl_library(
-    name = "py_cc_toolchain_info",
-    srcs = ["py_cc_toolchain_info.bzl"],
-)
-
-bzl_library(
-    name = "py_console_script_gen",
-    srcs = ["py_console_script_gen.bzl"],
-)
-
-bzl_library(
-    name = "py_exec_tools_info",
-    srcs = ["py_exec_tools_info.bzl"],
-)
-
-bzl_library(
-    name = "py_executable_info",
-    srcs = ["py_executable_info.bzl"],
-)
-
-bzl_library(
-    name = "py_runtime_info",
-    srcs = ["py_runtime_info.bzl"],
-)
-
-bzl_library(
-    name = "repo_utils",
-    srcs = ["repo_utils.bzl"],
-)
-
-bzl_library(
-    name = "runtimes_manifest_workspace",
-    srcs = ["runtimes_manifest_workspace.bzl"],
-)
-
-bzl_library(
-    name = "sentinel_impl",
-    srcs = ["sentinel_impl.bzl"],
-)
-
-bzl_library(
-    name = "stamp_impl",
-    srcs = ["stamp_impl.bzl"],
-)
-
-bzl_library(
-    name = "text_util",
-    srcs = ["text_util.bzl"],
-)
-
-bzl_library(
-    name = "toolchain_types",
-    srcs = ["toolchain_types.bzl"],
 )
 
 bzl_library(

@@ -14,24 +14,38 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
+# Resolve rules_cc Starlark libraries to their correct targets
 # gazelle:resolve starlark @rules_cc//cc/common:cc_info.bzl @rules_cc//cc/common:common
 # gazelle:resolve starlark @rules_cc//cc/common:cc_common.bzl @rules_cc//cc/common:common
+
+# Resolve protobuf Starlark libraries
 # gazelle:resolve starlark @com_google_protobuf//bazel:py_proto_library.bzl @com_google_protobuf//bazel:py_proto_library_bzl
+
+# Resolve bazel_tools repo rules to our internal wrapper to avoid transitive dependencies
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:http.bzl //python/private:bazel_tools
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:utils.bzl //python/private:bazel_tools
+
 # Prevent Gazelle from incorrectly stripping the .bzl suffix from the toml.bzl repo name
 # gazelle:resolve starlark @toml.bzl//:toml.bzl @toml.bzl//:toml
+
 # Override Gazelle's incorrect default resolution for platforms host constraints Starlark library
 # gazelle:resolve starlark @platforms//host:constraints.bzl @platforms//host:constraints_lib
+
 # Override Gazelle's incorrect default resolution for rules_cc Starlark libraries
 # gazelle:resolve starlark @rules_cc//cc:cc_import.bzl @rules_cc//cc:core_rules
 # gazelle:resolve starlark @rules_cc//cc:cc_library.bzl @rules_cc//cc:core_rules
+
+# Exclude directories that are separate packages/workspaces or only for testing/examples
 # gazelle:exclude tests
 # gazelle:exclude examples
+
+# Exclude internal development tools and dependencies that users don't need
 # gazelle:exclude internal_dev_setup.bzl
 # gazelle:exclude internal_dev_deps.bzl
-# gazelle:exclude python/private/common
 # gazelle:exclude python/private/internal_dev_deps.bzl
+
+# Exclude legacy paths that are only kept for backwards compatibility
+# gazelle:exclude python/private/common
 
 package(default_visibility = ["//visibility:public"])
 

@@ -36,25 +36,9 @@ bzl_library(
     visibility = ["@rules_python//:__subpackages__"],
 )
 
-# deprecated: use :interpreters instead
-alias(
-    name = "interpreters_bzl",
-    actual = ":interpreters",
-    deprecation = "Use :interpreters instead. The _bzl suffix targets are deprecated and will be removed in a future release.",
-    visibility = ["@rules_python//:__subpackages__"],
-)
-
 bzl_library(
     name = "versions",
     srcs = ["versions.bzl"],
-    visibility = ["@rules_python//:__subpackages__"],
-)
-
-# deprecated: use :versions instead
-alias(
-    name = "versions_bzl",
-    actual = ":versions",
-    deprecation = "Use :versions instead. The _bzl suffix targets are deprecated and will be removed in a future release.",
     visibility = ["@rules_python//:__subpackages__"],
 )
 

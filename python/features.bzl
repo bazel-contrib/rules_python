@@ -49,6 +49,15 @@ def _features_typedef():
     :::
     ::::
 
+    ::::{field} loadable_symbols
+    :type: dict[str, list[str]]
+
+    A map of bzl paths to the list of public symbols they export.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
+
     ::::{field} py_info_venv_symlinks
 
     True if the `PyInfo.venv_symlinks` field is available.
@@ -80,15 +89,6 @@ def _features_typedef():
     Whether the rules_python version has the `py_zipapp_*` rules
 
     :::{versionadded} 1.9.0
-    ::::
-
-    ::::{field} loadable_symbols
-    :type: dict[str, list[str]]
-
-    A map of bzl paths to the list of public symbols they export.
-
-    :::{versionadded} VERSION_NEXT_FEATURE
-    :::
     ::::
     """
 
