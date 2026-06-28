@@ -74,6 +74,15 @@ filegroup(
     visibility = ["//tools/private/update_deps:__pkg__"],
 )
 
+bzl_library(
+    name = "argparse",
+    srcs = ["argparse.bzl"],
+)
+
+bzl_library(
+    name = "attrs",
+    srcs = ["attrs.bzl"],
+)
 # Keep sorted by library name and keep the files named by the main symbol they export
 
 bzl_library(
@@ -86,6 +95,11 @@ bzl_library(
     name = "deps",
     srcs = ["deps.bzl"],
     deps = ["//python/private:bazel_tools"],
+)
+
+bzl_library(
+    name = "env_marker_info",
+    srcs = ["env_marker_info.bzl"],
 )
 
 bzl_library(
@@ -195,6 +209,16 @@ bzl_library(
 )
 
 bzl_library(
+    name = "index_sources",
+    srcs = ["index_sources.bzl"],
+)
+
+bzl_library(
+    name = "labels",
+    srcs = ["labels.bzl"],
+)
+
+bzl_library(
     name = "missing_package",
     srcs = ["missing_package.bzl"],
     deps = [
@@ -219,6 +243,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "package_annotation",
+    srcs = ["package_annotation.bzl"],
+)
+
+bzl_library(
     name = "parse_requirements",
     srcs = ["parse_requirements.bzl"],
     deps = [
@@ -235,12 +264,22 @@ bzl_library(
 )
 
 bzl_library(
+    name = "parse_requirements_txt",
+    srcs = ["parse_requirements_txt.bzl"],
+)
+
+bzl_library(
     name = "parse_simpleapi_html",
     srcs = ["parse_simpleapi_html.bzl"],
     deps = [
         ":version_from_filename",
         "//python/private:normalize_name",
     ],
+)
+
+bzl_library(
+    name = "parse_whl_name",
+    srcs = ["parse_whl_name.bzl"],
 )
 
 bzl_library(
@@ -338,6 +377,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "platform",
+    srcs = ["platform.bzl"],
+)
+
+bzl_library(
     name = "pypi_cache",
     srcs = ["pypi_cache.bzl"],
     deps = [":version_from_filename"],
@@ -416,6 +460,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "urllib",
+    srcs = ["urllib.bzl"],
+)
+
+bzl_library(
     name = "venv_entry_point",
     srcs = ["venv_entry_point.bzl"],
     deps = [
@@ -437,12 +486,22 @@ bzl_library(
 )
 
 bzl_library(
+    name = "version_from_filename",
+    srcs = ["version_from_filename.bzl"],
+)
+
+bzl_library(
     name = "whl_config_repo",
     srcs = ["whl_config_repo.bzl"],
     deps = [
         ":generate_group_library_build_bazel",
         "//python/private:text_util",
     ],
+)
+
+bzl_library(
+    name = "whl_config_setting",
+    srcs = ["whl_config_setting.bzl"],
 )
 
 bzl_library(
@@ -503,77 +562,17 @@ bzl_library(
 )
 
 bzl_library(
+    name = "whl_metadata",
+    srcs = ["whl_metadata.bzl"],
+)
+
+bzl_library(
     name = "whl_repo_name",
     srcs = ["whl_repo_name.bzl"],
     deps = [
         ":parse_whl_name",
         "//python/private:normalize_name",
     ],
-)
-
-bzl_library(
-    name = "argparse",
-    srcs = ["argparse.bzl"],
-)
-
-bzl_library(
-    name = "attrs",
-    srcs = ["attrs.bzl"],
-)
-
-bzl_library(
-    name = "env_marker_info",
-    srcs = ["env_marker_info.bzl"],
-)
-
-bzl_library(
-    name = "index_sources",
-    srcs = ["index_sources.bzl"],
-)
-
-bzl_library(
-    name = "labels",
-    srcs = ["labels.bzl"],
-)
-
-bzl_library(
-    name = "package_annotation",
-    srcs = ["package_annotation.bzl"],
-)
-
-bzl_library(
-    name = "parse_requirements_txt",
-    srcs = ["parse_requirements_txt.bzl"],
-)
-
-bzl_library(
-    name = "parse_whl_name",
-    srcs = ["parse_whl_name.bzl"],
-)
-
-bzl_library(
-    name = "platform",
-    srcs = ["platform.bzl"],
-)
-
-bzl_library(
-    name = "urllib",
-    srcs = ["urllib.bzl"],
-)
-
-bzl_library(
-    name = "version_from_filename",
-    srcs = ["version_from_filename.bzl"],
-)
-
-bzl_library(
-    name = "whl_config_setting",
-    srcs = ["whl_config_setting.bzl"],
-)
-
-bzl_library(
-    name = "whl_metadata",
-    srcs = ["whl_metadata.bzl"],
 )
 
 bzl_library(
