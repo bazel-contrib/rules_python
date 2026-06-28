@@ -18,7 +18,7 @@ workspace(name = "rules_python")
 # should not copy it to their WORKSPACE.
 
 # Workaround for Bazel 9 duplicate name issue in Gazelle.
-load("//:workspace_workaround.bzl", "bazel_9_workaround")
+load("//:workspace_bazel9.bzl", "bazel_9_workaround")
 
 bazel_9_workaround()
 
