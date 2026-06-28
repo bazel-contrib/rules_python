@@ -9,5 +9,5 @@ filegroup(
 bzl_library(
     name = "py_args",
     srcs = ["py_args.bzl"],
-    visibility = ["//python/config_settings:__subpackages__"],
+    visibility = ["//:__subpackages__"],
 )
