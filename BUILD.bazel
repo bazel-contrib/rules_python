@@ -108,3 +108,5 @@ bzl_library(
     srcs = ["version.bzl"],
     visibility = ["//:__subpackages__"],
 )
+
+# No-op change to verify PR metadata checks
