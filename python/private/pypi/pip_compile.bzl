@@ -22,6 +22,16 @@ make it possible to have multiple tools inside the `pypi` directory
 load("//python:py_binary.bzl", _py_binary = "py_binary")
 load("//python:py_test.bzl", _py_test = "py_test")
 
+# The `data` attribute does not allow duplicate labels, but user-provided `data`
+# can overlap with labels added from attributes like `src`.
+def _dedupe_data(data):
+    res = []
+    for d in data:
+        if d not in res:
+            res.append(d)
+    return res
+
+
 def pip_compile(
         name,
         srcs = None,
@@ -39,6 +49,7 @@ def pip_compile(
         visibility = ["//visibility:private"],
         tags = None,
         constraints = [],
+        data = [],
         **kwargs):
     """Generates targets for managing pip dependencies with pip-compile (piptools).
 
@@ -81,6 +92,7 @@ def pip_compile(
         tags: tagging attribute common to all build rules, passed to both the _test and .update rules.
         visibility: passed to both the _test and .update rules.
         constraints: a list of files containing constraints to pass to pip-compile with `--constraint`.
+        data: A list of labels to include as part of the `data` attribute in the generated `py_binary`.
         **kwargs: other bazel attributes passed to the "_test" rule.
     """
     if len([x for x in [srcs, src, requirements_in] if x != None]) > 1:
@@ -95,16 +107,18 @@ def pip_compile(
 
     requirements_txt = name + ".txt" if requirements_txt == None else requirements_txt
 
+    data = data or []
+
     # "Default" target produced by this macro
     # Allow a compile_pip_requirements rule to include another one in the data
     # for a requirements file that does `-r ../other/requirements.txt`
     native.filegroup(
         name = name,
-        srcs = kwargs.pop("data", []) + [requirements_txt],
+        srcs = data + [requirements_txt],
         visibility = visibility,
     )
 
-    data = [name, requirements_txt] + srcs + [f for f in (requirements_linux, requirements_darwin, requirements_windows) if f != None] + constraints
+    data = _dedupe_data(data + [name, requirements_txt] + srcs + [f for f in (requirements_linux, requirements_darwin, requirements_windows) if f != None] + constraints)
 
     # Use the Label constructor so this is expanded in the context of the file
     # where it appears, which is to say, in @rules_python
