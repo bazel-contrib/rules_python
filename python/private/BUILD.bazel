@@ -252,7 +252,8 @@ bzl_library(
 )
 
 # @bazel_tools can't define bzl_library itself, so we just put a wrapper around it.
-# Keep this target because Gazelle does not automatically generate bzl_library targets for external repositories like @bazel_tools.
+# Keep this target because Gazelle does not automatically generate
+# bzl_library targets for external repositories like @bazel_tools.
 # keep
 bzl_library(
     name = "bazel_tools",
@@ -607,7 +608,7 @@ bzl_library(
 bzl_library(
     name = "py_internal",
     srcs = ["py_internal.bzl"],
-    deps = ["//tools/build_defs/python/private:py_internal_renamed_bzl"],
+    deps = ["//tools/build_defs/python/private:py_internal_renamed"],
 )
 
 bzl_library(
@@ -854,7 +855,9 @@ bzl_library(
     ],
 )
 
-# Keep this target because Gazelle does not automatically generate or maintain composite bzl_library targets. We need this to group external dependency sources.
+# Keep this target because Gazelle does not automatically generate or
+# maintain composite bzl_library targets. We need this to group external
+# dependency sources.
 # keep
 bzl_library(
     name = "rules_cc_srcs",
