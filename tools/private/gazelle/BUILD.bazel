@@ -1,4 +1,4 @@
-load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -6,7 +6,7 @@ package(
 
 gazelle_binary(
     name = "gazelle_bin",
-    languages = DEFAULT_LANGUAGES + [
+    languages = [
         "@bazel_skylib_gazelle_plugin//bzl",
     ],
 )
