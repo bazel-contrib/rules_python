@@ -10,6 +10,7 @@ filegroup(
 bzl_library(
     name = "repos",
     srcs = ["repos.bzl"],
+    visibility = ["//visibility:public"],
     deps = [
         "//python/private:local_runtime_repo",
         "//python/private:local_runtime_toolchains_repo",
@@ -20,4 +21,5 @@ alias(
     name = "repos_bzl",
     actual = ":repos",
     deprecation = "Use //python/local_toolchains:repos instead",
+    visibility = ["//visibility:public"],
 )
