@@ -84,6 +84,9 @@ buildifier:
   coverage_targets: ["..."]
 .coverage_targets_example_bzlmod_build_file_generation: &coverage_targets_example_bzlmod_build_file_generation
   coverage_targets: ["//:bzlmod_build_file_generation_test"]
+.coverage_targets_bootstrap: &coverage_targets_bootstrap
+  coverage_targets:
+    - //tests/bootstrap_impls:stdlib_shadowing_system_python_test
 .coverage_targets_example_multi_python: &coverage_targets_example_multi_python
   coverage_targets:
     - //tests:my_lib_3_10_test
@@ -216,6 +219,7 @@ tasks:
     bazel: 7.x
   ubuntu:
     <<: *reusable_config
+    <<: *coverage_targets_bootstrap
     name: "Default: Ubuntu, Bazel {bazel}"
     platform: ubuntu2204
     bazel: ${{ bazel }}

@@ -1,8 +1,10 @@
 python/features.bzl export-subst
 tools/publish/*.txt linguist-generated=true
 tests/uv/lock/testdata/requirements.txt text eol=lf
-python/private/pypi/venv_entry_point_template.bat text eol=lf
 python/private/runtimes_manifest_workspace.bzl text eol=lf
 python/private/runtimes_manifest.txt text eol=lf
 
 *.bat text eol=crlf
+# This mixed batch/Python template is intentionally LF-normalized so CI checkout
+# settings do not make compile-pip dirty-worktree checks fail.
+python/private/pypi/venv_entry_point_template.bat text eol=lf
