@@ -721,7 +721,7 @@ class CmdPrepareTest(TempDirTestCase):
         self.assertEqual(result, 0)
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_gh.create_tracking_issue.assert_not_called()
-        self.mock_gh.create_pr.assert_called_once_with("2.0.0", "prepare-2.0.0", 123)
+        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")
@@ -751,7 +751,7 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_gh.create_tracking_issue.assert_called_once_with(
             "2.0.0", "dummy template content"
         )
-        self.mock_gh.create_pr.assert_called_once_with("2.0.0", "prepare-2.0.0", 123)
+        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")

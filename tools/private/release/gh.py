@@ -150,7 +150,7 @@ def update_issue_body(issue_num, body):
             os.unlink(temp_path)
 
 
-def create_pr(version, branch, issue_num):
+def create_pr(version, issue_num):
     """Creates a pull request for release preparation."""
     return run_cmd(
         "gh",
@@ -158,7 +158,6 @@ def create_pr(version, branch, issue_num):
         "create",
         f"--title=Prepare release v{version}",
         f"--body=Work towards #{issue_num}",
-        f"--head={branch}",
         "--base=main",
     )
 

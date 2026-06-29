@@ -112,7 +112,7 @@ def cmd_prepare(args):
             git.add(file_path)
 
         git.commit(f"Prepare release {version}")
-        git.push("origin", branch_name)
+        git.push("origin", branch_name, set_upstream=True)
 
     # --- Create PR ---
     if args.dry_run:
@@ -121,7 +121,7 @@ def cmd_prepare(args):
             f"[DRY RUN] Would create Pull Request for branch {branch_name} targeting issue {target_issue}"
         )
     else:
-        pr_url = gh.create_pr(version, branch_name, issue_num)
+        pr_url = gh.create_pr(version, issue_num)
         pr_num = pr_url.split("/")[-1]
         print(f"Created Pull Request: {pr_url} (PR #{pr_num})")
 

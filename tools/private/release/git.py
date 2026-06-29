@@ -36,9 +36,13 @@ def commit(message, amend=False, no_edit=False):
     run_cmd(*cmd, capture_output=False)
 
 
-def push(remote, ref):
+def push(remote, ref, set_upstream=False):
     """Pushes a reference to a remote repository."""
-    run_cmd("git", "push", remote, ref, capture_output=False)
+    cmd = ["git", "push"]
+    if set_upstream:
+        cmd.append("-u")
+    cmd.extend([remote, ref])
+    run_cmd(*cmd, capture_output=False)
 
 
 def fetch(remote="origin", tags=False, force=False):
