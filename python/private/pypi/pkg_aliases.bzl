@@ -201,6 +201,7 @@ def multiplatform_whl_aliases(
             ret[alias] = repo
             continue
 
+        # This is if we are using `whl_config_setting` struct
         config_settings = get_config_settings(
             target_platforms = alias.target_platforms,
             python_version = alias.version,

@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 package(
     default_visibility = ["//:__subpackages__"],
 )
@@ -7,4 +9,10 @@ filegroup(
     srcs = glob(["**"]) + [
         "//tools/private/zipapp:distribution",
     ],
+)
+
+bzl_library(
+    name = "publish_deps",
+    srcs = ["publish_deps.bzl"],
+    deps = ["//python/uv/private:lock"],
 )

@@ -17,6 +17,11 @@ load(
 load("//python/private/pypi:flags.bzl", "define_pypi_internal_flags")
 load(":config_settings.bzl", "construct_config_settings")
 
+# We don't generate bzl_library for these because they aren't public targets
+# and should be moved
+# gazelle:exclude config_settings.bzl
+# gazelle:exclude transition.bzl
+
 filegroup(
     name = "distribution",
     srcs = glob(["**"]) + [

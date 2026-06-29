@@ -17,13 +17,10 @@ workspace(name = "rules_python")
 # Everything below this line is used only for developing rules_python. Users
 # should not copy it to their WORKSPACE.
 
-# Necessary so that Bazel 9 recognizes this as rules_python and doesn't try
-# to load the version Bazel itself uses by default.
-# buildifier: disable=duplicated-name
-local_repository(
-    name = "rules_python",
-    path = ".",
-)
+# Workaround for Bazel 9 duplicate name issue in Gazelle.
+load("//:workspace_bazel9.bzl", "bazel_9_workaround")
+
+bazel_9_workaround()
 
 load("//:internal_dev_deps.bzl", "rules_python_internal_deps")
 

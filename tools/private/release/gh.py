@@ -6,41 +6,62 @@ import tempfile
 
 from tools.private.release.utils import run_cmd
 
+_REPO = "bazel-contrib/rules_python"
+_LABEL = "type: release"
 
-def get_open_tracking_issues():
-    """Returns a list of open tracking issues with the 'type:release' label."""
-    output = run_cmd(
-        "gh",
-        "issue",
-        "list",
-        "--label=type:release",
-        "--state=open",
-        "--json=number,title,url",
-    )
+
+def list_issues(*, fields, label=None, state=None, search=None):
+    """Helper to list issues using gh CLI."""
+    cmd = ["gh", "issue", "list", f"--repo={_REPO}"]
+    if label:
+        cmd.append(f"--label={label}")
+    if state:
+        cmd.append(f"--state={state}")
+    if search:
+        cmd.append(f"--search={search}")
+    cmd.append(f"--json={fields}")
+
+    output = run_cmd(*cmd)
     return json.loads(output) if output else []
 
 
-def resolve_issue_number(version):
+def get_open_tracking_issues(version=None):
+    """Returns a list of open tracking issues with the 'type: release' label."""
+    search = f'"Release {version}" in:title' if version else None
+    return list_issues(
+        label=_LABEL,
+        state="open",
+        search=search,
+        fields="number,title,url",
+    )
+
+
+def get_release_tracking_issue(version):
     """Resolves the tracking issue number for a given version.
 
-    Searches for an open issue with label 'type:release' and 'Release <version>' in the title.
+    Searches for an open issue with label 'type: release' and 'Release <version>' in the title.
     Raises ValueError if 0 or multiple issues are found.
     """
-    matching_issues = []
-    for issue in get_open_tracking_issues():
-        if f"Release {version}" in issue["title"]:
-            matching_issues.append(issue)
+    matching_issues = get_open_tracking_issues(version)
 
-    if not matching_issues:
-        raise ValueError(f"No open tracking issue found matching 'Release {version}'")
-    if len(matching_issues) > 1:
-        urls = [issue["url"] for issue in matching_issues]
+    exact_matches = []
+    for issue in matching_issues:
+        if issue["title"] == f"Release {version}":
+            exact_matches.append(issue)
+
+    if not exact_matches:
         raise ValueError(
-            f"Multiple open tracking issues found for version {version}:\n"
-            + "\n".join(urls)
+            f"No open tracking issue found matching 'Release {version}' "
+            f"in repo {_REPO} with label '{_LABEL}'"
+        )
+    if len(exact_matches) > 1:
+        urls = [issue["url"] for issue in exact_matches]
+        raise ValueError(
+            f"Multiple open tracking issues found for version {version} "
+            f"in repo {_REPO} with label '{_LABEL}':\n" + "\n".join(urls)
         )
 
-    return matching_issues[0]["number"]
+    return exact_matches[0]["number"]
 
 
 def create_tracking_issue(version, template_content):
@@ -63,7 +84,7 @@ def create_tracking_issue(version, template_content):
             "issue",
             "create",
             f"--title=Release {version}",
-            "--label=type:release",
+            f"--label={_LABEL}",
             f"--body-file={temp_path}",
         )
         issue_url = output.strip()

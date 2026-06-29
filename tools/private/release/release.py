@@ -76,7 +76,7 @@ def get_latest_version():
 def get_latest_rc_tag(version):
     """Queries git tags and returns the highest RC tag for the version."""
     tags = git.get_tags()
-    pattern = rf"^v{re.escape(version)}-rc\d+$"
+    pattern = rf"^{re.escape(version)}-rc\d+$"
     rc_tags = [tag.strip() for tag in tags if re.match(pattern, tag.strip())]
     if not rc_tags:
         return None
@@ -227,7 +227,10 @@ def update_task_in_body(body, task_name, checked, metadata):
             updated_lines.append(line)
 
     if not found:
-        raise ValueError(f"Task '{task_name}' not found in issue body.")
+        raise ValueError(
+            f"Task '{task_name}' not found in issue body. "
+            f"Expected format: '- [ ] {task_name}' or '- [x] {task_name}' (optionally followed by '| key=value')"
+        )
 
     return "\n".join(updated_lines)
 
@@ -413,13 +416,13 @@ def cmd_prepare(args):
 
     issue_num = args.issue
     if not issue_num:
-        open_issues = gh.get_open_tracking_issues()
-        for issue in open_issues:
-            if f"Release {version}" in issue["title"]:
-                issue_num = issue["number"]
-                break
-
-        if not issue_num:
+        try:
+            issue_num = gh.get_release_tracking_issue(version)
+            print(f"Found active tracking issue #{issue_num} for v{version}")
+        except ValueError as e:
+            if "Multiple open tracking issues" in str(e):
+                print(f"Error: {e}")
+                return 1
             print(
                 f"No active tracking issue found for v{version}. Creating a new one..."
             )
@@ -710,18 +713,18 @@ def cmd_create_rc(args):
 
     if not latest_rc:
         next_rc_num = 0
-        next_rc = f"v{version}-rc0"
+        next_rc = f"{version}-rc0"
     else:
         rc_num = int(latest_rc.split("-rc")[-1])
         next_rc_num = rc_num + 1
-        next_rc = f"v{version}-rc{next_rc_num}"
+        next_rc = f"{version}-rc{next_rc_num}"
 
     # Precheck: next RC number must exist and be unchecked in the checklist
     rc_tags = state.get("rc_tags", {})
     if next_rc_num not in rc_tags:
         print(
             f"Error: Checklist is missing required task 'Tag RC{next_rc_num}'"
-            f" to cut v{version}-rc{next_rc_num}."
+            f" to cut {version}-rc{next_rc_num}."
         )
         return 1
 
@@ -735,12 +738,12 @@ def cmd_create_rc(args):
     # Verify HEAD is not already tagged
     git.checkout(branch_name)
     head_tags = git.get_tags_at_head()
-    if any(tag.startswith(f"v{version}-rc") for tag in head_tags):
+    if any(tag.startswith(f"{version}-rc") for tag in head_tags):
         print(f"HEAD of {branch_name} is already tagged with an RC. Skipping.")
         return 0
 
     print(f"Tagging and pushing next RC: {next_rc}...")
-    git.tag(next_rc)
+    git.tag(next_rc, "HEAD")
     git.push("origin", next_rc)
 
     commit_sha = git.get_commit_sha("HEAD")
@@ -770,49 +773,83 @@ def cmd_promote_rc(args):
     version = args.version
     if version is None:
         version = determine_next_version()
-    version = version.replace("v", "")
-    final_tag = f"v{version}"
 
-    git.fetch("--tags", "--force")
+    # Fetch from upstream to ensure we have the latest tags
+    git.fetch("upstream", tags=True, force=True)
     latest_rc = get_latest_rc_tag(version)
     if not latest_rc:
-        print(f"Error: No release candidate tags found matching v{version}-rc*")
+        print(f"Error: No release candidate tags found matching {version}-rc*")
         return 1
 
-    print(f"Promoting {latest_rc} to final release {final_tag}...")
-    git.checkout(latest_rc)
+    # Verify final tag doesn't already exist
+    if git.tag_exists(version):
+        print(f"Error: Final tag {version} already exists.")
+        return 1
 
-    commit_sha = git.get_commit_sha("HEAD")
-
-    if not git.tag_exists(final_tag):
-        git.tag(final_tag)
-        git.push("origin", final_tag)
-    else:
-        print(f"Final tag {final_tag} already exists.")
-
-    # Resolve issue number
+    # Verify issue can be found
     issue_num = args.issue
     if not issue_num:
         try:
-            issue_num = gh.resolve_issue_number(version)
+            issue_num = gh.get_release_tracking_issue(version)
+        except ValueError as e:
+            print(f"Error: {e}")
+            return 1
         except Exception as e:
-            print(f"Warning: Could not query GitHub to find tracking issue: {e}")
+            print(f"Error: Unexpected error finding tracking issue: {e}")
+            return 1
 
-    if issue_num:
-        print(f"Updating tracking issue #{issue_num} checklist...")
-        body = gh.get_issue_body(issue_num)
-        metadata = {"status": "done", "tag": final_tag, "commit": commit_sha[:8]}
+    # Get commit SHA of the RC tag (which will be the same for the final tag)
+    commit_sha = git.get_commit_sha(latest_rc)
+
+    # Verify issue is in the right format by trying to prepare the update
+    print(f"Verifying tracking issue #{issue_num} format...")
+    body = gh.get_issue_body(issue_num)
+    metadata = {"status": "done", "tag": version, "commit": commit_sha[:8]}
+    try:
         updated_body = update_task_in_body(
             body, "Tag Final", checked=True, metadata=metadata
         )
-        gh.update_issue_body(issue_num, updated_body)
-        print("Checklist updated successfully.")
-        return 0
-    else:
-        print(
-            "Error: No active tracking issue found or specified. Checklist was not updated."
-        )
+    except ValueError as e:
+        print(f"Error: Tracking issue #{issue_num} is malformed: {e}")
         return 1
+
+    # All pre-conditions met, perform modifications
+    if args.dry_run:
+        print(
+            f"[DRY RUN] Pre-conditions passed successfully for promoting {latest_rc} to {version}."
+        )
+        print(f"[DRY RUN] Would tag commit {commit_sha[:8]} as {version}")
+        print(f"[DRY RUN] Would push tag {version} to upstream")
+        print(f"[DRY RUN] Would update tracking issue #{issue_num} checklist")
+        print(f"[DRY RUN] Would post comment to tracking issue #{issue_num}")
+        return 0
+
+    print(
+        f"Promoting {latest_rc} to final release {version} (commit"
+        f" {commit_sha[:8]}) using tracking issue #{issue_num}..."
+    )
+
+    # Tag the specific commit without checkout, and push to upstream
+    git.tag(version, commit_sha)
+    git.push("upstream", version)
+
+    print(f"Updating tracking issue #{issue_num} checklist...")
+    gh.update_issue_body(issue_num, updated_body)
+
+    print(f"Posting comment to tracking issue #{issue_num}...")
+    import urllib.parse
+
+    release_url = f"{_REPO_URL}/releases/tag/{version}"
+    bcr_query = f'is:pr ("bazel-contrib/rules_python" in:title) ("@{version}" in:title)'
+    bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q={urllib.parse.quote(bcr_query)}"
+    comment_body = (
+        f"Version {version} has been tagged.\n\n"
+        f"- **Release Page**: {release_url}\n"
+        f"- **BCR PR Search**: [{bcr_query}]({bcr_search_url})"
+    )
+    gh.post_issue_comment(issue_num, comment_body)
+
+    return 0
 
 
 def create_parser():
@@ -923,6 +960,12 @@ def create_parser():
         "--issue",
         type=int,
         help="The tracking issue number (optional).",
+    )
+    promote_parser.add_argument(
+        "--dry-run",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Perform a dry run (default: True). Use --no-dry-run to actually execute.",
     )
 
     return parser
