@@ -12,7 +12,10 @@ py_binary(
     srcs = [
         "gh.py",
         "git.py",
+        "prepare.py",
         "release.py",
+        "release_issue.py",
+        "shell.py",
         "utils.py",
     ],
     main = "release.py",

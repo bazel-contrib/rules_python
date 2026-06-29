@@ -5,19 +5,48 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from tools.private.release import changelog_news, release as releaser
+from tools.private.release import changelog_news, release as releaser, utils
+from tools.private.release.gh import MultipleTrackingIssuesError, NoTrackingIssueError
 
 
-class ReleaserTest(unittest.TestCase):
+def _mock_git_and_gh(test_case):
+    mock_git = MagicMock()
+    mock_gh = MagicMock()
+    test_case.mock_git = mock_git
+    test_case.mock_gh = mock_gh
+
+    # Patch bindings in modules that import them at module level
+    patch("tools.private.release.release.git", new=mock_git).start()
+    patch("tools.private.release.prepare.git", new=mock_git).start()
+    patch("tools.private.release.utils.git", new=mock_git).start()
+
+    patch("tools.private.release.release.gh", new=mock_gh).start()
+    patch("tools.private.release.prepare.gh", new=mock_gh).start()
+    mock_gh.MultipleTrackingIssuesError = MultipleTrackingIssuesError
+    mock_gh.NoTrackingIssueError = NoTrackingIssueError
+
+    test_case.addCleanup(patch.stopall)
+
+    # Apply safe defaults
+    mock_git.get_current_branch.return_value = None
+    mock_git.get_tags.return_value = []
+    mock_git.get_tags_at_head.return_value = []
+    mock_git.status.return_value = ""
+    mock_git.branch_exists.return_value = False
+    mock_git.tag_exists.return_value = False
+    mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError("Not found")
+
+
+class TempDirTestCase(unittest.TestCase):
     def setUp(self):
         self.tmpdir = pathlib.Path(tempfile.mkdtemp())
         self.original_cwd = os.getcwd()
         self.addCleanup(shutil.rmtree, self.tmpdir)
-
         os.chdir(self.tmpdir)
-        # NOTE: On windows, this must be done before files are deleted.
         self.addCleanup(os.chdir, self.original_cwd)
 
+
+class ReleaserTest(TempDirTestCase):
     def test_update_changelog_with_news(self):
         # Arrange
         changelog = """# Changelog
@@ -431,7 +460,7 @@ blabla
 """
         (self.tmpdir / "mock_file.bzl").write_text(mock_file_content)
 
-        releaser.replace_version_next("0.28.0")
+        utils.replace_version_next("0.28.0")
 
         new_content = (self.tmpdir / "mock_file.bzl").read_text()
 
@@ -462,7 +491,7 @@ blabla
         version = "0.28.0"
 
         # Act
-        releaser.replace_version_next(version)
+        utils.replace_version_next(version)
 
         # Assert
         new_content = (bazel_dir / "mock_file.bzl").read_text()
@@ -490,56 +519,56 @@ blabla
 
 
 class GetLatestVersionTest(unittest.TestCase):
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_success(self, mock_get_tags):
         mock_get_tags.return_value = ["0.1.0", "1.0.0", "0.2.0"]
-        self.assertEqual(releaser.get_latest_version(), "1.0.0")
+        self.assertEqual(utils.get_latest_version(), "1.0.0")
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_rc_is_latest(self, mock_get_tags):
         mock_get_tags.return_value = ["0.1.0", "1.0.0", "1.1.0rc0"]
         with self.assertRaisesRegex(
             ValueError, "The latest version is a pre-release version: 1.1.0rc0"
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_no_tags(self, mock_get_tags):
         mock_get_tags.return_value = []
         with self.assertRaisesRegex(
             RuntimeError, "No git tags found matching X.Y.Z or X.Y.ZrcN format."
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_no_matching_tags(self, mock_get_tags):
         mock_get_tags.return_value = ["v1.0", "latest"]
         with self.assertRaisesRegex(
             RuntimeError, "No git tags found matching X.Y.Z or X.Y.ZrcN format."
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_only_rc_tags(self, mock_get_tags):
         mock_get_tags.return_value = ["1.0.0rc0", "1.1.0rc0"]
         with self.assertRaisesRegex(
             ValueError, "The latest version is a pre-release version: 1.1.0rc0"
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
 
 class GetLatestRcTagTest(unittest.TestCase):
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_rc_tag_no_tags(self, mock_get_tags):
         mock_get_tags.return_value = []
-        self.assertIsNone(releaser.get_latest_rc_tag("2.0.0"))
+        self.assertIsNone(utils.get_latest_rc_tag("2.0.0"))
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_rc_tag_no_matching_tags(self, mock_get_tags):
         mock_get_tags.return_value = ["1.0.0", "2.0.0", "v2.0.0-rc0", "2.1.0-rc0"]
-        self.assertIsNone(releaser.get_latest_rc_tag("2.0.0"))
+        self.assertIsNone(utils.get_latest_rc_tag("2.0.0"))
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_rc_tag_success(self, mock_get_tags):
         mock_get_tags.return_value = [
             "2.0.0-rc0",
@@ -547,26 +576,19 @@ class GetLatestRcTagTest(unittest.TestCase):
             "2.0.0-rc1",
             "2.1.0-rc0",
         ]
-        self.assertEqual(releaser.get_latest_rc_tag("2.0.0"), "2.0.0-rc2")
+        self.assertEqual(utils.get_latest_rc_tag("2.0.0"), "2.0.0-rc2")
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_rc_tag_ignores_v_prefix(self, mock_get_tags):
         mock_get_tags.return_value = ["v2.0.0-rc0", "2.0.0-rc1"]
-        self.assertEqual(releaser.get_latest_rc_tag("2.0.0"), "2.0.0-rc1")
+        self.assertEqual(utils.get_latest_rc_tag("2.0.0"), "2.0.0-rc1")
 
 
-class DetermineNextVersionTest(unittest.TestCase):
+class DetermineNextVersionTest(TempDirTestCase):
     def setUp(self):
-        self.tmpdir = pathlib.Path(tempfile.mkdtemp())
-        self.original_cwd = os.getcwd()
-        self.addCleanup(shutil.rmtree, self.tmpdir)
-
-        os.chdir(self.tmpdir)
-        # NOTE: On windows, this must be done before files are deleted.
-        self.addCleanup(os.chdir, self.original_cwd)
-
+        super().setUp()
         self.mock_get_latest_version = patch(
-            "tools.private.release.release.get_latest_version"
+            "tools.private.release.utils.get_latest_version"
         ).start()
         self.addCleanup(patch.stopall)
 
@@ -574,7 +596,7 @@ class DetermineNextVersionTest(unittest.TestCase):
         (self.tmpdir / "mock_file.bzl").write_text("no markers here")
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
 
@@ -584,7 +606,7 @@ class DetermineNextVersionTest(unittest.TestCase):
         )
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
 
@@ -594,7 +616,7 @@ class DetermineNextVersionTest(unittest.TestCase):
         )
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.3.0")
 
@@ -607,36 +629,36 @@ class DetermineNextVersionTest(unittest.TestCase):
         )
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.3.0")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_with_existing_tags(
         self, mock_get_tags, mock_get_branch
     ):
         mock_get_branch.return_value = "release/0.37"
         mock_get_tags.return_value = ["0.37.0", "0.37.1", "0.36.0"]
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "0.37.2")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_no_tags(
         self, mock_get_tags, mock_get_branch
     ):
         mock_get_branch.return_value = "release/0.38"
         mock_get_tags.return_value = ["0.37.0"]  # No 0.38.x tags
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "0.38.0")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_with_active_rc(
         self, mock_get_tags, mock_get_branch
     ):
@@ -644,13 +666,13 @@ class DetermineNextVersionTest(unittest.TestCase):
         # 0.37.0-rc0 and rc1 exist, but no stable 0.37.0 yet
         mock_get_tags.return_value = ["0.37.0-rc0", "0.37.0-rc1", "0.36.0"]
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         # Should target 0.37.0, not 0.37.1
         self.assertEqual(next_version, "0.37.0")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_with_stable_and_active_patch_rc(
         self, mock_get_tags, mock_get_branch
     ):
@@ -658,39 +680,36 @@ class DetermineNextVersionTest(unittest.TestCase):
         # 0.37.0 stable exists, and 0.37.1-rc0 exists (but no stable 0.37.1 yet)
         mock_get_tags.return_value = ["0.37.0", "0.37.1-rc0", "0.36.0"]
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         # Should target 0.37.1, not 0.37.2
         self.assertEqual(next_version, "0.37.1")
 
-    @patch("tools.private.release.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_current_branch")
     def test_determine_next_version_on_main_branch_fallback(self, mock_get_branch):
         mock_get_branch.return_value = "main"
         # Should fallback to default behavior (which uses mock_get_latest_version from setUp)
         self.mock_get_latest_version.return_value = "1.2.3"
         (self.tmpdir / "mock_file.bzl").write_text("no markers here")
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
 
 
-class CmdPrepareTest(unittest.TestCase):
+class CmdPrepareTest(TempDirTestCase):
     def setUp(self):
-        self.mock_git = patch("tools.private.release.release.git").start()
-        self.mock_gh = patch("tools.private.release.release.gh").start()
-        self.addCleanup(patch.stopall)
+        super().setUp()
+        _mock_git_and_gh(self)
 
-    @patch("tools.private.release.release.pathlib.Path")
-    @patch("tools.private.release.release.changelog_news")
-    @patch("tools.private.release.release.replace_version_next")
-    def test_prepare_success_existing_issue(
-        self, mock_replace, mock_changelog, mock_path
-    ):
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_success_existing_issue(self, mock_replace, mock_changelog):
         # Arrange
-        args = MagicMock(version="2.0.0", issue=None)
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
         self.mock_git.status.side_effect = ["", "M  foo"]
         self.mock_git.branch_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = None
         self.mock_gh.get_release_tracking_issue.return_value = 123
         self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/456"
         self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
@@ -704,25 +723,24 @@ class CmdPrepareTest(unittest.TestCase):
         self.mock_gh.create_tracking_issue.assert_not_called()
         self.mock_gh.create_pr.assert_called_once_with("2.0.0", "prepare-2.0.0", 123)
 
-    @patch("tools.private.release.release.pathlib.Path")
-    @patch("tools.private.release.release.changelog_news")
-    @patch("tools.private.release.release.replace_version_next")
-    def test_prepare_success_create_issue(
-        self, mock_replace, mock_changelog, mock_path
-    ):
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_success_create_issue(self, mock_replace, mock_changelog):
         # Arrange
-        args = MagicMock(version="2.0.0", issue=None)
+        template_dir = self.tmpdir / ".github" / "ISSUE_TEMPLATE"
+        template_dir.mkdir(parents=True, exist_ok=True)
+        template_file = template_dir / "release_tracking_template.md"
+        template_file.write_text("dummy template content")
+
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
         self.mock_git.status.side_effect = ["", "M  foo"]
         self.mock_git.branch_exists.return_value = False
-        self.mock_gh.get_release_tracking_issue.side_effect = ValueError("Not found")
+        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
+            "Not found"
+        )
         self.mock_gh.create_tracking_issue.return_value = 123
         self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/456"
         self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
-
-        mock_template = MagicMock()
-        mock_template.exists.return_value = True
-        mock_template.read_text.return_value = "template content"
-        mock_path.return_value = mock_template
 
         # Act
         result = releaser.cmd_prepare(args)
@@ -731,20 +749,19 @@ class CmdPrepareTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_gh.create_tracking_issue.assert_called_once_with(
-            "2.0.0", "template content"
+            "2.0.0", "dummy template content"
         )
         self.mock_gh.create_pr.assert_called_once_with("2.0.0", "prepare-2.0.0", 123)
 
-    @patch("tools.private.release.release.pathlib.Path")
-    @patch("tools.private.release.release.changelog_news")
-    @patch("tools.private.release.release.replace_version_next")
-    def test_prepare_ambiguous_issue(self, mock_replace, mock_changelog, mock_path):
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_ambiguous_issue(self, mock_replace, mock_changelog):
         # Arrange
-        args = MagicMock(version="2.0.0", issue=None)
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
         self.mock_git.status.side_effect = ["", "M  foo"]
         self.mock_git.branch_exists.return_value = False
-        self.mock_gh.get_release_tracking_issue.side_effect = ValueError(
-            "Multiple open tracking issues"
+        self.mock_gh.get_release_tracking_issue.side_effect = (
+            MultipleTrackingIssuesError("Multiple open tracking issues")
         )
 
         # Act
@@ -756,12 +773,56 @@ class CmdPrepareTest(unittest.TestCase):
         self.mock_gh.create_tracking_issue.assert_not_called()
         self.mock_gh.create_pr.assert_not_called()
 
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_dry_run(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=True)
+        self.mock_git.status.side_effect = [""]
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.create_pr.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+        self.mock_git.fetch.assert_called_once()
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_dry_run_no_issue(self, mock_replace, mock_changelog):
+        # Arrange
+        template_dir = self.tmpdir / ".github" / "ISSUE_TEMPLATE"
+        template_dir.mkdir(parents=True, exist_ok=True)
+        template_file = template_dir / "release_tracking_template.md"
+        template_file.write_text("dummy template content")
+
+        args = MagicMock(version="2.0.0", issue=None, dry_run=True)
+        self.mock_git.status.side_effect = [""]
+        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
+            "Not found"
+        )
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_gh.create_tracking_issue.assert_not_called()
+        self.mock_gh.create_pr.assert_not_called()
+
 
 class CmdCreateRcTest(unittest.TestCase):
     def setUp(self):
-        self.mock_git = patch("tools.private.release.release.git").start()
-        self.mock_gh = patch("tools.private.release.release.gh").start()
-        self.addCleanup(patch.stopall)
+        _mock_git_and_gh(self)
 
     def test_create_rc_success_first_rc(self):
         # Arrange
@@ -848,9 +909,7 @@ class CmdCreateRcTest(unittest.TestCase):
 
 class CmdPromoteRcTest(unittest.TestCase):
     def setUp(self):
-        self.mock_git = patch("tools.private.release.release.git").start()
-        self.mock_gh = patch("tools.private.release.release.gh").start()
-        self.addCleanup(patch.stopall)
+        _mock_git_and_gh(self)
 
     def test_promote_rc_success(self):
         # Arrange
@@ -893,6 +952,7 @@ class CmdPromoteRcTest(unittest.TestCase):
         args = MagicMock(version="2.0.0", issue=None, dry_run=False)
         self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = None
         self.mock_gh.get_release_tracking_issue.return_value = 123
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         initial_body = "- [ ] Tag Final"
@@ -1004,7 +1064,9 @@ class CmdPromoteRcTest(unittest.TestCase):
         args = MagicMock(version="2.0.0", issue=None)
         self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
-        self.mock_gh.get_release_tracking_issue.side_effect = ValueError("Not found")
+        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
+            "Not found"
+        )
 
         # Act
         result = releaser.cmd_promote_rc(args)

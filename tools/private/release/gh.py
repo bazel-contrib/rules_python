@@ -4,10 +4,22 @@ import json
 import os
 import tempfile
 
-from tools.private.release.utils import run_cmd
+from tools.private.release.shell import run_cmd
 
 _REPO = "bazel-contrib/rules_python"
 _LABEL = "type: release"
+
+
+class MultipleTrackingIssuesError(ValueError):
+    """Raised when multiple open tracking issues are found for a version."""
+
+    pass
+
+
+class NoTrackingIssueError(ValueError):
+    """Raised when no open tracking issue is found for a version."""
+
+    pass
 
 
 def list_issues(*, fields, label=None, state=None, search=None):
@@ -50,13 +62,13 @@ def get_release_tracking_issue(version):
             exact_matches.append(issue)
 
     if not exact_matches:
-        raise ValueError(
+        raise NoTrackingIssueError(
             f"No open tracking issue found matching 'Release {version}' "
             f"in repo {_REPO} with label '{_LABEL}'"
         )
     if len(exact_matches) > 1:
         urls = [issue["url"] for issue in exact_matches]
-        raise ValueError(
+        raise MultipleTrackingIssuesError(
             f"Multiple open tracking issues found for version {version} "
             f"in repo {_REPO} with label '{_LABEL}':\n" + "\n".join(urls)
         )

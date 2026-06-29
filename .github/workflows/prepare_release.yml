@@ -31,6 +31,6 @@ jobs:
       - name: Run Release Preparation Pipeline
         run: |
           # Manual trigger: run full preparation
-          bazel run //tools/private/release -- prepare
+          bazel run //tools/private/release -- prepare --no-dry-run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

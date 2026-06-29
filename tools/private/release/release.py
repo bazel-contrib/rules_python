@@ -2,165 +2,24 @@
 
 import argparse
 import datetime
-import fnmatch
 import os
 import pathlib
 import re
 import sys
 
-from packaging.version import parse as parse_version
-
 from tools.private.release import changelog_news, gh, git
-
-_REPO_URL = "https://github.com/bazel-contrib/rules_python"
-
-_EXCLUDE_PATTERNS = [
-    "./.git/*",
-    "./.github/*",
-    "./.bazelci/*",
-    "./.bcr/*",
-    "./bazel-*/*",
-    "./CONTRIBUTING.md",
-    "./RELEASING.md",
-    "./tools/private/release/*",
-    "./tests/tools/private/release/*",
-]
+from tools.private.release.prepare import cmd_prepare
+from tools.private.release.release_issue import (
+    parse_metadata_line,
+    update_task_in_body,
+)
+from tools.private.release.utils import (
+    _REPO_URL,
+    determine_next_version,
+    get_latest_rc_tag,
+)
 
 _RELEASE_TITLE_RE = re.compile(r"Release (\d+\.\d+\.\d+)", re.IGNORECASE)
-
-
-def _iter_version_placeholder_files():
-    for root, dirs, files in os.walk(".", topdown=True):
-        # Filter directories
-        dirs[:] = [
-            d
-            for d in dirs
-            if not any(
-                fnmatch.fnmatch(os.path.join(root, d), pattern)
-                for pattern in _EXCLUDE_PATTERNS
-            )
-        ]
-
-        for filename in files:
-            filepath = os.path.join(root, filename)
-            if any(fnmatch.fnmatch(filepath, pattern) for pattern in _EXCLUDE_PATTERNS):
-                continue
-
-            yield filepath
-
-
-def get_latest_version():
-    """Gets the latest version from git tags."""
-    tags = git.get_tags()
-    versions = [
-        (tag, parse_version(tag))
-        for tag in tags
-        if re.match(r"^\d+\.\d+\.\d+(rc\d+)?$", tag.strip())
-    ]
-    if not versions:
-        raise RuntimeError("No git tags found matching X.Y.Z or X.Y.ZrcN format.")
-
-    versions.sort(key=lambda v: v[1])
-    latest_tag, latest_version = versions[-1]
-
-    if latest_version.is_prerelease:
-        raise ValueError(f"The latest version is a pre-release version: {latest_tag}")
-
-    stable_versions = [tag for tag, version in versions if not version.is_prerelease]
-    if not stable_versions:
-        raise ValueError("No stable git tags found matching X.Y.Z format.")
-
-    return stable_versions[-1]
-
-
-def get_latest_rc_tag(version):
-    """Queries git tags and returns the highest RC tag for the version."""
-    tags = git.get_tags()
-    pattern = rf"^{re.escape(version)}-rc\d+$"
-    rc_tags = [tag.strip() for tag in tags if re.match(pattern, tag.strip())]
-    if not rc_tags:
-        return None
-    rc_tags.sort(key=parse_version)
-    return rc_tags[-1]
-
-
-def should_increment_minor():
-    """Checks if the minor version should be incremented."""
-    for filepath in _iter_version_placeholder_files():
-        try:
-            with open(filepath, "r") as f:
-                content = f.read()
-        except (IOError, UnicodeDecodeError):
-            continue
-
-        if "VERSION_NEXT_FEATURE" in content:
-            return True
-    return False
-
-
-def determine_next_version(branch_name=None):
-    """Determines the next version based on git tags and the current branch."""
-    if branch_name is None:
-        branch_name = git.get_current_branch()
-
-    if branch_name:
-        release_match = re.match(r"^release/(\d+)\.(\d+)$", branch_name)
-        if release_match:
-            branch_major = int(release_match.group(1))
-            branch_minor = int(release_match.group(2))
-            print(
-                f"Detected release branch: {branch_name} (targeting"
-                f" {branch_major}.{branch_minor}.x)"
-            )
-
-            tags = git.get_tags()
-            matching_patches = []
-            for tag in tags:
-                tag = tag.strip()
-                m = re.match(rf"^{branch_major}\.{branch_minor}\.(\d+)$", tag)
-                if m:
-                    matching_patches.append(int(m.group(1)))
-
-            if matching_patches:
-                latest_patch = max(matching_patches)
-                next_version = f"{branch_major}.{branch_minor}.{latest_patch + 1}"
-                print(
-                    f"Latest tag on this branch is"
-                    f" {branch_major}.{branch_minor}.{latest_patch}. Next"
-                    f" version: {next_version}"
-                )
-                return next_version
-            else:
-                next_version = f"{branch_major}.{branch_minor}.0"
-                print(
-                    f"No stable tags found for {branch_major}.{branch_minor}.x."
-                    f" Next version: {next_version}"
-                )
-                return next_version
-
-    latest_version = get_latest_version()
-    major, minor, patch = [int(n) for n in latest_version.split(".")]
-
-    if should_increment_minor():
-        return f"{major}.{minor + 1}.0"
-    else:
-        return f"{major}.{minor}.{patch + 1}"
-
-
-def replace_version_next(version):
-    """Replaces all VERSION_NEXT_* placeholders with the new version."""
-    for filepath in _iter_version_placeholder_files():
-        try:
-            with open(filepath, "r") as f:
-                content = f.read()
-        except (IOError, UnicodeDecodeError):
-            continue
-
-        if "VERSION_NEXT_FEATURE" in content or "VERSION_NEXT_PATCH" in content:
-            new_content = content.replace("VERSION_NEXT_FEATURE", version)
-            new_content = new_content.replace("VERSION_NEXT_PATCH", version)
-            with open(filepath, "w") as f:
-                f.write(new_content)
 
 
 def _semver_type(value):
@@ -174,65 +33,6 @@ def _semver_type(value):
 # ==============================================================================
 # Checklist Parser and Formatter (Using new | key=value syntax)
 # ==============================================================================
-
-
-def parse_metadata_line(line):
-    """Parses a checklist line with optional | key=value metadata."""
-    match = re.match(r"^\s*-\s*\[([ xX])\]\s+([^|]+)(?:\s*\|\s*(.*))?$", line)
-    if not match:
-        return None
-
-    checked = match.group(1).lower() == "x"
-    name = match.group(2).strip()
-    metadata_str = match.group(3)
-
-    metadata = {}
-    if metadata_str:
-        pairs = metadata_str.strip().split()
-        for pair in pairs:
-            if "=" in pair:
-                k, v = pair.split("=", 1)
-                metadata[k] = v
-
-    return {
-        "checked": checked,
-        "name": name,
-        "metadata": metadata,
-        "original_line": line,
-    }
-
-
-def format_metadata_line(checked, name, metadata):
-    """Formats a checklist line with space-separated key=value metadata."""
-    check_str = "x" if checked else " "
-    if not metadata:
-        return f"- [{check_str}] {name}"
-
-    metadata_str = " ".join(f"{k}={v}" for k, v in metadata.items())
-    return f"- [{check_str}] {name} | {metadata_str}"
-
-
-def update_task_in_body(body, task_name, checked, metadata):
-    """Updates a specific task's checked state and metadata in the issue body."""
-    lines = body.splitlines()
-    updated_lines = []
-    found = False
-
-    for line in lines:
-        parsed = parse_metadata_line(line)
-        if parsed and parsed["name"].lower() == task_name.lower():
-            updated_lines.append(format_metadata_line(checked, task_name, metadata))
-            found = True
-        else:
-            updated_lines.append(line)
-
-    if not found:
-        raise ValueError(
-            f"Task '{task_name}' not found in issue body. "
-            f"Expected format: '- [ ] {task_name}' or '- [x] {task_name}' (optionally followed by '| key=value')"
-        )
-
-    return "\n".join(updated_lines)
 
 
 def parse_checklist_state(body):
@@ -363,91 +163,6 @@ def cmd_create_release_issue(args):
 
     issue_num = gh.create_tracking_issue(version, template_content)
     print(f"Created tracking issue #{issue_num} for v{version}")
-    return 0
-
-
-def cmd_prepare(args):
-    """Executes the prepare subcommand."""
-    print("Fetching upstream to verify fresh release history...")
-    git.fetch(tags=True, force=True)
-
-    # Run pre-check: verify there are no local edits
-    status = git.status()
-    if status:
-        print(
-            "Error: Local edits detected. Workspace must be completely clean"
-            " before running release preparation."
-        )
-        for line in status.splitlines():
-            print(f"  {line}")
-        return 1
-    print("Pre-check passed: Workspace is clean.")
-
-    version = args.version
-    if version is None:
-        version = determine_next_version()
-
-    print(f"Running preparation pipeline for v{version}...")
-
-    branch_name = f"prepare-{version}"
-    if git.branch_exists(branch_name):
-        print(f"Branch {branch_name} already exists. Checking it out...")
-        git.checkout(branch_name)
-    else:
-        git.checkout(branch_name, create_branch=True)
-
-    print("Updating changelog and placeholders...")
-    release_date = datetime.date.today().strftime("%Y-%m-%d")
-    changelog_news.update_changelog(version, release_date)
-    replace_version_next(version)
-
-    modified_files = git.status()
-    if not modified_files:
-        print("No files modified by the release tool. Nothing to commit.")
-        return 0
-
-    # Stage only modified files
-    for line in modified_files.splitlines():
-        file_path = line.strip().split()[-1]
-        git.add(file_path)
-
-    git.commit(f"Prepare release {version}")
-    git.push("origin", branch_name)
-
-    issue_num = args.issue
-    if not issue_num:
-        try:
-            issue_num = gh.get_release_tracking_issue(version)
-            print(f"Found active tracking issue #{issue_num} for v{version}")
-        except ValueError as e:
-            if "Multiple open tracking issues" in str(e):
-                print(f"Error: {e}")
-                return 1
-            print(
-                f"No active tracking issue found for v{version}. Creating a new one..."
-            )
-            template_path = pathlib.Path(
-                ".github/ISSUE_TEMPLATE/release_tracking_template.md"
-            )
-            if not template_path.exists():
-                raise FileNotFoundError(f"Template file not found at {template_path}")
-            template_content = template_path.read_text(encoding="utf-8")
-            issue_num = gh.create_tracking_issue(version, template_content)
-
-    print(f"Using tracking issue #{issue_num}")
-
-    pr_url = gh.create_pr(version, branch_name, issue_num)
-    pr_num = pr_url.split("/")[-1]
-    print(f"Created Pull Request: {pr_url} (PR #{pr_num})")
-
-    print(f"Updating tracking issue #{issue_num} checklist status to PENDING...")
-    body = gh.get_issue_body(issue_num)
-    metadata = {"status": "pending", "pr": f"#{pr_num}"}
-    updated_body = update_task_in_body(
-        body, "Prepare Release", checked=False, metadata=metadata
-    )
-    gh.update_issue_body(issue_num, updated_body)
-    print("Preparation pipeline completed successfully!")
     return 0
 
 
@@ -895,6 +610,12 @@ def create_parser():
         "--issue",
         type=int,
         help="The tracking issue number (optional, triggers automated branch/PR pipeline).",
+    )
+    prepare_parser.add_argument(
+        "--dry-run",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Perform a dry run (default: True). Use --no-dry-run to actually execute.",
     )
 
     # Subcommand: complete-prepare

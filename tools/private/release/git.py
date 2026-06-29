@@ -2,7 +2,7 @@
 
 import subprocess
 
-from tools.private.release.utils import run_cmd
+from tools.private.release.shell import run_cmd
 
 
 def get_tags():
