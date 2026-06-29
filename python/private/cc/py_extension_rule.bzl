@@ -54,7 +54,7 @@ def _py_extension_impl(ctx):
         user_link_flags.append("-Wl,--allow-shlib-undefined")
 
     ext = _get_extension(cc_toolchain)
-    use_py_limited_api = ctx.attr.py_limited_api and ctx.attr.py_limited_api != "none"
+    use_py_limited_api = bool(ctx.attr.py_limited_api)
     if use_py_limited_api:
         # check that all dependencies have compatible API versions, if defined
         _check_limited_api_compatibility(ctx, ctx.attr.py_limited_api)
@@ -163,7 +163,7 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
         doc = """
 The minimum Python version to target for the Limited API (e.g., '3.8').
 
-If set to a version string (e.g., '3.8') instead of 'none':
+If set to a version string (e.g., '3.8') instead of '' (empty string):
   - Configures the output filename to use the simple '.abi3' suffix
     (e.g., 'ext.abi3.so').
   - Strictly validates that all linked C++ dependencies (static_deps,
@@ -181,10 +181,10 @@ that compile your C/C++ sources, for example:
         ...
     )
 
-Set to 'none' (the default) to build a standard, version-specific
+Set to '' (the default) or None to build a standard, version-specific
 extension.
 """,
-        default = "none"
+        default = ""
     ),
     "_constraints": lambda: attrb.LabelList(
         default = [
@@ -384,7 +384,7 @@ def _version_to_hex(version_str):
 
 def _check_limited_api_compatibility(ctx, ext_version_str):
     """Validates that all C++ dependencies are binary-compatible with the extension's Limited API target."""
-    if ext_version_str == "none":
+    if not ext_version_str:
         return
 
     ext_version_hex = _version_to_hex(ext_version_str)
