@@ -814,6 +814,16 @@ def cmd_promote_rc(args):
         return 1
 
     # All pre-conditions met, perform modifications
+    if args.dry_run:
+        print(
+            f"[DRY RUN] Pre-conditions passed successfully for promoting {latest_rc} to {version}."
+        )
+        print(f"[DRY RUN] Would tag commit {commit_sha[:8]} as {version}")
+        print(f"[DRY RUN] Would push tag {version} to upstream")
+        print(f"[DRY RUN] Would update tracking issue #{issue_num} checklist")
+        print(f"[DRY RUN] Would post comment to tracking issue #{issue_num}")
+        return 0
+
     print(
         f"Promoting {latest_rc} to final release {version} (commit"
         f" {commit_sha[:8]}) using tracking issue #{issue_num}..."
@@ -950,6 +960,12 @@ def create_parser():
         "--issue",
         type=int,
         help="The tracking issue number (optional).",
+    )
+    promote_parser.add_argument(
+        "--dry-run",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Perform a dry run (default: True). Use --no-dry-run to actually execute.",
     )
 
     return parser

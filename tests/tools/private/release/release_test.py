@@ -854,7 +854,7 @@ class CmdPromoteRcTest(unittest.TestCase):
 
     def test_promote_rc_success(self):
         # Arrange
-        args = MagicMock(version="2.0.0", issue=123)
+        args = MagicMock(version="2.0.0", issue=123, dry_run=False)
         self.mock_git.get_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         self.mock_git.tag_exists.return_value = False
@@ -890,7 +890,7 @@ class CmdPromoteRcTest(unittest.TestCase):
 
     def test_promote_rc_resolve_issue_success(self):
         # Arrange
-        args = MagicMock(version="2.0.0", issue=None)
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
         self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
         self.mock_gh.get_release_tracking_issue.return_value = 123
@@ -924,7 +924,7 @@ class CmdPromoteRcTest(unittest.TestCase):
 
     def test_promote_rc_defaults_to_determine_next_version(self):
         # Arrange
-        args = MagicMock(version=None, issue=123)
+        args = MagicMock(version=None, issue=123, dry_run=False)
         self.mock_git.get_current_branch.return_value = "release/2.0"
         self.mock_git.get_tags.return_value = ["2.0.0", "2.0.1-rc0"]
         self.mock_git.get_commit_sha.return_value = "12345678"
@@ -957,6 +957,30 @@ class CmdPromoteRcTest(unittest.TestCase):
             '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.1" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.1%22%20in%3Atitle%29)'
         )
         self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
+
+    def test_promote_rc_dry_run_success(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123, dry_run=True)
+        self.mock_git.get_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        self.mock_git.tag_exists.return_value = False
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("upstream", tags=True, force=True)
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.tag_exists.assert_called_once_with("2.0.0")
+
+        # Core dry-run assertions: NO modifications
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+        self.mock_gh.post_issue_comment.assert_not_called()
 
     def test_promote_rc_tag_already_exists(self):
         # Arrange
