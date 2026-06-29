@@ -30,6 +30,7 @@ labels = struct(
     PY_LINUX_LIBC = str(Label("//python/config_settings:py_linux_libc")),
     REPL_DEP = str(Label("//python/bin:repl_dep")),
     VALIDATE_TEST_MAIN = str(Label("//python/config_settings:validate_test_main")),
+    VENV = str(Label("//python/config_settings:venv")),
     VENVS_SITE_PACKAGES = str(Label("//python/config_settings:venvs_site_packages")),
     VENVS_USE_DECLARE_SYMLINK = str(Label("//python/config_settings:venvs_use_declare_symlink")),
     VISIBLE_FOR_TESTING = str(Label("//python/private:visible_for_testing")),

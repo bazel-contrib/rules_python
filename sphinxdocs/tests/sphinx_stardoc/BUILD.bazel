@@ -69,7 +69,6 @@ sphinx_stardoc(
     deps = [":func_and_providers_bzl"],
 )
 
-# A bzl_library with multiple sources
 bzl_library(
     name = "func_and_providers_bzl",
     srcs = [
@@ -89,6 +88,7 @@ bzl_library(
     srcs = ["bzl_typedef.bzl"],
 )
 
+# A bzl_library with multiple sources
 sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building

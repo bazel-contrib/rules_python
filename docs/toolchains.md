@@ -373,7 +373,7 @@ Notes:
   that match supported platforms.
 - Only runtimes matching known platforms in `rules_python` will be registered.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 Added support for registering runtimes from a manifest using
 `add_runtime_manifest_files`, `add_runtime_manifest_urls`, and
 `runtime_manifest_sha` in `python.override`.

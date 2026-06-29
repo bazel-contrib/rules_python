@@ -37,6 +37,9 @@ def py_runtime_info_subject(info, *, meta):
         coverage_tool = lambda *a, **k: _py_runtime_info_subject_coverage_tool(self, *a, **k),
         files = lambda *a, **k: _py_runtime_info_subject_files(self, *a, **k),
         interpreter = lambda *a, **k: _py_runtime_info_subject_interpreter(self, *a, **k),
+        interpreter_files_to_run = lambda *a, **k: (
+            _py_runtime_info_subject_interpreter_files_to_run(self, *a, **k)
+        ),
         interpreter_path = lambda *a, **k: _py_runtime_info_subject_interpreter_path(self, *a, **k),
         interpreter_version_info = lambda *a, **k: _py_runtime_info_subject_interpreter_version_info(self, *a, **k),
         python_version = lambda *a, **k: _py_runtime_info_subject_python_version(self, *a, **k),
@@ -82,6 +85,15 @@ def _py_runtime_info_subject_interpreter(self):
     return subjects.file(
         self.actual.interpreter,
         meta = self.meta.derive("interpreter()"),
+    )
+
+def _py_runtime_info_subject_interpreter_files_to_run(self):
+    return subjects.struct(
+        self.actual.interpreter_files_to_run,
+        attrs = dict(
+            executable = subjects.file,
+        ),
+        meta = self.meta.derive("interpreter_files_to_run()"),
     )
 
 def _py_runtime_info_subject_interpreter_path(self):

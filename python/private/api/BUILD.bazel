@@ -25,24 +25,21 @@ filegroup(
 )
 
 py_common_api(
-    name = "py_common_api",
+    name = "py_common_api_impl",
     # NOTE: Not actually public. Implicit dependency of public rules.
     visibility = ["//visibility:public"],
 )
 
 bzl_library(
-    name = "api_bzl",
-    srcs = ["api.bzl"],
+    name = "py_common_api",
+    srcs = ["py_common_api.bzl"],
     deps = [
-        "//python/private:py_info_bzl",
+        ":api",
+        "//python/private:py_info",
     ],
 )
 
 bzl_library(
-    name = "py_common_api_bzl",
-    srcs = ["py_common_api.bzl"],
-    deps = [
-        ":api_bzl",
-        "//python/private:py_info_bzl",
-    ],
+    name = "api",
+    srcs = ["api.bzl"],
 )

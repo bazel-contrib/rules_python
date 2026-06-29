@@ -131,6 +131,24 @@ def _internal_dev_deps_impl(mctx):
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
     )
 
+    # Setup for //tests/pypi/patch_whl/patch_whl_patch_test.py
+    whl_from_dir_repo(
+        name = "patch_whl_pkg_whl",
+        root = "//tests/pypi/patch_whl/testdata/pkg:BUILD.bazel",
+        output = "pkg-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "patch_whl_pkg",
+        whl_file = "@patch_whl_pkg_whl//:pkg-1.0-any-none-any.whl",
+        requirement = "pkg",
+        whl_patches = {
+            "//tests/pypi/patch_whl/testdata/patches:modify_pkg.patch": json.encode({
+                "patch_strip": 0,
+                "whls": ["pkg-1.0-any-none-any.whl"],
+            }),
+        },
+    )
+
 def _whl_library_from_dir(*, name, output, root, **kwargs):
     whl_from_dir_repo(
         name = "{}_whl".format(name),

@@ -65,3 +65,9 @@ repos:
         entry: ./tools/private/sync_downloader_configs.py
         files: downloader_config\.cfg$
         pass_filenames: false
+      - id: gazelle
+        name: Run Gazelle
+        language: system
+        entry: bazel run //tools/private/gazelle
+        files: (\.bzl|\.bazel|BUILD|WORKSPACE(\.bzlmod)?)$
+        pass_filenames: false

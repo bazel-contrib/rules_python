@@ -48,11 +48,11 @@ sphinx_docs_library(
 sphinx_stardocs(
     name = "bzl_docs",
     srcs = [
-        "//sphinxdocs:readthedocs_bzl",
-        "//sphinxdocs:sphinx_bzl",
-        "//sphinxdocs:sphinx_docs_library_bzl",
-        "//sphinxdocs:sphinx_stardoc_bzl",
-        "//sphinxdocs/private:sphinx_docs_library_bzl",
+        "//sphinxdocs:readthedocs",
+        "//sphinxdocs:sphinx",
+        "//sphinxdocs:sphinx_docs_library",
+        "//sphinxdocs:sphinx_stardoc",
+        "//sphinxdocs/private:sphinx_docs_library",
     ],
     prefix = "api/sphinxdocs/",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
