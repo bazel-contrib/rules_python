@@ -379,7 +379,7 @@ def _version_to_hex(version_str):
     # Format the minor version as a 2-digit hex (e.g., 10 -> "0a")
     # Starlark doesn't seem to support %02x formatting
 
-    return "0x03%x%x0000" % (int(minor/16), minor%16)
+    return "0x03%x%x0000" % (minor//16, minor%16)
 
 
 def _check_limited_api_compatibility(ctx, ext_version_str):
