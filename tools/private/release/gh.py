@@ -10,22 +10,33 @@ _REPO = "bazel-contrib/rules_python"
 _LABEL = "type: release"
 
 
-def get_open_tracking_issues(version):
-    """Returns a list of open tracking issues with the 'type: release' label."""
-    output = run_cmd(
-        "gh",
-        "issue",
-        "list",
-        f"--repo={_REPO}",
-        f"--label={_LABEL}",
-        "--state=open",
-        f'--search="Release {version}" in:title',
-        "--json=number,title,url",
-    )
+def list_issues(*, fields, label=None, state=None, search=None):
+    """Helper to list issues using gh CLI."""
+    cmd = ["gh", "issue", "list", f"--repo={_REPO}"]
+    if label:
+        cmd.append(f"--label={label}")
+    if state:
+        cmd.append(f"--state={state}")
+    if search:
+        cmd.append(f"--search={search}")
+    cmd.append(f"--json={fields}")
+
+    output = run_cmd(*cmd)
     return json.loads(output) if output else []
 
 
-def find_release_tracking_issue(version):
+def get_open_tracking_issues(version=None):
+    """Returns a list of open tracking issues with the 'type: release' label."""
+    search = f'"Release {version}" in:title' if version else None
+    return list_issues(
+        label=_LABEL,
+        state="open",
+        search=search,
+        fields="number,title,url",
+    )
+
+
+def get_release_tracking_issue(version):
     """Resolves the tracking issue number for a given version.
 
     Searches for an open issue with label 'type: release' and 'Release <version>' in the title.

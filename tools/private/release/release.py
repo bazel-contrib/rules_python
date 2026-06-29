@@ -416,13 +416,13 @@ def cmd_prepare(args):
 
     issue_num = args.issue
     if not issue_num:
-        open_issues = gh.get_open_tracking_issues()
-        for issue in open_issues:
-            if f"Release {version}" in issue["title"]:
-                issue_num = issue["number"]
-                break
-
-        if not issue_num:
+        try:
+            issue_num = gh.get_release_tracking_issue(version)
+            print(f"Found active tracking issue #{issue_num} for v{version}")
+        except ValueError as e:
+            if "Multiple open tracking issues" in str(e):
+                print(f"Error: {e}")
+                return 1
             print(
                 f"No active tracking issue found for v{version}. Creating a new one..."
             )
@@ -713,18 +713,18 @@ def cmd_create_rc(args):
 
     if not latest_rc:
         next_rc_num = 0
-        next_rc = f"v{version}-rc0"
+        next_rc = f"{version}-rc0"
     else:
         rc_num = int(latest_rc.split("-rc")[-1])
         next_rc_num = rc_num + 1
-        next_rc = f"v{version}-rc{next_rc_num}"
+        next_rc = f"{version}-rc{next_rc_num}"
 
     # Precheck: next RC number must exist and be unchecked in the checklist
     rc_tags = state.get("rc_tags", {})
     if next_rc_num not in rc_tags:
         print(
             f"Error: Checklist is missing required task 'Tag RC{next_rc_num}'"
-            f" to cut v{version}-rc{next_rc_num}."
+            f" to cut {version}-rc{next_rc_num}."
         )
         return 1
 
@@ -738,7 +738,7 @@ def cmd_create_rc(args):
     # Verify HEAD is not already tagged
     git.checkout(branch_name)
     head_tags = git.get_tags_at_head()
-    if any(tag.startswith(f"v{version}-rc") for tag in head_tags):
+    if any(tag.startswith(f"{version}-rc") for tag in head_tags):
         print(f"HEAD of {branch_name} is already tagged with an RC. Skipping.")
         return 0
 
@@ -790,12 +790,12 @@ def cmd_promote_rc(args):
     issue_num = args.issue
     if not issue_num:
         try:
-            issue_num = gh.find_release_tracking_issue(version)
-        except Exception as e:
-            print(f"Error: Could not query GitHub to find tracking issue: {e}")
+            issue_num = gh.get_release_tracking_issue(version)
+        except ValueError as e:
+            print(f"Error: {e}")
             return 1
-        if not issue_num:
-            print(f"Error: Could not find tracking issue for version {version}.")
+        except Exception as e:
+            print(f"Error: Unexpected error finding tracking issue: {e}")
             return 1
 
     # Get commit SHA of the RC tag (which will be the same for the final tag)
