@@ -106,10 +106,8 @@ def cmd_prepare(args):
             print("No files modified by the release tool. Nothing to commit.")
             return 0
 
-        # Stage only modified files
-        for line in modified_files.splitlines():
-            file_path = line.strip().split()[-1]
-            git.add(file_path)
+        # Stage all modified and deleted tracked files
+        git.add_modified_and_deleted()
 
         git.commit(f"Prepare release {version}")
         git.push("origin", branch_name, set_upstream=True)

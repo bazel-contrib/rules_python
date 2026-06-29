@@ -24,6 +24,11 @@ def add(*files):
     run_cmd("git", "add", *files, capture_output=False)
 
 
+def add_modified_and_deleted():
+    """Stages all modified and deleted tracked files."""
+    run_cmd("git", "add", "--update", capture_output=False)
+
+
 def commit(message, amend=False, no_edit=False):
     """Commits staged changes, optionally amending the previous commit."""
     cmd = ["git", "commit"]

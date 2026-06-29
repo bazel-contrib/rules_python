@@ -722,6 +722,7 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_gh.create_tracking_issue.assert_not_called()
         self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_git.add_modified_and_deleted.assert_called_once()
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")
@@ -752,6 +753,7 @@ class CmdPrepareTest(TempDirTestCase):
             "2.0.0", "dummy template content"
         )
         self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_git.add_modified_and_deleted.assert_called_once()
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")
@@ -772,6 +774,7 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_gh.create_tracking_issue.assert_not_called()
         self.mock_gh.create_pr.assert_not_called()
+        self.mock_git.add_modified_and_deleted.assert_not_called()
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")
@@ -794,6 +797,7 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_gh.update_issue_body.assert_not_called()
         self.mock_git.fetch.assert_called_once()
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_git.add_modified_and_deleted.assert_not_called()
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")
@@ -818,6 +822,7 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_git.checkout.assert_not_called()
         self.mock_gh.create_tracking_issue.assert_not_called()
         self.mock_gh.create_pr.assert_not_called()
+        self.mock_git.add_modified_and_deleted.assert_not_called()
 
 
 class CmdCreateRcTest(unittest.TestCase):
