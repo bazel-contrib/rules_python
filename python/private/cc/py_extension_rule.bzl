@@ -5,6 +5,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//python:versions.bzl", "PLATFORMS")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
+load("//python/private:builders.bzl", "builders")
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")
@@ -120,11 +121,12 @@ def _py_extension_impl(ctx):
         cc_infos = [dynamic_cc_info] + external_deps_infos,
     )
 
-    runfiles = ctx.runfiles(files = [py_dso])
-    transitive_runfiles = []
-    for dep in ctx.attr.static_deps + ctx.attr.dynamic_deps + ctx.attr.external_deps:
-        transitive_runfiles.append(dep[DefaultInfo].default_runfiles)
-    runfiles = runfiles.merge_all(transitive_runfiles)
+    runfiles_builder = builders.RunfilesBuilder()
+    runfiles_builder.add(py_dso)
+    runfiles_builder.add_targets(ctx.attr.static_deps)
+    runfiles_builder.add_targets(ctx.attr.dynamic_deps)
+    runfiles_builder.add_targets(ctx.attr.external_deps)
+    runfiles = runfiles_builder.build(ctx)
 
     return [
         DefaultInfo(
