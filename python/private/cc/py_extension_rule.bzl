@@ -2,6 +2,7 @@
 
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("//python:versions.bzl", "PLATFORMS")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
 load("//python/private:py_info.bzl", "PyInfo")
@@ -65,7 +66,7 @@ def _py_extension_impl(ctx):
     else:
         py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
         py_runtime = py_toolchain.py3_runtime
-        platform_tag = _get_platform(cc_toolchain)
+        platform_tag = _get_platform(ctx, cc_toolchain)
         output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
             module_name = module_name,
             pyc_tag = py_runtime.pyc_tag,      # e.g. "cpython-311"
@@ -185,6 +186,20 @@ extension.
 """,
         default = "none"
     ),
+    "_constraints": lambda: attrb.LabelList(
+        default = [
+            "@platforms//os:linux",
+            "@platforms//os:macos",
+            "@platforms//os:windows",
+            "@platforms//cpu:x86_64",
+            "@platforms//cpu:aarch64",
+            "@platforms//cpu:armv7",
+            "@platforms//cpu:i386",
+            "@platforms//cpu:ppc",
+            "@platforms//cpu:riscv64",
+            "@platforms//cpu:s390x",
+        ],
+    ),
 }
 
 def create_py_extension_rule_builder(**kwargs):
@@ -236,16 +251,70 @@ def _get_extension(cc_toolchain):
     ext = "pyd" if is_windows else "so"
     return ext
 
-def _get_platform(cc_toolchain):
-    """Derives the PEP 3149 platform tag from the C++ toolchain.
+def _derive_pep3149_tag(platform, info):
+    # platform is the triplet, e.g. "x86_64-unknown-linux-gnu"
+    p, _, _ = platform.partition("-freethreaded")
+    parts = p.split("-")
+    triplet_arch = parts[0]
+
+    if info.os_name == "windows":
+        if triplet_arch == "x86_64":
+            return "win_amd64"
+        elif triplet_arch == "aarch64":
+            return "win_arm64"
+        else:
+            return "win32"
+    elif info.os_name == "osx":
+        return "darwin"
+    elif info.os_name == "linux":
+        abi = "musl" if p.endswith("-musl") else "gnu"
+        return "{}-linux-{}".format(triplet_arch, abi)
+    else:
+        return triplet_arch
+
+def _get_platform_from_constraints(ctx):
+    # Build a map of Label to ConstraintValueInfo from _constraints
+    constraints_map = {}
+    for c in ctx.attr._constraints:
+        if platform_common.ConstraintValueInfo in c:
+            constraints_map[c.label] = c[platform_common.ConstraintValueInfo]
+
+    # Find the matching platform in PLATFORMS
+    for platform, info in PLATFORMS.items():
+        # Check if all compatible_with constraints are satisfied
+        match = True
+        for c_str in info.compatible_with:
+            c_label = Label(c_str)
+            if c_label in constraints_map:
+                c_val = constraints_map[c_label]
+                if not ctx.target_platform_has_constraint(c_val):
+                    match = False
+                    break
+            else:
+                match = False
+                break
+        if match:
+            return _derive_pep3149_tag(platform, info)
+
+    return None
+
+def _get_platform(ctx, cc_toolchain):
+    """Derives the PEP 3149 platform tag from the C++ toolchain or target constraints.
 
     Args:
+        ctx: The rule context.
         cc_toolchain: The CcToolchainInfo provider (usually obtained via
           ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc)
 
     Returns:
         The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
     """
+    # Try to resolve using modern platform constraints and PLATFORMS
+    platform_tag = _get_platform_from_constraints(ctx)
+    if platform_tag:
+        return platform_tag
+
+    # Fallback to legacy cc_toolchain parsing
     # Get the GNU target name (e.g., "local-linux-gnu" or "x86_64-unknown-linux-gnu")
     target_name = cc_toolchain.target_gnu_system_name
 
