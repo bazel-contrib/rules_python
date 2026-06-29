@@ -719,6 +719,9 @@ def main():
             exit_code = cmd_promote_rc(args)
     except Exception as e:
         print(f"Fatal error executing {args.command}: {e}", file=sys.stderr)
+        if hasattr(e, "__notes__"):
+            for note in e.__notes__:
+                print(note, file=sys.stderr)
         sys.exit(1)
 
     sys.exit(exit_code if exit_code is not None else 0)

@@ -160,7 +160,6 @@ def create_pr(version, branch, issue_num):
         f"--body=Work towards #{issue_num}",
         f"--head={branch}",
         "--base=main",
-        "--label=release-prepared",
     )
 
 
