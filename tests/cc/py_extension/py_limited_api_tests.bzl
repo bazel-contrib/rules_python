@@ -84,7 +84,8 @@ def _test_no_limited_api(name):
 
 def _test_no_limited_api_impl(env, target):
     # Should pass, nothing to assert on filename since it is platform-specific
-    pass
+    _ = env  # @unused
+    _ = target  # @unused
 
 def _test_no_limited_api_dep_has_limited(name):
     util.helper_target(
@@ -106,7 +107,8 @@ def _test_no_limited_api_dep_has_limited(name):
     )
 
 def _test_no_limited_api_dep_has_limited_impl(env, target):
-    pass
+    _ = env  # @unused
+    _ = target  # @unused
 
 def _test_limited_api_dep_has_no_python(name):
     util.helper_target(
