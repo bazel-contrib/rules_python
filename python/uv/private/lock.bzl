@@ -387,7 +387,7 @@ _lock = rule(
 The lock rule that does the locking in a build action and also prepares information for a `bazel
 run` executable rule.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.2.0
 :::
 """,
     attrs = _common_attrs | {

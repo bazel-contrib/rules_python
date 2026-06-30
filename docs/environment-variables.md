@@ -126,7 +126,7 @@ a warning is printed indicating that the renaming occurred. If not set (defaulti
 to `0`), a warning is printed advising to rename the hub, and the collision
 is not resolved.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.2.0
 :::
 
 :::

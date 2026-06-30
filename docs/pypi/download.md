@@ -53,7 +53,7 @@ downloading the same wheels numerous times.
 (unified-pypi-hub)=
 ## Unified `@pypi` Hub for Multi-Hub Configurations
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.2.0
 Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
 :::
 

@@ -845,7 +845,7 @@ means if different programs need different versions of some library, separate
 hubs can be created, and each program can use its respective hub's targets.
 Targets from different hubs should not be used together.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.2.0
 Using the hub name `"pypi"` is deprecated and is changed to
 `{module_name}_pypi` depending on the
 {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` environment variable.
