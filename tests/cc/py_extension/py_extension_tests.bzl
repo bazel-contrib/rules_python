@@ -70,6 +70,25 @@ def _test_dynamic_deps(name):
 
 _tests.append(_test_dynamic_deps)
 
+def _test_musl_platform_impl(env, target):
+    env.expect.that_target(target).has_provider(PyInfo)
+    py_info = target[PyInfo]
+    env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
+        matching.file_basename_equals("ext_static.cpython-311-x86_64-linux-musl.so"),
+    )
+
+def _test_musl_platform(name):
+    analysis_test(
+        name = name,
+        impl = _test_musl_platform_impl,
+        target = "//tests/cc/py_extension:ext_static",
+        config_settings = {
+            str(Label("//python/config_settings:py_linux_libc")): "musl",
+        },
+    )
+
+_tests.append(_test_musl_platform)
+
 def py_extension_analysis_test_suite(name):
     test_suite(
         name = name,

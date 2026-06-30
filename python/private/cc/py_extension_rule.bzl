@@ -155,6 +155,7 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
         default = [],
     ),
     "copts": lambda: attrb.StringList(),
+    "libc": lambda: attrb.String(default = "glibc"),
     "linkopts": lambda: attrb.StringList(),
     "module_name": lambda: attrb.String(),
     "py_limited_api": lambda: attrb.String(
@@ -253,6 +254,13 @@ def _get_platform_from_constraints(ctx):
         if platform_common.ConstraintValueInfo in c:
             constraints_map[c.label] = c[platform_common.ConstraintValueInfo]
 
+    # Resolve the target's libc to its config_setting label string
+    target_libc_setting = None
+    if ctx.attr.libc == "musl":
+        target_libc_setting = str(Label("//python/config_settings:_is_py_linux_libc_musl"))
+    elif ctx.attr.libc == "glibc":
+        target_libc_setting = str(Label("//python/config_settings:_is_py_linux_libc_glibc"))
+
     # Find the matching platform in PLATFORMS
     for platform, info in PLATFORMS.items():
         # Check if all compatible_with constraints are satisfied
@@ -267,6 +275,13 @@ def _get_platform_from_constraints(ctx):
             else:
                 match = False
                 break
+
+        if match:
+            # Additional check for Linux libc consistency using target_settings
+            if info.os_name == "linux" and target_libc_setting:
+                if target_libc_setting not in info.target_settings:
+                    match = False
+
         if match:
             return _derive_pep3149_tag(platform, info)
 
