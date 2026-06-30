@@ -709,7 +709,6 @@ bzl_library(
         ":full_version",
         ":pbs_manifest",
         ":platform_info",
-        ":pyproject_repo",
         ":pyproject_utils",
         ":python_register_toolchains",
         ":pythons_hub",
@@ -879,6 +878,15 @@ bzl_library(
 )
 
 bzl_library(
+    name = "pyproject_utils",
+    srcs = ["pyproject_utils.bzl"],
+    deps = [
+        ":version",
+        "@toml.bzl//:toml",
+    ],
+)
+
+bzl_library(
     name = "bzlmod_enabled",
     srcs = ["bzlmod_enabled.bzl"],
 )
@@ -941,16 +949,6 @@ bzl_library(
 bzl_library(
     name = "py_runtime_info",
     srcs = ["py_runtime_info.bzl"],
-)
-
-bzl_library(
-    name = "pyproject_repo",
-    srcs = ["pyproject_repo.bzl"],
-)
-
-bzl_library(
-    name = "pyproject_utils",
-    srcs = ["pyproject_utils.bzl"],
 )
 
 bzl_library(

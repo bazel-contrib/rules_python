@@ -20,8 +20,7 @@ load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
 load(":pbs_manifest.bzl", "parse_runtime_manifest")
 load(":platform_info.bzl", "platform_info")
-load(":pyproject_repo.bzl", "pyproject_version_repo")
-load(":pyproject_utils.bzl", "read_pyproject_version")
+load(":pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
@@ -221,20 +220,6 @@ def _python_impl(module_ctx):
 
     # For all other processing (after parsing the modules) let's use a single logger.
     logger = repo_utils.logger(module_ctx, "python", mod = module_ctx.modules[0])
-
-    # Create pyproject version repo if pyproject.toml is used
-    created_pyproject_repo = False
-    for mod in module_ctx.modules:
-        if mod.is_root:
-            for tag in mod.tags.defaults:
-                if tag.pyproject_toml:
-                    pyproject_version_repo(
-                        name = "python_version_from_pyproject",
-                        pyproject_toml = tag.pyproject_toml,
-                    )
-                    created_pyproject_repo = True
-                    break
-            break
 
     # Host compatible runtime repos
     # dict[str version, struct] where struct has:
@@ -482,8 +467,6 @@ def _python_impl(module_ctx):
     if bazel_features.external_deps.extension_metadata_has_reproducible:
         # Build the list of direct dependencies
         root_direct_deps = ["pythons_hub", "python_versions"]
-        if created_pyproject_repo:
-            root_direct_deps.append("python_version_from_pyproject")
 
         return module_ctx.extension_metadata(
             root_module_direct_deps = root_direct_deps,
@@ -1029,13 +1012,9 @@ def _compute_default_python_version(mctx):
                 mctx.read(default_python_version_file, watch = "yes").strip(),
             )
         if pyproject_toml_label:
-            pyproject_version = read_pyproject_version(
-                mctx,
-                pyproject_toml_label,
-                logger = None,
-            )
-            if pyproject_version:
-                default_python_version = pyproject_version
+            pyproject = read_pyproject(mctx, pyproject_toml_label)
+            if pyproject.requires_python:
+                default_python_version = version_from_requires_python(pyproject.requires_python)
         if default_python_version_env:
             default_python_version = mctx.getenv(
                 default_python_version_env,

@@ -20,7 +20,7 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@toml.bzl", "toml")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
-load("//python/private:pyproject_utils.bzl", "read_pyproject_version")
+load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
@@ -223,13 +223,9 @@ def build_config(
                     default_hub = tag.default_hub
             pyproject_toml = tag.pyproject_toml
             if pyproject_toml:
-                pyproject_version = read_pyproject_version(
-                    module_ctx,
-                    pyproject_toml,
-                    logger = None,
-                )
-                if pyproject_version:
-                    defaults["python_version"] = pyproject_version
+                pyproject = read_pyproject(module_ctx, pyproject_toml)
+                if pyproject.requires_python:
+                    defaults["python_version"] = version_from_requires_python(pyproject.requires_python)
 
             platform = tag.platform
             if platform:

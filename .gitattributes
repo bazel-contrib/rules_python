@@ -5,4 +5,3 @@ python/private/runtimes_manifest_workspace.bzl text eol=lf
 python/private/runtimes_manifest.txt text eol=lf
 
 *.bat text eol=crlf
-requirements_lock.txt linguist-generated=true
