@@ -51,6 +51,7 @@ def _default(
         netrc = None,
         os_name = None,
         platform = None,
+        pyproject_toml = None,
         whl_platform_tags = None,
         whl_abi_tags = None):
     return struct(
@@ -64,6 +65,7 @@ def _default(
         netrc = netrc,
         os_name = os_name,
         platform = platform,
+        pyproject_toml = pyproject_toml,
         whl_abi_tags = whl_abi_tags or [],
         whl_platform_tags = whl_platform_tags or [],
     )

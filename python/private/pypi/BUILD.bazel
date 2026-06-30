@@ -125,6 +125,7 @@ bzl_library(
         ":whl_library",
         "//python/private:auth",
         "//python/private:normalize_name",
+        "//python/private:pyproject_utils",
         "//python/private:repo_utils",
         "@pythons_hub//:interpreters",
         "@pythons_hub//:versions",

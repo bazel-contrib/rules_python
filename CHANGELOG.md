@@ -145,6 +145,8 @@ and [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 * (toolchains) Support dynamically fetching and registering Python runtimes
   from a python-build-standalone manifest file using
   `python.override(add_runtime_manifest_urls = ..., runtime_manifest_sha = ...)`.
+* (pip,python) Added `pyproject_toml` attribute to `pip.default()` and `python.defaults()`
+  to read Python version from pyproject.toml `requires-python` field (must be `==X.Y.Z` format).
 * (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
   adding `config_setting` labels to all registered toolchains.
 * (windows) Full venv support for Windows is available. Set

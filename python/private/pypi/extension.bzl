@@ -20,6 +20,7 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@toml.bzl", "toml")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load("//python/private:pyproject_utils.bzl", "read_pyproject_version")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
@@ -208,6 +209,7 @@ def build_config(
     default_hub = None
     defaults = {
         "platforms": default_platforms(),
+        "python_version": None,
     }
     for mod in module_ctx.modules:
         if not (mod.is_root or mod.name == "rules_python"):
@@ -219,6 +221,15 @@ def build_config(
                     if default_hub:
                         fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
                     default_hub = tag.default_hub
+            pyproject_toml = tag.pyproject_toml
+            if pyproject_toml:
+                pyproject_version = read_pyproject_version(
+                    module_ctx,
+                    pyproject_toml,
+                    logger = None,
+                )
+                if pyproject_version:
+                    defaults["python_version"] = pyproject_version
 
             platform = tag.platform
             if platform:
@@ -256,6 +267,7 @@ def build_config(
         default_hub = default_hub,
         index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
         netrc = defaults.get("netrc", None),
+        python_version = defaults.get("python_version", None),
         platforms = {
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
@@ -359,6 +371,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
+            python_version = pip_attr.python_version or config.python_version
+            if not python_version:
+                _fail("pip.parse() requires either python_version attribute or pip.default(pyproject_toml=...) to be set")
+
             hub_name = pip_attr.hub_name
             if hub_name == "pypi":
                 if is_pypi_hub_reserved:
@@ -422,6 +438,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
+                python_version = python_version,
             )
 
     # Keeps track of all the hub's whl repos across the different versions.
@@ -701,6 +718,21 @@ If you are defining custom platforms in your project and don't want things to cl
 [isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
 """,
     ),
+    "pyproject_toml": attr.label(
+        mandatory = False,
+        doc = """\
+Label pointing to pyproject.toml file to read the default Python version from.
+When specified, reads the `requires-python` field from pyproject.toml and uses
+it as the default python_version for all `pip.parse()` calls that don't
+explicitly specify one.
+
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+This is designed to work with dependency management tools like Renovate.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+    ),
     "whl_abi_tags": attr.string_list(
         doc = """\
 A list of ABIs to select wheels for. The values can be either strings or include template
@@ -870,7 +902,7 @@ find in case extra indexes are specified.
             default = True,
         ),
         "python_version": attr.string(
-            mandatory = True,
+            mandatory = False,
             doc = """
 The Python version the dependencies are targetting, in Major.Minor format
 (e.g., "3.11") or patch level granularity (e.g. "3.11.1").
@@ -878,6 +910,10 @@ The Python version the dependencies are targetting, in Major.Minor format
 If an interpreter isn't explicitly provided (using `python_interpreter` or
 `python_interpreter_target`), then the version specified here must have
 a corresponding `python.toolchain()` configured.
+
+:::{seealso}
+The {obj}`pyproject_toml` attribute for getting the version from a project file.
+:::
 """,
         ),
         "simpleapi_skip": attr.string_list(
