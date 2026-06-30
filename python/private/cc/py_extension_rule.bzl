@@ -58,8 +58,8 @@ def _py_extension_impl(ctx):
     use_py_limited_api = bool(ctx.attr.py_limited_api)
     if use_py_limited_api:
         output_filename = "{module_name}.abi3.{ext}".format(
-            module_name=module_name,
-            ext=ext,
+            module_name = module_name,
+            ext = ext,
         )
     else:
         py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
@@ -179,7 +179,7 @@ that compile your C/C++ sources, for example:
 Set to '' (the default) or None to build a standard, version-specific
 extension.
 """,
-        default = ""
+        default = "",
     ),
     "_constraints": lambda: attrb.LabelList(
         default = sorted({
@@ -206,7 +206,6 @@ def create_py_extension_rule_builder(**kwargs):
     return builder
 
 py_extension = create_py_extension_rule_builder().build()
-
 
 def _get_extension(cc_toolchain):
     """
@@ -307,5 +306,5 @@ ERROR: Unsupported target platform for {self}.
   in rules_python's central registry (python/versions.bzl).
   Please ensure your target platform is configured correctly.""".format(
             self = ctx.label,
-        )
+        ),
     )

@@ -96,18 +96,18 @@ cc_library(
 
 py_extension(
     name = "ext_limited",
+    py_limited_api = "3.8",
     static_deps = [":ext_limited_impl"],
-    py_limited_api = '3.8'
 )
 
 cc_library(
     name = "ext_limited_impl",
     srcs = ["ext_limited.c"],
-    defines = ["Py_LIMITED_API=0x3080000"],
     copts = [
         "-fPIC",
         "-fvisibility=hidden",
     ],
+    defines = ["Py_LIMITED_API=0x3080000"],
     deps = [
         "@rules_python//python/cc:current_py_cc_headers",
     ],
