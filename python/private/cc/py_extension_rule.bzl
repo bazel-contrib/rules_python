@@ -181,18 +181,11 @@ extension.
         default = ""
     ),
     "_constraints": lambda: attrb.LabelList(
-        default = [
-            "@platforms//os:linux",
-            "@platforms//os:macos",
-            "@platforms//os:windows",
-            "@platforms//cpu:x86_64",
-            "@platforms//cpu:aarch64",
-            "@platforms//cpu:armv7",
-            "@platforms//cpu:i386",
-            "@platforms//cpu:ppc",
-            "@platforms//cpu:riscv64",
-            "@platforms//cpu:s390x",
-        ],
+        default = sorted({
+            c: None
+            for info in PLATFORMS.values()
+            for c in info.compatible_with
+        }.keys()),
     ),
 }
 
