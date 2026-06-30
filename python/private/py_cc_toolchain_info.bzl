@@ -17,6 +17,11 @@
 PyCcToolchainInfo = provider(
     doc = "C/C++ information about the Python runtime.",
     fields = {
+        "abi_tag": """\
+:type: str
+
+The ABI tag for extension modules, e.g. 'cpython-311' or 'cpython-313t'.
+""",
         "headers": """\
 :type: struct
 

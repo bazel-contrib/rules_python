@@ -45,7 +45,14 @@ def _py_cc_toolchain_impl(ctx):
     else:
         headers_abi3 = None
 
+    abi_tag = ctx.attr.abi_tag
+    if not abi_tag:
+        # Derive default: cpython-XX
+        version_parts = ctx.attr.python_version.split(".")
+        abi_tag = "cpython-{}{}".format(version_parts[0], version_parts[1])
+
     py_cc_toolchain = PyCcToolchainInfo(
+        abi_tag = abi_tag,
         headers = struct(
             providers_map = {
                 "CcInfo": ctx.attr.headers[CcInfo],
@@ -67,6 +74,10 @@ def _py_cc_toolchain_impl(ctx):
 py_cc_toolchain = rule(
     implementation = _py_cc_toolchain_impl,
     attrs = {
+        "abi_tag": attr.string(
+            doc = "The ABI tag for extension modules, e.g. 'cpython-311'",
+            default = "",
+        ),
         "headers": attr.label(
             doc = ("Target that provides the Python headers. Typically this " +
                    "is a cc_library target."),
