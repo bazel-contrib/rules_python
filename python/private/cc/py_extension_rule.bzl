@@ -10,7 +10,7 @@ load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
-load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
 
 def _py_extension_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
@@ -65,15 +65,14 @@ def _py_extension_impl(ctx):
             ext=ext,
         )
     else:
-        py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
-        py_runtime = py_toolchain.py3_runtime
+        py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+        py_cc_toolchain = py_toolchain.py_cc_toolchain
         platform_tag = _get_platform(ctx, cc_toolchain)
-        output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
+        output_filename = "{module_name}.{abi_tag}-{platform}.{ext}".format(
             module_name = module_name,
-            pyc_tag = py_runtime.pyc_tag,      # e.g. "cpython-311"
-            abi_flags = py_runtime.abi_flags,  # e.g. "" or "d"
-            platform = platform_tag,           # e.g. "x86_64-linux-gnu"
-            ext = "so",
+            abi_tag = py_cc_toolchain.abi_tag,
+            platform = platform_tag,
+            ext = ext,
         )
     py_dso = ctx.actions.declare_file(output_filename)
 
@@ -211,7 +210,7 @@ def create_py_extension_rule_builder(**kwargs):
         attrs = PY_EXTENSION_ATTRS,
         provides = [PyInfo, CcInfo],
         toolchains = [
-            ruleb.ToolchainType(TARGET_TOOLCHAIN_TYPE),
+            ruleb.ToolchainType(PY_CC_TOOLCHAIN_TYPE),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type"),
         ],
         fragments = ["cpp"],
