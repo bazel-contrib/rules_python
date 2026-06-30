@@ -22,9 +22,9 @@ def py_extension(**kwargs):
     else:
         if "libc" not in kwargs:
             kwargs["libc"] = select({
-                "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
-                "@rules_python//python/config_settings:_is_py_linux_libc_glibc": "glibc",
                 "//conditions:default": "glibc",
+                "@rules_python//python/config_settings:_is_py_linux_libc_glibc": "glibc",
+                "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
             })
         _py_extension(**kwargs)
 
