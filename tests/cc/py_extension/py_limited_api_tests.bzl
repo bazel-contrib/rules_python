@@ -16,7 +16,6 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
-load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", "util")
 load("//python/cc:py_extension.bzl", "py_extension")
 
