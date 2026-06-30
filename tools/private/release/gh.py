@@ -162,6 +162,22 @@ def create_pr(version, issue_num):
     )
 
 
+def get_open_pr(branch_name):
+    """Returns PR info if an open PR exists for the given branch, else None."""
+    cmd = [
+        "gh",
+        "pr",
+        "list",
+        f"--repo={_REPO}",
+        f"--head={branch_name}",
+        "--state=open",
+        "--json=number,url",
+    ]
+    output = run_cmd(*cmd)
+    prs = json.loads(output) if output else []
+    return prs[0] if prs else None
+
+
 def get_pr_info(pr_num):
     """Gets information about a PR, including state, merge commit, and body."""
     output = run_cmd(

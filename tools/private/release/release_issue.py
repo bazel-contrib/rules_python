@@ -60,3 +60,69 @@ def update_task_in_body(body, task_name, checked, metadata):
         )
 
     return "\n".join(updated_lines)
+
+
+def parse_checklist_state(body):
+    """Parses the main checklist tasks and their metadata."""
+    state = {
+        "prepare_release": {
+            "checked": False,
+            "status": None,
+            "pr": None,
+            "commit": None,
+        },
+        "create_branch": {
+            "checked": False,
+            "status": None,
+            "branch": None,
+            "commit": None,
+        },
+        "tag_final": {"checked": False, "status": None, "tag": None, "commit": None},
+        "rc_tags": {},  # Dynamically mapped: int -> metadata dict
+    }
+
+    lines = body.splitlines()
+    for line in lines:
+        parsed = parse_metadata_line(line)
+        if not parsed:
+            continue
+
+        name = parsed["name"].strip()
+        meta = parsed["metadata"]
+        checked = parsed["checked"]
+        name_lower = name.lower()
+
+        if "prepare release" in name_lower:
+            state["prepare_release"] = {
+                "checked": checked,
+                "status": meta.get("status"),
+                "pr": meta.get("pr"),
+                "commit": meta.get("commit"),
+            }
+        elif "create release branch" in name_lower:
+            state["create_branch"] = {
+                "checked": checked,
+                "status": meta.get("status"),
+                "branch": meta.get("branch"),
+                "commit": meta.get("commit"),
+            }
+        elif "tag final" in name_lower:
+            state["tag_final"] = {
+                "checked": checked,
+                "status": meta.get("status"),
+                "tag": meta.get("tag"),
+                "commit": meta.get("commit"),
+            }
+        else:
+            # Match Tag RC<num>
+            rc_match = re.match(r"Tag RC(\d+)", name, re.IGNORECASE)
+            if rc_match:
+                rc_num = int(rc_match.group(1))
+                state["rc_tags"][rc_num] = {
+                    "checked": checked,
+                    "status": meta.get("status"),
+                    "tag": meta.get("tag"),
+                    "commit": meta.get("commit"),
+                }
+
+    return state

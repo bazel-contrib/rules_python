@@ -2,7 +2,10 @@ import datetime
 import pathlib
 
 from tools.private.release import changelog_news, gh, git
-from tools.private.release.release_issue import update_task_in_body
+from tools.private.release.release_issue import (
+    parse_checklist_state,
+    update_task_in_body,
+)
 from tools.private.release.utils import (
     determine_next_version,
     replace_version_next,
@@ -102,26 +105,47 @@ def cmd_prepare(args):
         print(f"[DRY RUN] Would push branch {branch_name} to origin")
     else:
         modified_files = git.status()
-        if not modified_files:
+        if modified_files:
+            # Stage all modified and deleted tracked files
+            git.add_modified_and_deleted()
+            git.commit(f"Prepare release {version}")
+        else:
             print("No files modified by the release tool. Nothing to commit.")
-            return 0
 
-        # Stage all modified and deleted tracked files
-        git.add_modified_and_deleted()
-
-        git.commit(f"Prepare release {version}")
+        print(f"Pushing branch {branch_name} to origin...")
         git.push("origin", branch_name, set_upstream=True)
 
     # --- Create PR ---
-    if args.dry_run:
-        target_issue = f"#{issue_num}" if issue_num else "<NEW_ISSUE>"
+    # Determine if we need to create a PR or reuse an existing one
+    open_pr = gh.get_open_pr(branch_name)
+    associated_pr = None
+
+    if not open_pr and issue_num:
+        body = gh.get_issue_body(issue_num)
+        state = parse_checklist_state(body)
+        associated_pr = state["prepare_release"]["pr"]
+
+    if open_pr:
+        pr_num = open_pr["number"]
+        pr_url = open_pr["url"]
+        print(f"Open Pull Request already exists: {pr_url} (PR #{pr_num})")
+    elif associated_pr:
+        pr_num = associated_pr.lstrip("#")
+        pr_url = f"https://github.com/bazel-contrib/rules_python/pull/{pr_num}"
         print(
-            f"[DRY RUN] Would create Pull Request for branch {branch_name} targeting issue {target_issue}"
+            f"PR #{pr_num} is already associated in tracking issue #{issue_num}. Using it."
         )
     else:
-        pr_url = gh.create_pr(version, issue_num)
-        pr_num = pr_url.split("/")[-1]
-        print(f"Created Pull Request: {pr_url} (PR #{pr_num})")
+        if args.dry_run:
+            target_issue = f"#{issue_num}" if issue_num else "<NEW_ISSUE>"
+            print(
+                f"[DRY RUN] Would create Pull Request for branch {branch_name} targeting issue {target_issue}"
+            )
+            pr_num = "<NEW_PR>"
+        else:
+            pr_url = gh.create_pr(version, issue_num)
+            pr_num = pr_url.split("/")[-1]
+            print(f"Created Pull Request: {pr_url} (PR #{pr_num})")
 
     # --- Update checklist ---
     if args.dry_run:

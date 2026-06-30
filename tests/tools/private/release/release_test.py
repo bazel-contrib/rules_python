@@ -35,6 +35,7 @@ def _mock_git_and_gh(test_case):
     mock_git.branch_exists.return_value = False
     mock_git.tag_exists.return_value = False
     mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError("Not found")
+    mock_gh.get_open_pr.return_value = None
 
 
 class TempDirTestCase(unittest.TestCase):
@@ -798,6 +799,100 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_git.fetch.assert_called_once()
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_git.add_modified_and_deleted.assert_not_called()
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_use_associated_pr_from_tracking_issue(
+        self, mock_replace, mock_changelog
+    ):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", ""]
+        self.mock_git.branch_exists.return_value = True
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.get_open_pr.return_value = None
+        # PR #456 is already associated in the tracking issue
+        self.mock_gh.get_issue_body.return_value = (
+            "- [ ] Prepare Release | status=pending pr=#456"
+        )
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_called_once_with("prepare-2.0.0")
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "origin", "prepare-2.0.0", set_upstream=True
+        )
+        self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
+        self.mock_gh.create_pr.assert_not_called()  # Should NOT create a new PR
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertIn("pr=#456", call_args[1])
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_create_pr_when_none_associated(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", ""]
+        self.mock_git.branch_exists.return_value = True
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.get_open_pr.return_value = None
+        # No PR associated in the tracking issue
+        self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/789"
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_called_once_with("prepare-2.0.0")
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "origin", "prepare-2.0.0", set_upstream=True
+        )
+        self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
+        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertIn("pr=#789", call_args[1])
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_reuse_existing_pr(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", ""]
+        self.mock_git.branch_exists.return_value = True
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.get_open_pr.return_value = {
+            "number": 456,
+            "url": "https://github.com/foo/bar/pull/456",
+        }
+        self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_called_once_with("prepare-2.0.0")
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "origin", "prepare-2.0.0", set_upstream=True
+        )
+        self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
+        self.mock_gh.create_pr.assert_not_called()
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertIn("pr=#456", call_args[1])
 
     @patch("tools.private.release.prepare.changelog_news")
     @patch("tools.private.release.prepare.replace_version_next")
