@@ -124,7 +124,6 @@ def _py_extension_impl(ctx):
         propagated_cc_info,
     ]
 
-_MaybeBuiltinPyInfo = [[BuiltinPyInfo]] if BuiltinPyInfo != None else []
 
 PY_EXTENSION_ATTRS = COMMON_ATTRS | {
     "dynamic_deps": lambda: attrb.LabelList(
