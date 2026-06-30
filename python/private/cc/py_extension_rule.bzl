@@ -81,12 +81,6 @@ def _py_extension_impl(ctx):
 
     # Add target-level linkopts last so users can override.
     user_link_flags.extend(ctx.attr.linkopts)
-    print((
-        "===LINK:\n" +
-        "  user_link_flags={user_link_flags}"
-    ).format(
-        user_link_flags = user_link_flags,
-    ))
 
     # todo: add linker script to hide symbols by default
     # py_internal allows using some private apis, which may or may not be needed.
@@ -104,12 +98,6 @@ def _py_extension_impl(ctx):
         # todo: maybe variables_extension
         # todo: maybe additional_outputs
     )
-    print((
-        "===LINK OUTPUT:\n" +
-        "  {}"
-    ).format(
-        cc_linking_outputs,
-    ))
 
     # Propagate CcInfo from dynamic and external deps, but not static ones.
     dynamic_cc_info = CcInfo(linking_context = dynamic_linking_context)
