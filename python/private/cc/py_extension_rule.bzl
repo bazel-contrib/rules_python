@@ -164,10 +164,6 @@ The minimum Python version to target for the Limited API (e.g., '3.8').
 If set to a version string (e.g., '3.8') instead of '' (empty string):
   - Configures the output filename to use the simple '.abi3' suffix
     (e.g., 'ext.abi3.so').
-  - Strictly validates that all linked C++ dependencies (static_deps,
-    dynamic_deps, etc.) are binary-compatible with this target version,
-    failing the build if a dependency is missing the 'Py_LIMITED_API'
-    define or targets a newer version.
 
 Note: Since the py_extension rule only links pre-compiled libraries,
 you must manually add the preprocessor macro to the cc_library targets
