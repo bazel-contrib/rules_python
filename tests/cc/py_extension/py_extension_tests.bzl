@@ -58,7 +58,6 @@ def _test_dynamic_deps_impl(env, target):
     )
 
     # CcInfo from dynamic_deps should be propagated.
-    print(cc_info.linking_context.linker_inputs.to_list())
     env.expect.that_collection(cc_info.linking_context.linker_inputs.to_list()).has_size(1)
 
 def _test_dynamic_deps(name):
