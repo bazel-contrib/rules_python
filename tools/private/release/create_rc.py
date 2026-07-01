@@ -53,7 +53,7 @@ def cmd_create_rc(args):
     # Determine next RC tag
     git.fetch(args.remote)
     git.fetch(args.remote, tags=True, force=True)
-    latest_rc = get_latest_rc_tag(version)
+    latest_rc = get_latest_rc_tag(version, remote=args.remote)
 
     if not latest_rc:
         next_rc_num = 0

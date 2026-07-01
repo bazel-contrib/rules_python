@@ -34,6 +34,7 @@ def _mock_git_and_gh(test_case):
     # Apply safe defaults
     mock_git.get_current_branch.return_value = None
     mock_git.get_tags.return_value = []
+    mock_git.get_remote_tags.return_value = []
     mock_git.get_tags_at_head.return_value = []
     mock_git.status.return_value = ""
     mock_git.branch_exists.return_value = False
@@ -588,6 +589,17 @@ class GetLatestRcTagTest(unittest.TestCase):
         mock_get_tags.return_value = ["v2.0.0-rc0", "2.0.0-rc1"]
         self.assertEqual(utils.get_latest_rc_tag("2.0.0"), "2.0.0-rc1")
 
+    @patch("tools.private.release.git.get_remote_tags")
+    def test_get_latest_rc_tag_remote_success(self, mock_get_remote_tags):
+        mock_get_remote_tags.return_value = [
+            "2.0.0-rc0",
+            "2.0.0-rc2",
+            "2.0.0-rc1",
+            "2.1.0-rc0",
+        ]
+        self.assertEqual(utils.get_latest_rc_tag("2.0.0", remote="origin"), "2.0.0-rc2")
+        mock_get_remote_tags.assert_called_once_with("origin")
+
 
 class DetermineNextVersionTest(TempDirTestCase):
     def setUp(self):
@@ -942,7 +954,7 @@ class CmdCreateRcTest(unittest.TestCase):
 - [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
 - [ ] Tag RC0 | status=pending
 """
-        self.mock_git.get_tags.return_value = []
+        self.mock_git.get_remote_tags.return_value = []
         self.mock_git.get_tags_at_head.return_value = []
         self.mock_git.get_commit_sha.return_value = "1234567890"
 
@@ -988,7 +1000,7 @@ class CmdCreateRcTest(unittest.TestCase):
 - [x] Tag RC0 | status=done tag=2.0.0-rc0 commit=abcdef12
 - [ ] Tag RC1 | status=pending
 """
-        self.mock_git.get_tags.return_value = ["2.0.0-rc0"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0"]
         self.mock_git.get_tags_at_head.return_value = []
         self.mock_git.get_commit_sha.return_value = "1234567890"
 
@@ -1032,7 +1044,7 @@ class CmdCreateRcTest(unittest.TestCase):
 - [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
 - [ ] Tag RC0 | status=pending
 """
-        self.mock_git.get_tags.return_value = []
+        self.mock_git.get_remote_tags.return_value = []
         self.mock_git.get_tags_at_head.return_value = ["2.0.0-rc0"]
 
         # Act
@@ -1052,7 +1064,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_success(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=123, dry_run=False)
-        self.mock_git.get_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         self.mock_git.tag_exists.return_value = False
         initial_body = "- [ ] Tag Final"
@@ -1088,7 +1100,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_resolve_issue_success(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=None, dry_run=False)
-        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
         self.mock_gh.get_release_tracking_issue.side_effect = None
         self.mock_gh.get_release_tracking_issue.return_value = 123
@@ -1124,7 +1136,8 @@ class CmdPromoteRcTest(unittest.TestCase):
         # Arrange
         args = MagicMock(version=None, issue=123, dry_run=False)
         self.mock_git.get_current_branch.return_value = "release/2.0"
-        self.mock_git.get_tags.return_value = ["2.0.0", "2.0.1-rc0"]
+        self.mock_git.get_tags.return_value = ["2.0.0"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.1-rc0"]
         self.mock_git.get_commit_sha.return_value = "12345678"
         self.mock_git.tag_exists.return_value = False
         initial_body = "- [ ] Tag Final"
@@ -1136,7 +1149,8 @@ class CmdPromoteRcTest(unittest.TestCase):
         # Assert
         self.assertEqual(result, 0)
         self.mock_git.get_current_branch.assert_called_once()
-        self.assertTrue(self.mock_git.get_tags.call_count >= 2)
+        self.mock_git.get_tags.assert_called_once()
+        self.mock_git.get_remote_tags.assert_called_once_with("upstream")
 
         self.mock_git.checkout.assert_not_called()
         self.mock_git.get_commit_sha.assert_called_once_with("2.0.1-rc0")
@@ -1159,7 +1173,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_dry_run_success(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=123, dry_run=True)
-        self.mock_git.get_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         self.mock_git.tag_exists.return_value = False
         initial_body = "- [ ] Tag Final"
@@ -1183,7 +1197,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_tag_already_exists(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=123)
-        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = True
 
         # Act
@@ -1200,7 +1214,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_issue_not_found(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=None)
-        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
         self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
             "Not found"
@@ -1220,7 +1234,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_issue_malformed(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=123)
-        self.mock_git.get_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
         self.mock_git.tag_exists.return_value = False
         self.mock_git.get_commit_sha.return_value = "abcdef123456"
         initial_body = "malformed body"
@@ -1240,7 +1254,7 @@ class CmdPromoteRcTest(unittest.TestCase):
     def test_promote_rc_no_rc_found(self):
         # Arrange
         args = MagicMock(version="2.0.0", issue=123)
-        self.mock_git.get_tags.return_value = []
+        self.mock_git.get_remote_tags.return_value = []
 
         # Act
         result = releaser.cmd_promote_rc(args)

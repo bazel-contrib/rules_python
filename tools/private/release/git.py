@@ -150,3 +150,30 @@ def is_ancestor(ancestor, descendant):
         return True
     except subprocess.CalledProcessError:
         return False
+
+
+def get_remote_tags(remote: str) -> list[str]:
+    """Returns a list of tags present on the specified remote repository.
+
+    Args:
+        remote: The name of the git remote to query (e.g., 'origin', 'upstream').
+
+    Returns:
+        A list of tag names (strings) found on the remote, excluding peeled tags.
+    """
+    output = run_cmd("git", "ls-remote", "--tags", remote)
+    tags = []
+    for line in output.splitlines():
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        ref = parts[1]
+        if ref.startswith("refs/tags/"):
+            tag = ref[len("refs/tags/") :]
+            # Skip peeled tags (e.g. tag^{}) to avoid
+            # duplicate tag names in the output.
+            if not tag.endswith("^{}"):
+                tags.append(tag)
+    return tags
