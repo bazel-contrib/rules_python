@@ -465,14 +465,7 @@ def _python_impl(module_ctx):
         )
 
     if bazel_features.external_deps.extension_metadata_has_reproducible:
-        # Build the list of direct dependencies
-        root_direct_deps = ["pythons_hub", "python_versions"]
-
-        return module_ctx.extension_metadata(
-            root_module_direct_deps = root_direct_deps,
-            root_module_direct_dev_deps = [],
-            reproducible = True,
-        )
+        return module_ctx.extension_metadata(reproducible = True)
     else:
         return None
 

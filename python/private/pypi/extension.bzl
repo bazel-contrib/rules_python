@@ -367,9 +367,14 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
-            python_version = pip_attr.python_version or config.python_version
+            python_version = pip_attr.python_version
+            if not python_version and pip_attr.pyproject_toml:
+                pyproject = read_pyproject(module_ctx, pip_attr.pyproject_toml)
+                if pyproject.requires_python:
+                    python_version = version_from_requires_python(pyproject.requires_python)
+            python_version = python_version or config.python_version
             if not python_version:
-                _fail("pip.parse() requires either python_version attribute or pip.default(pyproject_toml=...) to be set")
+                _fail("pip.parse() requires one of `python_version`, `pyproject_toml`, or `pip.default(pyproject_toml=...)` to be set")
 
             hub_name = pip_attr.hub_name
             if hub_name == "pypi":
@@ -722,8 +727,10 @@ When specified, reads the `requires-python` field from pyproject.toml and uses
 it as the default python_version for all `pip.parse()` calls that don't
 explicitly specify one.
 
+:::{note}
 The version must be specified as `==X.Y.Z` (exact version with full semver).
 This is designed to work with dependency management tools like Renovate.
+:::
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
@@ -897,6 +904,21 @@ find in case extra indexes are specified.
 """,
             default = True,
         ),
+        "pyproject_toml": attr.label(
+            mandatory = False,
+            doc = """\
+Label pointing to a pyproject.toml file to read the Python version from.
+When specified, the `requires-python` field is used as the `python_version`
+for this `pip.parse()` call, unless `python_version` is set explicitly.
+
+:::{note}
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "python_version": attr.string(
             mandatory = False,
             doc = """
@@ -909,6 +931,11 @@ a corresponding `python.toolchain()` configured.
 
 :::{seealso}
 The {obj}`pyproject_toml` attribute for getting the version from a project file.
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+No longer mandatory if the {obj}`pyproject_toml` attribute or
+{obj}`pip.default.pyproject_toml` is specified.
 :::
 """,
         ),

@@ -38,6 +38,9 @@ def version_from_requires_python(requires_python):
     Returns:
         {type}`str` the normalized version string (e.g. `"3.13.9"`).
     """
+    if not requires_python:
+        fail("`requires-python` must be specified")
+
     if not requires_python.startswith("=="):
         fail("`requires-python` must pin an exact version with `==`, got: {}".format(requires_python))
 
