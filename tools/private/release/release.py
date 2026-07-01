@@ -8,12 +8,12 @@ import re
 import sys
 
 from tools.private.release import changelog_news, gh, git
+from tools.private.release.create_rc import cmd_create_rc
 from tools.private.release.create_release_branch import cmd_create_release_branch
 from tools.private.release.prepare import cmd_prepare
 from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
-    parse_checklist_state,
-    parse_metadata_line,
+    parse_backports,
     update_task_in_body,
 )
 from tools.private.release.utils import (
@@ -34,35 +34,6 @@ def _semver_type(value):
 # ==============================================================================
 # Checklist Parser and Formatter (Using new | key=value syntax)
 # ==============================================================================
-
-
-def parse_backports(body):
-    """Parses the ## Backports checklist section."""
-    body = body.replace("\r\n", "\n")
-    match = re.search(
-        r"## Backports\n(.*?)(?=\n##|\n---|\Z)", body, re.DOTALL | re.IGNORECASE
-    )
-    if not match:
-        return []
-
-    section_content = match.group(1)
-    items = []
-    lines = section_content.splitlines()
-
-    for line in lines:
-        parsed = parse_metadata_line(line)
-        if parsed:
-            items.append(
-                {
-                    "pr_ref": parsed["name"],
-                    "checked": parsed["checked"],
-                    "status": parsed["metadata"].get("status", "PENDING"),
-                    "rc": parsed["metadata"].get("rc"),
-                    "commit": parsed["metadata"].get("commit"),
-                    "metadata": parsed["metadata"],
-                }
-            )
-    return items
 
 
 # ==============================================================================
@@ -263,104 +234,6 @@ def cmd_process_backports(args):
     return 0
 
 
-def cmd_create_rc(args):
-    """Executes the create-rc subcommand."""
-    body = gh.get_issue_body(args.issue)
-    state = parse_checklist_state(body)
-
-    if (
-        state["prepare_release"]["status"] != "done"
-        or state["create_branch"]["status"] != "done"
-    ):
-        print(
-            "Error: Preconditions not met (release must be prepared and branch created)."
-        )
-        return 1
-
-    # Gating: RC tagging is blocked if any backport is unchecked OR does not have status=done
-    backports = parse_backports(body)
-    conflicting_or_pending = [
-        b for b in backports if not b["checked"] or b["status"] != "done"
-    ]
-    if conflicting_or_pending:
-        print(
-            f"Gating RC tagging: {len(conflicting_or_pending)} backports are still"
-            " unfinished, failed, or in conflict."
-        )
-        return 1
-
-    # Resolve version and branch
-    issue_title = gh.get_issue_title(args.issue)
-    version_match = RELEASE_TITLE_RE.search(issue_title)
-    if not version_match:
-        print(f"Error: Could not parse version from issue title: {issue_title}")
-        return 1
-
-    version = version_match.group(1)
-    branch_version = ".".join(version.split(".")[:2])
-    branch_name = f"release/{branch_version}"
-
-    # Determine next RC tag
-    git.fetch("--tags", "--force")
-    latest_rc = get_latest_rc_tag(version)
-
-    if not latest_rc:
-        next_rc_num = 0
-        next_rc = f"{version}-rc0"
-    else:
-        rc_num = int(latest_rc.split("-rc")[-1])
-        next_rc_num = rc_num + 1
-        next_rc = f"{version}-rc{next_rc_num}"
-
-    # Precheck: next RC number must exist and be unchecked in the checklist
-    rc_tags = state.get("rc_tags", {})
-    if next_rc_num not in rc_tags:
-        print(
-            f"Error: Checklist is missing required task 'Tag RC{next_rc_num}'"
-            f" to cut {version}-rc{next_rc_num}."
-        )
-        return 1
-
-    target_rc_task = rc_tags[next_rc_num]
-    if target_rc_task["checked"] or target_rc_task["status"] == "done":
-        print(
-            f"Error: Task 'Tag RC{next_rc_num}' is already marked done in the checklist."
-        )
-        return 1
-
-    # Verify HEAD is not already tagged
-    git.checkout(branch_name)
-    head_tags = git.get_tags_at_head()
-    if any(tag.startswith(f"{version}-rc") for tag in head_tags):
-        print(f"HEAD of {branch_name} is already tagged with an RC. Skipping.")
-        return 0
-
-    print(f"Tagging and pushing next RC: {next_rc}...")
-    git.tag(next_rc, "HEAD")
-    git.push("origin", next_rc)
-
-    commit_sha = git.get_commit_sha("HEAD")
-
-    # Check off the appropriate "Tag RC{N}" task in the checklist
-    print(f"Checking off Tag RC{next_rc_num} task...")
-    metadata = {"status": "done", "tag": next_rc, "commit": commit_sha[:8]}
-    task_name = f"Tag RC{next_rc_num}"
-    updated_body = update_task_in_body(body, task_name, checked=True, metadata=metadata)
-    gh.update_issue_body(args.issue, updated_body)
-
-    tag_url = f"{REPO_URL}/releases/tag/{next_rc}"
-    bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+{version}"
-    comment_body = f"""🚀 **New Release Candidate Tagged!**
-
-Release Candidate **{next_rc}** has been successfully generated and tagged on branch `{branch_name}`.
-
-View Tag: [{next_rc}]({tag_url})
-Track BCR Progress: [Search BCR Pull Requests]({bcr_search_url})"""
-    gh.post_issue_comment(args.issue, comment_body)
-    print("RC creation completed successfully!")
-    return 0
-
-
 def cmd_promote_rc(args):
     """Executes the promote-rc subcommand (Phase 3)."""
     version = args.version
@@ -548,6 +421,12 @@ def create_parser():
         type=int,
         required=True,
         help="The tracking issue number (required).",
+    )
+    create_rc_parser.add_argument(
+        "--remote",
+        type=str,
+        required=True,
+        help="The git remote to push the RC tag to (required).",
     )
 
     # Subcommand: promote-rc

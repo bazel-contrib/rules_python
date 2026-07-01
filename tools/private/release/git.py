@@ -132,3 +132,21 @@ def get_tags_at_head():
 def get_current_branch():
     """Returns the current git branch name."""
     return run_cmd("git", "rev-parse", "--abbrev-ref", "HEAD")
+
+
+def remote_branch_exists(remote, branch_name):
+    """Returns True if a remote branch exists."""
+    try:
+        run_cmd("git", "show-ref", "--verify", f"refs/remotes/{remote}/{branch_name}")
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def is_ancestor(ancestor, descendant):
+    """Returns True if ancestor is an ancestor of descendant (fast-forwardable)."""
+    try:
+        run_cmd("git", "merge-base", "--is-ancestor", ancestor, descendant)
+        return True
+    except subprocess.CalledProcessError:
+        return False

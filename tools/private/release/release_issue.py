@@ -128,3 +128,32 @@ def parse_checklist_state(body):
                 }
 
     return state
+
+
+def parse_backports(body):
+    """Parses the ## Backports checklist section."""
+    body = body.replace("\r\n", "\n")
+    match = re.search(
+        r"## Backports\n(.*?)(?=\n##|\n---|\Z)", body, re.DOTALL | re.IGNORECASE
+    )
+    if not match:
+        return []
+
+    section_content = match.group(1)
+    items = []
+    lines = section_content.splitlines()
+
+    for line in lines:
+        parsed = parse_metadata_line(line)
+        if parsed:
+            items.append(
+                {
+                    "pr_ref": parsed["name"],
+                    "checked": parsed["checked"],
+                    "status": parsed["metadata"].get("status", "PENDING"),
+                    "rc": parsed["metadata"].get("rc"),
+                    "commit": parsed["metadata"].get("commit"),
+                    "metadata": parsed["metadata"],
+                }
+            )
+    return items

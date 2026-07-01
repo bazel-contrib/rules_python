@@ -44,11 +44,33 @@ def cmd_create_release_branch(args):
 
     # Create and push branch without affecting local checkout
     git.fetch(args.remote)
-    ref_spec = f"{commit_sha}:refs/heads/{branch_name}"
-    git.push(args.remote, ref_spec)
-    print(
-        f"Successfully pushed branch {branch_name} pointing to {commit_sha} to {args.remote}"
-    )
+
+    if git.remote_branch_exists(args.remote, branch_name):
+        remote_ref = f"{args.remote}/{branch_name}"
+        remote_sha = git.get_commit_sha(remote_ref)
+        if remote_sha == commit_sha:
+            print(
+                f"Branch {branch_name} already exists on {args.remote} and points to {commit_sha}. Skipping push."
+            )
+        elif git.is_ancestor(remote_ref, commit_sha):
+            print(
+                f"Branch {branch_name} exists on {args.remote} but can be fast-forwarded to {commit_sha}. Pushing..."
+            )
+            ref_spec = f"{commit_sha}:refs/heads/{branch_name}"
+            git.push(args.remote, ref_spec)
+        else:
+            print(
+                f"Error: Branch {branch_name} already exists on {args.remote} at {remote_sha[:8]}, "
+                f"which is not an ancestor of {commit_sha[:8]}. Cannot fast-forward."
+            )
+            return 1
+    else:
+        print(f"Branch {branch_name} does not exist on {args.remote}. Pushing...")
+        ref_spec = f"{commit_sha}:refs/heads/{branch_name}"
+        git.push(args.remote, ref_spec)
+        print(
+            f"Successfully pushed branch {branch_name} pointing to {commit_sha} to {args.remote}"
+        )
 
     # Update tracking issue checklist
     print("Updating tracking issue checklist...")

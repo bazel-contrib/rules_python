@@ -10,6 +10,7 @@ py_library(
 py_binary(
     name = "release",
     srcs = [
+        "create_rc.py",
         "create_release_branch.py",
         "gh.py",
         "git.py",
