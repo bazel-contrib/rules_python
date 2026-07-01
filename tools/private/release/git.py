@@ -11,12 +11,28 @@ def get_tags():
     return output.splitlines() if output else []
 
 
-def checkout(ref, create_branch=False):
-    """Checks out a git reference (tag, branch, or commit)."""
+def checkout(
+    ref: str, create_branch: bool = False, track_remote: str | None = None
+) -> None:
+    """Checks out a git reference (tag, branch, or commit).
+
+    Args:
+        ref: The git reference (tag, branch, or commit) to checkout.
+        create_branch: If True, creates the branch before checking it out.
+        track_remote: If specified, checks out the branch tracking this remote's
+            corresponding branch.
+    """
+    cmd = ["git", "checkout"]
     if create_branch:
-        run_cmd("git", "checkout", "-b", ref, capture_output=False)
+        cmd.append("-b")
+    if track_remote:
+        if branch_exists(ref):
+            cmd.append(ref)
+        else:
+            cmd.extend(["--track", f"{track_remote}/{ref}"])
     else:
-        run_cmd("git", "checkout", ref, capture_output=False)
+        cmd.append(ref)
+    run_cmd(*cmd, capture_output=False)
 
 
 def add(*files):

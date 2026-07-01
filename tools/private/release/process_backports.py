@@ -109,7 +109,7 @@ def cmd_process_backports(args):
     sorted_shas = git.sort_commits_chronologically(shas)
 
     git.fetch(args.remote)
-    git.checkout(branch_name)
+    git.checkout(branch_name, track_remote=args.remote)
 
     for sha in sorted_shas:
         item = sha_to_item[sha]

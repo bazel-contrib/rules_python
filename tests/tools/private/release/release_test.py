@@ -1462,7 +1462,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.fetch.assert_has_calls(
             [call("origin", tags=True, force=True), call("origin")]
         )
-        self.mock_git.checkout.assert_called_once_with("release/2.0")
+        self.mock_git.checkout.assert_called_once_with(
+            "release/2.0", track_remote="origin"
+        )
         self.mock_git.cherry_pick.assert_called_once_with("abcdef12", no_commit=False)
         self.mock_changelog_news.update_changelog.assert_called_once_with(
             "2.0.0", "2026-07-01"
@@ -1507,7 +1509,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.fetch.assert_has_calls(
             [call("origin", tags=True, force=True), call("origin")]
         )
-        self.mock_git.checkout.assert_called_once_with("release/2.0")
+        self.mock_git.checkout.assert_called_once_with(
+            "release/2.0", track_remote="origin"
+        )
         self.mock_git.cherry_pick.assert_called_once_with("abcdef12", no_commit=True)
         self.mock_changelog_news.update_changelog.assert_called_once_with(
             "2.0.0", "2026-07-01"
@@ -1607,7 +1611,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         result = releaser.cmd_process_backports(args)
 
         self.assertEqual(result, 1)
-        self.mock_git.checkout.assert_called_once_with("release/2.0")
+        self.mock_git.checkout.assert_called_once_with(
+            "release/2.0", track_remote="origin"
+        )
         self.mock_git.cherry_pick.assert_called_once_with("abcdef12", no_commit=False)
         self.mock_git.cherry_pick_abort.assert_called_once()
 
