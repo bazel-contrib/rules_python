@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   cut_branch:
-    # Run only if the issue has the type:release label
-    if: contains(github.event.issue.labels.*.name, 'type:release')
+    # Run only if the issue has the type: release label
+    if: contains(github.event.issue.labels.*.name, 'type: release')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -32,6 +32,6 @@ jobs:
       - name: Attempt Branch Creation
         run: |
           bazel run //tools/private/release -- \
-            create-release-branch --issue ${{ github.event.issue.number }}
+            create-release-branch --issue ${{ github.event.issue.number }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

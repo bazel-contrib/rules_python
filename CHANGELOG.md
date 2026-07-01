@@ -29,6 +29,45 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-2-0}
+## [2.2.0] - 2026-06-30
+
+[2.2.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.2.0
+
+{#v2-2-0-changed}
+### Changed
+* Renamed most public bzl_library targets from `{foo}_bzl` to `{foo}` to follow
+gazelle naming conventions. Deprecated aliases are left for backwards
+compatibility.
+* (binaries/tests) Added a deprecation warning for targets relying on implicit `__init__.py` creation.
+
+{#v2-2-0-fixed}
+### Fixed
+* Fixed a flaky error on Windows 2022 when looking up the win32 version during
+site initialization by retrying the lookup
+([#3721](https://github.com/bazel-contrib/rules_python/issues/3721)).
+* (coverage) Skip lcov report when no data was collected.
+* (pypi) Fixed `experimental_index_url` checking truthiness before envsubst
+expansion.
+* (rules) Fixed venv output paths for `py_binary` and `py_test` targets whose
+names contain path separators so distinct targets with the same basename no
+longer share the same venv output directory.
+
+{#v2-2-0-added}
+### Added
+* Added {bzl:obj}`features.loadable_symbols` to allow detecting public symbols
+exported by bzl files.
+* Exposed {bzl:obj}`VenvSymlinkEntry` and {bzl:obj}`VenvSymlinkKind` in
+{bzl:target}`//python:py_info.bzl`.
+* (pypi) Added `@pypi` repo: a unified hub of `pip.parse` hubs.
+* (uv) Support for basic `uv.lock` generation via the `lock` rule
+and basic support for importing the `uv.lock` file itself. Since this
+may have bugs, please report this by creating new tickets.
+Work towards [#2787](https://github.com/bazel-contrib/rules_python/issues/2787)
+and [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
+
+
+
 {#v2-1-0}
 ## [2.1.0] - 2026-06-17
 

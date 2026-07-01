@@ -113,7 +113,8 @@ def cmd_prepare(args):
             print("No files modified by the release tool. Nothing to commit.")
 
         print(f"Pushing branch {branch_name} to origin...")
-        git.push("origin", branch_name, set_upstream=True)
+        # Force push to overwrite the remote branch if it already exists (e.g. from a previous run)
+        git.push("origin", branch_name, set_upstream=True, force=True)
 
     # --- Create PR ---
     # Determine if we need to create a PR or reuse an existing one

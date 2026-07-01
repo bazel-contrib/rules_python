@@ -362,7 +362,7 @@ Values:
   specified concrete PyPI hub (corresponding to a
   {obj}`pip.parse.hub_name` value).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.2.0
 :::
 ::::
 

@@ -8,7 +8,7 @@ from packaging.version import parse as parse_version
 
 from tools.private.release import git
 
-_REPO_URL = "https://github.com/bazel-contrib/rules_python"
+REPO_URL = "https://github.com/bazel-contrib/rules_python"
 
 _EXCLUDE_PATTERNS = [
     "./.git/*",
@@ -67,9 +67,12 @@ def get_latest_version():
     return stable_versions[-1]
 
 
-def get_latest_rc_tag(version):
+def get_latest_rc_tag(version, remote=None):
     """Queries git tags and returns the highest RC tag for the version."""
-    tags = git.get_tags()
+    if remote:
+        tags = git.get_remote_tags(remote)
+    else:
+        tags = git.get_tags()
     pattern = rf"^{re.escape(version)}-rc\d+$"
     rc_tags = [tag.strip() for tag in tags if re.match(pattern, tag.strip())]
     if not rc_tags:
