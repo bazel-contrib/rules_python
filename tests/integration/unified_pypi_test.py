@@ -30,7 +30,7 @@ class UnifiedPypiTest(runner.TestCase):
         )
         self.assert_result_matches(
             result,
-            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_a".',
+            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_a"\\. Try adding it to the requirements of this hub',
         )
 
     def test_sibling_extra_alias_cquery_succeeds_but_build_fails(self):
@@ -43,7 +43,7 @@ class UnifiedPypiTest(runner.TestCase):
         )
         self.assert_result_matches(
             result,
-            'ERROR: PyPI package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b".',
+            'ERROR: PyPI package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b"\\. Try adding it to the requirements of this hub',
         )
 
     @contextlib.contextmanager
@@ -83,7 +83,7 @@ class UnifiedPypiTest(runner.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assert_result_matches(
             result,
-            'ERROR: PyPI package "declared_only_pkg" is not available when building under PyPI hub "pypi_b".',
+            'ERROR: PyPI package "declared_only_pkg" is not available when building under PyPI hub "pypi_b"\\. Try adding it to the requirements of this hub',
         )
 
     def test_unimplemented_declared_dep_alias_fails_build(self):
@@ -92,7 +92,7 @@ class UnifiedPypiTest(runner.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assert_result_matches(
             result,
-            'ERROR: PyPI package "declared_only_pkg:declared-only-alias" is not available when building under PyPI hub "pypi_b".',
+            'ERROR: PyPI package "declared_only_pkg:declared-only-alias" is not available when building under PyPI hub "pypi_b"\\. Try adding it to the requirements of this hub',
         )
 
 
