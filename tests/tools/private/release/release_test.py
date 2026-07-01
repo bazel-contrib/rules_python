@@ -35,7 +35,7 @@ def _mock_git_and_gh(test_case):
     mock_git.get_current_branch.return_value = None
     mock_git.get_tags.return_value = []
     mock_git.get_remote_tags.return_value = []
-    mock_git.get_tags_at_ref.return_value = []
+
     mock_git.status.return_value = ""
     mock_git.branch_exists.return_value = False
     mock_git.tag_exists.return_value = False
@@ -955,7 +955,6 @@ class CmdCreateRcTest(unittest.TestCase):
 - [ ] Tag RC0 | status=pending
 """
         self.mock_git.get_remote_tags.return_value = []
-        self.mock_git.get_tags_at_ref.return_value = []
         self.mock_git.get_commit_sha.return_value = "1234567890"
 
         # Act
@@ -967,7 +966,6 @@ class CmdCreateRcTest(unittest.TestCase):
             [call("my-remote"), call("my-remote", tags=True, force=True)]
         )
         self.mock_git.checkout.assert_not_called()
-        self.mock_git.get_tags_at_ref.assert_called_once_with("my-remote/release/2.0")
         self.mock_git.tag.assert_called_once_with("2.0.0-rc0", "my-remote/release/2.0")
         self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc0")
         self.mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
@@ -1003,7 +1001,6 @@ class CmdCreateRcTest(unittest.TestCase):
 - [ ] Tag RC1 | status=pending
 """
         self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0"]
-        self.mock_git.get_tags_at_ref.return_value = []
         self.mock_git.get_commit_sha.return_value = "1234567890"
 
         # Act
@@ -1015,7 +1012,6 @@ class CmdCreateRcTest(unittest.TestCase):
             [call("my-remote"), call("my-remote", tags=True, force=True)]
         )
         self.mock_git.checkout.assert_not_called()
-        self.mock_git.get_tags_at_ref.assert_called_once_with("my-remote/release/2.0")
         self.mock_git.tag.assert_called_once_with("2.0.0-rc1", "my-remote/release/2.0")
         self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc1")
         self.mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
@@ -1037,30 +1033,6 @@ class CmdCreateRcTest(unittest.TestCase):
             comment_call_args[1],
         )
         self.assertNotIn("🚀", comment_call_args[1])
-
-    def test_create_rc_already_tagged(self):
-        # Arrange
-        args = MagicMock(issue=123, remote="my-remote")
-        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
-## Checklist
-- [x] Prepare Release | status=done pr=#122 commit=abcdef12
-- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
-- [ ] Tag RC0 | status=pending
-"""
-        self.mock_git.get_remote_tags.return_value = []
-        self.mock_git.get_tags_at_ref.return_value = ["2.0.0-rc0"]
-
-        # Act
-        result = releaser.cmd_create_rc(args)
-
-        # Assert
-        self.assertEqual(result, 0)
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.get_tags_at_ref.assert_called_once_with("my-remote/release/2.0")
-        self.mock_git.tag.assert_not_called()
-        self.mock_git.push.assert_not_called()
-        self.mock_gh.update_issue_body.assert_not_called()
 
 
 class CmdPromoteRcTest(unittest.TestCase):
