@@ -79,18 +79,18 @@ def cmd_create_rc(args):
         )
         return 1
 
-    # Verify HEAD is not already tagged
-    git.checkout(f"{args.remote}/{branch_name}")
-    head_tags = git.get_tags_at_head()
-    if any(tag.startswith(f"{version}-rc") for tag in head_tags):
+    # Verify target commit is not already tagged
+    target_ref = f"{args.remote}/{branch_name}"
+    target_tags = git.get_tags_at_ref(target_ref)
+    if any(tag.startswith(f"{version}-rc") for tag in target_tags):
         print(f"HEAD of {branch_name} is already tagged with an RC. Skipping.")
         return 0
 
     print(f"Tagging and pushing next RC: {next_rc}...")
-    git.tag(next_rc, "HEAD")
+    git.tag(next_rc, target_ref)
     git.push(args.remote, next_rc)
 
-    commit_sha = git.get_commit_sha("HEAD")
+    commit_sha = git.get_commit_sha(target_ref)
 
     # Check off the appropriate "Tag RC{N}" task in the checklist
     print(f"Checking off Tag RC{next_rc_num} task...")
