@@ -125,7 +125,7 @@ def _VenvSymlinkEntryBuilder_typedef():
     :type: DepsetBuilder[File]
     :::
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.2.0
     :::
     """
 
@@ -677,7 +677,7 @@ def _PyInfoBuilder_new():
 def _PyInfoBuilder_add_venv_symlink(self):
     """Create and return a new VenvSymlinkEntryBuilder.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.2.0
     :::
 
     Args:

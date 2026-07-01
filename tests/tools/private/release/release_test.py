@@ -3,21 +3,56 @@ import pathlib
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, call, patch
 
-from tools.private.release import changelog_news, release as releaser
+from tools.private.release import changelog_news, release as releaser, utils
+from tools.private.release.gh import MultipleTrackingIssuesError, NoTrackingIssueError
 
 
-class ReleaserTest(unittest.TestCase):
+def _mock_git_and_gh(test_case):
+    mock_git = MagicMock()
+    mock_gh = MagicMock()
+    test_case.mock_git = mock_git
+    test_case.mock_gh = mock_gh
+
+    # Patch bindings in modules that import them at module level
+    patch("tools.private.release.release.git", new=mock_git).start()
+    patch("tools.private.release.prepare.git", new=mock_git).start()
+    patch("tools.private.release.create_release_branch.git", new=mock_git).start()
+    patch("tools.private.release.create_rc.git", new=mock_git).start()
+    patch("tools.private.release.utils.git", new=mock_git).start()
+
+    patch("tools.private.release.release.gh", new=mock_gh).start()
+    patch("tools.private.release.prepare.gh", new=mock_gh).start()
+    patch("tools.private.release.create_release_branch.gh", new=mock_gh).start()
+    patch("tools.private.release.create_rc.gh", new=mock_gh).start()
+    mock_gh.MultipleTrackingIssuesError = MultipleTrackingIssuesError
+    mock_gh.NoTrackingIssueError = NoTrackingIssueError
+
+    test_case.addCleanup(patch.stopall)
+
+    # Apply safe defaults
+    mock_git.get_current_branch.return_value = None
+    mock_git.get_tags.return_value = []
+    mock_git.get_remote_tags.return_value = []
+
+    mock_git.status.return_value = ""
+    mock_git.branch_exists.return_value = False
+    mock_git.tag_exists.return_value = False
+    mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError("Not found")
+    mock_gh.get_open_pr.return_value = None
+
+
+class TempDirTestCase(unittest.TestCase):
     def setUp(self):
         self.tmpdir = pathlib.Path(tempfile.mkdtemp())
         self.original_cwd = os.getcwd()
         self.addCleanup(shutil.rmtree, self.tmpdir)
-
         os.chdir(self.tmpdir)
-        # NOTE: On windows, this must be done before files are deleted.
         self.addCleanup(os.chdir, self.original_cwd)
 
+
+class ReleaserTest(TempDirTestCase):
     def test_update_changelog_with_news(self):
         # Arrange
         changelog = """# Changelog
@@ -431,7 +466,7 @@ blabla
 """
         (self.tmpdir / "mock_file.bzl").write_text(mock_file_content)
 
-        releaser.replace_version_next("0.28.0")
+        utils.replace_version_next("0.28.0")
 
         new_content = (self.tmpdir / "mock_file.bzl").read_text()
 
@@ -462,7 +497,7 @@ blabla
         version = "0.28.0"
 
         # Act
-        releaser.replace_version_next(version)
+        utils.replace_version_next(version)
 
         # Assert
         new_content = (bazel_dir / "mock_file.bzl").read_text()
@@ -490,64 +525,99 @@ blabla
 
 
 class GetLatestVersionTest(unittest.TestCase):
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_success(self, mock_get_tags):
         mock_get_tags.return_value = ["0.1.0", "1.0.0", "0.2.0"]
-        self.assertEqual(releaser.get_latest_version(), "1.0.0")
+        self.assertEqual(utils.get_latest_version(), "1.0.0")
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_rc_is_latest(self, mock_get_tags):
         mock_get_tags.return_value = ["0.1.0", "1.0.0", "1.1.0rc0"]
         with self.assertRaisesRegex(
             ValueError, "The latest version is a pre-release version: 1.1.0rc0"
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_no_tags(self, mock_get_tags):
         mock_get_tags.return_value = []
         with self.assertRaisesRegex(
             RuntimeError, "No git tags found matching X.Y.Z or X.Y.ZrcN format."
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_no_matching_tags(self, mock_get_tags):
         mock_get_tags.return_value = ["v1.0", "latest"]
         with self.assertRaisesRegex(
             RuntimeError, "No git tags found matching X.Y.Z or X.Y.ZrcN format."
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_tags")
     def test_get_latest_version_only_rc_tags(self, mock_get_tags):
         mock_get_tags.return_value = ["1.0.0rc0", "1.1.0rc0"]
         with self.assertRaisesRegex(
             ValueError, "The latest version is a pre-release version: 1.1.0rc0"
         ):
-            releaser.get_latest_version()
+            utils.get_latest_version()
 
 
-class DetermineNextVersionTest(unittest.TestCase):
+class GetLatestRcTagTest(unittest.TestCase):
+    @patch("tools.private.release.git.get_tags")
+    def test_get_latest_rc_tag_no_tags(self, mock_get_tags):
+        mock_get_tags.return_value = []
+        self.assertIsNone(utils.get_latest_rc_tag("2.0.0"))
+
+    @patch("tools.private.release.git.get_tags")
+    def test_get_latest_rc_tag_no_matching_tags(self, mock_get_tags):
+        mock_get_tags.return_value = ["1.0.0", "2.0.0", "v2.0.0-rc0", "2.1.0-rc0"]
+        self.assertIsNone(utils.get_latest_rc_tag("2.0.0"))
+
+    @patch("tools.private.release.git.get_tags")
+    def test_get_latest_rc_tag_success(self, mock_get_tags):
+        mock_get_tags.return_value = [
+            "2.0.0-rc0",
+            "2.0.0-rc2",
+            "2.0.0-rc1",
+            "2.1.0-rc0",
+        ]
+        self.assertEqual(utils.get_latest_rc_tag("2.0.0"), "2.0.0-rc2")
+
+    @patch("tools.private.release.git.get_tags")
+    def test_get_latest_rc_tag_ignores_v_prefix(self, mock_get_tags):
+        mock_get_tags.return_value = ["v2.0.0-rc0", "2.0.0-rc1"]
+        self.assertEqual(utils.get_latest_rc_tag("2.0.0"), "2.0.0-rc1")
+
+    @patch("tools.private.release.git.get_remote_tags")
+    def test_get_latest_rc_tag_remote_success(self, mock_get_remote_tags):
+        mock_get_remote_tags.return_value = [
+            "2.0.0-rc0",
+            "2.0.0-rc2",
+            "2.0.0-rc1",
+            "2.1.0-rc0",
+        ]
+        self.assertEqual(utils.get_latest_rc_tag("2.0.0", remote="origin"), "2.0.0-rc2")
+        mock_get_remote_tags.assert_called_once_with("origin")
+
+
+class DetermineNextVersionTest(TempDirTestCase):
     def setUp(self):
-        self.tmpdir = pathlib.Path(tempfile.mkdtemp())
-        self.original_cwd = os.getcwd()
-        self.addCleanup(shutil.rmtree, self.tmpdir)
-
-        os.chdir(self.tmpdir)
-        # NOTE: On windows, this must be done before files are deleted.
-        self.addCleanup(os.chdir, self.original_cwd)
-
+        super().setUp()
         self.mock_get_latest_version = patch(
-            "tools.private.release.release.get_latest_version"
+            "tools.private.release.utils.get_latest_version"
         ).start()
+        self.mock_get_current_branch = patch(
+            "tools.private.release.git.get_current_branch"
+        ).start()
+        self.mock_get_current_branch.return_value = "main"
         self.addCleanup(patch.stopall)
 
     def test_no_markers(self):
         (self.tmpdir / "mock_file.bzl").write_text("no markers here")
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
 
@@ -557,7 +627,7 @@ class DetermineNextVersionTest(unittest.TestCase):
         )
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
 
@@ -567,7 +637,7 @@ class DetermineNextVersionTest(unittest.TestCase):
         )
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.3.0")
 
@@ -580,36 +650,36 @@ class DetermineNextVersionTest(unittest.TestCase):
         )
         self.mock_get_latest_version.return_value = "1.2.3"
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.3.0")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_with_existing_tags(
         self, mock_get_tags, mock_get_branch
     ):
         mock_get_branch.return_value = "release/0.37"
         mock_get_tags.return_value = ["0.37.0", "0.37.1", "0.36.0"]
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "0.37.2")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_no_tags(
         self, mock_get_tags, mock_get_branch
     ):
         mock_get_branch.return_value = "release/0.38"
         mock_get_tags.return_value = ["0.37.0"]  # No 0.38.x tags
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "0.38.0")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_with_active_rc(
         self, mock_get_tags, mock_get_branch
     ):
@@ -617,13 +687,13 @@ class DetermineNextVersionTest(unittest.TestCase):
         # 0.37.0-rc0 and rc1 exist, but no stable 0.37.0 yet
         mock_get_tags.return_value = ["0.37.0-rc0", "0.37.0-rc1", "0.36.0"]
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         # Should target 0.37.0, not 0.37.1
         self.assertEqual(next_version, "0.37.0")
 
-    @patch("tools.private.release.release.git.get_current_branch")
-    @patch("tools.private.release.release.git.get_tags")
+    @patch("tools.private.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_tags")
     def test_determine_next_version_on_release_branch_with_stable_and_active_patch_rc(
         self, mock_get_tags, mock_get_branch
     ):
@@ -631,21 +701,687 @@ class DetermineNextVersionTest(unittest.TestCase):
         # 0.37.0 stable exists, and 0.37.1-rc0 exists (but no stable 0.37.1 yet)
         mock_get_tags.return_value = ["0.37.0", "0.37.1-rc0", "0.36.0"]
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         # Should target 0.37.1, not 0.37.2
         self.assertEqual(next_version, "0.37.1")
 
-    @patch("tools.private.release.release.git.get_current_branch")
+    @patch("tools.private.release.git.get_current_branch")
     def test_determine_next_version_on_main_branch_fallback(self, mock_get_branch):
         mock_get_branch.return_value = "main"
         # Should fallback to default behavior (which uses mock_get_latest_version from setUp)
         self.mock_get_latest_version.return_value = "1.2.3"
         (self.tmpdir / "mock_file.bzl").write_text("no markers here")
 
-        next_version = releaser.determine_next_version()
+        next_version = utils.determine_next_version()
 
         self.assertEqual(next_version, "1.2.4")
+
+
+class CmdPrepareTest(TempDirTestCase):
+    def setUp(self):
+        super().setUp()
+        _mock_git_and_gh(self)
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_success_existing_issue(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", "M  foo"]
+        self.mock_git.branch_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/456"
+        self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_gh.create_tracking_issue.assert_not_called()
+        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_git.add_modified_and_deleted.assert_called_once()
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_success_create_issue(self, mock_replace, mock_changelog):
+        # Arrange
+        template_dir = self.tmpdir / ".github" / "ISSUE_TEMPLATE"
+        template_dir.mkdir(parents=True, exist_ok=True)
+        template_file = template_dir / "release_tracking_template.md"
+        template_file.write_text("dummy template content")
+
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", "M  foo"]
+        self.mock_git.branch_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
+            "Not found"
+        )
+        self.mock_gh.create_tracking_issue.return_value = 123
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/456"
+        self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_gh.create_tracking_issue.assert_called_once_with(
+            "2.0.0", "dummy template content"
+        )
+        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_git.add_modified_and_deleted.assert_called_once()
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_ambiguous_issue(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", "M  foo"]
+        self.mock_git.branch_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = (
+            MultipleTrackingIssuesError("Multiple open tracking issues")
+        )
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_gh.create_tracking_issue.assert_not_called()
+        self.mock_gh.create_pr.assert_not_called()
+        self.mock_git.add_modified_and_deleted.assert_not_called()
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_dry_run(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=True)
+        self.mock_git.status.side_effect = [""]
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.create_pr.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+        self.mock_git.fetch.assert_called_once()
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_git.add_modified_and_deleted.assert_not_called()
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_use_associated_pr_from_tracking_issue(
+        self, mock_replace, mock_changelog
+    ):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", ""]
+        self.mock_git.branch_exists.return_value = True
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.get_open_pr.return_value = None
+        # PR #456 is already associated in the tracking issue
+        self.mock_gh.get_issue_body.return_value = (
+            "- [ ] Prepare Release | status=pending pr=#456"
+        )
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_called_once_with("prepare-2.0.0")
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "origin", "prepare-2.0.0", set_upstream=True, force=True
+        )
+        self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
+        self.mock_gh.create_pr.assert_not_called()  # Should NOT create a new PR
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertIn("pr=#456", call_args[1])
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_create_pr_when_none_associated(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", ""]
+        self.mock_git.branch_exists.return_value = True
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.get_open_pr.return_value = None
+        # No PR associated in the tracking issue
+        self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/789"
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_called_once_with("prepare-2.0.0")
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "origin", "prepare-2.0.0", set_upstream=True, force=True
+        )
+        self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
+        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertIn("pr=#789", call_args[1])
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_reuse_existing_pr(self, mock_replace, mock_changelog):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.status.side_effect = ["", ""]
+        self.mock_git.branch_exists.return_value = True
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_gh.get_open_pr.return_value = {
+            "number": 456,
+            "url": "https://github.com/foo/bar/pull/456",
+        }
+        self.mock_gh.get_issue_body.return_value = "- [ ] Prepare Release"
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_called_once_with("prepare-2.0.0")
+        self.mock_git.commit.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "origin", "prepare-2.0.0", set_upstream=True, force=True
+        )
+        self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
+        self.mock_gh.create_pr.assert_not_called()
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertIn("pr=#456", call_args[1])
+
+    @patch("tools.private.release.prepare.changelog_news")
+    @patch("tools.private.release.prepare.replace_version_next")
+    def test_prepare_dry_run_no_issue(self, mock_replace, mock_changelog):
+        # Arrange
+        template_dir = self.tmpdir / ".github" / "ISSUE_TEMPLATE"
+        template_dir.mkdir(parents=True, exist_ok=True)
+        template_file = template_dir / "release_tracking_template.md"
+        template_file.write_text("dummy template content")
+
+        args = MagicMock(version="2.0.0", issue=None, dry_run=True)
+        self.mock_git.status.side_effect = [""]
+        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
+            "Not found"
+        )
+
+        # Act
+        result = releaser.cmd_prepare(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_gh.create_tracking_issue.assert_not_called()
+        self.mock_gh.create_pr.assert_not_called()
+        self.mock_git.add_modified_and_deleted.assert_not_called()
+
+
+class CmdCreateRcTest(unittest.TestCase):
+    def setUp(self):
+        _mock_git_and_gh(self)
+
+    def test_create_rc_success_first_rc(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [ ] Tag RC0 | status=pending
+"""
+        self.mock_git.get_remote_tags.return_value = []
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        result = releaser.cmd_create_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_has_calls(
+            [call("my-remote"), call("my-remote", tags=True, force=True)]
+        )
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_called_once_with("2.0.0-rc0", "my-remote/release/2.0")
+        self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc0")
+        self.mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
+
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertEqual(call_args[0], 123)
+        self.assertIn("tag=2.0.0-rc0", call_args[1])
+        self.assertIn("commit=12345678", call_args[1])
+
+        self.mock_gh.post_issue_comment.assert_called_once()
+        comment_call_args = self.mock_gh.post_issue_comment.call_args[0]
+        self.assertEqual(comment_call_args[0], 123)
+        self.assertIn(
+            "**New Release Candidate Tagged!** 🐍🌿",
+            comment_call_args[1],
+        )
+        self.assertIn(
+            "- Trigger Release Workflow: [Release Workflow](https://github.com/bazel-contrib/rules_python/actions/workflows/release.yml)",
+            comment_call_args[1],
+        )
+        self.assertNotIn("🚀", comment_call_args[1])
+
+    def test_create_rc_success_next_rc(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [x] Tag RC0 | status=done tag=2.0.0-rc0 commit=abcdef12
+- [ ] Tag RC1 | status=pending
+"""
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0"]
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        result = releaser.cmd_create_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_has_calls(
+            [call("my-remote"), call("my-remote", tags=True, force=True)]
+        )
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_called_once_with("2.0.0-rc1", "my-remote/release/2.0")
+        self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc1")
+        self.mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
+
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertEqual(call_args[0], 123)
+        self.assertIn("tag=2.0.0-rc1", call_args[1])
+
+        self.mock_gh.post_issue_comment.assert_called_once()
+        comment_call_args = self.mock_gh.post_issue_comment.call_args[0]
+        self.assertEqual(comment_call_args[0], 123)
+        self.assertIn(
+            "**New Release Candidate Tagged!** 🐍🌿",
+            comment_call_args[1],
+        )
+        self.assertIn(
+            "- Trigger Release Workflow: [Release Workflow](https://github.com/bazel-contrib/rules_python/actions/workflows/release.yml)",
+            comment_call_args[1],
+        )
+        self.assertNotIn("🚀", comment_call_args[1])
+
+
+class CmdPromoteRcTest(unittest.TestCase):
+    def setUp(self):
+        _mock_git_and_gh(self)
+
+    def test_promote_rc_success(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123, dry_run=False)
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        self.mock_git.tag_exists.return_value = False
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("upstream", tags=True, force=True)
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag_exists.assert_called_once_with("2.0.0")
+        self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
+        self.mock_git.push.assert_called_once_with("upstream", "2.0.0")
+
+        # Verify issue update
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.0 commit=abcdef12"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+        expected_comment = (
+            "Version 2.0.0 has been tagged.\n\n"
+            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0\n"
+            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.0" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)'
+        )
+        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
+
+    def test_promote_rc_resolve_issue_success(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None, dry_run=False)
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = None
+        self.mock_gh.get_release_tracking_issue.return_value = 123
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
+        self.mock_git.push.assert_called_once_with("upstream", "2.0.0")
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.0 commit=abcdef12"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+        expected_comment = (
+            "Version 2.0.0 has been tagged.\n\n"
+            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0\n"
+            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.0" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)'
+        )
+        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
+
+    def test_promote_rc_defaults_to_determine_next_version(self):
+        # Arrange
+        args = MagicMock(version=None, issue=123, dry_run=False)
+        self.mock_git.get_current_branch.return_value = "release/2.0"
+        self.mock_git.get_tags.return_value = ["2.0.0"]
+        self.mock_git.get_remote_tags.return_value = ["2.0.1-rc0"]
+        self.mock_git.get_commit_sha.return_value = "12345678"
+        self.mock_git.tag_exists.return_value = False
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.get_current_branch.assert_called_once()
+        self.mock_git.get_tags.assert_called_once()
+        self.mock_git.get_remote_tags.assert_called_once_with("upstream")
+
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.1-rc0")
+        self.mock_git.tag.assert_called_once_with("2.0.1", "12345678")
+        self.mock_git.push.assert_called_once_with("upstream", "2.0.1")
+
+        expected_updated_body = (
+            "- [x] Tag Final | status=done tag=2.0.1 commit=12345678"
+        )
+        self.mock_gh.update_issue_body.assert_called_once_with(
+            123, expected_updated_body
+        )
+        expected_comment = (
+            "Version 2.0.1 has been tagged.\n\n"
+            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1\n"
+            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.1" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.1%22%20in%3Atitle%29)'
+        )
+        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
+
+    def test_promote_rc_dry_run_success(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123, dry_run=True)
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        self.mock_git.tag_exists.return_value = False
+        initial_body = "- [ ] Tag Final"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("upstream", tags=True, force=True)
+        self.mock_git.get_commit_sha.assert_called_once_with("2.0.0-rc1")
+        self.mock_git.tag_exists.assert_called_once_with("2.0.0")
+
+        # Core dry-run assertions: NO modifications
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+        self.mock_gh.post_issue_comment.assert_not_called()
+
+    def test_promote_rc_tag_already_exists(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = True
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.get_issue_body.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+
+    def test_promote_rc_issue_not_found(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=None)
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = False
+        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
+            "Not found"
+        )
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.get_issue_body.assert_not_called()
+
+    def test_promote_rc_issue_malformed(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+        self.mock_git.tag_exists.return_value = False
+        self.mock_git.get_commit_sha.return_value = "abcdef123456"
+        initial_body = "malformed body"
+        self.mock_gh.get_issue_body.return_value = initial_body
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.get_issue_body.assert_called_once_with(123)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+
+    def test_promote_rc_no_rc_found(self):
+        # Arrange
+        args = MagicMock(version="2.0.0", issue=123)
+        self.mock_git.get_remote_tags.return_value = []
+
+        # Act
+        result = releaser.cmd_promote_rc(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+        self.mock_gh.get_issue_body.assert_not_called()
+
+
+class CmdCreateReleaseBranchTest(unittest.TestCase):
+    def setUp(self):
+        _mock_git_and_gh(self)
+
+    def test_create_release_branch_success(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [ ] Create Release branch | status=pending
+"""
+        self.mock_git.branch_exists.return_value = False
+        self.mock_git.remote_branch_exists.return_value = False
+
+        # Act
+        result = releaser.cmd_create_release_branch(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("my-remote")
+        self.mock_git.checkout.assert_not_called()
+        self.mock_git.push.assert_called_once_with(
+            "my-remote", "abcdef12:refs/heads/release/2.0"
+        )
+
+        self.mock_gh.update_issue_body.assert_called_once()
+        call_args = self.mock_gh.update_issue_body.call_args[0]
+        self.assertEqual(call_args[0], 123)
+        self.assertIn(
+            "branch_url=https://github.com/bazel-contrib/rules_python/tree/release/2.0",
+            call_args[1],
+        )
+        self.assertIn("commit=abcdef12", call_args[1])
+
+    def test_create_release_branch_prepare_not_done(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [ ] Prepare Release | status=pending
+- [ ] Create Release branch | status=pending
+"""
+        # Act
+        result = releaser.cmd_create_release_branch(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_git.fetch.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+
+    def test_create_release_branch_already_checked(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+"""
+        # Act
+        result = releaser.cmd_create_release_branch(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_not_called()
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
+
+    def test_create_release_branch_already_exists_same_commit(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [ ] Create Release branch | status=pending
+"""
+        self.mock_git.remote_branch_exists.return_value = True
+        self.mock_git.get_commit_sha.return_value = "abcdef12"
+
+        # Act
+        result = releaser.cmd_create_release_branch(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("my-remote")
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_called_once()  # Should still update checklist
+
+    def test_create_release_branch_already_exists_fast_forward(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [ ] Create Release branch | status=pending
+"""
+        self.mock_git.remote_branch_exists.return_value = True
+        self.mock_git.get_commit_sha.return_value = "oldcommit"
+        self.mock_git.is_ancestor.return_value = True
+
+        # Act
+        result = releaser.cmd_create_release_branch(args)
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_called_once_with("my-remote")
+        self.mock_git.push.assert_called_once_with(
+            "my-remote", "abcdef12:refs/heads/release/2.0"
+        )
+        self.mock_gh.update_issue_body.assert_called_once()
+
+    def test_create_release_branch_already_exists_non_ff(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [ ] Create Release branch | status=pending
+"""
+        self.mock_git.remote_branch_exists.return_value = True
+        self.mock_git.get_commit_sha.return_value = "othercommit"
+        self.mock_git.is_ancestor.return_value = False
+
+        # Act
+        result = releaser.cmd_create_release_branch(args)
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_git.fetch.assert_called_once_with("my-remote")
+        self.mock_git.push.assert_not_called()
+        self.mock_gh.update_issue_body.assert_not_called()
 
 
 if __name__ == "__main__":
