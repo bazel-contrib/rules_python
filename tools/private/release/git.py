@@ -123,7 +123,7 @@ def sort_commits_chronologically(shas):
     return output.splitlines() if output else []
 
 
-def get_tags_at_ref(ref: str = "HEAD") -> list[str]:
+def get_tags_at_ref(ref: str) -> list[str]:
     """Returns a list of tags pointing at the specified reference."""
     output = run_cmd("git", "tag", "--points-at", ref)
     return output.splitlines() if output else []
