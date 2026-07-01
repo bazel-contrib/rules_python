@@ -1,6 +1,42 @@
-"""Helper functions for managing release tracking issues and checklists."""
-
 import re
+
+
+class BackportTask:
+    """Represents a backport task from the tracking issue checklist."""
+
+    def __init__(
+        self,
+        pr_ref: str,
+        checked: bool,
+        status: str,
+        rc: str | None = None,
+        commit: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ):
+        """Initializes a BackportTask.
+
+        Args:
+            pr_ref: The PR reference (e.g. '#123').
+            checked: Whether the checklist item is checked.
+            status: The status of the backport (e.g. 'pending', 'done',
+                'error-merge-conflict').
+            rc: The release candidate version this PR was backported to.
+            commit: The cherry-pick commit SHA.
+            metadata: Raw metadata parsed from the checklist line.
+        """
+        self.pr_ref = pr_ref
+        self.checked = checked
+        self.status = status
+        self.rc = rc
+        self.commit = commit
+        self.metadata = metadata or {}
+
+    def __repr__(self):
+        return (
+            f"BackportTask(pr_ref={self.pr_ref!r}, checked={self.checked!r}, "
+            f"status={self.status!r}, rc={self.rc!r}, commit={self.commit!r})"
+        )
+
 
 RELEASE_TITLE_RE = re.compile(r"Release (\d+\.\d+\.\d+)", re.IGNORECASE)
 
@@ -147,13 +183,13 @@ def parse_backports(body):
         parsed = parse_metadata_line(line)
         if parsed:
             items.append(
-                {
-                    "pr_ref": parsed["name"],
-                    "checked": parsed["checked"],
-                    "status": parsed["metadata"].get("status", "PENDING"),
-                    "rc": parsed["metadata"].get("rc"),
-                    "commit": parsed["metadata"].get("commit"),
-                    "metadata": parsed["metadata"],
-                }
+                BackportTask(
+                    pr_ref=parsed["name"],
+                    checked=parsed["checked"],
+                    status=parsed["metadata"].get("status", "pending"),
+                    rc=parsed["metadata"].get("rc"),
+                    commit=parsed["metadata"].get("commit"),
+                    metadata=parsed["metadata"],
+                )
             )
     return items

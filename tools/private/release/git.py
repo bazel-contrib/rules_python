@@ -75,14 +75,33 @@ def tag(tag_name, commit_ref):
     run_cmd("git", "tag", tag_name, commit_ref, capture_output=False)
 
 
-def cherry_pick(sha):
-    """Cherry-picks a commit using -x to append the original commit info."""
-    run_cmd("git", "cherry-pick", "-x", sha, capture_output=False)
+def cherry_pick(sha: str, no_commit: bool = False) -> None:
+    """Cherry-picks a commit.
+
+    Args:
+        sha: The commit SHA to cherry-pick.
+        no_commit: If True, applies the changes to working tree and index
+            but does not create a commit.
+    """
+    cmd = ["git", "cherry-pick", "-x"]
+    if no_commit:
+        cmd.append("--no-commit")
+    cmd.append(sha)
+    run_cmd(*cmd, capture_output=False)
 
 
 def cherry_pick_abort():
     """Aborts an in-progress cherry-pick operation."""
     run_cmd("git", "cherry-pick", "--abort", capture_output=False)
+
+
+def reset_hard(ref: str = "HEAD") -> None:
+    """Resets the index and working tree to a specific reference.
+
+    Args:
+        ref: The git reference to reset to. Defaults to 'HEAD'.
+    """
+    run_cmd("git", "reset", "--hard", ref, capture_output=False)
 
 
 def status():

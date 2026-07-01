@@ -15,6 +15,7 @@ py_binary(
         "gh.py",
         "git.py",
         "prepare.py",
+        "process_backports.py",
         "release.py",
         "release_issue.py",
         "shell.py",

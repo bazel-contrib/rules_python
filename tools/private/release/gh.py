@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 
+from tools.private.release.release_issue import BackportTask
 from tools.private.release.shell import run_cmd
 
 _REPO = "bazel-contrib/rules_python"
@@ -179,13 +180,13 @@ def get_open_pr(branch_name):
 
 
 def get_pr_info(pr_num):
-    """Gets information about a PR, including state, merge commit, and body."""
+    """Gets information about a PR, including state, merge commit, body, and draft status."""
     output = run_cmd(
         "gh",
         "pr",
         "view",
         str(pr_num),
-        "--json=state,mergeCommit,body",
+        "--json=state,mergeCommit,body,isDraft",
     )
     return json.loads(output) if output else {}
 
@@ -202,30 +203,44 @@ def post_issue_comment(issue_num, comment_body):
     )
 
 
-def resolve_backport_commits(pending_items):
+def get_merge_commits_for_prs(pending_items: list[BackportTask]) -> list[BackportTask]:
     """Resolves PR references in pending backports to their merge commit SHAs.
 
-    Marks unmerged PRs or resolution failures with status='unmerged-pr'.
+    Updates item.status based on PR state if it cannot be resolved.
     """
     resolved_items = []
     for item in pending_items:
-        pr_num = item["pr_ref"].lstrip("#")
+        pr_num = item.pr_ref.lstrip("#")
         print(f"Resolving PR #{pr_num} to merge commit...")
         try:
             pr_info = get_pr_info(pr_num)
-            if not pr_info or pr_info.get("state") != "MERGED":
-                state = pr_info.get("state", "UNKNOWN")
-                print(f"PR #{pr_num} is not merged (state: {state}). Gating.")
-                item["status"] = "unmerged-pr"
+            if not pr_info:
+                print(f"PR #{pr_num} not found. Gating.")
+                item.status = "error-not-found"
             else:
-                merge_commit = pr_info.get("mergeCommit")
-                if merge_commit and "oid" in merge_commit:
-                    item["commit"] = merge_commit["oid"]
+                state = pr_info.get("state")
+                is_draft = pr_info.get("isDraft", False)
+                if state == "OPEN" or is_draft:
+                    print(
+                        f"PR #{pr_num} is open or draft (state: {state}, draft: {is_draft}). Ignoring."
+                    )
+                    item.status = "open-pr" if not is_draft else "draft-pr"
+                elif state == "CLOSED":
+                    print(f"PR #{pr_num} is closed but not merged. Gating.")
+                    item.status = "error-closed-pr"
+                elif state == "MERGED":
+                    merge_commit = pr_info.get("mergeCommit")
+                    if merge_commit and "oid" in merge_commit:
+                        item.commit = merge_commit["oid"]
+                        item.status = "resolved"
+                    else:
+                        print(f"PR #{pr_num} has no merge commit SHA. Gating.")
+                        item.status = "error-no-merge-commit"
                 else:
-                    print(f"PR #{pr_num} has no merge commit SHA. Gating.")
-                    item["status"] = "unmerged-pr"
+                    print(f"PR #{pr_num} has unknown state: {state}. Gating.")
+                    item.status = "error-unknown"
         except Exception as e:
             print(f"Error resolving PR #{pr_num}: {e}. Gating.")
-            item["status"] = "unmerged-pr"
+            item.status = "error-resolution-failed"
         resolved_items.append(item)
     return resolved_items

@@ -1,19 +1,17 @@
 """A tool to perform release steps."""
 
 import argparse
-import datetime
 import os
 import pathlib
 import re
 import sys
 
-from tools.private.release import changelog_news, gh, git
+from tools.private.release import gh, git
 from tools.private.release.create_rc import cmd_create_rc
 from tools.private.release.create_release_branch import cmd_create_release_branch
 from tools.private.release.prepare import cmd_prepare
+from tools.private.release.process_backports import cmd_process_backports
 from tools.private.release.release_issue import (
-    RELEASE_TITLE_RE,
-    parse_backports,
     update_task_in_body,
 )
 from tools.private.release.utils import (
@@ -104,128 +102,6 @@ def cmd_complete_prepare(args):
     )
     gh.update_issue_body(issue_num, updated_body)
     print("Prepare Release task marked complete successfully!")
-    return 0
-
-
-def cmd_process_backports(args):
-    """Executes the process-backports subcommand."""
-    body = gh.get_issue_body(args.issue)
-    items = parse_backports(body)
-
-    pending_items = [
-        item
-        for item in items
-        if not item["checked"] and item["status"] != "merge-conflict"
-    ]
-
-    if not pending_items:
-        print("No pending backports found.")
-        return 0
-
-    print(f"Found {len(pending_items)} pending backports to process.")
-
-    # Determine branch name from issue title
-    issue_title = gh.get_issue_title(args.issue)
-    version_match = RELEASE_TITLE_RE.search(issue_title)
-    if not version_match:
-        print(f"Error: Could not parse version from issue title: {issue_title}")
-        return 1
-
-    version = version_match.group(1)
-    branch_version = ".".join(version.split(".")[:2])
-    branch_name = f"release/{branch_version}"
-
-    # Determine next RC tag to write to backport metadata
-    git.fetch("origin", tags=True, force=True)
-    latest_rc = get_latest_rc_tag(version, remote="origin")
-    if not latest_rc:
-        next_rc_suffix = "rc0"
-    else:
-        rc_num = int(latest_rc.split("-rc")[-1])
-        next_rc_suffix = f"rc{rc_num + 1}"
-
-    # Resolve PRs to merge commits using gh helper
-    resolved_items = gh.resolve_backport_commits(pending_items)
-
-    shas = []
-    sha_to_item = {}
-    any_failed = False
-    for item in resolved_items:
-        if item.get("commit"):
-            sha = item["commit"]
-            sha_to_item[sha] = item
-            shas.append(sha)
-        else:
-            any_failed = True
-            body = update_task_in_body(
-                body,
-                item["pr_ref"],
-                checked=False,
-                metadata={"status": item.get("status", "failed")},
-            )
-            gh.update_issue_body(args.issue, body)
-
-    if not shas:
-        print("No valid merge commits to process.")
-        if any_failed:
-            return 1
-        return 0
-
-    # Sort chronologically using git helper
-    sorted_shas = git.sort_commits_chronologically(shas)
-
-    git.fetch("origin")
-    git.checkout(branch_name)
-
-    for sha in sorted_shas:
-        item = sha_to_item[sha]
-        print(f"Cherry-picking {sha} (PR {item['pr_ref']})...")
-        try:
-            git.cherry_pick(sha)
-
-            # Perform news processing (merging news/ files into the changelog)
-            print(f"Merging news fragments into changelog for PR {item['pr_ref']}...")
-            release_date = datetime.date.today().strftime("%Y-%m-%d")
-            changelog_news.update_changelog(version, release_date)
-
-            # Stage changelog changes and news/ deletions
-            git.add("CHANGELOG.md", "news/")
-
-            # Amend cherry-pick commit to include news merging and deletions
-            print(f"Amending cherry-pick commit for PR {item['pr_ref']}...")
-            git.commit("", amend=True, no_edit=True)
-
-            # Push amended commit
-            git.push("origin", branch_name)
-
-            new_sha = git.get_commit_sha("HEAD", short=True)
-            metadata = {"status": "done", "rc": next_rc_suffix, "commit": new_sha}
-            body = update_task_in_body(
-                body, item["pr_ref"], checked=True, metadata=metadata
-            )
-            gh.update_issue_body(args.issue, body)
-            print(f"Applied: SUCCESS {new_sha}")
-        except Exception as e:
-            print(f"Conflict or error on {sha}: {e}. Aborting.")
-            try:
-                git.cherry_pick_abort()
-            except Exception:
-                pass
-            any_failed = True
-
-            body = update_task_in_body(
-                body,
-                item["pr_ref"],
-                checked=False,
-                metadata={"status": "merge-conflict"},
-            )
-            gh.update_issue_body(args.issue, body)
-            print("Updated backport item to status=merge-conflict (unchecked)")
-
-    if any_failed:
-        print("One or more cherry-picks/resolutions failed.")
-        return 1
-    print("All backports successfully processed!")
     return 0
 
 
@@ -405,6 +281,18 @@ def create_parser():
         type=int,
         required=True,
         help="The tracking issue number (required).",
+    )
+    process_backports_parser.add_argument(
+        "--remote",
+        type=str,
+        required=True,
+        help="The git remote to push changes to (required).",
+    )
+    process_backports_parser.add_argument(
+        "--dry-run",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Perform a dry run (default: True). Use --no-dry-run to actually execute.",
     )
 
     # Subcommand: create-rc
