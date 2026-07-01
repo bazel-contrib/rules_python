@@ -134,6 +134,15 @@ def get_commit_sha(ref="HEAD", short=False):
     return run_cmd(*cmd)
 
 
+def get_commit_message(ref: str = "HEAD") -> str:
+    """Returns the commit message of a given reference.
+
+    Args:
+        ref: The git reference to get the message from. Defaults to 'HEAD'.
+    """
+    return run_cmd("git", "log", "-1", "--format=%B", ref)
+
+
 def branch_exists(branch_name):
     """Returns True if a local branch exists."""
     try:

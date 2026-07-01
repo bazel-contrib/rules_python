@@ -126,9 +126,12 @@ def cmd_process_backports(args):
                 # Stage changelog changes and news/ deletions
                 git.add("CHANGELOG.md", "news/")
 
-                # Amend cherry-pick commit to include news merging and deletions
+                # Amend cherry-pick commit to include news merging and deletions,
+                # and reference the release tracking issue.
                 print(f"Amending cherry-pick commit for PR {item.pr_ref}...")
-                git.commit("", amend=True, no_edit=True)
+                current_msg = git.get_commit_message("HEAD")
+                new_msg = f"{current_msg.strip()}\n\nWork towards #{args.issue}"
+                git.commit(new_msg, amend=True)
 
                 # Push amended commit
                 git.push(args.remote, branch_name)

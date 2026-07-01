@@ -1455,6 +1455,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
 
         self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
         self.mock_git.get_commit_sha.return_value = "12345678"
+        self.mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
 
         result = releaser.cmd_process_backports(args)
 
@@ -1470,7 +1471,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
             "2.0.0", "2026-07-01"
         )
         self.mock_git.add.assert_called_once_with("CHANGELOG.md", "news/")
-        self.mock_git.commit.assert_called_once_with("", amend=True, no_edit=True)
+        self.mock_git.commit.assert_called_once_with(
+            'Cherry-pick "fix bug"\n\nWork towards #123', amend=True
+        )
         self.mock_git.push.assert_called_once_with("origin", "release/2.0")
 
         self.mock_gh.update_issue_body.assert_called_once()
