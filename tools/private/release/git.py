@@ -97,19 +97,13 @@ def tag(tag_name, commit_ref):
     run_cmd("git", "tag", tag_name, commit_ref, capture_output=False)
 
 
-def cherry_pick(sha: str, no_commit: bool = False) -> None:
+def cherry_pick(sha: str) -> None:
     """Cherry-picks a commit.
 
     Args:
         sha: The commit SHA to cherry-pick.
-        no_commit: If True, applies the changes to working tree and index
-            but does not create a commit.
     """
-    cmd = ["git", "cherry-pick", "-x"]
-    if no_commit:
-        cmd.append("--no-commit")
-    cmd.append(sha)
-    run_cmd(*cmd, capture_output=False)
+    run_cmd("git", "cherry-pick", "-x", sha, capture_output=False)
 
 
 def cherry_pick_abort():

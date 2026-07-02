@@ -1511,7 +1511,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.checkout.assert_called_once_with(
             "release/2.0", track_remote="origin"
         )
-        self.mock_git.cherry_pick.assert_called_once_with("abcdef12", no_commit=False)
+        self.mock_git.cherry_pick.assert_called_once_with("abcdef12")
         self.mock_changelog_news.update_changelog.assert_called_once_with(
             "2.0.0", "2026-07-01"
         )
@@ -1552,6 +1552,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
 
         self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
         self.mock_git.get_commit_sha.return_value = "12345678"
+        self.mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
 
         result = releaser.cmd_process_backports(args)
 
@@ -1562,12 +1563,14 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.checkout.assert_called_once_with(
             "release/2.0", track_remote="origin"
         )
-        self.mock_git.cherry_pick.assert_called_once_with("abcdef12", no_commit=True)
+        self.mock_git.cherry_pick.assert_called_once_with("abcdef12")
         self.mock_changelog_news.update_changelog.assert_called_once_with(
             "2.0.0", "2026-07-01"
         )
-        self.mock_git.reset_hard.assert_called_once_with("HEAD")
-        self.mock_git.commit.assert_not_called()
+        self.mock_git.commit.assert_called_once_with(
+            'Cherry-pick "fix bug"\n\nWork towards #123', amend=True
+        )
+        self.mock_git.reset_hard.assert_called_once_with("12345678")
         self.mock_git.push.assert_not_called()
         self.mock_gh.update_issue_body.assert_not_called()
 
@@ -1664,7 +1667,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.checkout.assert_called_once_with(
             "release/2.0", track_remote="origin"
         )
-        self.mock_git.cherry_pick.assert_called_once_with("abcdef12", no_commit=False)
+        self.mock_git.cherry_pick.assert_called_once_with("abcdef12")
         self.mock_git.cherry_pick_abort.assert_called_once()
 
         self.mock_gh.update_issue_body.assert_called_once()
