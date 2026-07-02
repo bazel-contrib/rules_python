@@ -25,14 +25,14 @@ class PromoteRc:
     def run(self) -> int:
         """Executes the promote-rc subcommand (Phase 3)."""
         args = self.args
-        # Fetch from upstream to ensure we have the latest tags
-        self.git.fetch("upstream", tags=True, force=True)
+        # Fetch from remote to ensure we have the latest tags
+        self.git.fetch(args.remote, tags=True, force=True)
 
         version = args.version
         if version is None:
             version = determine_next_version()
 
-        latest_rc = get_latest_rc_tag(version, remote="upstream")
+        latest_rc = get_latest_rc_tag(version, remote=args.remote)
         if not latest_rc:
             print(f"Error: No release candidate tags found matching {version}-rc*")
             return 1
@@ -86,9 +86,9 @@ class PromoteRc:
             f" {commit_sha[:8]}) using tracking issue #{issue_num}..."
         )
 
-        # Tag the specific commit without checkout, and push to upstream
+        # Tag the specific commit without checkout, and push to remote
         self.git.tag(version, commit_sha)
-        self.git.push("upstream", version)
+        self.git.push(args.remote, version)
 
         print(f"Updating tracking issue #{issue_num} checklist...")
         self.gh.update_issue_body(issue_num, updated_body)
@@ -126,6 +126,12 @@ class PromoteRc:
             "--issue",
             type=int,
             help="The tracking issue number (optional).",
+        )
+        parser.add_argument(
+            "--remote",
+            type=str,
+            required=True,
+            help="The git remote to push the final tag to (required).",
         )
         parser.add_argument(
             "--dry-run",

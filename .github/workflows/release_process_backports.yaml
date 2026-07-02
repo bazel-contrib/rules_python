@@ -35,6 +35,6 @@ jobs:
       - name: Process Pending Backports
         run: |
           bazel run //tools/private/release -- \
-            process-backports --issue ${{ inputs.issue }}
+            process-backports --issue ${{ inputs.issue }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
