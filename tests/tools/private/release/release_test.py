@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, call, patch
 
-from tools.private.release import changelog_news, release as releaser, utils
+from tools.private.release import changelog_news, git, release as releaser, utils
 from tools.private.release.gh import MultipleTrackingIssuesError, NoTrackingIssueError
 
 
@@ -1674,6 +1674,43 @@ class CmdProcessBackportsTest(unittest.TestCase):
 
         self.mock_git.commit.assert_not_called()
         self.mock_git.push.assert_not_called()
+
+
+class GitCheckoutTest(unittest.TestCase):
+    @patch("tools.private.release.git.run_cmd")
+    def test_checkout_simple(self, mock_run_cmd):
+        git.checkout("my-branch")
+        mock_run_cmd.assert_called_once_with(
+            "git", "checkout", "my-branch", capture_output=False
+        )
+
+    @patch("tools.private.release.git.branch_exists")
+    @patch("tools.private.release.git.run_cmd")
+    def test_checkout_track_remote_new_branch(self, mock_run_cmd, mock_branch_exists):
+        mock_branch_exists.return_value = False
+
+        git.checkout("my-branch", track_remote="origin")
+
+        mock_branch_exists.assert_called_once_with("my-branch")
+        mock_run_cmd.assert_called_once_with(
+            "git", "checkout", "--track", "origin/my-branch", capture_output=False
+        )
+
+    @patch("tools.private.release.git.reset_hard")
+    @patch("tools.private.release.git.branch_exists")
+    @patch("tools.private.release.git.run_cmd")
+    def test_checkout_track_remote_existing_branch(
+        self, mock_run_cmd, mock_branch_exists, mock_reset_hard
+    ):
+        mock_branch_exists.return_value = True
+
+        git.checkout("my-branch", track_remote="origin")
+
+        mock_branch_exists.assert_called_once_with("my-branch")
+        mock_run_cmd.assert_called_once_with(
+            "git", "checkout", "my-branch", capture_output=False
+        )
+        mock_reset_hard.assert_called_once_with("origin/my-branch")
 
 
 if __name__ == "__main__":

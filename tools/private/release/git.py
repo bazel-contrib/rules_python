@@ -25,14 +25,20 @@ def checkout(
     cmd = ["git", "checkout"]
     if create_branch:
         cmd.append("-b")
+
+    should_reset_hard = False
     if track_remote:
         if branch_exists(ref):
             cmd.append(ref)
+            should_reset_hard = True
         else:
             cmd.extend(["--track", f"{track_remote}/{ref}"])
     else:
         cmd.append(ref)
     run_cmd(*cmd, capture_output=False)
+
+    if should_reset_hard:
+        reset_hard(f"{track_remote}/{ref}")
 
 
 def add(*files):
