@@ -3,9 +3,18 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "changelog_news",
+    srcs = ["changelog_news.py"],
+)
+
+py_library(
     name = "release_lib",
-    srcs = glob(["*.py"]),
+    srcs = glob(
+        ["*.py"],
+        exclude = ["changelog_news.py"],
+    ),
     deps = [
+        ":changelog_news",
         "@dev_pip//packaging",
     ],
 )
