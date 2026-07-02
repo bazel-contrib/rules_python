@@ -90,7 +90,13 @@ _default_tags_default = [
     }.items()
 ]
 
-def _mod(*, name, default = _default_tags_default, parse = [], override = [], whl_mods = [], is_root = True):
+def _dep(*, name, extra_targets = []):
+    return struct(
+        name = name,
+        extra_targets = extra_targets,
+    )
+
+def _mod(*, name, default = _default_tags_default, parse = [], override = [], whl_mods = [], dep = [], is_root = True):
     return struct(
         name = name,
         tags = struct(
@@ -98,6 +104,7 @@ def _mod(*, name, default = _default_tags_default, parse = [], override = [], wh
             override = override,
             whl_mods = whl_mods,
             default = default,
+            dep = dep,
         ),
         is_root = is_root,
     )
@@ -106,6 +113,7 @@ def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
         parse_modules(**kwargs),
         attrs = dict(
+            declared_deps = subjects.dict,
             default_hub = subjects.str,
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
@@ -434,6 +442,89 @@ def _test_default_hub_precedence(env):
     pypi.default_hub().equals("other_pypi")
 
 _tests.append(_test_default_hub_precedence)
+
+def _test_extension_dep(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "my_module",
+                dep = [
+                    _dep(
+                        name = "declared-pkg",
+                        extra_targets = ["declared-alias"],
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        available_interpreters = {},
+        minor_mapping = {},
+    )
+
+    pypi.declared_deps().contains_exactly({"declared_pkg": {"declared-alias": None}})
+    pypi.exposed_packages().contains_exactly({})
+    pypi.hub_group_map().contains_exactly({})
+    pypi.hub_whl_map().contains_exactly({})
+    pypi.whl_libraries().contains_exactly({})
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_extension_dep)
+
+def _test_extension_dep_coexists_with_concrete_hub(env):
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "my_module",
+                parse = [
+                    _parse(
+                        hub_name = "pypi_a",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+                dep = [
+                    _dep(
+                        name = "simple",
+                        extra_targets = ["extra-target"],
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.declared_deps().contains_exactly({"simple": {"extra-target": None}})
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["simple"]})
+    pypi.hub_group_map().contains_exactly({"pypi_a": {}})
+    pypi.hub_whl_map().contains_exactly({"pypi_a": {
+        "simple": {
+            "pypi_a_315_simple": [
+                whl_config_setting(
+                    version = "3.15",
+                ),
+            ],
+        },
+    }})
+    pypi.whl_libraries().contains_exactly({
+        "pypi_a_315_simple": {
+            "config_load": "@pypi_a//:config.bzl",
+            "dep_template": "@pypi_a//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        },
+    })
+    pypi.whl_mods().contains_exactly({})
+
+_tests.append(_test_extension_dep_coexists_with_concrete_hub)
 
 def extension_test_suite(name):
     """Create the test suite.

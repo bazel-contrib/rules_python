@@ -46,3 +46,16 @@ py_binary(
     },
     deps = ["@pypi//six"],
 )
+
+py_binary(
+    name = "bin_declared_only",
+    srcs = ["bin_declared_only.py"],
+    deps = ["@pypi//declared_only_pkg"],
+)
+
+py_binary(
+    name = "bin_declared_only_alias",
+    srcs = ["bin_declared_only.py"],
+    main = "bin_declared_only.py",
+    deps = ["@pypi//declared_only_pkg:declared-only-alias"],
+)

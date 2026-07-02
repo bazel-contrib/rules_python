@@ -424,6 +424,15 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 pip_attr = pip_attr,
             )
 
+    # dict[str package, dict[str, None] extra_targets]
+    declared_deps = {}
+    for mod in module_ctx.modules:
+        for dep_attr in mod.tags.dep:
+            name = normalize_name(dep_attr.name)
+            targets = declared_deps.setdefault(name, {})
+            for target in dep_attr.extra_targets:
+                targets[target] = None
+
     # Keeps track of all the hub's whl repos across the different versions.
     # dict[hub, dict[whl, dict[version, str pip]]]
     # Where hub, whl, and pip are the repo names
@@ -448,6 +457,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     return struct(
         config = config,
+        declared_deps = declared_deps,
         default_hub = config.default_hub or renamed_default_hub,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
@@ -491,6 +501,15 @@ def _create_unified_hub_repo(mods):
                     extra_aliases[qual_alias] = []
                 if hub_name not in extra_aliases[qual_alias]:
                     extra_aliases[qual_alias].append(hub_name)
+
+    for norm_pkg, extra_targets in mods.declared_deps.items():
+        if norm_pkg not in packages:
+            packages[norm_pkg] = []
+
+        for target_name in extra_targets:
+            qual_alias = "%s:%s" % (norm_pkg, target_name)
+            if qual_alias not in extra_aliases:
+                extra_aliases[qual_alias] = []
 
     unified_hub_repo(
         name = "pypi",
@@ -1015,6 +1034,31 @@ Apply any overrides (e.g. patches) to a given Python distribution defined by
 other tags in this extension.""",
 )
 
+_dep_tag = tag_class(
+    attrs = {
+        "extra_targets": attr.string_list(
+            doc = """\
+A list of extra target names in the package that are expected to be available.
+See {obj}`pip.parse.extra_hub_aliases`.
+""",
+            default = [],
+        ),
+        "name": attr.string(
+            doc = "The name of a pypi package. Note that the name is normalized.",
+            mandatory = True,
+        ),
+    },
+    doc = """\
+Declare an abstract PyPI dependency to ensure its target structure exists in the unified hub.
+
+This is useful for targets or rules that need to depend on a package (e.g., `@pypi//numpy`)
+but do not want to force a specific version or concrete requirements lock file on their
+consumers. The concrete version and implementation must be provided by downstreams calling
+`pip.parse`. If they are not, the target will still be defined, but it will result in an
+execution-phase error when built.
+""",
+)
+
 pypi = module_extension(
     environ = ["RULES_PYTHON_PYPI_HUB_RESERVED"],
     doc = """\
@@ -1065,6 +1109,7 @@ terms used in this extension.
 :::
 """,
         ),
+        "dep": _dep_tag,
         "override": _override_tag,
         "parse": tag_class(
             attrs = _pip_parse_ext_attrs(),

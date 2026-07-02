@@ -121,6 +121,41 @@ Shared library targets can simply depend on the unified hub (e.g.,
 `@pypi//numpy`), and the dependency will automatically resolve to the correct
 wheel version from the active hub during the build.
 
+### Declaring Abstract Dependencies (pip.dep)
+
+:::{versionadded} VERSION_NEXT_FEATURE
+Declaring abstract PyPI dependencies via `pip.dep` tags.
+:::
+
+Sometimes a shared library target or a ruleset needs to depend on a PyPI
+package (e.g., `@pypi//numpy`), but does not want to force a specific package
+version or a concrete `requirements.txt` lock file on its consumers.
+
+Instead of calling `pip.parse()`, the module can declare its dependency using
+the `pip.dep` tag:
+
+```starlark
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Declare an abstract dependency on 'numpy' and specify extra targets that
+# are expected to be available in the package.
+pip.dep(
+    name = "numpy",
+    extra_targets = ["extra-alias"],
+)
+```
+
+This ensures that the target structure `@pypi//numpy` (and
+`@pypi//numpy:extra-alias`) exists in the unified `@pypi` hub repository, so the
+declaring module can compile and analyze successfully without needing any local
+requirements file.
+
+The actual concrete implementation and version of the package must be provided
+by a downstream module calling `pip.parse`.
+
+If a downstream module attempts to build a target that depends on an abstract
+dependency, but has not provided a concrete implementation for it via any
+`pip.parse` call, the build will fail at execution time.
 
 
 As with any repository rule or extension, if you would like to ensure that `pip_parse` is
