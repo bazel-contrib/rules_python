@@ -1526,7 +1526,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.assertEqual(call_args[0], 123)
         self.assertIn("- [x] #124 | status=done rc=rc0 commit=12345678", call_args[1])
 
-    def test_process_backports_dry_run(self):
+    @patch("tools.private.release.process_backports.datetime")
+    def test_process_backports_dry_run(self, mock_datetime):
+        mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
         args = MagicMock(issue=123, remote="origin", dry_run=True)
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
         self.mock_gh.get_issue_body.return_value = """
