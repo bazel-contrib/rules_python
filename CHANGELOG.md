@@ -54,6 +54,7 @@ expansion.
 * (rules) Fixed venv output paths for `py_binary` and `py_test` targets whose
 names contain path separators so distinct targets with the same basename no
 longer share the same venv output directory.
+* (windows) Fixed build data generation on localized Windows installations.
 
 {#v2-2-0-added}
 ### Added
@@ -71,6 +72,7 @@ and basic support for importing the `uv.lock` file itself. Since this
 may have bugs, please report this by creating new tickets.
 Work towards [#2787](https://github.com/bazel-contrib/rules_python/issues/2787)
 and [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
+
 
 
 
