@@ -1,6 +1,7 @@
 """Subcommand to process pending backports."""
 
 import datetime
+from typing import Any
 
 from tools.private.release import changelog_news, gh, git
 from tools.private.release.release_issue import (
@@ -9,6 +10,141 @@ from tools.private.release.release_issue import (
     update_task_in_body,
 )
 from tools.private.release.utils import get_latest_rc_tag
+
+
+def _process_pr_commit_infos(
+    pr_commit_infos, body, issue, dry_run
+) -> tuple[list[str], dict[str, Any], list[str], list[str], str]:
+    shas = []
+    sha_to_item = {}
+    failed_prs = []
+    ignored_prs = []
+    for item in pr_commit_infos:
+        if item.commit:
+            sha = item.commit
+            sha_to_item[sha] = item
+            shas.append(sha)
+        elif item.status in ("open-pr", "draft-pr"):
+            print(f"PR {item.pr_ref} is open or draft. Ignoring.")
+            ignored_prs.append(item.pr_ref)
+        else:
+            failed_prs.append(item.pr_ref)
+            status_to_set = item.status or "error-unmerged-pr"
+            if dry_run:
+                print(
+                    f"[DRY RUN] Would update tracking issue checklist for unresolved PR {item.pr_ref} to status={status_to_set}"
+                )
+            else:
+                print(
+                    f"Updating tracking issue checklist for unresolved PR {item.pr_ref}..."
+                )
+                try:
+                    body = update_task_in_body(
+                        body,
+                        item.pr_ref,
+                        checked=False,
+                        metadata={"status": status_to_set},
+                    )
+                    gh.update_issue_body(issue, body)
+                except Exception as e:
+                    print(
+                        f"ERROR: Failed to update tracking issue for unresolved PR {item.pr_ref}: {e}"
+                    )
+    return shas, sha_to_item, failed_prs, ignored_prs, body
+
+
+def _cherry_pick_and_update_prs(
+    sorted_shas,
+    sha_to_item,
+    body,
+    issue,
+    remote,
+    dry_run,
+    version,
+    branch_name,
+    next_rc_suffix,
+) -> tuple[list[str], str]:
+    failed_prs = []
+    for sha in sorted_shas:
+        item = sha_to_item[sha]
+        print(f"Cherry-picking {item.pr_ref} / {sha}...")
+        try:
+            git.cherry_pick(sha, no_commit=dry_run)
+
+            # Perform news processing (merging news/ files into the changelog)
+            print(f"Merging news fragments into changelog for PR {item.pr_ref}...")
+            release_date = datetime.date.today().strftime("%Y-%m-%d")
+            changelog_news.update_changelog(version, release_date)
+
+            if not dry_run:
+                # Stage changelog changes and news/ deletions
+                git.add("CHANGELOG.md", "news/")
+
+                # Amend cherry-pick commit to include news merging and deletions,
+                # and reference the release tracking issue.
+                print(f"Amending cherry-pick commit for PR {item.pr_ref}...")
+                current_msg = git.get_commit_message("HEAD")
+                new_msg = f"{current_msg.strip()}\n\nWork towards #{issue}"
+                git.commit(new_msg, amend=True)
+
+                # Push amended commit
+                git.push(remote, branch_name)
+
+                new_sha = git.get_commit_sha("HEAD", short=True)
+                metadata = {"status": "done", "rc": next_rc_suffix, "commit": new_sha}
+                print(f"Updating tracking issue checklist for PR {item.pr_ref}...")
+                try:
+                    body = update_task_in_body(
+                        body, item.pr_ref, checked=True, metadata=metadata
+                    )
+                    gh.update_issue_body(issue, body)
+                except Exception as e:
+                    print(
+                        f"ERROR: Failed to update tracking issue for PR {item.pr_ref}: {e}"
+                    )
+                print(f"Success: backported {item.pr_ref} / {sha} to {branch_name}")
+            else:
+                print(
+                    f"[DRY RUN] Success: {item.pr_ref} / {sha} can be backported without error."
+                )
+                print(
+                    f"[DRY RUN] Would update tracking issue checklist for PR {item.pr_ref} to status=done"
+                )
+        except Exception as e:
+            print(f"ERROR: Conflict or error on {sha}: {e}. Aborting.")
+            try:
+                git.cherry_pick_abort()
+            except Exception:
+                pass
+            failed_prs.append(item.pr_ref)
+
+            if dry_run:
+                print(
+                    f"[DRY RUN] Would update tracking issue checklist for failed PR {item.pr_ref} to status=error-merge-conflict"
+                )
+            else:
+                print(
+                    f"Updating tracking issue checklist for failed PR {item.pr_ref}..."
+                )
+                try:
+                    body = update_task_in_body(
+                        body,
+                        item.pr_ref,
+                        checked=False,
+                        metadata={"status": "error-merge-conflict"},
+                    )
+                    gh.update_issue_body(issue, body)
+                    print(
+                        f"Updated back port of {item.pr_ref} to status=error-merge-conflict (unchecked)"
+                    )
+                except Exception as e:
+                    print(
+                        f"ERROR: Failed to update tracking issue for failed PR {item.pr_ref}: {e}"
+                    )
+        finally:
+            if dry_run:
+                git.reset_hard("HEAD")
+    return failed_prs, body
 
 
 def cmd_process_backports(args):
@@ -51,43 +187,9 @@ def cmd_process_backports(args):
     # Resolve PRs to merge commits using gh helper.
     pr_commit_infos = gh.get_merge_commits_for_prs(pending_items)
 
-    shas = []
-    sha_to_item = {}
-    failed_prs = []
-    ignored_prs = []
-    for item in pr_commit_infos:
-        if item.commit:
-            sha = item.commit
-            sha_to_item[sha] = item
-            shas.append(sha)
-        elif item.status in ("open-pr", "draft-pr"):
-            print(f"PR {item.pr_ref} is open or draft. Ignoring.")
-            ignored_prs.append(item.pr_ref)
-        else:
-            # Handle case where PR could not be resolved to a merge commit.
-            # We immediately mark it as failed in the tracking issue.
-            failed_prs.append(item.pr_ref)
-            status_to_set = item.status or "error-unmerged-pr"
-            if args.dry_run:
-                print(
-                    f"[DRY RUN] Would update tracking issue checklist for unresolved PR {item.pr_ref} to status={status_to_set}"
-                )
-            else:
-                print(
-                    f"Updating tracking issue checklist for unresolved PR {item.pr_ref}..."
-                )
-                try:
-                    body = update_task_in_body(
-                        body,
-                        item.pr_ref,
-                        checked=False,
-                        metadata={"status": status_to_set},
-                    )
-                    gh.update_issue_body(args.issue, body)
-                except Exception as e:
-                    print(
-                        f"ERROR: Failed to update tracking issue for unresolved PR {item.pr_ref}: {e}"
-                    )
+    shas, sha_to_item, failed_prs, ignored_prs, body = _process_pr_commit_infos(
+        pr_commit_infos, body, args.issue, args.dry_run
+    )
 
     if not shas:
         print("No valid merge commits to process.")
@@ -111,85 +213,18 @@ def cmd_process_backports(args):
     git.fetch(args.remote)
     git.checkout(branch_name, track_remote=args.remote)
 
-    for sha in sorted_shas:
-        item = sha_to_item[sha]
-        print(f"Cherry-picking {item.pr_ref} / {sha}...")
-        try:
-            git.cherry_pick(sha, no_commit=args.dry_run)
-
-            # Perform news processing (merging news/ files into the changelog)
-            print(f"Merging news fragments into changelog for PR {item.pr_ref}...")
-            release_date = datetime.date.today().strftime("%Y-%m-%d")
-            changelog_news.update_changelog(version, release_date)
-
-            if not args.dry_run:
-                # Stage changelog changes and news/ deletions
-                git.add("CHANGELOG.md", "news/")
-
-                # Amend cherry-pick commit to include news merging and deletions,
-                # and reference the release tracking issue.
-                print(f"Amending cherry-pick commit for PR {item.pr_ref}...")
-                current_msg = git.get_commit_message("HEAD")
-                new_msg = f"{current_msg.strip()}\n\nWork towards #{args.issue}"
-                git.commit(new_msg, amend=True)
-
-                # Push amended commit
-                git.push(args.remote, branch_name)
-
-                new_sha = git.get_commit_sha("HEAD", short=True)
-                metadata = {"status": "done", "rc": next_rc_suffix, "commit": new_sha}
-                print(f"Updating tracking issue checklist for PR {item.pr_ref}...")
-                try:
-                    body = update_task_in_body(
-                        body, item.pr_ref, checked=True, metadata=metadata
-                    )
-                    gh.update_issue_body(args.issue, body)
-                except Exception as e:
-                    print(
-                        f"ERROR: Failed to update tracking issue for PR {item.pr_ref}: {e}"
-                    )
-                print(f"Success: backported {item.pr_ref} / {sha} to {branch_name}")
-            else:
-                print(
-                    f"[DRY RUN] Success: {item.pr_ref} / {sha} can be backported without error."
-                )
-                print(
-                    f"[DRY RUN] Would update tracking issue checklist for PR {item.pr_ref} to status=done"
-                )
-        except Exception as e:
-            print(f"ERROR: Conflict or error on {sha}: {e}. Aborting.")
-            try:
-                git.cherry_pick_abort()
-            except Exception:
-                pass
-            failed_prs.append(item.pr_ref)
-
-            if args.dry_run:
-                print(
-                    f"[DRY RUN] Would update tracking issue checklist for failed PR {item.pr_ref} to status=error-merge-conflict"
-                )
-            else:
-                print(
-                    f"Updating tracking issue checklist for failed PR {item.pr_ref}..."
-                )
-                try:
-                    body = update_task_in_body(
-                        body,
-                        item.pr_ref,
-                        checked=False,
-                        metadata={"status": "error-merge-conflict"},
-                    )
-                    gh.update_issue_body(args.issue, body)
-                    print(
-                        f"Updated back port of {item.pr_ref} to status=error-merge-conflict (unchecked)"
-                    )
-                except Exception as e:
-                    print(
-                        f"ERROR: Failed to update tracking issue for failed PR {item.pr_ref}: {e}"
-                    )
-        finally:
-            if args.dry_run:
-                git.reset_hard("HEAD")
+    new_failed_prs, body = _cherry_pick_and_update_prs(
+        sorted_shas,
+        sha_to_item,
+        body,
+        args.issue,
+        args.remote,
+        args.dry_run,
+        version,
+        branch_name,
+        next_rc_suffix,
+    )
+    failed_prs.extend(new_failed_prs)
 
     if failed_prs:
         print("ERROR: One or more cherry-picks/resolutions failed:")
