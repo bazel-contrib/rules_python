@@ -12,7 +12,10 @@ from tools.private.release.release_issue import (
     parse_backports,
     update_task_in_body,
 )
-from tools.private.release.utils import get_latest_rc_tag
+from tools.private.release.utils import (
+    get_latest_rc_tag,
+    replace_version_next,
+)
 
 
 class ProcessBackports:
@@ -90,8 +93,12 @@ class ProcessBackports:
                 release_date = datetime.date.today().strftime("%Y-%m-%d")
                 changelog_news.update_changelog(version, release_date)
 
-                # Stage changelog changes and news/ deletions
-                self.git.add("CHANGELOG.md", "news/")
+                # Replace version markers that might have been introduced by the backport
+                print(f"Replacing version markers for PR {item.pr_ref}...")
+                replace_version_next(version)
+
+                # Stage changelog changes, news/ deletions, and version placeholder updates
+                self.git.add_modified_and_deleted()
 
                 # Amend cherry-pick commit to include news merging and deletions,
                 # and reference the release tracking issue.

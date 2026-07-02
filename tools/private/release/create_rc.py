@@ -98,6 +98,12 @@ class CreateRc:
         self.git.tag(next_rc, target_ref)
         self.git.push(args.remote, next_rc)
 
+        import os
+
+        if "GITHUB_OUTPUT" in os.environ:
+            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                f.write(f"tag_name={next_rc}\n")
+
         # Check off the appropriate "Tag RC{N}" task in the checklist
         print(f"Checking off Tag RC{next_rc_num} task...")
         metadata = {"status": "done", "tag": next_rc, "commit": commit_sha[:8]}
@@ -110,7 +116,7 @@ class CreateRc:
         tag_url = f"{REPO_URL}/releases/tag/{next_rc}"
         bcr_entry_url = f"https://registry.bazel.build/modules/rules_python/{version}"
         bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+{version}"
-        release_workflow_url = f"{REPO_URL}/actions/workflows/release.yml"
+        release_workflow_url = f"{REPO_URL}/actions/workflows/release_publish.yaml"
         comment_body = f"""**New Release Candidate Tagged!** 🐍🌿
 
 Release Candidate **{next_rc}** has been successfully generated and tagged on branch `{branch_name}`.

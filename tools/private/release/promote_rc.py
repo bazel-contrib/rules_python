@@ -76,7 +76,7 @@ class PromoteRc:
                 f" {latest_rc} to {version}."
             )
             print(f"[DRY RUN] Would tag commit {commit_sha[:8]} as {version}")
-            print(f"[DRY RUN] Would push tag {version} to upstream")
+            print(f"[DRY RUN] Would push tag {version} to {args.remote}")
             print(f"[DRY RUN] Would update tracking issue #{issue_num} checklist")
             print(f"[DRY RUN] Would post comment to tracking issue #{issue_num}")
             return 0

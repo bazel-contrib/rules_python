@@ -66,14 +66,14 @@ specific commit.
 To trigger the workflow, use the `gh workflow run` command:
 
 ```shell
-gh workflow run release.yml --ref <TAG>
+gh workflow run release_publish.yaml --ref <TAG>
 ```
 
 By default, the workflow will publish the wheel to PyPI. To skip this step,
 you can set the `publish_to_pypi` input to `false`:
 
 ```shell
-gh workflow run release.yml --ref <TAG> -f publish_to_pypi=false
+gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ```
 
 ### Determining Semantic Version

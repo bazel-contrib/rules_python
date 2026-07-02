@@ -1,10 +1,97 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+py_library(
+    name = "release_test_helper",
+    srcs = ["release_test_helper.py"],
+    deps = [
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "changelog_news_test",
+    srcs = ["changelog_news_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "create_rc_test",
+    srcs = ["create_rc_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "create_release_branch_test",
+    srcs = ["create_release_branch_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "git_test",
+    srcs = ["git_test.py"],
+    deps = [
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "prepare_test",
+    srcs = ["prepare_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "process_backports_test",
+    srcs = ["process_backports_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "promote_rc_test",
+    srcs = ["promote_rc_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "release_issue_test",
+    srcs = ["release_issue_test.py"],
+    deps = [
+        "//tools/private/release:release_lib",
+    ],
+)
 
 py_test(
     name = "release_test",
     srcs = ["release_test.py"],
     deps = [
-        "//tools/private/release",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "utils_test",
+    srcs = ["utils_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
         "@dev_pip//packaging",
     ],
 )

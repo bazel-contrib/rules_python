@@ -96,11 +96,8 @@ def parse_metadata_line(line):
 
     metadata = {}
     if metadata_str:
-        pairs = metadata_str.strip().split()
-        for pair in pairs:
-            if "=" in pair:
-                k, v = pair.split("=", 1)
-                metadata[k] = v
+        for k, v in re.findall(r"(\w+)\s*=\s*(\S+)", metadata_str):
+            metadata[k] = v
 
     return {
         "checked": checked,
@@ -116,7 +113,16 @@ def format_metadata_line(checked, name, metadata):
     if not metadata:
         return f"- [{check_str}] {name}"
 
-    metadata_str = " ".join(f"{k}={v}" for k, v in metadata.items())
+    metadata_pairs = []
+    for k, v in metadata.items():
+        if k == "commit":
+            # The 'commit' key is special-cased with a space after '=' so that
+            # GitHub autolinks the commit SHA. Autolinking requires certain
+            # characters to precede the value.
+            metadata_pairs.append(f"commit= {v}")
+        else:
+            metadata_pairs.append(f"{k}={v}")
+    metadata_str = " ".join(metadata_pairs)
     return f"- [{check_str}] {name} | {metadata_str}"
 
 

@@ -13,8 +13,10 @@ permissions:
   issues: write
 
 jobs:
-  generate_rc:
+  tag_rc:
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tagger.outputs.tag_name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -32,8 +34,16 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Attempt RC Tagging
+        id: tagger
         run: |
           bazel run //tools/private/release -- \
             create-rc --issue ${{ inputs.issue }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  call_release:
+    needs: tag_rc
+    uses: ./.github/workflows/release_publish.yaml
+    with:
+      tag_name: ${{ needs.tag_rc.outputs.tag_name }}
+    secrets: inherit
