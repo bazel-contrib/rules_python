@@ -1,6 +1,7 @@
+import argparse
 import datetime
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import call, patch
 
 from tests.tools.private.release.release_test_helper import _mock_git_and_gh
 from tools.private.release.process_backports import ProcessBackports
@@ -18,7 +19,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.addCleanup(patch.stopall)
 
     def test_process_backports_no_pending(self):
-        args = MagicMock(issue=123, remote="origin", dry_run=False)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
+        )
         self.mock_gh.get_issue_body.return_value = "No backports here"
 
         result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
@@ -30,7 +33,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_success(self, mock_datetime):
         mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
-        args = MagicMock(issue=123, remote="origin", dry_run=False)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
+        )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
@@ -83,7 +88,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_dry_run(self, mock_datetime):
         mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
-        args = MagicMock(issue=123, remote="origin", dry_run=True)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=True, add=None, triggering_comment=None
+        )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
@@ -131,7 +138,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_gh.update_issue_body.assert_not_called()
 
     def test_process_backports_ignored_and_failed_states(self):
-        args = MagicMock(issue=123, remote="origin", dry_run=False)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
+        )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
@@ -170,7 +179,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.cherry_pick.assert_not_called()
 
     def test_process_backports_ignored_error_status(self):
-        args = MagicMock(issue=123, remote="origin", dry_run=False)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
+        )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
@@ -193,7 +204,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_cherry_pick_failed(self, mock_datetime):
         mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
-        args = MagicMock(issue=123, remote="origin", dry_run=False)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
+        )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
