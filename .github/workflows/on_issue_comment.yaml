@@ -73,6 +73,7 @@ jobs:
     uses: ./.github/workflows/release_create_rc.yaml
     with:
       issue: ${{ needs.parse_comment.outputs.issue_number }}
+      comment_id: "${{ github.event.comment.id }}"
     secrets: inherit
 
   call_prepare:

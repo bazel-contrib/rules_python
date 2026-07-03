@@ -33,8 +33,9 @@ Release Tracking Issue and automated workflows triggered by comments or issue ed
 3.  **Add Backports (if needed)**: If there are backports, add them following
     the [How to add backports](#how-to-add-backports) steps.
 
-4.  **Create an RC**: Comment `/create-rc` on the tracking issue. All pending
-    backports must be successfully processed before creating the RC.
+4.  **Create an RC**: Comment `/create-rc` on the tracking issue. This will
+    automatically process pending backports before creating the RC. If any
+    backport fails, the RC creation will abort.
 
 5.  **Iterate**: Repeat steps 3 and 4 until backports and RCs are no longer
     needed.

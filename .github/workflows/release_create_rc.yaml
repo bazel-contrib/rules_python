@@ -7,11 +7,19 @@ on:
         description: 'The Release Tracking Issue Number (e.g., 142)'
         required: true
         type: string
+      comment_id:
+        description: 'The ID of the comment that triggered this run (optional)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       issue:
         description: 'The Release Tracking Issue Number (e.g., 142)'
         required: true
+        type: string
+      comment_id:
+        description: 'The ID of the comment that triggered this run (optional)'
+        required: false
         type: string
 
 permissions:
@@ -44,9 +52,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE: ${{ inputs.issue }}
+          COMMENT_ID: ${{ inputs.comment_id }}
         run: |
+          ARGS=()
+          if [ -n "$COMMENT_ID" ]; then
+            ARGS+=("--triggering-comment=$COMMENT_ID")
+          fi
           bazel run //tools/private/release -- \
-            create-rc --issue "$ISSUE" --remote origin
+            create-rc --issue "$ISSUE" --remote origin "${ARGS[@]}"
 
   call_release:
     needs: tag_rc

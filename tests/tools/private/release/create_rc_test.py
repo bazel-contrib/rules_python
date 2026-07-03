@@ -253,6 +253,130 @@ class CmdCreateRcTest(unittest.TestCase):
             call2_args[1],
         )
 
+    @patch("tools.private.release.create_rc.ProcessBackports")
+    def test_create_rc_calls_process_backports(self, mock_pb_class):
+        # Arrange
+        mock_pb = mock_pb_class.return_value
+        mock_pb.run.return_value = 0
+
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [ ] Tag RC0 | status=pending
+"""
+        self.mock_git.get_remote_tags.return_value = []
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 0)
+        mock_pb_class.assert_called_once()
+        called_args = mock_pb_class.call_args[0][0]
+        self.assertEqual(called_args.issue, 123)
+        self.assertEqual(called_args.remote, "my-remote")
+        self.assertFalse(called_args.dry_run)
+        self.assertIsNone(called_args.add)
+        self.assertIsNone(called_args.triggering_comment)
+        mock_pb.run.assert_called_once()
+
+    @patch("tools.private.release.create_rc.ProcessBackports")
+    def test_create_rc_aborts_on_process_backports_failure(self, mock_pb_class):
+        # Arrange
+        mock_pb = mock_pb_class.return_value
+        mock_pb.run.return_value = 1
+
+        args = MagicMock(issue=123, remote="my-remote")
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 1)
+        mock_pb_class.assert_called_once()
+        mock_pb.run.assert_called_once()
+        self.mock_gh.get_issue_body.assert_not_called()
+        self.mock_git.tag.assert_not_called()
+
+    @patch("tools.private.release.create_rc.ProcessBackports")
+    def test_create_rc_failure_reacts_to_comment(self, mock_pb_class):
+        # Arrange
+        mock_pb = mock_pb_class.return_value
+        mock_pb.run.return_value = 1  # Simulate failure
+
+        args = MagicMock(issue=123, remote="my-remote", triggering_comment=456)
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.add_comment_reaction.assert_called_once_with(456, "-1")
+
+    @patch("tools.private.release.create_rc.ProcessBackports")
+    def test_create_rc_failure_no_comment_no_reaction(self, mock_pb_class):
+        # Arrange
+        mock_pb = mock_pb_class.return_value
+        mock_pb.run.return_value = 1  # Simulate failure
+
+        args = MagicMock(issue=123, remote="my-remote", triggering_comment=None)
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.add_comment_reaction.assert_not_called()
+
+    @patch("tools.private.release.create_rc.ProcessBackports")
+    def test_create_rc_success_with_comment_no_reaction(self, mock_pb_class):
+        # Arrange
+        mock_pb = mock_pb_class.return_value
+        mock_pb.run.return_value = 0
+
+        args = MagicMock(issue=123, remote="my-remote", triggering_comment=456)
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [ ] Tag RC0 | status=pending
+"""
+        self.mock_git.get_remote_tags.return_value = []
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_gh.add_comment_reaction.assert_not_called()
+
+    @patch("tools.private.release.create_rc.ProcessBackports")
+    def test_create_rc_precondition_failure_reacts_to_comment(self, mock_pb_class):
+        # Arrange
+        mock_pb = mock_pb_class.return_value
+        mock_pb.run.return_value = 0  # Backports succeed
+
+        args = MagicMock(issue=123, remote="my-remote", triggering_comment=456)
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [ ] Prepare Release | status=pending
+- [ ] Create Release branch | status=pending
+- [ ] Tag RC0 | status=pending
+"""
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 1)
+        self.mock_gh.add_comment_reaction.assert_called_once_with(456, "-1")
+
 
 if __name__ == "__main__":
     unittest.main()

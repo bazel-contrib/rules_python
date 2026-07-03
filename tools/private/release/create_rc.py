@@ -1,7 +1,10 @@
 """Subcommand to tag and push the next release candidate."""
 
-from tools.private.release.gh import GitHub
+from argparse import Namespace
+
+from tools.private.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
 from tools.private.release.git import Git
+from tools.private.release.process_backports import ProcessBackports
 from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
     add_rc_task_to_body,
@@ -26,6 +29,43 @@ class CreateRc:
     def run(self) -> int:
         """Executes the create-rc subcommand."""
         args = self.args
+        exit_code = 0
+        try:
+            exit_code = self._run_internal()
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            exit_code = 1
+
+        if exit_code != 0 and args.triggering_comment:
+            print(f"Reacting with thumbs-down to comment {args.triggering_comment}...")
+            try:
+                self.gh.add_comment_reaction(
+                    args.triggering_comment, GH_REACTION_THUMBS_DOWN
+                )
+            except Exception as e:
+                print(f"Failed to add reaction to comment: {e}")
+
+        return exit_code
+
+    def _run_internal(self) -> int:
+        """Internal implementation of create-rc."""
+        args = self.args
+
+        # Try to process pending backports first
+        print("Processing pending backports before creating RC...")
+        backport_args = Namespace(
+            issue=args.issue,
+            remote=args.remote,
+            add=None,
+            triggering_comment=None,
+            dry_run=False,
+        )
+        pb = ProcessBackports(backport_args, self.git, self.gh)
+        backports_exit_code = pb.run()
+        if backports_exit_code != 0:
+            print("Error: Processing backports failed. Aborting RC creation.")
+            return backports_exit_code
+
         body = self.gh.get_issue_body(args.issue)
         state = parse_checklist_state(body)
 
@@ -152,6 +192,11 @@ Release Candidate **{next_rc}** has been successfully generated and tagged on br
             type=str,
             required=True,
             help="The git remote to push the RC tag to (required).",
+        )
+        parser.add_argument(
+            "--triggering-comment",
+            type=int,
+            help="The ID of the comment that triggered this run (optional).",
         )
         parser.set_defaults(command=cls.run_from_args)
 
