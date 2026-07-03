@@ -76,9 +76,56 @@ class PromoteRc:
         # Get commit SHA of the RC tag (which will be the same for the final tag)
         commit_sha = self.git.get_commit_sha(latest_rc)
 
-        # Verify issue is in the right format by trying to prepare the update
+        # Verify issue can be found and read it early
         print(f"Verifying tracking issue #{issue_num} format...")
         body = self.gh.get_issue_body(issue_num)
+
+        # Determine release branch name and verify it matches the RC tag commit
+        branch_version = ".".join(version.split(".")[:2])
+        branch_name = f"release/{branch_version}"
+        remote_branch = f"{args.remote}/{branch_name}"
+
+        print(f"Fetching remote branch {remote_branch}...")
+        self.git.fetch(args.remote, refspec=branch_name)
+        try:
+            branch_sha = self.git.get_commit_sha(remote_ref=remote_branch)
+        except Exception as e:
+            print(
+                f"Error: Could not get commit SHA for remote branch"
+                f" {remote_branch}: {e}"
+            )
+            return 1
+
+        if commit_sha != branch_sha:
+            print(
+                f"Error: The latest RC tag {latest_rc} ({commit_sha[:8]}) is not at"
+                f" the head of release branch {remote_branch} ({branch_sha[:8]})."
+            )
+            metadata = {
+                "status": "error-tag-branch-mismatch",
+                "rc": latest_rc,
+                "branch_commit": branch_sha[:8],
+                "rc_commit": commit_sha[:8],
+            }
+            try:
+                updated_body = update_task_in_body(
+                    body, "Tag Final", checked=False, metadata=metadata
+                )
+            except ValueError as e:
+                print(f"Error: Tracking issue #{issue_num} is malformed: {e}")
+                return 1
+
+            if not args.dry_run:
+                self.gh.update_issue_body(issue_num, updated_body)
+                print(f"Updated tracking issue #{issue_num} with error status.")
+            else:
+                print(
+                    f"[DRY RUN] Would update tracking issue #{issue_num} with"
+                    f" error status."
+                )
+            return 1
+
+        # Verify issue is in the right format by trying to prepare the update (for success case)
         metadata = {"status": "done", "tag": version, "commit": commit_sha[:8]}
         try:
             updated_body = update_task_in_body(

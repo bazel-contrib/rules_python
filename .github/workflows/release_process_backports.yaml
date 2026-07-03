@@ -48,13 +48,15 @@ jobs:
 
       - name: Process Pending Backports
         run: |
+          ARGS=()
+          ARGS+=("--issue" "${{ inputs.issue }}")
+          ARGS+=("--remote" "origin")
+          ARGS+=("--no-dry-run")
           if [ -n "${{ inputs.add_backports }}" ]; then
             prs=$(echo "${{ inputs.add_backports }}" | tr ',' ' ')
-            bazel run //tools/private/release -- \
-              add-backports $prs --issue ${{ inputs.issue }} --remote origin --no-dry-run
-          else
-            bazel run //tools/private/release -- \
-              process-backports --issue ${{ inputs.issue }} --remote origin --no-dry-run
+            ARGS+=("--add" $prs)
           fi
+          
+          bazel run //tools/private/release -- process-backports "${ARGS[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

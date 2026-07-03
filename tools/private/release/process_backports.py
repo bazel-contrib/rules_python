@@ -9,6 +9,7 @@ from tools.private.release.gh import GitHub
 from tools.private.release.git import Git
 from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
+    add_backports_to_body,
     parse_backports,
     update_task_in_body,
 )
@@ -179,6 +180,24 @@ class ProcessBackports:
         """Executes the process-backports subcommand."""
         args = self.args
         body = self.gh.get_issue_body(args.issue)
+
+        if args.add:
+            print(f"Adding backports {args.add} to tracking issue #{args.issue}...")
+            try:
+                body = add_backports_to_body(body, args.add)
+            except ValueError as e:
+                print(f"Error: {e}")
+                return 1
+
+            if not args.dry_run:
+                self.gh.update_issue_body(args.issue, body)
+                print("Successfully updated tracking issue checklist.")
+            else:
+                print(
+                    "[DRY RUN] Would update tracking issue checklist with new"
+                    " backports."
+                )
+
         items = parse_backports(body)
 
         pending_items = [
@@ -294,6 +313,12 @@ class ProcessBackports:
             type=str,
             required=True,
             help="The git remote to push changes to (required).",
+        )
+        parser.add_argument(
+            "--add",
+            nargs="*",
+            type=int,
+            help="PR numbers to add to the checklist before processing.",
         )
         parser.add_argument(
             "--dry-run",

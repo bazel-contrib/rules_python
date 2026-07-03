@@ -75,14 +75,15 @@ being accumulated for the next release, review the pending news entries in the
 
 ## How to add backports
 
-To request and process backports to an active release, you can use one of the
-following methods:
+To add backports to an active release, you can use one of the following
+methods:
 
 ### Method A: Manual Checklist Update
 1.  Manually add checklist items under the `## Backports` section of the
     Release Tracking Issue. The format must be: `- [ ] #<PR_NUMBER>` (e.g.,
     `- [ ] #1234`).
-2.  Comment `/process-backports` on the tracking issue to trigger processing.
+2.  When ready, comment `/process-backports` on the tracking issue to trigger
+    processing.
 
 ### Method B: Comment Shortcut
 1.  Comment `/add-backports <PR_NUMBER> [<PR_NUMBER> ...]` (space or comma

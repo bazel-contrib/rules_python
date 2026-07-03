@@ -4,7 +4,6 @@ import argparse
 import os
 import sys
 
-from tools.private.release.add_backports import AddBackports
 from tools.private.release.complete_prepare import CompletePrepare
 from tools.private.release.create_rc import CreateRc
 from tools.private.release.create_release_branch import CreateReleaseBranch
@@ -21,7 +20,6 @@ cmds = [
     CompletePrepare,
     CreateReleaseBranch,
     ProcessBackports,
-    AddBackports,
     CreateRc,
     PromoteRc,
 ]

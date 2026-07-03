@@ -33,6 +33,7 @@ jobs:
         id: parse
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/create-rc([[:space:]]|$)'; then
             echo "command=create-rc" >> "$GITHUB_OUTPUT"
@@ -52,6 +53,12 @@ jobs:
             else
               echo "command=none" >> "$GITHUB_OUTPUT"
               echo "Error: No PRs specified for add-backports." >&2
+              gh api \
+                --method POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+                -f "content=-1"
             fi
           elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/promote([[:space:]]|$)'; then
             echo "command=promote" >> "$GITHUB_OUTPUT"
