@@ -35,3 +35,12 @@ jobs:
             create-release-branch --issue ${{ github.event.issue.number }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # A no-op job that always runs to prevent "no jobs ran" failures
+  # when the main job is skipped.
+  suppress-no-jobs-ran-error:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Success
+        run: echo "Success"
+

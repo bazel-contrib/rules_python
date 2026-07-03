@@ -114,15 +114,21 @@ class CreateRc:
         self.gh.update_issue_body(args.issue, updated_body)
 
         tag_url = f"{REPO_URL}/releases/tag/{next_rc}"
-        bcr_entry_url = f"https://registry.bazel.build/modules/rules_python/{version}"
-        bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+{version}"
-        release_workflow_url = f"{REPO_URL}/actions/workflows/release_publish.yaml"
+        bcr_entry_url = f"https://registry.bazel.build/modules/rules_python/{next_rc}"
+        bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+{next_rc}"
+        if run_id := os.environ.get("GITHUB_RUN_ID"):
+            release_workflow_url = f"{REPO_URL}/actions/runs/{run_id}"
+        else:
+            release_workflow_url = (
+                f"{REPO_URL}/actions/workflows/release_create_rc.yaml"
+            )
+        branch_url = f"{REPO_URL}/tree/{branch_name}"
         comment_body = f"""**New Release Candidate Tagged!** 🐍🌿
 
-Release Candidate **{next_rc}** has been successfully generated and tagged on branch `{branch_name}`.
+Release Candidate **{next_rc}** has been successfully generated and tagged on branch [`{branch_name}`]({branch_url}).
 
 - [Github Release {next_rc}]({tag_url})
-- BCR Entry: [rules_python@{version}]({bcr_entry_url})
+- [BCR Entry {next_rc}]({bcr_entry_url})
 - [BCR PRs]({bcr_search_url})
 - [Release workflow status]({release_workflow_url})"""
         self.gh.post_issue_comment(args.issue, comment_body)

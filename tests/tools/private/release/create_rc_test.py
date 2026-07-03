@@ -57,22 +57,56 @@ class CmdCreateRcTest(unittest.TestCase):
             comment_call_args[1],
         )
         self.assertIn(
+            "tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0)",
+            comment_call_args[1],
+        )
+        self.assertIn(
             "- [Github Release 2.0.0-rc0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0-rc0)",
             comment_call_args[1],
         )
         self.assertIn(
-            "- BCR Entry: [rules_python@2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)",
+            "- [BCR Entry 2.0.0-rc0](https://registry.bazel.build/modules/rules_python/2.0.0-rc0)",
             comment_call_args[1],
         )
         self.assertIn(
-            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+2.0.0)",
+            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+2.0.0-rc0)",
             comment_call_args[1],
         )
         self.assertIn(
-            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_publish.yaml)",
+            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_create_rc.yaml)",
             comment_call_args[1],
         )
         self.assertNotIn("🚀", comment_call_args[1])
+
+    def test_create_rc_success_with_run_id(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [ ] Tag RC0 | status=pending
+"""
+        self.mock_git.get_remote_tags.return_value = []
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        with patch.dict(os.environ, {"GITHUB_RUN_ID": "987654321"}):
+            result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_gh.post_issue_comment.assert_called_once()
+        comment_call_args = self.mock_gh.post_issue_comment.call_args[0]
+        self.assertIn(
+            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/runs/987654321)",
+            comment_call_args[1],
+        )
+        self.assertIn(
+            "tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0)",
+            comment_call_args[1],
+        )
 
     def test_create_rc_success_next_rc(self):
         # Arrange
@@ -114,19 +148,23 @@ class CmdCreateRcTest(unittest.TestCase):
             comment_call_args[1],
         )
         self.assertIn(
+            "tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0)",
+            comment_call_args[1],
+        )
+        self.assertIn(
             "- [Github Release 2.0.0-rc1](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0-rc1)",
             comment_call_args[1],
         )
         self.assertIn(
-            "- BCR Entry: [rules_python@2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)",
+            "- [BCR Entry 2.0.0-rc1](https://registry.bazel.build/modules/rules_python/2.0.0-rc1)",
             comment_call_args[1],
         )
         self.assertIn(
-            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+2.0.0)",
+            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr+rules_python+2.0.0-rc1)",
             comment_call_args[1],
         )
         self.assertIn(
-            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_publish.yaml)",
+            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_create_rc.yaml)",
             comment_call_args[1],
         )
         self.assertNotIn("🚀", comment_call_args[1])
