@@ -1,0 +1,68 @@
+name: "On Issue Comment"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  # This job always runs to prevent GHA from marking the run as failed when
+  # all other jobs are skipped.
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No-op"
+
+  parse_comment:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.issue.labels.*.name, 'type: release') &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
+    outputs:
+      command: ${{ steps.parse.outputs.command }}
+      issue_number: ${{ github.event.issue.number }}
+    steps:
+      - name: Parse comment
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          if echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/create-rc([[:space:]]|$)'; then
+            echo "command=create-rc" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/prepare([[:space:]]|$)'; then
+            echo "command=prepare" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/process-backports([[:space:]]|$)'; then
+            echo "command=process-backports" >> "$GITHUB_OUTPUT"
+          else
+            echo "command=none" >> "$GITHUB_OUTPUT"
+          fi
+
+  call_create_rc:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'create-rc'
+    uses: ./.github/workflows/release_create_rc.yaml
+    with:
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
+    secrets: inherit
+
+  call_prepare:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'prepare'
+    uses: ./.github/workflows/release_prepare.yaml
+    with:
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
+    secrets: inherit
+
+  call_process_backports:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'process-backports'
+    uses: ./.github/workflows/release_process_backports.yaml
+    with:
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
+    secrets: inherit

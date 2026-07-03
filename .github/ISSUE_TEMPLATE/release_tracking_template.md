@@ -18,7 +18,7 @@ labels: ['type: release']
 To request a backport:
 1. Add a new checklist item under the `## Backports` section.
 2. The format must be: `- [ ] #<PR_NUMBER>` (e.g., `- [ ] #1234`).
-3. Trigger the [Process Backports Workflow](https://github.com/bazel-contrib/rules_python/actions/workflows/process_backports.yml).
+3. Trigger the [Process Backports Workflow][process_backports].
 </details>
 
 ---
@@ -36,8 +36,21 @@ The checklist items use metadata suffix: `| key=value key2=value2`.
 <details>
 <summary><b>Available Commands</b></summary>
 
-Maintainers can trigger automation by running manual workflows:
-- [Process Backports Workflow](https://github.com/bazel-contrib/rules_python/actions/workflows/process_backports.yml)
-- [Generate RC Tag Workflow](https://github.com/bazel-contrib/rules_python/actions/workflows/generate_rc.yml)
-- [Promote RC to Final Release Workflow](https://github.com/bazel-contrib/rules_python/actions/workflows/promote_rc.yml)
+Maintainers can trigger automation by:
+- Running manual workflows:
+  - [Process Backports Workflow][process_backports]
+  - [Create RC Workflow][create_rc]
+  - [Promote RC to Final Release Workflow][promote_rc]
+- Commenting on this issue (requires the issue to have the `type: release`
+  label):
+  - `/prepare` at the beginning of a line to trigger the Release Prepare
+    workflow.
+  - `/create-rc` at the beginning of a line to trigger the Create RC
+    workflow.
+  - `/process-backports` at the beginning of a line to trigger the Process
+    Backports workflow.
+
+[process_backports]: https://github.com/bazel-contrib/rules_python/actions/workflows/release_process_backports.yaml
+[create_rc]: https://github.com/bazel-contrib/rules_python/actions/workflows/release_create_rc.yaml
+[promote_rc]: https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote_rc.yaml
 </details>

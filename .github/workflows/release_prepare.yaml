@@ -2,7 +2,17 @@ name: "Release: Prepare"
 
 on:
   workflow_dispatch:
-    # Allow manual triggering to prepare the release immediately
+    inputs:
+      issue:
+        description: 'The Release Tracking Issue Number (e.g., 142)'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      issue:
+        description: 'The Release Tracking Issue Number (e.g., 142)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -30,7 +40,7 @@ jobs:
 
       - name: Run Release Preparation Pipeline
         run: |
-          # Manual trigger: run full preparation
-          bazel run //tools/private/release -- prepare --no-dry-run
+          bazel run //tools/private/release -- \
+            prepare ${{ inputs.issue && format('--issue={0}', inputs.issue) || '' }} --no-dry-run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
