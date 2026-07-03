@@ -10,7 +10,9 @@ from tools.private.release.git import Git
 from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
     add_backports_to_body,
+    add_rc_task_to_body,
     parse_backports,
+    parse_checklist_state,
     update_task_in_body,
 )
 from tools.private.release.utils import (
@@ -207,6 +209,19 @@ class ProcessBackports:
             print(f"Adding backports {args.add} to tracking issue #{args.issue}...")
             try:
                 body = add_backports_to_body(body, args.add)
+                state = parse_checklist_state(body)
+                rc_tags = state.get("rc_tags", {})
+                has_pending_rc = any(
+                    not task.checked and task.status != "done"
+                    for task in rc_tags.values()
+                )
+                next_rc_num = max(rc_tags.keys()) + 1 if rc_tags else 0
+                if not has_pending_rc:
+                    print(
+                        f"No pending RC task found. Adding 'Tag"
+                        f" RC{next_rc_num}' to checklist..."
+                    )
+                    body = add_rc_task_to_body(body, next_rc_num)
             except ValueError as e:
                 print(f"Error: {e}")
                 return 1
@@ -219,6 +234,8 @@ class ProcessBackports:
                     "[DRY RUN] Would update tracking issue checklist with new"
                     " backports."
                 )
+                if not has_pending_rc:
+                    print(f"[DRY RUN] Would add 'Tag RC{next_rc_num}' to checklist.")
 
         items = parse_backports(body)
 
