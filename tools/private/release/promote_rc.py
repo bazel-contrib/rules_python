@@ -5,7 +5,10 @@ import urllib.parse
 
 from tools.private.release.gh import GitHub
 from tools.private.release.git import Git
-from tools.private.release.release_issue import update_task_in_body
+from tools.private.release.release_issue import (
+    RELEASE_TITLE_RE,
+    update_task_in_body,
+)
 from tools.private.release.utils import (
     REPO_URL,
     determine_next_version,
@@ -30,7 +33,23 @@ class PromoteRc:
 
         version = args.version
         if version is None:
-            version = determine_next_version()
+            if args.issue:
+                issue_title = self.gh.get_issue_title(args.issue)
+                version_match = RELEASE_TITLE_RE.search(issue_title)
+                if version_match:
+                    version = version_match.group(1)
+                    print(
+                        f"Resolved version {version} from tracking issue"
+                        f" #{args.issue} title."
+                    )
+                else:
+                    print(
+                        f"Error: Could not parse version from issue title:"
+                        f" {issue_title}"
+                    )
+                    return 1
+            else:
+                version = determine_next_version()
 
         latest_rc = get_latest_rc_tag(version, remote=args.remote)
         if not latest_rc:

@@ -11,7 +11,7 @@ on:
     inputs:
       version:
         description: 'The final version to release (e.g., 0.38.0)'
-        required: true
+        required: false
         type: string
       issue:
         description: 'The tracking issue number'
@@ -43,7 +43,16 @@ jobs:
 
       - name: Run Promote RC
         run: |
-          bazel run //tools/private/release -- \
-            promote-rc ${{ inputs.version }} --issue ${{ inputs.issue }} --remote origin
+          ARGS=()
+          if [ -n "${{ inputs.version }}" ]; then
+            ARGS+=("${{ inputs.version }}")
+          fi
+          if [ -n "${{ inputs.issue }}" ]; then
+            ARGS+=("--issue" "${{ inputs.issue }}")
+          fi
+          ARGS+=("--remote" "origin")
+          ARGS+=("--no-dry-run")
+          
+          bazel run //tools/private/release -- promote-rc "${ARGS[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

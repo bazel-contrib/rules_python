@@ -11,9 +11,10 @@ existing Bazel workspace to sanity check functionality.
 Releases are managed using a semi-automated process centered around a GitHub
 Release Tracking Issue and automated workflows triggered by comments or issue edits.
 
-Note that comment-based commands must be posted by project maintainers (Owner,
-Member, or Collaborator) and must be on their own line (leading and trailing
-whitespace is ignored).
+> [!NOTE]
+> Comment-based commands must be posted by project maintainers (Owner,
+> Member, or Collaborator) and must be on their own line (leading and trailing
+> whitespace is ignored).
 
 ### Steps
 
@@ -21,7 +22,7 @@ whitespace is ignored).
     workflow manually. You can trigger it from the GitHub Actions UI or using
     the GitHub CLI:
     ```shell
-    gh workflow run release_prepare.yaml
+    gh workflow run release_prepare.yaml --repo bazel-contrib/rules_python
     ```
     This will automatically determine the next version, create a release tracking
     issue, and send a preparation PR.
@@ -81,6 +82,14 @@ To request a backport to an active release:
 3.  Trigger the **Process Backports** workflow (e.g. by commenting
     `/process-backports` on the tracking issue).
 
+If a backport fails to process (e.g., due to cherry-pick conflicts):
+*   The workflow will fail.
+*   The failed backport checklist item will remain unchecked with
+    `status=error-merge-conflict`.
+*   You must resolve the conflict manually: checkout the release branch,
+    cherry-pick the PR, resolve conflicts, push to remote, and manually check
+    the box on the tracking issue checklist with `status=done` metadata.
+
 ## Patch release with cherry picks
 
 If a patch release from head would contain changes that aren't appropriate for
@@ -132,6 +141,14 @@ The two points of no return are:
 
 If release steps fail _prior_ to those steps, then its OK to change the tag. You
 may need to manually delete the GitHub release.
+
+## Manual Editing of Tracking Issue
+
+You can manually edit the Release Tracking Issue to control the release flow.
+The checklist items use metadata suffix: `| key=value key2=value2`.
+
+*   **Retry Prepare Release**: Reset the task to `- [ ] Prepare Release | status=awaiting-preparation`.
+*   **Force Task Done**: Check the box `- [x]` and add appropriate metadata (e.g. `status=done`).
 
 ## Secrets
 
