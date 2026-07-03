@@ -9,6 +9,15 @@ py_library(
 )
 
 py_test(
+    name = "add_backports_test",
+    srcs = ["add_backports_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
     name = "changelog_news_test",
     srcs = ["changelog_news_test.py"],
     deps = [
@@ -29,6 +38,15 @@ py_test(
 py_test(
     name = "create_release_branch_test",
     srcs = ["create_release_branch_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "find_release_issue_test",
+    srcs = ["find_release_issue_test.py"],
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
