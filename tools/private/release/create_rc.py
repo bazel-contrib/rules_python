@@ -1,5 +1,6 @@
 """Subcommand to tag and push the next release candidate."""
 
+import traceback
 from argparse import Namespace
 
 from tools.private.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
@@ -34,6 +35,7 @@ class CreateRc:
             exit_code = self._run_internal()
         except Exception as e:
             print(f"Unexpected error: {e}")
+            traceback.print_exc()
             exit_code = 1
 
         if exit_code != 0 and args.triggering_comment:
