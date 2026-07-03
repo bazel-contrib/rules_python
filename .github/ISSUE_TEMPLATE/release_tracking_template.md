@@ -50,7 +50,8 @@ Maintainers can trigger automation by:
   - `/process-backports` at the beginning of a line to trigger the Process
     Backports workflow.
 
+</details>
+
 [process_backports]: https://github.com/bazel-contrib/rules_python/actions/workflows/release_process_backports.yaml
 [create_rc]: https://github.com/bazel-contrib/rules_python/actions/workflows/release_create_rc.yaml
 [promote_rc]: https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote_rc.yaml
-</details>
