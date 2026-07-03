@@ -4,6 +4,7 @@ from tools.private.release.gh import GitHub
 from tools.private.release.git import Git
 from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
+    add_rc_task_to_body,
     parse_backports,
     parse_checklist_state,
     update_task_in_body,
@@ -77,19 +78,17 @@ class CreateRc:
         # Precheck: next RC number must exist and be unchecked in the checklist
         rc_tags = state.get("rc_tags", {})
         if next_rc_num not in rc_tags:
-            print(
-                f"Error: Checklist is missing required task 'Tag RC{next_rc_num}'"
-                f" to cut {version}-rc{next_rc_num}."
-            )
-            return 1
-
-        target_rc_task = rc_tags[next_rc_num]
-        if target_rc_task.checked or target_rc_task.status == "done":
-            print(
-                f"Error: Task 'Tag RC{next_rc_num}' is already marked done in"
-                " the checklist."
-            )
-            return 1
+            print(f"Task 'Tag RC{next_rc_num}' not found in checklist. Adding it...")
+            body = add_rc_task_to_body(body, next_rc_num)
+            self.gh.update_issue_body(args.issue, body)
+        else:
+            target_rc_task = rc_tags[next_rc_num]
+            if target_rc_task.checked or target_rc_task.status == "done":
+                print(
+                    f"Error: Task 'Tag RC{next_rc_num}' is already marked done in"
+                    " the checklist."
+                )
+                return 1
 
         target_ref = f"{args.remote}/{branch_name}"
         commit_sha = self.git.get_commit_sha(target_ref)

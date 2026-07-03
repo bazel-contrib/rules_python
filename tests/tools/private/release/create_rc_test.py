@@ -1,3 +1,4 @@
+import argparse
 import os
 import pathlib
 import tempfile
@@ -211,6 +212,46 @@ class CmdCreateRcTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.mock_git.tag.assert_called_once_with("2.0.0-rc0", "my-remote/release/2.0")
         self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc0")
+
+    def test_create_rc_auto_add_task(self):
+        # Arrange
+        args = argparse.Namespace(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [x] Tag RC0 | status=done tag=2.0.0-rc0 commit=abcdef12
+- [ ] Tag Final
+"""
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0"]
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.tag.assert_called_once_with("2.0.0-rc1", "my-remote/release/2.0")
+        self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc1")
+
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        call1_args = self.mock_gh.update_issue_body.call_args_list[0][0]
+        call2_args = self.mock_gh.update_issue_body.call_args_list[1][0]
+
+        self.assertEqual(call1_args[0], 123)
+        self.assertIn("- [ ] Tag RC1", call1_args[1])
+        self.assertIn(
+            "- [x] Tag RC0 | status=done tag=2.0.0-rc0 commit=abcdef12\n- [ ]"
+            " Tag RC1\n- [ ] Tag Final",
+            call1_args[1].strip(),
+        )
+
+        self.assertEqual(call2_args[0], 123)
+        self.assertIn(
+            "- [x] Tag RC1 | status=done tag=2.0.0-rc1 commit= 12345678",
+            call2_args[1],
+        )
 
 
 if __name__ == "__main__":

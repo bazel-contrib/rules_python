@@ -284,3 +284,32 @@ def add_backports_to_body(body: str, prs: list[int]) -> str:
     # Replace the old section with the updated one
     start, end = match.span(2)
     return body[:start] + updated_section + body[end:]
+
+
+def add_rc_task_to_body(body: str, rc_num: int) -> str:
+    """Adds a new 'Tag RC<rc_num>' task to the checklist in the issue body."""
+    body = body.replace("\r\n", "\n")
+    lines = body.splitlines()
+
+    # Find the index of the last "Tag RC<M>" line
+    last_rc_idx = -1
+    for i, line in enumerate(lines):
+        parsed = parse_metadata_line(line)
+        if parsed and re.match(r"Tag RC\d+", parsed["name"], re.IGNORECASE):
+            last_rc_idx = i
+
+    if last_rc_idx == -1:
+        # If no RC task found (unexpected, but fallback to before "Tag Final")
+        for i, line in enumerate(lines):
+            parsed = parse_metadata_line(line)
+            if parsed and parsed["name"].lower() == "tag final":
+                last_rc_idx = i - 1
+                break
+
+    if last_rc_idx == -1:
+        raise ValueError("Could not find a place to insert the new RC task.")
+
+    new_task_line = f"- [ ] Tag RC{rc_num}"
+    lines.insert(last_rc_idx + 1, new_task_line)
+
+    return "\n".join(lines)
