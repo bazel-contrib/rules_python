@@ -50,7 +50,7 @@ jobs:
         run: |
           ARGS=()
           if [ -n "${{ inputs.add_backports }}" ]; then
-            ARGS+=("--add" "${{ inputs.add_backports }}")
+            ARGS+=("--add=${{ inputs.add_backports }}")
           fi
           
           bazel run //tools/private/release -- process-backports \

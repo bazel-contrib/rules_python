@@ -172,3 +172,25 @@ def replace_version_next(version):
             new_content = new_content.replace("VERSION_NEXT_PATCH", version)
             with open(filepath, "w") as f:
                 f.write(new_content)
+
+
+def parse_pr_list(value: str) -> list[int]:
+    """Parses a comma or space separated list of PR numbers.
+
+    PR numbers can optionally be prefixed with '#'.
+    """
+    if not value:
+        return []
+    # Split by space and/or comma
+    pr_strings = [p for p in re.split(r"[\s,]+", value.strip()) if p]
+    prs = []
+    for pr_str in pr_strings:
+        clean_pr_str = pr_str.lstrip("#")
+        try:
+            prs.append(int(clean_pr_str))
+        except ValueError as e:
+            raise argparse.ArgumentTypeError(
+                f"Invalid PR reference '{pr_str}'. Must be integer optionally"
+                f" prefixed with '#'."
+            ) from e
+    return prs
