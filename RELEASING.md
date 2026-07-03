@@ -8,54 +8,51 @@ existing Bazel workspace to sanity check functionality.
 
 ## Releasing from HEAD
 
-These are the steps for a regularly scheduled release from HEAD.
+Releases are managed using a semi-automated process centered around a GitHub
+Release Tracking Issue and automated workflows triggered by comments or issue edits.
 
 ### Steps
 
-1. Update the changelog and replace the version placeholders by running the
-   release tool. The next version number will be automatically determined
-   based on the presence of `VERSION_NEXT_*` placeholders and git tags. The
-   tool will read all news entry files in the `news/` directory, assemble
-   them into the changelog, and delete the processed news files.
+1.  **Create a Release Tracking Issue**: Go to the GitHub Issues page and create
+    a new issue using the **Release Tracking Issue** template. This issue serves
+    as the central hub and checklist for the release.
 
-   ```shell
-   bazel run //tools/private/release
-   ```
+2.  **Prepare the Release**: Comment `/prepare` on the tracking issue. This
+    triggers the **Release: Prepare** workflow which:
+    *   Automatically determines the next version based on news entries.
+    *   Creates a `prepare-X.Y.Z` branch.
+    *   Updates `CHANGELOG.md` and version placeholders.
+    *   Creates a Pull Request with these changes.
 
-   If you want to append news entries to an already existing release section in
-   the changelog (for example, to update a drafted release or a release
-   branch), you can specify the version explicitly:
+3.  **Review and Merge**: Review, approve, and merge the generated Pull Request.
+    Once merged, the **Release: Complete Prepare** workflow will automatically
+    mark the "Prepare Release" task as complete on the tracking issue checklist.
 
-   ```shell
-   bazel run //tools/private/release -- X.Y.Z
-   ```
+4.  **Create Release Branch**: Manually check the **Create Release branch** box
+    on the tracking issue checklist. This triggers the **Release: Create Release
+    Branch** workflow, which cuts the `release/X.Y` branch.
 
-1. Send these changes for review and get them merged.
-1. Create a branch for the new release, named `release/X.Y`
-   ```
-   git branch --no-track release/X.Y upstream/main && git push upstream release/X.Y
-   ```
+5.  **Tag Release Candidate (RC)**: Comment `/create-rc` on the tracking issue.
+    This triggers the **Release: Create RC** workflow, which:
+    *   Tags the release branch with `X.Y.Z-rcN`.
+    *   Triggers the **Release: Publish** workflow to publish the release.
 
-The next step is to create tags to trigger release workflow, **however**
-we start by using release candidate tags (`X.Y.Z-rcN`) before tagging the
-final release (`X.Y.Z`).
+6.  **Announce and Wait**: Announce the RC release (see [Announcing
+    releases](#announcing-releases)) and wait for feedback.
 
-1. Create release candidate tag and push. The first RC uses `N=0`. Increment
-   `N` for each RC.
-   ```
-   git tag X.Y.0-rcN upstream/release/X.Y && git push upstream tag X.Y.0-rcN
-   ```
-2. Announce the RC release: see [Announcing Releases]
-3. Wait a week for feedback.
-   * Follow [Patch release with cherry picks] to pull bug fixes into the
-     release branch.
-   * Repeat the RC tagging step, incrementing `N`.
-4. Finally, tag the final release tag:
-   ```shell
-   git tag X.Y.0 upstream/release/X.Y && git push upstream tag X.Y.0
-   ```
+7.  **Handle Backports (if needed)**: If bugs need to be fixed in the release:
+    *   Cherry-pick the fixes into the release branch (see [Patch release with
+        cherry picks]).
+    *   Add the backported PRs to the `## Backports` section of the tracking
+        issue.
+    *   Comment `/process-backports` on the tracking issue to update the checklist.
+    *   Comment `/create-rc` again to tag a new RC (e.g. `rc1`).
 
-Release automation will create a GitHub release and BCR pull request.
+8.  **Final Release**: Once the RC is stable, promote it to final release by
+    manually triggering the **Release: Promote RC** workflow from the GitHub
+    Actions UI (or using `gh workflow run`), specifying the final version
+    (e.g., `0.38.0`).
+
 
 ### Manually triggering the release workflow
 
@@ -105,8 +102,8 @@ The fix being included is commit `deadbeef`.
 If multiple commits need to be applied, repeat the `git cherry-pick` step for
 each.
 
-Once the release branch is in the desired state, use `git tag` to tag it, as
-done with a release from head. Release automation will do the rest.
+Once the release branch is in the desired state, comment `/create-rc` on the
+tracking issue to tag it, as done with a release from head.
 
 ### Announcing releases
 
