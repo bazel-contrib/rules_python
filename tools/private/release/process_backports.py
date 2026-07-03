@@ -5,7 +5,7 @@ import datetime
 from typing import Any
 
 from tools.private.release import changelog_news
-from tools.private.release.gh import GitHub
+from tools.private.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
 from tools.private.release.git import Git
 from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
@@ -190,7 +190,9 @@ class ProcessBackports:
         if exit_code != 0 and args.triggering_comment:
             print(f"Reacting with thumbs-down to comment {args.triggering_comment}...")
             try:
-                self.gh.add_comment_reaction(args.triggering_comment, "-1")
+                self.gh.add_comment_reaction(
+                    args.triggering_comment, GH_REACTION_THUMBS_DOWN
+                )
             except Exception as e:
                 print(f"Failed to add reaction to comment: {e}")
 

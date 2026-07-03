@@ -7,6 +7,17 @@ import tempfile
 from tools.private.release.release_issue import BackportTask
 from tools.private.release.shell import run_cmd
 
+# GitHub reaction types
+# See: https://docs.github.com/en/rest/reactions/reactions?apiVersion=2022-11-28#about-reactions
+GH_REACTION_THUMBS_UP = "+1"
+GH_REACTION_THUMBS_DOWN = "-1"
+GH_REACTION_LAUGH = "laugh"
+GH_REACTION_CONFUSED = "confused"
+GH_REACTION_HEART = "heart"
+GH_REACTION_HOORAY = "hooray"
+GH_REACTION_ROCKET = "rocket"
+GH_REACTION_EYES = "eyes"
+
 
 class MultipleTrackingIssuesError(ValueError):
     """Raised when multiple open tracking issues are found for a version."""
