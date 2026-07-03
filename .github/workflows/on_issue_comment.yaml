@@ -91,6 +91,7 @@ jobs:
     with:
       issue: ${{ needs.parse_comment.outputs.issue_number }}
       add_backports: ${{ needs.parse_comment.outputs.command == 'add-backports' && needs.parse_comment.outputs.backports || '' }}
+      comment_id: "${{ github.event.comment.id }}"
     secrets: inherit
 
   call_promote:

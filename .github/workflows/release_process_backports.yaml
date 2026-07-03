@@ -11,6 +11,10 @@ on:
         description: 'CSV list of PR numbers to add and process (optional)'
         required: false
         type: string
+      comment_id:
+        description: 'The ID of the comment that triggered this run (optional)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       issue:
@@ -19,6 +23,10 @@ on:
         type: string
       add_backports:
         description: 'CSV list of PR numbers to add and process (optional)'
+        required: false
+        type: string
+      comment_id:
+        description: 'The ID of the comment that triggered this run (optional)'
         required: false
         type: string
 
@@ -51,6 +59,9 @@ jobs:
           ARGS=()
           if [ -n "${{ inputs.add_backports }}" ]; then
             ARGS+=("--add=${{ inputs.add_backports }}")
+          fi
+          if [ -n "${{ inputs.comment_id }}" ]; then
+            ARGS+=("--triggering-comment=${{ inputs.comment_id }}")
           fi
           
           bazel run //tools/private/release -- process-backports \

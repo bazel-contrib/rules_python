@@ -180,6 +180,25 @@ class ProcessBackports:
     def run(self) -> int:
         """Executes the process-backports subcommand."""
         args = self.args
+        exit_code = 0
+        try:
+            exit_code = self._run_internal()
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            exit_code = 1
+
+        if exit_code != 0 and args.triggering_comment:
+            print(f"Reacting with thumbs-down to comment {args.triggering_comment}...")
+            try:
+                self.gh.add_comment_reaction(args.triggering_comment, "-1")
+            except Exception as e:
+                print(f"Failed to add reaction to comment: {e}")
+
+        return exit_code
+
+    def _run_internal(self) -> int:
+        """Internal implementation of process-backports."""
+        args = self.args
         body = self.gh.get_issue_body(args.issue)
 
         if args.add:
@@ -319,6 +338,11 @@ class ProcessBackports:
             "--add",
             type=parse_pr_list,
             help="PR numbers (comma or space separated) to add before processing.",
+        )
+        parser.add_argument(
+            "--triggering-comment",
+            type=int,
+            help="The ID of the comment that triggered this run (optional).",
         )
         parser.add_argument(
             "--dry-run",

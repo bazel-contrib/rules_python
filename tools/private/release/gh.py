@@ -319,6 +319,28 @@ class GitHub:
             capture_output=False,
         )
 
+    def add_comment_reaction(self, comment_id: int, reaction: str) -> None:
+        """Adds a reaction to a comment.
+
+        Args:
+            comment_id: The ID of the comment.
+            reaction: The reaction type (e.g. '+1', '-1', 'eyes', etc).
+        """
+        path = f"/repos/{self.repo}/issues/comments/{comment_id}/reactions"
+        self._run_gh(
+            "api",
+            "--method",
+            "POST",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "X-GitHub-Api-Version: 2022-11-28",
+            path,
+            "-f",
+            f"content={reaction}",
+            capture_output=False,
+        )
+
     def get_merge_commits_for_prs(
         self, pending_items: list[BackportTask]
     ) -> list[BackportTask]:
