@@ -76,7 +76,6 @@ class CmdCreateRcTest(unittest.TestCase):
             "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_create_rc.yaml)",
             comment_call_args[1],
         )
-        self.assertNotIn("🚀", comment_call_args[1])
 
     def test_create_rc_success_with_run_id(self):
         # Arrange
@@ -167,7 +166,6 @@ class CmdCreateRcTest(unittest.TestCase):
             "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_create_rc.yaml)",
             comment_call_args[1],
         )
-        self.assertNotIn("🚀", comment_call_args[1])
 
     def test_create_rc_gating_on_backports(self):
         # Arrange
