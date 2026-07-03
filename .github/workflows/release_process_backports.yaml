@@ -55,19 +55,22 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Process Pending Backports
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ADD_BACKPORTS: ${{ inputs.add_backports }}
+          COMMENT_ID: ${{ inputs.comment_id }}
+          ISSUE: ${{ inputs.issue }}
         run: |
           ARGS=()
-          if [ -n "${{ inputs.add_backports }}" ]; then
-            ARGS+=("--add=${{ inputs.add_backports }}")
+          if [ -n "$ADD_BACKPORTS" ]; then
+            ARGS+=("--add=$ADD_BACKPORTS")
           fi
-          if [ -n "${{ inputs.comment_id }}" ]; then
-            ARGS+=("--triggering-comment=${{ inputs.comment_id }}")
+          if [ -n "$COMMENT_ID" ]; then
+            ARGS+=("--triggering-comment=$COMMENT_ID")
           fi
           
           bazel run //tools/private/release -- process-backports \
-            --issue ${{ inputs.issue }} \
+            --issue "$ISSUE" \
             --remote origin \
             --no-dry-run \
             "${ARGS[@]}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

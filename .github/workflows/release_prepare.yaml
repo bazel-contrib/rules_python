@@ -39,8 +39,13 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run Release Preparation Pipeline
-        run: |
-          bazel run //tools/private/release -- \
-            prepare ${{ inputs.issue && format('--issue={0}', inputs.issue) || '' }} --no-dry-run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          ARGS=()
+          if [ -n "$ISSUE" ]; then
+            ARGS+=("--issue=$ISSUE")
+          fi
+          bazel run //tools/private/release -- \
+            prepare "${ARGS[@]}" --no-dry-run

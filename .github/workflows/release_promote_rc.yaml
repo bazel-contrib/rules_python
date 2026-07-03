@@ -42,17 +42,19 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run Promote RC
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          ISSUE: ${{ inputs.issue }}
         run: |
           ARGS=()
-          if [ -n "${{ inputs.version }}" ]; then
-            ARGS+=("${{ inputs.version }}")
+          if [ -n "$VERSION" ]; then
+            ARGS+=("$VERSION")
           fi
-          if [ -n "${{ inputs.issue }}" ]; then
-            ARGS+=("--issue" "${{ inputs.issue }}")
+          if [ -n "$ISSUE" ]; then
+            ARGS+=("--issue" "$ISSUE")
           fi
           ARGS+=("--remote" "origin")
           ARGS+=("--no-dry-run")
           
           bazel run //tools/private/release -- promote-rc "${ARGS[@]}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

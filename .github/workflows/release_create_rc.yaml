@@ -41,11 +41,12 @@ jobs:
 
       - name: Attempt RC Tagging
         id: tagger
-        run: |
-          bazel run //tools/private/release -- \
-            create-rc --issue ${{ inputs.issue }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          bazel run //tools/private/release -- \
+            create-rc --issue "$ISSUE" --remote origin
 
   call_release:
     needs: tag_rc
