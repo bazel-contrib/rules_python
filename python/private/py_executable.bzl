@@ -38,6 +38,7 @@ load(":cc_helper.bzl", "cc_helper")
 load(
     ":common.bzl",
     "ExplicitSymlink",
+    "actions_run",
     "collect_cc_info",
     "collect_deps",
     "collect_imports",
@@ -218,6 +219,10 @@ accepting arbitrary Python versions.
         "_debugger_flag": lambda: attrb.Label(
             default = "//python/private:debugger_if_target_config",
             providers = [PyInfo],
+        ),
+        "_exe_zip_maker": lambda: attrb.Label(
+            cfg = "exec",
+            default = "//tools/private/zipapp:exe_zip_maker",
         ),
         "_launcher": lambda: attrb.Label(
             cfg = "target",
@@ -1095,15 +1100,16 @@ def _create_executable_zip_file(
     else:
         ctx.actions.write(prelude, "#!/usr/bin/env python3\n")
 
-    ctx.actions.run_shell(
-        command = "cat {prelude} {zip} > {output}".format(
-            prelude = prelude.path,
-            zip = zip_file.path,
-            output = output.path,
-        ),
-        inputs = [prelude, zip_file],
+    args = ctx.actions.args()
+    args.add(prelude)
+    args.add(zip_file)
+    args.add(output)
+    actions_run(
+        ctx,
+        executable = ctx.attr._exe_zip_maker,
+        arguments = [args],
+        inputs = depset([prelude, zip_file]),
         outputs = [output],
-        use_default_shell_env = True,
         mnemonic = "PyBuildExecutableZip",
         progress_message = "Build Python zip executable: %{label}",
     )
