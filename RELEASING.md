@@ -75,17 +75,24 @@ being accumulated for the next release, review the pending news entries in the
 
 ## How to add backports
 
-To request a backport to an active release:
-1.  Add a new checklist item under the `## Backports` section of the Release
-    Tracking Issue.
-2.  The format must be: `- [ ] #<PR_NUMBER>` (e.g., `- [ ] #1234`).
-3.  Trigger the **Process Backports** workflow (e.g. by commenting
-    `/process-backports` on the tracking issue).
+To request and process backports to an active release, you can use one of the
+following methods:
 
+### Method A: Manual Checklist Update
+1.  Manually add checklist items under the `## Backports` section of the
+    Release Tracking Issue. The format must be: `- [ ] #<PR_NUMBER>` (e.g.,
+    `- [ ] #1234`).
+2.  Comment `/process-backports` on the tracking issue to trigger processing.
+
+### Method B: Comment Shortcut
+1.  Comment `/add-backports <PR_NUMBER> [<PR_NUMBER> ...]` (space or comma
+    separated) on the tracking issue. This will automatically add the PRs to the
+    checklist and trigger processing.
+
+### Failure Behavior
 If a backport fails to process (e.g., due to cherry-pick conflicts):
-*   The workflow will fail.
 *   The failed backport checklist item will remain unchecked with
-    `status=error-merge-conflict`.
+    `status=error-<reason>`.
 *   You must resolve the conflict manually: checkout the release branch,
     cherry-pick the PR, resolve conflicts, push to remote, and manually check
     the box on the tracking issue checklist with `status=done` metadata.

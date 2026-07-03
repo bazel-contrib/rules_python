@@ -7,11 +7,19 @@ on:
         description: 'The Release Tracking Issue Number (e.g., 142)'
         required: true
         type: string
+      add_backports:
+        description: 'CSV list of PR numbers to add and process (optional)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       issue:
         description: 'The Release Tracking Issue Number (e.g., 142)'
         required: true
+        type: string
+      add_backports:
+        description: 'CSV list of PR numbers to add and process (optional)'
+        required: false
         type: string
 
 permissions:
@@ -40,7 +48,13 @@ jobs:
 
       - name: Process Pending Backports
         run: |
-          bazel run //tools/private/release -- \
-            process-backports --issue ${{ inputs.issue }} --remote origin --no-dry-run
+          if [ -n "${{ inputs.add_backports }}" ]; then
+            prs=$(echo "${{ inputs.add_backports }}" | tr ',' ' ')
+            bazel run //tools/private/release -- \
+              add-backports $prs --issue ${{ inputs.issue }} --remote origin --no-dry-run
+          else
+            bazel run //tools/private/release -- \
+              process-backports --issue ${{ inputs.issue }} --remote origin --no-dry-run
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

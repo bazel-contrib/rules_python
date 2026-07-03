@@ -25,6 +25,7 @@ Comment commands:
 - `/prepare`
 - `/create-rc`
 - `/process-backports`
+- `/add-backports`
 - `/promote`
 
 See [RELEASING.md](https://github.com/bazel-contrib/rules_python/blob/main/RELEASING.md) for details on how to use them.
