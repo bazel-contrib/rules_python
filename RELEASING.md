@@ -13,44 +13,24 @@ Release Tracking Issue and automated workflows triggered by comments or issue ed
 
 ### Steps
 
-1.  **Prepare the Release**: Manually run the **Release: Prepare** workflow from
-    the GitHub Actions UI (or via `gh workflow run`), leaving the `issue` input
-    empty. This workflow will:
-    *   Automatically determine the next version based on news entries.
-    *   Create a new **Release Tracking Issue** (which serves as the central
-        hub and checklist for the release).
-    *   Create a `prepare-X.Y.Z` branch.
-    *   Update `CHANGELOG.md` and version placeholders.
-    *   Create a Pull Request with these changes.
+1.  **Prepare the Release**: Run the **Release: Prepare** workflow manually. It
+    will automatically determine the next version, create a release tracking
+    issue, and send a preparation PR.
 
-2.  **Review and Merge**: Review, approve, and merge the generated Pull Request.
-    Once merged:
-    *   The **Release: Complete Prepare** workflow will automatically mark the
-        "Prepare Release" task as complete on the tracking issue checklist.
-    *   The **Release: Create Release Branch** workflow will then automatically
-        run (triggered by the issue edit) to cut the `release/X.Y` branch and
-        mark the "Create Release branch" task as complete.
+2.  **Approve and Merge**: Approve and merge the PR. Once merged, a release
+    branch will be created automatically.
 
-3.  **Tag Release Candidate (RC)**: Comment `/create-rc` on the tracking issue.
-    This triggers the **Release: Create RC** workflow, which:
-    *   Tags the release branch with `X.Y.Z-rcN`.
-    *   Triggers the **Release: Publish** workflow to publish the release.
+3.  **Add Backports (if needed)**: If there are backports, add them following
+    the "How to add backports" steps.
 
-4.  **Announce and Wait**: Announce the RC release (see [Announcing
-    releases](#announcing-releases)) and wait for feedback.
+4.  **Create an RC**: Comment `/create-rc` on the tracking issue. All pending
+    backports must be successfully processed before creating the RC.
 
-5.  **Handle Backports (if needed)**: If bugs need to be fixed in the release:
-    *   Cherry-pick the fixes into the release branch (see [Patch release with
-        cherry picks]).
-    *   Add the backported PRs to the `## Backports` section of the tracking
-        issue.
-    *   Comment `/process-backports` on the tracking issue to update the checklist.
-    *   Comment `/create-rc` again to tag a new RC (e.g. `rc1`).
+5.  **Iterate**: Repeat steps 3 and 4 until backports and RCs are no longer
+    needed.
 
-6.  **Final Release**: Once the RC is stable, promote it to final release by
-    manually triggering the **Release: Promote RC** workflow from the GitHub
-    Actions UI (or using `gh workflow run`), specifying the final version
-    (e.g., `0.38.0`).
+6.  **Finalize the Release**: Comment `/promote` or `/finalize` on the
+    tracking issue to finalize the release.
 
 
 ### Manually triggering the release workflow

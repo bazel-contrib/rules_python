@@ -49,6 +49,8 @@ Maintainers can trigger automation by:
     workflow.
   - `/process-backports` at the beginning of a line to trigger the Process
     Backports workflow.
+  - `/promote` or `/finalize` at the beginning of a line to trigger the
+    Promote RC workflow.
 
 </details>
 
