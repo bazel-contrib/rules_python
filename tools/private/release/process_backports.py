@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import re
 from typing import Any
 
 from tools.private.release import changelog_news
@@ -182,9 +183,22 @@ class ProcessBackports:
         body = self.gh.get_issue_body(args.issue)
 
         if args.add:
-            print(f"Adding backports {args.add} to tracking issue #{args.issue}...")
+            pr_strings = [p for p in re.split(r"[\s,]+", args.add.strip()) if p]
+            prs = []
+            for pr_str in pr_strings:
+                clean_pr_str = pr_str.lstrip("#")
+                try:
+                    prs.append(int(clean_pr_str))
+                except ValueError:
+                    print(
+                        f"Error: Invalid PR reference '{pr_str}' in --add."
+                        f" Must be integer optionally prefixed with '#'."
+                    )
+                    return 1
+
+            print(f"Adding backports {prs} to tracking issue #{args.issue}...")
             try:
-                body = add_backports_to_body(body, args.add)
+                body = add_backports_to_body(body, prs)
             except ValueError as e:
                 print(f"Error: {e}")
                 return 1
@@ -316,9 +330,8 @@ class ProcessBackports:
         )
         parser.add_argument(
             "--add",
-            nargs="*",
-            type=int,
-            help="PR numbers to add to the checklist before processing.",
+            type=str,
+            help="PR numbers (comma or space separated) to add before processing.",
         )
         parser.add_argument(
             "--dry-run",

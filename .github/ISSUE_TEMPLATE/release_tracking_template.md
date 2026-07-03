@@ -22,14 +22,11 @@ To manually control the release flow, see the [RELEASING.md: Manual Editing](htt
 <summary><b>Available Commands</b></summary>
 
 Comment commands:
-- `/prepare`: Auto-determines the next version, creates the tracking issue,
-  and sends a preparation PR.
-- `/create-rc`: Tags the release branch with a release candidate (RC) and
-  publishes it.
-- `/process-backports`: Cherry-picks pending backports listed in the
-  checklist.
-- `/add-backports <PRs>`: Adds PRs to the checklist and processes them.
-- `/promote`: Promotes the latest RC to the final release.
+- `/prepare`: Determines version, creates tracking issue and preparation PR.
+- `/create-rc`: Tags and publishes a new release candidate (RC).
+- `/process-backports`: Cherry-picks pending backports.
+- `/add-backports <PRs>`: Adds PRs to the backports and processes backports.
+- `/promote`: Promotes the latest RC to final release.
 
 See [RELEASING.md](https://github.com/bazel-contrib/rules_python/blob/main/RELEASING.md) for details on how to use them.
 </details>

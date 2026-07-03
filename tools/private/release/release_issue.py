@@ -115,11 +115,11 @@ def format_metadata_line(checked, name, metadata):
 
     metadata_pairs = []
     for k, v in metadata.items():
-        if k == "commit":
-            # The 'commit' key is special-cased with a space after '=' so that
-            # GitHub autolinks the commit SHA. Autolinking requires certain
-            # characters to precede the value.
-            metadata_pairs.append(f"commit= {v}")
+        if k == "commit" or k.endswith("_commit"):
+            # The 'commit' key (and keys ending with '_commit') is special-cased with
+            # a space after '=' so that GitHub autolinks the commit SHA. Autolinking
+            # requires certain characters to precede the value.
+            metadata_pairs.append(f"{k}= {v}")
         else:
             metadata_pairs.append(f"{k}={v}")
     metadata_str = " ".join(metadata_pairs)

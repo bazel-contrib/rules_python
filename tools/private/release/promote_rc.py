@@ -102,10 +102,10 @@ class PromoteRc:
                 f" the head of release branch {remote_branch} ({branch_sha[:8]})."
             )
             metadata = {
-                "status": "error-tag-branch-mismatch",
+                "status": "error-rc-tag-not-branch-head",
                 "rc": latest_rc,
                 "branch_commit": branch_sha[:8],
-                "rc_commit": commit_sha[:8],
+                "tag_commit": commit_sha[:8],
             }
             try:
                 updated_body = update_task_in_body(
