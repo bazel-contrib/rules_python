@@ -41,7 +41,7 @@ jobs:
             echo "command=prepare" >> "$GITHUB_OUTPUT"
           elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/process-backports([[:space:]]|$)'; then
             echo "command=process-backports" >> "$GITHUB_OUTPUT"
-          elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/(promote|finalize)([[:space:]]|$)'; then
+          elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/promote([[:space:]]|$)'; then
             version=$(echo "$ISSUE_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
             if [ -n "$version" ]; then
               echo "command=promote" >> "$GITHUB_OUTPUT"
@@ -84,4 +84,5 @@ jobs:
     uses: ./.github/workflows/release_promote_rc.yaml
     with:
       version: ${{ needs.parse_comment.outputs.version }}
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
     secrets: inherit

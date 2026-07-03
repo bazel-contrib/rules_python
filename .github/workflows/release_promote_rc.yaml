@@ -13,6 +13,10 @@ on:
         description: 'The final version to release (e.g., 0.38.0)'
         required: true
         type: string
+      issue:
+        description: 'The tracking issue number'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -40,6 +44,6 @@ jobs:
       - name: Run Promote RC
         run: |
           bazel run //tools/private/release -- \
-            promote-rc ${{ inputs.version }} --remote origin
+            promote-rc ${{ inputs.version }} --issue ${{ inputs.issue }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

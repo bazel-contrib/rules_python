@@ -11,17 +11,26 @@ existing Bazel workspace to sanity check functionality.
 Releases are managed using a semi-automated process centered around a GitHub
 Release Tracking Issue and automated workflows triggered by comments or issue edits.
 
+Note that comment-based commands must be posted by project maintainers (Owner,
+Member, or Collaborator) and must be on their own line (leading and trailing
+whitespace is ignored).
+
 ### Steps
 
-1.  **Prepare the Release**: Run the **Release: Prepare** workflow manually. It
-    will automatically determine the next version, create a release tracking
+1.  **Prepare the Release**: Run the [Release: Prepare](https://github.com/bazel-contrib/rules_python/actions/workflows/release_prepare.yaml)
+    workflow manually. You can trigger it from the GitHub Actions UI or using
+    the GitHub CLI:
+    ```shell
+    gh workflow run release_prepare.yaml
+    ```
+    This will automatically determine the next version, create a release tracking
     issue, and send a preparation PR.
 
 2.  **Approve and Merge**: Approve and merge the PR. Once merged, a release
     branch will be created automatically.
 
 3.  **Add Backports (if needed)**: If there are backports, add them following
-    the "How to add backports" steps.
+    the [How to add backports](#how-to-add-backports) steps.
 
 4.  **Create an RC**: Comment `/create-rc` on the tracking issue. All pending
     backports must be successfully processed before creating the RC.
@@ -29,8 +38,8 @@ Release Tracking Issue and automated workflows triggered by comments or issue ed
 5.  **Iterate**: Repeat steps 3 and 4 until backports and RCs are no longer
     needed.
 
-6.  **Finalize the Release**: Comment `/promote` or `/finalize` on the
-    tracking issue to finalize the release.
+6.  **Finalize the Release**: Comment `/promote` on the tracking issue to
+    finalize the release.
 
 
 ### Manually triggering the release workflow
@@ -62,6 +71,15 @@ The release tool will automatically determine the next version number based on
 the `VERSION_NEXT_*` placeholders in the codebase. To see what changes are
 being accumulated for the next release, review the pending news entries in the
 `news/` directory.
+
+## How to add backports
+
+To request a backport to an active release:
+1.  Add a new checklist item under the `## Backports` section of the Release
+    Tracking Issue.
+2.  The format must be: `- [ ] #<PR_NUMBER>` (e.g., `- [ ] #1234`).
+3.  Trigger the **Process Backports** workflow (e.g. by commenting
+    `/process-backports` on the tracking issue).
 
 ## Patch release with cherry picks
 
