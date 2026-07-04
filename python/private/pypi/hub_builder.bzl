@@ -11,6 +11,7 @@ load(":attrs.bzl", "use_isolated")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
+load(":pep508_requirement.bzl", "requirement")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -332,28 +333,38 @@ def _add_whl_library(self, *, python_version, whl, repo):
         repos_dict = self._whl_libraries
         deps_args = repo.args
     else:
+        extract_args = {
+            k: v
+            for k, v in repo.args.items()
+            if k not in forbidden_args | {
+                "config_load": None,
+                "dep_template": None,
+            }
+        }
+        req = requirement(extract_args["requirement"])
+
+        # TODO @aignas 2026-07-04: add a test
+        extract_args["requirement"] = req.name  # drop any specified extras
         _add_library(
             self,
             repos_dict = self._whl_libraries,
             name = repo.whl_repo_name,
-            args = {
-                k: v
-                for k, v in repo.args.items()
-                if k not in forbidden_args | {
-                    "config_load": None,
-                    "dep_template": None,
-                }
-            },
+            args = extract_args,
         )
 
-        args = repo.args
-
-        deps_args = {}
-        for key in ("config_load", "dep_template", "group_deps", "group_name", "annotation", "pip_data_exclude"):
-            if key in args and args[key] != None:
-                deps_args[key] = args[key]
-
-        deps_args["whl_library"] = "@{}//:BUILD.bazel".format(repo.whl_repo_name)
+        deps_args = {
+            k: repo.args[k]
+            for k in [
+                "config_load",
+                "dep_template",
+                "group_deps",
+                "group_name",
+            ]
+        } | {
+            # TODO @aignas 2026-07-04: add a test
+            "extras": req.extras,
+            "whl_library": "@{}//:BUILD.bazel".format(repo.whl_repo_name),
+        }
         repos_dict = self._whl_library_deps
 
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)

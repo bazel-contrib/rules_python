@@ -291,7 +291,13 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "simple": {
-            "pypi_315_simple_py3_none_any_deadbeef_osx_aarch64": [
+            "pypi_315_simple_py3_none_any_deadbeef": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_windows_aarch64",
+                    ],
+                    version = "3.15",
+                ),
                 whl_config_setting(
                     target_platforms = [
                         "cp315_osx_aarch64",
@@ -299,28 +305,13 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
                     version = "3.15",
                 ),
             ],
-            "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": [
-                whl_config_setting(
-                    target_platforms = [
-                        "cp315_windows_aarch64",
-                    ],
-                    version = "3.15",
-                ),
-            ],
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "simple_py3_none_any_deadbeef_osx_aarch64": {
+        "simple_py3_none_any_deadbeef": {
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://example.com/simple",
             "requirement": "simple[foo]==0.0.1",
-            "sha256": "deadbeef",
-            "urls": ["/simple-0.0.1-py3-none-any.whl"],
-        },
-        "simple_py3_none_any_deadbeef_windows_aarch64": {
-            "filename": "simple-0.0.1-py3-none-any.whl",
-            "index_url": "https://example.com/simple",
-            "requirement": "simple==0.0.1",
             "sha256": "deadbeef",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
@@ -611,25 +602,25 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
     pypi.group_map().contains_exactly({})
     pypi.whl_map().contains_exactly({
         "torch": {
-            "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef_linux_x86_64": [
+            "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef": [
                 whl_config_setting(
                     target_platforms = ["cp312_linux_x86_64"],
                     version = "3.12",
                 ),
             ],
-            "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": [
+            "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432": [
                 whl_config_setting(
                     target_platforms = ["cp312_linux_aarch64"],
                     version = "3.12",
                 ),
             ],
-            "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": [
+            "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c": [
                 whl_config_setting(
                     target_platforms = ["cp312_windows_x86_64"],
                     version = "3.12",
                 ),
             ],
-            "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": [
+            "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5": [
                 whl_config_setting(
                     target_platforms = ["cp312_osx_aarch64"],
                     version = "3.12",
@@ -638,28 +629,28 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "torch_cp312_cp312_linux_x86_64_8800deef_linux_x86_64": {
+        "torch_cp312_cp312_linux_x86_64_8800deef": {
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
             "index_url": "https://torch.index/torch",
             "requirement": "torch==2.4.1+cpu",
             "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
-        "torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": {
+        "torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
             "index_url": "https://torch.index/torch",
             "requirement": "torch==2.4.1",
             "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
-        "torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": {
+        "torch_cp312_cp312_win_amd64_3a570e5c": {
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
             "index_url": "https://torch.index/torch",
             "requirement": "torch==2.4.1+cpu",
             "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
-        "torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": {
+        "torch_cp312_none_macosx_11_0_arm64_72b484d5": {
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
             "index_url": "https://torch.index/torch",
             "requirement": "torch==2.4.1",
@@ -1478,12 +1469,10 @@ Attempting to create a duplicate library pypi_315_foo with different arguments. 
     common: {
         "dep_template": "@pypi//{name}:{target}",
         "config_load": "@pypi//:config.bzl",
-        "requirement": "foo==0.0.1",
     }
     different: {
         "python_interpreter_target": ("unit_test_interpreter_target_1", "unit_test_interpreter_target_2"),
-    }\
-""",
+    }""",
     ]).in_order()
 
 _tests.append(_test_err_duplicate_repos)

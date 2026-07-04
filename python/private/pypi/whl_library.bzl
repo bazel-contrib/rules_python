@@ -662,10 +662,6 @@ def _whl_library_deps_impl(rctx):
 
 whl_library_deps = repository_rule(
     attrs = {
-        "annotation": attr.label(
-            doc = "Optional json encoded file containing annotation to apply to the extracted wheel.",
-            allow_files = True,
-        ),
         "config_load": attr.string(
             doc = "The load location for configuration for pipstar.",
         ),
@@ -682,10 +678,6 @@ whl_library_deps = repository_rule(
         ),
         "group_name": attr.string(
             doc = "Name of the group, if any.",
-        ),
-        "pip_data_exclude": attr.string_list(
-            doc = "Additional data exclude patterns.",
-            default = [],
         ),
         "whl_library": attr.label(
             doc = "The whl_library repository label, use BUILD.bazel file for this.",
