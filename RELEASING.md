@@ -79,17 +79,41 @@ being accumulated for the next release, review the pending news entries in the
 To add backports to an active release, you can use one of the following
 methods:
 
-### Method A: Manual Checklist Update
+### Method A: Comment on the PR
+
+Comment `/backport` on the PR you wish to backport. This will automatically
+add the PR to the active release's backports checklist. Once the PR is merged,
+the backports will be automatically processed.
+
+> [!NOTE]
+> Commenting `/backport` on an open PR will block further release publishing
+> (like creating RCs or promoting) until the PR is merged or manually set to
+> status=ignore in the checklist.
+
+### Method B: Comment on the Tracking Issue
+
+Comment `/add-backports <PR_REF> [<PR_REF> ...]` (space or comma separated) on
+the tracking issue. The `<PR_REF>` can be a PR number (optionally prefixed with
+`#`) or a PR URL (strictly for the configured repository). This will
+automatically add the PRs to the checklist and trigger processing.
+
+### Method C: Manual Checklist Update
 1.  Manually add checklist items under the `## Backports` section of the
     Release Tracking Issue. The format must be: `- [ ] #<PR_NUMBER>` (e.g.,
     `- [ ] #1234`).
 2.  When ready, comment `/process-backports` on the tracking issue to trigger
     processing.
 
-### Method B: Comment Shortcut
-1.  Comment `/add-backports <PR_NUMBER> [<PR_NUMBER> ...]` (space or comma
-    separated) on the tracking issue. This will automatically add the PRs to the
-    checklist and trigger processing.
+### Method D: Release Tool CLI
+You can use the release tool to add backports from your local checkout:
+```shell
+bazel run //tools/private/release -- add-backports <PR_REF> [<PR_REF> ...]
+```
+The `<PR_REF>` can be:
+*   A PR number (e.g., `124` or `#124`)
+*   A PR URL (e.g., `https://github.com/bazel-contrib/rules_python/pull/124`
+    or `https://github.com/bazel-contrib/rules_python/pull/124/files`)
+*   Only URLs for the configured repository are accepted.
 
 ### Failure Behavior
 If a backport fails to process (e.g., due to cherry-pick conflicts):

@@ -58,7 +58,8 @@ class AddBackports:
         )
         try:
             body = self.gh.get_issue_body(issue_num)
-            body = add_backports_to_body(body, resolved_prs)
+            items_to_add = [{"ref": f"#{pr}"} for pr in resolved_prs]
+            body = add_backports_to_body(body, items_to_add)
             state = parse_checklist_state(body)
             rc_tags = state.get("rc_tags", {})
             has_pending_rc = any(

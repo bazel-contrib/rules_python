@@ -247,8 +247,14 @@ def parse_backports(body):
     return items
 
 
-def add_backports_to_body(body: str, prs: list[int]) -> str:
-    """Adds new backport checklist items to the ## Backports section."""
+def add_backports_to_body(body: str, items: list[dict]) -> str:
+    """Adds new backport checklist items to the ## Backports section.
+
+    Args:
+        body: The issue body.
+        items: A list of dicts, where each dict has a 'ref' key (str) and
+               optional 'metadata' key (dict).
+    """
     body = body.replace("\r\n", "\n")
     # Find the Backports section
     pattern = r"(## Backports\n)(.*?)(?=\n##|\n---|\Z)"
@@ -260,18 +266,23 @@ def add_backports_to_body(body: str, prs: list[int]) -> str:
 
     # Parse existing backports to avoid duplicates
     existing_items = parse_backports(body)
-    existing_prs = {
-        int(item.pr_ref.lstrip("#"))
-        for item in existing_items
-        if item.pr_ref.startswith("#")
-    }
+    existing_refs = {item.pr_ref for item in existing_items}
 
     new_lines = []
-    for pr in prs:
-        if pr in existing_prs:
-            print(f"PR #{pr} is already in the backports list. Skipping.")
+    for item in items:
+        ref = item["ref"]
+        # Normalize numeric refs to #numeric
+        if not ref.startswith("#") and ref.isdigit():
+            ref = f"#{ref}"
+
+        if ref in existing_refs:
+            print(f"PR {ref} is already in the backports list. Skipping.")
             continue
-        new_lines.append(f"- [ ] #{pr}")
+
+        metadata = item.get("metadata", {})
+        new_lines.append(
+            format_metadata_line(checked=False, name=ref, metadata=metadata)
+        )
 
     if not new_lines:
         return body

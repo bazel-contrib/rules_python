@@ -17,6 +17,9 @@ class CmdProcessBackportsTest(unittest.TestCase):
             "tools.private.release.process_backports.replace_version_next"
         ).start()
         self.addCleanup(patch.stopall)
+        self.mock_gh.resolve_pr_number.side_effect = lambda x: int(
+            x.lstrip("#").split("/")[-1]
+        )
 
     def test_process_backports_no_pending(self):
         args = argparse.Namespace(
@@ -254,7 +257,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123,
             remote="origin",
             dry_run=False,
-            add=[124],
+            add=["https://github.com/bazel-contrib/rules_python/pull/124"],
             triggering_comment=None,
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
@@ -304,6 +307,51 @@ class CmdProcessBackportsTest(unittest.TestCase):
 
         self.assertEqual(call2_args[0], 123)
         self.assertIn("- [x] #124 | status=done rc=rc1 commit= 12345678", call2_args[1])
+
+    @patch("tools.private.release.process_backports.datetime")
+    def test_process_backports_add_backports_marks_invalid(self, mock_datetime):
+        mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
+        args = argparse.Namespace(
+            issue=123,
+            remote="origin",
+            dry_run=False,
+            add=["124", "invalid", "125"],
+            triggering_comment=None,
+        )
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [x] Tag RC0 | status=done tag=2.0.0-rc0 commit=abcdef12
+- [ ] Tag Final
+
+## Backports
+"""
+        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0"]
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+        self.mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
+
+        def mock_resolve(items):
+            # Both 124 and 125 should be processed, 'invalid' should be ignored (it has error status)
+            for item in items:
+                if item.pr_ref in ("#124", "#125"):
+                    item.commit = "abcdef12"
+                    item.status = "done"
+            return items
+
+        self.mock_gh.get_merge_commits_for_prs.side_effect = mock_resolve
+        self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
+
+        result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
+
+        self.assertEqual(result, 0)
+        # Should have updated body to add 124, 125, and invalid
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        call1_args = self.mock_gh.update_issue_body.call_args_list[0][0]
+        self.assertIn("- [ ] #124", call1_args[1])
+        self.assertIn("- [ ] #125", call1_args[1])
+        self.assertIn("- [ ] invalid | status=error-invalid-pr", call1_args[1])
 
 
 if __name__ == "__main__":

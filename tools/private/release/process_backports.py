@@ -206,9 +206,23 @@ class ProcessBackports:
         body = self.gh.get_issue_body(args.issue)
 
         if args.add:
-            print(f"Adding backports {args.add} to tracking issue #{args.issue}...")
+            items_to_add = []
+            for pr_ref in args.add:
+                try:
+                    pr_num = self.gh.resolve_pr_number(pr_ref)
+                    items_to_add.append({"ref": f"#{pr_num}"})
+                except Exception as e:
+                    print(f"Warning: PR ref '{pr_ref}' is invalid: {e}")
+                    items_to_add.append(
+                        {
+                            "ref": pr_ref,
+                            "metadata": {"status": "error-invalid-pr"},
+                        }
+                    )
+
+            print(f"Adding backports {items_to_add} to tracking issue #{args.issue}...")
             try:
-                body = add_backports_to_body(body, args.add)
+                body = add_backports_to_body(body, items_to_add)
                 state = parse_checklist_state(body)
                 rc_tags = state.get("rc_tags", {})
                 has_pending_rc = any(
@@ -356,7 +370,7 @@ class ProcessBackports:
         parser.add_argument(
             "--add",
             type=parse_pr_list,
-            help="PR numbers (comma or space separated) to add before processing.",
+            help="PR references (numbers, #numbers, or URLs, comma/space separated) to add before processing.",
         )
         parser.add_argument(
             "--triggering-comment",
