@@ -44,5 +44,43 @@ class GitCheckoutTest(unittest.TestCase):
         mock_reset_hard.assert_called_once_with("origin/my-branch")
 
 
+class GitFetchTest(unittest.TestCase):
+    def setUp(self):
+        self.git = Git(".")
+        self.patcher = patch.object(self.git, "_run_git")
+        self.mock_run_git = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_fetch_default(self):
+        self.git.fetch()
+        self.mock_run_git.assert_called_once_with(
+            "fetch", "origin", capture_output=False
+        )
+
+    def test_fetch_custom_remote(self):
+        self.git.fetch("upstream")
+        self.mock_run_git.assert_called_once_with(
+            "fetch", "upstream", capture_output=False
+        )
+
+    def test_fetch_with_refspec(self):
+        self.git.fetch("origin", refspec="my-branch")
+        self.mock_run_git.assert_called_once_with(
+            "fetch", "origin", "my-branch", capture_output=False
+        )
+
+    def test_fetch_with_tags_and_force(self):
+        self.git.fetch("origin", tags=True, force=True)
+        self.mock_run_git.assert_called_once_with(
+            "fetch", "origin", "--tags", "--force", capture_output=False
+        )
+
+    def test_fetch_all_options(self):
+        self.git.fetch("origin", refspec="my-branch", tags=True, force=True)
+        self.mock_run_git.assert_called_once_with(
+            "fetch", "origin", "my-branch", "--tags", "--force", capture_output=False
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

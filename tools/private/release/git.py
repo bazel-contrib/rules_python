@@ -135,16 +135,23 @@ class Git:
         self._run_git(*cmd, capture_output=False)
 
     def fetch(
-        self, remote: str = "origin", tags: bool = False, force: bool = False
+        self,
+        remote: str = "origin",
+        refspec: str | None = None,
+        tags: bool = False,
+        force: bool = False,
     ) -> None:
         """Fetches updates from a remote repository.
 
         Args:
             remote: The remote repository name. Defaults to 'origin'.
+            refspec: The refspec to fetch.
             tags: If True, fetches all tags.
             force: If True, force fetches updates.
         """
         cmd = ["fetch", remote]
+        if refspec:
+            cmd.append(refspec)
         if tags:
             cmd.append("--tags")
         if force:

@@ -50,9 +50,12 @@ class CmdPromoteRcTest(unittest.TestCase):
             123, expected_updated_body
         )
         expected_comment = (
-            "Version 2.0.0 has been tagged.\n\n"
-            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0\n"
-            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.0" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)'
+            "**New Release Tagged!** 🐍🌿\n\n"
+            "Version **2.0.0** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
+            "- [Github Release 2.0.0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0)\n"
+            "- [BCR Entry 2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)\n"
+            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
+            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote_rc.yaml)"
         )
         self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
 
@@ -95,9 +98,12 @@ class CmdPromoteRcTest(unittest.TestCase):
             123, expected_updated_body
         )
         expected_comment = (
-            "Version 2.0.0 has been tagged.\n\n"
-            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0\n"
-            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.0" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)'
+            "**New Release Tagged!** 🐍🌿\n\n"
+            "Version **2.0.0** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
+            "- [Github Release 2.0.0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0)\n"
+            "- [BCR Entry 2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)\n"
+            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
+            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote_rc.yaml)"
         )
         self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
 
@@ -142,9 +148,12 @@ class CmdPromoteRcTest(unittest.TestCase):
             123, expected_updated_body
         )
         expected_comment = (
-            "Version 2.0.1 has been tagged.\n\n"
-            "- **Release Page**: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1\n"
-            '- **BCR PR Search**: [is:pr ("bazel-contrib/rules_python" in:title) ("@2.0.1" in:title)](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.1%22%20in%3Atitle%29)'
+            "**New Release Tagged!** 🐍🌿\n\n"
+            "Version **2.0.1** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
+            "- [Github Release 2.0.1](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1)\n"
+            "- [BCR Entry 2.0.1](https://registry.bazel.build/modules/rules_python/2.0.1)\n"
+            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.1%22%20in%3Atitle%29)\n"
+            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote_rc.yaml)"
         )
         self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
 

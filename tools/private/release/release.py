@@ -46,6 +46,7 @@ def create_parser():
 
 
 def main():
+    print(f"sys.argv: {sys.argv}")
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
         os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])
 
