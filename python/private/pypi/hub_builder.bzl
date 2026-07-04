@@ -332,15 +332,19 @@ def _add_whl_library(self, *, python_version, whl, repo):
         repos_dict = self._whl_libraries
         deps_args = repo.args
     else:
-        whl_repo_name = "whl_{}".format(repo.whl_repo_name)
-        _add_library(self, repos_dict = self._whl_libraries, name = whl_repo_name, args = {
-            k: v
-            for k, v in repo.args.items()
-            if k not in forbidden_args | {
-                "config_load": None,
-                "dep_template": None,
-            }
-        })
+        _add_library(
+            self,
+            repos_dict = self._whl_libraries,
+            name = repo.whl_repo_name,
+            args = {
+                k: v
+                for k, v in repo.args.items()
+                if k not in forbidden_args | {
+                    "config_load": None,
+                    "dep_template": None,
+                }
+            },
+        )
 
         args = repo.args
 
