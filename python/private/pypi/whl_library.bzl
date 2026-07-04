@@ -637,15 +637,15 @@ def _whl_library_deps_impl(rctx):
         return
 
     build_file_contents = generate_whl_library_deps_build_bazel(
-        dep_template = rctx.attr.dep_template,
+        name = metadata.name,
+        version = metadata.version,
         config_load = rctx.attr.config_load,
-        metadata_name = metadata.name,
-        metadata_version = metadata.version,
-        requires_dist = metadata.requires_dist,
+        dep_template = rctx.attr.dep_template,
+        extras = rctx.attr.extras,
         group_deps = rctx.attr.group_deps,
         group_name = rctx.attr.group_name,
-        extras = requirement(rctx.attr.requirement).extras,
-        whl_library=rctx.attr.whl_library,
+        requires_dist = metadata.requires_dist,
+        whl_library = rctx.attr.whl_library,
     )
 
     rctx.file("WORKSPACE")

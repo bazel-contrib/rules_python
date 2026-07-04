@@ -51,9 +51,8 @@ _VENV_SITE_PACKAGES_FLAG = Label("//python/config_settings:venvs_site_packages")
 
 def whl_library_from_requires_dist(
         *,
-        name,
-        metadata_name = "",
-        metadata_version = "",
+        name = None,
+        version = "",
         requires_dist = [],
         extras = [],
         include = [],
@@ -62,9 +61,8 @@ def whl_library_from_requires_dist(
     """The macro to create whl targets from the METADATA.
 
     Args:
-        name: {type}`str` The wheel filename
-        metadata_name: {type}`str` The package name as written in wheel `METADATA`.
-        metadata_version: {type}`str` The package version as written in wheel `METADATA`.
+        name: {type}`str` Unused
+        version: {type}`str` The package version as written in wheel `METADATA`.
         group_deps: {type}`list[str]` names of fellow members of the group (if
             any). These will be excluded from generated deps lists so as to avoid
             direct cycles. These dependencies will be provided at runtime by the
@@ -76,7 +74,7 @@ def whl_library_from_requires_dist(
         **kwargs: Extra args passed to the {obj}`whl_library_targets`
     """
     package_deps = _parse_requires_dist(
-        name = metadata_name,
+        name = name,
         requires_dist = requires_dist,
         excludes = group_deps,
         extras = extras,
@@ -84,12 +82,12 @@ def whl_library_from_requires_dist(
     )
 
     whl_library_targets(
-        name = name,
+        name = normalize_name(name),
         dependencies = package_deps.deps,
         dependencies_with_markers = package_deps.deps_select,
         tags = [
-            "pypi_name={}".format(metadata_name),
-            "pypi_version={}".format(metadata_version),
+            "pypi_name={}".format(name),
+            "pypi_version={}".format(version),
         ],
         **kwargs
     )

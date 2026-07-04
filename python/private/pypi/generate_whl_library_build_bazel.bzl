@@ -15,6 +15,7 @@
 """Generate the BUILD.bazel contents for a repo defined by a whl_library."""
 
 load("//python/private:text_util.bzl", "render")
+load(":labels.bzl", "DATA_LABEL", "DIST_INFO_LABEL", "EXTRACTED_WHEEL_FILES", "PACKAGE_METADATA_LABEL")
 
 # These are functions on how to render particular args, should be reused across all rendering
 # invocations to make things easier.
@@ -31,10 +32,11 @@ _RENDER_FNS = {
     "srcs_exclude": render.list,
     "tags": render.list,
 }
+
 def _render(**kwargs):
     return {
         arg: _RENDER_FNS.get(arg, repr)(value)
-        for arg, value in kwargs.items
+        for arg, value in kwargs.items()
     }
 
 # NOTE @aignas 2024-10-25: We have to keep this so that files in
@@ -50,11 +52,26 @@ package(default_visibility = ["//visibility:public"])
 
 def generate_whl_library_build_bazel(
         *,
-        # TODO @aignas 2026-07-04: add extra args that are used in this function
+        name,
         annotation = None,
         config_load,
+        copy_executables = {},
+        copy_files = {},
+        data_exclude = [],
+        dep_template,
+        enable_implicit_namespace_pkgs = False,
+        entry_points = {},
+        extras = [],
+        group_deps = [],
+        group_name = None,
+        metadata_name,
+        metadata_version,
+        namespace_package_files = {},
         purl = None,
         requires_dist = [],
+        sdist_filename = None,
+        srcs_exclude = [],
+        visibility = ["//visibility:public"],
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
@@ -72,7 +89,7 @@ def generate_whl_library_build_bazel(
 
     loads = [
         """load("@package_metadata//rules:package_metadata.bzl", "package_metadata")""",
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_srcs", "whl_library_from_requires_dist")"""
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_srcs", "whl_library_from_requires_dist")""",
     ]
 
     srcs_kwargs = dict(
@@ -90,13 +107,11 @@ def generate_whl_library_build_bazel(
         copy_files = copy_files,
         copy_executables = copy_executables,
         namespace_package_files = namespace_package_files,
-        data = [],
         visibility = visibility,
     )
     from_requires_kwargs = dict(
-        name = name,
-        metadata_name = metadata_name,
-        metadata_version = metadata_version,
+        name = metadata_name,
+        version = metadata_version,
         requires_dist = requires_dist,
         extras = extras,
         group_deps = group_deps,
@@ -121,15 +136,15 @@ def generate_whl_library_build_bazel(
         render.call(
             "package_metadata",
             **_render(
-                name = "package_metadata",
+                name = PACKAGE_METADATA_LABEL,
                 purl = purl,
                 visibility = ["//:__subpackages__"],
-            ),
+            )
         ),
         render.call(
             "whl_library_srcs",
             **_render(**srcs_kwargs)
-        )
+        ),
     ]
 
     if config_load:
@@ -138,7 +153,7 @@ def generate_whl_library_build_bazel(
 
     macro_parts.append(render.call(
         "whl_library_from_requires_dist",
-        **_render(**from_requires_kwargs),
+        **_render(**from_requires_kwargs)
     ))
 
     contents = "\n".join(
@@ -155,7 +170,15 @@ def generate_whl_library_build_bazel(
 
 def generate_whl_library_deps_build_bazel(
         *,
-        # TODO @aignas 2026-07-04: add extra args that are used in this function
+        name,
+        version,
+        config_load,
+        dep_template,
+        extras,
+        group_deps,
+        group_name,
+        requires_dist,
+        whl_library,
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
@@ -165,32 +188,32 @@ def generate_whl_library_deps_build_bazel(
     """
 
     loads = [
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_from_requires_dist")"""
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_from_requires_dist")""",
     ]
 
     from_requires_kwargs = dict(
         name = name,
-        metadata_name = metadata_name,
-        metadata_version = metadata_version,
+        version = version,
         requires_dist = requires_dist,
         extras = extras,
         group_deps = group_deps,
         dep_template = dep_template,
         group_name = group_name,
+        src_pkg = str(whl_library),
     )
 
     macro_parts = [
         render.call(
             "alias",
-            name=target,
-            actual=whl_library.same_package_label(target),
+            **_render(
+                name = target,
+                actual = str(whl_library.same_package_label(target)),
+            )
         )
         for target in [
-            # TODO @aignas 2026-07-04: use ./labels.bzl for the following
-            "package_metadata",
-            "data",
-            "dist_info",
-            "extracted_whl_files",
+            DATA_LABEL,
+            DIST_INFO_LABEL,
+            EXTRACTED_WHEEL_FILES,
         ]
     ]
 
@@ -200,7 +223,7 @@ def generate_whl_library_deps_build_bazel(
 
     macro_parts.append(render.call(
         "whl_library_from_requires_dist",
-        **_render(**from_requires_kwargs),
+        **_render(**from_requires_kwargs)
     ))
 
     contents = _TEMPLATE.format(

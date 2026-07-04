@@ -22,6 +22,7 @@ load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:text_util.bzl", "render")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -464,8 +465,26 @@ You cannot use both the additive_build_content and additive_build_content_file a
         out = hub.build()
 
         for whl_name, lib in out.whl_libraries.items():
+            # NOTE @aignas 2026-07-04: if the same wheel is downloaded from multiple
+            # indexes, this will fail, forcing the user to actually download the wheel
+            # from the same and deterministic location. This is usually the case for
+            # public wheels and users should setup the defaults.index_url to correct
+            # fall-back in rules_python we should handle the default index to substitute
+            # any index-url in requirements pointing to the public PyPI mirrors.
             if whl_name in whl_libraries:
-                print("'{}' already in created".format(whl_name))
+                existing = whl_libraries[whl_name]
+
+                # TODO @aignas 2026-07-04: stop ignoring the index_url
+                diff = _diff_dict(existing, lib, ignore_keys = {"index_url": True})
+                if diff:
+                    fail("'{}' already in created:\n{}".format(
+                        whl_name,
+                        "\n".join([
+                            "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                            for key, value in diff.items()
+                            if value
+                        ]),
+                    ))
 
             whl_libraries[whl_name] = lib
 
@@ -1223,3 +1242,45 @@ This rule creates json files based on the whl_mods attribute.
         ),
     },
 )
+
+# TODO dedupe code
+
+def _diff_dict(first, second, *, ignore_keys = {}):
+    """A simple utility to shallow compare dictionaries.
+
+    Args:
+        first: The first dictionary to compare.
+        second: The second dictionary to compare.
+
+    Returns:
+        A dictionary containing the differences, with keys "common", "different",
+        "extra", and "missing", or None if the dictionaries are identical.
+    """
+    missing = {}
+    extra = {
+        key: value
+        for key, value in second.items()
+        if key not in first and key not in ignore_keys
+    }
+    common = {}
+    different = {}
+
+    for key, value in first.items():
+        if key in ignore_keys:
+            continue
+        elif key not in second:
+            missing[key] = value
+        elif value == second[key]:
+            common[key] = value
+        else:
+            different[key] = (value, second[key])
+
+    if missing or extra or different:
+        return {
+            "common": common,
+            "different": different,
+            "extra": extra,
+            "missing": missing,
+        }
+    else:
+        return None

@@ -316,7 +316,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # are more platforms defined than there are wheels for and users
         # disallow building from sdist.
         return
-    
+
     forbidden_args = {
         "annotation": True,
         "extra_pip_args": True,
@@ -332,13 +332,14 @@ def _add_whl_library(self, *, python_version, whl, repo):
         deps_args = repo.args
     else:
         whl_repo_name = "whl_{}".format(repo.whl_repo_name)
-
-        self._whl_libraries[whl_repo_name] = {
-            k: v for k, v in repo.args.items()
+        _add_library(self, repos_dict = self._whl_libraries, name = whl_repo_name, args = {
+            k: v
+            for k, v in repo.args.items()
             if k not in forbidden_args | {
-                "config_load": True
+                "config_load": None,
+                "dep_template": None,
             }
-        }
+        })
 
         args = repo.args
 
@@ -351,21 +352,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         repos_dict = self._whl_library_deps
 
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
-    if repo_name in repos_dict:
-        diff = _diff_dict(repos_dict[repo_name], deps_args)
-        if diff:
-            self._logger.fail(lambda: (
-                "Attempting to create a duplicate library {repo_name} for {whl_name} with different arguments. Already existing declaration has:\n".format(
-                    repo_name = repo_name,
-                    whl_name = whl.name,
-                ) + "\n".join([
-                    "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
-                    for key, value in diff.items()
-                    if value
-                ])
-            ))
-            return
-    repos_dict[repo_name] = deps_args
+    _add_library(self, repos_dict = repos_dict, name = repo_name, args = deps_args)
 
     mapping = self._whl_map.setdefault(whl.name, {})
     if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
@@ -380,6 +367,22 @@ def _add_whl_library(self, *, python_version, whl, repo):
         mapping[repo.config_setting] = repo_name
 
 ### end of setters, below we have various functions to implement the public methods
+
+def _add_library(self, *, repos_dict, name, args):
+    if name in repos_dict:
+        diff = _diff_dict(repos_dict[name], args)
+        if diff:
+            self._logger.fail(lambda: (
+                "Attempting to create a duplicate library {name} with different arguments. Already existing declaration has:\n".format(
+                    repo_name = name,
+                ) + "\n".join([
+                    "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                    for key, value in diff.items()
+                    if value
+                ])
+            ))
+            return
+    repos_dict[name] = args
 
 def _set_get_index_urls(self, mctx, pip_attr):
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
