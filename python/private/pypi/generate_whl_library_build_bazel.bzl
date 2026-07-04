@@ -16,7 +16,9 @@
 
 load("//python/private:text_util.bzl", "render")
 
-_RENDER = {
+# These are functions on how to render particular args, should be reused across all rendering
+# invocations to make things easier.
+_RENDER_FNS = {
     "copy_executables": render.dict,
     "copy_files": render.dict,
     "data": render.list,
@@ -29,6 +31,11 @@ _RENDER = {
     "srcs_exclude": render.list,
     "tags": render.list,
 }
+def _render(**kwargs):
+    return {
+        arg: _RENDER_FNS.get(arg, repr)(value)
+        for arg, value in kwargs.items
+    }
 
 # NOTE @aignas 2024-10-25: We have to keep this so that files in
 # this repository can be publicly visible without the need for
@@ -38,19 +45,12 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
-package_metadata(
-    name = "package_metadata",
-    purl = {purl},
-    visibility = ["//:__subpackages__"],
-)
-
-{fn}(
-{kwargs}
-)
+{macros}
 """
 
 def generate_whl_library_build_bazel(
         *,
+        # TODO @aignas 2026-07-04: add extra args that are used in this function
         annotation = None,
         config_load,
         purl = None,
@@ -72,21 +72,41 @@ def generate_whl_library_build_bazel(
 
     loads = [
         """load("@package_metadata//rules:package_metadata.bzl", "package_metadata")""",
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_srcs", "whl_library_from_requires_dist")"""
     ]
 
-    fn = "whl_library_targets_from_requires"
-    if not requires_dist:
-        # no deps, we can leave the extra loads out
-        pass
-    else:
-        loads.append("""load("{}", "{}")""".format(config_load, "packages"))
-        kwargs["include"] = "packages"
-        kwargs["requires_dist"] = requires_dist
+    srcs_kwargs = dict(
+        name = name,
+        data = [],
+        sdist_filename = sdist_filename,
+        data_exclude = list(data_exclude),
+        srcs_exclude = list(srcs_exclude),
+        tags = [
+            "pypi_name={}".format(metadata_name),
+            "pypi_version={}".format(metadata_version),
+        ],
+        entry_points = entry_points,
+        enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
+        copy_files = copy_files,
+        copy_executables = copy_executables,
+        namespace_package_files = namespace_package_files,
+        data = [],
+        visibility = visibility,
+    )
+    from_requires_kwargs = dict(
+        name = name,
+        metadata_name = metadata_name,
+        metadata_version = metadata_version,
+        requires_dist = requires_dist,
+        extras = extras,
+        group_deps = group_deps,
+        dep_template = dep_template,
+        group_name = group_name,
+    )
 
-    loads.extend([
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
-    ])
-
+    # NOTE, if users specify annotations, the wheel downloads are not reused this
+    # is to ensure that we don't break users config and also to ensure that we
+    # can have predictable results.
     additional_content = []
     if annotation:
         kwargs["data"] = annotation.data
@@ -97,18 +117,95 @@ def generate_whl_library_build_bazel(
         if annotation.additive_build_content:
             additional_content.append(annotation.additive_build_content)
 
+    macro_parts = [
+        render.call(
+            "package_metadata",
+            **_render(
+                name = "package_metadata",
+                purl = purl,
+                visibility = ["//:__subpackages__"],
+            ),
+        ),
+        render.call(
+            "whl_library_srcs",
+            **_render(**srcs_kwargs)
+        )
+    ]
+
+    if config_load:
+        loads.append("""load("{}", "{}")""".format(config_load, "packages"))
+        from_requires_kwargs["include"] = "packages"
+
+    macro_parts.append(render.call(
+        "whl_library_from_requires_dist",
+        **_render(**from_requires_kwargs),
+    ))
+
     contents = "\n".join(
         [
             _TEMPLATE.format(
                 loads = "\n".join(loads),
-                fn = fn,
-                kwargs = render.indent("\n".join([
-                    "{} = {},".format(k, _RENDER.get(k, repr)(v))
-                    for k, v in sorted(kwargs.items())
-                ])),
-                purl = repr(purl),
+                macros = "\n\n".join(macro_parts),
             ),
         ] + additional_content,
+    )
+
+    # NOTE: Ensure that we terminate with a new line
+    return contents.rstrip() + "\n"
+
+def generate_whl_library_deps_build_bazel(
+        *,
+        # TODO @aignas 2026-07-04: add extra args that are used in this function
+        **kwargs):
+    """Generate a BUILD file for an unzipped Wheel
+
+
+    Returns:
+        A complete BUILD file as a string
+    """
+
+    loads = [
+        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_from_requires_dist")"""
+    ]
+
+    from_requires_kwargs = dict(
+        name = name,
+        metadata_name = metadata_name,
+        metadata_version = metadata_version,
+        requires_dist = requires_dist,
+        extras = extras,
+        group_deps = group_deps,
+        dep_template = dep_template,
+        group_name = group_name,
+    )
+
+    macro_parts = [
+        render.call(
+            "alias",
+            name=target,
+            actual=whl_library.same_package_label(target),
+        )
+        for target in [
+            # TODO @aignas 2026-07-04: use ./labels.bzl for the following
+            "package_metadata",
+            "data",
+            "dist_info",
+            "extracted_whl_files",
+        ]
+    ]
+
+    if config_load:
+        loads.append("""load("{}", "{}")""".format(config_load, "packages"))
+        from_requires_kwargs["include"] = "packages"
+
+    macro_parts.append(render.call(
+        "whl_library_from_requires_dist",
+        **_render(**from_requires_kwargs),
+    ))
+
+    contents = _TEMPLATE.format(
+        loads = "\n".join(loads),
+        macros = "\n\n".join(macro_parts),
     )
 
     # NOTE: Ensure that we terminate with a new line

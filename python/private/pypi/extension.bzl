@@ -31,7 +31,7 @@ load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
-load(":whl_library.bzl", "whl_library")
+load(":whl_library.bzl", "whl_library", "whl_library_deps")
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -459,14 +459,21 @@ You cannot use both the additive_build_content and additive_build_content_file a
     exposed_packages = {}
     extra_aliases = {}
     whl_libraries = {}
+    whl_library_deps_map = {}
     for hub in pip_hub_map.values():
         out = hub.build()
 
         for whl_name, lib in out.whl_libraries.items():
             if whl_name in whl_libraries:
-                fail("'{}' already in created".format(whl_name))
+                print("'{}' already in created".format(whl_name))
+
+            whl_libraries[whl_name] = lib
+
+        for deps_name, deps_args in out.whl_library_deps.items():
+            if deps_name in whl_library_deps_map:
+                fail("'{}' already in created".format(deps_name))
             else:
-                whl_libraries[whl_name] = lib
+                whl_library_deps_map[deps_name] = deps_args
 
         exposed_packages[hub.name] = out.exposed_packages
         extra_aliases[hub.name] = out.extra_aliases
@@ -483,6 +490,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
+        whl_library_deps = whl_library_deps_map,
         whl_mods = whl_mods,
         platform_config_settings = {
             hub_name: {
@@ -613,6 +621,9 @@ def _pip_impl(module_ctx):
 
     for name, args in mods.whl_libraries.items():
         whl_library(name = name, **args)
+
+    for name, args in mods.whl_library_deps.items():
+        whl_library_deps(name = name, **args)
 
     for hub_name, whl_map in mods.hub_whl_map.items():
         hub_repository(

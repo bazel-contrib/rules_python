@@ -71,6 +71,9 @@ def hub_builder(
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         _whl_libraries = {},  # modified by _add_whl_library
+        # Mapping of whl_library_deps repo names and their kwargs.
+        # dict[str repo_name, dict[str, object] kwargs]
+        _whl_library_deps = {},  # modified by _add_whl_library
         # Map of repos and their config settings, and repo the config
         # setting originated from.
         # dict[str whl_name, dict[str config_setting, str repo_name]]
@@ -113,6 +116,7 @@ def _build(self):
         extra_aliases = {},
         exposed_packages = [],
         whl_libraries = {},
+        whl_library_deps = {},
     )
     if self._logger.failed():
         return ret
@@ -142,6 +146,10 @@ def _build(self):
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         whl_libraries = self._whl_libraries,
+
+        # Mapping of whl_library_deps repo names and their kwargs.
+        # dict[str repo_name, dict[str, object] kwargs]
+        whl_library_deps = self._whl_library_deps,
     )
 
 def _pip_parse(self, module_ctx, pip_attr, python_version = None):
@@ -308,17 +316,43 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # are more platforms defined than there are wheels for and users
         # disallow building from sdist.
         return
+    
+    forbidden_args = {
+        "annotation": True,
+        "extra_pip_args": True,
+        "python_interpreter": True,
+        "python_interpreter_target": True,
+    }
 
-    # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
-    # we are using pipstar and we are downloading the wheel using the downloader
-    #
-    # However, for that we should first have a different way to reference closures with
-    # extras. For example, if some package depends on `foo[extra]` and another depends on
-    # `foo`, we should have 2 py_library targets.
+    if [arg for arg in repo.args if arg in forbidden_args]:
+        # no reuse of the whl_library because we have args that force the extraction of the whl
+        # in the hub context. If we have whl-only pipstar extraction, then we can reuse the
+        # extracted sources.
+        repos_dict = self._whl_libraries
+        deps_args = repo.args
+    else:
+        whl_repo_name = "whl_{}".format(repo.whl_repo_name)
+
+        self._whl_libraries[whl_repo_name] = {
+            k: v for k, v in repo.args.items()
+            if k not in forbidden_args | {
+                "config_load": True
+            }
+        }
+
+        args = repo.args
+
+        deps_args = {}
+        for key in ("config_load", "dep_template", "group_deps", "group_name", "annotation", "pip_data_exclude"):
+            if key in args and args[key] != None:
+                deps_args[key] = args[key]
+
+        deps_args["whl_library"] = "@{}//:BUILD.bazel".format(whl_repo_name)
+        repos_dict = self._whl_library_deps
+
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
-
-    if repo_name in self._whl_libraries:
-        diff = _diff_dict(self._whl_libraries[repo_name], repo.args)
+    if repo_name in repos_dict:
+        diff = _diff_dict(repos_dict[repo_name], deps_args)
         if diff:
             self._logger.fail(lambda: (
                 "Attempting to create a duplicate library {repo_name} for {whl_name} with different arguments. Already existing declaration has:\n".format(
@@ -331,7 +365,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
                 ])
             ))
             return
-    self._whl_libraries[repo_name] = repo.args
+    repos_dict[repo_name] = deps_args
 
     mapping = self._whl_map.setdefault(whl.name, {})
     if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
@@ -685,6 +719,7 @@ def _whl_repo(
 
     return struct(
         repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
+        whl_repo_name = whl_repo_name(src.filename, src.sha256),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,

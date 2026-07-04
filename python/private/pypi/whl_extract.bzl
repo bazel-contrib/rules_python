@@ -26,6 +26,11 @@ def whl_extract(rctx, *, whl_path, logger):
         logger = logger,
     )
 
+    # Symlink the METADATA file to be able to refer to it from another repository_rule. This allows
+    # us to split the extracted sources and the closure itself to 2 different repository rules
+    # allowing us to not extract the same wheels multiple times.
+    rctx.symlink(metadata_file, "METADATA")
+
     # Get the <prefix>.dist_info dir name
     dist_info_dir = metadata_file.dirname
     rctx.file(

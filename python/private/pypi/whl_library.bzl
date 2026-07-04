@@ -21,13 +21,13 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":attrs.bzl", "ATTRS", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
-load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel", "generate_whl_library_deps_build_bazel")
 load(":patch_whl.bzl", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
-load(":whl_metadata.bzl", "parse_entry_points", "whl_metadata")
+load(":whl_metadata.bzl", "parse_entry_points", "parse_whl_metadata", "whl_metadata")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
@@ -621,6 +621,83 @@ wheel contents without building an `sdist` first.
     implementation = _whl_library_impl,
     environ = [
         "RULES_PYTHON_PIP_ISOLATED",
+        REPO_DEBUG_ENV_VAR,
+    ],
+)
+
+def _whl_library_deps_impl(rctx):
+    logger = repo_utils.logger(rctx)
+
+    # Load the METADATA file from a different repository
+    metadata_path = rctx.path(rctx.attr.whl_library.same_package_label("METADATA"))
+    metadata = parse_whl_metadata(rctx.read(metadata_path))
+
+    if not (metadata.name and metadata.version):
+        logger.fail("Failed to parse METADATA from {}".format(rctx.attr.whl_library))
+        return
+
+    build_file_contents = generate_whl_library_deps_build_bazel(
+        dep_template = rctx.attr.dep_template,
+        config_load = rctx.attr.config_load,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
+        extras = requirement(rctx.attr.requirement).extras,
+        whl_library=rctx.attr.whl_library,
+    )
+
+    rctx.file("WORKSPACE")
+    rctx.file("WORKSPACE.bazel")
+    rctx.file("MODULE.bazel")
+    rctx.file("REPO.bazel")
+    rctx.file("BUILD.bazel", build_file_contents)
+
+whl_library_deps = repository_rule(
+    attrs = {
+        "annotation": attr.label(
+            doc = "Optional json encoded file containing annotation to apply to the extracted wheel.",
+            allow_files = True,
+        ),
+        "config_load": attr.string(
+            doc = "The load location for configuration for pipstar.",
+        ),
+        "dep_template": attr.string(
+            doc = "The dep template to use for referencing the dependencies.",
+        ),
+        "extras": attr.string_list(
+            doc = "The list of extras.",
+            default = [],
+        ),
+        "group_deps": attr.string_list(
+            doc = "List of dependencies to skip in order to break the cycles within a dependency group.",
+            default = [],
+        ),
+        "group_name": attr.string(
+            doc = "Name of the group, if any.",
+        ),
+        "pip_data_exclude": attr.string_list(
+            doc = "Additional data exclude patterns.",
+            default = [],
+        ),
+        "whl_library": attr.label(
+            doc = "The whl_library repository label, use BUILD.bazel file for this.",
+            mandatory = True,
+        ),
+    },
+    doc = """
+Uses a downloaded and extracted whl_library to generate a BUILD.bazel file with dependencies
+inferred by parsing the METADATA file that comes with the wheel.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+:::{seealso}
+See the {obj}`whl_library` that is used for downloading and extracting the wheel.
+:::
+""",
+    implementation = _whl_library_deps_impl,
+    environ = [
         REPO_DEBUG_ENV_VAR,
     ],
 )
