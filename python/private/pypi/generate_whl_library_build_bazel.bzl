@@ -77,10 +77,26 @@ def generate_whl_library_build_bazel(
     """Generate a BUILD file for an unzipped Wheel
 
     Args:
+        name: The name of the target.
         annotation: The annotation for the build file.
         config_load: {type}`str` The location from where to load the config.
+        copy_executables: A mapping of file paths to executable names.
+        copy_files: A mapping of file paths to file names.
+        data_exclude: A list of files to exclude from data.
+        dep_template: The template for dependencies.
+        enable_implicit_namespace_pkgs: Whether to enable implicit namespace packages.
+        entry_points: A mapping of entry points.
+        extras: A list of extras.
+        group_deps: A list of grouped dependencies.
+        group_name: The name of the group.
+        metadata_name: The name of the package.
+        metadata_version: The version of the package.
+        namespace_package_files: A mapping of namespace package files.
         purl: The purl.
         requires_dist: {type}`list[str]` The list of dependencies from the METADATA file.
+        sdist_filename: The filename of the sdist.
+        srcs_exclude: A list of source files to exclude.
+        visibility: The visibility of the target.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -182,10 +198,20 @@ def generate_whl_library_deps_build_bazel(
         group_deps,
         group_name,
         requires_dist,
-        whl_library,
-        **kwargs):
+        whl_library):
     """Generate a BUILD file for an unzipped Wheel
 
+    Args:
+        name: The name of the target.
+        version: The version of the package.
+        config_load: The location from where to load the config.
+        dep_template: The template for dependencies.
+        entry_points: A mapping of entry points.
+        extras: A list of extras.
+        group_deps: A list of grouped dependencies.
+        group_name: The name of the group.
+        requires_dist: The list of dependencies from the METADATA file.
+        whl_library: The wheel library target.
 
     Returns:
         A complete BUILD file as a string

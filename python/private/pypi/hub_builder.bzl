@@ -90,6 +90,7 @@ def hub_builder(
         # Functions to download according to the config
         # dict[str python_version, callable]
         _get_index_urls = {},
+        _default_index_url = {},
         # Tells whether to use the downloader for a package.
         # dict[str python_version, dict[str package_name, bool use_downloader]]
         _use_downloader = {},
@@ -385,24 +386,25 @@ def _add_library(self, *, repos_dict, name, args):
     repos_dict[name] = args
 
 def _set_get_index_urls(self, mctx, pip_attr):
+    python_version = pip_attr.python_version
+
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
     # form is honored when deciding whether the experimental index-url mode is
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
     # is treated as truthy and the mode is forced on, even when the env var
     # would expand to the empty string.
-    default_index_url = envsubst(
+    self._default_index_url[python_version] = envsubst(
         pip_attr.experimental_index_url,
         pip_attr.envsubst,
         mctx.getenv,
     ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
-    if not default_index_url:
+    if not self._default_index_url[python_version]:
         # parallel_download is set to True by default, so we are not checking/validating it
         # here
         return False
 
-    python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
@@ -410,7 +412,7 @@ def _set_get_index_urls(self, mctx, pip_attr):
     self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = (index_url or default_index_url).rstrip("/"),
+            index_url = (index_url or self._default_index_url[python_version]).rstrip("/"),
             extra_index_urls = [
                 x.rstrip("/")
                 for x in (extra_index_urls or default_extra_index_urls)
@@ -579,7 +581,13 @@ def _create_whl_repos(
         for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
-                index_url = whl.index_url,
+                index_url = (
+                    whl.index_url or
+                    "{}/{}".format(
+                        self._default_index_url[python_version],
+                        whl.name,
+                    )
+                ).rstrip("/"),
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,

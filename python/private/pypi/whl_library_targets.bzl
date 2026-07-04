@@ -146,6 +146,7 @@ def whl_library_targets(
             contains this library. If set, this library will behave as a shim
             to group implementation rules which will provide simultaneously
             installed dependencies which would otherwise form a cycle.
+        aliases: {type}`list[str]` A list of aliases to create for the target.
         src_pkg: TODO
         native: {type}`native` The native struct for overriding in tests.
         rules: {type}`struct` A struct with references to rules for creating targets.

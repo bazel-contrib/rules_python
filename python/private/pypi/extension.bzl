@@ -474,8 +474,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             if whl_name in whl_libraries:
                 existing = whl_libraries[whl_name]
 
-                # TODO @aignas 2026-07-04: stop ignoring the index_url
-                diff = _diff_dict(existing, lib, ignore_keys = {"index_url": True})
+                diff = _diff_dict(existing, lib)
                 if diff:
                     fail("'{}' already in created:\n{}".format(
                         whl_name,
@@ -1251,6 +1250,7 @@ def _diff_dict(first, second, *, ignore_keys = {}):
     Args:
         first: The first dictionary to compare.
         second: The second dictionary to compare.
+        ignore_keys: A set of keys to ignore during comparison.
 
     Returns:
         A dictionary containing the differences, with keys "common", "different",
