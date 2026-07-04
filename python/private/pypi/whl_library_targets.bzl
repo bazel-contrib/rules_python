@@ -147,7 +147,8 @@ def whl_library_targets(
             to group implementation rules which will provide simultaneously
             installed dependencies which would otherwise form a cycle.
         aliases: {type}`list[str]` A list of aliases to create for the target.
-        src_pkg: TODO
+        src_pkg: {type}`Label` The label of the repository where the wheel files
+            are located.
         native: {type}`native` The native struct for overriding in tests.
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
