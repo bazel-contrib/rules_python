@@ -1498,7 +1498,7 @@ def _test_err_duplicate_repos(env):
     env.expect.that_dict(logs).keys().contains_exactly(["rules_python:unit-test FAIL:"])
     env.expect.that_collection(logs["rules_python:unit-test FAIL:"]).contains_exactly([
         """\
-Attempting to create a duplicate library pypi_315_foo for foo with different arguments. Already existing declaration has:
+Attempting to create a duplicate library pypi_315_foo with different arguments. Already existing declaration has:
     common: {
         "dep_template": "@pypi//{name}:{target}",
         "config_load": "@pypi//:config.bzl",

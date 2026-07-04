@@ -353,7 +353,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
             if key in args and args[key] != None:
                 deps_args[key] = args[key]
 
-        deps_args["whl_library"] = "@{}//:BUILD.bazel".format(whl_repo_name)
+        deps_args["whl_library"] = "@{}//:BUILD.bazel".format(repo.whl_repo_name)
         repos_dict = self._whl_library_deps
 
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
@@ -379,13 +379,14 @@ def _add_library(self, *, repos_dict, name, args):
         if diff:
             self._logger.fail(lambda: (
                 "Attempting to create a duplicate library {name} with different arguments. Already existing declaration has:\n".format(
-                    repo_name = name,
+                    name = name,
                 ) + "\n".join([
                     "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
                     for key, value in diff.items()
                     if value
                 ])
             ))
+
             return
     repos_dict[name] = args
 
@@ -585,15 +586,7 @@ def _create_whl_repos(
         for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
-                # TODO @aignas 2026-07-04: add a test to ensure that overriding the default
-                # index url overrides the values here.
-                index_url = (
-                    whl.index_url or
-                    "{}/{}".format(
-                        self._default_index_url[python_version],
-                        whl.name,
-                    )
-                ).rstrip("/"),
+                index_url = whl.index_url.rstrip("/"),
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,
