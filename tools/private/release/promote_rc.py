@@ -158,7 +158,7 @@ class PromoteRc:
         self.git.push(args.remote, version)
 
         if github_output := os.environ.get("GITHUB_OUTPUT"):
-            with open(github_output, "a") as f:
+            with open(github_output, "a", encoding="utf-8") as f:
                 f.write(f"version={version}\n")
 
         print(f"Updating tracking issue #{issue_num} checklist...")

@@ -83,7 +83,7 @@ class CmdPromoteRcTest(unittest.TestCase):
         # Assert
         self.assertEqual(result, 0)
         self.assertTrue(os.path.exists(github_output_path))
-        content = Path(github_output_path).read_text()
+        content = Path(github_output_path).read_text(encoding="utf-8")
         self.assertEqual(content, "version=2.0.0\n")
 
     def test_promote_rc_resolve_issue_success(self):
