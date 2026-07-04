@@ -581,6 +581,8 @@ def _create_whl_repos(
         for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
+                # TODO @aignas 2026-07-04: add a test to ensure that overriding the default
+                # index url overrides the values here.
                 index_url = (
                     whl.index_url or
                     "{}/{}".format(
