@@ -29,7 +29,7 @@ class OnPrMerged:
             has_comment = any(
                 re.match(
                     r"^\s*/backport(\s|$)",
-                    comment.get("body", ""),
+                    comment.get("body") or "",
                     re.IGNORECASE,
                 )
                 for comment in comments
