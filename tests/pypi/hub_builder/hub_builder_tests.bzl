@@ -144,7 +144,7 @@ def _test_simple(env):
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -153,8 +153,8 @@ _tests.append(_test_simple)
 
 def _test_simple_multiple_requirements(env):
     sub_tests = {
-        ("osx", "aarch64"): "simple",
-        ("windows", "aarch64"): "simple",
+        ("osx", "aarch64"): "simple==0.0.2 --hash=sha256:deadb00f",
+        ("windows", "aarch64"): "simple==0.0.1 --hash=sha256:deadbeef",
     }
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
@@ -199,8 +199,8 @@ _tests.append(_test_simple_multiple_requirements)
 
 def _test_simple_extras_vs_no_extras(env):
     sub_tests = {
-        ("osx", "aarch64"): "simple",
-        ("windows", "aarch64"): "simple",
+        ("osx", "aarch64"): "simple[foo]==0.0.1 --hash=sha256:deadbeef",
+        ("windows", "aarch64"): "simple==0.0.1 --hash=sha256:deadbeef",
     }
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
@@ -406,25 +406,25 @@ new-package==0.0.1 --hash=sha256:deadb00f2
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "old-package",
+            "requirement": "old-package==0.0.1 --hash=sha256:deadbaaf",
         },
         "pypi_315_simple": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
         },
         "pypi_316_new_package": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "new-package",
+            "requirement": "new-package==0.0.1 --hash=sha256:deadb00f2",
         },
         "pypi_316_simple": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple",
+            "requirement": "simple==0.0.2 --hash=sha256:deadb00f",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -474,7 +474,7 @@ def _test_simple_with_markers(env):
                 "config_load": "@pypi//:config.bzl",
                 "dep_template": "@pypi//{name}:{target}",
                 "python_interpreter_target": "unit_test_interpreter_target",
-                "requirement": want_requirement,
+                "requirement": "torch==2.4.1 --hash=sha256:deadbeef",
             },
         })
         pypi.extra_aliases().contains_exactly({})
@@ -967,7 +967,7 @@ simple==0.0.3 \
             "download_only": True,
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "extra",
+            "requirement": "extra==0.0.1 --hash=sha256:deadb00f",
         },
         "pypi_315_simple_linux_x86_64": {
             "config_load": "@pypi//:config.bzl",
@@ -975,7 +975,7 @@ simple==0.0.3 \
             "download_only": True,
             "extra_pip_args": ["--platform=manylinux_2_17_x86_64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
         },
         "pypi_315_simple_osx_aarch64": {
             "config_load": "@pypi//:config.bzl",
@@ -983,7 +983,7 @@ simple==0.0.3 \
             "download_only": True,
             "extra_pip_args": ["--platform=macosx_10_9_arm64", "--python-version=315", "--implementation=cp", "--abi=cp315"],
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple",
+            "requirement": "simple==0.0.3 --hash=sha256:deadbaaf",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -1476,11 +1476,11 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum": {
+        "pypi_315_torch": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum",
+            "requirement": "torch==2.4.1+cpu",
         },
     })
     pypi.extra_aliases().contains_exactly({})

@@ -332,7 +332,8 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # extracted sources.
         repos_dict = self._whl_libraries
         deps_args = dict(repo.args)
-        deps_args["requirement"] = requirement(deps_args["requirement"]).name
+        # deps_args["requirement"] = requirement(deps_args["requirement"]).name
+
     else:
         extract_args = {
             k: v
@@ -345,7 +346,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         req = requirement(extract_args["requirement"])
 
         # TODO @aignas 2026-07-04: add a test
-        extract_args["requirement"] = req.name  # drop any specified extras
+        extract_args["requirement"] = repo.args["requirement"]
         _add_library(
             self,
             repos_dict = self._whl_libraries,

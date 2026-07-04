@@ -121,7 +121,7 @@ def whl_library_targets(
         group_name = "",
         native = native,
         aliases = [],
-        src_pkg = Label("//:BUILD.bazel"),
+        src_pkg = None,
         rules = struct(
             copy_file = copy_file,
             py_binary = py_binary,
@@ -130,7 +130,8 @@ def whl_library_targets(
             venv_rewrite_shebang = venv_rewrite_shebang,
             env_marker_setting = env_marker_setting,
             create_inits = _create_inits,
-        )):
+        ),
+        **kwargs):
     """Create all of the whl_library targets.
 
     Args:
@@ -152,7 +153,12 @@ def whl_library_targets(
         native: {type}`native` The native struct for overriding in tests.
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
-    src_pkg = Label(src_pkg)
+    if src_pkg == None:
+        src_pkg = struct(
+            same_package_label = lambda label: ":" + label,
+        )
+    else:
+        src_pkg = Label(src_pkg)
 
     _config_settings(
         dependencies_with_markers = dependencies_with_markers,
@@ -219,7 +225,7 @@ def whl_library_targets(
         data = _deps(
             deps = dependencies,
             deps_conditional = deps_conditional,
-            tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
+            tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL) if dep_template else "",
         ),
         visibility = impl_vis,
     )
@@ -228,7 +234,7 @@ def whl_library_targets(
         deps = [src_pkg.same_package_label(NODEPS_PY_LIBRARY_LABEL)] + _deps(
             deps = dependencies,
             deps_conditional = deps_conditional,
-            tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
+            tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL) if dep_template else "",
         ),
         tags = tags,
         visibility = impl_vis,
@@ -292,7 +298,8 @@ def whl_library_srcs(
             venv_rewrite_shebang = venv_rewrite_shebang,
             env_marker_setting = env_marker_setting,
             create_inits = _create_inits,
-        )):
+        ),
+        **kwargs):
     """Create all of the whl_library targets.
 
     Args:
