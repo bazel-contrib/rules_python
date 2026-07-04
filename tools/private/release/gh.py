@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import tempfile
 
 from tools.private.release.release_issue import BackportTask
@@ -315,6 +316,53 @@ class GitHub:
             "--json=state,mergeCommit,body,isDraft",
         )
         return json.loads(output) if output else {}
+
+    def get_pr_comments(self, pr_num: int) -> list[dict]:
+        """Gets comments for a PR.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            A list of comments.
+        """
+        output = self._gh_pr(
+            "view",
+            str(pr_num),
+            "--json=comments",
+        )
+        return json.loads(output).get("comments") or []
+
+    def resolve_pr_number(self, pr_ref: str) -> int:
+        """Resolves a PR reference (number, #number, URL) to a PR number.
+
+        Args:
+            pr_ref: The PR reference string.
+
+        Returns:
+            The resolved PR number.
+
+        Raises:
+            ValueError: If the reference cannot be resolved.
+        """
+        # 1. Try number (e.g. "123" or "#123")
+        clean_ref = pr_ref.lstrip("#")
+        if clean_ref.isdigit():
+            return int(clean_ref)
+
+        # 2. Try URL (starts with http)
+        if pr_ref.startswith("http"):
+            # Try to extract PR number from URL using regex
+            # Pattern matches: github.com/<self.repo>/pull/<number> followed by /, ?, or EOF
+            pattern = rf"github\.com/{re.escape(self.repo)}/pull/(\d+)(/|\?|\Z)"
+            match = re.search(pattern, pr_ref, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+            raise ValueError(
+                f"URL is not for the configured repository ({self.repo}): {pr_ref}"
+            )
+
+        raise ValueError(f"Could not resolve PR reference: {pr_ref}")
 
     def post_issue_comment(self, issue_num: int, comment_body: str) -> None:
         """Posts a comment to a specific issue.

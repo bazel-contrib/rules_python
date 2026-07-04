@@ -10,9 +10,12 @@ class CmdAddBackportsTest(unittest.TestCase):
     def setUp(self):
         _mock_git_and_gh(self)
         self.addCleanup(patch.stopall)
+        self.mock_gh.resolve_pr_number.side_effect = lambda x: int(
+            x.lstrip("#").split("/")[-1]
+        )
 
     def test_add_backports_explicit_issue(self):
-        args = argparse.Namespace(issue=123, prs=[124, 125])
+        args = argparse.Namespace(issue=123, prs=["124", "125"])
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
 - [ ] Prepare Release
@@ -34,7 +37,7 @@ class CmdAddBackportsTest(unittest.TestCase):
         self.assertIn("- [ ] Tag RC0", call_args[1])
 
     def test_add_backports_auto_discover_success(self):
-        args = argparse.Namespace(issue=None, prs=[124])
+        args = argparse.Namespace(issue=None, prs=["124"])
         self.mock_gh.get_open_tracking_issues.return_value = [
             {"number": 456, "title": "Release 2.1.0", "url": "http://..."}
         ]
@@ -54,7 +57,7 @@ class CmdAddBackportsTest(unittest.TestCase):
         self.mock_gh.update_issue_body.assert_called_once_with(456, unittest.mock.ANY)
 
     def test_add_backports_auto_discover_no_issues(self):
-        args = argparse.Namespace(issue=None, prs=[124])
+        args = argparse.Namespace(issue=None, prs=["124"])
         self.mock_gh.get_open_tracking_issues.return_value = []
 
         result = AddBackports(args, self.mock_gh).run()
@@ -64,7 +67,7 @@ class CmdAddBackportsTest(unittest.TestCase):
         self.mock_gh.get_issue_body.assert_not_called()
 
     def test_add_backports_auto_discover_multiple_issues(self):
-        args = argparse.Namespace(issue=None, prs=[124])
+        args = argparse.Namespace(issue=None, prs=["124"])
         self.mock_gh.get_open_tracking_issues.return_value = [
             {"number": 456, "title": "Release 2.1.0", "url": "http://..."},
             {"number": 789, "title": "Release 2.2.0", "url": "http://..."},
@@ -77,7 +80,7 @@ class CmdAddBackportsTest(unittest.TestCase):
         self.mock_gh.get_issue_body.assert_not_called()
 
     def test_add_backports_no_auto_add_rc_if_pending(self):
-        args = argparse.Namespace(issue=123, prs=[124])
+        args = argparse.Namespace(issue=123, prs=["124"])
         self.mock_gh.get_issue_body.return_value = """
 ## Checklist
 - [ ] Prepare Release

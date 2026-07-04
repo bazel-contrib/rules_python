@@ -44,10 +44,21 @@ class AddBackports:
                 print(f"Error auto-discovering tracking issue: {e}")
                 return 1
 
-        print(f"Adding backports {args.prs} to tracking issue #{issue_num}...")
+        resolved_prs = []
+        for pr_ref in args.prs:
+            try:
+                pr_num = self.gh.resolve_pr_number(pr_ref)
+                resolved_prs.append(pr_num)
+            except Exception as e:
+                print(f"Error resolving PR ref '{pr_ref}': {e}")
+                return 1
+
+        print(
+            f"Adding backports {resolved_prs} (resolved from {args.prs}) to tracking issue #{issue_num}..."
+        )
         try:
             body = self.gh.get_issue_body(issue_num)
-            body = add_backports_to_body(body, args.prs)
+            body = add_backports_to_body(body, resolved_prs)
             state = parse_checklist_state(body)
             rc_tags = state.get("rc_tags", {})
             has_pending_rc = any(
@@ -85,9 +96,9 @@ class AddBackports:
         )
         parser.add_argument(
             "prs",
-            type=int,
+            type=str,
             nargs="+",
-            help="PR numbers to add (positional, space-separated).",
+            help="PR references (number, #number, URL, or commitish) to add (positional, space-separated).",
         )
         parser.add_argument(
             "--issue",

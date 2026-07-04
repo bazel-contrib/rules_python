@@ -10,7 +10,7 @@ from tools.private.release.create_rc import CreateRc
 from tools.private.release.create_release_branch import CreateReleaseBranch
 from tools.private.release.create_release_issue import CreateReleaseIssue
 from tools.private.release.determine_next_version import DetermineNextVersion
-from tools.private.release.find_release_issue import FindReleaseIssue
+from tools.private.release.on_pr_merged import OnPrMerged
 from tools.private.release.prepare import Prepare
 from tools.private.release.process_backports import ProcessBackports
 from tools.private.release.promote_rc import PromoteRc
@@ -23,7 +23,7 @@ cmds = [
     CreateReleaseBranch,
     AddBackports,
     ProcessBackports,
-    FindReleaseIssue,
+    OnPrMerged,
     CreateRc,
     PromoteRc,
 ]

@@ -48,12 +48,14 @@ jobs:
             echo "should_process=false" >> "$GITHUB_OUTPUT"
           fi
 
-  find_issue:
+  process_backports:
     needs: check_if_backport
     if: needs.check_if_backport.outputs.should_process == 'true'
     runs-on: ubuntu-latest
-    outputs:
-      issue: ${{ steps.find.outputs.issue }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -65,18 +67,17 @@ jobs:
         with:
           bazelisk-version: 1.20.0
 
-      - name: Find Release Issue
-        id: find
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Process Backports
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          bazel run //tools/private/release -- find-release-issue "$PR_NUMBER"
-
-  call_process_backports:
-    needs: find_issue
-    if: needs.find_issue.outputs.issue != ''
-    uses: ./.github/workflows/release_process_backports.yaml
-    with:
-      issue: ${{ needs.find_issue.outputs.issue }}
-    secrets: inherit
+          bazel run //tools/private/release -- on-pr-merged \
+            "$PR_NUMBER" \
+            --remote origin \
+            --no-dry-run

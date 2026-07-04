@@ -45,10 +45,9 @@ py_test(
 )
 
 py_test(
-    name = "find_release_issue_test",
-    srcs = ["find_release_issue_test.py"],
+    name = "gh_test",
+    srcs = ["gh_test.py"],
     deps = [
-        ":release_test_helper",
         "//tools/private/release:release_lib",
     ],
 )
@@ -57,6 +56,15 @@ py_test(
     name = "git_test",
     srcs = ["git_test.py"],
     deps = [
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
+    name = "on_pr_merged_test",
+    srcs = ["on_pr_merged_test.py"],
+    deps = [
+        ":release_test_helper",
         "//tools/private/release:release_lib",
     ],
 )
