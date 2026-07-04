@@ -578,6 +578,16 @@ def _create_whl_repos(
     interpreter = _detect_interpreter(self, pip_attr, python_version)
 
     for whl in requirements_by_platform:
+        # Check if all sources for this wheel have the same requirement line.
+        # If they do, we can reuse the same whl_library repository across platforms.
+        same_requirements = True
+        if whl.srcs:
+            first_req = whl.srcs[0].requirement_line
+            for src in whl.srcs[1:]:
+                if src.requirement_line != first_req:
+                    same_requirements = False
+                    break
+
         whl_library_args = common_args | _whl_library_args(
             self,
             whl = whl,
@@ -594,6 +604,7 @@ def _create_whl_repos(
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(python_version),
                 is_multiple_versions = whl.is_multiple_versions,
+                same_requirements = same_requirements,
                 interpreter = interpreter,
                 enable_pipstar_extract = enable_pipstar_extract,
             )
@@ -664,6 +675,7 @@ def _whl_repo(
         whl_library_args,
         index_url,
         is_multiple_versions,
+        same_requirements,
         download_only,
         netrc,
         auth_patterns,
@@ -695,7 +707,7 @@ def _whl_repo(
             return None
         else:
             # Fallback to a pip-installed wheel
-            target_platforms = src.target_platforms if is_multiple_versions else []
+            target_platforms = src.target_platforms if (is_multiple_versions or not same_requirements) else []
             return struct(
                 repo_name = pypi_repo_name(
                     normalize_name(src.distribution),
@@ -725,11 +737,11 @@ def _whl_repo(
     # TODO @aignas 2025-11-02: once we have pipstar enabled we can add extra
     # targets to each hub for each extra combination and solve this more cleanly as opposed to
     # duplicating whl_library repositories.
-    target_platforms = src.target_platforms if is_multiple_versions else []
+    target_platforms = src.target_platforms if (is_multiple_versions or not same_requirements) else []
 
     return struct(
         repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
-        whl_repo_name = whl_repo_name(src.filename, src.sha256),
+        whl_repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,
