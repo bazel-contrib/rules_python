@@ -34,7 +34,7 @@ class CmdPromoteRcTest(unittest.TestCase):
             ]
         )
         self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.0-rc1"), call(remote_ref="my-remote/release/2.0")]
+            [call("2.0.0-rc1"), call("my-remote/release/2.0")]
         )
         self.mock_git.checkout.assert_not_called()
         self.mock_git.tag_exists.assert_called_once_with("2.0.0")
@@ -85,7 +85,7 @@ class CmdPromoteRcTest(unittest.TestCase):
         )
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.0-rc1"), call(remote_ref="my-remote/release/2.0")]
+            [call("2.0.0-rc1"), call("my-remote/release/2.0")]
         )
         self.mock_git.checkout.assert_not_called()
         self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
@@ -136,7 +136,7 @@ class CmdPromoteRcTest(unittest.TestCase):
 
         self.mock_git.checkout.assert_not_called()
         self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.1-rc0"), call(remote_ref="my-remote/release/2.0")]
+            [call("2.0.1-rc0"), call("my-remote/release/2.0")]
         )
         self.mock_git.tag.assert_called_once_with("2.0.1", "12345678")
         self.mock_git.push.assert_called_once_with("my-remote", "2.0.1")
@@ -181,7 +181,7 @@ class CmdPromoteRcTest(unittest.TestCase):
             ]
         )
         self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.0-rc1"), call(remote_ref="my-remote/release/2.0")]
+            [call("2.0.0-rc1"), call("my-remote/release/2.0")]
         )
         self.mock_git.tag_exists.assert_called_once_with("2.0.0")
 

@@ -52,9 +52,9 @@ jobs:
             ARGS+=("$VERSION")
           fi
           if [ -n "$ISSUE" ]; then
-            ARGS+=("--issue" "$ISSUE")
+            ARGS+=("--issue=$ISSUE")
           fi
-          ARGS+=("--remote" "origin")
+          ARGS+=("--remote=origin")
           ARGS+=("--no-dry-run")
           
           bazel run //tools/private/release -- promote-rc "${ARGS[@]}"

@@ -89,7 +89,7 @@ class PromoteRc:
         print(f"Fetching remote branch {remote_branch}...")
         self.git.fetch(args.remote, refspec=branch_name)
         try:
-            branch_sha = self.git.get_commit_sha(remote_ref=remote_branch)
+            branch_sha = self.git.get_commit_sha(remote_branch)
         except Exception as e:
             print(
                 f"Error: Could not get commit SHA for remote branch"
