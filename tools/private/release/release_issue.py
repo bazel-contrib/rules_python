@@ -278,6 +278,7 @@ def add_backports_to_body(body: str, items: list[dict]) -> str:
         if ref in existing_refs:
             print(f"PR {ref} is already in the backports list. Skipping.")
             continue
+        existing_refs.add(ref)
 
         metadata = item.get("metadata", {})
         new_lines.append(

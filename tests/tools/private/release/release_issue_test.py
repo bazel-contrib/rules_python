@@ -1,6 +1,7 @@
 import unittest
 
 from tools.private.release.release_issue import (
+    add_backports_to_body,
     format_metadata_line,
     parse_metadata_line,
 )
@@ -64,6 +65,36 @@ class ReleaseIssueTest(unittest.TestCase):
         # Test with no metadata
         expected = "- [ ] Tag Final"
         self.assertEqual(format_metadata_line(False, "Tag Final", {}), expected)
+
+    def test_add_backports_to_body(self):
+        body = """
+## Checklist
+- [ ] Prepare Release
+- [ ] Create Release branch
+- [ ] Tag Final
+
+## Backports
+- [ ] #123 | status=done
+"""
+        items = [
+            {"ref": "124"},
+            {"ref": "#124"},
+            {"ref": "125"},
+            {"ref": "#123"},
+        ]
+        updated_body = add_backports_to_body(body, items)
+        expected_body = """
+## Checklist
+- [ ] Prepare Release
+- [ ] Create Release branch
+- [ ] Tag Final
+
+## Backports
+- [ ] #123 | status=done
+- [ ] #124
+- [ ] #125
+"""
+        self.assertEqual(updated_body.strip(), expected_body.strip())
 
 
 if __name__ == "__main__":
