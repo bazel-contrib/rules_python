@@ -442,7 +442,7 @@ def _whl_library_impl(rctx):
         sdist_filename = sdist_filename,
         dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
             rctx.attr.repo_prefix,
-        ),
+        ) if rctx.attr.dep_template or rctx.attr.repo_prefix else "",
         config_load = rctx.attr.config_load,
         metadata_name = metadata.name,
         metadata_version = metadata.version,
@@ -631,6 +631,11 @@ def _whl_library_deps_impl(rctx):
     # Load the METADATA file from a different repository
     metadata_path = rctx.path(rctx.attr.whl_library.same_package_label("METADATA"))
     metadata = parse_whl_metadata(rctx.read(metadata_path))
+    entry_points = _get_entry_points(
+        rctx,
+        rctx.path(metadata_path).dirname.get_child("site-packages"),
+        metadata,
+    )
 
     if not (metadata.name and metadata.version):
         logger.fail("Failed to parse METADATA from {}".format(rctx.attr.whl_library))
@@ -644,6 +649,7 @@ def _whl_library_deps_impl(rctx):
         extras = rctx.attr.extras,
         group_deps = rctx.attr.group_deps,
         group_name = rctx.attr.group_name,
+        entry_points = [e["name"] for e in entry_points.values()],
         requires_dist = metadata.requires_dist,
         whl_library = rctx.attr.whl_library,
     )

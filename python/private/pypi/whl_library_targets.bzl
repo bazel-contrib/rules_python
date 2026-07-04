@@ -120,6 +120,7 @@ def whl_library_targets(
         dependencies_with_markers = {},
         group_name = "",
         native = native,
+        aliases = [],
         src_pkg = Label("//:BUILD.bazel"),
         rules = struct(
             copy_file = copy_file,
@@ -230,6 +231,13 @@ def whl_library_targets(
         tags = tags,
         visibility = impl_vis,
     )
+
+    for target in aliases:
+        native.alias(
+            name = target,
+            actual = src_pkg.same_package_label(target),
+            visibility = ["//visibility:public"],
+        )
 
 def _config_settings(dependencies_with_markers, rules, **kwargs):
     """Generate config settings for the targets.

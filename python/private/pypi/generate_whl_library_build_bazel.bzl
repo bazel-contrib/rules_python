@@ -20,6 +20,7 @@ load(":labels.bzl", "DATA_LABEL", "DIST_INFO_LABEL", "EXTRACTED_WHEEL_FILES", "P
 # These are functions on how to render particular args, should be reused across all rendering
 # invocations to make things easier.
 _RENDER_FNS = {
+    "aliases": render.list,
     "copy_executables": render.dict,
     "copy_files": render.dict,
     "data": render.list,
@@ -109,15 +110,6 @@ def generate_whl_library_build_bazel(
         namespace_package_files = namespace_package_files,
         visibility = visibility,
     )
-    from_requires_kwargs = dict(
-        name = metadata_name,
-        version = metadata_version,
-        requires_dist = requires_dist,
-        extras = extras,
-        group_deps = group_deps,
-        dep_template = dep_template,
-        group_name = group_name,
-    )
 
     # NOTE, if users specify annotations, the wheel downloads are not reused this
     # is to ensure that we don't break users config and also to ensure that we
@@ -147,14 +139,25 @@ def generate_whl_library_build_bazel(
         ),
     ]
 
-    if config_load:
-        loads.append("""load("{}", "{}")""".format(config_load, "packages"))
-        from_requires_kwargs["include"] = "packages"
+    if dep_template:
+        from_requires_kwargs = dict(
+            name = metadata_name,
+            version = metadata_version,
+            requires_dist = requires_dist,
+            extras = extras,
+            group_deps = group_deps,
+            dep_template = dep_template,
+            group_name = group_name,
+        )
 
-    macro_parts.append(render.call(
-        "whl_library_from_requires_dist",
-        **_render(**from_requires_kwargs)
-    ))
+        if config_load:
+            loads.append("""load("{}", "{}")""".format(config_load, "packages"))
+            from_requires_kwargs["include"] = "packages"
+
+        macro_parts.append(render.call(
+            "whl_library_from_requires_dist",
+            **_render(**from_requires_kwargs)
+        ))
 
     contents = "\n".join(
         [
@@ -174,6 +177,7 @@ def generate_whl_library_deps_build_bazel(
         version,
         config_load,
         dep_template,
+        entry_points,
         extras,
         group_deps,
         group_name,
@@ -200,31 +204,24 @@ def generate_whl_library_deps_build_bazel(
         dep_template = dep_template,
         group_name = group_name,
         src_pkg = str(whl_library),
-    )
-
-    macro_parts = [
-        render.call(
-            "alias",
-            **_render(
-                name = target,
-                actual = str(whl_library.same_package_label(target)),
-            )
-        )
-        for target in [
+        aliases = [
             DATA_LABEL,
             DIST_INFO_LABEL,
             EXTRACTED_WHEEL_FILES,
-        ]
-    ]
+        ] + [
+            "bin/{}".format(entry_point)
+            for entry_point in entry_points
+        ],
+    )
 
     if config_load:
         loads.append("""load("{}", "{}")""".format(config_load, "packages"))
         from_requires_kwargs["include"] = "packages"
 
-    macro_parts.append(render.call(
+    macro_parts = [render.call(
         "whl_library_from_requires_dist",
         **_render(**from_requires_kwargs)
-    ))
+    )]
 
     contents = _TEMPLATE.format(
         loads = "\n".join(loads),
