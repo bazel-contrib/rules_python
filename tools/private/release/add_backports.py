@@ -99,7 +99,7 @@ class AddBackports:
             "prs",
             type=str,
             nargs="+",
-            help="PR references (number, #number, URL, or commitish) to add (positional, space-separated).",
+            help="PR references (numbers, #numbers, or URLs) to add (positional, space-separated).",
         )
         parser.add_argument(
             "--issue",
