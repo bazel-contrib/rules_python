@@ -3,14 +3,6 @@
 import pathlib
 import re
 
-_UNRELEASED_TEMPLATE_BODY = """## Unreleased
-
-[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
-
-Unreleased changes are tracked as individual files in the [news/](./news)
-directory, or view the [latest generated
-changelog](https://rules-python.readthedocs.io/en/latest/changelog.html)."""
-
 
 def _get_sub_category(content):
     """Extracts the sub-category in parentheses from the entry content."""
@@ -283,40 +275,15 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
         # Find insertion point
         insertion_point = _find_insertion_point(changelog_content, version)
 
-        # Check if we are inserting at the top (before the first existing version)
-        matches = list(re.finditer(r"\{#v(?P<ver>\d+-\d+-\d+)\}", changelog_content))
-        first_version_start = matches[0].start() if matches else len(changelog_content)
-
-        if insertion_point == first_version_start:
-            # Insert at the top and reset Unreleased section
-            replacement = (
-                f"{{#unreleased}}\n{_UNRELEASED_TEMPLATE_BODY}\n\n{new_release_block}\n"
-            )
-            pattern = r"(?P<anchor>\{#unreleased\})(?P<content>.*?)(?=\n\s*\{#v\d+-\d+-\d+\}|\Z)"
-            if not re.search(pattern, changelog_content, re.DOTALL):
-                raise RuntimeError(
-                    "Could not find active Unreleased section to replace in CHANGELOG.md"
-                )
-            new_content = re.sub(
-                pattern,
-                replacement,
-                changelog_content,
-                count=1,
-                flags=re.DOTALL,
-            )
+        if insertion_point == len(changelog_content):
+            new_content = changelog_content.rstrip() + "\n\n" + new_release_block + "\n"
         else:
-            # Insert in the middle or end, do NOT touch Unreleased section
-            if insertion_point == len(changelog_content):
-                new_content = (
-                    changelog_content.rstrip() + "\n\n" + new_release_block + "\n"
-                )
-            else:
-                new_content = (
-                    changelog_content[:insertion_point]
-                    + new_release_block
-                    + "\n\n"
-                    + changelog_content[insertion_point:]
-                )
+            new_content = (
+                changelog_content[:insertion_point]
+                + new_release_block
+                + "\n\n"
+                + changelog_content[insertion_point:]
+            )
         output_path.write_text(new_content, encoding="utf-8")
 
 

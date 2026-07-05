@@ -16,21 +16,9 @@ class ChangelogNewsTest(TempDirTestCase):
 
 [unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-{#unreleased-removed}
-### Removed
-* Nothing removed.
-
-{#unreleased-changed}
-### Changed
-* Nothing changed.
-
-{#unreleased-fixed}
-### Fixed
-* Nothing fixed.
-
-{#unreleased-added}
-### Added
-* Nothing added.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {#v2-0-2}
 ## [2.0.2] - 2026-05-14
