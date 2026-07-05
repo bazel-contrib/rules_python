@@ -123,7 +123,9 @@ def _find_insertion_point(changelog_content, new_version):
         if parsed_ver < parsed_new_ver:
             return m.start()
 
-    return len(changelog_content)
+    raise ValueError(
+        f"Could not find a version in CHANGELOG.md smaller than {new_version} to insert before."
+    )
 
 
 def _add_news_to_changelog(input_path, output_path, version, entries, release_date):
@@ -275,15 +277,12 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
         # Find insertion point
         insertion_point = _find_insertion_point(changelog_content, version)
 
-        if insertion_point == len(changelog_content):
-            new_content = changelog_content.rstrip() + "\n\n" + new_release_block + "\n"
-        else:
-            new_content = (
-                changelog_content[:insertion_point]
-                + new_release_block
-                + "\n\n"
-                + changelog_content[insertion_point:]
-            )
+        new_content = (
+            changelog_content[:insertion_point]
+            + new_release_block
+            + "\n\n"
+            + changelog_content[insertion_point:]
+        )
         output_path.write_text(new_content, encoding="utf-8")
 
 

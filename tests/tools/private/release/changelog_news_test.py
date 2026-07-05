@@ -485,6 +485,40 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
         self.assertTrue(idx_2_2_0 < idx_2_1_0 < idx_2_0_0)
         self.assertIn("Fix in 2.1.0", new_content)
 
+    def test_update_changelog_insertion_point_too_small(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+{#v2-0-0}
+## [2.0.0] - 2026-04-09
+
+[2.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+        (news_dir / "123.fixed.md").write_text("Fix in 1.0.0")
+
+        # Act & Assert
+        with self.assertRaises(ValueError) as ctx:
+            changelog_news.update_changelog(
+                "1.0.0",
+                "2026-01-01",
+                changelog_path=changelog_path,
+                news_dir=news_dir,
+            )
+        self.assertIn(
+            "Could not find a version in CHANGELOG.md smaller than 1.0.0",
+            str(ctx.exception),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
