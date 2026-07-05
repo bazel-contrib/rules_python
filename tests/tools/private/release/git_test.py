@@ -82,5 +82,88 @@ class GitFetchTest(unittest.TestCase):
         )
 
 
+class GitGetModifiedFilesTest(unittest.TestCase):
+    def setUp(self):
+        self.git = Git(".")
+        self.patcher = patch.object(self.git, "_run_git")
+        self.mock_run_git = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_get_modified_files(self):
+        self.mock_run_git.return_value = "file1.txt\nfile2.py\n\n"
+        files = self.git.get_modified_files("HEAD")
+        self.mock_run_git.assert_called_once_with(
+            "show", "--name-only", "--format=", "HEAD"
+        )
+        self.assertEqual(files, ["file1.txt", "file2.py"])
+
+    def test_get_modified_files_empty(self):
+        self.mock_run_git.return_value = ""
+        files = self.git.get_modified_files("HEAD")
+        self.assertEqual(files, [])
+
+
+class GitDiffTest(unittest.TestCase):
+    def setUp(self):
+        self.git = Git(".")
+        self.patcher = patch.object(self.git, "_run_git")
+        self.mock_run_git = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_diff_has_changes(self):
+        self.mock_run_git.return_value = "some diff output"
+        output = self.git.diff()
+        self.mock_run_git.assert_called_once_with("diff")
+        self.assertEqual(output, "some diff output")
+
+    def test_diff_empty(self):
+        self.mock_run_git.return_value = ""
+        output = self.git.diff()
+        self.mock_run_git.assert_called_once_with("diff")
+        self.assertEqual(output, "")
+
+
+class GitApplyTest(unittest.TestCase):
+    def setUp(self):
+        self.git = Git(".")
+        self.patcher = patch.object(self.git, "_run_git")
+        self.mock_run_git = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_apply(self):
+        self.git.apply("patch.patch")
+        self.mock_run_git.assert_called_once_with(
+            "apply", "patch.patch", capture_output=False
+        )
+
+
+class GitApplyCheckTest(unittest.TestCase):
+    def setUp(self):
+        self.git = Git(".")
+        self.patcher = patch.object(self.git, "_run_git")
+        self.mock_run_git = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_apply_check_clean(self):
+        self.mock_run_git.return_value = ""
+        result = self.git.apply_check("patch.patch")
+        self.mock_run_git.assert_called_once_with(
+            "apply", "--check", "patch.patch", capture_output=False
+        )
+        self.assertTrue(result)
+
+    def test_apply_check_conflict(self):
+        import subprocess
+
+        self.mock_run_git.side_effect = subprocess.CalledProcessError(
+            1, ["git", "apply", "--check", "patch.patch"]
+        )
+        result = self.git.apply_check("patch.patch")
+        self.mock_run_git.assert_called_once_with(
+            "apply", "--check", "patch.patch", capture_output=False
+        )
+        self.assertFalse(result)
+
+
 if __name__ == "__main__":
     unittest.main()

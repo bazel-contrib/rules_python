@@ -263,23 +263,40 @@ class GitHub:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
-    def create_pr(self, version: str, issue_num: int) -> str:
-        """Creates a pull request for release preparation.
+    def create_pr(self, title: str, body: str, base: str = "main") -> str:
+        """Creates a pull request.
 
         Args:
-            version: The version being prepared.
-            issue_num: The associated tracking issue number.
+            title: The title of the PR.
+            body: The body of the PR.
+            base: The base branch to merge into (default: 'main').
 
         Returns:
             The URL of the created PR.
         """
         output = self._gh_pr(
             "create",
-            f"--title=Prepare release v{version}",
-            f"--body=Work towards #{issue_num}",
-            "--base=main",
+            f"--title={title}",
+            f"--body={body}",
+            f"--base={base}",
         )
         return output if output else ""
+
+    def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:
+        """Enables auto-merge for a PR.
+
+        Args:
+            pr_num: The PR number.
+            method: The merge method ('squash', 'rebase', or 'merge').
+        """
+        cmd = ["merge", str(pr_num), "--auto"]
+        if method == "squash":
+            cmd.append("--squash")
+        elif method == "rebase":
+            cmd.append("--rebase")
+        elif method == "merge":
+            cmd.append("--merge")
+        self._gh_pr(*cmd, capture_output=False)
 
     def get_open_pr(self, branch_name: str) -> dict | None:
         """Returns PR info if an open PR exists for the given branch.

@@ -20,6 +20,8 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_gh.resolve_pr_number.side_effect = lambda x: int(
             x.lstrip("#").split("/")[-1]
         )
+        self.mock_git.diff.return_value = ""
+        self.mock_git.apply_check.return_value = True
 
     def test_process_backports_no_pending(self):
         args = argparse.Namespace(
@@ -60,28 +62,72 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_gh.get_merge_commits_for_prs.side_effect = mock_resolve
 
         self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
-        self.mock_git.get_commit_sha.return_value = "12345678"
+        self.mock_git.get_commit_sha.side_effect = ["12345678", "12345678", "main_sha"]
         self.mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
+        self.mock_git.get_modified_files.return_value = ["news/124.fixed.md"]
+        self.mock_git.diff.return_value = "version diff for 124"
+        self.mock_git.apply_check.return_value = True
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/999"
 
         result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
 
         self.assertEqual(result, 0)
         self.mock_git.fetch.assert_has_calls(
-            [call("origin", tags=True, force=True), call("origin")]
+            [
+                call("origin", tags=True, force=True),
+                call("origin"),
+                call("origin", refspec="main"),
+            ]
         )
-        self.mock_git.checkout.assert_called_once_with(
-            "release/2.0", track_remote="origin"
+        self.mock_git.checkout.assert_has_calls(
+            [
+                call("release/2.0", track_remote="origin"),
+                call("main", track_remote="origin"),
+                call("prepare-2.0.0-backports-6affdae", create_branch=True),
+                call("release/2.0"),
+            ]
         )
         self.mock_git.cherry_pick.assert_called_once_with("abcdef12")
-        self.mock_changelog_news.update_changelog.assert_called_once_with(
-            "2.0.0", "2026-07-01"
+        self.mock_git.diff.assert_called_once()
+        self.mock_git.apply_check.assert_called_once_with(unittest.mock.ANY)
+        self.mock_git.apply.assert_called_once_with(unittest.mock.ANY)
+        self.mock_changelog_news.update_changelog.assert_has_calls(
+            [
+                call("2.0.0", "2026-07-01"),
+                call(
+                    "2.0.0",
+                    "2026-07-01",
+                    news_files=["news/124.fixed.md"],
+                    delete_news=True,
+                ),
+            ]
         )
-        self.mock_git.add_modified_and_deleted.assert_called_once()
+        self.assertEqual(self.mock_git.add_modified_and_deleted.call_count, 2)
         self.mock_replace_version_next.assert_called_once_with("2.0.0")
-        self.mock_git.commit.assert_called_once_with(
-            'Cherry-pick "fix bug"\n\nWork towards #123', amend=True
+        self.mock_git.commit.assert_has_calls(
+            [
+                call('Cherry-pick "fix bug"\n\nWork towards #123', amend=True),
+                call("chore(release): sync changelog for v2.0.0 backports"),
+            ]
         )
-        self.mock_git.push.assert_called_once_with("origin", "release/2.0")
+        self.mock_git.push.assert_has_calls(
+            [
+                call("origin", "release/2.0"),
+                call(
+                    "origin",
+                    "prepare-2.0.0-backports-6affdae",
+                    set_upstream=True,
+                    force=True,
+                ),
+            ]
+        )
+
+        self.mock_gh.create_pr.assert_called_once_with(
+            title="chore(release): sync changelog for v2.0.0 backports",
+            body="Updates CHANGELOG.md and removes news files for backports:\n- #124\n\nWork towards #123",
+            base="main",
+        )
+        self.mock_gh.enable_auto_merge.assert_called_once_with(999)
 
         self.mock_gh.update_issue_body.assert_called_once()
         call_args = self.mock_gh.update_issue_body.call_args[0]
@@ -115,28 +161,55 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_gh.get_merge_commits_for_prs.side_effect = mock_resolve
 
         self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
-        self.mock_git.get_commit_sha.return_value = "12345678"
+        self.mock_git.get_commit_sha.side_effect = ["12345678", "main_sha"]
         self.mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
+        self.mock_git.get_modified_files.return_value = ["news/124.fixed.md"]
+        self.mock_git.diff.return_value = "version diff for 124"
+        self.mock_git.apply_check.return_value = True
 
         result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
 
         self.assertEqual(result, 0)
         self.mock_git.fetch.assert_has_calls(
-            [call("origin", tags=True, force=True), call("origin")]
+            [
+                call("origin", tags=True, force=True),
+                call("origin"),
+                call("origin", refspec="main"),
+            ]
         )
-        self.mock_git.checkout.assert_called_once_with(
-            "release/2.0", track_remote="origin"
+        self.mock_git.checkout.assert_has_calls(
+            [
+                call("release/2.0", track_remote="origin"),
+                call("main", track_remote="origin"),
+                call("release/2.0"),
+            ]
         )
         self.mock_git.cherry_pick.assert_called_once_with("abcdef12")
-        self.mock_changelog_news.update_changelog.assert_called_once_with(
-            "2.0.0", "2026-07-01"
+        self.mock_git.diff.assert_called_once()
+        self.mock_git.apply_check.assert_called_once_with(unittest.mock.ANY)
+        self.mock_git.apply.assert_not_called()
+        self.mock_changelog_news.update_changelog.assert_has_calls(
+            [
+                call("2.0.0", "2026-07-01"),
+                call(
+                    "2.0.0",
+                    "2026-07-01",
+                    news_files=["news/124.fixed.md"],
+                    delete_news=True,
+                ),
+            ]
         )
-        self.mock_git.add_modified_and_deleted.assert_called_once()
+        self.assertEqual(self.mock_git.add_modified_and_deleted.call_count, 1)
         self.mock_replace_version_next.assert_called_once_with("2.0.0")
         self.mock_git.commit.assert_called_once_with(
             'Cherry-pick "fix bug"\n\nWork towards #123', amend=True
         )
-        self.mock_git.reset_hard.assert_called_once_with("12345678")
+        self.mock_git.reset_hard.assert_has_calls(
+            [
+                call("12345678"),
+                call("main_sha"),
+            ]
+        )
         self.mock_git.push.assert_not_called()
         self.mock_gh.update_issue_body.assert_not_called()
 
@@ -352,6 +425,141 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.assertIn("- [ ] #124", call1_args[1])
         self.assertIn("- [ ] #125", call1_args[1])
         self.assertIn("- [ ] invalid | status=error-invalid-pr", call1_args[1])
+
+    @patch("tools.private.release.process_backports.datetime")
+    def test_process_backports_version_sync_failure(self, mock_datetime):
+        mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
+        args = argparse.Namespace(
+            issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
+        )
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [ ] Prepare Release
+- [ ] Create Release branch
+
+## Backports
+- [ ] #124 | status=pending
+- [ ] #125 | status=pending
+"""
+        self.mock_git.get_remote_tags.return_value = []
+
+        def mock_resolve(items):
+            for item in items:
+                if item.pr_ref in ("#124", "#125"):
+                    item.commit = "sha_" + item.pr_ref.lstrip("#")
+                    item.status = "done"
+            return items
+
+        self.mock_gh.get_merge_commits_for_prs.side_effect = mock_resolve
+
+        self.mock_git.sort_commits_chronologically.return_value = ["sha_124", "sha_125"]
+        self.mock_git.get_commit_sha.side_effect = [
+            "12345678",
+            "sha_124_amended",
+            "sha_125_amended",
+            "main_sha",
+        ]
+        self.mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
+        self.mock_git.get_modified_files.side_effect = [
+            ["news/124.fixed.md"],
+            ["news/125.fixed.md"],
+        ]
+        self.mock_git.diff.side_effect = ["diff 124", "diff 125"]
+        self.mock_git.apply_check.side_effect = [False, True]
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/999"
+
+        result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
+
+        self.assertEqual(result, 0)
+        self.mock_git.fetch.assert_has_calls(
+            [
+                call("origin", tags=True, force=True),
+                call("origin"),
+                call("origin", refspec="main"),
+            ]
+        )
+        self.mock_git.checkout.assert_has_calls(
+            [
+                call("release/2.0", track_remote="origin"),
+                call("main", track_remote="origin"),
+                call("prepare-2.0.0-backports-b552a96", create_branch=True),
+                call("release/2.0"),
+            ]
+        )
+        self.mock_git.cherry_pick.assert_has_calls(
+            [
+                call("sha_124"),
+                call("sha_125"),
+            ]
+        )
+        # diff should be called for each successful cherry-pick
+        self.assertEqual(self.mock_git.diff.call_count, 2)
+        # apply_check should be called for both patches
+        self.assertEqual(self.mock_git.apply_check.call_count, 2)
+        # apply should only be called for 125 (since 124 failed check)
+        self.mock_git.apply.assert_called_once_with(unittest.mock.ANY)
+
+        self.mock_changelog_news.update_changelog.assert_has_calls(
+            [
+                call("2.0.0", "2026-07-01"),
+                call("2.0.0", "2026-07-01"),
+                call(
+                    "2.0.0",
+                    "2026-07-01",
+                    news_files=["news/124.fixed.md", "news/125.fixed.md"],
+                    delete_news=True,
+                ),
+            ]
+        )
+        # add_modified_and_deleted called:
+        # - once per cherry-pick (2)
+        # - once on main backport branch (1)
+        # Total = 3
+        self.assertEqual(self.mock_git.add_modified_and_deleted.call_count, 3)
+        # replace_version_next called once per cherry-pick
+        self.assertEqual(self.mock_replace_version_next.call_count, 2)
+
+        self.mock_git.commit.assert_has_calls(
+            [
+                call('Cherry-pick "fix bug"\n\nWork towards #123', amend=True),
+                call('Cherry-pick "fix bug"\n\nWork towards #123', amend=True),
+                call("chore(release): sync changelog for v2.0.0 backports"),
+            ]
+        )
+        self.mock_git.push.assert_has_calls(
+            [
+                call("origin", "release/2.0"),
+                call("origin", "release/2.0"),
+                call(
+                    "origin",
+                    "prepare-2.0.0-backports-b552a96",
+                    set_upstream=True,
+                    force=True,
+                ),
+            ]
+        )
+
+        # PR body should contain warning about 124
+        expected_body = (
+            "Updates CHANGELOG.md and removes news files for backports:\n"
+            "- #124\n"
+            "- #125\n"
+            "\n"
+            "Warning: These PRs failed to update their version markers:\n"
+            "- #124\n"
+            "\n"
+            "Work towards #123"
+        )
+        self.mock_gh.create_pr.assert_called_once_with(
+            title="chore(release): sync changelog for v2.0.0 backports",
+            body=expected_body,
+            base="main",
+        )
+        self.mock_gh.enable_auto_merge.assert_called_once_with(999)
+
+        # update_issue_body called twice (once per successful PR)
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
 
 
 if __name__ == "__main__":

@@ -108,6 +108,32 @@ def generate_release_block(version, release_date, news_entries):
     return "\n".join(lines)
 
 
+def _parse_simple_version(ver_str):
+    """Parses a version string (X-Y-Z or X.Y.Z) into a tuple of ints."""
+    normalized = ver_str.replace("-", ".")
+    return tuple(int(x) for x in normalized.split("."))
+
+
+def _find_insertion_point(changelog_content, new_version):
+    """Finds the character index to insert the new version block.
+
+    It should be inserted before the first version in the changelog that is
+    smaller than new_version.
+    """
+    # Find all version anchors: {#vX-Y-Z}
+    matches = list(re.finditer(r"\{#v(?P<ver>\d+-\d+-\d+)\}", changelog_content))
+
+    parsed_new_ver = _parse_simple_version(new_version)
+
+    for m in matches:
+        ver_str = m.group("ver")
+        parsed_ver = _parse_simple_version(ver_str)
+        if parsed_ver < parsed_new_ver:
+            return m.start()
+
+    return len(changelog_content)
+
+
 def _add_news_to_changelog(input_path, output_path, version, entries, release_date):
     """Adds or merges news entries into CHANGELOG.md."""
     input_path = pathlib.Path(input_path)
@@ -253,27 +279,44 @@ def _add_news_to_changelog(input_path, output_path, version, entries, release_da
             " release section from news entries..."
         )
         new_release_block = generate_release_block(version, release_date, entries)
-        replacement = (
-            f"{{#unreleased}}\n{_UNRELEASED_TEMPLATE_BODY}\n\n{new_release_block}\n"
-        )
 
-        # Replace the active Unreleased section (from {#unreleased} to the first release anchor)
-        pattern = (
-            r"(?P<anchor>\{#unreleased\})(?P<content>.*?)(?=\n\s*\{#v\d+-\d+-\d+\}|\Z)"
-        )
+        # Find insertion point
+        insertion_point = _find_insertion_point(changelog_content, version)
 
-        if not re.search(pattern, changelog_content, re.DOTALL):
-            raise RuntimeError(
-                "Could not find active Unreleased section to replace in CHANGELOG.md"
+        # Check if we are inserting at the top (before the first existing version)
+        matches = list(re.finditer(r"\{#v(?P<ver>\d+-\d+-\d+)\}", changelog_content))
+        first_version_start = matches[0].start() if matches else len(changelog_content)
+
+        if insertion_point == first_version_start:
+            # Insert at the top and reset Unreleased section
+            replacement = (
+                f"{{#unreleased}}\n{_UNRELEASED_TEMPLATE_BODY}\n\n{new_release_block}\n"
             )
-
-        new_content = re.sub(
-            pattern,
-            replacement,
-            changelog_content,
-            count=1,
-            flags=re.DOTALL,
-        )
+            pattern = r"(?P<anchor>\{#unreleased\})(?P<content>.*?)(?=\n\s*\{#v\d+-\d+-\d+\}|\Z)"
+            if not re.search(pattern, changelog_content, re.DOTALL):
+                raise RuntimeError(
+                    "Could not find active Unreleased section to replace in CHANGELOG.md"
+                )
+            new_content = re.sub(
+                pattern,
+                replacement,
+                changelog_content,
+                count=1,
+                flags=re.DOTALL,
+            )
+        else:
+            # Insert in the middle or end, do NOT touch Unreleased section
+            if insertion_point == len(changelog_content):
+                new_content = (
+                    changelog_content.rstrip() + "\n\n" + new_release_block + "\n"
+                )
+            else:
+                new_content = (
+                    changelog_content[:insertion_point]
+                    + new_release_block
+                    + "\n\n"
+                    + changelog_content[insertion_point:]
+                )
         output_path.write_text(new_content, encoding="utf-8")
 
 
@@ -284,9 +327,13 @@ def merge_new_into_changelog(
     version,
     release_date,
     delete_news=False,
+    news_files=None,
 ):
     """Merges news entries from news_dir into changelog_path and writes to output_path."""
-    news_files = _get_news_files(news_dir)
+    if news_files is None:
+        news_files = _get_news_files(news_dir)
+    else:
+        news_files = [pathlib.Path(f) for f in news_files]
     entries = _parse_new_files(news_files)
     _add_news_to_changelog(
         input_path=changelog_path,
@@ -297,7 +344,8 @@ def merge_new_into_changelog(
     )
     if delete_news:
         for p in news_files:
-            p.unlink()
+            if p.exists():
+                p.unlink()
         if news_files:
             print(f"Removed {len(news_files)} processed news files.")
 
@@ -309,6 +357,7 @@ def update_changelog(
     output_path=None,
     news_dir="news",
     delete_news=True,
+    news_files=None,
 ):
     """Performs the version replacements in CHANGELOG.md."""
     if output_path is None:
@@ -320,4 +369,5 @@ def update_changelog(
         version=version,
         release_date=release_date,
         delete_news=delete_news,
+        news_files=news_files,
     )

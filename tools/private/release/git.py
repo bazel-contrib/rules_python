@@ -353,3 +353,47 @@ class Git:
                 if not tag.endswith("^{}"):
                     tags.append(tag)
         return tags
+
+    def get_modified_files(self, ref: str) -> list[str]:
+        """Returns a list of files modified in a given reference.
+
+        Args:
+            ref: The git reference.
+
+        Returns:
+            A list of file paths.
+        """
+        output = self._run_git("show", "--name-only", "--format=", ref)
+        return [line for line in output.splitlines() if line.strip()] if output else []
+
+    def diff(self) -> str:
+        """Returns the diff of unstaged changes.
+
+        Returns:
+            The diff output as a string.
+        """
+        output = self._run_git("diff")
+        return output if output else ""
+
+    def apply(self, patch_file: str) -> None:
+        """Applies a patch file.
+
+        Args:
+            patch_file: The path to the patch file.
+        """
+        self._run_git("apply", patch_file, capture_output=False)
+
+    def apply_check(self, patch_file: str) -> bool:
+        """Verifies if a patch can be applied cleanly.
+
+        Args:
+            patch_file: The path to the patch file.
+
+        Returns:
+            True if the patch can be applied cleanly, False otherwise.
+        """
+        try:
+            self._run_git("apply", "--check", patch_file, capture_output=False)
+            return True
+        except subprocess.CalledProcessError:
+            return False
