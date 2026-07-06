@@ -41,7 +41,7 @@ class GitCheckoutTest(unittest.TestCase):
         self.mock_run_git.assert_called_once_with(
             "checkout", "my-branch", capture_output=False
         )
-        mock_reset_hard.assert_called_once_with("origin/my-branch")
+        mock_reset_hard.assert_called_once_with(reset_to="origin/my-branch")
 
 
 class GitFetchTest(unittest.TestCase):
@@ -163,6 +163,26 @@ class GitApplyCheckTest(unittest.TestCase):
             "apply", "--check", "patch.patch", capture_output=False
         )
         self.assertFalse(result)
+
+
+class GitResetHardTest(unittest.TestCase):
+    def setUp(self):
+        self.git = Git(".")
+        self.patcher = patch.object(self.git, "_run_git")
+        self.mock_run_git = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_reset_hard_default(self):
+        self.git.reset_hard()
+        self.mock_run_git.assert_called_once_with(
+            "reset", "--hard", "HEAD", capture_output=False
+        )
+
+    def test_reset_hard_custom(self):
+        self.git.reset_hard(reset_to="my-commit")
+        self.mock_run_git.assert_called_once_with(
+            "reset", "--hard", "my-commit", capture_output=False
+        )
 
 
 if __name__ == "__main__":

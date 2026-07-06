@@ -193,7 +193,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
         # Verify reset_hard was called to reset the existing branch to main
         self.mock_git.reset_hard.assert_has_calls(
             [
-                call("main"),
+                call(reset_to="main"),
             ]
         )
         self.mock_git.cherry_pick.assert_called_once_with("abcdef12")
@@ -315,8 +315,8 @@ class CmdProcessBackportsTest(unittest.TestCase):
         )
         self.mock_git.reset_hard.assert_has_calls(
             [
-                call("12345678"),
-                call("main_sha"),
+                call(reset_to="12345678"),
+                call(reset_to="main_sha"),
             ]
         )
         self.mock_git.push.assert_not_called()

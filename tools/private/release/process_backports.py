@@ -256,7 +256,7 @@ class ProcessBackports:
             else:
                 if self.git.branch_exists(backport_branch):
                     self.git.checkout(backport_branch)
-                    self.git.reset_hard(main_branch)
+                    self.git.reset_hard(reset_to=main_branch)
                 else:
                     self.git.checkout(backport_branch, create_branch=True)
 
@@ -325,7 +325,7 @@ class ProcessBackports:
                     print(f"Warning: Failed to enable auto-merge: {e}")
         finally:
             if args.dry_run:
-                self.git.reset_hard(main_start_sha)
+                self.git.reset_hard(reset_to=main_start_sha)
             self.git.checkout(release_branch)
 
     def _apply_version_marker_diffs(
@@ -527,7 +527,7 @@ class ProcessBackports:
         finally:
             if args.dry_run:
                 print(f"[DRY RUN] Resetting branch {branch_name} to {start_sha}")
-                self.git.reset_hard(start_sha)
+                self.git.reset_hard(reset_to=start_sha)
 
         if successful_pr_nums:
             self._sync_changelog_to_main(

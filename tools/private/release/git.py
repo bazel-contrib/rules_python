@@ -80,7 +80,7 @@ class Git:
         self._run_git(*cmd, capture_output=False)
 
         if should_reset_hard:
-            self.reset_hard(f"{track_remote}/{ref}")
+            self.reset_hard(reset_to=f"{track_remote}/{ref}")
 
     def add(self, *files: str) -> None:
         """Stages files for commit.
@@ -191,13 +191,13 @@ class Git:
         """Aborts an in-progress cherry-pick operation."""
         self._run_git("cherry-pick", "--abort", capture_output=False)
 
-    def reset_hard(self, ref: str = "HEAD") -> None:
+    def reset_hard(self, *, reset_to: str = "HEAD") -> None:
         """Resets the index and working tree to a specific reference.
 
         Args:
-            ref: The git reference to reset to. Defaults to 'HEAD'.
+            reset_to: The git reference to reset to. Defaults to 'HEAD'.
         """
-        self._run_git("reset", "--hard", ref, capture_output=False)
+        self._run_git("reset", "--hard", reset_to, capture_output=False)
 
     def status(self) -> str:
         """Returns the output of git status --porcelain.
