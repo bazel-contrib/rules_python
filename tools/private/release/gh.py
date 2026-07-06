@@ -263,23 +263,34 @@ class GitHub:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
-    def create_pr(self, title: str, body: str, base: str = "main") -> str:
+    def create_pr(
+        self,
+        title: str,
+        body: str,
+        base: str = "main",
+        labels: list[str] | None = None,
+    ) -> str:
         """Creates a pull request.
 
         Args:
             title: The title of the PR.
             body: The body of the PR.
             base: The base branch to merge into (default: 'main').
+            labels: Optional list of labels to add to the PR.
 
         Returns:
             The URL of the created PR.
         """
-        output = self._gh_pr(
+        cmd = [
             "create",
             f"--title={title}",
             f"--body={body}",
             f"--base={base}",
-        )
+        ]
+        if labels:
+            for label in labels:
+                cmd.append(f"--label={label}")
+        output = self._gh_pr(*cmd)
         return output if output else ""
 
     def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:

@@ -15,6 +15,7 @@ from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
     add_backports_to_body,
     add_rc_task_to_body,
+    add_sync_changelog_task_to_body,
     parse_backports,
     parse_checklist_state,
     update_task_in_body,
@@ -279,6 +280,12 @@ class ProcessBackports:
                     f"[DRY RUN] Would commit: 'chore(release): sync changelog for v{version} backports'"
                 )
                 print(f"[DRY RUN] Would push {backport_branch} to {args.remote}")
+                print(
+                    f"[DRY RUN] Would create PR to {main_branch} with label 'type: sync-changelog'"
+                )
+                print(
+                    f"[DRY RUN] Would update tracking issue #{args.issue} checklist tasks 'Sync Changelog #<pr>' to PENDING"
+                )
                 print("[DRY RUN] Diff of changes:")
                 print(self.git.status())
             else:
@@ -307,6 +314,7 @@ class ProcessBackports:
 
                 pr_body_lines.append("")
                 pr_body_lines.append(f"Work towards #{args.issue}")
+                pr_body_lines.append(f"Release-Tracking-Issue: #{args.issue}")
                 pr_body = "\n".join(pr_body_lines)
 
                 print(f"Creating PR to {main_branch}...")
@@ -314,6 +322,7 @@ class ProcessBackports:
                     title=pr_title,
                     body=pr_body,
                     base=main_branch,
+                    labels=["type: sync-changelog"],
                 )
                 print(f"Created PR: {pr_url}")
 
@@ -321,8 +330,27 @@ class ProcessBackports:
                     pr_num = int(pr_url.split("/")[-1])
                     print(f"Enabling auto-merge for PR #{pr_num}...")
                     self.gh.enable_auto_merge(pr_num)
+
+                    print(
+                        f"Updating tracking issue #{args.issue} checklist with"
+                        " Sync Changelog tasks..."
+                    )
+                    issue_body = self.gh.get_issue_body(args.issue)
+                    for pr in successful_pr_nums:
+                        task_name = f"Sync Changelog #{pr}"
+                        metadata = {"status": "pending", "pr": f"#{pr_num}"}
+                        issue_body = update_task_in_body(
+                            issue_body,
+                            task_name,
+                            checked=False,
+                            metadata=metadata,
+                        )
+                    self.gh.update_issue_body(args.issue, issue_body)
                 except Exception as e:
-                    print(f"Warning: Failed to enable auto-merge: {e}")
+                    print(
+                        f"Warning: Failed to update tracking issue or enable"
+                        f" auto-merge: {e}"
+                    )
         finally:
             if args.dry_run:
                 self.git.reset_hard(reset_to=main_start_sha)
@@ -409,6 +437,14 @@ class ProcessBackports:
             print(f"Adding backports {items_to_add} to tracking issue #{args.issue}...")
             try:
                 body = add_backports_to_body(body, items_to_add)
+                for item in items_to_add:
+                    if (
+                        "metadata" in item
+                        and item["metadata"].get("status") == "error-invalid-pr"
+                    ):
+                        continue
+                    pr_num = int(item["ref"].lstrip("#"))
+                    body = add_sync_changelog_task_to_body(body, pr_num)
                 state = parse_checklist_state(body)
                 rc_tags = state.get("rc_tags", {})
                 has_pending_rc = any(

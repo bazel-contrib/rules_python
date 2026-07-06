@@ -4,6 +4,7 @@ from tools.private.release.gh import GitHub
 from tools.private.release.release_issue import (
     add_backports_to_body,
     add_rc_task_to_body,
+    add_sync_changelog_task_to_body,
     parse_checklist_state,
 )
 
@@ -60,6 +61,8 @@ class AddBackports:
             body = self.gh.get_issue_body(issue_num)
             items_to_add = [{"ref": f"#{pr}"} for pr in resolved_prs]
             body = add_backports_to_body(body, items_to_add)
+            for pr in resolved_prs:
+                body = add_sync_changelog_task_to_body(body, pr)
             state = parse_checklist_state(body)
             rc_tags = state.get("rc_tags", {})
             has_pending_rc = any(

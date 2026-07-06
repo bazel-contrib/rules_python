@@ -35,6 +35,8 @@ class CmdAddBackportsTest(unittest.TestCase):
         self.assertIn("- [ ] #125", call_args[1])
         # Should also auto-add Tag RC0
         self.assertIn("- [ ] Tag RC0", call_args[1])
+        self.assertIn("- [ ] Sync Changelog #124", call_args[1])
+        self.assertIn("- [ ] Sync Changelog #125", call_args[1])
 
     def test_add_backports_auto_discover_success(self):
         args = argparse.Namespace(issue=None, prs=["124"])
@@ -98,6 +100,7 @@ class CmdAddBackportsTest(unittest.TestCase):
         self.assertNotIn("Tag RC1", call_args[1])
         # Tag RC0 should still be there
         self.assertIn("- [ ] Tag RC0", call_args[1])
+        self.assertIn("- [ ] Sync Changelog #124", call_args[1])
 
 
 if __name__ == "__main__":

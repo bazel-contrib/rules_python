@@ -27,6 +27,15 @@ py_test(
 )
 
 py_test(
+    name = "complete_sync_changelog_test",
+    srcs = ["complete_sync_changelog_test.py"],
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+py_test(
     name = "create_rc_test",
     srcs = ["create_rc_test.py"],
     deps = [

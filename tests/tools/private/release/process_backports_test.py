@@ -23,11 +23,23 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_git.diff.return_value = ""
         self.mock_git.apply_check.return_value = True
 
+        # Dynamic mock for issue body
+        self.issue_body = ""
+
+        def mock_get_body(issue_num):
+            return self.issue_body
+
+        def mock_update_body(issue_num, body):
+            self.issue_body = body
+
+        self.mock_gh.get_issue_body.side_effect = mock_get_body
+        self.mock_gh.update_issue_body.side_effect = mock_update_body
+
     def test_process_backports_no_pending(self):
         args = argparse.Namespace(
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
-        self.mock_gh.get_issue_body.return_value = "No backports here"
+        self.issue_body = "No backports here"
 
         result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
 
@@ -42,10 +54,12 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
+- [ ] Sync Changelog #124
+- [ ] Tag Final
 
 ## Backports
 - [ ] #124 | status=pending
@@ -124,15 +138,23 @@ class CmdProcessBackportsTest(unittest.TestCase):
 
         self.mock_gh.create_pr.assert_called_once_with(
             title="chore(release): sync changelog for v2.0.0 backports",
-            body="Updates CHANGELOG.md and removes news files for backports:\n- #124\n\nWork towards #123",
+            body="Updates CHANGELOG.md and removes news files for backports:\n- #124\n\nWork towards #123\nRelease-Tracking-Issue: #123",
             base="main",
+            labels=["type: sync-changelog"],
         )
         self.mock_gh.enable_auto_merge.assert_called_once_with(999)
 
-        self.mock_gh.update_issue_body.assert_called_once()
-        call_args = self.mock_gh.update_issue_body.call_args[0]
-        self.assertEqual(call_args[0], 123)
-        self.assertIn("- [x] #124 | status=done rc=rc0 commit= 12345678", call_args[1])
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        call_args_list = self.mock_gh.update_issue_body.call_args_list
+        self.assertEqual(call_args_list[0][0][0], 123)
+        self.assertIn(
+            "- [x] #124 | status=done rc=rc0 commit= 12345678", call_args_list[0][0][1]
+        )
+        self.assertEqual(call_args_list[1][0][0], 123)
+        self.assertIn(
+            "- [ ] Sync Changelog #124 | status=pending pr=#999",
+            call_args_list[1][0][1],
+        )
 
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_sync_branch_exists(self, mock_datetime):
@@ -141,10 +163,12 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
+- [ ] Sync Changelog #124
+- [ ] Tag Final
 
 ## Backports
 - [ ] #124 | status=pending
@@ -233,15 +257,23 @@ class CmdProcessBackportsTest(unittest.TestCase):
 
         self.mock_gh.create_pr.assert_called_once_with(
             title="chore(release): sync changelog for v2.0.0 backports",
-            body="Updates CHANGELOG.md and removes news files for backports:\n- #124\n\nWork towards #123",
+            body="Updates CHANGELOG.md and removes news files for backports:\n- #124\n\nWork towards #123\nRelease-Tracking-Issue: #123",
             base="main",
+            labels=["type: sync-changelog"],
         )
         self.mock_gh.enable_auto_merge.assert_called_once_with(999)
 
-        self.mock_gh.update_issue_body.assert_called_once()
-        call_args = self.mock_gh.update_issue_body.call_args[0]
-        self.assertEqual(call_args[0], 123)
-        self.assertIn("- [x] #124 | status=done rc=rc0 commit= 12345678", call_args[1])
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        call_args_list = self.mock_gh.update_issue_body.call_args_list
+        self.assertEqual(call_args_list[0][0][0], 123)
+        self.assertIn(
+            "- [x] #124 | status=done rc=rc0 commit= 12345678", call_args_list[0][0][1]
+        )
+        self.assertEqual(call_args_list[1][0][0], 123)
+        self.assertIn(
+            "- [ ] Sync Changelog #124 | status=pending pr=#999",
+            call_args_list[1][0][1],
+        )
 
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_dry_run(self, mock_datetime):
@@ -250,10 +282,12 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=True, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
+- [ ] Sync Changelog #124
+- [ ] Tag Final
 
 ## Backports
 - [ ] #124 | status=pending
@@ -327,7 +361,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
@@ -368,7 +402,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
@@ -393,7 +427,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
@@ -443,7 +477,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
             triggering_comment=None,
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [x] Prepare Release | status=done pr=#122 commit=abcdef12
 - [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
@@ -466,14 +500,18 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.mock_gh.get_merge_commits_for_prs.side_effect = mock_resolve
         self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
 
+        # Mock create_pr to return a string to avoid int(MagicMock) returning 1
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/999"
+
         result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
 
         self.assertEqual(result, 0)
 
-        # update_issue_body should be called twice:
+        # update_issue_body should be called 3 times:
         # 1. When adding backports and auto-adding Tag RC1 task.
         # 2. When updating the backport status to done.
-        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        # 3. When updating the sync task status to pending.
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 3)
 
         call1_args = self.mock_gh.update_issue_body.call_args_list[0][0]
         call2_args = self.mock_gh.update_issue_body.call_args_list[1][0]
@@ -481,14 +519,21 @@ class CmdProcessBackportsTest(unittest.TestCase):
         self.assertEqual(call1_args[0], 123)
         self.assertIn("- [ ] #124", call1_args[1])
         self.assertIn("- [ ] Tag RC1", call1_args[1])
+        self.assertIn("- [ ] Sync Changelog #124", call1_args[1])
         self.assertIn(
             "- [x] Tag RC0 | status=done tag=2.0.0-rc0 commit=abcdef12\n- [ ]"
-            " Tag RC1\n- [ ] Tag Final",
+            " Tag RC1\n- [ ] Sync Changelog #124\n- [ ] Tag Final",
             call1_args[1].strip(),
         )
 
         self.assertEqual(call2_args[0], 123)
         self.assertIn("- [x] #124 | status=done rc=rc1 commit= 12345678", call2_args[1])
+
+        call3_args = self.mock_gh.update_issue_body.call_args_list[2][0]
+        self.assertEqual(call3_args[0], 123)
+        self.assertIn(
+            "- [ ] Sync Changelog #124 | status=pending pr=#999", call3_args[1]
+        )
 
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_add_backports_marks_invalid(self, mock_datetime):
@@ -501,7 +546,7 @@ class CmdProcessBackportsTest(unittest.TestCase):
             triggering_comment=None,
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [x] Prepare Release | status=done pr=#122 commit=abcdef12
 - [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
@@ -517,23 +562,42 @@ class CmdProcessBackportsTest(unittest.TestCase):
         def mock_resolve(items):
             # Both 124 and 125 should be processed, 'invalid' should be ignored (it has error status)
             for item in items:
-                if item.pr_ref in ("#124", "#125"):
-                    item.commit = "abcdef12"
+                if item.pr_ref == "#124":
+                    item.commit = "sha_124"
+                    item.status = "done"
+                elif item.pr_ref == "#125":
+                    item.commit = "sha_125"
                     item.status = "done"
             return items
 
         self.mock_gh.get_merge_commits_for_prs.side_effect = mock_resolve
-        self.mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
+        self.mock_git.sort_commits_chronologically.return_value = ["sha_124", "sha_125"]
+        self.mock_gh.create_pr.return_value = "https://github.com/foo/bar/pull/999"
 
         result = ProcessBackports(args, self.mock_git, self.mock_gh).run()
 
         self.assertEqual(result, 0)
         # Should have updated body to add 124, 125, and invalid
-        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        # update_issue_body should be called 4 times:
+        # 1. When adding backports.
+        # 2. When updating 124 status to done.
+        # 3. When updating 125 status to done.
+        # 4. When updating sync tasks status to pending.
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 4)
         call1_args = self.mock_gh.update_issue_body.call_args_list[0][0]
         self.assertIn("- [ ] #124", call1_args[1])
         self.assertIn("- [ ] #125", call1_args[1])
         self.assertIn("- [ ] invalid | status=error-invalid-pr", call1_args[1])
+        self.assertIn("- [ ] Sync Changelog #124", call1_args[1])
+        self.assertIn("- [ ] Sync Changelog #125", call1_args[1])
+
+        call4_args = self.mock_gh.update_issue_body.call_args_list[3][0]
+        self.assertIn(
+            "- [ ] Sync Changelog #124 | status=pending pr=#999", call4_args[1]
+        )
+        self.assertIn(
+            "- [ ] Sync Changelog #125 | status=pending pr=#999", call4_args[1]
+        )
 
     @patch("tools.private.release.process_backports.datetime")
     def test_process_backports_version_sync_failure(self, mock_datetime):
@@ -542,10 +606,13 @@ class CmdProcessBackportsTest(unittest.TestCase):
             issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
         )
         self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
-        self.mock_gh.get_issue_body.return_value = """
+        self.issue_body = """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
+- [ ] Sync Changelog #124
+- [ ] Sync Changelog #125
+- [ ] Tag Final
 
 ## Backports
 - [ ] #124 | status=pending
@@ -658,17 +725,26 @@ class CmdProcessBackportsTest(unittest.TestCase):
             "Warning: These PRs failed to update their version markers:\n"
             "- #124\n"
             "\n"
-            "Work towards #123"
+            "Work towards #123\n"
+            "Release-Tracking-Issue: #123"
         )
         self.mock_gh.create_pr.assert_called_once_with(
             title="chore(release): sync changelog for v2.0.0 backports",
             body=expected_body,
             base="main",
+            labels=["type: sync-changelog"],
         )
         self.mock_gh.enable_auto_merge.assert_called_once_with(999)
 
-        # update_issue_body called twice (once per successful PR)
-        self.assertEqual(self.mock_gh.update_issue_body.call_count, 2)
+        # update_issue_body called 3 times (twice for backports, once for sync tasks)
+        self.assertEqual(self.mock_gh.update_issue_body.call_count, 3)
+        call3_args = self.mock_gh.update_issue_body.call_args_list[2][0]
+        self.assertIn(
+            "- [ ] Sync Changelog #124 | status=pending pr=#999", call3_args[1]
+        )
+        self.assertIn(
+            "- [ ] Sync Changelog #125 | status=pending pr=#999", call3_args[1]
+        )
 
 
 if __name__ == "__main__":
