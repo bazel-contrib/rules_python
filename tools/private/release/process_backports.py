@@ -116,11 +116,7 @@ class ProcessBackports:
                 # Collect news files before they are deleted by update_changelog
                 modified_files = self.git.get_modified_files("HEAD")
                 for f in modified_files:
-                    if (
-                        f.startswith("news/")
-                        and f.endswith(".md")
-                        and f != "news/BUILD.bazel"
-                    ):
+                    if changelog_news.is_news_file(f):
                         collected_news_files.append(f)
 
                 # Replace version markers FIRST to isolate diff
@@ -258,7 +254,11 @@ class ProcessBackports:
                     f"[DRY RUN] Would create and checkout branch {backport_branch} from {main_branch}"
                 )
             else:
-                self.git.checkout(backport_branch, create_branch=True)
+                if self.git.branch_exists(backport_branch):
+                    self.git.checkout(backport_branch)
+                    self.git.reset_hard(main_branch)
+                else:
+                    self.git.checkout(backport_branch, create_branch=True)
 
             print(
                 f"Updating CHANGELOG.md and removing news files on {backport_branch}..."
@@ -347,7 +347,7 @@ class ProcessBackports:
                     )
 
                 patch_filepath = os.path.join(temp_dir, f"{pr_num}.patch")
-                with open(patch_filepath, "w") as f:
+                with open(patch_filepath, "w", encoding="utf-8") as f:
                     f.write(diff_content)
 
                 if self.git.apply_check(patch_filepath):
