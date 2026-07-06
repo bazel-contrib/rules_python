@@ -16,7 +16,15 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
+load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
+
+_LOGGER = repo_utils.logger(struct(
+    getenv = {
+        REPO_DEBUG_ENV_VAR: "1",
+        REPO_VERBOSITY_ENV_VAR: "INFO",
+    }.get,
+), "unit-test")
 
 _tests = []
 
@@ -59,7 +67,7 @@ def _test_index(env):
 
     for (input, want) in tests:
         html = _generate_html(*input)
-        got = parse_simpleapi_html(content = html, parse_index = True)
+        got = parse_simpleapi_html(content = html, parse_index = True, logger = _LOGGER)
 
         env.expect.that_dict(got).contains_exactly(want)
 
@@ -140,7 +148,7 @@ def _test_sdist(env):
 
     for (input, want) in tests:
         html = _generate_html(input)
-        got = parse_simpleapi_html(content = html)
+        got = parse_simpleapi_html(content = html, logger = _LOGGER)
         env.expect.that_collection(got.sdists).has_size(1)
         env.expect.that_collection(got.whls).has_size(0)
         env.expect.that_collection(got.sha256s_by_version).has_size(1)
@@ -268,7 +276,7 @@ def _test_whls(env):
 
     for (input, want) in tests:
         html = _generate_html(input)
-        got = parse_simpleapi_html(content = html)
+        got = parse_simpleapi_html(content = html, logger = _LOGGER)
         env.expect.that_collection(got.sdists).has_size(0)
         env.expect.that_collection(got.whls).has_size(1)
         if not got:

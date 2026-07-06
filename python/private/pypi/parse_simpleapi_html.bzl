@@ -19,11 +19,12 @@ Parse SimpleAPI HTML in Starlark.
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":version_from_filename.bzl", "version_from_filename")
 
-def parse_simpleapi_html(*, content, parse_index = False):
+def parse_simpleapi_html(*, content, logger, parse_index = False):
     """Get the package URLs for given shas by parsing the Simple API HTML.
 
     Args:
         content: {type}`str` The Simple API HTML content.
+        logger: {type}`struct` the logger instance.
         parse_index: {type}`bool` whether to parse the content as the index page of the PyPI index,
             e.g. the `https://pypi.org/simple/`. This only has the URLs for the individual package.
 
@@ -133,6 +134,15 @@ def parse_simpleapi_html(*, content, parse_index = False):
         )
 
         if filename.endswith(".whl"):
+            # A valid wheel filename per PEP 427 has the form
+            # `{distribution}-{version}(-{build})?-{python}-{abi}-{platform}.whl`,
+            # i.e. at least 4 `-` separators. Some index servers (e.g. proxies
+            # of PyPI) occasionally emit malformed anchors like
+            # `<a href=".../foo.whl#sha256=...">foo.whl</a>`. Skip them here
+            # rather than letting `parse_whl_name` fail later.
+            if filename.count("-") < 4:
+                logger.warn(lambda: "Ignoring malformed wheel anchor in SimpleAPI response: filename={} href={}".format(filename, href))
+                continue
             whls[sha256] = dist
         else:
             sdists[sha256] = dist

@@ -19,6 +19,7 @@ A file that houses private functions used in the `bzlmod` extension with the sam
 load("//python/private:auth.bzl", _get_auth = "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load("//python/private:repo_utils.bzl", "repo_utils")
 load(":parse_simpleapi_html.bzl", "parse_simpleapi_html")
 load(":urllib.bzl", "urllib")
 
@@ -83,6 +84,7 @@ def simpleapi_download(
     }
 
     read_simpleapi = read_simpleapi or _read_simpleapi
+    logger = repo_utils.logger(ctx, "pypi:simpleapi")
 
     ctx.report_progress("Fetch package lists from PyPI index")
 
@@ -99,6 +101,7 @@ def simpleapi_download(
         get_auth = get_auth,
         attr = attr,
         block = not parallel_download,
+        logger = logger,
         _fail = _fail,
     )
 
@@ -116,6 +119,7 @@ def simpleapi_download(
             get_auth = get_auth,
             block = not parallel_download,
             parse_index = False,
+            logger = logger,
         )
         if hasattr(result, "wait"):
             # We will process it in a separate loop:
@@ -130,7 +134,7 @@ def simpleapi_download(
 
     return contents
 
-def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, _fail = fail, **kwargs):
+def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sources, read_simpleapi, attr, block, logger, _fail = fail, **kwargs):
     # Ensure the value is not frozen
     index_urls = [] + (index_urls or [])
     if default_index not in index_urls:
@@ -159,6 +163,7 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
             parse_index = True,
             versions = {pkg: None for pkg in sources},
             block = block,
+            logger = logger,
             **kwargs
         )
         if hasattr(download, "wait"):
@@ -196,7 +201,7 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
 def _normalize_url(url):
     return urllib.strip_empty_path_segments(url)
 
-def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = None, **download_kwargs):
+def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, logger, get_auth = None, **download_kwargs):
     """Read SimpleAPI.
 
     Args:
@@ -210,9 +215,10 @@ def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = Non
                {obj}`http_file` for docs.
         cache: {type}`struct` the `pypi_cache` instance.
         versions: {type}`list[str] The versions that have been requested.
-        get_auth: A function to get auth information. Used in tests.
         parse_index:  {type}`bool` Whether to parse the content as a root index page
             (e.g. `/simple/`) instead of a package-specific page.
+        logger: {type}`struct` the logger instance.
+        get_auth: A function to get auth information. Used in tests.
         **download_kwargs: Any extra params to ctx.download.
             Note that output and auth will be passed for you.
 
@@ -262,6 +268,7 @@ def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = Non
                 cache = cache,
                 cache_key = cache_key,
                 parse_index = parse_index,
+                logger = logger,
             ),
         )
 
@@ -272,15 +279,20 @@ def _read_simpleapi(ctx, url, attr, cache, versions, parse_index, get_auth = Non
         cache = cache,
         cache_key = cache_key,
         parse_index = parse_index,
+        logger = logger,
     )
 
-def _read_index_result(ctx, *, result, output, cache, cache_key, parse_index):
+def _read_index_result(ctx, *, result, output, cache, cache_key, parse_index, logger):
     if not result.success:
         return struct(success = False)
 
     content = ctx.read(output)
 
-    output = parse_simpleapi_html(content = content, parse_index = parse_index)
+    output = parse_simpleapi_html(
+        content = content,
+        parse_index = parse_index,
+        logger = logger,
+    )
     if output:
         cache.setdefault(cache_key, output)
         return struct(success = True, output = output)

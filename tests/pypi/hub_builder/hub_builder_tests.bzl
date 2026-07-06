@@ -27,6 +27,13 @@ load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
 
+_LOGGER = repo_utils.logger(struct(
+    getenv = {
+        REPO_DEBUG_ENV_VAR: "1",
+        REPO_VERBOSITY_ENV_VAR: "INFO",
+    }.get,
+), "unit-test")
+
 def _mock_mctx(os_name = "unittest", arch_name = "exotic", environ = {}, mock_files = None):
     return mocks.mctx(
         os_name = os_name,
@@ -257,6 +264,7 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             output = parse_simpleapi_html(
                 content = content,
                 parse_index = parse_index,
+                logger = _LOGGER,
             ),
             success = True,
         )
@@ -517,6 +525,7 @@ def _test_torch_experimental_index_url(env):
             output = parse_simpleapi_html(
                 content = content,
                 parse_index = parse_index,
+                logger = _LOGGER,
             ),
             success = True,
         )
