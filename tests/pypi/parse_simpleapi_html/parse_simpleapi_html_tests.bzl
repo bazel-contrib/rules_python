@@ -304,6 +304,33 @@ def _test_whls(env):
 
 _tests.append(_test_whls)
 
+def _test_malformed_whl_anchor_is_skipped(env):
+    # Some index servers (e.g. proxies of PyPI) emit anchors whose filename
+    # does not parse as a valid PEP 427 wheel name (fewer than 4 `-`
+    # separators). These should be skipped rather than crash downstream.
+    input = struct(
+        attrs = [
+            'href="../../packages/six/1.16.0/six.whl#sha256=deadbeef"',
+        ],
+        filename = "six.whl",
+    )
+    valid = struct(
+        attrs = [
+            'href="https://example.org/foo-0.0.1-py3-none-any.whl#sha256=cafefeed"',
+        ],
+        filename = "foo-0.0.1-py3-none-any.whl",
+    )
+    html = _generate_html(input, valid)
+
+    got = parse_simpleapi_html(content = html, logger = _LOGGER)
+
+    env.expect.that_collection(got.whls).has_size(1)
+    env.expect.that_collection(got.sdists).has_size(0)
+    env.expect.that_str(got.whls["cafefeed"].filename).equals("foo-0.0.1-py3-none-any.whl")
+    env.expect.that_collection(got.whls.keys()).contains_exactly(["cafefeed"])
+
+_tests.append(_test_malformed_whl_anchor_is_skipped)
+
 def parse_simpleapi_html_test_suite(name):
     """Create the test suite.
 
