@@ -42,6 +42,7 @@ common --deleted_packages=tests/integration/runtime_manifests
 common --deleted_packages=tests/integration/toolchain_target_settings
 common --deleted_packages=tests/integration/unified_pypi
 common --deleted_packages=tests/integration/uv_lock
+common --deleted_packages=tests/integration/validate_test_main
 common --deleted_packages=tests/modules/another_module
 common --deleted_packages=tests/modules/other
 common --deleted_packages=tests/modules/other/nspkg_delta

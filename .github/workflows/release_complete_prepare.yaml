@@ -1,4 +1,4 @@
-name: On PR Merged (Release Prepared)
+name: "Release: Complete Prepare"
 
 on:
   pull_request:

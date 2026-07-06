@@ -5,13 +5,31 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+
+# By default, Python prepends the directory containing this script to
+# sys.path. The stage 1 bootstrap only needs stdlib modules before it
+# re-execs into the configured runtime, so avoid resolving imports from the
+# target's output or runfiles package directory. This matters when that
+# directory contains files with stdlib names, such as shutil.py or types.py.
+#
+# Python 3.11 introduced PYTHONSAFEPATH (-P), which disables the unsafe prepend.
+# Isolated mode (-I) also disables it, including on older interpreters without
+# safe_path. In either case, sys.path[0] is not the script directory and should
+# be preserved.
+if (
+    not getattr(sys.flags, "safe_path", False) and
+    not getattr(sys.flags, "isolated", False) and
+    sys.path
+):
+  del sys.path[0]
+
 # Generated file from @rules_python//python/private:python_bootstrap_template.txt
 
 from os.path import abspath, dirname, join, basename, normpath
 import os
 import shutil
 import subprocess
-import sys
 
 # NOTE: The sentinel strings are split (e.g., "%stage2" + "_bootstrap%") so that
 # the substitution logic won't replace them. This allows runtime detection of

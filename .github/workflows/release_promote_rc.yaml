@@ -1,0 +1,71 @@
+name: "Release: Promote RC"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The final version to release (e.g., 0.38.0)'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'The final version to release (e.g., 0.38.0)'
+        required: false
+        type: string
+      issue:
+        description: 'The tracking issue number'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.promote.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Promote RC
+        id: promote
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          ARGS=()
+          if [ -n "$VERSION" ]; then
+            ARGS+=("$VERSION")
+          fi
+          if [ -n "$ISSUE" ]; then
+            ARGS+=("--issue=$ISSUE")
+          fi
+          ARGS+=("--remote=origin")
+          ARGS+=("--no-dry-run")
+          
+          bazel run //tools/private/release -- promote-rc "${ARGS[@]}"
+
+  publish:
+    needs: promote
+    uses: ./.github/workflows/release_publish.yaml
+    with:
+      tag_name: ${{ needs.promote.outputs.version }}
+      publish_to_pypi: true
+    secrets: inherit

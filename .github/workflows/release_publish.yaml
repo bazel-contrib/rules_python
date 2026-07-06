@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Cut a release whenever a new tag is pushed to the repo.
-name: Release
+name: "Release: Publish"
 
 on:
   push:
@@ -33,6 +33,17 @@ on:
     secrets:
       publish_token:
         required: false
+  workflow_call:
+    inputs:
+      tag_name:
+        description: "release tag: tag that will be released"
+        required: true
+        type: string
+      publish_to_pypi:
+        description: 'Publish to PyPI'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   release:
@@ -42,7 +53,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.tag_name || github.ref_name }}
       - name: Create release archive and notes
         run: .github/workflows/create_archive_and_notes.sh ${{ inputs.tag_name || github.ref_name }}
       - name: Release
@@ -73,7 +84,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.tag_name || github.ref_name }}
+          ref: ${{ inputs.tag_name || github.ref_name }}
       - if: github.event_name == 'push' || github.event.inputs.publish_to_pypi
         env:
           # This special value tells pypi that the user identity is supplied within the token

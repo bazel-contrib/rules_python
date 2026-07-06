@@ -20,6 +20,7 @@ load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
 load(":pbs_manifest.bzl", "parse_runtime_manifest")
 load(":platform_info.bzl", "platform_info")
+load(":pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
@@ -88,6 +89,7 @@ def parse_modules(*, module_ctx, logger = None, _fail = fail):
             mod = mod,
             seen_versions = seen_versions,
             config = config,
+            default_python_version = default_python_version,
         )
 
         for toolchain_attr in toolchain_attr_structs:
@@ -971,8 +973,15 @@ def _compute_default_python_version(mctx):
         defaults_attr_structs = _create_defaults_attr_structs(mod = mod)
         default_python_version_env = None
         default_python_version_file = None
+        pyproject_toml_label = None
 
         for defaults_attr in defaults_attr_structs:
+            pyproject_toml_label = _one_or_the_same(
+                pyproject_toml_label,
+                defaults_attr.pyproject_toml,
+                onerror = lambda: fail("Multiple pyproject.toml files specified in defaults"),
+            )
+
             default_python_version = _one_or_the_same(
                 default_python_version,
                 defaults_attr.python_version,
@@ -988,11 +997,17 @@ def _compute_default_python_version(mctx):
                 defaults_attr.python_version_file,
                 onerror = _fail_multiple_defaults_python_version_file,
             )
+
+        # Priority order: ENV > pyproject_toml >  python_version_file > python_version
         if default_python_version_file:
             default_python_version = _one_or_the_same(
                 default_python_version,
                 mctx.read(default_python_version_file, watch = "yes").strip(),
             )
+        if pyproject_toml_label:
+            pyproject = read_pyproject(mctx, pyproject_toml_label)
+            if pyproject.requires_python:
+                default_python_version = version_from_requires_python(pyproject.requires_python)
         if default_python_version_env:
             default_python_version = mctx.getenv(
                 default_python_version_env,
@@ -1034,10 +1049,28 @@ def _create_defaults_attr_struct(*, tag):
         python_version = getattr(tag, "python_version", None),
         python_version_env = getattr(tag, "python_version_env", None),
         python_version_file = getattr(tag, "python_version_file", None),
+        pyproject_toml = getattr(tag, "pyproject_toml", None),
     )
 
-def _create_toolchain_attr_structs(*, mod, config, seen_versions):
+def _create_toolchain_attr_structs(*, mod, config, seen_versions, default_python_version):
     arg_structs = []
+
+    # Auto-register a toolchain for the default version if not already
+    # registered via an explicit python.toolchain() call.
+    # This works for any default source: pyproject_toml, python_version_file,
+    # python_version_env, or python_version.
+    has_explicit_toolchain = default_python_version and any([
+        tag.python_version == default_python_version
+        for tag in mod.tags.toolchain
+    ])
+    if (default_python_version and
+        default_python_version not in seen_versions and
+        mod.is_root and not has_explicit_toolchain):
+        arg_structs.append(_create_toolchain_attrs_struct(
+            python_version = default_python_version,
+            toolchain_tag_count = 1,
+        ))
+        seen_versions[default_python_version] = True
 
     for tag in mod.tags.toolchain:
         arg_structs.append(_create_toolchain_attrs_struct(
@@ -1078,6 +1111,17 @@ def _create_toolchain_attrs_struct(
 _defaults = tag_class(
     doc = """Tag class to specify the default Python version.""",
     attrs = {
+        "pyproject_toml": attr.label(
+            mandatory = False,
+            doc = """\
+Label pointing to pyproject.toml file to read the default Python version from.
+When specified, reads the `requires-python` field from pyproject.toml.
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "python_version": attr.string(
             mandatory = False,
             doc = """\

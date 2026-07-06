@@ -9,11 +9,16 @@ import sys
 # and is a special case of #7091.
 #
 # Python 3.11 introduced an PYTHONSAFEPATH (-P) option that disables this
-# behaviour, which we set in the stage 1 bootstrap.
+# behaviour, which we set in the stage 1 bootstrap. Isolated mode (-I) also
+# disables it, including on older interpreters without safe_path.
 # So the prepended entry needs to be removed only if the above option is either
 # unset or not supported by the interpreter.
 # NOTE: This can be removed when Python 3.10 and below is no longer supported
-if not getattr(sys.flags, "safe_path", False):
+if (
+    not getattr(sys.flags, "safe_path", False)
+    and not getattr(sys.flags, "isolated", False)
+    and sys.path
+):
     del sys.path[0]
 
 import contextlib
@@ -539,8 +544,10 @@ def main():
         # means only other generated files are importable (not source files).
         #
         # To replicate this behavior, we add main's directory within the runfiles
-        # when safe path isn't enabled.
-        if not getattr(sys.flags, "safe_path", False):
+        # when safe path or isolated mode isn't enabled.
+        if not getattr(sys.flags, "safe_path", False) and not getattr(
+            sys.flags, "isolated", False
+        ):
             prepend_path_entries = [
                 os.path.join(runfiles_root, os.path.dirname(main_rel_path))
             ]

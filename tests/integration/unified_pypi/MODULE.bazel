@@ -45,4 +45,8 @@ pip.parse(
 use_repo(pip, "pypi_b")
 
 pip.default(default_hub = "pypi_b")
+pip.dep(
+    name = "declared-only-pkg",
+    extra_targets = ["declared-only-alias"],
+)
 use_repo(pip, "pypi")

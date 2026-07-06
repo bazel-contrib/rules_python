@@ -119,6 +119,11 @@ rules_python_integration_test(
 )
 
 rules_python_integration_test(
+    name = "validate_test_main_test",
+    py_main = "validate_test_main_test.py",
+)
+
+rules_python_integration_test(
     name = "unified_pypi_test",
     py_main = "unified_pypi_test.py",
 )

@@ -1,19 +1,17 @@
-name: Generate RC Tag
+name: "Release: Create Release Branch"
 
 on:
-  workflow_dispatch:
-    inputs:
-      issue:
-        description: 'The Release Tracking Issue Number (e.g., 142)'
-        required: true
-        type: string
+  issues:
+    types: [edited]
 
 permissions:
   contents: write
   issues: write
 
 jobs:
-  generate_rc:
+  cut_branch:
+    # Run only if the issue has the type: release label
+    if: contains(github.event.issue.labels.*.name, 'type: release')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,9 +29,18 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Attempt RC Tagging
+      - name: Attempt Branch Creation
         run: |
           bazel run //tools/private/release -- \
-            create-rc --issue ${{ inputs.issue }}
+            create-release-branch --issue ${{ github.event.issue.number }} --remote origin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # A no-op job that always runs to prevent "no jobs ran" failures
+  # when the main job is skipped.
+  suppress-no-jobs-ran-error:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Success
+        run: echo "Success"
+

@@ -37,3 +37,4 @@ tests/integration/py_cc_toolchain_registered/bazel-py_cc_toolchain_registered
 tests/integration/toolchain_target_settings/bazel-module_under_test
 tests/integration/unified_pypi/bazel-unified_pypi
 tests/integration/uv_lock/bazel-uv_lock
+tests/integration/validate_test_main/bazel-module_under_test

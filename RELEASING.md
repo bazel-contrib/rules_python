@@ -8,54 +8,41 @@ existing Bazel workspace to sanity check functionality.
 
 ## Releasing from HEAD
 
-These are the steps for a regularly scheduled release from HEAD.
+Releases are managed using a semi-automated process centered around a GitHub
+Release Tracking Issue and automated workflows triggered by comments or issue edits.
+
+> [!NOTE]
+> Comment-based commands must be posted by project maintainers (Owner,
+> Member, or Collaborator) and must be on their own line (leading and trailing
+> whitespace is ignored).
 
 ### Steps
 
-1. Update the changelog and replace the version placeholders by running the
-   release tool. The next version number will be automatically determined
-   based on the presence of `VERSION_NEXT_*` placeholders and git tags. The
-   tool will read all news entry files in the `news/` directory, assemble
-   them into the changelog, and delete the processed news files.
+1.  **Prepare the Release**: Run the [Release: Prepare](https://github.com/bazel-contrib/rules_python/actions/workflows/release_prepare.yaml)
+    workflow manually. You can trigger it from the GitHub Actions UI or using
+    the GitHub CLI:
+    ```shell
+    gh workflow run release_prepare.yaml --repo bazel-contrib/rules_python
+    ```
+    This will automatically determine the next version, create a release tracking
+    issue, and send a preparation PR.
 
-   ```shell
-   bazel run //tools/private/release
-   ```
+2.  **Approve and Merge**: Approve and merge the PR. Once merged, a release
+    branch will be created automatically.
 
-   If you want to append news entries to an already existing release section in
-   the changelog (for example, to update a drafted release or a release
-   branch), you can specify the version explicitly:
+3.  **Add Backports (if needed)**: If there are backports, add them following
+    the [How to add backports](#how-to-add-backports) steps.
 
-   ```shell
-   bazel run //tools/private/release -- X.Y.Z
-   ```
+4.  **Create an RC**: Comment `/create-rc` on the tracking issue. This will
+    automatically process pending backports before creating the RC. If any
+    backport fails, the RC creation will abort.
 
-1. Send these changes for review and get them merged.
-1. Create a branch for the new release, named `release/X.Y`
-   ```
-   git branch --no-track release/X.Y upstream/main && git push upstream release/X.Y
-   ```
+5.  **Iterate**: Repeat steps 3 and 4 until backports and RCs are no longer
+    needed.
 
-The next step is to create tags to trigger release workflow, **however**
-we start by using release candidate tags (`X.Y.Z-rcN`) before tagging the
-final release (`X.Y.Z`).
+6.  **Finalize the Release**: Comment `/promote` on the tracking issue to
+    finalize the release.
 
-1. Create release candidate tag and push. The first RC uses `N=0`. Increment
-   `N` for each RC.
-   ```
-   git tag X.Y.0-rcN upstream/release/X.Y && git push upstream tag X.Y.0-rcN
-   ```
-2. Announce the RC release: see [Announcing Releases]
-3. Wait a week for feedback.
-   * Follow [Patch release with cherry picks] to pull bug fixes into the
-     release branch.
-   * Repeat the RC tagging step, incrementing `N`.
-4. Finally, tag the final release tag:
-   ```shell
-   git tag X.Y.0 upstream/release/X.Y && git push upstream tag X.Y.0
-   ```
-
-Release automation will create a GitHub release and BCR pull request.
 
 ### Manually triggering the release workflow
 
@@ -66,14 +53,14 @@ specific commit.
 To trigger the workflow, use the `gh workflow run` command:
 
 ```shell
-gh workflow run release.yml --ref <TAG>
+gh workflow run release_publish.yaml --ref <TAG>
 ```
 
 By default, the workflow will publish the wheel to PyPI. To skip this step,
 you can set the `publish_to_pypi` input to `false`:
 
 ```shell
-gh workflow run release.yml --ref <TAG> -f publish_to_pypi=false
+gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ```
 
 ### Determining Semantic Version
@@ -86,6 +73,55 @@ The release tool will automatically determine the next version number based on
 the `VERSION_NEXT_*` placeholders in the codebase. To see what changes are
 being accumulated for the next release, review the pending news entries in the
 `news/` directory.
+
+## How to add backports
+
+To add backports to an active release, you can use one of the following
+methods:
+
+### Method A: Comment on the PR
+
+Comment `/backport` on the PR you wish to backport. This will automatically
+add the PR to the active release's backports checklist. Once the PR is merged,
+the backports will be automatically processed.
+
+> [!NOTE]
+> Commenting `/backport` on an open PR will block further release publishing
+> (like creating RCs or promoting) until the PR is merged or manually set to
+> status=ignore in the checklist.
+
+### Method B: Comment on the Tracking Issue
+
+Comment `/add-backports <PR_REF> [<PR_REF> ...]` (space or comma separated) on
+the tracking issue. The `<PR_REF>` can be a PR number (optionally prefixed with
+`#`) or a PR URL (strictly for the configured repository). This will
+automatically add the PRs to the checklist and trigger processing.
+
+### Method C: Manual Checklist Update
+1.  Manually add checklist items under the `## Backports` section of the
+    Release Tracking Issue. The format must be: `- [ ] #<PR_NUMBER>` (e.g.,
+    `- [ ] #1234`).
+2.  When ready, comment `/process-backports` on the tracking issue to trigger
+    processing.
+
+### Method D: Release Tool CLI
+You can use the release tool to add backports from your local checkout:
+```shell
+bazel run //tools/private/release -- add-backports <PR_REF> [<PR_REF> ...]
+```
+The `<PR_REF>` can be:
+*   A PR number (e.g., `124` or `#124`)
+*   A PR URL (e.g., `https://github.com/bazel-contrib/rules_python/pull/124`
+    or `https://github.com/bazel-contrib/rules_python/pull/124/files`)
+*   Only URLs for the configured repository are accepted.
+
+### Failure Behavior
+If a backport fails to process (e.g., due to cherry-pick conflicts):
+*   The failed backport checklist item will remain unchecked with
+    `status=error-<reason>`.
+*   You must resolve the conflict manually: checkout the release branch,
+    cherry-pick the PR, resolve conflicts, push to remote, and manually check
+    the box on the tracking issue checklist with `status=done` metadata.
 
 ## Patch release with cherry picks
 
@@ -105,8 +141,8 @@ The fix being included is commit `deadbeef`.
 If multiple commits need to be applied, repeat the `git cherry-pick` step for
 each.
 
-Once the release branch is in the desired state, use `git tag` to tag it, as
-done with a release from head. Release automation will do the rest.
+Once the release branch is in the desired state, comment `/create-rc` on the
+tracking issue to tag it, as done with a release from head.
 
 ### Announcing releases
 
@@ -138,6 +174,14 @@ The two points of no return are:
 
 If release steps fail _prior_ to those steps, then its OK to change the tag. You
 may need to manually delete the GitHub release.
+
+## Manual Editing of Tracking Issue
+
+You can manually edit the Release Tracking Issue to control the release flow.
+The checklist items use metadata suffix: `| key=value key2=value2`.
+
+*   **Retry Prepare Release**: Reset the task to `- [ ] Prepare Release | status=awaiting-preparation`.
+*   **Force Task Done**: Check the box `- [x]` and add appropriate metadata (e.g. `status=done`).
 
 ## Secrets
 

@@ -87,6 +87,27 @@ AddSrcsToRunfilesFlag = FlagEnum(
     is_enabled = _AddSrcsToRunfilesFlag_is_enabled,
 )
 
+def _ValidateTestMainFlag_is_enabled(ctx):
+    value = ctx.attr._validate_test_main_flag[BuildSettingInfo].value
+    if value == ValidateTestMainFlag.AUTO:
+        # Default off; intended to be flipped to enabled in a future major
+        # version (e.g. rules_python 3.0).
+        value = ValidateTestMainFlag.DISABLED
+    return value == ValidateTestMainFlag.ENABLED
+
+# Determines if py_test runs a validation action that statically checks the
+# main module actually runs tests (instead of silently passing).
+# buildifier: disable=name-conventions
+ValidateTestMainFlag = FlagEnum(
+    # Automatically decide the effective value; currently resolves to disabled.
+    AUTO = "auto",
+    # Run the validation action.
+    ENABLED = "enabled",
+    # Don't run the validation action.
+    DISABLED = "disabled",
+    is_enabled = _ValidateTestMainFlag_is_enabled,
+)
+
 def _string_flag_impl(ctx):
     if ctx.attr.override:
         value = ctx.attr.override
