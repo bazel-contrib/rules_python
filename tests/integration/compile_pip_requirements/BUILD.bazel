@@ -37,6 +37,8 @@ some(labels(data, :requirements.update) intersect :requirements_extra.in)
 """,
     scope = [
         ":requirements.update",
+        ":requirements.in",
+        ":requirements_extra.in",
     ],
 )
 
