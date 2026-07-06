@@ -4,6 +4,7 @@ load("//python:py_test.bzl", "py_test")
 
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
+load(":dependency_graph_tests.bzl", "dependency_graph_test_suite")
 load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
 load(":py_limited_api_tests.bzl", "py_limited_api_test_suite")
 
@@ -129,4 +130,8 @@ py_extension_analysis_test_suite(
 
 py_limited_api_test_suite(
     name = "py_limited_api_tests",
+)
+
+dependency_graph_test_suite(
+    name = "dependency_graph_tests",
 )
