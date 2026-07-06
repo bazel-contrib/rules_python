@@ -16,33 +16,25 @@ package(
 licenses(["notice"])
 
 py_extension(
-    name = "ext_static",
-    ##srcs = ["ext_static.c"],
-    static_deps = [":static_dep"],
+    # An extension defined solely by source files, with no deps
+    name = "ext_source",
+    srcs = ["ext_source.c"],
 )
 
 py_extension(
+    # A python extension that gets its code from a statically-linked library
+    name = "ext_static",
+    deps = [":static_dep"],
+)
+
+py_extension(
+    # A python extension that dynamically links to another shared library
     name = "ext_shared",
     dynamic_deps = [
         ":add_one_shared",
     ],
-    static_deps = [
-        ":ext_shared_impl",
-    ],
-)
-
-py_extension(
-    name = "ext_csl_shared",
-    dynamic_deps = [
-        ":add_one_shared",
-    ],
-    exports_filter = [
-        "//tests/cc/py_extension:ext_shared_impl",
-        ":ext_shared_impl",
-    ],
-    module_name = "ext_shared",
-    use_csl = True,
     deps = [
+        #
         ":ext_shared_impl",
     ],
 )
@@ -96,9 +88,10 @@ cc_library(
 )
 
 py_extension(
+    # An extension that uses the Python limited API
     name = "ext_limited",
     py_limited_api = "3.8",
-    static_deps = [":ext_limited_impl"],
+    deps = [":ext_limited_impl"],
 )
 
 cc_library(

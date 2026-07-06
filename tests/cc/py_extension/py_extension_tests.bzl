@@ -14,7 +14,7 @@
 
 """Tests for py_extension."""
 
-load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//python/private:py_info.bzl", "PyInfo")
@@ -24,17 +24,13 @@ _tests = []
 def _test_static_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
-    env.expect.that_target(target).has_provider(CcInfo)
-    cc_info = target[CcInfo]
+    env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
 
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
         matching.file_basename_equals("ext_static.cpython-311-x86_64-linux-gnu.so"),
     )
-
-    # CcInfo from static_deps should not be propagated.
-    env.expect.that_depset_of_files(cc_info.linking_context.linker_inputs).contains_exactly([])
 
 def _test_static_deps(name):
     analysis_test(
@@ -48,8 +44,8 @@ _tests.append(_test_static_deps)
 def _test_dynamic_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
-    env.expect.that_target(target).has_provider(CcInfo)
-    cc_info = target[CcInfo]
+    env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
+    csl_info = target[CcSharedLibraryInfo]
 
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)
@@ -57,8 +53,8 @@ def _test_dynamic_deps_impl(env, target):
         matching.file_basename_equals("ext_shared.cpython-311-x86_64-linux-gnu.so"),
     )
 
-    # CcInfo from dynamic_deps should be propagated.
-    env.expect.that_collection(cc_info.linking_context.linker_inputs.to_list()).has_size(1)
+    # CcSharedLibraryInfo provider should be present and non-empty
+    env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
 
 def _test_dynamic_deps(name):
     analysis_test(

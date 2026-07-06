@@ -35,7 +35,7 @@ def _test_limited_same_version(name):
     )
     py_extension(
         name = name + "_pyext",
-        static_deps = [":" + name + "_csl"],
+        deps = [":" + name + "_csl"],
         py_limited_api = "3.8",
     )
     analysis_test(
@@ -55,7 +55,7 @@ def _test_limited_older_dep(name):
     )
     py_extension(
         name = name + "_pyext",
-        static_deps = [":" + name + "_csl"],
+        deps = [":" + name + "_csl"],
         py_limited_api = "3.9",  # 3.9
     )
     analysis_test(
@@ -74,7 +74,7 @@ def _test_no_limited_api(name):
     )
     py_extension(
         name = name + "_pyext",
-        static_deps = [":" + name + "_csl"],
+        deps = [":" + name + "_csl"],
     )
     analysis_test(
         name = name,
@@ -98,7 +98,7 @@ def _test_no_limited_api_dep_has_limited(name):
     )
     py_extension(
         name = name + "_pyext",
-        static_deps = [":" + name + "_csl"],
+        deps = [":" + name + "_csl"],
     )
     analysis_test(
         name = name,
@@ -117,7 +117,7 @@ def _test_limited_api_dep_has_no_python(name):
     )
     py_extension(
         name = name + "_pyext",
-        static_deps = [":" + name + "_csl"],
+        deps = [":" + name + "_csl"],
         py_limited_api = "3.8",
     )
     analysis_test(

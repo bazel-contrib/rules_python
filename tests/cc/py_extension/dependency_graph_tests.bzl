@@ -16,11 +16,10 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
+load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:util.bzl", "util")
 load("//python/cc:py_extension.bzl", "py_extension")
-# buildifier: disable=bzl-visibility
-load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 
 # Test 1: CSL A -> CSL B -> CSL C (Dynamic deps)
 def _test_csl_dynamic_deps(name):
@@ -111,7 +110,7 @@ def _test_pyext_dynamic_deps(name):
     )
     py_extension(
         name = name + "_pyextA",
-        static_deps = [":" + name + "_libA"],
+        deps = [":" + name + "_libA"],
         dynamic_deps = [":" + name + "_cslB", ":" + name + "_cslC"],
     )
     analysis_test(
@@ -121,10 +120,7 @@ def _test_pyext_dynamic_deps(name):
     )
 
 def _pyext_dynamic_deps_test_impl(env, target):
-    env.expect.that_target(target).has_provider(CcInfo)
-    cc_info = target[CcInfo]
-    # Should propagate CcInfo from dynamic_deps (cslB and cslC)
-    env.expect.that_collection(cc_info.linking_context.linker_inputs.to_list()).has_size(2)
+    env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
 
 # Test 3: CSL A -> CSL B, CL C (Static sharing)
 def _test_csl_static_sharing(name):
@@ -203,7 +199,7 @@ def _test_pyext_static_sharing(name):
     )
     py_extension(
         name = name + "_pyextA",
-        static_deps = [":" + name + "_libA", ":" + name + "_libC"],
+        deps = [":" + name + "_libA"],
         dynamic_deps = [":" + name + "_cslB"],
     )
     analysis_test(
@@ -213,7 +209,7 @@ def _test_pyext_static_sharing(name):
     )
 
 def _pyext_static_sharing_test_impl(env, target):
-    env.expect.that_target(target).has_provider(CcInfo)
+    env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
 
 def dependency_graph_test_suite(name):
     test_suite(

@@ -1,59 +1,21 @@
-"""Implementation of the py_extension rule."""
+"""Implementation of the _py_extension_wrapper rule."""
 
-load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
-load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python:versions.bzl", "PLATFORMS")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
-load("//python/private:builders.bzl", "builders")
 load("//python/private:py_info.bzl", "PyInfo")
-load("//python/private:py_internal.bzl", "py_internal")
-load("//python/private:reexports.bzl", "BuiltinPyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
 
-def _py_extension_impl(ctx):
+def _py_extension_wrapper_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
     repo_name = ctx.label.workspace_name or ctx.workspace_name
     import_path = repo_name
     if ctx.label.package:
         import_path = repo_name + "/" + ctx.label.package
+
     cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
-    feature_configuration = cc_common.configure_features(
-        ctx = ctx,
-        cc_toolchain = cc_toolchain,
-    )
-
-    # Collect CcInfo from all deps for compilation
-    static_deps_infos = [dep[CcInfo] for dep in ctx.attr.static_deps]
-    dynamic_deps_infos = [dep[CcSharedLibraryInfo] for dep in ctx.attr.dynamic_deps]
-    external_deps_infos = [dep[CcInfo] for dep in ctx.attr.external_deps]
-
-    # Static deps are linked directly into the .so
-    static_cc_info = cc_common.merge_cc_infos(
-        cc_infos = static_deps_infos,
-    )
-
-    # Dynamic deps are linked as shared libraries
-    linker_inputs = [dep.linker_input for dep in dynamic_deps_infos]
-    dynamic_linking_context = cc_common.create_linking_context(
-        linker_inputs = depset(linker_inputs),
-    )
-
-    user_link_flags = []
-    user_link_flags.append("-Wl,--export-dynamic-symbol=PyInit_{module_name}".format(
-        module_name = module_name,
-    ))
-
-    # The PyInit symbol looks unused, so the linker optimizes it away. Telling it
-    # to treat it as undefined causes it to be retained.
-    user_link_flags.append("-Wl,--undefined=PyInit_{module_name}".format(
-        module_name = module_name,
-    ))
-
-    if ctx.attr.external_deps:
-        user_link_flags.append("-Wl,--allow-shlib-undefined")
-
     ext = _get_extension(cc_toolchain)
     use_py_limited_api = bool(ctx.attr.py_limited_api)
     if use_py_limited_api:
@@ -71,46 +33,18 @@ def _py_extension_impl(ctx):
             platform = platform_tag,
             ext = ext,
         )
+
     py_dso = ctx.actions.declare_file(output_filename)
 
-    static_linking_context = static_cc_info.linking_context
-    linking_contexts = [
-        static_linking_context,
-        dynamic_linking_context,
-    ]
-
-    # Add target-level linkopts last so users can override.
-    user_link_flags.extend(ctx.attr.linkopts)
-
-    # todo: add linker script to hide symbols by default
-    # py_internal allows using some private apis, which may or may not be needed.
-    # based upon cc_shared_library.bzl
-    cc_linking_outputs = py_internal.link(
-        actions = ctx.actions,
-        feature_configuration = feature_configuration,
-        cc_toolchain = cc_toolchain,
-        linking_contexts = linking_contexts,
-        user_link_flags = user_link_flags,
-        # todo: add additional_inputs
-        name = ctx.label.name,
-        output_type = "dynamic_library",
-        main_output = py_dso,
-        # todo: maybe variables_extension
-        # todo: maybe additional_outputs
+    # Symlink the cc_shared_library output to the PEP 3149 / abi3 filename
+    csl_target = ctx.attr.src
+    csl_file = csl_target[DefaultInfo].files.to_list()[0]
+    ctx.actions.symlink(
+        output = py_dso,
+        target_file = csl_file,
     )
 
-    # Propagate CcInfo from dynamic and external deps, but not static ones.
-    dynamic_cc_info = CcInfo(linking_context = dynamic_linking_context)
-    propagated_cc_info = cc_common.merge_cc_infos(
-        cc_infos = [dynamic_cc_info] + external_deps_infos,
-    )
-
-    runfiles_builder = builders.RunfilesBuilder()
-    runfiles_builder.add(py_dso)
-    runfiles_builder.add_targets(ctx.attr.static_deps)
-    runfiles_builder.add_targets(ctx.attr.dynamic_deps)
-    runfiles_builder.add_targets(ctx.attr.external_deps)
-    runfiles = runfiles_builder.build(ctx)
+    runfiles = ctx.runfiles(files = [py_dso]).merge(csl_target[DefaultInfo].default_runfiles)
 
     return [
         DefaultInfo(
@@ -121,51 +55,18 @@ def _py_extension_impl(ctx):
             transitive_sources = depset([py_dso]),
             imports = depset([import_path]),
         ),
-        propagated_cc_info,
+        csl_target[CcSharedLibraryInfo],
     ]
 
-
-PY_EXTENSION_ATTRS = COMMON_ATTRS | {
-    "dynamic_deps": lambda: attrb.LabelList(
+PY_EXTENSION_WRAPPER_ATTRS = COMMON_ATTRS | {
+    "src": lambda: attrb.Label(
+        mandatory = True,
         providers = [CcSharedLibraryInfo],
-        doc = "cc_shared_library targets to be dynamically linked.",
-        default = [],
+        doc = "The cc_shared_library target to wrap.",
     ),
-    "external_deps": lambda: attrb.LabelList(
-        providers = [CcInfo],
-        doc = "cc_library targets with external linkage.",
-        default = [],
-    ),
-    "static_deps": lambda: attrb.LabelList(
-        providers = [CcInfo],
-        doc = "cc_library targets to be statically and privately linked.",
-        default = [],
-    ),
-    "copts": lambda: attrb.StringList(),
     "libc": lambda: attrb.String(default = "glibc"),
-    "linkopts": lambda: attrb.StringList(),
     "module_name": lambda: attrb.String(),
     "py_limited_api": lambda: attrb.String(
-        doc = """
-The minimum Python version to target for the Limited API (e.g., '3.8').
-
-If set to a version string (e.g., '3.8') instead of '' (empty string):
-  - Configures the output filename to use the simple '.abi3' suffix
-    (e.g., 'ext.abi3.so').
-
-Note: Since the py_extension rule only links pre-compiled libraries,
-you must manually add the preprocessor macro to the cc_library targets
-that compile your C/C++ sources, for example:
-    cc_library(
-        name = "my_impl",
-        srcs = ["my_code.c"],
-        defines = ["Py_LIMITED_API=0x03080000"],
-        ...
-    )
-
-Set to '' (the default) or None to build a standard, version-specific
-extension.
-""",
         default = "",
     ),
     "_constraints": lambda: attrb.LabelList(
@@ -177,12 +78,12 @@ extension.
     ),
 }
 
-def create_py_extension_rule_builder(**kwargs):
-    """Create a rule builder for a py_extension."""
+def create_py_extension_wrapper_rule_builder(**kwargs):
+    """Create a rule builder for the wrapper."""
     builder = ruleb.Rule(
-        implementation = _py_extension_impl,
-        attrs = PY_EXTENSION_ATTRS,
-        provides = [PyInfo, CcInfo],
+        implementation = _py_extension_wrapper_impl,
+        attrs = PY_EXTENSION_WRAPPER_ATTRS,
+        provides = [PyInfo, CcSharedLibraryInfo],
         toolchains = [
             ruleb.ToolchainType(PY_CC_TOOLCHAIN_TYPE),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type"),
@@ -192,7 +93,7 @@ def create_py_extension_rule_builder(**kwargs):
     )
     return builder
 
-py_extension = create_py_extension_rule_builder().build()
+py_extension_wrapper = create_py_extension_wrapper_rule_builder().build()
 
 def _get_extension(cc_toolchain):
     """
