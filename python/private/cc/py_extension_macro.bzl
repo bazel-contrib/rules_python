@@ -30,6 +30,7 @@ def py_extension(
         exports_filter: Filter for exported symbols passed to cc_shared_library.
         user_link_flags: Additional link flags passed to cc_shared_library.
         visibility: Target visibility.
+        data: Optional list of files or targets needed by this extension at runtime.
         **kwargs: Additional arguments passed to the underlying wrapper rule.
     """
     add_tag(kwargs, "@rules_python//python/cc:py_extension")

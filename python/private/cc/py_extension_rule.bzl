@@ -4,6 +4,7 @@ load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python:versions.bzl", "PLATFORMS")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
+load("//python/private:builders.bzl", "builders")
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
@@ -44,7 +45,12 @@ def _py_extension_wrapper_impl(ctx):
         target_file = csl_file,
     )
 
-    runfiles = ctx.runfiles(files = [py_dso]).merge(csl_target[DefaultInfo].default_runfiles)
+    runfiles_builder = builders.RunfilesBuilder()
+    runfiles_builder.add(py_dso)
+    runfiles_builder.add(ctx.files.data)
+    runfiles_builder.add_targets(ctx.attr.data)
+    runfiles_builder.add(csl_target[DefaultInfo].default_runfiles)
+    runfiles = runfiles_builder.build(ctx)
 
     return [
         DefaultInfo(

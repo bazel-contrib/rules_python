@@ -28,6 +28,12 @@ py_extension(
 )
 
 py_extension(
+    name = "ext_with_data",
+    deps = [":static_dep"],
+    data = ["test_symbols.h"],
+)
+
+py_extension(
     # A python extension that dynamically links to another shared library
     name = "ext_shared",
     dynamic_deps = [

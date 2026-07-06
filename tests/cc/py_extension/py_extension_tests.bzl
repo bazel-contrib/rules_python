@@ -41,6 +41,26 @@ def _test_static_deps(name):
 
 _tests.append(_test_static_deps)
 
+def _test_data_deps_impl(env, target):
+    env.expect.that_target(target).has_provider(PyInfo)
+    py_info = target[PyInfo]
+    env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
+
+    # Check that data file is in runfiles
+    default_info = target[DefaultInfo]
+    env.expect.that_depset_of_files(default_info.default_runfiles.files).contains_predicate(
+        matching.file_basename_equals("test_symbols.h"),
+    )
+
+def _test_data_deps(name):
+    analysis_test(
+        name = name,
+        impl = _test_data_deps_impl,
+        target = "//tests/cc/py_extension:ext_with_data",
+    )
+
+_tests.append(_test_data_deps)
+
 def _test_dynamic_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
