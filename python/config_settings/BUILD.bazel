@@ -10,6 +10,7 @@ load(
     "LibcFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
+    "ValidateTestMainFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
     rp_string_flag = "string_flag",
@@ -74,6 +75,14 @@ string_flag(
     build_setting_default = PrecompileFlag.AUTO,
     values = sorted(PrecompileFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
+    visibility = ["//visibility:public"],
+)
+
+string_flag(
+    name = "validate_test_main",
+    build_setting_default = ValidateTestMainFlag.AUTO,
+    values = ValidateTestMainFlag.flag_values(),
+    # NOTE: Only public because it's an implicit dependency of py_test.
     visibility = ["//visibility:public"],
 )
 

@@ -30,7 +30,7 @@ class UnifiedPypiTest(runner.TestCase):
         )
         self.assert_result_matches(
             result,
-            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_a".',
+            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_a"\\. Try adding it to the requirements of this hub',
         )
 
     def test_sibling_extra_alias_cquery_succeeds_but_build_fails(self):
@@ -43,7 +43,7 @@ class UnifiedPypiTest(runner.TestCase):
         )
         self.assert_result_matches(
             result,
-            'ERROR: PyPI package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b".',
+            'ERROR: PyPI package "colorama:my_colorama" is not available when building under PyPI hub "pypi_b"\\. Try adding it to the requirements of this hub',
         )
 
     @contextlib.contextmanager
@@ -73,6 +73,27 @@ class UnifiedPypiTest(runner.TestCase):
                 result,
                 "default_hub 'invalid_hub' is not a defined PyPI hub",
             )
+
+    def test_unimplemented_declared_dep_fails_build(self):
+        # Even though cquery succeeds:
+        self.run_bazel("cquery", "//:bin_declared_only")
+
+        # Build must fail because the package is not implemented by any concrete hub
+        result = self.run_bazel("build", "//:bin_declared_only", check=False)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assert_result_matches(
+            result,
+            'ERROR: PyPI package "declared_only_pkg" is not available when building under PyPI hub "pypi_b"\\. Try adding it to the requirements of this hub',
+        )
+
+    def test_unimplemented_declared_dep_alias_fails_build(self):
+        # Build must fail for alias too
+        result = self.run_bazel("build", "//:bin_declared_only_alias", check=False)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assert_result_matches(
+            result,
+            'ERROR: PyPI package "declared_only_pkg:declared-only-alias" is not available when building under PyPI hub "pypi_b"\\. Try adding it to the requirements of this hub',
+        )
 
 
 if __name__ == "__main__":

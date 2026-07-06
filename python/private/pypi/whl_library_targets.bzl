@@ -120,10 +120,8 @@ def whl_library_targets(
         tags = [],
         dependencies = [],
         filegroups = None,
-        dependencies_by_platform = {},
         dependencies_with_markers = {},
         entry_points = {},
-        group_deps = [],
         group_name = "",
         data = [],
         copy_files = {},
@@ -151,8 +149,6 @@ def whl_library_targets(
             the filename of the sdist.
         tags: {type}`list[str]` The tags set on the `py_library`.
         dependencies: {type}`list[str]` A list of dependencies.
-        dependencies_by_platform: {type}`dict[str, list[str]]` A list of
-            dependencies by platform key.
         dependencies_with_markers: {type}`dict[str, str]` A marker to evaluate
             in order for the dep to be included.
         entry_points: {type}`list[dict]` A list of parsed entry point definitions.
@@ -162,10 +158,6 @@ def whl_library_targets(
             contains this library. If set, this library will behave as a shim
             to group implementation rules which will provide simultaneously
             installed dependencies which would otherwise form a cycle.
-        group_deps: {type}`list[str]` names of fellow members of the group (if
-            any). These will be excluded from generated deps lists so as to avoid
-            direct cycles. These dependencies will be provided at runtime by the
-            group rules which wrap this library and its fellows together.
         copy_executables: {type}`dict[str, str]` The mapping between src and
             dest locations for the targets.
         copy_files: {type}`dict[str, str]` The mapping between src and
@@ -183,10 +175,6 @@ def whl_library_targets(
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
     dependencies = sorted([normalize_name(d) for d in dependencies])
-    dependencies_by_platform = {
-        platform: sorted([normalize_name(d) for d in deps])
-        for platform, deps in dependencies_by_platform.items()
-    }
     tags = sorted(tags)
     data = [] + data
 
@@ -267,34 +255,13 @@ def whl_library_targets(
         data.append(dest)
 
     _config_settings(
-        dependencies_by_platform = dependencies_by_platform.keys(),
         dependencies_with_markers = dependencies_with_markers,
-        native = native,
         rules = rules,
         visibility = ["//visibility:private"],
     )
     deps_conditional = {
         d: "is_include_{}_true".format(d)
         for d in dependencies_with_markers
-    }
-
-    # Ensure this list is normalized
-    # Note: mapping used as set
-    group_deps = {
-        normalize_name(d): True
-        for d in group_deps
-    }
-
-    dependencies = [
-        d
-        for d in dependencies
-        if d not in group_deps
-    ]
-    dependencies_by_platform = {
-        p: deps
-        for p, deps in dependencies_by_platform.items()
-        for deps in [[d for d in deps if d not in group_deps]]
-        if deps
     }
 
     # If this library is a member of a group, its public label aliases need to
@@ -351,7 +318,6 @@ def whl_library_targets(
             srcs = [name],
             data = _deps(
                 deps = dependencies,
-                deps_by_platform = dependencies_by_platform,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
             ),
@@ -418,7 +384,6 @@ def whl_library_targets(
             imports = ["site-packages"],
             deps = _deps(
                 deps = dependencies,
-                deps_by_platform = dependencies_by_platform,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
             ),
@@ -428,22 +393,13 @@ def whl_library_targets(
             namespace_package_files = namespace_package_files,
         )
 
-def _config_settings(dependencies_by_platform, dependencies_with_markers, rules, native = native, **kwargs):
+def _config_settings(dependencies_with_markers, rules, **kwargs):
     """Generate config settings for the targets.
 
     Args:
-        dependencies_by_platform: {type}`list[str]` platform keys, can be
-            one of the following formats:
-            * `//conditions:default`
-            * `@platforms//os:{value}`
-            * `@platforms//cpu:{value}`
-            * `@//python/config_settings:is_python_3.{minor_version}`
-            * `{os}_{cpu}`
-            * `cp3{minor_version}_{os}_{cpu}`
         dependencies_with_markers: {type}`dict[str, str]` The markers to evaluate by
             each dep.
         rules: used for testing
-        native: {type}`native` The native struct for overriding in tests.
         **kwargs: Extra kwargs to pass to the rule.
     """
     for dep, expression in dependencies_with_markers.items():
@@ -453,46 +409,7 @@ def _config_settings(dependencies_by_platform, dependencies_with_markers, rules,
             **kwargs
         )
 
-    for p in dependencies_by_platform:
-        if p.startswith("@") or p.endswith("default"):
-            continue
-
-        # TODO @aignas 2025-04-20: add tests here
-        abi, _, tail = p.partition("_")
-        if not abi.startswith("cp"):
-            tail = p
-            abi = ""
-        os, _, arch = tail.partition("_")
-
-        _kwargs = dict(kwargs)
-        _kwargs["constraint_values"] = [
-            "@platforms//cpu:{}".format(arch),
-            "@platforms//os:{}".format(os),
-        ]
-
-        if abi:
-            _kwargs["flag_values"] = {
-                Label("//python/config_settings:python_version"): "3.{}".format(abi[len("cp3"):]),
-            }
-
-        native.config_setting(
-            name = "is_{name}".format(
-                name = p.replace("cp3", "python_3."),
-            ),
-            **_kwargs
-        )
-
-def _plat_label(plat):
-    if plat.endswith("default"):
-        return plat
-    elif plat.startswith("@//"):
-        return Label(plat.strip("@"))
-    elif plat.startswith("@"):
-        return plat
-    else:
-        return ":is_" + plat.replace("cp3", "python_3.")
-
-def _deps(deps, deps_by_platform, deps_conditional, tmpl):
+def _deps(deps, deps_conditional, tmpl):
     deps = [tmpl.format(d) for d in sorted(deps)]
 
     for dep, setting in deps_conditional.items():
@@ -501,22 +418,4 @@ def _deps(deps, deps_by_platform, deps_conditional, tmpl):
             "//conditions:default": [],
         })
 
-    if not deps_by_platform:
-        return deps
-
-    deps_by_platform = {
-        _plat_label(p): [
-            tmpl.format(d)
-            for d in sorted(deps)
-        ]
-        for p, deps in sorted(deps_by_platform.items())
-    }
-
-    # Add the default, which means that we will be just using the dependencies in
-    # `deps` for platforms that are not handled in a special way by the packages
-    deps_by_platform.setdefault("//conditions:default", [])
-
-    if not deps:
-        return select(deps_by_platform)
-    else:
-        return deps + select(deps_by_platform)
+    return deps

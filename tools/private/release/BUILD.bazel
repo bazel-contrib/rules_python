@@ -7,17 +7,23 @@ py_library(
     srcs = ["changelog_news.py"],
 )
 
-py_binary(
-    name = "release",
-    srcs = [
-        "gh.py",
-        "git.py",
-        "release.py",
-        "utils.py",
-    ],
-    main = "release.py",
+py_library(
+    name = "release_lib",
+    srcs = glob(
+        ["*.py"],
+        exclude = ["changelog_news.py"],
+    ),
     deps = [
         ":changelog_news",
         "@dev_pip//packaging",
+    ],
+)
+
+py_binary(
+    name = "release",
+    srcs = ["release.py"],
+    main = "release.py",
+    deps = [
+        ":release_lib",
     ],
 )

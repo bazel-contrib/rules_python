@@ -54,7 +54,7 @@ def _features_typedef():
 
     A map of bzl paths to the list of public symbols they export.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.2.0
     :::
     ::::
 

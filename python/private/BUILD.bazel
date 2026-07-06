@@ -18,6 +18,7 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load(":bazel_config_mode.bzl", "bazel_config_mode")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
+load(":py_interpreter_program.bzl", "py_interpreter_program")
 load(":sentinel_impl.bzl", "sentinel")
 load(":stamp_impl.bzl", "stamp_build_setting")
 load(":uncachable_version_file.bzl", "define_uncachable_version_file")
@@ -217,6 +218,25 @@ py_binary(
     name = "sync_runtimes_manifest_workspace",
     srcs = ["tools/sync_runtimes_manifest_workspace.py"],
     visibility = ["//:__subpackages__"],
+)
+
+# Tool used by py_test's validation action to statically check that the main
+# module actually runs tests. See the validate_test_main config setting.
+py_interpreter_program(
+    name = "py_test_main_validator",
+    main = "py_test_main_validator.py",
+    # Not actually public. Only public because it's an implicit dependency of
+    # the py_test rule.
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "py_test_main_validator_lib",
+    srcs = ["py_test_main_validator.py"],
+    imports = ["../.."],
+    visibility = [
+        "//tests/validate_test_main:__pkg__",
+    ],
 )
 
 bzl_library(
@@ -709,6 +729,7 @@ bzl_library(
         ":full_version",
         ":pbs_manifest",
         ":platform_info",
+        ":pyproject_utils",
         ":python_register_toolchains",
         ":pythons_hub",
         ":repo_utils",
@@ -873,6 +894,15 @@ bzl_library(
         ":py_info",
         ":util",
         "@bazel_skylib//lib:paths",
+    ],
+)
+
+bzl_library(
+    name = "pyproject_utils",
+    srcs = ["pyproject_utils.bzl"],
+    deps = [
+        ":version",
+        "@toml.bzl//:toml",
     ],
 )
 

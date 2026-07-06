@@ -1,0 +1,58 @@
+name: "Release: Add Backports"
+
+on:
+  workflow_dispatch:
+    inputs:
+      prs:
+        description: 'CSV list of PR numbers to add (e.g., 123,456)'
+        required: true
+        type: string
+      issue:
+        description: 'The Release Tracking Issue Number (optional)'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      prs:
+        description: 'CSV list of PR numbers to add (e.g., 123,456)'
+        required: true
+        type: string
+      issue:
+        description: 'The Release Tracking Issue Number (optional)'
+        required: false
+        type: string
+
+permissions:
+  issues: write
+
+jobs:
+  add_backports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Add Backports to Tracking Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRS: ${{ inputs.prs }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          ARGS=()
+          if [ -n "$ISSUE" ]; then
+            ARGS+=("--issue=$ISSUE")
+          fi
+          
+          # Convert CSV to array
+          IFS=',' read -r -a pr_array <<< "$PRS"
+          
+          bazel run //tools/private/release -- add-backports \
+            "${pr_array[@]}" \
+            "${ARGS[@]}"
