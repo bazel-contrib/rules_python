@@ -24,7 +24,7 @@ _tests = []
 def _test_simple(env):
     calls = []
 
-    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, parse_index):
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, parse_index, logger):
         if parse_index:
             return struct(
                 success = True,
@@ -36,7 +36,7 @@ def _test_simple(env):
                 },
             )
 
-        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
+        _ = ctx, attr, cache, get_auth, versions, logger  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
         calls.append(url)
         return struct(
@@ -94,7 +94,7 @@ def _test_index_overrides(env):
     calls = []
     fails = []
 
-    def read_simpleapi(ctx, *, url, versions, attr, cache, get_auth, block, parse_index):
+    def read_simpleapi(ctx, *, url, versions, attr, cache, get_auth, block, parse_index, logger):
         if parse_index:
             return struct(
                 success = True,
@@ -108,7 +108,7 @@ def _test_index_overrides(env):
                 },
             )
 
-        _ = ctx, attr, cache, get_auth, versions  # buildifier: disable=unused-variable
+        _ = ctx, attr, cache, get_auth, versions, logger  # buildifier: disable=unused-variable
         env.expect.that_bool(block).equals(False)
         calls.append(url)
         return struct(
