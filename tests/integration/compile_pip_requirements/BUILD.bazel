@@ -32,8 +32,8 @@ compile_pip_requirements(
 genquery(
     name = "requirements_update_data",
     expression = """
-some(labels(data, //:requirements.update) intersect //:requirements.in) union
-some(labels(data, //:requirements.update) intersect //:requirements_extra.in)
+some(labels(data, :requirements.update) intersect :requirements.in) union
+some(labels(data, :requirements.update) intersect :requirements_extra.in)
 """,
     scope = [
         ":requirements.update",

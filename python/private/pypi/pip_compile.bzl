@@ -31,7 +31,6 @@ def _dedupe_data(data):
             res.append(d)
     return res
 
-
 def pip_compile(
         name,
         srcs = None,
