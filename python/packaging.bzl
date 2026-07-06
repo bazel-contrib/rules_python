@@ -14,7 +14,6 @@
 
 """Public API for for building wheels."""
 
-load("@bazel_skylib//rules:native_binary.bzl", "native_binary")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 load("//python/private:py_package.bzl", "py_package_lib")
@@ -83,6 +82,39 @@ This also has the advantage that stamping information is included in the wheel's
             executable = True,
             default = Label("//python/private:py_wheel_dist"),
         ),
+    },
+)
+
+def _py_wheel_publish_binary_impl(ctx):
+    out_name = ctx.attr.out if ctx.attr.out else ctx.label.name
+    out = ctx.actions.declare_file(out_name)
+    ctx.actions.symlink(
+        target_file = ctx.executable.src,
+        output = out,
+        is_executable = True,
+    )
+    runfiles = ctx.runfiles(files = ctx.files.data)
+    runfiles = runfiles.merge_all([
+        dep[DefaultInfo].default_runfiles
+        for dep in ctx.attr.data + [ctx.attr.src]
+    ])
+    return [DefaultInfo(executable = out, files = depset([out]), runfiles = runfiles)]
+
+# Like bazel_skylib's native_binary but with cfg = "exec" on src, so the
+# twine binary is always built for the exec (host) platform regardless of the
+# target platform. This is correct because twine is a developer tool that runs
+# on the host to upload wheels to PyPI, never on the cross-compilation target.
+_py_wheel_publish_binary = rule(
+    implementation = _py_wheel_publish_binary_impl,
+    executable = True,
+    attrs = {
+        "src": attr.label(
+            executable = True,
+            mandatory = True,
+            cfg = "exec",
+        ),
+        "data": attr.label_list(allow_files = True),
+        "out": attr.string(),
     },
 )
 
@@ -202,7 +234,7 @@ def py_wheel(
         twine_args.append("$(rootpath :{})/*".format(dist_target))
 
     if twine_binary:
-        native_binary(
+        _py_wheel_publish_binary(
             name = "{}.publish".format(name),
             src = twine_binary,
             out = select({
