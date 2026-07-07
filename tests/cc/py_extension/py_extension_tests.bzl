@@ -17,7 +17,7 @@
 load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
-load("//python/private:py_info.bzl", "PyInfo")
+load("//python/private:py_info.bzl", "PyInfo")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -43,7 +43,6 @@ _tests.append(_test_static_deps)
 
 def _test_data_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
-    py_info = target[PyInfo]
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
 
     # Check that data file is in runfiles
@@ -65,7 +64,6 @@ def _test_dynamic_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
-    csl_info = target[CcSharedLibraryInfo]
 
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)

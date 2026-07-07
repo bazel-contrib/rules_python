@@ -79,15 +79,15 @@ def _csl_dynamic_deps_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-5]  # remove "_cslA"
-    libA_label = target.label.same_package_label(test_name + "_libA")
-    libB_label = target.label.same_package_label(test_name + "_libB")
-    libC_label = target.label.same_package_label(test_name + "_libC")
+    lib_a_label = target.label.same_package_label(test_name + "_libA")
+    lib_b_label = target.label.same_package_label(test_name + "_libB")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libA_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_a_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        static_libs = [str(l) for l in csl_info.link_once_static_libs]
-        env.expect.that_collection(static_libs).contains(str(libA_label))
-        env.expect.that_collection(static_libs).contains_none_of([str(libB_label), str(libC_label)])
+        static_libs = [str(lbl) for lbl in csl_info.link_once_static_libs]
+        env.expect.that_collection(static_libs).contains(str(lib_a_label))
+        env.expect.that_collection(static_libs).contains_none_of([str(lib_b_label), str(lib_c_label)])
 
 # Test 2: py_extension A -> CSL B -> CSL C (Dynamic deps)
 def _test_pyext_dynamic_deps_top(name):
@@ -125,11 +125,11 @@ def _cslC_deps_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-5]  # remove "_cslC"
-    libC_label = target.label.same_package_label(test_name + "_libC")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libC_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_c_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        env.expect.that_collection([str(l) for l in csl_info.link_once_static_libs]).contains_exactly([str(libC_label)])
+        env.expect.that_collection([str(lbl) for lbl in csl_info.link_once_static_libs]).contains_exactly([str(lib_c_label)])
 
 def _cslB_deps_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
@@ -137,19 +137,19 @@ def _cslB_deps_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-5]  # remove "_cslB"
-    libB_label = target.label.same_package_label(test_name + "_libB")
-    libC_label = target.label.same_package_label(test_name + "_libC")
-    cslC_label = target.label.same_package_label(test_name + "_cslC")
+    lib_b_label = target.label.same_package_label(test_name + "_libB")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
+    csl_c_label = target.label.same_package_label(test_name + "_cslC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libB_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_b_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        static_libs = [str(l) for l in csl_info.link_once_static_libs]
-        env.expect.that_collection(static_libs).contains(str(libB_label))
-        env.expect.that_collection(static_libs).contains_none_of([str(libC_label)])
+        static_libs = [str(lbl) for lbl in csl_info.link_once_static_libs]
+        env.expect.that_collection(static_libs).contains(str(lib_b_label))
+        env.expect.that_collection(static_libs).contains_none_of([str(lib_c_label)])
 
     if hasattr(csl_info, "dynamic_deps"):
         dynamic_deps = [str(d.linker_input.owner) for d in csl_info.dynamic_deps.to_list()]
-        env.expect.that_collection(dynamic_deps).contains(str(cslC_label))
+        env.expect.that_collection(dynamic_deps).contains(str(csl_c_label))
 
 def _pyext_dynamic_deps_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
@@ -157,15 +157,15 @@ def _pyext_dynamic_deps_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-7]  # remove "_pyextA"
-    libA_label = target.label.same_package_label(test_name + "_libA")
-    libB_label = target.label.same_package_label(test_name + "_libB")
-    libC_label = target.label.same_package_label(test_name + "_libC")
+    lib_a_label = target.label.same_package_label(test_name + "_libA")
+    lib_b_label = target.label.same_package_label(test_name + "_libB")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libA_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_a_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        static_libs = [str(l) for l in csl_info.link_once_static_libs]
-        env.expect.that_collection(static_libs).contains(str(libA_label))
-        env.expect.that_collection(static_libs).contains_none_of([str(libB_label), str(libC_label)])
+        static_libs = [str(lbl) for lbl in csl_info.link_once_static_libs]
+        env.expect.that_collection(static_libs).contains(str(lib_a_label))
+        env.expect.that_collection(static_libs).contains_none_of([str(lib_b_label), str(lib_c_label)])
 
 # For tests 3 and 4
 def _create_static_sharing_helpers(name):
@@ -219,15 +219,15 @@ def _csl_static_sharing_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-5]  # remove "_cslA"
-    libA_label = target.label.same_package_label(test_name + "_libA")
-    libB_label = target.label.same_package_label(test_name + "_libB")
-    libC_label = target.label.same_package_label(test_name + "_libC")
+    lib_a_label = target.label.same_package_label(test_name + "_libA")
+    lib_b_label = target.label.same_package_label(test_name + "_libB")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libA_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_a_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        static_libs = [str(l) for l in csl_info.link_once_static_libs]
-        env.expect.that_collection(static_libs).contains(str(libA_label))
-        env.expect.that_collection(static_libs).contains_none_of([str(libB_label), str(libC_label)])
+        static_libs = [str(lbl) for lbl in csl_info.link_once_static_libs]
+        env.expect.that_collection(static_libs).contains(str(lib_a_label))
+        env.expect.that_collection(static_libs).contains_none_of([str(lib_b_label), str(lib_c_label)])
 
 # Test 4: Same as 3, but A is py_extension
 def _test_pyext_static_sharing_top(name):
@@ -257,13 +257,13 @@ def _cslB_static_sharing_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-5]  # remove "_cslB"
-    libB_label = target.label.same_package_label(test_name + "_libB")
-    libC_label = target.label.same_package_label(test_name + "_libC")
+    lib_b_label = target.label.same_package_label(test_name + "_libB")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libB_label), str(libC_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_b_label), str(lib_c_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        static_libs = [str(l) for l in csl_info.link_once_static_libs]
-        env.expect.that_collection(static_libs).contains_exactly([str(libB_label), str(libC_label)])
+        static_libs = [str(lbl) for lbl in csl_info.link_once_static_libs]
+        env.expect.that_collection(static_libs).contains_exactly([str(lib_b_label), str(lib_c_label)])
 
 def _pyext_static_sharing_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
@@ -271,15 +271,15 @@ def _pyext_static_sharing_test_impl(env, target):
 
     # Derive labels
     test_name = target.label.name[:-7]  # remove "_pyextA"
-    libA_label = target.label.same_package_label(test_name + "_libA")
-    libB_label = target.label.same_package_label(test_name + "_libB")
-    libC_label = target.label.same_package_label(test_name + "_libC")
+    lib_a_label = target.label.same_package_label(test_name + "_libA")
+    lib_b_label = target.label.same_package_label(test_name + "_libB")
+    lib_c_label = target.label.same_package_label(test_name + "_libC")
 
-    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libA_label)])
+    env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(lib_a_label)])
     if hasattr(csl_info, "link_once_static_libs"):
-        static_libs = [str(l) for l in csl_info.link_once_static_libs]
-        env.expect.that_collection(static_libs).contains(str(libA_label))
-        env.expect.that_collection(static_libs).contains_none_of([str(libB_label), str(libC_label)])
+        static_libs = [str(lbl) for lbl in csl_info.link_once_static_libs]
+        env.expect.that_collection(static_libs).contains(str(lib_a_label))
+        env.expect.that_collection(static_libs).contains_none_of([str(lib_b_label), str(lib_c_label)])
 
 def dependency_graph_test_suite(name):
     test_suite(

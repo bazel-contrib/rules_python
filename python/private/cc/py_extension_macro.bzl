@@ -16,6 +16,7 @@ def py_extension(
         exports_filter = None,
         user_link_flags = None,
         visibility = None,
+        data = None,
         **kwargs):
     """Creates a Python extension module.
 
@@ -82,6 +83,9 @@ def py_extension(
             "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
             "//conditions:default": "glibc",
         })
+
+    if data != None:
+        kwargs["data"] = data
 
     # 6. Wrap with py_extension_wrapper for PEP 3149 naming & PyInfo
     py_extension_wrapper(
