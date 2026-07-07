@@ -1,7 +1,6 @@
 import argparse
 import os
 import shutil
-import stat
 import sys
 import zipfile
 from os.path import dirname

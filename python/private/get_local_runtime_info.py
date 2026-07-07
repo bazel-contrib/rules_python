@@ -48,9 +48,7 @@ def _search_directories(get_config, base_executable) -> list[str]:
     # On MacOS, the LDLIBRARY may be a relative path under /Library/Frameworks,
     # such as "Python.framework/Versions/3.12/Python", not a file under the
     # LIBDIR/LIBPL directory, so include PYTHONFRAMEWORKPREFIX.
-    lib_dirs = [
-        get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")
-    ]
+    lib_dirs = [get_config(x) for x in ("PYTHONFRAMEWORKPREFIX", "LIBPL", "LIBDIR")]
 
     # On Debian, with multiarch enabled, prior to Python 3.10, `LIBDIR` didn't
     # tell the location of the libs, just the base directory. The `MULTIARCH`
@@ -67,8 +65,8 @@ def _search_directories(get_config, base_executable) -> list[str]:
 
     if not _IS_DARWIN:
         for exec_dir in (
-                os.path.dirname(base_executable) if base_executable else None,
-                get_config("BINDIR"),
+            os.path.dirname(base_executable) if base_executable else None,
+            get_config("BINDIR"),
         ):
             if not exec_dir:
                 continue
@@ -122,7 +120,8 @@ def _search_library_names(get_config, version, abi_flags) -> list[str]:
     #
     # A typical LIBRARY is 'libpythonX.Y.a' on Linux.
     lib_names = [
-        get_config(x) for x in (
+        get_config(x)
+        for x in (
             "LDLIBRARY",
             "INSTSONAME",
             "PY3LIBRARY",
@@ -167,8 +166,7 @@ def _get_python_library_info(base_executable) -> dict[str, Any]:
     abi_flags = _get_abi_flags(config_vars.get)
 
     search_directories = _search_directories(config_vars.get, base_executable)
-    search_libnames = _search_library_names(config_vars.get, version,
-                                            abi_flags)
+    search_libnames = _search_library_names(config_vars.get, version, abi_flags)
 
     # Used to test whether the library is an abi3 library or a full api library.
     abi3_libraries = _default_library_names(sys.version_info.major, abi_flags)
@@ -221,10 +219,10 @@ def _get_python_library_info(base_executable) -> dict[str, Any]:
     # Additional DLLs are needed on Windows to link properly.
     dlls = []
     if _IS_WINDOWS:
-        dlls.extend(
-            glob.glob(os.path.join(os.path.dirname(base_executable), "*.dll")))
+        dlls.extend(glob.glob(os.path.join(os.path.dirname(base_executable), "*.dll")))
         dlls = [
-            x for x in dlls
+            x
+            for x in dlls
             if x not in dynamic_libraries and x not in abi_dynamic_libraries
         ]
 

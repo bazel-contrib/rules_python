@@ -118,6 +118,19 @@ which will effectively disable pyc caching.
 
 :::
 
+:::{envvar} RULES_PYTHON_PYPI_HUB_RESERVED
+
+When `1`, any PyPI hub named `"pypi"` will be renamed to `<module_name>_pypi`
+to prevent name collisions with the unified `@pypi` proxy repository, and
+a warning is printed indicating that the renaming occurred. If not set (defaulting
+to `0`), a warning is printed advising to rename the hub, and the collision
+is not resolved.
+
+:::{versionadded} 2.2.0
+:::
+
+:::
+
 :::{envvar} RULES_PYTHON_REPO_DEBUG
 
 When `1`, repository rules will print debug information about what they're
@@ -151,7 +164,7 @@ When `1`, debug information about coverage behavior is printed to stderr.
 
 ## Removed Environment Variables
 
-:::{versionremoved} VERSION_NEXT_FEATURE
+:::{versionremoved} 2.1.0
 The following environment variables were removed:
 
 * `RULES_PYTHON_ENABLE_PYSTAR`: Used to enable the Starlark implementation of

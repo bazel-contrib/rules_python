@@ -169,12 +169,6 @@ _tests.append(_test_index_overrides)
 def _test_download_url(env):
     downloads = {}
     reads = [
-        # The first read is the index which seeds the downloads later
-        """
-        <a href="/main/simple/bar/">bar</a>
-        <a href="/main/simple/baz/">baz</a>
-        <a href="/main/simple/foo/">foo</a>
-        """,
         "",
         "",
         "",
@@ -208,7 +202,6 @@ def _test_download_url(env):
     )
 
     env.expect.that_dict(downloads).contains_exactly({
-        "https://example.com/main/simple/": "path/for/https___example_com_main_simple.html",
         "https://example.com/main/simple/bar/": "path/for/https___example_com_main_simple_bar.html",
         "https://example.com/main/simple/baz/": "path/for/https___example_com_main_simple_baz.html",
         "https://example.com/main/simple/foo/": "path/for/https___example_com_main_simple_foo.html",
@@ -316,12 +309,6 @@ _tests.append(_test_download_url_parallel_with_overrides)
 def _test_download_envsubst_url(env):
     downloads = {}
     reads = [
-        # The first read is the index which seeds the downloads later
-        """
-        <a href="/main/simple/bar/">bar</a>
-        <a href="/main/simple/baz/">baz</a>
-        <a href="/main/simple/foo/">foo</a>
-        """,
         "",
         "",
         "",
@@ -355,7 +342,6 @@ def _test_download_envsubst_url(env):
     )
 
     env.expect.that_dict(downloads).contains_exactly({
-        "https://example.com/main/simple/": "path/for/~index_url~.html",
         "https://example.com/main/simple/bar/": "path/for/~index_url~_bar.html",
         "https://example.com/main/simple/baz/": "path/for/~index_url~_baz.html",
         "https://example.com/main/simple/foo/": "path/for/~index_url~_foo.html",

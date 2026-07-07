@@ -1,7 +1,6 @@
 $OutputPath = $env:OUTPUT
 $Lines = @(
     "TARGET $env:TARGET",
-    "CONFIG_MODE $env:CONFIG_MODE",
     "STAMPED $env:STAMPED"
 )
 
@@ -22,7 +21,16 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
 [System.IO.File]::WriteAllLines($OutputPath, $Lines, $Utf8NoBom)
 
 $Acl = Get-Acl $OutputPath
-$AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("Everyone", "Read", "Allow")
+# We use WorldSid because the "Everyone" name is locale-dependent.
+$EveryoneSid = New-Object System.Security.Principal.SecurityIdentifier(
+    [System.Security.Principal.WellKnownSidType]::WorldSid,
+    $null
+)
+$AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    $EveryoneSid,
+    "Read",
+    "Allow"
+)
 $Acl.SetAccessRule($AccessRule)
 Set-Acl $OutputPath $Acl
 

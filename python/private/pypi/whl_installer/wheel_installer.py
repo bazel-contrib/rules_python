@@ -18,12 +18,10 @@ import errno
 import glob
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, Optional, Set, Tuple
 
 from python.private.pypi.whl_installer import arguments
 

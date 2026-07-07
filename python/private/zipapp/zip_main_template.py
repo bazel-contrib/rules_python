@@ -23,13 +23,13 @@ import sys
 # TODO(#7091): Remove this hack when no longer necessary.
 del sys.path[0]
 
-import os
-import shutil
-import stat
-import subprocess
-import tempfile
-import zipfile
-from os.path import basename, dirname, join, normpath
+import os  # noqa: E402
+import shutil  # noqa: E402
+import stat  # noqa: E402
+import subprocess  # noqa: E402
+import tempfile  # noqa: E402
+import zipfile  # noqa: E402
+from os.path import basename, dirname, join, normpath  # noqa: E402
 
 # runfiles-root-relative path
 _STAGE2_BOOTSTRAP = "%stage2_bootstrap%"

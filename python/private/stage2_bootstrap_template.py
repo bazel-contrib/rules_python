@@ -9,11 +9,16 @@ import sys
 # and is a special case of #7091.
 #
 # Python 3.11 introduced an PYTHONSAFEPATH (-P) option that disables this
-# behaviour, which we set in the stage 1 bootstrap.
+# behaviour, which we set in the stage 1 bootstrap. Isolated mode (-I) also
+# disables it, including on older interpreters without safe_path.
 # So the prepended entry needs to be removed only if the above option is either
 # unset or not supported by the interpreter.
 # NOTE: This can be removed when Python 3.10 and below is no longer supported
-if not getattr(sys.flags, "safe_path", False):
+if (
+    not getattr(sys.flags, "safe_path", False)
+    and not getattr(sys.flags, "isolated", False)
+    and sys.path
+):
     del sys.path[0]
 
 import contextlib
@@ -131,11 +136,11 @@ def get_windows_path_with_unc_prefix(path):
         return path
 
     # Lets start the unicode fun
-    if path.startswith(unicode_prefix):
+    if path.startswith(unicode_prefix):  # noqa: F821
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
+    return unicode_prefix + os.path.abspath(path)  # noqa: F821
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -356,9 +361,8 @@ def _maybe_collect_coverage(enable):
     print_verbose_coverage("Instrumented Files:\n" + "\n".join(instrumented_files))
     print_verbose_coverage("Sources:\n" + "\n".join(unique_dirs))
 
-    import uuid
-
     import coverage
+    from coverage.exceptions import NoDataError
 
     coverage_dir = os.environ["COVERAGE_DIR"]
     unique_id = uuid.uuid4()
@@ -408,17 +412,27 @@ source =
             yield
         finally:
             cov.stop()
-            lcov_path = os.path.join(coverage_dir, "pylcov.dat")
+            lcov_path = os.path.join(coverage_dir, "pylcov_{}.dat".format(unique_id))
             print_verbose_coverage("generating lcov from:", lcov_path)
-            cov.lcov_report(
-                outfile=lcov_path,
-                # Ignore errors because sometimes instrumented files aren't
-                # readable afterwards. e.g. if they come from /dev/fd or if
-                # they were transient code-under-test in /tmp
-                ignore_errors=True,
-            )
-            if os.path.isfile(lcov_path):
-                unresolve_symlinks(lcov_path)
+            try:
+                cov.lcov_report(
+                    outfile=lcov_path,
+                    # Ignore errors because sometimes instrumented files aren't
+                    # readable afterwards. e.g. if they come from /dev/fd or if
+                    # they were transient code-under-test in /tmp
+                    ignore_errors=True,
+                )
+            except NoDataError:
+                # coverage.py raises NoDataError if no instrumented Python code ran
+                # (e.g. tests not running Python, or subprocess-only binaries).
+                # Skip the report to avoid failing otherwise passing tests.
+                # See https://github.com/bazel-contrib/rules_python/issues/2762.
+                print_verbose_coverage(
+                    "no coverage data collected; skipping lcov report:", lcov_path
+                )
+            else:
+                if os.path.isfile(lcov_path):
+                    unresolve_symlinks(lcov_path)
     finally:
         try:
             os.unlink(rcfile_name)
@@ -530,8 +544,10 @@ def main():
         # means only other generated files are importable (not source files).
         #
         # To replicate this behavior, we add main's directory within the runfiles
-        # when safe path isn't enabled.
-        if not getattr(sys.flags, "safe_path", False):
+        # when safe path or isolated mode isn't enabled.
+        if not getattr(sys.flags, "safe_path", False) and not getattr(
+            sys.flags, "isolated", False
+        ):
             prepend_path_entries = [
                 os.path.join(runfiles_root, os.path.dirname(main_rel_path))
             ]

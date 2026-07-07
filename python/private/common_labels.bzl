@@ -14,6 +14,7 @@ labels = struct(
     # NOTE: Special target; see definition for details.
     ENABLE_RUNFILES = str(Label("//command_line_option:enable_runfiles")),
     EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain")),
+    EXTRA_TOOLCHAINS = str(Label("//command_line_option:extra_toolchains")),
     NONE = str(Label("//python:none")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
     PIP_WHL_OSX_VERSION = str(Label("//python/config_settings:pip_whl_osx_version")),
@@ -28,6 +29,8 @@ labels = struct(
     PY_FREETHREADED = str(Label("//python/config_settings:py_freethreaded")),
     PY_LINUX_LIBC = str(Label("//python/config_settings:py_linux_libc")),
     REPL_DEP = str(Label("//python/bin:repl_dep")),
+    VALIDATE_TEST_MAIN = str(Label("//python/config_settings:validate_test_main")),
+    VENV = str(Label("//python/config_settings:venv")),
     VENVS_SITE_PACKAGES = str(Label("//python/config_settings:venvs_site_packages")),
     VENVS_USE_DECLARE_SYMLINK = str(Label("//python/config_settings:venvs_use_declare_symlink")),
     VISIBLE_FOR_TESTING = str(Label("//python/private:visible_for_testing")),

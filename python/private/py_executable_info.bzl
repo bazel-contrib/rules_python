@@ -88,7 +88,7 @@ Only used with Windows for files that would have used `declare_symlink()`
 to create relative symlinks. These may overlap with paths in runfiles; it's
 up to the consumer to determine how to handle such overlaps.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.1.0
 :::
 """,
         "venv_interpreter_runfiles": """

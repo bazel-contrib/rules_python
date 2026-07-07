@@ -28,9 +28,9 @@ class ExampleTest(unittest.TestCase):
 
     def test_pylint_entry_point(self):
         rlocation_path = os.environ.get("ENTRY_POINT")
-        assert (
-            rlocation_path is not None
-        ), "expected 'ENTRY_POINT' env variable to be set to rlocation of the tool"
+        assert rlocation_path is not None, (
+            "expected 'ENTRY_POINT' env variable to be set to rlocation of the tool"
+        )
 
         entry_point = pathlib.Path(runfiles.Create().Rlocation(rlocation_path))
         self.assertTrue(entry_point.exists(), f"'{entry_point}' does not exist")
@@ -50,7 +50,7 @@ class ExampleTest(unittest.TestCase):
             "",
             proc.stderr.decode("utf-8").strip(),
         )
-        self.assertRegex(proc.stdout.decode("utf-8").strip(), "^pylint 2\.15\.9")
+        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.15\.9")
 
 
 if __name__ == "__main__":

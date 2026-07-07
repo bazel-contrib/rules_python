@@ -1,5 +1,6 @@
 """A hub repository builder for incrementally building the hub configuration."""
 
+load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
@@ -7,7 +8,6 @@ load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
-load(":evaluate_markers.bzl", "evaluate_markers")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_env.bzl", "env")
@@ -30,7 +30,6 @@ def hub_builder(
         minor_mapping,
         available_interpreters,
         simpleapi_download_fn,
-        evaluate_markers_fn,
         logger,
         simpleapi_cache):
     """Return a hub builder instance
@@ -41,7 +40,6 @@ def hub_builder(
         config: The platform configuration.
         whl_overrides: {type}`dict[str, struct]` - per-wheel overrides.
         minor_mapping: {type}`dict[str, str]` the mapping between minor and full versions.
-        evaluate_markers_fn: the override function used to evaluate the markers.
         available_interpreters: {type}`dict[str, Label]` The dictionary of available
             interpreters that have been registered using the `python` bzlmod extension.
             The keys are in the form `python_{snake_case_version}_host`. This is to be
@@ -101,7 +99,6 @@ def hub_builder(
         # Instance constants passed in by callers
         _config = config,
         _whl_overrides = whl_overrides,
-        _evaluate_markers_fn = evaluate_markers_fn,
         _logger = logger,
         _minor_mapping = minor_mapping,
         _available_interpreters = available_interpreters,
@@ -155,8 +152,8 @@ def _build(self):
         whl_libraries = self._whl_libraries,
     )
 
-def _pip_parse(self, module_ctx, pip_attr):
-    python_version = pip_attr.python_version
+def _pip_parse(self, module_ctx, pip_attr, python_version = None):
+    python_version = python_version or pip_attr.python_version
     if python_version in self._platforms:
         fail((
             "Duplicate pip python version '{version}' for hub " +
@@ -189,7 +186,7 @@ def _pip_parse(self, module_ctx, pip_attr):
         ))
         return
 
-    _set_get_index_urls(self, pip_attr)
+    _set_get_index_urls(self, module_ctx, pip_attr, python_version)
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
@@ -198,12 +195,13 @@ def _pip_parse(self, module_ctx, pip_attr):
     )
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
-    _add_lock_target(self, pip_attr)
+    _add_lock_target(self, pip_attr, python_version)
     _create_whl_repos(
         self,
         module_ctx,
         pip_attr = pip_attr,
-        enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(pip_attr.python_version)),
+        python_version = python_version,
+        enable_pipstar_extract = bool(self._config.enable_pipstar_extract or self._get_index_urls.get(python_version)),
     )
 
 ### end of PUBLIC methods
@@ -356,7 +354,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
     else:
         mapping[repo.config_setting] = repo_name
 
-def _add_lock_target(self, pip_attr):
+def _add_lock_target(self, pip_attr, python_version):
     """Adds a generated hub lock update target when the parse attrs are complete.
 
     Args:
@@ -368,7 +366,7 @@ def _add_lock_target(self, pip_attr):
 
     self._lock_targets.append(struct(
         out = _source_file_path(pip_attr.requirements_lock),
-        python_version = pip_attr.python_version,
+        python_version = python_version,
         srcs = [str(src) for src in pip_attr.srcs],
     ))
 
@@ -446,8 +444,17 @@ def _exposed_packages(ctx, *, pip_attr, whls, logger):
 
     return exposed
 
-def _set_get_index_urls(self, pip_attr):
-    default_index_url = pip_attr.experimental_index_url or self._config.index_url
+def _set_get_index_urls(self, mctx, pip_attr, python_version):
+    # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
+    # form is honored when deciding whether the experimental index-url mode is
+    # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
+    # is treated as truthy and the mode is forced on, even when the env var
+    # would expand to the empty string.
+    default_index_url = envsubst(
+        pip_attr.experimental_index_url,
+        pip_attr.envsubst,
+        mctx.getenv,
+    ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:
@@ -455,7 +462,6 @@ def _set_get_index_urls(self, pip_attr):
         # here
         return False
 
-    python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
@@ -484,11 +490,11 @@ def _set_get_index_urls(self, pip_attr):
     )
     return True
 
-def _detect_interpreter(self, pip_attr):
+def _detect_interpreter(self, pip_attr, python_version):
     python_interpreter_target = pip_attr.python_interpreter_target
     if python_interpreter_target == None and not pip_attr.python_interpreter:
         python_name = "python_{}_host".format(
-            pip_attr.python_version.replace(".", "_"),
+            python_version.replace(".", "_"),
         )
         if python_name not in self._available_interpreters:
             fail((
@@ -498,7 +504,7 @@ def _detect_interpreter(self, pip_attr):
                 "Expected to find {python_name} among registered versions:\n  {labels}"
             ).format(
                 hub_name = self.name,
-                version = pip_attr.python_version,
+                version = python_version,
                 python_name = python_name,
                 labels = "  \n".join(self._available_interpreters),
             ))
@@ -562,20 +568,12 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         )
     return platforms
 
-def _evaluate_markers(self, pip_attr):
-    if self._evaluate_markers_fn:
-        return self._evaluate_markers_fn
-
-    return lambda requirements: evaluate_markers(
-        requirements = requirements,
-        platforms = self._platforms[pip_attr.python_version],
-    )
-
 def _create_whl_repos(
         self,
         module_ctx,
         *,
         pip_attr,
+        python_version,
         enable_pipstar_extract = False):
     """create all of the whl repositories
 
@@ -583,10 +581,11 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        python_version: {type}`str` - the resolved python version for this pip.parse call.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
     """
     logger = self._logger
-    platforms = self._platforms[pip_attr.python_version]
+    platforms = self._platforms[python_version]
     requirements_by_platform = parse_requirements(
         module_ctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -598,15 +597,16 @@ def _create_whl_repos(
             extra_pip_args = pip_attr.extra_pip_args,
             platforms = sorted(platforms),  # here we only need keys
             python_version = full_version(
-                version = pip_attr.python_version,
+                version = python_version,
                 minor_mapping = self._minor_mapping,
             ),
             logger = logger,
         ),
+        uv_lock = pip_attr.uv_lock,
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = self._get_index_urls.get(pip_attr.python_version),
-        evaluate_markers = _evaluate_markers(self, pip_attr),
+        get_index_urls = self._get_index_urls.get(python_version),
+        toml_decode = getattr(self._config, "toml_decode", None),
         logger = logger,
     )
 
@@ -628,7 +628,7 @@ def _create_whl_repos(
         pip_attr = pip_attr,
     )
 
-    interpreter = _detect_interpreter(self, pip_attr)
+    interpreter = _detect_interpreter(self, pip_attr, python_version)
 
     for whl in requirements_by_platform:
         whl_library_args = common_args | _whl_library_args(
@@ -643,16 +643,16 @@ def _create_whl_repos(
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,
-                use_downloader = src.url and _use_downloader(self, pip_attr.python_version, whl.name),
+                use_downloader = src.url and _use_downloader(self, python_version, whl.name),
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
-                python_version = _major_minor_version(pip_attr.python_version),
+                python_version = _major_minor_version(python_version),
                 is_multiple_versions = whl.is_multiple_versions,
                 interpreter = interpreter,
                 enable_pipstar_extract = enable_pipstar_extract,
             )
             _add_whl_library(
                 self,
-                python_version = pip_attr.python_version,
+                python_version = python_version,
                 whl = whl,
                 repo = repo,
             )
@@ -735,7 +735,7 @@ def _whl_repo(
         # need to pass the extra args there, so only pop this for whls
         args["extra_pip_args"] = src.extra_pip_args
 
-    if "whl_patches" in args or not (enable_pipstar_extract and is_whl):
+    if not (enable_pipstar_extract and is_whl):
         if interpreter.path:
             args["python_interpreter"] = interpreter.path
         if interpreter.target:

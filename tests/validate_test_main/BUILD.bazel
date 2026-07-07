@@ -1,0 +1,10 @@
+load("//python:py_test.bzl", "py_test")
+
+py_test(
+    name = "validate_test_main_test",
+    srcs = ["validate_test_main_test.py"],
+    main = "validate_test_main_test.py",
+    deps = [
+        "//python/private:py_test_main_validator_lib",
+    ],
+)

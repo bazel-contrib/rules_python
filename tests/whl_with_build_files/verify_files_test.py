@@ -2,7 +2,6 @@ import unittest
 
 
 class VerifyFilestest(unittest.TestCase):
-
     def test_wheel_with_build_files_importable(self):
         # If the BUILD files are present, then these imports should fail
         # because globs won't pass package boundaries, and the necessary
@@ -10,7 +9,7 @@ class VerifyFilestest(unittest.TestCase):
         import somepkg
         import somepkg.a
         import somepkg.subpkg
-        import somepkg.subpkg.b
+        import somepkg.subpkg.b  # noqa: F401
 
 
 if __name__ == "__main__":

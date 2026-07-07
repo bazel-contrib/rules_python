@@ -26,7 +26,7 @@ def _internal_dev_deps_impl(mctx):
     # otherwise refer to RBE docs.
     rbe_preconfig(
         name = "buildkite_config",
-        toolchain = "ubuntu2204",
+        toolchain = "ubuntu2404",
     )
     runtime_env_repo(name = "rules_python_runtime_env_tc_info")
 
@@ -129,6 +129,24 @@ def _internal_dev_deps_impl(mctx):
         requirement = "optional_dep",
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+    )
+
+    # Setup for //tests/pypi/patch_whl/patch_whl_patch_test.py
+    whl_from_dir_repo(
+        name = "patch_whl_pkg_whl",
+        root = "//tests/pypi/patch_whl/testdata/pkg:BUILD.bazel",
+        output = "pkg-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "patch_whl_pkg",
+        whl_file = "@patch_whl_pkg_whl//:pkg-1.0-any-none-any.whl",
+        requirement = "pkg",
+        whl_patches = {
+            "//tests/pypi/patch_whl/testdata/patches:modify_pkg.patch": json.encode({
+                "patch_strip": 0,
+                "whls": ["pkg-1.0-any-none-any.whl"],
+            }),
+        },
     )
 
 def _whl_library_from_dir(*, name, output, root, **kwargs):

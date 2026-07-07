@@ -109,6 +109,29 @@ def _test_basic_zip_impl(env, target):
 
 _tests.append(_test_basic_zip)
 
+def _test_config_settings_extra_toolchains(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+        config_settings = {
+            "//command_line_option:extra_toolchains": "{tc},{tc}".format(tc = CC_TOOLCHAIN),
+        },
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_extra_toolchains_impl,
+        target = name + "_subject",
+    )
+
+def _test_config_settings_extra_toolchains_impl(env, target):
+    # If we got here, it means analysis succeeded, which implies the transition
+    # successfully parsed the CSV string into a list.
+    env.expect.that_target(target).has_provider(PyInfo)
+
+_tests.append(_test_config_settings_extra_toolchains)
+
 def _test_cross_compile_to_unix(name, config):
     rt_util.helper_target(
         config.rule,
@@ -495,6 +518,74 @@ def _test_py_runtime_info_provided_impl(env, target):
         env.expect.that_target(target).has_provider(BuiltinPyRuntimeInfo)
 
 _tests.append(_test_py_runtime_info_provided)
+
+def _test_venv_output_prefix_with_path_separators(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/foo/tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/bar/tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/foo_tool",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_venv_output_prefix_with_path_separators_impl,
+        targets = {
+            "bar": name + "/bar/tool",
+            "foo": name + "/foo/tool",
+            "foo_underscore": name + "/foo_tool",
+        },
+    )
+
+def _test_venv_output_prefix_with_path_separators_impl(env, targets):
+    for target in [targets.foo, targets.bar, targets.foo_underscore]:
+        target = env.expect.that_target(target)
+        venv_file = "*/_{}.venv/*site-packages/bazel.pth".format(
+            target.meta.format_str("{name}"),
+        )
+        target.runfiles().contains_predicate(matching.str_matches(venv_file))
+
+_tests.append(_test_venv_output_prefix_with_path_separators)
+
+def _test_windows_target_with_path_separators(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "/nested_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_windows_target_with_path_separators_impl,
+        target = name + "/nested_subject",
+        config_settings = {
+            "//command_line_option:cpu": "windows_x86_64",
+            "//command_line_option:crosstool_top": CROSSTOOL_TOP,
+            "//command_line_option:extra_execution_platforms": [platform_targets.WINDOWS_X86_64],
+            "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
+            "//command_line_option:platforms": [platform_targets.WINDOWS_X86_64],
+        },
+        attr_values = {},
+    )
+
+def _test_windows_target_with_path_separators_impl(env, target):
+    target = env.expect.that_target(target)
+    target.runfiles().contains_predicate(matching.str_endswith(
+        target.meta.format_str("/{name}"),
+    ))
+
+_tests.append(_test_windows_target_with_path_separators)
 
 # =====
 # You were gonna add a test at the end, weren't you?

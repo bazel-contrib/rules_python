@@ -14,9 +14,9 @@ class TestUV(unittest.TestCase):
 
         data_rpath = os.environ["DATA"]
         uv_help_path = rfiles.Rlocation(data_rpath)
-        assert (
-            uv_help_path is not None
-        ), f"the rlocation path was not found: {data_rpath}"
+        assert uv_help_path is not None, (
+            f"the rlocation path was not found: {data_rpath}"
+        )
 
         uv_help = Path(uv_help_path).read_text()
 

@@ -1,7 +1,7 @@
-import pathlib
-import unittest
 import json
+import pathlib
 import tempfile
+import unittest
 
 from merger import merge_modules_mappings
 

@@ -15,6 +15,7 @@
 "Repo rule used by bzlmod extension to create a repo that has a map of Python interpreters and their labels"
 
 load("//python:versions.bzl", "PLATFORMS")
+load(":pbs_manifest.bzl", "parse_runtime_manifest")
 load(":text_util.bzl", "render")
 load(":toolchains_repo.bzl", "toolchain_suite_content")
 
@@ -30,13 +31,13 @@ load("@@{rules_python}//python/private:py_toolchain_suite.bzl", "py_toolchain_su
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 bzl_library(
-    name = "interpreters_bzl",
+    name = "interpreters",
     srcs = ["interpreters.bzl"],
     visibility = ["@rules_python//:__subpackages__"],
 )
 
 bzl_library(
-    name = "versions_bzl",
+    name = "versions",
     srcs = ["versions.bzl"],
     visibility = ["@rules_python//:__subpackages__"],
 )
@@ -118,15 +119,24 @@ def _hub_repo_impl(rctx):
         executable = False,
     )
 
+    python_versions = rctx.attr.python_versions
+    if not python_versions and not rctx.attr.toolchain_python_versions:
+        content = rctx.read(rctx.path(Label("//python/private:runtimes_manifest.txt")))
+        entries = parse_runtime_manifest(content)
+        python_versions_str = render.list(sorted({getattr(e, "python_version", ""): None for e in entries if getattr(e, "python_version", "")}))
+
+    else:
+        python_versions_str = render.list(python_versions) if python_versions else render.list(sorted({
+            v: None
+            for v in rctx.attr.toolchain_python_versions
+        }))
+
     rctx.file(
         "versions.bzl",
         _versions_bzl_template.format(
             default_python_version = rctx.attr.default_python_version,
             minor_mapping = render.dict(rctx.attr.minor_mapping),
-            python_versions = rctx.attr.python_versions or render.list(sorted({
-                v: None
-                for v in rctx.attr.toolchain_python_versions
-            })),
+            python_versions = python_versions_str,
         ),
         executable = False,
     )

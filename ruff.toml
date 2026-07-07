@@ -1,0 +1,29 @@
+# ruff.toml
+
+# Support Python 3.8 and above
+target-version = "py38"
+
+# Match Black's default line length
+line-length = 88
+
+# Ignore testdata files
+extend-exclude = ["**/testdata/**", "testdata"]
+
+[lint]
+# Enable Pyflakes (F) and pycodestyle (E, W) for standard linting,
+# and isort (I) for import sorting
+select = ["F", "E", "W", "I"]
+
+# Like Black, allow certain violations that may conflict with its formatting
+ignore = ["E501"]
+
+[lint.isort]
+# Matches isort's profile = "black" behavior
+combine-as-imports = true
+force-single-line = false
+
+[format]
+# The Ruff formatter defaults to Black's style
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false

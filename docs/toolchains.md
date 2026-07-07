@@ -242,6 +242,9 @@ existing attributes:
   {attr}`python.single_version_platform_override.coverage_tool`.
 * Adding additional Python versions via {bzl:obj}`python.single_version_override` or
   {bzl:obj}`python.single_version_platform_override`.
+* Adding additional Python versions dynamically from a manifest file or URL
+  via {attr}`python.override.add_runtime_manifest_files` or
+  {attr}`python.override.add_runtime_manifest_urls`.
 
 ### Registering custom runtimes
 
@@ -309,6 +312,73 @@ that can be used with `target_settings`. Some particular ones of note are
 Added support for custom platform names, `target_compatible_with`, and
 `target_settings` with `single_version_platform_override`.
 :::
+
+### Registering runtimes from a manifest
+
+If you want to register multiple custom runtimes or versions at once, you can
+use a python-build-standalone manifest file. This is useful if you want to
+adopt new versions that are not yet built into `rules_python` without having
+to manually define each one using `single_version_platform_override`.
+
+To do this, specify the `add_runtime_manifest_files` or
+`add_runtime_manifest_urls` (and `runtime_manifest_sha`) attributes in
+`python.override` in your `MODULE.bazel`.
+
+In the example below, we register all runtimes available in a specific local
+or remote PBS release manifest:
+
+```starlark
+# File: MODULE.bazel
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.override(
+    add_runtime_manifest_files = [
+        "@//:SHA256SUMS",
+    ],
+    add_runtime_manifest_urls = [
+        "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/SHA256SUMS",
+    ],
+    base_url = "https://example.com/downloads",
+    runtime_manifest_sha = "ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f",
+)
+```
+
+#### Manifest file format
+
+The manifest must be a plain text file where each line contains the SHA256 hash
+and the location of a runtime archive, separated by whitespace:
+
+```
+<sha256> <location>
+```
+
+The `<location>` can be either:
+- A relative filename (e.g.,
+  `cpython-3.10.20+20260414-x86_64-unknown-linux-gnu-install_only.tar.zst`).
+  In this case, the download URL is constructed by appending the filename to
+  the `base_url` attribute (if using `add_runtime_manifest_files`) or to the
+  parent directory of each URL in `add_runtime_manifest_urls` (treating them
+  as mirrors).
+- An absolute URL (e.g.,
+  `https://example.com/downloads/cpython-3.10.20+20260414-x86_64-unknown-linux-gnu-install_only.tar.zst`).
+  In this case, the URL is used directly to download the archive.
+
+In both cases, the filename or the last path segment of the URL must follow
+the standard python-build-standalone naming convention. `rules_python` parses
+this name to extract runtime metadata (such as Python version, target
+architecture, operating system, and libc).
+
+Notes:
+- `rules_python` will read or download the manifest, parse it, and
+  automatically register toolchains for all valid Python runtimes found in it
+  that match supported platforms.
+- Only runtimes matching known platforms in `rules_python` will be registered.
+
+:::{versionadded} 2.1.0
+Added support for registering runtimes from a manifest using
+`add_runtime_manifest_files`, `add_runtime_manifest_urls`, and
+`runtime_manifest_sha` in `python.override`.
+:::
+
 
 ### Using defined toolchains from WORKSPACE
 

@@ -22,18 +22,25 @@ from collections.abc import Collection
 from typing import Callable, Iterable, TypeVar
 
 from docutils import nodes as docutils_nodes
-from docutils.parsers.rst import directives as docutils_directives
-from docutils.parsers.rst import states
-from sphinx import addnodes, builders
-from sphinx import directives as sphinx_directives
-from sphinx import domains, environment, roles
+from docutils.parsers.rst import directives as docutils_directives, states
+from sphinx import (
+    addnodes,
+    builders,
+    directives as sphinx_directives,
+    domains,
+    environment,
+    roles,
+)
 from sphinx.highlighting import lexer_classes
 from sphinx.locale import _
-from sphinx.util import docfields
-from sphinx.util import docutils as sphinx_docutils
-from sphinx.util import inspect, logging
-from sphinx.util import nodes as sphinx_nodes
-from sphinx.util import typing as sphinx_typing
+from sphinx.util import (
+    docfields,
+    docutils as sphinx_docutils,
+    inspect,
+    logging,
+    nodes as sphinx_nodes,
+    typing as sphinx_typing,
+)
 from typing_extensions import TypeAlias, override
 
 _logger = logging.getLogger(__name__)
@@ -455,7 +462,7 @@ class _BzlCsvField(_BzlXrefField):
         field_text = item[1][0].astext()
         parts = [p.strip() for p in field_text.split(",")]
         field_body = docutils_nodes.field_body()
-        for _, is_last, part in _position_iter(parts):
+        for _, is_last, part in _position_iter(parts):  # noqa: F402
             node = self.make_xref(
                 self.bodyrolename,
                 self._body_domain or domain,
@@ -608,8 +615,10 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
             root, class_name
         ) -> typing.Union[None, docutils_nodes.Element]:
             matches = root.findall(
-                lambda node: isinstance(node, docutils_nodes.Element)
-                and class_name in node["classes"]
+                lambda node: (
+                    isinstance(node, docutils_nodes.Element)
+                    and class_name in node["classes"]
+                )
             )
             found = next(matches, None)
             return found
@@ -766,7 +775,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
         return obj_id
 
     def _signature_add_object_type(self, sig_node: addnodes.desc_signature):
-        if sig_object_type := self._get_signature_object_type():
+        if sig_object_type := self._get_signature_object_type():  # noqa: F841
             sig_node += addnodes.desc_annotation("", self._get_signature_object_type())
             sig_node += addnodes.desc_sig_space()
 

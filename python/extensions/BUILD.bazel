@@ -25,28 +25,47 @@ filegroup(
 )
 
 bzl_library(
-    name = "pip_bzl",
-    srcs = ["pip.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = ["//python/private/pypi:pip_bzl"],
-)
-
-bzl_library(
-    name = "python_bzl",
-    srcs = ["python.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "//python/private:python_bzl",
-    ],
-)
-
-bzl_library(
-    name = "config_bzl",
+    name = "config",
     srcs = ["config.bzl"],
     visibility = ["//:__subpackages__"],
     deps = [
-        "//python/private:internal_config_repo_bzl",
-        "//python/private/pypi:deps_bzl",
+        "//python/private:internal_config_repo",
+        "//python/private/pypi:deps",
         "@bazel_features//:features",
     ],
+)
+
+bzl_library(
+    name = "pip",
+    srcs = ["pip.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//python/private/pypi:pip"],
+)
+
+bzl_library(
+    name = "python",
+    srcs = ["python.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//python/private:python"],
+)
+
+alias(
+    name = "config_bzl",
+    actual = ":config",
+    deprecation = "Use //python/extensions:config instead",
+    visibility = ["//:__subpackages__"],
+)
+
+alias(
+    name = "pip_bzl",
+    actual = ":pip",
+    deprecation = "Use //python/extensions:pip instead",
+    visibility = ["//:__subpackages__"],
+)
+
+alias(
+    name = "python_bzl",
+    actual = ":python",
+    deprecation = "Use //python/extensions:python instead",
+    visibility = ["//:__subpackages__"],
 )

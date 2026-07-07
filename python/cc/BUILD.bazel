@@ -47,21 +47,35 @@ toolchain_type(
     visibility = ["//visibility:public"],
 )
 
-bzl_library(
-    name = "py_cc_toolchain_bzl",
-    srcs = ["py_cc_toolchain.bzl"],
-    visibility = ["//visibility:public"],
-    deps = ["//python/private:py_cc_toolchain_macro_bzl"],
-)
-
-bzl_library(
-    name = "py_cc_toolchain_info_bzl",
-    srcs = ["py_cc_toolchain_info.bzl"],
-    visibility = ["//visibility:public"],
-    deps = ["//python/private:py_cc_toolchain_info_bzl"],
-)
-
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),
+)
+
+bzl_library(
+    name = "py_cc_toolchain",
+    srcs = ["py_cc_toolchain.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//python/private:py_cc_toolchain_macro"],
+)
+
+bzl_library(
+    name = "py_cc_toolchain_info",
+    srcs = ["py_cc_toolchain_info.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//python/private:py_cc_toolchain_info"],
+)
+
+alias(
+    name = "py_cc_toolchain_bzl",
+    actual = ":py_cc_toolchain",
+    deprecation = "Use //python/cc:py_cc_toolchain instead",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "py_cc_toolchain_info_bzl",
+    actual = ":py_cc_toolchain_info",
+    deprecation = "Use //python/cc:py_cc_toolchain_info instead",
+    visibility = ["//visibility:public"],
 )

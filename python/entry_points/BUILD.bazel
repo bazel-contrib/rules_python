@@ -21,17 +21,22 @@ exports_files(
     visibility = ["//docs:__subpackages__"],
 )
 
-bzl_library(
-    name = "py_console_script_binary_bzl",
-    srcs = [":py_console_script_binary.bzl"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//python/private:py_console_script_binary_bzl",
-    ],
-)
-
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),
     visibility = ["//python:__subpackages__"],
+)
+
+bzl_library(
+    name = "py_console_script_binary",
+    srcs = ["py_console_script_binary.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//python/private:py_console_script_binary"],
+)
+
+alias(
+    name = "py_console_script_binary_bzl",
+    actual = ":py_console_script_binary",
+    deprecation = "Use //python/entry_points:py_console_script_binary instead",
+    visibility = ["//visibility:public"],
 )

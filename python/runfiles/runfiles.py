@@ -22,14 +22,14 @@ This enables prefix-based repository mappings to reduce memory usage for large
 dependency graphs under bzlmod.
 :::
 """
-import collections.abc
+
 import inspect
 import os
 import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Generator, Optional, Tuple, Union
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -579,9 +579,9 @@ class Runfiles:
             #   which also should not be mapped.
             return self._strategy.RlocationChecked(path)
 
-        assert (
-            source_repo is not None
-        ), "BUG: if the `source_repo` is None, we should never go past the `if` statement above"
+        assert source_repo is not None, (
+            "BUG: if the `source_repo` is None, we should never go past the `if` statement above"
+        )
 
         # Look up the target repository using the repository mapping
         if target_canonical is not None:

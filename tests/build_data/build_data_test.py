@@ -4,7 +4,6 @@ from python.runfiles import runfiles
 
 
 class BuildDataTest(unittest.TestCase):
-
     def test_target_build_data(self):
         import bazel_binary_info
 
@@ -16,7 +15,6 @@ class BuildDataTest(unittest.TestCase):
         self.assertIn("BUILD_USER ", build_data)
         self.assertIn("BUILD_TIMESTAMP ", build_data)
         self.assertIn("FORMATTED_DATE ", build_data)
-        self.assertIn("CONFIG_MODE TARGET", build_data)
         self.assertIn("STAMPED TRUE", build_data)
 
     def test_tool_build_data(self):
@@ -26,7 +24,6 @@ class BuildDataTest(unittest.TestCase):
             build_data = fp.read()
 
         self.assertIn("STAMPED FALSE", build_data)
-        self.assertIn("CONFIG_MODE EXEC", build_data)
 
 
 unittest.main()

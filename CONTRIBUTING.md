@@ -171,11 +171,31 @@ validation function.
 
 ### Documenting changes
 
-Changes are documented in two places: CHANGELOG.md and API docs.
+Changes are documented in two places: news entries and API docs.
 
-CHANGELOG.md contains a brief, human friendly, description. This text is
-intended for easy skimming so that, when people upgrade, they can quickly get a
-sense of what's relevant to them.
+Instead of modifying `CHANGELOG.md` directly, you should create a news entry file in the `news/` directory. These files are automatically assembled into `CHANGELOG.md` at release time.
+
+#### Creating a news entry
+
+Create a `.md` file in the `news/` directory. The filename must follow the format `<id>.<category>.md`:
+
+*   `<id>`: A unique identifier, typically the GitHub Pull Request number or Issue number (e.g., `1234`).
+*   `<category>`: The category of the change, which must be one of:
+    *   `added`: For new features or behavior added in a backwards-compatible manner.
+    *   `changed`: For changes in existing behavior.
+    *   `fixed`: For bug fixes.
+    *   `removed`: For removed features or behavior.
+
+The content of the file should be a brief, human-friendly description of the change. Do not include a leading bullet point (e.g. `*` or `-`), as this is automatically added during assembly. If your change is specific to a subsystem, prefix it with the subsystem in parentheses, e.g., `(gazelle) Fixed handling of...`.
+
+Example: `news/1234.fixed.md`
+```markdown
+(gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary` targets.
+```
+
+Do not edit `CHANGELOG.md` directly for unreleased changes.
+
+#### API documentation
 
 API documentation are the doc strings for functions, fields, attributes, etc.
 When user-visible or notable behavior is added, changed, or removed, the

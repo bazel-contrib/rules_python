@@ -25,6 +25,10 @@ buildifier:
   bazel: 7.x
   skip_in_bazel_downstream_pipeline: "Bazel 7 required"
 .reusable_config: &reusable_config
+  # USE_BAZEL_DIFF is disabled because target_compatible_with is used heavily,
+  # but BazelCI's bazel-diff integration errors when handling them.
+  # environment:
+  #   USE_BAZEL_DIFF: "1"
   build_targets:
     - "--"
     - "..."
@@ -80,6 +84,9 @@ buildifier:
   coverage_targets: ["..."]
 .coverage_targets_example_bzlmod_build_file_generation: &coverage_targets_example_bzlmod_build_file_generation
   coverage_targets: ["//:bzlmod_build_file_generation_test"]
+.coverage_targets_bootstrap: &coverage_targets_bootstrap
+  coverage_targets:
+    - //tests/bootstrap_impls:stdlib_shadowing_system_python_test
 .coverage_targets_example_multi_python: &coverage_targets_example_multi_python
   coverage_targets:
     - //tests:my_lib_3_10_test
@@ -212,6 +219,7 @@ tasks:
     bazel: 7.x
   ubuntu:
     <<: *reusable_config
+    <<: *coverage_targets_bootstrap
     name: "Default: Ubuntu, Bazel {bazel}"
     platform: ubuntu2204
     bazel: ${{ bazel }}
@@ -296,7 +304,7 @@ tasks:
     <<: *minimum_supported_version
     <<: *reusable_config
     name: "RBE: Ubuntu, minimum Bazel"
-    platform: rbe_ubuntu2204
+    platform: rbe_ubuntu2404
     build_flags:
       - "--experimental_repository_cache_hardlinks=false"
       # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
@@ -315,7 +323,7 @@ tasks:
   rbe:
     <<: *reusable_config
     name: "RBE: Ubuntu"
-    platform: rbe_ubuntu2204
+    platform: rbe_ubuntu2404
     # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
     # See https://github.com/bazelbuild/rules_python/issues/2499
     bazel: 8.x

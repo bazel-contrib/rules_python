@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """site initialization logic for Bazel-built py_binary targets."""
+
 import os
 import os.path
 import sys
@@ -97,7 +98,15 @@ def _get_windows_path_with_unc_prefix(path):
     # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
     import platform
 
-    if platform.win32_ver()[1] >= "10.0.14393":
+    win32_version = None
+    # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
+    for _ in range(3):
+        try:
+            win32_version = platform.win32_ver()[1]
+            break
+        except (ValueError, KeyError):
+            pass
+    if win32_version and win32_version >= "10.0.14393":
         return path
 
     # import sysconfig only now to maintain python 2.6 compatibility
@@ -130,7 +139,6 @@ def _setup_sys_path():
     """Perform Bazel/binary specific sys.path setup."""
     _print_verbose("site init: initial sys.path:\n", "\n".join(sys.path))
     seen = set(sys.path)
-    python_path_entries = []
 
     def _maybe_add_path(path, reason):
         if path in seen:

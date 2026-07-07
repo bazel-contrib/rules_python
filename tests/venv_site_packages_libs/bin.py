@@ -1,5 +1,4 @@
 import importlib
-import os
 import sys
 import sysconfig
 import unittest
@@ -65,7 +64,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
     def test_data_is_included(self):
         self.assert_imported_from_venv("simple")
-        module = importlib.import_module("simple")
+        module = importlib.import_module("simple")  # noqa: F841
         # Ensure that packages from simple v1 are not present
         files = [p.name for p in self.site_packages.glob("*")]
         self.assertIn("simple_v1_extras", files)
@@ -80,7 +79,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
     def test_dirs_from_replaced_package_are_not_present(self):
         self.assert_imported_from_venv("simple")
-        module = importlib.import_module("simple")
+        module = importlib.import_module("simple")  # noqa: F841
         dist_info_dirs = [p.name for p in self.site_packages.glob("simple*.dist-info")]
         self.assertEqual(
             ["simple-1.0.0.dist-info"],
@@ -93,14 +92,14 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
 
     def test_data_from_another_pkg_is_included_via_copy_file(self):
         self.assert_imported_from_venv("simple")
-        module = importlib.import_module("simple")
+        module = importlib.import_module("simple")  # noqa: F841
         # Ensure that packages from simple v1 are not present
         d = self.site_packages / "external_data"
         files = [p.name for p in d.glob("*")]
         self.assertIn("another_module_data.txt", files)
 
     def test_whl_with_data1_included(self):
-        module = self.assert_imported_from_venv("whl_with_data1")
+        module = self.assert_imported_from_venv("whl_with_data1")  # noqa: F841
         site_packages_rel = self.site_packages.relative_to(self.venv)
         # purelib
         self.assert_venv_path_exists(site_packages_rel / "whl_with_data1/data_file.txt")
@@ -110,7 +109,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
             site_packages_rel / "whl_with_data1/platlib_file.txt"
         )
 
-        venv_root = self.venv
+        venv_root = self.venv  # noqa: F841
 
         # data
         self.assert_venv_path_exists("whl_with_data1/data_data_file.txt")
@@ -124,7 +123,7 @@ class VenvSitePackagesLibraryTest(unittest.TestCase):
         )
 
     def test_whl_with_data2_included(self):
-        module = self.assert_imported_from_venv("whl_with_data2")
+        module = self.assert_imported_from_venv("whl_with_data2")  # noqa: F841
 
         site_packages_rel = self.site_packages.relative_to(self.venv)
         self.assert_venv_path_exists(site_packages_rel / "whl_with_data2/data_file.txt")

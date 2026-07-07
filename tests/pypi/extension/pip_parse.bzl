@@ -3,7 +3,7 @@
 def pip_parse(
         *,
         hub_name,
-        python_version,
+        python_version = None,
         add_libdir_to_library_search_path = False,
         auth_patterns = {},
         download_only = False,
@@ -19,6 +19,7 @@ def pip_parse(
         netrc = None,
         parse_all_requirements_files = True,
         pip_data_exclude = None,
+        pyproject_toml = None,
         python_interpreter = None,
         python_interpreter_target = None,
         quiet = True,
@@ -31,6 +32,7 @@ def pip_parse(
         target_platforms = [],
         simpleapi_skip = [],
         timeout = 600,
+        uv_lock = None,
         whl_modifications = {},
         **kwargs):
     """A simple helper for testing to simulate the PyPI extension parse tag class"""
@@ -52,6 +54,7 @@ def pip_parse(
         netrc = netrc,
         parse_all_requirements_files = parse_all_requirements_files,
         pip_data_exclude = pip_data_exclude,
+        pyproject_toml = pyproject_toml,
         python_interpreter = python_interpreter,
         python_interpreter_target = python_interpreter_target,
         python_version = python_version,
@@ -63,10 +66,10 @@ def pip_parse(
         requirements_windows = requirements_windows,
         srcs = srcs,
         timeout = timeout,
+        uv_lock = uv_lock,
         whl_modifications = whl_modifications,
         parallel_download = False,
         experimental_index_url_overrides = {},
         simpleapi_skip = simpleapi_skip,
-        _evaluate_markers_srcs = [],
         **kwargs
     )

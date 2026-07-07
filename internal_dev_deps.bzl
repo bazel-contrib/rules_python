@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Dependencies that are needed for development and testing of rules_python itself."""
+"""Dependencies that are needed for development and testing of rules_python itself in WORKSPACE mode."""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", _http_archive = "http_archive", _http_file = "http_file")
 load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
@@ -34,7 +34,7 @@ def http_file(name, **kwargs):
     )
 
 def rules_python_internal_deps():
-    """Fetches all required dependencies for developing/testing rules_python itself.
+    """Fetches all required dependencies for developing/testing rules_python itself in WORKSPACE mode.
 
     Setup of these dependencies is done by `internal_dev_setup.bzl`
 

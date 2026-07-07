@@ -1,0 +1,21 @@
+load("@rules_python//python:py_test.bzl", "py_test")
+
+# A test whose main module only defines a test case but never runs it. With
+# --validate_test_main=enabled this should fail to build.
+py_test(
+    name = "inert_test",
+    srcs = ["inert_test.py"],
+)
+
+# A test whose main module invokes a runner. This should always build.
+py_test(
+    name = "good_test",
+    srcs = ["good_test.py"],
+)
+
+# A test whose main module defines nothing and only imports. This is allowed
+# even with validation enabled, since it isn't the "defined but never run" case.
+py_test(
+    name = "import_only_test",
+    srcs = ["import_only_test.py"],
+)

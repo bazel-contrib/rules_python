@@ -9,6 +9,7 @@ print(f"inner: RUNFILES_MANIFEST_FILE='{runfiles_manifest_file}'")
 
 try:
     import tests.bootstrap_impls.bin_calls_bin.inner_lib as inner_lib
+
     print(f"inner: import_result='{inner_lib.confirm()}'")
 except ImportError as e:
     print(f"inner: import_result='{e}'")

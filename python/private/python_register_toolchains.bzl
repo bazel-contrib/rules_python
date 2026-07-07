@@ -17,7 +17,7 @@
 
 load(
     "//python:versions.bzl",
-    "DEFAULT_RELEASE_BASE_URL",
+    "DEFAULT_RELEASE_BASE_URLS",
     "MINOR_MAPPING",
     "PLATFORMS",
     "TOOL_VERSIONS",
@@ -26,6 +26,7 @@ load(
 load(":coverage_deps.bzl", "coverage_dep")
 load(":full_version.bzl", "full_version")
 load(":python_repository.bzl", "python_repository")
+load(":repo_utils.bzl", "repo_utils")
 load(
     ":toolchains_repo.bzl",
     "host_compatible_python_repo",
@@ -89,7 +90,20 @@ def python_register_toolchains(
     if bzlmod_toolchain_call:
         register_toolchains = False
 
-    base_url = kwargs.pop("base_url", DEFAULT_RELEASE_BASE_URL)
+    # When invoked from the bzlmod python extension, a module_ctx is plumbed in
+    # so the coverage_dep logger can attribute warnings to the right module and
+    # honor module-root filtering. In the WORKSPACE/macro path no module_ctx is
+    # available; a minimal stand-in struct gives the logger what it needs.
+    module_ctx = kwargs.pop("_internal_module_ctx", None)
+    if module_ctx != None:
+        coverage_logger = repo_utils.logger(module_ctx, name = "coverage_dep")
+    else:
+        coverage_logger = repo_utils.logger(
+            struct(getenv = lambda _: None),
+            name = "coverage_dep",
+        )
+
+    base_urls = kwargs.pop("base_urls", DEFAULT_RELEASE_BASE_URLS)
     tool_versions = tool_versions or TOOL_VERSIONS
     minor_mapping = minor_mapping or MINOR_MAPPING
 
@@ -108,7 +122,12 @@ def python_register_toolchains(
             continue
 
         loaded_platforms.append(platform)
-        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(platform, python_version, base_url, tool_versions)
+        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(
+            platform,
+            python_version,
+            base_urls = base_urls,
+            tool_versions = tool_versions,
+        )
 
         # allow passing in a tool version
         coverage_tool = None
@@ -121,6 +140,7 @@ def python_register_toolchains(
                 ),
                 python_version = python_version,
                 platform = platform,
+                logger = coverage_logger,
                 visibility = ["@{name}_{platform}//:__subpackages__".format(
                     name = name,
                     platform = platform,

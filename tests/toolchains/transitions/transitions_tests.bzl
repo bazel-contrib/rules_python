@@ -14,11 +14,10 @@
 
 ""
 
-load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING")
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
-load("//python:versions.bzl", "TOOL_VERSIONS")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:full_version.bzl", "full_version")  # buildifier: disable=bzl-visibility
@@ -142,7 +141,7 @@ def _test_full_version(name):
         name = name,
         tests = {
             v.replace(".", "_"): (v, v)
-            for v in TOOL_VERSIONS
+            for v in PYTHON_VERSIONS
         },
     )
 

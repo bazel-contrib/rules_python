@@ -20,9 +20,8 @@ grep_exit_code=0
 # Exclude CONTRIBUTING.md, RELEASING.md because they document how to use these strings.
 grep --exclude=CONTRIBUTING.md \
   --exclude=RELEASING.md \
-  --exclude=release.py \
-  --exclude=release_test.py \
   --exclude-dir=.* \
+  --exclude-dir=release \
   VERSION_NEXT_ -r || grep_exit_code=$?
 
 if [[ $grep_exit_code -eq 0 ]]; then

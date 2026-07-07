@@ -38,6 +38,7 @@ load(":cc_helper.bzl", "cc_helper")
 load(
     ":common.bzl",
     "ExplicitSymlink",
+    "actions_run",
     "collect_cc_info",
     "collect_deps",
     "collect_imports",
@@ -57,12 +58,13 @@ load(
     "runfiles_root_path",
 )
 load(":common_labels.bzl", "labels")
-load(":flags.bzl", "BootstrapImplFlag", "VenvsUseDeclareSymlinkFlag", "read_possibly_native_flag")
+load(":flags.bzl", "BootstrapImplFlag", "ValidateTestMainFlag", "VenvsUseDeclareSymlinkFlag", "read_possibly_native_flag")
 load(":precompile.bzl", "maybe_precompile")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_executable_info.bzl", "PyExecutableInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkKind")
 load(":py_internal.bzl", "py_internal")
+load(":py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
@@ -218,6 +220,10 @@ accepting arbitrary Python versions.
             default = "//python/private:debugger_if_target_config",
             providers = [PyInfo],
         ),
+        "_exe_zip_maker": lambda: attrb.Label(
+            cfg = "exec",
+            default = "//tools/private/zipapp:exe_zip_maker",
+        ),
         "_launcher": lambda: attrb.Label(
             cfg = "target",
             # NOTE: This is an executable, but is only used for Windows. It
@@ -306,6 +312,9 @@ def _create_executable(
     else:
         base_executable_name = executable.basename
 
+    # Venv outputs are package-relative, so preserve the full target name to
+    # avoid collisions between targets like foo/tool, bar/tool, and foo_tool.
+    venv_output_prefix = ctx.label.name
     venv = None
 
     # The check for stage2_bootstrap_template is to support legacy
@@ -318,7 +327,7 @@ def _create_executable(
     ):
         venv = _create_venv(
             ctx,
-            output_prefix = base_executable_name,
+            output_prefix = venv_output_prefix,
             imports = imports,
             runtime_details = runtime_details,
             add_runfiles_root_to_sys_path = (
@@ -424,7 +433,7 @@ WARNING: Target: {}
 
         # On Windows, the main executable has an "exe" extension, so
         # here we re-use the un-extensioned name for the bootstrap output.
-        bootstrap_output = ctx.actions.declare_file(base_executable_name)
+        bootstrap_output = ctx.actions.declare_file(base_executable_name, sibling = executable)
 
         # The launcher looks for the non-zip executable next to
         # itself, so add it to the default outputs.
@@ -1091,15 +1100,16 @@ def _create_executable_zip_file(
     else:
         ctx.actions.write(prelude, "#!/usr/bin/env python3\n")
 
-    ctx.actions.run_shell(
-        command = "cat {prelude} {zip} > {output}".format(
-            prelude = prelude.path,
-            zip = zip_file.path,
-            output = output.path,
-        ),
-        inputs = [prelude, zip_file],
+    args = ctx.actions.args()
+    args.add(prelude)
+    args.add(zip_file)
+    args.add(output)
+    actions_run(
+        ctx,
+        executable = ctx.attr._exe_zip_maker,
+        arguments = [args],
+        inputs = depset([prelude, zip_file]),
         outputs = [output],
-        use_default_shell_env = True,
         mnemonic = "PyBuildExecutableZip",
         progress_message = "Build Python zip executable: %{label}",
     )
@@ -1167,6 +1177,11 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         main_py = determine_main(ctx)
     else:
         main_py = None
+
+    # Keep a reference to the main source file (before it may be replaced with a
+    # precompiled pyc below) so the test-main validation can statically analyze
+    # the original source.
+    main_py_source = main_py
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
     precompile_result = maybe_precompile(ctx, direct_sources)
 
@@ -1285,9 +1300,83 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         implicit_pyc_source_files = implicit_pyc_source_files,
         imports = imports,
     )
-    _add_provider_output_group_info(providers, py_info, exec_result.output_groups)
+    output_groups = dict(exec_result.output_groups)
+    if is_test:
+        _maybe_add_test_main_validation(ctx, main_py_source, output_groups)
+    _add_provider_output_group_info(providers, py_info, output_groups)
 
     return providers
+
+def _maybe_add_test_main_validation(ctx, main_py, output_groups):
+    """Adds a validation action that checks the test main actually runs tests.
+
+    This is a safeguard against the common pitfall of defining test classes or
+    functions but forgetting to invoke a test runner, which causes the test to
+    silently pass without running anything. See the
+    `//python/config_settings:validate_test_main` flag.
+
+    Args:
+        ctx: Rule ctx.
+        main_py: File or None; the main entry point source file. None when the
+            target uses `main_module` (which can't be statically analyzed here).
+        output_groups: dict[str, depset[File]]; mutated in place to add the
+            `_validation` output group when a validation action is created.
+    """
+    if not ValidateTestMainFlag.is_enabled(ctx):
+        return
+
+    # `main_module` targets execute a module by name; there's no single source
+    # file to statically analyze, so the check doesn't apply.
+    if main_py == None:
+        return
+
+    exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
+    if exec_tools_toolchain == None or exec_tools_toolchain.exec_tools.exec_interpreter == None:
+        fail(
+            "Validating py_test main modules requires the exec tools toolchain " +
+            "with an exec interpreter, but none was found. Either register one " +
+            "or set --@rules_python//python/config_settings:validate_test_main=disabled.",
+        )
+
+    exec_tools = exec_tools_toolchain.exec_tools
+    validator = ctx.attr._validate_test_main
+    program_info = validator[PyInterpreterProgramInfo]
+    interpreter = exec_tools.exec_interpreter[DefaultInfo].files_to_run
+    validator_files_to_run = validator[DefaultInfo].files_to_run
+
+    validation_output = ctx.actions.declare_file(ctx.label.name + "_validate_test_main.txt")
+
+    args = ctx.actions.args()
+    args.add_all(program_info.interpreter_args)
+    args.add(validator_files_to_run.executable)
+    args.add("--src", main_py)
+    args.add("--src_name", main_py.short_path)
+    args.add("--label", str(ctx.label))
+    args.add("--output", validation_output)
+
+    execution_requirements = {}
+    if testing.ExecutionInfo in validator:
+        execution_requirements = validator[testing.ExecutionInfo].requirements
+
+    ctx.actions.run(
+        executable = interpreter,
+        arguments = [args],
+        inputs = [main_py],
+        outputs = [validation_output],
+        tools = [validator_files_to_run],
+        mnemonic = "PyValidateTestMain",
+        progress_message = "Validating py_test main %{label}",
+        env = program_info.env | {
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONSAFEPATH": "1",
+        },
+        execution_requirements = execution_requirements,
+        toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE,
+    )
+    if "_validation" in output_groups:
+        output_groups["_validation"] = depset([validation_output], transitive = [output_groups["_validation"]])
+    else:
+        output_groups["_validation"] = depset([validation_output])
 
 def _get_build_info(ctx, cc_toolchain):
     build_info_files = py_internal.cc_toolchain_build_info_files(cc_toolchain)
@@ -1485,6 +1574,25 @@ def _get_base_runfiles_for_binary(
     app_runfiles = app_runfiles.build(ctx)
 
     if _should_create_init_files(ctx):
+        # buildifier: disable=print
+        print(
+            """
+======================================================================
+WARNING: Target {} is using implicit __init__.py creation.
+  This diabolic behavior is deprecated and will be disabled by default in a
+  future release.
+  See https://github.com/bazel-contrib/rules_python/issues/2945
+
+  Ensure all __init__.py files are explicitly created and
+  added to the srcs or deps of your targets.
+
+  Disable implicit creation by setting:
+    legacy_create_init = 0
+  on the target, or globally by setting:
+    --incompatible_default_to_explicit_init_py
+======================================================================
+            """.rstrip().format(ctx.label),
+        )
         app_runfiles = _py_builtins.merge_runfiles_with_generated_inits_empty_files_supplier(
             ctx = ctx,
             runfiles = app_runfiles,
@@ -1578,9 +1686,6 @@ def _write_build_data(ctx):
         executable = action_exe,
         arguments = [action_args],
         env = {
-            # Include config mode so that binaries can detect if they're
-            # being used as a build tool or not, allowing for runtime optimizations.
-            "CONFIG_MODE": "EXEC" if _is_tool_config(ctx) else "TARGET",
             "INFO_FILE": info_file.path if info_file else "",
             "OUTPUT": build_data.path,
             # Include this so it's explicit, otherwise, one has to detect

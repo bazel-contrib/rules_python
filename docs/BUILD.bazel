@@ -13,11 +13,11 @@
 # limitations under the License.
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("@dev_pip//:requirements.bzl", "requirement")
 load("@sphinxdocs//sphinxdocs:readthedocs.bzl", "readthedocs_install")
 load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load("@sphinxdocs//sphinxdocs:sphinx_docs_library.bzl", "sphinx_docs_library")
 load("@sphinxdocs//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
+load("//python:defs.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
@@ -37,6 +37,27 @@ _TARGET_COMPATIBLE_WITH = select({
     "@platforms//os:macos": [],
     "//conditions:default": ["@platforms//:incompatible"],
 }) if BZLMOD_ENABLED else ["@platforms//:incompatible"]
+
+py_binary(
+    name = "merge_changelog",
+    srcs = ["merge_changelog.py"],
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    deps = [
+        "//tools/private/release:changelog_news",
+    ],
+)
+
+genrule(
+    name = "merged_changelog",
+    srcs = [
+        "//:CHANGELOG.md",
+        "//news:news_files",
+    ],
+    outs = ["changelog.md"],
+    cmd = "$(location :merge_changelog) --changelog $(location //:CHANGELOG.md) --news-dir news --output $@",
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    tools = [":merge_changelog"],
+)
 
 # See README.md for instructions. Short version:
 # * `bazel run //docs:docs.serve` in a separate terminal
@@ -61,8 +82,8 @@ sphinx_docs(
         "html",
     ],
     renamed_srcs = {
-        "//:CHANGELOG.md": "changelog.md",
         "//:CONTRIBUTING.md": "contributing.md",
+        ":merged_changelog": "changelog.md",
         "@sphinxdocs//sphinxdocs/inventories:bazel_inventory": "bazel_inventory.inv",
     },
     sphinx = ":sphinx-build",
@@ -85,58 +106,59 @@ build_test(
 sphinx_stardocs(
     name = "bzl_api_docs",
     srcs = [
-        "//python:defs_bzl",
-        "//python:features_bzl",
-        "//python:packaging_bzl",
-        "//python:pip_bzl",
-        "//python:proto_bzl",
-        "//python:py_binary_bzl",
-        "//python:py_cc_link_params_info_bzl",
-        "//python:py_exec_tools_info_bzl",
-        "//python:py_exec_tools_toolchain_bzl",
-        "//python:py_executable_info_bzl",
-        "//python:py_library_bzl",
-        "//python:py_runtime_bzl",
-        "//python:py_runtime_info_bzl",
-        "//python:py_test_bzl",
-        "//python:repositories_bzl",
-        "//python/api:api_bzl",
-        "//python/api:attr_builders_bzl",
-        "//python/api:executables_bzl",
-        "//python/api:libraries_bzl",
-        "//python/api:rule_builders_bzl",
-        "//python/cc:py_cc_toolchain_bzl",
-        "//python/cc:py_cc_toolchain_info_bzl",
-        "//python/entry_points:py_console_script_binary_bzl",
-        "//python/extensions:config_bzl",
-        "//python/extensions:python_bzl",
-        "//python/local_toolchains:repos_bzl",
-        "//python/private:attr_builders_bzl",
-        "//python/private:builders_bzl",
-        "//python/private:builders_util_bzl",
-        "//python/private:py_binary_rule_bzl",
-        "//python/private:py_cc_toolchain_rule_bzl",
-        "//python/private:py_info_bzl",
-        "//python/private:py_library_rule_bzl",
-        "//python/private:py_runtime_rule_bzl",
-        "//python/private:py_test_rule_bzl",
-        "//python/private:rule_builders_bzl",
-        "//python/private/api:py_common_api_bzl",
-        "//python/private/pypi:config_settings_bzl",
-        "//python/private/pypi:env_marker_info_bzl",
-        "//python/private/pypi:pkg_aliases_bzl",
-        "//python/private/pypi:whl_config_setting_bzl",
-        "//python/private/pypi:whl_library_bzl",
-        "//python/private/zipapp:py_zipapp_rule_bzl",
-        "//python/uv:lock_bzl",
-        "//python/uv:uv_bzl",
-        "//python/uv:uv_toolchain_bzl",
-        "//python/uv:uv_toolchain_info_bzl",
-        "//python/zipapp:py_zipapp_binary_bzl",
-        "//python/zipapp:py_zipapp_test_bzl",
+        "//python:defs",
+        "//python:features",
+        "//python:packaging",
+        "//python:pip",
+        "//python:proto",
+        "//python:py_binary",
+        "//python:py_cc_link_params_info",
+        "//python:py_exec_tools_info",
+        "//python:py_exec_tools_toolchain",
+        "//python:py_executable_info",
+        "//python:py_info",
+        "//python:py_library",
+        "//python:py_runtime",
+        "//python:py_runtime_info",
+        "//python:py_test",
+        "//python:repositories",
+        "//python/api",
+        "//python/api:attr_builders",
+        "//python/api:executables",
+        "//python/api:libraries",
+        "//python/api:rule_builders",
+        "//python/cc:py_cc_toolchain",
+        "//python/cc:py_cc_toolchain_info",
+        "//python/entry_points:py_console_script_binary",
+        "//python/extensions:config",
+        "//python/extensions:python",
+        "//python/local_toolchains:repos",
+        "//python/private:attr_builders",
+        "//python/private:builders",
+        "//python/private:builders_util",
+        "//python/private:py_binary_rule",
+        "//python/private:py_cc_toolchain_rule",
+        "//python/private:py_info",
+        "//python/private:py_library_rule",
+        "//python/private:py_runtime_rule",
+        "//python/private:py_test_rule",
+        "//python/private:rule_builders",
+        "//python/private/api:py_common_api",
+        "//python/private/pypi:config_settings",
+        "//python/private/pypi:env_marker_info",
+        "//python/private/pypi:pkg_aliases",
+        "//python/private/pypi:whl_config_setting",
+        "//python/private/pypi:whl_library",
+        "//python/private/zipapp:py_zipapp_rule",
+        "//python/uv",
+        "//python/uv:lock",
+        "//python/uv:uv_toolchain",
+        "//python/uv:uv_toolchain_info",
+        "//python/zipapp:py_zipapp_binary",
+        "//python/zipapp:py_zipapp_test",
     ] + ([
         # This depends on @pythons_hub, which is only created under bzlmod,
-        "//python/extensions:pip_bzl",
+        "//python/extensions:pip",
     ] if BZLMOD_ENABLED else []),
     prefix = "api/rules_python/",
     tags = ["docs"],
@@ -145,7 +167,7 @@ sphinx_stardocs(
 
 sphinx_stardoc(
     name = "py_runtime_pair",
-    src = "//python/private:py_runtime_pair_rule_bzl",
+    src = "//python/private:py_runtime_pair_rule",
     prefix = "api/rules_python/",
     tags = ["docs"],
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
@@ -175,13 +197,13 @@ sphinx_build_binary(
     },
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
-        requirement("sphinx"),
-        requirement("sphinx_rtd_theme"),
-        requirement("myst_parser"),
-        requirement("readthedocs_sphinx_ext"),
-        requirement("typing_extensions"),
-        requirement("sphinx_autodoc2"),
-        requirement("sphinx_reredirects"),
+        "@dev_pip//myst_parser",
+        "@dev_pip//readthedocs_sphinx_ext",
+        "@dev_pip//sphinx",
+        "@dev_pip//sphinx_autodoc2",
+        "@dev_pip//sphinx_reredirects",
+        "@dev_pip//sphinx_rtd_theme",
+        "@dev_pip//typing_extensions",
         "@sphinxdocs//sphinxdocs/src/sphinx_bzl",
     ],
 )
@@ -198,6 +220,15 @@ lock(
     ],
     # NOTE @aignas 2025-08-17: here we select the lowest actively supported version so that the
     # requirements file is generated to be compatible with Python version 3.9 or greater.
+    python_version = "3.9",
+    visibility = ["//:__subpackages__"],
+)
+
+# Run bazel run //docs:uv_lock.update
+lock(
+    name = "uv_lock",
+    srcs = ["pyproject.toml"],
+    out = "uv.lock",
     python_version = "3.9",
     visibility = ["//:__subpackages__"],
 )

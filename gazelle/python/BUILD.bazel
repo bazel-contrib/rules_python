@@ -30,19 +30,19 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pythonconfig",
-        "@bazel_gazelle//config:go_default_library",
-        "@bazel_gazelle//label:go_default_library",
-        "@bazel_gazelle//language:go_default_library",
-        "@bazel_gazelle//repo:go_default_library",
-        "@bazel_gazelle//resolve:go_default_library",
-        "@bazel_gazelle//rule:go_default_library",
+        "@bazel_gazelle//config",
+        "@bazel_gazelle//label",
+        "@bazel_gazelle//language",
+        "@bazel_gazelle//repo",
+        "@bazel_gazelle//resolve",
+        "@bazel_gazelle//rule",
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_bmatcuk_doublestar_v4//:doublestar",
-        "@com_github_emirpasic_gods//lists/singlylinkedlist",
-        "@com_github_emirpasic_gods//sets/treeset",
-        "@com_github_emirpasic_gods//utils",
-        "@com_github_smacker_go_tree_sitter//:go-tree-sitter",
-        "@com_github_smacker_go_tree_sitter//python",
+        "@com_github_emirpasic_gods//lists/singlylinkedlist:go_default_library",
+        "@com_github_emirpasic_gods//sets/treeset:go_default_library",
+        "@com_github_emirpasic_gods//utils:go_default_library",
+        "@com_github_smacker_go_tree_sitter//:go_default_library",
+        "@com_github_smacker_go_tree_sitter//python:go_default_library",
         "@org_golang_x_sync//errgroup",
     ],
 )
@@ -65,6 +65,9 @@ copy_file(
 )
 
 # gazelle:exclude testdata/
+# gazelle:exclude extensions.bzl
+# Exclude test-only Starlark helper from Gazelle to avoid generating an unnecessary bzl_library
+# gazelle:exclude gazelle_test.bzl
 
 gazelle_test(
     name = "python_test",
