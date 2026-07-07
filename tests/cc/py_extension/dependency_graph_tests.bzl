@@ -78,7 +78,7 @@ def _csl_dynamic_deps_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-5] # remove "_cslA"
+    test_name = target.label.name[:-5]  # remove "_cslA"
     libA_label = target.label.same_package_label(test_name + "_libA")
     libB_label = target.label.same_package_label(test_name + "_libB")
     libC_label = target.label.same_package_label(test_name + "_libC")
@@ -124,7 +124,7 @@ def _cslC_deps_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-5] # remove "_cslC"
+    test_name = target.label.name[:-5]  # remove "_cslC"
     libC_label = target.label.same_package_label(test_name + "_libC")
 
     env.expect.that_collection([str(e) for e in csl_info.exports]).contains_exactly([str(libC_label)])
@@ -136,7 +136,7 @@ def _cslB_deps_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-5] # remove "_cslB"
+    test_name = target.label.name[:-5]  # remove "_cslB"
     libB_label = target.label.same_package_label(test_name + "_libB")
     libC_label = target.label.same_package_label(test_name + "_libC")
     cslC_label = target.label.same_package_label(test_name + "_cslC")
@@ -156,7 +156,7 @@ def _pyext_dynamic_deps_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-7] # remove "_pyextA"
+    test_name = target.label.name[:-7]  # remove "_pyextA"
     libA_label = target.label.same_package_label(test_name + "_libA")
     libB_label = target.label.same_package_label(test_name + "_libB")
     libC_label = target.label.same_package_label(test_name + "_libC")
@@ -218,7 +218,7 @@ def _csl_static_sharing_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-5] # remove "_cslA"
+    test_name = target.label.name[:-5]  # remove "_cslA"
     libA_label = target.label.same_package_label(test_name + "_libA")
     libB_label = target.label.same_package_label(test_name + "_libB")
     libC_label = target.label.same_package_label(test_name + "_libC")
@@ -256,7 +256,7 @@ def _cslB_static_sharing_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-5] # remove "_cslB"
+    test_name = target.label.name[:-5]  # remove "_cslB"
     libB_label = target.label.same_package_label(test_name + "_libB")
     libC_label = target.label.same_package_label(test_name + "_libC")
 
@@ -270,7 +270,7 @@ def _pyext_static_sharing_test_impl(env, target):
     csl_info = target[CcSharedLibraryInfo]
 
     # Derive labels
-    test_name = target.label.name[:-7] # remove "_pyextA"
+    test_name = target.label.name[:-7]  # remove "_pyextA"
     libA_label = target.label.same_package_label(test_name + "_libA")
     libB_label = target.label.same_package_label(test_name + "_libB")
     libC_label = target.label.same_package_label(test_name + "_libC")

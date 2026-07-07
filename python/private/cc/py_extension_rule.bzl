@@ -65,15 +65,15 @@ def _py_extension_wrapper_impl(ctx):
     ]
 
 PY_EXTENSION_WRAPPER_ATTRS = COMMON_ATTRS | {
-    "src": lambda: attrb.Label(
-        mandatory = True,
-        providers = [CcSharedLibraryInfo],
-        doc = "The cc_shared_library target to wrap.",
-    ),
     "libc": lambda: attrb.String(default = "glibc"),
     "module_name": lambda: attrb.String(),
     "py_limited_api": lambda: attrb.String(
         default = "",
+    ),
+    "src": lambda: attrb.Label(
+        mandatory = True,
+        providers = [CcSharedLibraryInfo],
+        doc = "The cc_shared_library target to wrap.",
     ),
     "_constraints": lambda: attrb.LabelList(
         default = sorted({

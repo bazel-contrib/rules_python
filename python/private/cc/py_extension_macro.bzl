@@ -78,9 +78,9 @@ def py_extension(
     # 5. Select default libc constraint if not provided
     if "libc" not in kwargs:
         kwargs["libc"] = select({
-            "//conditions:default": "glibc",
             "@rules_python//python/config_settings:_is_py_linux_libc_glibc": "glibc",
             "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
+            "//conditions:default": "glibc",
         })
 
     # 6. Wrap with py_extension_wrapper for PEP 3149 naming & PyInfo
