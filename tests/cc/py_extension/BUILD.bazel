@@ -15,11 +15,15 @@ package(
 
 licenses(["notice"])
 
+#####
+
 py_extension(
     # An extension defined solely by source files, with no deps
     name = "ext_source",
     srcs = ["ext_source.c"],
 )
+
+#####
 
 py_extension(
     # A python extension that gets its code from a statically-linked library
@@ -27,11 +31,22 @@ py_extension(
     deps = [":static_dep"],
 )
 
-py_extension(
-    name = "ext_with_data",
-    deps = [":static_dep"],
-    data = ["test_symbols.h"],
+cc_library(
+    name = "static_dep",
+    srcs = ["static_dep.c"],
+    hdrs = ["static_dep.h"],
 )
+
+#####
+
+py_extension(
+    # An extension that also depends on a data file
+    name = "ext_with_data",
+    data = ["test_symbols.h"],
+    deps = [":static_dep"],
+)
+
+#####
 
 py_extension(
     # A python extension that dynamically links to another shared library
@@ -62,12 +77,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "static_dep",
-    srcs = ["static_dep.c"],
-    hdrs = ["static_dep.h"],
-)
-
 cc_shared_library(
     name = "add_one_shared",
     deps = [":add_one_impl"],
@@ -93,6 +102,8 @@ cc_library(
     hdrs = ["add_one_helper.h"],
 )
 
+#####
+
 py_extension(
     # An extension that uses the Python limited API
     name = "ext_limited",
@@ -112,6 +123,45 @@ cc_library(
         "@rules_python//python/cc:current_py_cc_headers",
     ],
 )
+
+#####
+
+py_extension(
+    # An extension with its PyInit_* function in a static dependency
+    name = "ext_init_in_dep",
+    deps = [":ext_init_in_dep_impl"],
+)
+
+cc_library(
+    name = "ext_init_in_dep_impl",
+    srcs = ["ext_init_in_dep.c"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
+
+py_extension(
+    # An extension with its PyInit_* function in a dynamic dependency
+    name = "ext_init_in_dynamic_dep",
+    dynamic_deps = [":ext_init_in_dynamic_dep_2"],
+)
+
+cc_shared_library(
+    name = "ext_init_in_dynamic_dep_2",
+    deps = [":ext_init_in_dynamic_dep_impl"],
+)
+
+cc_library(
+    name = "ext_init_in_dynamic_dep_impl",
+    srcs = ["ext_init_in_dynamic_dep.c"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
 
 py_test(
     name = "py_extension_test",
