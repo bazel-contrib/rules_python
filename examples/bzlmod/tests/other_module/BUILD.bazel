@@ -14,6 +14,17 @@ build_test(
     ],
 )
 
+# Regression test for https://github.com/bazel-contrib/rules_python/pull/3919: py_binary_rule_builder()'s implicit
+# attr defaults previously had no visibility outside of rules_python, so
+# building this target (defined via the builder from an external module)
+# failed at analysis time with a visibility error.
+build_test(
+    name = "other_module_rule_builder_build_test",
+    targets = [
+        "@our_other_module//other_module/rule_builder:app",
+    ],
+)
+
 py_test(
     name = "other_module_import_test",
     srcs = ["other_module_import_test.py"],
