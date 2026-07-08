@@ -3,6 +3,11 @@ local_repository(
     path = "../../..",
 )
 
+local_repository(
+    name = "compile_pip_requirements",
+    path = ".",
+)
+
 load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
 
 py_repositories()
