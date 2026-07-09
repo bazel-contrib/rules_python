@@ -11,7 +11,7 @@ permissions:
 jobs:
   cut_branch:
     # Run only if the issue has the type: release label
-    if: contains(github.event.issue.labels.*.name, 'type: release')
+    if: "contains(github.event.issue.labels.*.name, 'type: release')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

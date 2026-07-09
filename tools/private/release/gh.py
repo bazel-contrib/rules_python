@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import tempfile
 
 from tools.private.release.release_issue import BackportTask
@@ -262,23 +263,51 @@ class GitHub:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
-    def create_pr(self, version: str, issue_num: int) -> str:
-        """Creates a pull request for release preparation.
+    def create_pr(
+        self,
+        title: str,
+        body: str,
+        base: str = "main",
+        labels: list[str] | None = None,
+    ) -> str:
+        """Creates a pull request.
 
         Args:
-            version: The version being prepared.
-            issue_num: The associated tracking issue number.
+            title: The title of the PR.
+            body: The body of the PR.
+            base: The base branch to merge into (default: 'main').
+            labels: Optional list of labels to add to the PR.
 
         Returns:
             The URL of the created PR.
         """
-        output = self._gh_pr(
+        cmd = [
             "create",
-            f"--title=Prepare release v{version}",
-            f"--body=Work towards #{issue_num}",
-            "--base=main",
-        )
+            f"--title={title}",
+            f"--body={body}",
+            f"--base={base}",
+        ]
+        if labels:
+            for label in labels:
+                cmd.append(f"--label={label}")
+        output = self._gh_pr(*cmd)
         return output if output else ""
+
+    def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:
+        """Enables auto-merge for a PR.
+
+        Args:
+            pr_num: The PR number.
+            method: The merge method ('squash', 'rebase', or 'merge').
+        """
+        cmd = ["merge", str(pr_num), "--auto"]
+        if method == "squash":
+            cmd.append("--squash")
+        elif method == "rebase":
+            cmd.append("--rebase")
+        elif method == "merge":
+            cmd.append("--merge")
+        self._gh_pr(*cmd, capture_output=False)
 
     def get_open_pr(self, branch_name: str) -> dict | None:
         """Returns PR info if an open PR exists for the given branch.
@@ -315,6 +344,53 @@ class GitHub:
             "--json=state,mergeCommit,body,isDraft",
         )
         return json.loads(output) if output else {}
+
+    def get_pr_comments(self, pr_num: int) -> list[dict]:
+        """Gets comments for a PR.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            A list of comments.
+        """
+        output = self._gh_pr(
+            "view",
+            str(pr_num),
+            "--json=comments",
+        )
+        return json.loads(output).get("comments") or []
+
+    def resolve_pr_number(self, pr_ref: str) -> int:
+        """Resolves a PR reference (number, #number, URL) to a PR number.
+
+        Args:
+            pr_ref: The PR reference string.
+
+        Returns:
+            The resolved PR number.
+
+        Raises:
+            ValueError: If the reference cannot be resolved.
+        """
+        # 1. Try number (e.g. "123" or "#123")
+        clean_ref = pr_ref.lstrip("#")
+        if clean_ref.isdigit():
+            return int(clean_ref)
+
+        # 2. Try URL (starts with http)
+        if pr_ref.startswith("http"):
+            # Try to extract PR number from URL using regex
+            # Pattern matches: github.com/<self.repo>/pull/<number> followed by /, ?, or EOF
+            pattern = rf"github\.com/{re.escape(self.repo)}/pull/(\d+)(/|\?|\Z)"
+            match = re.search(pattern, pr_ref, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+            raise ValueError(
+                f"URL is not for the configured repository ({self.repo}): {pr_ref}"
+            )
+
+        raise ValueError(f"Could not resolve PR reference: {pr_ref}")
 
     def post_issue_comment(self, issue_num: int, comment_body: str) -> None:
         """Posts a comment to a specific issue.

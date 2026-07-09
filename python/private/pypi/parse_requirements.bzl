@@ -176,8 +176,9 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             "versions": {},
         })
         entry["versions"][version] = None
-        registry = pkg.get("source", {}).get("registry", "")
-        if registry.rstrip("/").endswith("simple"):
+        source = pkg.get("source") or {}
+        registry = (source.get("registry") or "").rstrip("/")
+        if registry.startswith("http://") or registry.startswith("https://"):
             index_url = "{}/{}".format(registry, norm_name.replace("_", "-"))
         else:
             index_url = ""

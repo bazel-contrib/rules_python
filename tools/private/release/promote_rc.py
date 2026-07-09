@@ -1,6 +1,7 @@
 """Subcommand to promote a release candidate to final release."""
 
 import argparse
+import os
 import urllib.parse
 
 from tools.private.release.gh import GitHub
@@ -88,7 +89,7 @@ class PromoteRc:
         print(f"Fetching remote branch {remote_branch}...")
         self.git.fetch(args.remote, refspec=branch_name)
         try:
-            branch_sha = self.git.get_commit_sha(remote_ref=remote_branch)
+            branch_sha = self.git.get_commit_sha(remote_branch)
         except Exception as e:
             print(
                 f"Error: Could not get commit SHA for remote branch"
@@ -156,21 +157,38 @@ class PromoteRc:
         self.git.tag(version, commit_sha)
         self.git.push(args.remote, version)
 
+        if github_output := os.environ.get("GITHUB_OUTPUT"):
+            with open(github_output, "a", encoding="utf-8") as f:
+                f.write(f"version={version}\n")
+
         print(f"Updating tracking issue #{issue_num} checklist...")
         self.gh.update_issue_body(issue_num, updated_body)
 
         print(f"Posting comment to tracking issue #{issue_num}...")
 
+        branch_url = f"{REPO_URL}/tree/{branch_name}"
         release_url = f"{REPO_URL}/releases/tag/{version}"
+        bcr_entry_url = f"https://registry.bazel.build/modules/rules_python/{version}"
         bcr_query = (
             f'is:pr ("bazel-contrib/rules_python" in:title) ("@{version}" in:title)'
         )
         bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q={urllib.parse.quote(bcr_query)}"
-        comment_body = (
-            f"Version {version} has been tagged.\n\n"
-            f"- **Release Page**: {release_url}\n"
-            f"- **BCR PR Search**: [{bcr_query}]({bcr_search_url})"
-        )
+
+        if run_id := os.environ.get("GITHUB_RUN_ID"):
+            release_workflow_url = f"{REPO_URL}/actions/runs/{run_id}"
+        else:
+            release_workflow_url = (
+                f"{REPO_URL}/actions/workflows/release_promote_rc.yaml"
+            )
+
+        comment_body = f"""**New Release Tagged!** 🐍🌿
+
+Version **{version}** has been successfully generated and tagged on branch [`{branch_name}`]({branch_url}).
+
+- [Github Release {version}]({release_url})
+- [BCR Entry {version}]({bcr_entry_url})
+- [BCR PRs]({bcr_search_url})
+- [Release workflow status]({release_workflow_url})"""
         self.gh.post_issue_comment(issue_num, comment_body)
 
         return 0

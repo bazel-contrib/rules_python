@@ -25,7 +25,7 @@ class CompletePrepare:
             return 1
 
         # Resolve issue number from PR body
-        pr_body = pr_info.get("body", "")
+        pr_body = pr_info.get("body") or ""
         match = re.search(r"Work towards #(\d+)", pr_body)
         if not match:
             match = re.search(r"#(\d+)", pr_body)

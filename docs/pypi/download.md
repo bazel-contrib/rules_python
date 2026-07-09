@@ -123,7 +123,7 @@ wheel version from the active hub during the build.
 
 ### Declaring Abstract Dependencies (pip.dep)
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.2.0
 Declaring abstract PyPI dependencies via `pip.dep` tags.
 :::
 

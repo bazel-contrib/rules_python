@@ -189,6 +189,30 @@ class CmdCreateRcTest(unittest.TestCase):
         self.mock_git.tag.assert_not_called()
         self.mock_git.push.assert_not_called()
 
+    def test_create_rc_not_blocked_by_ignored_backports(self):
+        # Arrange
+        args = MagicMock(issue=123, remote="my-remote")
+        self.mock_gh.get_issue_title.return_value = "Release 2.0.0"
+        self.mock_gh.get_issue_body.return_value = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [ ] Tag RC0 | status=pending
+
+## Backports
+- [ ] #124 | status=ignore
+"""
+        self.mock_git.get_remote_tags.return_value = []
+        self.mock_git.get_commit_sha.return_value = "1234567890"
+
+        # Act
+        result = CreateRc(args, self.mock_git, self.mock_gh).run()
+
+        # Assert
+        self.assertEqual(result, 0)
+        self.mock_git.tag.assert_called_once_with("2.0.0-rc0", "my-remote/release/2.0")
+        self.mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc0")
+
     def test_create_rc_with_finished_backports(self):
         # Arrange
         args = MagicMock(issue=123, remote="my-remote")

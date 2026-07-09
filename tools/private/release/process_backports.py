@@ -2,6 +2,10 @@
 
 import argparse
 import datetime
+import hashlib
+import os
+import tempfile
+from dataclasses import dataclass
 from typing import Any
 
 from tools.private.release import changelog_news
@@ -11,6 +15,7 @@ from tools.private.release.release_issue import (
     RELEASE_TITLE_RE,
     add_backports_to_body,
     add_rc_task_to_body,
+    add_sync_changelog_task_to_body,
     parse_backports,
     parse_checklist_state,
     update_task_in_body,
@@ -20,6 +25,20 @@ from tools.private.release.utils import (
     parse_pr_list,
     replace_version_next,
 )
+
+
+@dataclass
+class CherryPickAndUpdatePrsResult:
+    # List of PR references that failed to cherry-pick.
+    failed_prs: list[str]
+    # List of news files collected from the successful cherry-picks.
+    collected_news_files: list[str]
+    # List of PR numbers that were successfully cherry-picked.
+    successful_pr_nums: list[int]
+    # List of tuples mapping successful PR numbers to their version marker diffs.
+    collected_diffs: list[tuple[int, str]]
+    # The updated checklist body for the release tracking issue.
+    body: str
 
 
 class ProcessBackports:
@@ -84,22 +103,34 @@ class ProcessBackports:
         version,
         branch_name,
         next_rc_suffix,
-    ) -> tuple[list[str], str]:
+    ) -> CherryPickAndUpdatePrsResult:
         failed_prs = []
+        collected_news_files = []
+        successful_pr_nums = []
+        collected_diffs = []
         for sha in sorted_shas:
             item = sha_to_item[sha]
             print(f"Cherry-picking {item.pr_ref} / {sha}...")
             try:
                 self.git.cherry_pick(sha)
 
+                # Collect news files before they are deleted by update_changelog
+                modified_files = self.git.get_modified_files("HEAD")
+                for f in modified_files:
+                    if changelog_news.is_news_file(f):
+                        collected_news_files.append(f)
+
+                # Replace version markers FIRST to isolate diff
+                print(f"Replacing version markers for PR {item.pr_ref}...")
+                replace_version_next(version)
+
+                # Get diff of unstaged changes (version marker replacement)
+                diff_content = self.git.diff()
+
                 # Perform news processing (merging news/ files into the changelog)
                 print(f"Merging news fragments into changelog for PR {item.pr_ref}...")
                 release_date = datetime.date.today().strftime("%Y-%m-%d")
                 changelog_news.update_changelog(version, release_date)
-
-                # Replace version markers that might have been introduced by the backport
-                print(f"Replacing version markers for PR {item.pr_ref}...")
-                replace_version_next(version)
 
                 # Stage changelog changes, news/ deletions, and version placeholder updates
                 self.git.add_modified_and_deleted()
@@ -110,6 +141,16 @@ class ProcessBackports:
                 current_msg = self.git.get_commit_message("HEAD")
                 new_msg = f"{current_msg.strip()}\n\nWork towards #{issue}"
                 self.git.commit(new_msg, amend=True)
+
+                try:
+                    pr_num = self.gh.resolve_pr_number(item.pr_ref)
+                    if diff_content:
+                        collected_diffs.append((pr_num, diff_content))
+                    successful_pr_nums.append(pr_num)
+                except Exception as e:
+                    print(
+                        f"Warning: Failed to resolve PR number for {item.pr_ref}: {e}"
+                    )
 
                 if not dry_run:
                     # Push amended commit
@@ -177,7 +218,180 @@ class ProcessBackports:
                             f"ERROR: Failed to update tracking issue for"
                             f" failed PR {item.pr_ref}: {e}"
                         )
-        return failed_prs, body
+        return CherryPickAndUpdatePrsResult(
+            failed_prs=failed_prs,
+            collected_news_files=collected_news_files,
+            successful_pr_nums=successful_pr_nums,
+            collected_diffs=collected_diffs,
+            body=body,
+        )
+
+    def _sync_changelog_to_main(
+        self,
+        version: str,
+        collected_news_files: list[str],
+        successful_pr_nums: list[int],
+        collected_diffs: list[tuple[int, str]],
+        release_branch: str,
+    ) -> None:
+        args = self.args
+        sorted_prs = sorted(successful_pr_nums)
+        prs_str = ",".join(str(n) for n in sorted_prs)
+        prs_hash = hashlib.sha256(prs_str.encode()).hexdigest()[:7]
+
+        main_branch = "main"
+        backport_branch = f"prepare-{version}-backports-{prs_hash}"
+
+        print(f"Syncing changelog to {main_branch} via branch {backport_branch}...")
+
+        self.git.fetch(args.remote, refspec=main_branch)
+        self.git.checkout(main_branch, track_remote=args.remote)
+        main_start_sha = self.git.get_commit_sha("HEAD")
+
+        failed_version_sync_prs = []
+        try:
+            if args.dry_run:
+                print(
+                    f"[DRY RUN] Would create and checkout branch {backport_branch} from {main_branch}"
+                )
+            else:
+                if self.git.branch_exists(backport_branch):
+                    self.git.checkout(backport_branch)
+                    self.git.reset_hard(reset_to=main_branch)
+                else:
+                    self.git.checkout(backport_branch, create_branch=True)
+
+            print(
+                f"Updating CHANGELOG.md and removing news files on {backport_branch}..."
+            )
+            release_date = datetime.date.today().strftime("%Y-%m-%d")
+            changelog_news.update_changelog(
+                version,
+                release_date,
+                news_files=collected_news_files,
+                delete_news=True,
+            )
+
+            # Apply version marker diffs
+            failed_version_sync_prs = self._apply_version_marker_diffs(collected_diffs)
+
+            if args.dry_run:
+                print(
+                    f"[DRY RUN] Would commit: 'chore(release): sync changelog for v{version} backports'"
+                )
+                print(f"[DRY RUN] Would push {backport_branch} to {args.remote}")
+                print(
+                    f"[DRY RUN] Would create PR to {main_branch} with label 'type: sync-changelog'"
+                )
+                print(
+                    f"[DRY RUN] Would update tracking issue #{args.issue} checklist tasks 'Sync Changelog #<pr>' to PENDING"
+                )
+                print("[DRY RUN] Diff of changes:")
+                print(self.git.status())
+            else:
+                self.git.add_modified_and_deleted()
+                self.git.commit(
+                    f"chore(release): sync changelog for v{version} backports"
+                )
+                self.git.push(
+                    args.remote, backport_branch, set_upstream=True, force=True
+                )
+
+                pr_title = f"chore(release): sync changelog for v{version} backports"
+                pr_body_lines = [
+                    "Updates CHANGELOG.md and removes news files for backports:",
+                ]
+                for pr_num in sorted_prs:
+                    pr_body_lines.append(f"- #{pr_num}")
+
+                if failed_version_sync_prs:
+                    pr_body_lines.append("")
+                    pr_body_lines.append(
+                        "Warning: These PRs failed to update their version markers:"
+                    )
+                    for pr_num in sorted(failed_version_sync_prs):
+                        pr_body_lines.append(f"- #{pr_num}")
+
+                pr_body_lines.append("")
+                pr_body_lines.append(f"Work towards #{args.issue}")
+                pr_body_lines.append(f"Release-Tracking-Issue: #{args.issue}")
+                pr_body = "\n".join(pr_body_lines)
+
+                print(f"Creating PR to {main_branch}...")
+                pr_url = self.gh.create_pr(
+                    title=pr_title,
+                    body=pr_body,
+                    base=main_branch,
+                    labels=["type: sync-changelog"],
+                )
+                print(f"Created PR: {pr_url}")
+
+                try:
+                    pr_num = int(pr_url.split("/")[-1])
+                    print(f"Enabling auto-merge for PR #{pr_num}...")
+                    self.gh.enable_auto_merge(pr_num)
+
+                    print(
+                        f"Updating tracking issue #{args.issue} checklist with"
+                        " Sync Changelog tasks..."
+                    )
+                    issue_body = self.gh.get_issue_body(args.issue)
+                    for pr in successful_pr_nums:
+                        task_name = f"Sync Changelog #{pr}"
+                        metadata = {"status": "pending", "pr": f"#{pr_num}"}
+                        issue_body = update_task_in_body(
+                            issue_body,
+                            task_name,
+                            checked=False,
+                            metadata=metadata,
+                        )
+                    self.gh.update_issue_body(args.issue, issue_body)
+                except Exception as e:
+                    print(
+                        f"Warning: Failed to update tracking issue or enable"
+                        f" auto-merge: {e}"
+                    )
+        finally:
+            if args.dry_run:
+                self.git.reset_hard(reset_to=main_start_sha)
+            self.git.checkout(release_branch)
+
+    def _apply_version_marker_diffs(
+        self,
+        collected_diffs: list[tuple[int, str]],
+    ) -> list[int]:
+        """Applies version marker diffs on main branch and returns failed PR numbers."""
+        args = self.args
+        failed_version_sync_prs = []
+        if not collected_diffs:
+            return failed_version_sync_prs
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            print(f"Applying {len(collected_diffs)} version marker patches...")
+            for pr_num, diff_content in collected_diffs:
+                if args.dry_run:
+                    print(
+                        f"[DRY RUN] Would check and apply version marker patch for PR #{pr_num}"
+                    )
+
+                patch_filepath = os.path.join(temp_dir, f"{pr_num}.patch")
+                with open(patch_filepath, "w", encoding="utf-8") as f:
+                    f.write(diff_content)
+
+                if self.git.apply_check(patch_filepath):
+                    if args.dry_run:
+                        print(
+                            f"[DRY RUN] Version marker patch for PR #{pr_num} applies cleanly."
+                        )
+                    else:
+                        print(f"Applying version marker patch for PR #{pr_num}...")
+                        self.git.apply(patch_filepath)
+                else:
+                    print(
+                        f"Warning: Version marker patch for PR #{pr_num} could not be applied cleanly to main. Skipping."
+                    )
+                    failed_version_sync_prs.append(pr_num)
+        return failed_version_sync_prs
 
     def run(self) -> int:
         """Executes the process-backports subcommand."""
@@ -206,9 +420,31 @@ class ProcessBackports:
         body = self.gh.get_issue_body(args.issue)
 
         if args.add:
-            print(f"Adding backports {args.add} to tracking issue #{args.issue}...")
+            items_to_add = []
+            for pr_ref in args.add:
+                try:
+                    pr_num = self.gh.resolve_pr_number(pr_ref)
+                    items_to_add.append({"ref": f"#{pr_num}"})
+                except Exception as e:
+                    print(f"Warning: PR ref '{pr_ref}' is invalid: {e}")
+                    items_to_add.append(
+                        {
+                            "ref": pr_ref,
+                            "metadata": {"status": "error-invalid-pr"},
+                        }
+                    )
+
+            print(f"Adding backports {items_to_add} to tracking issue #{args.issue}...")
             try:
-                body = add_backports_to_body(body, args.add)
+                body = add_backports_to_body(body, items_to_add)
+                for item in items_to_add:
+                    if (
+                        "metadata" in item
+                        and item["metadata"].get("status") == "error-invalid-pr"
+                    ):
+                        continue
+                    pr_num = int(item["ref"].lstrip("#"))
+                    body = add_sync_changelog_task_to_body(body, pr_num)
                 state = parse_checklist_state(body)
                 rc_tags = state.get("rc_tags", {})
                 has_pending_rc = any(
@@ -304,8 +540,11 @@ class ProcessBackports:
         self.git.checkout(branch_name, track_remote=args.remote)
         start_sha = self.git.get_commit_sha("HEAD")
 
+        collected_news_files = []
+        successful_pr_nums = []
+        collected_diffs = []
         try:
-            new_failed_prs, body = self._cherry_pick_and_update_prs(
+            result = self._cherry_pick_and_update_prs(
                 sorted_shas,
                 sha_to_item,
                 body,
@@ -316,11 +555,24 @@ class ProcessBackports:
                 branch_name,
                 next_rc_suffix,
             )
-            failed_prs.extend(new_failed_prs)
+            failed_prs.extend(result.failed_prs)
+            collected_news_files.extend(result.collected_news_files)
+            successful_pr_nums.extend(result.successful_pr_nums)
+            collected_diffs.extend(result.collected_diffs)
+            body = result.body
         finally:
             if args.dry_run:
                 print(f"[DRY RUN] Resetting branch {branch_name} to {start_sha}")
-                self.git.reset_hard(start_sha)
+                self.git.reset_hard(reset_to=start_sha)
+
+        if successful_pr_nums:
+            self._sync_changelog_to_main(
+                version,
+                collected_news_files,
+                successful_pr_nums,
+                collected_diffs,
+                branch_name,
+            )
 
         if failed_prs:
             print("ERROR: One or more cherry-picks/resolutions failed:")
@@ -356,7 +608,7 @@ class ProcessBackports:
         parser.add_argument(
             "--add",
             type=parse_pr_list,
-            help="PR numbers (comma or space separated) to add before processing.",
+            help="PR references (numbers, #numbers, or URLs, comma/space separated) to add before processing.",
         )
         parser.add_argument(
             "--triggering-comment",

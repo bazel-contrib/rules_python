@@ -80,7 +80,7 @@ class Git:
         self._run_git(*cmd, capture_output=False)
 
         if should_reset_hard:
-            self.reset_hard(f"{track_remote}/{ref}")
+            self.reset_hard(reset_to=f"{track_remote}/{ref}")
 
     def add(self, *files: str) -> None:
         """Stages files for commit.
@@ -135,16 +135,23 @@ class Git:
         self._run_git(*cmd, capture_output=False)
 
     def fetch(
-        self, remote: str = "origin", tags: bool = False, force: bool = False
+        self,
+        remote: str = "origin",
+        refspec: str | None = None,
+        tags: bool = False,
+        force: bool = False,
     ) -> None:
         """Fetches updates from a remote repository.
 
         Args:
             remote: The remote repository name. Defaults to 'origin'.
+            refspec: The refspec to fetch.
             tags: If True, fetches all tags.
             force: If True, force fetches updates.
         """
         cmd = ["fetch", remote]
+        if refspec:
+            cmd.append(refspec)
         if tags:
             cmd.append("--tags")
         if force:
@@ -184,13 +191,13 @@ class Git:
         """Aborts an in-progress cherry-pick operation."""
         self._run_git("cherry-pick", "--abort", capture_output=False)
 
-    def reset_hard(self, ref: str = "HEAD") -> None:
+    def reset_hard(self, *, reset_to: str = "HEAD") -> None:
         """Resets the index and working tree to a specific reference.
 
         Args:
-            ref: The git reference to reset to. Defaults to 'HEAD'.
+            reset_to: The git reference to reset to. Defaults to 'HEAD'.
         """
-        self._run_git("reset", "--hard", ref, capture_output=False)
+        self._run_git("reset", "--hard", reset_to, capture_output=False)
 
     def status(self) -> str:
         """Returns the output of git status --porcelain.
@@ -346,3 +353,47 @@ class Git:
                 if not tag.endswith("^{}"):
                     tags.append(tag)
         return tags
+
+    def get_modified_files(self, ref: str) -> list[str]:
+        """Returns a list of files modified in a given reference.
+
+        Args:
+            ref: The git reference.
+
+        Returns:
+            A list of file paths.
+        """
+        output = self._run_git("show", "--name-only", "--format=", ref)
+        return [line for line in output.splitlines() if line.strip()] if output else []
+
+    def diff(self) -> str:
+        """Returns the diff of unstaged changes.
+
+        Returns:
+            The diff output as a string.
+        """
+        output = self._run_git("diff")
+        return output if output else ""
+
+    def apply(self, patch_file: str) -> None:
+        """Applies a patch file.
+
+        Args:
+            patch_file: The path to the patch file.
+        """
+        self._run_git("apply", patch_file, capture_output=False)
+
+    def apply_check(self, patch_file: str) -> bool:
+        """Verifies if a patch can be applied cleanly.
+
+        Args:
+            patch_file: The path to the patch file.
+
+        Returns:
+            True if the patch can be applied cleanly, False otherwise.
+        """
+        try:
+            self._run_git("apply", "--check", patch_file, capture_output=False)
+            return True
+        except subprocess.CalledProcessError:
+            return False
