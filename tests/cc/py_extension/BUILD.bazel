@@ -142,27 +142,6 @@ cc_library(
 
 #####
 
-py_extension(
-    # An extension with its PyInit_* function in a dynamic dependency
-    name = "ext_init_in_dynamic_dep",
-    dynamic_deps = [":ext_init_in_dynamic_dep_2"],
-)
-
-cc_shared_library(
-    name = "ext_init_in_dynamic_dep_2",
-    deps = [":ext_init_in_dynamic_dep_impl"],
-)
-
-cc_library(
-    name = "ext_init_in_dynamic_dep_impl",
-    srcs = ["ext_init_in_dynamic_dep.c"],
-    deps = [
-        "@rules_python//python/cc:current_py_cc_headers",
-    ],
-)
-
-#####
-
 py_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
