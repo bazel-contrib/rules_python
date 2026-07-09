@@ -42,7 +42,7 @@ cc_library(
 py_extension(
     # An extension that also depends on a data file
     name = "ext_with_data",
-    data = ["test_symbols.h"],
+    data = ["some_data.txt"],
     deps = [":static_dep"],
 )
 
