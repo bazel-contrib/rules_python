@@ -1052,7 +1052,7 @@ def _test_uv_lock_consistent(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1080,7 +1080,7 @@ def _test_uv_lock_primary_source(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1108,7 +1108,7 @@ def _test_uv_lock_primary_source_multiple_versions(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -1146,7 +1146,7 @@ def _test_uv_lock_primary_source_with_extras(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1174,7 +1174,7 @@ def _test_uv_lock_primary_source_includes_virtual(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1212,7 +1212,7 @@ def _test_uv_lock_cross_consistent(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1268,7 +1268,7 @@ def _test_uv_lock_rules_python_pkg_not_skipped(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "rules_python",
-            index_url = "",
+            index_url = "https://pypi.org/simple/rules-python",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1301,7 +1301,7 @@ def _test_uv_lock_no_consistency_check(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1329,7 +1329,7 @@ def _test_uv_lock_multiple_packages(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
-            index_url = "",
+            index_url = "https://pypi.org/simple/bar",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1347,7 +1347,7 @@ def _test_uv_lock_multiple_packages(env):
         ),
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1376,7 +1376,7 @@ def _test_uv_lock_with_extra_pip_args(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1408,7 +1408,7 @@ def _test_uv_lock_multi_os_with_requirements(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1436,7 +1436,7 @@ def _test_uv_lock_extras_optional_deps(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1464,7 +1464,7 @@ def _test_uv_lock_extras_dep_edge(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "bar",
-            index_url = "",
+            index_url = "https://pypi.org/simple/bar",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1482,7 +1482,7 @@ def _test_uv_lock_extras_dep_edge(env):
         ),
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1517,7 +1517,7 @@ def _test_uv_lock_wheel_dedup_single_version(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [
@@ -1563,7 +1563,7 @@ def _test_uv_lock_wheel_dedup_resolution_markers(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = True,
             srcs = [
@@ -1601,7 +1601,7 @@ def _test_uv_lock_requires_dist_extras(env):
     env.expect.that_collection(got).contains_exactly([
         struct(
             name = "foo",
-            index_url = "",
+            index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
             srcs = [

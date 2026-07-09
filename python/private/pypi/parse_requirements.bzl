@@ -176,6 +176,13 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             "versions": {},
         })
         entry["versions"][version] = None
+        source = pkg.get("source") or {}
+        registry = (source.get("registry") or "").rstrip("/")
+        if registry.startswith("http://") or registry.startswith("https://"):
+            index_url = "{}/{}".format(registry, norm_name.replace("_", "-"))
+        else:
+            index_url = ""
+        entry["index_url"] = index_url
 
         pkg_extras = sorted(extras_map.get(name, []))
         extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
@@ -287,7 +294,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             name = norm_name,
             is_exposed = True,
             is_multiple_versions = len(versions) > 1,
-            index_url = "",
+            index_url = info["index_url"],
             srcs = info["resolved_srcs"],
         )
         ret.append(item)
