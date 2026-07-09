@@ -161,6 +161,7 @@ def parse_checklist_state(body):
         "create_branch": ReleaseTask("Create Release branch", False),
         "tag_final": ReleaseTask("Tag Final", False),
         "rc_tags": {},  # Dynamically mapped: int -> ReleaseTask
+        "sync_changelogs": {},  # Dynamically mapped: int -> ReleaseTask
     }
 
     lines = body.splitlines()
@@ -214,6 +215,19 @@ def parse_checklist_state(body):
                     commit=meta.get("commit"),
                     metadata=meta,
                 )
+            else:
+                # Match Sync Changelog #<num>
+                sync_match = re.match(r"Sync Changelog #(\d+)", name, re.IGNORECASE)
+                if sync_match:
+                    pr_num = int(sync_match.group(1))
+                    state["sync_changelogs"][pr_num] = ReleaseTask(
+                        name=name,
+                        checked=checked,
+                        status=meta.get("status"),
+                        pr=meta.get("pr"),
+                        commit=meta.get("commit"),
+                        metadata=meta,
+                    )
 
     return state
 
@@ -247,8 +261,14 @@ def parse_backports(body):
     return items
 
 
-def add_backports_to_body(body: str, prs: list[int]) -> str:
-    """Adds new backport checklist items to the ## Backports section."""
+def add_backports_to_body(body: str, items: list[dict]) -> str:
+    """Adds new backport checklist items to the ## Backports section.
+
+    Args:
+        body: The issue body.
+        items: A list of dicts, where each dict has a 'ref' key (str) and
+               optional 'metadata' key (dict).
+    """
     body = body.replace("\r\n", "\n")
     # Find the Backports section
     pattern = r"(## Backports\n)(.*?)(?=\n##|\n---|\Z)"
@@ -260,18 +280,24 @@ def add_backports_to_body(body: str, prs: list[int]) -> str:
 
     # Parse existing backports to avoid duplicates
     existing_items = parse_backports(body)
-    existing_prs = {
-        int(item.pr_ref.lstrip("#"))
-        for item in existing_items
-        if item.pr_ref.startswith("#")
-    }
+    existing_refs = {item.pr_ref for item in existing_items}
 
     new_lines = []
-    for pr in prs:
-        if pr in existing_prs:
-            print(f"PR #{pr} is already in the backports list. Skipping.")
+    for item in items:
+        ref = item["ref"]
+        # Normalize numeric refs to #numeric
+        if not ref.startswith("#") and ref.isdigit():
+            ref = f"#{ref}"
+
+        if ref in existing_refs:
+            print(f"PR {ref} is already in the backports list. Skipping.")
             continue
-        new_lines.append(f"- [ ] #{pr}")
+        existing_refs.add(ref)
+
+        metadata = item.get("metadata", {})
+        new_lines.append(
+            format_metadata_line(checked=False, name=ref, metadata=metadata)
+        )
 
     if not new_lines:
         return body
@@ -311,5 +337,52 @@ def add_rc_task_to_body(body: str, rc_num: int) -> str:
 
     new_task_line = f"- [ ] Tag RC{rc_num}"
     lines.insert(last_rc_idx + 1, new_task_line)
+
+    return "\n".join(lines)
+
+
+def add_sync_changelog_task_to_body(body: str, pr_num: int) -> str:
+    """Adds a new 'Sync Changelog #<pr_num>' task to the checklist in the issue body."""
+    body = body.replace("\r\n", "\n")
+
+    # Check if already exists
+    task_name = f"Sync Changelog #{pr_num}"
+    lines = body.splitlines()
+    for line in lines:
+        parsed = parse_metadata_line(line)
+        if parsed and parsed["name"].lower() == task_name.lower():
+            print(f"Task '{task_name}' already exists. Skipping.")
+            return body
+
+    # Find the index of the last "Sync Changelog #<M>" line
+    last_sync_idx = -1
+    for i, line in enumerate(lines):
+        parsed = parse_metadata_line(line)
+        if parsed and re.match(r"Sync Changelog #\d+", parsed["name"], re.IGNORECASE):
+            last_sync_idx = i
+
+    if last_sync_idx == -1:
+        # If no Sync Changelog task found, insert before "Tag Final"
+        for i, line in enumerate(lines):
+            parsed = parse_metadata_line(line)
+            if parsed and parsed["name"].lower() == "tag final":
+                last_sync_idx = i - 1
+                break
+
+    if last_sync_idx == -1:
+        # If "Tag Final" not found, insert after "Create Release branch"
+        for i, line in enumerate(lines):
+            parsed = parse_metadata_line(line)
+            if parsed and parsed["name"].lower() == "create release branch":
+                last_sync_idx = i
+                break
+
+    if last_sync_idx == -1:
+        raise ValueError(
+            "Could not find a place to insert the new Sync Changelog task."
+        )
+
+    new_task_line = f"- [ ] Sync Changelog #{pr_num}"
+    lines.insert(last_sync_idx + 1, new_task_line)
 
     return "\n".join(lines)

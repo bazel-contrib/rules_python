@@ -84,7 +84,10 @@ class CreateRc:
         # Gating: RC tagging is blocked if any backport is unchecked OR does not have status=done
         backports = parse_backports(body)
         conflicting_or_pending = [
-            b for b in backports if not b.checked or b.status != "done"
+            b
+            for b in backports
+            if (b.checked and b.status != "done")
+            or (not b.checked and b.status != "ignore")
         ]
         if conflicting_or_pending:
             print(

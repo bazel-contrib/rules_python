@@ -4,11 +4,14 @@ import argparse
 import os
 import sys
 
+from tools.private.release.add_backports import AddBackports
 from tools.private.release.complete_prepare import CompletePrepare
+from tools.private.release.complete_sync_changelog import CompleteSyncChangelog
 from tools.private.release.create_rc import CreateRc
 from tools.private.release.create_release_branch import CreateReleaseBranch
 from tools.private.release.create_release_issue import CreateReleaseIssue
 from tools.private.release.determine_next_version import DetermineNextVersion
+from tools.private.release.on_pr_merged import OnPrMerged
 from tools.private.release.prepare import Prepare
 from tools.private.release.process_backports import ProcessBackports
 from tools.private.release.promote_rc import PromoteRc
@@ -18,8 +21,11 @@ cmds = [
     CreateReleaseIssue,
     Prepare,
     CompletePrepare,
+    CompleteSyncChangelog,
     CreateReleaseBranch,
+    AddBackports,
     ProcessBackports,
+    OnPrMerged,
     CreateRc,
     PromoteRc,
 ]
@@ -42,6 +48,7 @@ def create_parser():
 
 
 def main():
+    print(f"sys.argv: {sys.argv}")
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
         os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])
 

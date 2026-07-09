@@ -16,21 +16,9 @@ class ChangelogNewsTest(TempDirTestCase):
 
 [unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-{#unreleased-removed}
-### Removed
-* Nothing removed.
-
-{#unreleased-changed}
-### Changed
-* Nothing changed.
-
-{#unreleased-fixed}
-### Fixed
-* Nothing fixed.
-
-{#unreleased-added}
-### Added
-* Nothing added.
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {#v2-0-2}
 ## [2.0.2] - 2026-05-14
@@ -407,6 +395,129 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
         # Verify that we didn't accidentally create any categories
         self.assertNotIn("{#v3-0-0-fixed}", new_content)
         self.assertNotIn("{#v3-0-0-added}", new_content)
+
+    def test_update_changelog_selective_news_files(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+{#v2-0-2}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+
+        # Create news files
+        (news_dir / "123.fixed.md").write_text("Fix A")
+        (news_dir / "456.fixed.md").write_text("Fix B")
+
+        # Act: Only process 123.fixed.md
+        changelog_news.update_changelog(
+            "2.0.3",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+            news_files=[news_dir / "123.fixed.md"],
+        )
+
+        # Assert
+        # 1. Only 123.fixed.md should be deleted
+        self.assertFalse((news_dir / "123.fixed.md").exists())
+        self.assertTrue((news_dir / "456.fixed.md").exists())
+
+        new_content = changelog_path.read_text()
+
+        # 2. Only Fix A should be in the changelog
+        self.assertIn("Fix A", new_content)
+        self.assertNotIn("Fix B", new_content)
+
+    def test_update_changelog_insertion_point(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+{#v2-2-0}
+## [2.2.0] - 2026-06-30
+
+[2.2.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.2.0
+
+{#v2-0-0}
+## [2.0.0] - 2026-04-09
+
+[2.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+        (news_dir / "123.fixed.md").write_text("Fix in 2.1.0")
+
+        # Act: Insert 2.1.0
+        changelog_news.update_changelog(
+            "2.1.0",
+            "2026-06-17",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
+
+        # Assert
+        new_content = changelog_path.read_text()
+
+        # Verify 2.1.0 is inserted BEFORE 2.0.0 but AFTER 2.2.0
+        idx_2_2_0 = new_content.index("{#v2-2-0}")
+        idx_2_1_0 = new_content.index("{#v2-1-0}")
+        idx_2_0_0 = new_content.index("{#v2-0-0}")
+
+        self.assertTrue(idx_2_2_0 < idx_2_1_0 < idx_2_0_0)
+        self.assertIn("Fix in 2.1.0", new_content)
+
+    def test_update_changelog_insertion_point_too_small(self):
+        # Arrange
+        changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+{#v2-0-0}
+## [2.0.0] - 2026-04-09
+
+[2.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0
+"""
+        changelog_path = self.tmpdir / "CHANGELOG.md"
+        changelog_path.write_text(changelog)
+
+        news_dir = self.tmpdir / "news"
+        news_dir.mkdir()
+        (news_dir / "123.fixed.md").write_text("Fix in 1.0.0")
+
+        # Act & Assert
+        with self.assertRaises(ValueError) as ctx:
+            changelog_news.update_changelog(
+                "1.0.0",
+                "2026-01-01",
+                changelog_path=changelog_path,
+                news_dir=news_dir,
+            )
+        self.assertIn(
+            "Could not find a version in CHANGELOG.md smaller than 1.0.0",
+            str(ctx.exception),
+        )
 
 
 if __name__ == "__main__":

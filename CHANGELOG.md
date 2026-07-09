@@ -46,12 +46,17 @@ compatibility.
 * Fixed a flaky error on Windows 2022 when looking up the win32 version during
 site initialization by retrying the lookup
 ([#3721](https://github.com/bazel-contrib/rules_python/issues/3721)).
+* (binaries) Fixed building of legacy zipapps on Windows execution platforms by
+  using a hermetic tool instead of host `cat`.
+* (bootstrap) Fixed stage 1 bootstrap imports when target outputs shadow
+  standard library modules.
 * (coverage) Skip lcov report when no data was collected.
 * (pypi) Fixed `experimental_index_url` checking truthiness before envsubst
 expansion.
 * (rules) Fixed venv output paths for `py_binary` and `py_test` targets whose
 names contain path separators so distinct targets with the same basename no
 longer share the same venv output directory.
+* (windows) Fixed build data generation on localized Windows installations.
 
 {#v2-2-0-added}
 ### Added
@@ -60,6 +65,10 @@ exported by bzl files.
 * Exposed {bzl:obj}`VenvSymlinkEntry` and {bzl:obj}`VenvSymlinkKind` in
 {bzl:target}`//python:py_info.bzl`.
 * (pypi) Added `@pypi` repo: a unified hub of `pip.parse` hubs.
+* (pypi) Added a `dep` tag class to the `pip` bzlmod extension. This allows
+  modules to declare abstract PyPI dependencies, ensuring target structures
+  exist in the unified hub, while allowing other modules to provide the
+  concrete implementation via `pip.parse`.
 * (uv) Support for basic `uv.lock` generation via the `lock` rule
 and basic support for importing the `uv.lock` file itself. Since this
 may have bugs, please report this by creating new tickets.

@@ -36,7 +36,11 @@ class CmdPrepareTest(TempDirTestCase):
         self.assertEqual(result, 0)
         self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
         self.mock_gh.create_tracking_issue.assert_not_called()
-        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_gh.create_pr.assert_called_once_with(
+            title="Prepare release v2.0.0",
+            body="Work towards #123",
+            base="main",
+        )
         self.mock_git.add_modified_and_deleted.assert_called_once()
 
     @patch("tools.private.release.prepare.changelog_news")
@@ -67,7 +71,11 @@ class CmdPrepareTest(TempDirTestCase):
         self.mock_gh.create_tracking_issue.assert_called_once_with(
             "2.0.0", "dummy template content"
         )
-        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_gh.create_pr.assert_called_once_with(
+            title="Prepare release v2.0.0",
+            body="Work towards #123",
+            base="main",
+        )
         self.mock_git.add_modified_and_deleted.assert_called_once()
 
     @patch("tools.private.release.prepare.changelog_news")
@@ -172,7 +180,11 @@ class CmdPrepareTest(TempDirTestCase):
             "origin", "prepare-2.0.0", set_upstream=True, force=True
         )
         self.mock_gh.get_open_pr.assert_called_once_with("prepare-2.0.0")
-        self.mock_gh.create_pr.assert_called_once_with("2.0.0", 123)
+        self.mock_gh.create_pr.assert_called_once_with(
+            title="Prepare release v2.0.0",
+            body="Work towards #123",
+            base="main",
+        )
         self.mock_gh.update_issue_body.assert_called_once()
         call_args = self.mock_gh.update_issue_body.call_args[0]
         self.assertIn("pr=#789", call_args[1])

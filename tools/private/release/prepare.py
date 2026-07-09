@@ -171,7 +171,11 @@ class Prepare:
                 )
                 pr_num = "<NEW_PR>"
             else:
-                pr_url = self.gh.create_pr(version, issue_num)
+                pr_url = self.gh.create_pr(
+                    title=f"Prepare release v{version}",
+                    body=f"Work towards #{issue_num}",
+                    base="main",
+                )
                 pr_num = pr_url.split("/")[-1]
                 print(f"Created Pull Request: {pr_url} (PR #{pr_num})")
 
