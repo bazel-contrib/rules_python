@@ -144,6 +144,30 @@ class Worker:
                 logger.info("path %s changed", path)
                 changed_paths.append(path)
 
+        # Remove any source files that were tracked in the previous request (`current_digests`)
+        # but are missing from the current `request["inputs"]` (`incoming_digests`).
+        # Across incremental branch switches or file removals, if these stale symlinks
+        # remain in `srcdir` on disk, Sphinx will discover broken/unreadable files during
+        # `find_files()` and abort with "WARNING: Ignored unreadable document" (fatal with -W).
+        for path in set(current_digests) - set(incoming_digests):
+            removed_path = os.path.join(srcdir, path)
+            if os.path.exists(removed_path) or os.path.islink(removed_path):
+                logger.info("removing stale source file %s", removed_path)
+                try:
+                    if os.path.islink(removed_path):
+                        try:
+                            os.remove(removed_path)
+                        except OSError:
+                            os.rmdir(removed_path)
+                    elif os.path.isdir(removed_path):
+                        shutil.rmtree(removed_path)
+                    else:
+                        os.remove(removed_path)
+                except OSError as e:
+                    logger.warning(
+                        "failed to remove stale source %s: %s", removed_path, e
+                    )
+
         self._digests[srcdir] = incoming_digests
         self._extension.changed_paths = changed_paths
         request_info["changed_sources"] = changed_paths
@@ -188,6 +212,12 @@ class Worker:
                 stdout.truncate(0)
                 stderr.seek(0)
                 stderr.truncate(0)
+                # If Sphinx cache (`--doctree-dir`) becomes corrupted across incremental
+                # updates or branch checkouts, exit code 2 is returned. Wiping out the cached
+                # doctrees before retrying allows Sphinx to recover cleanly from scratch.
+                for arg in sphinx_args:
+                    if arg.startswith("--doctree-dir="):
+                        shutil.rmtree(arg.split("=", 1)[1], ignore_errors=True)
                 exit_code = main(sphinx_args)
 
         if exit_code:
@@ -247,14 +277,31 @@ class BazelWorkerExtension:
         return {"parallel_read_safe": True, "parallel_write_safe": True}
 
     def _handle_env_get_outdated(self, app, env, added, changed, removed):
-        changed = {
-            # NOTE: path2doc returns None if it's not a doc path
-            env.path2doc(p)
-            for p in self.changed_paths
-        }
+        changed_docs = set()
+        for p in self.changed_paths:
+            # Try multiple path resolutions because depending on how Sphinx and Bazel
+            # represent inputs (`p`), `env.path2doc` may require relative, srcdir-joined,
+            # or absolute paths to successfully resolve the document name.
+            doc = (
+                env.path2doc(p)
+                or env.path2doc(os.path.join(env.srcdir, p))
+                or env.path2doc(os.path.abspath(os.path.join(env.srcdir, p)))
+            )
+            if doc:
+                changed_docs.add(doc)
 
-        logger.info("changed docs: %s", changed)
-        return changed
+        # When documents are added or removed across incremental builds or branch checkouts,
+        # parent documents whose `toctree` includes them (especially via glob patterns or
+        # explicit references to removed docs) must be invalidated and re-read. Otherwise,
+        # Sphinx retains stale table of contents entries or throws unresolvable reference errors.
+        if added or removed:
+            glob_toctrees = getattr(env, "glob_toctrees", set())
+            for doc, includes in getattr(env, "toctree_includes", {}).items():
+                if doc in glob_toctrees or not removed.isdisjoint(includes):
+                    changed_docs.add(doc)
+
+        logger.info("changed docs: %s", changed_docs)
+        return changed_docs
 
 
 def _worker_main(stdin, stdout, exec_root):
