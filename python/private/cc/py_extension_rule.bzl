@@ -61,7 +61,6 @@ def _py_extension_wrapper_impl(ctx):
             transitive_sources = depset([py_dso]),
             imports = depset([import_path]),
         ),
-        csl_target[CcSharedLibraryInfo],
     ]
 
 PY_EXTENSION_WRAPPER_ATTRS = COMMON_ATTRS | {
@@ -89,7 +88,7 @@ def create_py_extension_wrapper_rule_builder(**kwargs):
     builder = ruleb.Rule(
         implementation = _py_extension_wrapper_impl,
         attrs = PY_EXTENSION_WRAPPER_ATTRS,
-        provides = [PyInfo, CcSharedLibraryInfo],
+        provides = [PyInfo],
         toolchains = [
             ruleb.ToolchainType(PY_CC_TOOLCHAIN_TYPE),
             ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type"),
