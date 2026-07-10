@@ -92,5 +92,17 @@ def py_extension(
         name = name,
         src = ":" + csl_name,
         visibility = visibility,
+        os = select({
+            "@platforms//os:linux": "linux",
+            "@platforms//os:macos": "macos",
+            "@platforms//os:windows": "windows",
+            "//conditions:default": "unknown",
+        }),
+        cpu = select({
+            "@platforms//cpu:x86_64": "x86_64",
+            "@platforms//cpu:aarch64": "aarch64",
+            "@platforms//cpu:x86_32": "x86_32",
+            "//conditions:default": "unknown",
+        }),
         **kwargs
     )

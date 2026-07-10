@@ -74,13 +74,8 @@ PY_EXTENSION_WRAPPER_ATTRS = COMMON_ATTRS | {
         providers = [CcSharedLibraryInfo],
         doc = "The cc_shared_library target to wrap.",
     ),
-    "_constraints": lambda: attrb.LabelList(
-        default = sorted({
-            c: None
-            for info in PLATFORMS.values()
-            for c in info.compatible_with
-        }.keys()),
-    ),
+    "os": lambda: attrb.String(doc = "OS determined by macro select."),
+    "cpu": lambda: attrb.String(doc = "CPU determined by macro select."),
 }
 
 def create_py_extension_wrapper_rule_builder(**kwargs):
@@ -118,69 +113,16 @@ def _get_extension(cc_toolchain):
     ext = "pyd" if is_windows else "so"
     return ext
 
-def _derive_pep3149_tag(platform, info):
-    # platform is the triplet, e.g. "x86_64-unknown-linux-gnu"
-    p, _, _ = platform.partition("-freethreaded")
-    parts = p.split("-")
-    triplet_arch = parts[0]
-
-    if info.os_name == "windows":
-        if triplet_arch == "x86_64":
-            return "win_amd64"
-        elif triplet_arch == "aarch64":
-            return "win_arm64"
-        else:
-            return "win32"
-    elif info.os_name == "osx":
-        return "darwin"
-    elif info.os_name == "linux":
-        abi = "musl" if p.endswith("-musl") else "gnu"
-        return "{}-linux-{}".format(triplet_arch, abi)
-    else:
-        return triplet_arch
-
-def _get_platform_from_constraints(ctx):
-    # Build a map of Label to ConstraintValueInfo from _constraints
-    constraints_map = {}
-    for c in ctx.attr._constraints:
-        if platform_common.ConstraintValueInfo in c:
-            constraints_map[c.label] = c[platform_common.ConstraintValueInfo]
-
-    # Resolve the target's libc to its config_setting label string
-    target_libc_setting = None
-    if ctx.attr.libc == "musl":
-        target_libc_setting = str(Label("//python/config_settings:_is_py_linux_libc_musl"))
-    elif ctx.attr.libc == "glibc":
-        target_libc_setting = str(Label("//python/config_settings:_is_py_linux_libc_glibc"))
-
-    # Find the matching platform in PLATFORMS
-    for platform, info in PLATFORMS.items():
-        # Check if all compatible_with constraints are satisfied
-        match = True
-        for c_str in info.compatible_with:
-            c_label = Label(c_str)
-            if c_label in constraints_map:
-                c_val = constraints_map[c_label]
-                if not ctx.target_platform_has_constraint(c_val):
-                    match = False
-                    break
-            else:
-                match = False
-                break
-
-        if match:
-            # Additional check for Linux libc consistency using target_settings
-            if info.os_name == "linux" and target_libc_setting:
-                if target_libc_setting not in info.target_settings:
-                    match = False
-
-        if match:
-            return _derive_pep3149_tag(platform, info)
-
-    return None
-
 def _get_platform(ctx):
     """Derives the PEP 3149 platform tag from the target constraints.
+    Linux platform tags are standardized here:
+      - https://peps.python.org/pep-3149/
+    Windows platform tags, such as they are, are defined in this issue and
+            commit (treated as a de facto standard):
+      - https://github.com/python/cpython/issues/67169
+      - https://github.com/python/cpython/commit/03a144bb6ac3d7631a3bdb895e2a1f2d021fb08b
+    Apple platform tag is always just "darwin", discussed briefly here:
+      - https://github.com/python/cpython/commit/3b8124884c3655b4cf2629d741b18c1a38181805
 
     Args:
         ctx: The rule context.
@@ -188,9 +130,22 @@ def _get_platform(ctx):
     Returns:
         The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
     """
-    platform_tag = _get_platform_from_constraints(ctx)
-    if platform_tag:
-        return platform_tag
+    os = ctx.attr.os
+    cpu = ctx.attr.cpu
+
+    if os == "windows":
+        if cpu == "x86_64":
+            return "win_amd64"
+        if cpu == "aarch64":
+            return "win_arm64"
+        return "win32"
+    if os == "macos":
+        return "darwin"
+    if os == "linux":
+        libc = "gnu"
+        if ctx.attr.libc == "musl":
+            libc = "musl"
+        return '{}-{}-{}'.format(cpu, os, libc)
 
     fail(
         """
