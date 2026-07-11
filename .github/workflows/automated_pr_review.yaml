@@ -7,7 +7,7 @@ name: Automated Code Review
 on:
   pull_request:
     types: [opened]
-  pull_request_review_comment:
+  issue_comment:
     types: [created]
 
 permissions:
@@ -20,19 +20,24 @@ jobs:
     # Trigger only if:
     # 1. It is a pull_request event, it is NOT a draft, and the author is a maintainer
     #    (OWNER, MEMBER, or COLLABORATOR).
-    # 2. OR it is a pull_request_review_comment event, the comment body has a line starting with "/review",
+    # 2. OR it is a regular conversation comment on a pull request, the comment body has a line starting with "/review",
     #    and the commenter is a maintainer.
     if: >
       (github.event_name == 'pull_request' && !github.event.pull_request.draft &&
        contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)) ||
-      (github.event_name == 'pull_request_review_comment' &&
-       (startsWith(github.event.comment.body, '/review') || contains(github.event.comment.body, '\n/review')) &&
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null &&
+       (startsWith(github.event.comment.body, '/review') ||
+        contains(github.event.comment.body, '\n/review') ||
+        contains(github.event.comment.body, '\r\n/review')) &&
        contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
     steps:
       - name: Checkout PR Branch
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          # Note: In GHA, during an issue_comment event on a PR, github.event.pull_request is null
+          # and the PR number is placed inside github.event.issue.number (because every PR is an issue).
+          # Therefore, github.event.issue.number is the PR number when checking out refs/pull/<number>/head.
+          ref: refs/pull/${{ github.event.pull_request.number || github.event.issue.number }}/head
           persist-credentials: false
 
       - name: Checkout Reviewbot (Base Branch)
@@ -45,8 +50,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v8.3.0
 
-      - name: Set up Python
-        run: uv python install 3.13
+      - name: Set up Python and Virtual Environment
+        run: |
+          uv python install 3.13
+          uv venv --python 3.13
 
       - name: Install Dependencies
         run: |
