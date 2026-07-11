@@ -10,6 +10,7 @@ import asyncio
 from pathlib import Path
 
 from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig
+from google.antigravity.models import GeminiAPIEndpoint, ModelTarget
 
 
 def parse_args():
@@ -30,9 +31,28 @@ async def main():
         "reviews on pull requests."
     )
 
+    # Create the default endpoint picking up GEMINI_API_KEY from the environment.
+    endpoint = GeminiAPIEndpoint()
+
     # Initialize the Antigravity Agent in read-only mode for security.
     # Register the review-pr skill from the local reviewbot folder.
+    # Provide a comprehensive prioritized cascade across Gemini 3 and Gemini 2
+    # to automatically fall back if any model hits free-tier quota limits (429)
+    # or temporary unavailability.
     config = LocalAgentConfig(
+        models=[
+            ModelTarget(name="gemini-3.5-flash", endpoint=endpoint),
+            ModelTarget(name="gemini-3.1-pro-preview", endpoint=endpoint),
+            ModelTarget(name="gemini-3.1-flash-lite", endpoint=endpoint),
+            ModelTarget(name="gemini-3-pro-preview", endpoint=endpoint),
+            ModelTarget(name="gemini-2.5-pro", endpoint=endpoint),
+            ModelTarget(name="gemini-2.5-flash", endpoint=endpoint),
+            ModelTarget(name="gemini-2.5-flash-lite", endpoint=endpoint),
+            ModelTarget(name="gemini-2.0-flash", endpoint=endpoint),
+            ModelTarget(name="gemini-2.0-flash-lite", endpoint=endpoint),
+            ModelTarget(name="gemini-flash-latest", endpoint=endpoint),
+            ModelTarget(name="gemini-pro-latest", endpoint=endpoint),
+        ],
         system_instructions=system_instructions,
         skills_paths=[str(Path(__file__).parent / "skills" / "review-pr" / "SKILL.md")],
         capabilities=CapabilitiesConfig(
