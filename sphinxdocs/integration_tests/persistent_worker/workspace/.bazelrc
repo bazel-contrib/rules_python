@@ -1,5 +1,5 @@
-common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
-common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
+# Disable disk caching and remote action caching so Bazel is forced to dispatch builds
+# directly to the running persistent worker instead of restoring pre-built HTML cache results across test steps.
 common --disk_cache=
 build --noremote_accept_cached
 common --http_timeout_scaling=10.0

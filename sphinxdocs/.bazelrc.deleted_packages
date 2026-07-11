@@ -1,1 +1,2 @@
-common --deleted_packages=integration_tests/bcr,integration_tests/persistent_worker/workspace
+common --deleted_packages=integration_tests/bcr
+common --deleted_packages=integration_tests/persistent_worker/workspace
