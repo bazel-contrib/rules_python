@@ -1,0 +1,16 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "distribution",
+    srcs = glob(
+        ["**/*"],
+        exclude = [
+            "bazel-*/**",
+            "integration_tests/**",
+            "tests/**",
+        ],
+    ) + [
+        "//sphinxdocs:distribution",
+    ],
+    visibility = ["//visibility:public"],
+)

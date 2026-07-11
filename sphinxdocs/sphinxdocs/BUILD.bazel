@@ -20,6 +20,14 @@ package(
     default_visibility = ["//:__subpackages__"],
 )
 
+filegroup(
+    name = "distribution",
+    srcs = glob(["**/*"]) + [
+        "//sphinxdocs/private:distribution",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
 # Additional -D values to add to every Sphinx build.
 # This is usually used to override the version when building
 repeated_string_list_flag(

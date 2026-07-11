@@ -23,3 +23,7 @@ common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
 
 build --lockfile_mode=update
+
+common:fast-tests --build_tests_only=true
+common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
+common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
