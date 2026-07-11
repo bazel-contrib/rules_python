@@ -5,12 +5,12 @@ from integration_tests import runner
 
 class PersistentWorkerTest(runner.TestCase):
     def _check_index_html(self, text: str, should_exist: bool):
-        index_html_files = list(self.repo_root.glob("bazel-bin/**/index.html"))
-        if not index_html_files:
-            self.fail(
-                f"Could not find index.html inside {self.repo_root / 'bazel-bin'}"
-            )
-        content = index_html_files[0].read_text()
+        index_html = (
+            self.repo_root / "bazel-bin" / "docs" / "_build" / "html" / "index.html"
+        )
+        if not index_html.exists():
+            self.fail(f"Could not find index.html at {index_html}")
+        content = index_html.read_text()
         if should_exist:
             self.assertIn(
                 text,

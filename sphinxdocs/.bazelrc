@@ -21,6 +21,10 @@ common --experimental_repository_downloader_retries=10
 
 common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
+# Pass host PATH to build and test actions so bazel_from_env (used by rules_bazel_integration_test
+# for local 'self' testing) can locate the user's bazel binary without disabling strict action env.
+common --action_env=PATH
+common --test_env=PATH
 
 build --lockfile_mode=update
 

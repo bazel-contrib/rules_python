@@ -1,7 +1,4 @@
-module(
-    name = "persistent_worker_workspace",
-    version = "0.0.0",
-)
+module(version = "0.0.0")
 
 bazel_dep(name = "sphinxdocs", version = "0.0.0")
 local_path_override(

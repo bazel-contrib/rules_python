@@ -1,6 +1,5 @@
 """Helpers for running bazel-in-bazel integration tests for sphinxdocs."""
 
-load("@bazel_binaries//:defs.bzl", "bazel_binaries")
 load(
     "@rules_bazel_integration_test//bazel_integration_test:defs.bzl",
     "bazel_integration_test",
@@ -46,7 +45,7 @@ def sphinxdocs_integration_test(
         ],
     )
     kwargs.setdefault("size", "large")
-    for bazel_version in bazel_versions or bazel_binaries.versions.all:
+    for bazel_version in bazel_versions or ["self"]:
         test_runner = _test_runner(
             name = name,
             bazel_version = bazel_version,
