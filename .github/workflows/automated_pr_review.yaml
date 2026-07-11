@@ -34,6 +34,9 @@ jobs:
       - name: Checkout PR Branch
         uses: actions/checkout@v7
         with:
+          # Note: In GHA, during an issue_comment event on a PR, github.event.pull_request is null
+          # and the PR number is placed inside github.event.issue.number (because every PR is an issue).
+          # Therefore, github.event.issue.number is the PR number when checking out refs/pull/<number>/head.
           ref: refs/pull/${{ github.event.pull_request.number || github.event.issue.number }}/head
           persist-credentials: false
 
