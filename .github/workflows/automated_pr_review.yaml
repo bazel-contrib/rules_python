@@ -5,8 +5,6 @@ name: Automated Code Review
 # to secrets (like GEMINI_API_KEY) even for fork PRs.
 # Using pull_request for now during setup/testing.
 on:
-  pull_request:
-    types: [opened]
   issue_comment:
     types: [created]
 
@@ -15,21 +13,24 @@ permissions:
   pull-requests: read
 
 jobs:
+  # Always runs so the workflow run exits cleanly without a "No jobs ran" error
+  # when the review job's if-condition evaluates to false.
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Workflow trigger check
+        run: echo "Workflow triggered successfully."
+
   review:
     runs-on: ubuntu-latest
-    # Trigger only if:
-    # 1. It is a pull_request event, it is NOT a draft, and the author is a maintainer
-    #    (OWNER, MEMBER, or COLLABORATOR).
-    # 2. OR it is a regular conversation comment on a pull request, the comment body has a line starting with "/review",
-    #    and the commenter is a maintainer.
+    # Trigger only if it is a regular comment on a pull request, the comment body has a line
+    # starting with "/review", and the commenter is a maintainer (OWNER, MEMBER, or COLLABORATOR).
     if: >
-      (github.event_name == 'pull_request' && !github.event.pull_request.draft &&
-       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)) ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null &&
-       (startsWith(github.event.comment.body, '/review') ||
-        contains(github.event.comment.body, '\n/review') ||
-        contains(github.event.comment.body, '\r\n/review')) &&
-       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
+      github.event_name == 'issue_comment' && github.event.issue.pull_request != null &&
+      (startsWith(github.event.comment.body, '/review') ||
+       contains(github.event.comment.body, '\n/review') ||
+       contains(github.event.comment.body, '\r\n/review')) &&
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     steps:
       - name: Checkout PR Branch
         uses: actions/checkout@v7
@@ -39,6 +40,25 @@ jobs:
           # Therefore, github.event.issue.number is the PR number when checking out refs/pull/<number>/head.
           ref: refs/pull/${{ github.event.pull_request.number || github.event.issue.number }}/head
           persist-credentials: false
+
+      - name: Fetch Base Branch and Negotiate Minimal Diff History
+        env:
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
+        run: |
+          # 1. Fetch the tip of main
+          git fetch origin main:refs/remotes/origin/main --depth=1
+
+          # 2. Check if we already have the merge base (common ancestor)
+          if ! git merge-base origin/main HEAD >/dev/null 2>&1; then
+            # If we know the exact number of commits in the PR, deepen by (PR_COMMITS + 10)
+            if [ -n "$PR_COMMITS" ] && [ "$PR_COMMITS" != "null" ]; then
+              git fetch --deepen="$((PR_COMMITS + 10))"
+            fi
+            # 3. If it's an issue_comment event (where PR_COMMITS is null) or still shallow, unshallow/deepen
+            if ! git merge-base origin/main HEAD >/dev/null 2>&1; then
+              git fetch --unshallow || git fetch --deepen=50
+            fi
+          fi
 
       - name: Checkout Reviewbot (Base Branch)
         uses: actions/checkout@v7

@@ -2,15 +2,16 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "google-antigravity",
-#     "requests",
 # ]
 # ///
 import argparse
 import asyncio
+import subprocess
 from pathlib import Path
 
 from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig
 from google.antigravity.models import GeminiAPIEndpoint, ModelTarget
+from google.antigravity.types import BuiltinTools
 
 
 def parse_args():
@@ -19,11 +20,26 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_pr_diff() -> str:
+    """Fetches the git diff for the current pull request against origin/main."""
+    try:
+        return subprocess.check_output(
+            ["git", "diff", "origin/main...HEAD"], text=True, stderr=subprocess.DEVNULL
+        )
+    except Exception:
+        return "No diff could be automatically extracted via git commands."
+
+
 async def main():
     args = parse_args()
 
-    # Read prompt file
-    prompt = Path(args.prompt).read_text()
+    # Read prompt file and pre-hydrate with the exact PR code diff
+    base_prompt = Path(args.prompt).read_text()
+    diff_text = get_pr_diff()
+    prompt = (
+        f"{base_prompt}\n\n## Pull Request Git Diff\n"
+        f"Here is the exact code diff for this pull request:\n```diff\n{diff_text}\n```"
+    )
 
     # General coordinator instructions for the reviewer agent.
     system_instructions = (
@@ -36,7 +52,7 @@ async def main():
 
     # Initialize the Antigravity Agent in read-only mode for security.
     # Register the review-pr skill from the local reviewbot folder.
-    # Provide a comprehensive prioritized cascade across Gemini 3 and Gemini 2
+    # Provide a comprehensive prioritized cascade across Gemini 3 models
     # to automatically fall back if any model hits free-tier quota limits (429)
     # or temporary unavailability.
     config = LocalAgentConfig(
@@ -51,9 +67,7 @@ async def main():
         system_instructions=system_instructions,
         skills_paths=[str(Path(__file__).parent / "skills" / "review-pr" / "SKILL.md")],
         capabilities=CapabilitiesConfig(
-            allow_filesystem_read=True,
-            allow_filesystem_write=False,
-            allow_network=False,
+            enabled_tools=BuiltinTools.read_only(),
         ),
     )
 

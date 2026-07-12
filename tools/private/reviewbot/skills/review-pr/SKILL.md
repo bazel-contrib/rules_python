@@ -5,6 +5,8 @@ description: Perform a read-only code review on a pull request.
 
 # review-pr
 
+IMPORTANT: The exact git diff for the pull request is pre-provided right in your prompt. Analyze this provided diff directly in a single pass without calling exploratory directory listing or file reading tools unless you specifically need surrounding lines of context from a modified file.
+
 You are an expert Starlark, Python, and Bazel code reviewer. Analyze the changed files for
 correctness, edge cases, and performance. Focus strictly on logical
 correctness, concurrency safety, system architecture, performance bottlenecks,
