@@ -17,8 +17,9 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("//python/private:text_util.bzl", "render")
+load(":text_util.bzl", "render")
 load(":version.bzl", "version")
+load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 _PYTHON_VERSION_FLAG = Label("//python/config_settings:python_version")
 _PYTHON_VERSION_MAJOR_MINOR_FLAG = Label("//python/config_settings:python_version_major_minor")
@@ -30,10 +31,6 @@ The current configuration rules_python config flags is:
 If the value is missing, then the default value is being used, see documentation:
 {docs_url}/python/config_settings
 """
-
-# Indicates something needs public visibility so that other generated code can
-# access it, but it's not intended for general public usage.
-_NOT_ACTUALLY_PUBLIC = ["//visibility:public"]
 
 def construct_config_settings(
         *,
@@ -93,7 +90,7 @@ def construct_config_settings(
         native.config_setting(
             name = "_" + name,
             flag_values = {":python_version": ver},
-            visibility = ["//visibility:public"],
+            visibility = NOT_ACTUALLY_PUBLIC,
         )
 
         # An alias pointing to an underscore-prefixed config_setting_group
@@ -111,7 +108,7 @@ def construct_config_settings(
         native.alias(
             name = name,
             actual = "_{}_group".format(name),
-            visibility = ["//visibility:public"],
+            visibility = NOT_ACTUALLY_PUBLIC,
         )
 
     # This matches the raw flag value, e.g. --//python/config_settings:python_version=3.8
@@ -156,30 +153,30 @@ def construct_config_settings(
         # `whl_library` in the hub repo created by `pip.parse`.
         flag_values = {"current_config": "will-never-match"},
         # Only public so that PyPI hub repo can access it
-        visibility = _NOT_ACTUALLY_PUBLIC,
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
 
     libc = Label("//python/config_settings:py_linux_libc")
     native.config_setting(
         name = "_is_py_linux_libc_glibc",
         flag_values = {libc: "glibc"},
-        visibility = _NOT_ACTUALLY_PUBLIC,
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
     native.config_setting(
         name = "_is_py_linux_libc_musl",
         flag_values = {libc: "musl"},
-        visibility = _NOT_ACTUALLY_PUBLIC,
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
     freethreaded = Label("//python/config_settings:py_freethreaded")
     native.config_setting(
         name = "_is_py_freethreaded_yes",
         flag_values = {freethreaded: "yes"},
-        visibility = _NOT_ACTUALLY_PUBLIC,
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
     native.config_setting(
         name = "_is_py_freethreaded_no",
         flag_values = {freethreaded: "no"},
-        visibility = _NOT_ACTUALLY_PUBLIC,
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
 
 def _python_version_flag_impl(ctx):

@@ -16,6 +16,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
+load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -108,18 +109,23 @@ bzl_library(
     ],
 )
 
+bzl_library(
+    name = "visibility",
+    srcs = ["visibility.bzl"],
+)
+
 py_binary(
     name = "inventory_builder",
     srcs = ["inventory_builder.py"],
     # Only public because it's an implicit attribute
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 py_binary(
     name = "proto_to_markdown",
     srcs = ["proto_to_markdown.py"],
     # Only public because it's an implicit attribute
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
     deps = [":proto_to_markdown_lib"],
 )
 
@@ -127,7 +133,7 @@ py_library(
     name = "proto_to_markdown_lib",
     srcs = ["proto_to_markdown.py"],
     # Only public because it's an implicit attribute
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
     deps = [
         ":stardoc_output_proto_py_pb2",
     ],

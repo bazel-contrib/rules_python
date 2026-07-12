@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 load(":py_common_api.bzl", "py_common_api")
 
 package(
@@ -27,7 +28,7 @@ filegroup(
 py_common_api(
     name = "py_common_api_impl",
     # NOTE: Not actually public. Implicit dependency of public rules.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 bzl_library(

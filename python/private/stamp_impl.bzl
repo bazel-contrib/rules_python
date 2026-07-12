@@ -18,6 +18,8 @@ This module can be removed likely after the following PRs ar addressed:
 - https://github.com/bazelbuild/bazel/issues/11164
 """
 
+load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
 StampSettingInfo = provider(
     doc = "Information about the `--stamp` command line flag",
     fields = {
@@ -50,7 +52,7 @@ Stamped binaries are not rebuilt unless their dependencies change.
     },
 )
 
-def stamp_build_setting(name, visibility = ["//visibility:public"]):
+def stamp_build_setting(name, visibility = NOT_ACTUALLY_PUBLIC):
     native.config_setting(
         name = "stamp_detect",
         values = {"stamp": "1"},

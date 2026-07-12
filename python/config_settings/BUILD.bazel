@@ -15,6 +15,7 @@ load(
     "VenvsUseDeclareSymlinkFlag",
     rp_string_flag = "string_flag",
 )
+load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:flags.bzl", "define_pypi_internal_flags")
 load(":config_settings.bzl", "construct_config_settings")
 
@@ -48,7 +49,7 @@ string_flag(
     build_setting_default = AddSrcsToRunfilesFlag.AUTO,
     values = AddSrcsToRunfilesFlag.flag_values(),
     # NOTE: Only public because it is dependency of public rules.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
@@ -67,7 +68,7 @@ config_setting(
     },
     # NOTE: Only public because it is used in py_toolchain_suite from toolchain
     # repositories
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
@@ -75,7 +76,7 @@ string_flag(
     build_setting_default = PrecompileFlag.AUTO,
     values = sorted(PrecompileFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
@@ -83,7 +84,7 @@ string_flag(
     build_setting_default = ValidateTestMainFlag.AUTO,
     values = ValidateTestMainFlag.flag_values(),
     # NOTE: Only public because it's an implicit dependency of py_test.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
@@ -91,7 +92,7 @@ string_flag(
     build_setting_default = PrecompileSourceRetentionFlag.AUTO,
     values = sorted(PrecompileSourceRetentionFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 rp_string_flag(
@@ -104,7 +105,7 @@ rp_string_flag(
     }),
     values = sorted(BootstrapImplFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 label_flag(
@@ -127,7 +128,7 @@ string_flag(
     build_setting_default = LibcFlag.GLIBC,
     values = LibcFlag.flag_values(),
     # NOTE: Only public because it is used in pip hub and toolchain repos.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
@@ -166,21 +167,21 @@ string_flag(
     name = "venv",
     build_setting_default = "auto",
     # NOTE: Only public because it is used in pip hub repos and executable transitions.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
     name = "pip_whl_osx_version",
     build_setting_default = "",
     # NOTE: Only public because it is used in pip hub repos.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 string_flag(
     name = "venvs_site_packages",
     build_setting_default = VenvsSitePackages.NO,
     # NOTE: Only public because it is used in pip hub repos.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 config_setting(
@@ -189,7 +190,7 @@ config_setting(
         ":venvs_site_packages": VenvsSitePackages.YES,
     },
     # NOTE: Only public because it is used in whl_library repos.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 define_pypi_internal_flags(
@@ -200,7 +201,7 @@ label_flag(
     name = "pip_env_marker_config",
     build_setting_default = ":_pip_env_marker_default_config",
     # NOTE: Only public because it is used in pip hub repos.
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 bool_flag(
