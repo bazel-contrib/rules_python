@@ -331,9 +331,9 @@ myst-parser==3.0.1 ; python_full_version < '3.10' \
     --hash=sha256:6457aaa33a5d474aca678b8ead9b3dc298e89c68e67012e73146ea6fd54babf1 \
     --hash=sha256:88f0cb406cb363b077d176b51c476f62d60604d68a8dcdf4832e080441301a87
     # via rules-python-docs (docs/pyproject.toml)
-myst-parser==4.0.1 ; python_full_version == '3.10.*' \
-    --hash=sha256:5cfea715e4f3574138aecbf7d54132296bfd72bb614d31168f48c477a830a7c4 \
-    --hash=sha256:9134e88959ec3b5780aedf8a99680ea242869d012e8821db3126d427edc9c95d
+myst-parser==5.1.0 ; python_full_version == '3.10.*' \
+    --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
+    --hash=sha256:ab69322dc6719dcc7f296479dbb70181b66df6ed315064f92dbc85c0e1bf2f02
     # via rules-python-docs (docs/pyproject.toml)
 myst-parser==5.1.0 ; python_full_version >= '3.11' \
     --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
