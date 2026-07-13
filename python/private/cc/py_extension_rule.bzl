@@ -1,7 +1,6 @@
 """Implementation of the _py_extension_wrapper rule."""
 
 load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
-load("//python:versions.bzl", "PLATFORMS")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
 load("//python/private:builders.bzl", "builders")
