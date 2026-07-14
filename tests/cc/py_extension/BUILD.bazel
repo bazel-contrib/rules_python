@@ -51,6 +51,7 @@ py_extension(
 py_extension(
     # A python extension that dynamically links to another shared library
     name = "ext_shared",
+    imports = ["."],
     dynamic_deps = [
         ":add_one_shared",
     ],
@@ -149,6 +150,21 @@ py_test(
         ":ext_shared",
         "@dev_pip//pyelftools",
         "@rules_python//python/runfiles",
+    ],
+)
+
+#####
+
+py_extension(
+    name = "ext_pkg_test",
+    srcs = ["ext_pkg_test.c"],
+)
+
+py_test(
+    name = "py_extension_pkg_test",
+    srcs = ["py_extension_pkg_test.py"],
+    deps = [
+        ":ext_pkg_test",
     ],
 )
 

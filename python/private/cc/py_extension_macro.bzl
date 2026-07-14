@@ -20,6 +20,16 @@ def py_extension(
         **kwargs):
     """Creates a Python extension module.
 
+    By default, extensions are created within their workspace package directory
+    (e.g., `pkg/ext.so`) and imported using standard Python package paths
+    (e.g., `from pkg import ext`).
+
+    To customize import path behavior:
+    - `imports`: Pass `imports = ["..."]` to append custom search directories to
+      `sys.path` (matching `py_library`).
+    - `module_name`: Pass `module_name = "custom_name"` to override the base module
+      filename.
+
     Args:
         name: Target name.
         srcs: Optional C/C++ source files to compile directly for this extension.
