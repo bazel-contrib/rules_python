@@ -2,7 +2,7 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
-load("//python/private:util.bzl", "add_tag")
+load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
 load(":py_extension_rule.bzl", "py_extension_wrapper")
 
 def py_extension(
@@ -53,6 +53,7 @@ def py_extension(
             defines = defines,
             deps = ["@rules_python//python/cc:current_py_cc_headers"],
             visibility = ["//visibility:private"],
+            **copy_propagating_kwargs(kwargs)
         )
         csl_deps.append(":" + impl_lib_name)
 
@@ -62,7 +63,7 @@ def py_extension(
 
     # 4. Create the underlying cc_shared_library
     csl_name = "_" + name + "_csl"
-    csl_kwargs = {}
+    csl_kwargs = copy_propagating_kwargs(kwargs)
     if exports_filter:
         csl_kwargs["exports_filter"] = exports_filter
     if user_link_flags:
