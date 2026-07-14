@@ -97,6 +97,11 @@ If available, information about C libraries, struct with fields:
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
 """,
+        "platform_tag": """\
+:type: str | None
+
+The PEP 3149 / PEP 425 platform tag for extension modules, e.g. 'x86_64-linux-gnu', 'darwin', or 'win_amd64'.
+""",
         "python_version": """
 :type: str
 

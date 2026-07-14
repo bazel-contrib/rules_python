@@ -73,8 +73,6 @@ PY_EXTENSION_WRAPPER_ATTRS = COMMON_ATTRS | {
         providers = [CcSharedLibraryInfo],
         doc = "The cc_shared_library target to wrap.",
     ),
-    "os": lambda: attrb.String(doc = "OS determined by macro select."),
-    "cpu": lambda: attrb.String(doc = "CPU determined by macro select."),
 }
 
 def create_py_extension_wrapper_rule_builder(**kwargs):
@@ -113,15 +111,7 @@ def _get_extension(cc_toolchain):
     return ext
 
 def _get_platform(ctx):
-    """Derives the PEP 3149 platform tag from the target constraints.
-    Linux platform tags are standardized here:
-      - https://peps.python.org/pep-3149/
-    Windows platform tags, such as they are, are defined in this issue and
-            commit (treated as a de facto standard):
-      - https://github.com/python/cpython/issues/67169
-      - https://github.com/python/cpython/commit/03a144bb6ac3d7631a3bdb895e2a1f2d021fb08b
-    Apple platform tag is always just "darwin", discussed briefly here:
-      - https://github.com/python/cpython/commit/3b8124884c3655b4cf2629d741b18c1a38181805
+    """Derives the PEP 3149 platform tag from the active Python C++ toolchain.
 
     Args:
         ctx: The rule context.
@@ -129,29 +119,12 @@ def _get_platform(ctx):
     Returns:
         The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
     """
-    os = ctx.attr.os
-    cpu = ctx.attr.cpu
-
-    if os == "windows":
-        if cpu == "x86_64":
-            return "win_amd64"
-        if cpu == "aarch64":
-            return "win_arm64"
-        return "win32"
-    if os == "macos":
-        return "darwin"
-    if os == "linux":
-        libc = "gnu"
-        if ctx.attr.libc == "musl":
-            libc = "musl"
-        return '{}-{}-{}'.format(cpu, os, libc)
+    py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+    py_cc_toolchain = py_toolchain.py_cc_toolchain
+    if hasattr(py_cc_toolchain, "platform_tag") and py_cc_toolchain.platform_tag:
+        return py_cc_toolchain.platform_tag
 
     fail(
-        """
-ERROR: Unsupported target platform for {self}.
-  The target platform's constraints do not match any supported platform
-  in rules_python's central registry (python/versions.bzl).
-  Please ensure your target platform is configured correctly.""".format(
-            self = ctx.label,
-        ),
+        "ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
+        "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.",
     )

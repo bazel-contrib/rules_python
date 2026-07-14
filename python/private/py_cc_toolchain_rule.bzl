@@ -25,6 +25,42 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
 load(":sentinel.bzl", "SentinelInfo")
 
+def _get_platform_tag(os, cpu, libc):
+    """
+    Derives the PEP 3149 platform tag string based on target OS, CPU, and
+    libc. Note that these are platform tags for C extension filenames, not
+    PEP 425 tags for wheels.
+
+    Linux platform tags are standardized here:
+      - https://peps.python.org/pep-3149/
+    Windows platform tags, such as they are, are defined in this issue and
+            commit (treated as a de facto standard):
+      - https://github.com/python/cpython/issues/67169
+      - https://github.com/python/cpython/commit/03a144bb6ac3d7631a3bdb895e2a1f2d021fb08b
+    Apple platform tag is always just "darwin", discussed briefly here:
+      - https://github.com/python/cpython/commit/3b8124884c3655b4cf2629d741b18c1a38181805
+
+    Args:
+        os: Target OS, e.g. "windows", "macos", "linux"
+        cpu: Target CPU architecture, e.g. "x86_64", "aarch64", "x86_32"
+        libc: Target C library variant, e.g. "gnu", "musl"
+
+    Returns:
+        The platform tag, e.g. "x86_64-linux-gnu", "darwin", or "win_amd64"
+    """
+    if os == "windows":
+        if cpu == "x86_64":
+            return "win_amd64"
+        if cpu == "aarch64":
+            return "win_arm64"
+        return "win32"
+    if os == "macos":
+        return "darwin"
+
+    cpu_val = cpu if cpu else "x86_64"
+    libc_val = libc if libc else "gnu"
+    return "{}-linux-{}".format(cpu_val, libc_val)
+
 def _py_cc_toolchain_impl(ctx):
     if ctx.attr.libs:
         libs = struct(
@@ -55,8 +91,15 @@ def _py_cc_toolchain_impl(ctx):
             abi_flags += "t"
         abi_tag = "cpython-{}{}{}".format(version_parts[0], version_parts[1], abi_flags)
 
+    platform_tag = _get_platform_tag(
+        os = ctx.attr.os,
+        cpu = ctx.attr.cpu,
+        libc = ctx.attr.libc,
+    )
+
     py_cc_toolchain = PyCcToolchainInfo(
         abi_tag = abi_tag,
+        platform_tag = platform_tag,
         headers = struct(
             providers_map = {
                 "CcInfo": ctx.attr.headers[CcInfo],
@@ -82,6 +125,10 @@ py_cc_toolchain = rule(
             doc = "The ABI tag for extension modules, e.g. 'cpython-311'",
             default = "",
         ),
+        "cpu": attr.string(
+            doc = "Target CPU architecture, e.g. 'x86_64', 'aarch64', 'x86_32'",
+            default = "",
+        ),
         "headers": attr.label(
             doc = ("Target that provides the Python headers. Typically this " +
                    "is a cc_library target."),
@@ -102,10 +149,18 @@ attribute is available or not.
             default = "//python:none",
             providers = [[SentinelInfo], [CcInfo]],
         ),
+        "libc": attr.string(
+            doc = "Target C library variant, e.g. 'gnu', 'musl'",
+            default = "",
+        ),
         "libs": attr.label(
             doc = ("Target that provides the Python runtime libraries for linking. " +
                    "Typically this is a cc_library target of `.so` files."),
             providers = [CcInfo],
+        ),
+        "os": attr.string(
+            doc = "Target OS, e.g. 'linux', 'macos', 'windows'",
+            default = "",
         ),
         "python_version": attr.string(
             doc = "The Major.minor Python version, e.g. 3.11",
