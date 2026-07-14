@@ -21,6 +21,7 @@ https://github.com/bazel-contrib/rules_python/issues/824 is considered done.
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(":common_labels.bzl", "labels")
+load(":flags.bzl", "FreeThreadedFlag")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
 load(":sentinel.bzl", "SentinelInfo")
 
@@ -47,9 +48,12 @@ def _py_cc_toolchain_impl(ctx):
 
     abi_tag = ctx.attr.abi_tag
     if not abi_tag:
-        # Derive default: cpython-XX
+        # Derive default: cpython-XX[t]
         version_parts = ctx.attr.python_version.split(".")
-        abi_tag = "cpython-{}{}".format(version_parts[0], version_parts[1])
+        abi_flags = ""
+        if ctx.attr._py_freethreaded_flag[BuildSettingInfo].value == FreeThreadedFlag.YES:
+            abi_flags += "t"
+        abi_tag = "cpython-{}{}{}".format(version_parts[0], version_parts[1], abi_flags)
 
     py_cc_toolchain = PyCcToolchainInfo(
         abi_tag = abi_tag,
@@ -106,6 +110,9 @@ attribute is available or not.
         "python_version": attr.string(
             doc = "The Major.minor Python version, e.g. 3.11",
             mandatory = True,
+        ),
+        "_py_freethreaded_flag": attr.label(
+            default = labels.PY_FREETHREADED,
         ),
         "_visible_for_testing": attr.label(
             default = labels.VISIBLE_FOR_TESTING,
