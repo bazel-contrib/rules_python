@@ -11,6 +11,10 @@ def py_extension(
         hdrs = None,
         copts = None,
         defines = None,
+        includes = None,
+        linkopts = None,
+        linkshared = None,
+        linkstatic = None,
         deps = None,
         dynamic_deps = None,
         exports_filter = None,
@@ -36,6 +40,10 @@ def py_extension(
         hdrs: Optional header files for the srcs.
         copts: Optional compiler flags for srcs.
         defines: Optional preprocessor defines for srcs.
+        includes: Optional header include search paths passed to internal cc_library.
+        linkopts: Optional link options passed to internal cc_library and cc_shared_library.
+        linkshared: Deprecated and ignored. Extensions are always linked dynamically.
+        linkstatic: Optional linkstatic flag passed to internal cc_library.
         deps: cc_library targets to statically link into the extension.
         dynamic_deps: cc_shared_library targets to dynamically link.
         exports_filter: Filter for exported symbols passed to cc_shared_library.
@@ -45,6 +53,7 @@ def py_extension(
         **kwargs: Additional arguments passed to the underlying wrapper rule.
     """
     add_tag(kwargs, "@rules_python//python/cc:py_extension")
+    _ = linkshared  # buildifier: disable=unused-variable
 
     csl_deps = []
 
@@ -55,6 +64,13 @@ def py_extension(
     # 2. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
         impl_lib_name = "_" + name + "_impl"
+        impl_lib_kwargs = copy_propagating_kwargs(kwargs)
+        if includes:
+            impl_lib_kwargs["includes"] = includes
+        if linkopts:
+            impl_lib_kwargs["linkopts"] = linkopts
+        if linkstatic != None:
+            impl_lib_kwargs["linkstatic"] = linkstatic
         cc_library(
             name = impl_lib_name,
             srcs = srcs,
@@ -63,7 +79,7 @@ def py_extension(
             defines = defines,
             deps = ["@rules_python//python/cc:current_py_cc_headers"],
             visibility = ["//visibility:private"],
-            **copy_propagating_kwargs(kwargs)
+            **impl_lib_kwargs
         )
         csl_deps.append(":" + impl_lib_name)
 
@@ -76,8 +92,9 @@ def py_extension(
     csl_kwargs = copy_propagating_kwargs(kwargs)
     if exports_filter:
         csl_kwargs["exports_filter"] = exports_filter
-    if user_link_flags:
-        csl_kwargs["user_link_flags"] = user_link_flags
+    effective_user_link_flags = user_link_flags or linkopts
+    if effective_user_link_flags:
+        csl_kwargs["user_link_flags"] = effective_user_link_flags
 
     cc_shared_library(
         name = csl_name,
@@ -98,7 +115,11 @@ def py_extension(
     if data != None:
         kwargs["data"] = data
 
-    # 6. Wrap with py_extension_wrapper for PEP 3149 naming & PyInfo
+    # 6. Filter out C++ specific compilation/linking attributes before invoking wrapper rule
+    for cc_attr in ("includes", "linkopts", "linkshared", "linkstatic", "features"):
+        kwargs.pop(cc_attr, None)
+
+    # 7. Wrap with py_extension_wrapper for PEP 3149 naming & PyInfo
     py_extension_wrapper(
         name = name,
         src = ":" + csl_name,
