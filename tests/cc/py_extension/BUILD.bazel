@@ -4,6 +4,7 @@ load("//python:py_test.bzl", "py_test")
 
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
+load(":dependency_graph_tests.bzl", "dependency_graph_test_suite")
 load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
 load(":py_limited_api_tests.bzl", "py_limited_api_test_suite")
 
@@ -14,34 +15,48 @@ package(
 
 licenses(["notice"])
 
+#####
+
 py_extension(
+    # An extension defined solely by source files, with no deps
+    name = "ext_source",
+    srcs = ["ext_source.c"],
+)
+
+#####
+
+py_extension(
+    # A python extension that gets its code from a statically-linked library
     name = "ext_static",
-    ##srcs = ["ext_static.c"],
-    static_deps = [":static_dep"],
+    deps = [":static_dep"],
 )
 
+cc_library(
+    name = "static_dep",
+    srcs = ["static_dep.c"],
+    hdrs = ["static_dep.h"],
+)
+
+#####
+
 py_extension(
+    # An extension that also depends on a data file
+    name = "ext_with_data",
+    data = ["some_data.txt"],
+    deps = [":static_dep"],
+)
+
+#####
+
+py_extension(
+    # A python extension that dynamically links to another shared library
     name = "ext_shared",
+    imports = ["."],
     dynamic_deps = [
         ":add_one_shared",
     ],
-    static_deps = [
-        ":ext_shared_impl",
-    ],
-)
-
-py_extension(
-    name = "ext_csl_shared",
-    dynamic_deps = [
-        ":add_one_shared",
-    ],
-    exports_filter = [
-        "//tests/cc/py_extension:ext_shared_impl",
-        ":ext_shared_impl",
-    ],
-    module_name = "ext_shared",
-    use_csl = True,
     deps = [
+        #
         ":ext_shared_impl",
     ],
 )
@@ -61,12 +76,6 @@ cc_library(
         ":add_one_impl",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
-)
-
-cc_library(
-    name = "static_dep",
-    srcs = ["static_dep.c"],
-    hdrs = ["static_dep.h"],
 )
 
 cc_shared_library(
@@ -94,24 +103,45 @@ cc_library(
     hdrs = ["add_one_helper.h"],
 )
 
+#####
+
 py_extension(
+    # An extension that uses the Python limited API
     name = "ext_limited",
-    static_deps = [":ext_limited_impl"],
-    py_limited_api = '3.8'
+    py_limited_api = "3.8",
+    deps = [":ext_limited_impl"],
 )
 
 cc_library(
     name = "ext_limited_impl",
     srcs = ["ext_limited.c"],
-    defines = ["Py_LIMITED_API=0x3080000"],
     copts = [
         "-fPIC",
         "-fvisibility=hidden",
     ],
+    defines = ["Py_LIMITED_API=0x3080000"],
     deps = [
         "@rules_python//python/cc:current_py_cc_headers",
     ],
 )
+
+#####
+
+py_extension(
+    # An extension with its PyInit_* function in a static dependency
+    name = "ext_init_in_dep",
+    deps = [":ext_init_in_dep_impl"],
+)
+
+cc_library(
+    name = "ext_init_in_dep_impl",
+    srcs = ["ext_init_in_dep.c"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
 
 py_test(
     name = "py_extension_test",
@@ -123,10 +153,29 @@ py_test(
     ],
 )
 
+#####
+
+py_extension(
+    name = "ext_pkg_test",
+    srcs = ["ext_pkg_test.c"],
+)
+
+py_test(
+    name = "py_extension_pkg_test",
+    srcs = ["py_extension_pkg_test.py"],
+    deps = [
+        ":ext_pkg_test",
+    ],
+)
+
 py_extension_analysis_test_suite(
     name = "py_extension_analysis_tests",
 )
 
 py_limited_api_test_suite(
     name = "py_limited_api_tests",
+)
+
+dependency_graph_test_suite(
+    name = "dependency_graph_tests",
 )

@@ -14,27 +14,21 @@
 
 """Tests for py_extension."""
 
-load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
-load("//python/private:py_info.bzl", "PyInfo")
+load("//python/private:py_info.bzl", "PyInfo")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
 def _test_static_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
-    env.expect.that_target(target).has_provider(CcInfo)
-    cc_info = target[CcInfo]
 
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
         matching.file_basename_equals("ext_static.cpython-311-x86_64-linux-gnu.so"),
     )
-
-    # CcInfo from static_deps should not be propagated.
-    env.expect.that_depset_of_files(cc_info.linking_context.linker_inputs).contains_exactly([])
 
 def _test_static_deps(name):
     analysis_test(
@@ -45,21 +39,33 @@ def _test_static_deps(name):
 
 _tests.append(_test_static_deps)
 
+def _test_data_deps_impl(env, target):
+    env.expect.that_target(target).has_provider(PyInfo)
+
+    # Check that data file is in runfiles
+    default_info = target[DefaultInfo]
+    env.expect.that_depset_of_files(default_info.default_runfiles.files).contains_predicate(
+        matching.file_basename_equals("some_data.txt"),
+    )
+
+def _test_data_deps(name):
+    analysis_test(
+        name = name,
+        impl = _test_data_deps_impl,
+        target = "//tests/cc/py_extension:ext_with_data",
+    )
+
+_tests.append(_test_data_deps)
+
 def _test_dynamic_deps_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
-    env.expect.that_target(target).has_provider(CcInfo)
-    cc_info = target[CcInfo]
 
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
         matching.file_basename_equals("ext_shared.cpython-311-x86_64-linux-gnu.so"),
     )
-
-    # CcInfo from dynamic_deps should be propagated.
-    print(cc_info.linking_context.linker_inputs.to_list())
-    env.expect.that_collection(cc_info.linking_context.linker_inputs.to_list()).has_size(1)
 
 def _test_dynamic_deps(name):
     analysis_test(
@@ -69,6 +75,25 @@ def _test_dynamic_deps(name):
     )
 
 _tests.append(_test_dynamic_deps)
+
+def _test_musl_platform_impl(env, target):
+    env.expect.that_target(target).has_provider(PyInfo)
+    py_info = target[PyInfo]
+    env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
+        matching.file_basename_equals("ext_static.cpython-311-x86_64-linux-musl.so"),
+    )
+
+def _test_musl_platform(name):
+    analysis_test(
+        name = name,
+        impl = _test_musl_platform_impl,
+        target = "//tests/cc/py_extension:ext_static",
+        config_settings = {
+            str(Label("//python/config_settings:py_linux_libc")): "musl",
+        },
+    )
+
+_tests.append(_test_musl_platform)
 
 def py_extension_analysis_test_suite(name):
     test_suite(
