@@ -57,11 +57,7 @@ def py_extension(
 
     csl_deps = []
 
-    # 1. Handle user-supplied static deps
-    if deps:
-        csl_deps.extend(deps)
-
-    # 2. If srcs or hdrs are specified, create an implicit cc_library for them
+    # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
         impl_lib_name = "_" + name + "_impl"
         impl_lib_kwargs = copy_propagating_kwargs(kwargs)
@@ -77,13 +73,15 @@ def py_extension(
             hdrs = hdrs,
             copts = (copts or []) + ["-fPIC"],
             defines = defines,
-            deps = ["@rules_python//python/cc:current_py_cc_headers"],
+            deps = (deps or []) + ["@rules_python//python/cc:current_py_cc_headers"],
             visibility = ["//visibility:private"],
             **impl_lib_kwargs
         )
         csl_deps.append(":" + impl_lib_name)
+    elif deps:
+        csl_deps.extend(deps)
 
-    # 3. If no static deps or sources were specified, use empty target for CSL requirement
+    # 2. If no static deps or sources were specified, use empty target for CSL requirement
     if not csl_deps:
         csl_deps.append("//python/private/cc:empty")
 
