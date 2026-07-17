@@ -140,8 +140,7 @@ def _get_platform(ctx):
     """
     py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
     py_cc_toolchain = py_toolchain.py_cc_toolchain
-    if hasattr(py_cc_toolchain, "platform_tag") and py_cc_toolchain.platform_tag:
-        return py_cc_toolchain.platform_tag
+    return py_cc_toolchain.platform_tag
 
     fail(
         "ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
