@@ -128,6 +128,7 @@ class Worker:
 
         incoming_digests = {}
         current_digests = self._digests.setdefault(srcdir, {})
+        is_first_request = not current_digests
         changed_paths = []
         request_info = {"exec_root": self._exec_root, "inputs": request["inputs"]}
         for entry in request["inputs"]:
@@ -174,6 +175,18 @@ class Worker:
 
         bazel_outdir = sphinx_args[1]
         worker_outdir = bazel_outdir + ".worker-out.d"
+        # The doctree dir deliberately lives outside the declared outputs so
+        # it survives between invocations (that is what makes worker builds
+        # incremental). A new worker has no digest history: it reports every
+        # file as changed and re-reads all docs. Doing that against the stale
+        # Sphinx environment of a previous worker produces spurious warnings
+        # (e.g. duplicate labels), which --fail-on-warning turns into build
+        # failures. So on the first request start from a clean slate.
+        if is_first_request:
+            shutil.rmtree(worker_outdir, ignore_errors=True)
+            for arg in sphinx_args:
+                if arg.startswith("--doctree-dir="):
+                    shutil.rmtree(arg.partition("=")[2], ignore_errors=True)
         self._worker_outdirs.add(worker_outdir)
         sphinx_args[1] = worker_outdir
 
