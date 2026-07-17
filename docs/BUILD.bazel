@@ -198,6 +198,7 @@ sphinx_build_binary(
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
         "@dev_pip//myst_parser",
+        "@dev_pip//pytest",
         "@dev_pip//readthedocs_sphinx_ext",
         "@dev_pip//sphinx",
         "@dev_pip//sphinx_autodoc2",

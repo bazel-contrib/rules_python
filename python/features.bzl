@@ -122,6 +122,7 @@ _TARGETS = {
     "//python:py_runtime_info": True,
     "//python:py_runtime_pair": True,
     "//python:py_test": True,
+    "//python:pytest_test": True,
     "//python:repositories": True,
     "//python:versions": True,
 }

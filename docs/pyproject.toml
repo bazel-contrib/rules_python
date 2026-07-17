@@ -17,4 +17,6 @@ dependencies = [
     "pyelftools",
     "macholib",
     "markupsafe",
+    "pytest",
+    "pytest-bazel",
 ]

@@ -411,6 +411,11 @@ alias(
     deprecation = "Use //python:py_test instead",
 )
 
+bzl_library(
+    name = "pytest_test",
+    deps = ["//python/private/pytest_test"],
+)
+
 alias(
     name = "python_bzl",
     actual = ":python",

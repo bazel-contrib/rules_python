@@ -121,7 +121,6 @@ The `repository_ctx` API docs are at: https://bazel.build/rules/lib/builtins/rep
     e.g. given `load("//foo:bar.bzl", ...)`, the target is `//foo:bar_bzl`.
   * For files outside rules_python: remove the `.bzl` suffix. e.g. given
     `load("@foo//foo:bar.bzl", ...)`, the target is `@foo//foo:bar`.
-* `bzl_library()` targets should be kept in alphabetical order by name.
 
 Example:
 

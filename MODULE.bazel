@@ -214,7 +214,7 @@ dev_pip.parse(
     python_version = "3.11",
     requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
 )
-use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver")
+use_repo(dev_pip, "dev_pip", "pypi", "pypi_alpha", "pypi_beta", "pypiserver")
 
 # Bazel integration test setup below
 
