@@ -43,7 +43,7 @@ def _test_strip_empty_path_segments(env):
     env.expect.that_str(urllib.strip_empty_path_segments("scheme://with///multiple//empty/segments")).equals("scheme://with/multiple/empty/segments")
     env.expect.that_str(urllib.strip_empty_path_segments("scheme://with//trailing/slash/")).equals("scheme://with/trailing/slash/")
     env.expect.that_str(urllib.strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
-    env.expect.that_str(urllib.strip_empty_path_segments("file:///home/user/foo/../bar")).equals("file:///home/user/foo/../bar")
+    env.expect.that_str(urllib.strip_empty_path_segments("file:///home/user//foo")).equals("file:///home/user/foo")
 
 _tests.append(_test_strip_empty_path_segments)
 
