@@ -48,26 +48,16 @@ def pytest_test(
         **kwargs
     )
 
-def _map_file(f):
-    return f.short_path
-
 def _write_pytest_bootstrap_impl(ctx):
     output = ctx.actions.declare_file(ctx.attr.output_name)
-
-    computed_subs = ctx.actions.template_dict()
-
-    computed_subs.add_joined(
-        "%TEST_FILES%",
-        depset(ctx.files.srcs),
-        join_with = "\n",
-        map_each = _map_file,
-    )
+    test_files = "\n".join([f.short_path for f in ctx.files.srcs])
 
     ctx.actions.expand_template(
         output = output,
         template = ctx.file._bootstrap_template,
-        substitutions = {},
-        computed_substitutions = computed_subs,
+        substitutions = {
+            "%TEST_FILES%": test_files,
+        },
     )
     return [DefaultInfo(files = depset([output]))]
 
