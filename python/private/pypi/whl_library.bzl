@@ -327,8 +327,10 @@ def _whl_library_impl(rctx):
         urls = rctx.attr.urls
         urls = [
             urllib.absolute_url(
-                envsubst(rctx.attr.index_url, rctx.attr.envsubst, rctx.getenv),
+                rctx.attr.index_url,
                 url,
+                envsubst = rctx.attr.envsubst,
+                getenv = rctx.getenv,
             )
             for url in urls
         ]
