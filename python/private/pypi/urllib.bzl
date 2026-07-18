@@ -75,7 +75,7 @@ def _strip_empty_path_segments(url):
     """
     sep = "://"
     scheme, _, rest = url.partition(sep)
-    if scheme == "file" and rest.startswith("/"):
+    if scheme.lower() == "file" and rest.startswith("/"):
         sep = sep + "/"
         rest = rest[1:]
 
