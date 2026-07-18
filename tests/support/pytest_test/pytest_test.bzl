@@ -2,8 +2,8 @@
 
 load("//python:py_test.bzl", "py_test")
 
-_DEFAULT_PYTEST = Label("//python/private/pytest_test:default_pytest")
-_DEFAULT_PYTEST_BAZEL = Label("//python/private/pytest_test:default_pytest_bazel")
+_DEFAULT_PYTEST = Label("//tests/support/pytest_test:default_pytest")
+_DEFAULT_PYTEST_BAZEL = Label("//tests/support/pytest_test:default_pytest_bazel")
 
 def pytest_test(
         *,
@@ -77,7 +77,7 @@ _write_pytest_bootstrap = rule(
         "output_name": attr.string(mandatory = True),
         "srcs": attr.label_list(allow_files = True),
         "_bootstrap_template": attr.label(
-            default = "//python/private/pytest_test:bootstrap_template",
+            default = "//tests/support/pytest_test:bootstrap_template",
             allow_single_file = True,
         ),
     },

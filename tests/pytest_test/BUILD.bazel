@@ -1,5 +1,5 @@
-load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 pytest_test(
     name = "pytest_script_venv_test",
