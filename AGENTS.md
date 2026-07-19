@@ -42,6 +42,16 @@ because it interferes with code review comments.
 Follow the advice in `CONTRIBUTING.md` for PR descriptions. PR descriptions
 become the commit message upon merge.
 
+### Python pytest conventions
+
+* When registering pytest fixtures from helper modules in test files, use
+  `pytest_plugins = ["<module_path>"]`.
+* Name fixture functions with a `fixture_` prefix (e.g. `def fixture_foo():`),
+  and pass the public fixture name using the `name` parameter in
+  `@pytest.fixture(name="foo")`.
+
+
+
 ### Starlark style
 
 For doc strings, using triple quoted strings when the doc string is more than
