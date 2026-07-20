@@ -7,7 +7,7 @@ py_library(
     deps = [
         "//tools/private/release:mock_gh",
         "//tools/private/release:release_lib",
-        "@pypi//pytest_mock",
+        "@dev_pip//pytest_mock",
     ],
 )
 
