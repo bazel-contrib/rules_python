@@ -63,6 +63,16 @@ you can set the `publish_to_pypi` input to `false`:
 gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ```
 
+### Manually publishing to PyPI
+
+If PyPI publishing failed or was skipped during the main release, the PyPI
+publishing workflow can be triggered manually using the GitHub CLI (`gh`) or
+via the GitHub Actions UI:
+
+```shell
+gh workflow run publish_pypi.yaml --ref <TAG> -f tag_name=<TAG>
+```
+
 ### Determining Semantic Version
 
 **rules_python** uses [semantic version](https://semver.org), so releases with
