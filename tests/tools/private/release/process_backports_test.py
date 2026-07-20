@@ -1,6 +1,6 @@
 import argparse
 import datetime
-from unittest.mock import ANY, call, patch
+from unittest.mock import ANY, call
 
 from tools.private.release.process_backports import ProcessBackports
 
@@ -23,13 +23,16 @@ def test_process_backports_no_pending(mock_git, mock_gh):
     mock_git.fetch.assert_not_called()
 
 
-@patch("tools.private.release.process_backports.changelog_news")
-@patch("tools.private.release.process_backports.replace_version_next")
-@patch("tools.private.release.process_backports.datetime")
-def test_process_backports_success(
-    mock_datetime, mock_replace, mock_changelog, mock_git, mock_gh
-):
+def test_process_backports_success(mocker, mock_git, mock_gh):
+    mock_changelog = mocker.patch(
+        "tools.private.release.process_backports.changelog_news"
+    )
+    mock_replace = mocker.patch(
+        "tools.private.release.process_backports.replace_version_next"
+    )
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
+
     args = argparse.Namespace(
         issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
     )
@@ -106,13 +109,12 @@ def test_process_backports_success(
     assert "- [ ] Sync Changelog #124 | status=pending pr=#1001" in updated_body
 
 
-@patch("tools.private.release.process_backports.changelog_news")
-@patch("tools.private.release.process_backports.replace_version_next")
-@patch("tools.private.release.process_backports.datetime")
-def test_process_backports_sync_branch_exists(
-    mock_datetime, mock_replace, mock_changelog, mock_git, mock_gh
-):
+def test_process_backports_sync_branch_exists(mocker, mock_git, mock_gh):
+    mocker.patch("tools.private.release.process_backports.changelog_news")
+    mocker.patch("tools.private.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
+
     args = argparse.Namespace(
         issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
     )
@@ -157,13 +159,12 @@ def test_process_backports_sync_branch_exists(
     mock_git.reset_hard.assert_has_calls([call(reset_to="main")])
 
 
-@patch("tools.private.release.process_backports.changelog_news")
-@patch("tools.private.release.process_backports.replace_version_next")
-@patch("tools.private.release.process_backports.datetime")
-def test_process_backports_dry_run(
-    mock_datetime, mock_replace, mock_changelog, mock_git, mock_gh
-):
+def test_process_backports_dry_run(mocker, mock_git, mock_gh):
+    mocker.patch("tools.private.release.process_backports.changelog_news")
+    mocker.patch("tools.private.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
+
     args = argparse.Namespace(
         issue=123, remote="origin", dry_run=True, add=None, triggering_comment=None
     )
@@ -258,8 +259,8 @@ def test_process_backports_ignored_error_status(mock_git, mock_gh):
     mock_git.checkout.assert_not_called()
 
 
-@patch("tools.private.release.process_backports.datetime")
-def test_process_backports_cherry_pick_failed(mock_datetime, mock_git, mock_gh):
+def test_process_backports_cherry_pick_failed(mocker, mock_git, mock_gh):
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
@@ -297,12 +298,12 @@ def test_process_backports_cherry_pick_failed(mock_datetime, mock_git, mock_gh):
     mock_git.push.assert_not_called()
 
 
-@patch("tools.private.release.process_backports.changelog_news")
-@patch("tools.private.release.process_backports.replace_version_next")
-@patch("tools.private.release.process_backports.datetime")
 def test_process_backports_add_backports_and_auto_add_rc_task(
-    mock_datetime, mock_replace, mock_changelog, mock_git, mock_gh
+    mocker, mock_git, mock_gh
 ):
+    mocker.patch("tools.private.release.process_backports.changelog_news")
+    mocker.patch("tools.private.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123,
@@ -343,12 +344,10 @@ def test_process_backports_add_backports_and_auto_add_rc_task(
     assert "- [ ] Sync Changelog #124 | status=pending pr=#1001" in updated_body
 
 
-@patch("tools.private.release.process_backports.changelog_news")
-@patch("tools.private.release.process_backports.replace_version_next")
-@patch("tools.private.release.process_backports.datetime")
-def test_process_backports_add_backports_marks_invalid(
-    mock_datetime, mock_replace, mock_changelog, mock_git, mock_gh
-):
+def test_process_backports_add_backports_marks_invalid(mocker, mock_git, mock_gh):
+    mocker.patch("tools.private.release.process_backports.changelog_news")
+    mocker.patch("tools.private.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123,
@@ -394,12 +393,14 @@ def test_process_backports_add_backports_marks_invalid(
     assert "- [ ] Sync Changelog #125 | status=pending pr=#1001" in updated_body
 
 
-@patch("tools.private.release.process_backports.changelog_news")
-@patch("tools.private.release.process_backports.replace_version_next")
-@patch("tools.private.release.process_backports.datetime")
-def test_process_backports_version_sync_failure(
-    mock_datetime, mock_replace, mock_changelog, mock_git, mock_gh
-):
+def test_process_backports_version_sync_failure(mocker, mock_git, mock_gh):
+    mock_changelog = mocker.patch(
+        "tools.private.release.process_backports.changelog_news"
+    )
+    mock_replace = mocker.patch(
+        "tools.private.release.process_backports.replace_version_next"
+    )
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None

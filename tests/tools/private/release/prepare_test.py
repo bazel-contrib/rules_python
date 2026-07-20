@@ -1,16 +1,14 @@
 import argparse
-from unittest.mock import patch
 
 from tools.private.release.prepare import Prepare
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
-def test_prepare_success_existing_issue(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
-):
+def test_prepare_success_existing_issue(mocker, release_tool_env, mock_git, mock_gh):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=False)
     mock_gh.create_issue(
@@ -32,11 +30,10 @@ def test_prepare_success_existing_issue(
     mock_git.add_modified_and_deleted.assert_called_once()
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
-def test_prepare_success_create_issue(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
-):
+def test_prepare_success_create_issue(mocker, release_tool_env, mock_git, mock_gh):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange: release_tool_env sets up template_file automatically
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=False)
     mock_git.status.side_effect = ["", "M  foo"]
@@ -55,11 +52,10 @@ def test_prepare_success_create_issue(
     mock_git.add_modified_and_deleted.assert_called_once()
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
-def test_prepare_ambiguous_issue(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
-):
+def test_prepare_ambiguous_issue(mocker, release_tool_env, mock_git, mock_gh):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=False)
     mock_gh.create_issue(
@@ -79,11 +75,10 @@ def test_prepare_ambiguous_issue(
     mock_git.add_modified_and_deleted.assert_not_called()
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
-def test_prepare_dry_run(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
-):
+def test_prepare_dry_run(mocker, release_tool_env, mock_git, mock_gh):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=True)
     mock_gh.create_issue(title="Release 2.0.0", body="body", labels=["type: release"])
@@ -101,11 +96,12 @@ def test_prepare_dry_run(
     mock_git.add_modified_and_deleted.assert_not_called()
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
 def test_prepare_use_associated_pr_from_tracking_issue(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
+    mocker, release_tool_env, mock_git, mock_gh
 ):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=False)
     mock_gh.create_issue(
@@ -130,11 +126,12 @@ def test_prepare_use_associated_pr_from_tracking_issue(
     assert "pr=#456" in updated_body
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
 def test_prepare_create_pr_when_none_associated(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
+    mocker, release_tool_env, mock_git, mock_gh
 ):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=False)
     mock_gh.create_issue(
@@ -159,11 +156,10 @@ def test_prepare_create_pr_when_none_associated(
     assert "pr=#1002" in updated_body
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
-def test_prepare_reuse_existing_pr(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
-):
+def test_prepare_reuse_existing_pr(mocker, release_tool_env, mock_git, mock_gh):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=False)
     mock_gh.create_issue(
@@ -194,11 +190,10 @@ def test_prepare_reuse_existing_pr(
     assert "pr=#456" in updated_body
 
 
-@patch("tools.private.release.prepare.changelog_news")
-@patch("tools.private.release.prepare.replace_version_next")
-def test_prepare_dry_run_no_issue(
-    mock_replace, mock_changelog, release_tool_env, mock_git, mock_gh
-):
+def test_prepare_dry_run_no_issue(mocker, release_tool_env, mock_git, mock_gh):
+    mocker.patch("tools.private.release.prepare.replace_version_next")
+    mocker.patch("tools.private.release.prepare.changelog_news")
+
     # Arrange
     args = argparse.Namespace(version="2.0.0", issue=None, dry_run=True)
     mock_git.status.side_effect = [""]

@@ -309,9 +309,9 @@ myst-parser==3.0.1 ; python_full_version < '3.10' \
     --hash=sha256:6457aaa33a5d474aca678b8ead9b3dc298e89c68e67012e73146ea6fd54babf1 \
     --hash=sha256:88f0cb406cb363b077d176b51c476f62d60604d68a8dcdf4832e080441301a87
     # via rules-python-docs (docs/pyproject.toml)
-myst-parser==5.1.0 ; python_full_version == '3.10.*' \
-    --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
-    --hash=sha256:ab69322dc6719dcc7f296479dbb70181b66df6ed315064f92dbc85c0e1bf2f02
+myst-parser==4.0.1 ; python_full_version == '3.10.*' \
+    --hash=sha256:5cfea715e4f3574138aecbf7d54132296bfd72bb614d31168f48c477a830a7c4 \
+    --hash=sha256:9134e88959ec3b5780aedf8a99680ea242869d012e8821db3126d427edc9c95d
     # via rules-python-docs (docs/pyproject.toml)
 myst-parser==5.1.0 ; python_full_version >= '3.11' \
     --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
@@ -352,14 +352,20 @@ pytest==8.4.2 ; python_full_version < '3.10' \
     # via
     #   rules-python-docs (docs/pyproject.toml)
     #   pytest-bazel
+    #   pytest-mock
 pytest==9.1.1 ; python_full_version >= '3.10' \
     --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 \
     --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
     # via
     #   rules-python-docs (docs/pyproject.toml)
     #   pytest-bazel
+    #   pytest-mock
 pytest-bazel==0.1.6 \
     --hash=sha256:a29e80e1d67c3db801bdd4d0b6b742f2bfb48cd6841caa33401458e5c4e29c21
+    # via rules-python-docs (docs/pyproject.toml)
+pytest-mock==3.15.1 \
+    --hash=sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d \
+    --hash=sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f
     # via rules-python-docs (docs/pyproject.toml)
 pyyaml==6.0.3 \
     --hash=sha256:00c4bdeba853cc34e7dd471f16b4114f4162dc03e6b7afcc2128711f0eca823c \

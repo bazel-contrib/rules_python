@@ -7,6 +7,7 @@ py_library(
     deps = [
         "//tools/private/release:mock_gh",
         "//tools/private/release:release_lib",
+        "@pypi//pytest_mock",
     ],
 )
 
@@ -59,6 +60,7 @@ pytest_test(
     name = "gh_test",
     srcs = ["gh_test.py"],
     deps = [
+        ":release_test_helper",
         "//tools/private/release:release_lib",
     ],
 )
@@ -67,6 +69,7 @@ pytest_test(
     name = "git_test",
     srcs = ["git_test.py"],
     deps = [
+        ":release_test_helper",
         "//tools/private/release:release_lib",
     ],
 )

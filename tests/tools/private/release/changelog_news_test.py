@@ -1,5 +1,4 @@
 import pathlib
-from unittest.mock import patch
 
 import pytest
 
@@ -153,20 +152,23 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
     assert expected_fixed_section in new_content
 
 
-def test_update_changelog_read_failure(tmp_path):
+pytest_plugins = ["tests.tools.private.release.release_test_helper"]
+
+
+def test_update_changelog_read_failure(mocker, tmp_path):
     # Arrange
     original_read_text = pathlib.Path.read_text
 
-    with patch("pathlib.Path.read_text", autospec=True) as mock_read_text:
+    mock_read_text = mocker.patch.object(pathlib.Path, "read_text", autospec=True)
 
-        def side_effect(path_self, *args, **kwargs):
-            if "bad_file.fixed.md" in str(path_self):
-                raise IOError("Simulated read error")
-            return original_read_text(path_self, *args, **kwargs)
+    def side_effect(path_self, *args, **kwargs):
+        if "bad_file.fixed.md" in str(path_self):
+            raise IOError("Simulated read error")
+        return original_read_text(path_self, *args, **kwargs)
 
-        mock_read_text.side_effect = side_effect
+    mock_read_text.side_effect = side_effect
 
-        changelog = """# Changelog
+    changelog = """# Changelog
 
 {#unreleased}
 ## Unreleased
@@ -186,36 +188,36 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 ### Added
 * (toolchains) Some older change.
 """
-        changelog_path = tmp_path / "CHANGELOG.md"
-        changelog_path.write_text(changelog)
+    changelog_path = tmp_path / "CHANGELOG.md"
+    changelog_path.write_text(changelog)
 
-        news_dir = tmp_path / "news"
-        news_dir.mkdir()
+    news_dir = tmp_path / "news"
+    news_dir.mkdir()
 
-        # Create the bad file (must exist so it is found by iterdir)
-        bad_file = news_dir / "bad_file.fixed.md"
-        bad_file.write_text("some content that won't be read")
+    # Create the bad file (must exist so it is found by iterdir)
+    bad_file = news_dir / "bad_file.fixed.md"
+    bad_file.write_text("some content that won't be read")
 
-        # Create a good file too
-        good_file = news_dir / "good_file.fixed.md"
-        good_file.write_text("* (sub) Good fix")
+    # Create a good file too
+    good_file = news_dir / "good_file.fixed.md"
+    good_file.write_text("* (sub) Good fix")
 
-        # Act & Assert
-        with pytest.raises(IOError):
-            changelog_news.update_changelog(
-                "3.0.0",
-                "2026-06-16",
-                changelog_path=changelog_path,
-                news_dir=news_dir,
-            )
+    # Act & Assert
+    with pytest.raises(IOError):
+        changelog_news.update_changelog(
+            "3.0.0",
+            "2026-06-16",
+            changelog_path=changelog_path,
+            news_dir=news_dir,
+        )
 
-        # Both files should still exist (no deletion on failure!)
-        assert bad_file.exists()
-        assert good_file.exists()
+    # Both files should still exist (no deletion on failure!)
+    assert bad_file.exists()
+    assert good_file.exists()
 
-        # Changelog should not be modified
-        new_content = changelog_path.read_text()
-        assert changelog == new_content
+    # Changelog should not be modified
+    new_content = changelog_path.read_text()
+    assert changelog == new_content
 
 
 def test_update_changelog_merge_existing(tmp_path):
