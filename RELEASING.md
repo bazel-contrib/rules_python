@@ -260,5 +260,6 @@ The checklist items use metadata suffix: `| key=value key2=value2`.
 ### PyPI user rules-python
 
 Part of the release process uploads packages to PyPI as the user `rules-python`.
-This account is managed by Google; contact rules-python-pyi@google.com if
-something needs to be done with the PyPI account.
+This account is managed by `rickeylev`. Note that Google also has recovery access
+and can be contacted at rules-python-pypi@google.com if something needs to be
+done with the PyPI account.
