@@ -50,8 +50,6 @@ become the commit message upon merge.
   and pass the public fixture name using the `name` parameter in
   `@pytest.fixture(name="foo")`.
 
-
-
 ### Starlark style
 
 For doc strings, using triple quoted strings when the doc string is more than
@@ -107,7 +105,6 @@ def _test_foo_impl(env, target):
 def foo_test_suite(name):
     test_suite(name=name, tests=_tests)
 ```
-
 
 #### Repository rules
 
@@ -166,7 +163,6 @@ This repository contains 3 Bazel bzlmod modules.
  * All other code is part of `@rules_python`.
 
 `tests/support/` contains utility code and helpers for testing.
-
 
 `python/config_settings/BUILD.bazel` contains build flags that are part of the
 public API. DO NOT add, remove, or modify these build flags unless specifically
