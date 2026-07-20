@@ -1,8 +1,10 @@
+import dataclasses
 import os
 import pathlib
 import shutil
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,6 +14,17 @@ from tools.private.release.gh import (
     NoTrackingIssueError,
 )
 from tools.private.release.mock_gh import MockGitHub
+
+
+@dataclasses.dataclass
+class ReleaseToolEnv:
+    """Environment setup for testing release tools.
+
+    Attributes:
+        git_root: The root path of the temporary Git repository workspace.
+    """
+
+    git_root: Path
 
 
 def _mock_git(test_case):
@@ -105,3 +118,4 @@ def fixture_release_tool_env(tmp_path, monkeypatch):
     template_dir.mkdir(parents=True, exist_ok=True)
     template_file = template_dir / "release_tracking_template.md"
     template_file.write_text(DEFAULT_RELEASE_TEMPLATE_CONTENT, encoding="utf-8")
+    yield ReleaseToolEnv(git_root=tmp_path)

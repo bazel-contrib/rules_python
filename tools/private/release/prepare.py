@@ -88,7 +88,9 @@ class Prepare:
                         f"No active tracking issue found for {version}."
                         " Creating a new one..."
                     )
-                    issue_num = self.gh.create_tracking_issue(version, template_content)
+                    issue_num = self.gh.create_release_tracking_issue(
+                        version, template_content
+                    )
                     print(f"Tracking issue: #{issue_num}")
         else:
             print(f"Tracking issue: #{issue_num}")
