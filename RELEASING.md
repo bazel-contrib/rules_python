@@ -67,7 +67,7 @@ gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 
 If PyPI publishing failed or was skipped during the main release, the PyPI
 publishing workflow can be triggered manually using the GitHub CLI (`gh`) or
-via the GitHub Actions UI:
+via the [GitHub Actions UI](https://github.com/bazel-contrib/rules_python/actions/workflows/publish_pypi.yaml):
 
 ```shell
 gh workflow run publish_pypi.yaml --ref <TAG> -f tag_name=<TAG>
