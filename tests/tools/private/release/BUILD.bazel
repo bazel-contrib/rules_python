@@ -4,7 +4,10 @@ load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 py_library(
     name = "release_test_helper",
-    srcs = ["release_test_helper.py"],
+    srcs = [
+        "conftest.py",
+        "release_test_helper.py",
+    ],
     target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         "//tools/private/release:mock_gh",
