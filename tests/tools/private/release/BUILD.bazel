@@ -1,19 +1,22 @@
 load("//python:py_library.bzl", "py_library")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 py_library(
     name = "release_test_helper",
     srcs = ["release_test_helper.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         "//tools/private/release:mock_gh",
         "//tools/private/release:release_lib",
-        "@dev_pip//pytest_mock",
+        "@pypi//pytest_mock",
     ],
 )
 
 pytest_test(
     name = "add_backports_test",
     srcs = ["add_backports_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -23,6 +26,7 @@ pytest_test(
 pytest_test(
     name = "changelog_news_test",
     srcs = ["changelog_news_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -32,15 +36,7 @@ pytest_test(
 pytest_test(
     name = "complete_sync_changelog_test",
     srcs = ["complete_sync_changelog_test.py"],
-    deps = [
-        ":release_test_helper",
-        "//tools/private/release:release_lib",
-    ],
-)
-
-pytest_test(
-    name = "create_rc_test",
-    srcs = ["create_rc_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -50,15 +46,7 @@ pytest_test(
 pytest_test(
     name = "create_release_branch_test",
     srcs = ["create_release_branch_test.py"],
-    deps = [
-        ":release_test_helper",
-        "//tools/private/release:release_lib",
-    ],
-)
-
-pytest_test(
-    name = "gh_test",
-    srcs = ["gh_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -68,6 +56,7 @@ pytest_test(
 pytest_test(
     name = "git_test",
     srcs = ["git_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -77,24 +66,7 @@ pytest_test(
 pytest_test(
     name = "on_pr_merged_test",
     srcs = ["on_pr_merged_test.py"],
-    deps = [
-        ":release_test_helper",
-        "//tools/private/release:release_lib",
-    ],
-)
-
-pytest_test(
-    name = "prepare_test",
-    srcs = ["prepare_test.py"],
-    deps = [
-        ":release_test_helper",
-        "//tools/private/release:release_lib",
-    ],
-)
-
-pytest_test(
-    name = "process_backports_test",
-    srcs = ["process_backports_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -104,6 +76,7 @@ pytest_test(
 pytest_test(
     name = "promote_test",
     srcs = ["promote_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -113,7 +86,9 @@ pytest_test(
 pytest_test(
     name = "release_issue_test",
     srcs = ["release_issue_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
+        ":release_test_helper",
         "//tools/private/release:release_lib",
     ],
 )
@@ -121,24 +96,7 @@ pytest_test(
 pytest_test(
     name = "release_test",
     srcs = ["release_test.py"],
-    deps = [
-        "//tools/private/release:release_lib",
-    ],
-)
-
-pytest_test(
-    name = "utils_test",
-    srcs = ["utils_test.py"],
-    deps = [
-        ":release_test_helper",
-        "//tools/private/release:release_lib",
-        "@dev_pip//packaging",
-    ],
-)
-
-pytest_test(
-    name = "backport_prepare_test",
-    srcs = ["backport_prepare_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
@@ -148,6 +106,67 @@ pytest_test(
 pytest_test(
     name = "backport_create_releases_test",
     srcs = ["backport_create_releases_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "prepare_test",
+    srcs = ["prepare_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "gh_test",
+    srcs = ["gh_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "backport_prepare_test",
+    srcs = ["backport_prepare_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "process_backports_test",
+    srcs = ["process_backports_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "create_rc_test",
+    srcs = ["create_rc_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "utils_test",
+    srcs = ["utils_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
