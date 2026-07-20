@@ -292,7 +292,14 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         versions = sorted(info["versions"].keys())
         item = struct(
             name = norm_name,
-            is_exposed = True,
+            # Only expose packages that resolved to at least one source. uv
+            # workspace/root members (e.g. `source = { virtual = "." }` or
+            # editable installs) resolve to no wheel/sdist, so exposing them
+            # would add a dangling entry to the hub's `all_requirements` /
+            # `all_whl_requirements` and create an alias to a subpackage that
+            # doesn't exist. This mirrors the requirements path, which also
+            # gates `is_exposed`.
+            is_exposed = bool(info["resolved_srcs"]),
             is_multiple_versions = len(versions) > 1,
             index_url = info["index_url"],
             srcs = info["resolved_srcs"],
