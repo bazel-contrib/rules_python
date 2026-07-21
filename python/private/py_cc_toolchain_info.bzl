@@ -97,6 +97,11 @@ If available, information about C libraries, struct with fields:
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
 """,
+        "platform_machine": """
+:type: str
+
+The PEP 508 `platform_machine` marker value for the target architecture, e.g. 'x86_64', 'aarch64'.
+""",
         "platform_tag": """\
 :type: str | None
 
@@ -106,6 +111,11 @@ The PEP 3149 / PEP 425 platform tag for extension modules, e.g. 'x86_64-linux-gn
 :type: str
 
 The Python Major.Minor version.
+""",
+        "sys_platform": """
+:type: str
+
+The PEP 508 `sys_platform` marker value for the target OS, e.g. 'linux', 'darwin', 'win32'.
 """,
     },
 )

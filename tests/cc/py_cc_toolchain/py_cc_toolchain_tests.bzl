@@ -118,7 +118,37 @@ def _test_py_cc_toolchain_impl(env, target):
         matching.str_matches("/libpython3."),
     )
 
+    # ===== Verify PEP 508 platform markers =====
+    toolchain.sys_platform().equals("linux")
+    toolchain.platform_machine().equals("x86_64")
+    toolchain.platform_tag().equals("x86_64-linux-gnu")
+
 _tests.append(_test_py_cc_toolchain)
+
+def _test_custom_pep508_markers(name):
+    py_cc_toolchain(
+        name = name + "_subject",
+        headers = "//tests/support/cc_toolchains:py_headers",
+        platform_machine = "arm64",
+        python_version = "3.11",
+        sys_platform = "darwin",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_custom_pep508_markers_impl,
+    )
+
+def _test_custom_pep508_markers_impl(env, target):
+    toolchain = PyCcToolchainInfoSubject.new(
+        target[platform_common.ToolchainInfo].py_cc_toolchain,
+        meta = env.expect.meta.derive(expr = "py_cc_toolchain_info"),
+    )
+    toolchain.sys_platform().equals("darwin")
+    toolchain.platform_machine().equals("arm64")
+    toolchain.platform_tag().equals("darwin")
+
+_tests.append(_test_custom_pep508_markers)
 
 def _test_libs_optional(name):
     py_cc_toolchain(

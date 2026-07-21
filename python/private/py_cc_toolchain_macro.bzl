@@ -14,6 +14,7 @@
 
 """Fronting macro for the py_cc_toolchain rule."""
 
+load("//python/private/pypi:pep508_env.bzl", "platform_machine_select_map", "sys_platform_select_map")
 load(":py_cc_toolchain_rule.bzl", _py_cc_toolchain = "py_cc_toolchain")
 load(":util.bzl", "add_tag")
 
@@ -31,18 +32,10 @@ def py_cc_toolchain(**kwargs):
     #  This tag is added to easily identify usages through other macros.
     add_tag(kwargs, "@rules_python//python:py_cc_toolchain")
 
-    if "os" not in kwargs:
-        kwargs["os"] = select({
-            "@platforms//os:macos": "macos",
-            "@platforms//os:windows": "windows",
-            "//conditions:default": "linux",
-        })
-    if "cpu" not in kwargs:
-        kwargs["cpu"] = select({
-            "@platforms//cpu:aarch64": "aarch64",
-            "@platforms//cpu:x86_32": "x86_32",
-            "//conditions:default": "x86_64",
-        })
+    if "sys_platform" not in kwargs:
+        kwargs["sys_platform"] = select(sys_platform_select_map)
+    if "platform_machine" not in kwargs:
+        kwargs["platform_machine"] = select(platform_machine_select_map)
     if "libc" not in kwargs:
         kwargs["libc"] = select({
             Label("//python/config_settings:_is_py_linux_libc_musl"): "musl",
