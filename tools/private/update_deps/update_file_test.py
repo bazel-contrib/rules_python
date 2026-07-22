@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
 from tools.private.update_deps.update_file import replace_snippet, unified_diff
 
 
-class TestReplaceSnippet(unittest.TestCase):
-    def test_replace_simple(self):
-        current = """\
+def test_replace_simple():
+    current = """\
 Before the snippet
 
 # Start marker
@@ -30,15 +29,14 @@ But it has to be in the beginning of the line to mark the end of a region.
 
 After the snippet
 """
-        snippet = "Replaced"  # noqa: F841
-        got = replace_snippet(
-            current=current,
-            snippet="Replaced",
-            start_marker="# Start marker",
-            end_marker="# End marker",
-        )
+    got = replace_snippet(
+        current=current,
+        snippet="Replaced",
+        start_marker="# Start marker",
+        end_marker="# End marker",
+    )
 
-        want = """\
+    want = """\
 Before the snippet
 
 # Start marker
@@ -47,10 +45,11 @@ Replaced
 
 After the snippet
 """
-        self.assertEqual(want, got)
+    assert got == want
 
-    def test_replace_indented(self):
-        current = """\
+
+def test_replace_indented():
+    current = """\
 Before the snippet
 
     # Start marker
@@ -59,14 +58,14 @@ Before the snippet
 
 After the snippet
 """
-        got = replace_snippet(
-            current=current,
-            snippet="    Replaced",
-            start_marker="# Start marker",
-            end_marker="# End marker",
-        )
+    got = replace_snippet(
+        current=current,
+        snippet="    Replaced",
+        start_marker="# Start marker",
+        end_marker="# End marker",
+    )
 
-        want = """\
+    want = """\
 Before the snippet
 
     # Start marker
@@ -75,45 +74,42 @@ Before the snippet
 
 After the snippet
 """
-        self.assertEqual(want, got)
-
-    def test_raises_if_start_is_not_found(self):
-        with self.assertRaises(RuntimeError) as exc:
-            replace_snippet(
-                current="foo",
-                snippet="",
-                start_marker="start",
-                end_marker="end",
-            )
-
-        self.assertEqual(exc.exception.args[0], "Start marker 'start' was not found")
-
-    def test_raises_if_end_is_not_found(self):
-        with self.assertRaises(RuntimeError) as exc:
-            replace_snippet(
-                current="start",
-                snippet="",
-                start_marker="start",
-                end_marker="end",
-            )
-
-        self.assertEqual(exc.exception.args[0], "End marker 'end' was not found")
+    assert got == want
 
 
-class TestUnifiedDiff(unittest.TestCase):
-    def test_diff(self):
-        give_a = """\
+def test_raises_if_start_is_not_found():
+    with pytest.raises(RuntimeError, match="Start marker 'start' was not found"):
+        replace_snippet(
+            current="foo",
+            snippet="",
+            start_marker="start",
+            end_marker="end",
+        )
+
+
+def test_raises_if_end_is_not_found():
+    with pytest.raises(RuntimeError, match="End marker 'end' was not found"):
+        replace_snippet(
+            current="start",
+            snippet="",
+            start_marker="start",
+            end_marker="end",
+        )
+
+
+def test_diff():
+    give_a = """\
 First line
 second line
 Third line
 """
-        give_b = """\
+    give_b = """\
 First line
 Second line
 Third line
 """
-        got = unified_diff("filename", give_a, give_b)
-        want = """\
+    got = unified_diff("filename", give_a, give_b)
+    want = """\
 --- a/filename
 +++ b/filename
 @@ -1,3 +1,3 @@
@@ -121,8 +117,4 @@ Third line
 -second line
 +Second line
  Third line"""
-        self.assertEqual(want, got)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    assert got == want
