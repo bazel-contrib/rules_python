@@ -138,7 +138,7 @@ pip_parse(
     requirements_lock = "//examples/wheel:requirements_server.txt",
 )
 
-load("@pypiserver//:requirements.bzl", install_pypiserver = "install_deps")
+load("@pypiserver//:requirements.bzl", install_pypiserver = "install_deps", pypiserver_requirements = "all_requirements")
 
 install_pypiserver()
 
@@ -151,7 +151,7 @@ pip_parse(
     requirements_lock = "//docs:requirements.txt",
 )
 
-load("@dev_pip//:requirements.bzl", docs_install_deps = "install_deps")
+load("@dev_pip//:requirements.bzl", dev_pip_requirements = "all_requirements", docs_install_deps = "install_deps")
 
 docs_install_deps()
 
@@ -164,7 +164,7 @@ pip_parse(
     requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
 )
 
-load("@pypi_alpha//:requirements.bzl", pypi_alpha_install_deps = "install_deps")
+load("@pypi_alpha//:requirements.bzl", pypi_alpha_install_deps = "install_deps", pypi_alpha_requirements = "all_requirements")
 
 pypi_alpha_install_deps()
 
@@ -174,6 +174,22 @@ pip_parse(
     requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
 )
 
-load("@pypi_beta//:requirements.bzl", pypi_beta_install_deps = "install_deps")
+load("@pypi_beta//:requirements.bzl", pypi_beta_install_deps = "install_deps", pypi_beta_requirements = "all_requirements")
 
 pypi_beta_install_deps()
+
+load(
+    "//python/private/pypi:unified_hub_repo.bzl",
+    "unified_workspace_hub_repo",
+)  # buildifier: disable=bzl-visibility
+
+unified_workspace_hub_repo(
+    name = "pypi",
+    default_hub = "dev_pip",
+    hubs = {
+        "dev_pip": dev_pip_requirements,
+        "pypi_alpha": pypi_alpha_requirements,
+        "pypi_beta": pypi_beta_requirements,
+        "pypiserver": pypiserver_requirements,
+    },
+)
