@@ -1,6 +1,8 @@
 import pytest
 
+from tools.private.release import shell
 from tools.private.release.gh import GitHub
+from tools.private.release.git import Git
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -62,12 +64,8 @@ def test_resolve_pr_number_invalid(mocker, gh):
 
 
 def test_auto_patched_helpers_prevent_real_execution(auto_patch_cmd_helpers):
-    from tools.private.release.gh import GitHub
-    from tools.private.release.git import Git
-    from tools.private.release.shell import run_cmd
-
     # Calling run_cmd directly hits the mock
-    run_cmd("echo", "test")
+    shell.run_cmd("echo", "test")
     auto_patch_cmd_helpers.run_cmd.assert_called_with("echo", "test")
 
     # Git._run_git hits the mock
