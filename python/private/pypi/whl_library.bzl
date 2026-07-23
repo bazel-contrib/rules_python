@@ -430,18 +430,10 @@ repo(
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
 
-    whl_path = None
     sdist_filename = None
     extra_pip_args = []
     extra_pip_args.extend(rctx.attr.extra_pip_args)
-    if rctx.attr.whl_file:
-        rctx.watch(rctx.attr.whl_file)
-        whl_path = rctx.path(rctx.attr.whl_file)
-
-        # Simulate the behaviour where the whl is present in the current directory.
-        rctx.symlink(whl_path, whl_path.basename)
-        whl_path = rctx.path(whl_path.basename)
-    elif rctx.attr.urls and rctx.attr.filename:
+    if rctx.attr.urls and rctx.attr.filename:
         filename = rctx.attr.filename
         urls = rctx.attr.urls
         urls = [
@@ -470,7 +462,7 @@ def _whl_library_impl(rctx):
             fail("could not download the '{}' from {}:\n{}".format(filename, urls, result))
 
         if filename.endswith(".whl"):
-            whl_path = rctx.path(filename)
+            fail("Only sdists are supported")
         else:
             sdist_filename = filename
 
@@ -483,53 +475,47 @@ def _whl_library_impl(rctx):
     # When we already have a wheel, Python isn't used,
     # so there's no need to setup env vars to run Python, unless we need to
     # build an sdist or resolve a requirement.
-    if whl_path:
-        environment = {}
-        args = []
-        python_interpreter = None
+    python_interpreter = pypi_repo_utils.resolve_python_interpreter(
+        rctx,
+        python_interpreter = rctx.attr.python_interpreter,
+        python_interpreter_target = rctx.attr.python_interpreter_target,
+    )
+    args = [
+        "-m",
+        "python.private.pypi.whl_installer.wheel_installer",
+        "--requirement",
+        rctx.attr.requirement,
+    ]
+    args = _parse_optional_attrs(rctx, args, extra_pip_args)
+
+    # Manually construct the PYTHONPATH since we cannot use the toolchain here
+    environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
+
+    if rctx.attr.urls:
+        op_tmpl = "whl_library.BuildWheelFromSource({name}, {requirement})"
+    elif rctx.attr.download_only:
+        op_tmpl = "whl_library.DownloadWheel({name}, {requirement})"
     else:
-        python_interpreter = pypi_repo_utils.resolve_python_interpreter(
-            rctx,
-            python_interpreter = rctx.attr.python_interpreter,
-            python_interpreter_target = rctx.attr.python_interpreter_target,
-        )
-        args = [
-            "-m",
-            "python.private.pypi.whl_installer.wheel_installer",
-            "--requirement",
-            rctx.attr.requirement,
-        ]
-        args = _parse_optional_attrs(rctx, args, extra_pip_args)
+        op_tmpl = "whl_library.ResolveRequirement({name}, {requirement})"
 
-        # Manually construct the PYTHONPATH since we cannot use the toolchain here
-        environment = _create_repository_execution_environment(rctx, python_interpreter, logger = logger)
+    pypi_repo_utils.execute_checked(
+        rctx,
+        # truncate the requirement value when logging it / reporting
+        # progress since it may contain several ' --hash=sha256:...
+        # --hash=sha256:...' substrings that fill up the console
+        python = python_interpreter,
+        op = op_tmpl.format(name = rctx.attr.name, requirement = rctx.attr.requirement.split(" ", 1)[0]),
+        arguments = args,
+        environment = environment,
+        srcs = rctx.attr._python_srcs,
+        quiet = rctx.attr.quiet,
+        timeout = rctx.attr.timeout,
+        logger = logger,
+    )
 
-    if not whl_path:
-        if rctx.attr.urls:
-            op_tmpl = "whl_library.BuildWheelFromSource({name}, {requirement})"
-        elif rctx.attr.download_only:
-            op_tmpl = "whl_library.DownloadWheel({name}, {requirement})"
-        else:
-            op_tmpl = "whl_library.ResolveRequirement({name}, {requirement})"
-
-        pypi_repo_utils.execute_checked(
-            rctx,
-            # truncate the requirement value when logging it / reporting
-            # progress since it may contain several ' --hash=sha256:...
-            # --hash=sha256:...' substrings that fill up the console
-            python = python_interpreter,
-            op = op_tmpl.format(name = rctx.attr.name, requirement = rctx.attr.requirement.split(" ", 1)[0]),
-            arguments = args,
-            environment = environment,
-            srcs = rctx.attr._python_srcs,
-            quiet = rctx.attr.quiet,
-            timeout = rctx.attr.timeout,
-            logger = logger,
-        )
-
-        whl_path = rctx.path(json.decode(rctx.read("whl_file.json"))["whl_file"])
-        if not rctx.delete("whl_file.json"):
-            fail("failed to delete the whl_file.json file")
+    whl_path = rctx.path(json.decode(rctx.read("whl_file.json"))["whl_file"])
+    if not rctx.delete("whl_file.json"):
+        fail("failed to delete the whl_file.json file")
 
     if rctx.attr.whl_patches:
         patches = {}
