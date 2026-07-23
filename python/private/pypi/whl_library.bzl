@@ -308,6 +308,125 @@ def _to_purl(*, index, metadata, filename):
 
     return "pkg:pypi/{}@{}?{}".format(name, metadata.version, "&".join(["{}={}".format(key, val) for key, val in qualifiers.items()]))
 
+def _whl_archive_impl(rctx):
+    logger = repo_utils.logger(rctx)
+
+    whl_path = None
+    if rctx.attr.whl_file:
+        rctx.watch(rctx.attr.whl_file)
+        whl_path = rctx.path(rctx.attr.whl_file)
+
+        # Simulate the behaviour where the whl is present in the current directory.
+        rctx.symlink(whl_path, whl_path.basename)
+        whl_path = rctx.path(whl_path.basename)
+    elif rctx.attr.urls and rctx.attr.filename:
+        filename = rctx.attr.filename
+        urls = rctx.attr.urls
+        urls = [
+            urllib.absolute_url(
+                rctx.attr.index_url,
+                url,
+                envsubst = rctx.attr.envsubst,
+                getenv = rctx.getenv,
+            )
+            for url in urls
+        ]
+        result = rctx.download(
+            url = urls,
+            output = filename,
+            sha256 = rctx.attr.sha256,
+            auth = get_auth(rctx, urls),
+        )
+        if not rctx.attr.sha256:
+            # this is only seen when there is a direct URL reference without sha256
+            logger.warn("Please update the requirement line to include the hash:\n{} \\\n    --hash=sha256:{}".format(
+                rctx.attr.requirement,
+                result.sha256,
+            ))
+
+        if not result.success:
+            fail("could not download the '{}' from {}:\n{}".format(filename, urls, result))
+
+        if filename.endswith(".whl"):
+            whl_path = rctx.path(filename)
+        else:
+            fail("Only wheels are supported")
+
+    if rctx.attr.whl_patches:
+        patches = {}
+        for patch_file, json_args in rctx.attr.whl_patches.items():
+            patch_dst = struct(**json.decode(json_args))
+            if whl_path.basename in patch_dst.whls:
+                patches[patch_file] = patch_dst.patch_strip
+
+        if patches:
+            whl_path = patch_whl(
+                rctx,
+                whl_path = whl_path,
+                patches = patches,
+            )
+
+    whl_extract(rctx, whl_path = whl_path, logger = logger)
+
+    install_dir_path = whl_path.dirname.get_child("site-packages")
+    metadata = whl_metadata(
+        install_dir = install_dir_path,
+        read_fn = rctx.read,
+        logger = logger,
+    )
+    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
+
+    entry_points = _get_entry_points(rctx, install_dir_path, metadata)
+    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
+
+    build_file_contents = generate_whl_library_build_bazel(
+        name = whl_path.basename,
+        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
+            rctx.attr.repo_prefix,
+        ),
+        config_load = rctx.attr.config_load,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
+        # TODO @aignas 2025-05-17: maybe have a build flag for this instead
+        enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
+        # TODO @aignas 2025-04-14: load through the hub:
+        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+        data_exclude = rctx.attr.pip_data_exclude,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
+        namespace_package_files = namespace_package_files,
+        extras = requirement(rctx.attr.requirement).extras,
+        entry_points = entry_points,
+        purl = _to_purl(
+            index = rctx.attr.index_url,
+            metadata = metadata,
+            filename = whl_path.basename,
+        ),
+    )
+
+    # Delete these in case the wheel had them. They generally don't cause
+    # a problem, but let's avoid the chance of that happening.
+    rctx.file("WORKSPACE")
+    rctx.file("WORKSPACE.bazel")
+    rctx.file("MODULE.bazel")
+    rctx.file("REPO.bazel", """\
+repo(
+    default_package_metadata = [
+        "//:package_metadata",
+    ],
+)
+""")
+
+    # BUILD files interfere with globbing and Bazel package boundaries.
+    _remove_files(rctx, "BUILD", "BUILD.bazel")
+    rctx.file("BUILD.bazel", build_file_contents)
+
+    if hasattr(rctx, "repo_metadata"):
+        return rctx.repo_metadata(reproducible = True)
+
+    return None
+
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
 
@@ -609,7 +728,7 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
 }, **ATTRS)
 whl_library_attrs.update(AUTH_ATTRS)
 
-_whl_library = repository_rule(
+pip_library = repository_rule(
     attrs = whl_library_attrs,
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
@@ -627,15 +746,64 @@ wheel contents without building an `sdist` first.
     ],
 )
 
+whl_archive_attrs = {
+    k: whl_library_attrs[k]
+    for k in [
+        "annotation",
+        "config_load",
+        "dep_template",
+        "filename",
+        "group_deps",
+        "group_name",
+        "index_url",
+        "repo",
+        "repo_prefix",
+        "requirement",
+        "sha256",
+        "urls",
+        "whl_file",
+        "whl_patches",
+        # common attrs
+        "enable_implicit_namespace_pkgs",
+        "envsubst",
+        "experimental_requirement_cycles",
+        "extra_hub_aliases",
+        "pip_data_exclude",
+    ]
+}
+whl_archive_attrs.update(AUTH_ATTRS)
+
+whl_archive = repository_rule(
+    attrs = whl_archive_attrs,
+    doc = """
+Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
+
+Does not depend on any python.
+""",
+    implementation = _whl_archive_impl,
+    environ = [
+        REPO_DEBUG_ENV_VAR,
+    ],
+)
+
 def whl_library(name, **kwargs):
-    """Create a whl_library
+    """Create a whl_library.
 
-    Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
-    Instantiated from pip_repository and inherits config options from there.
+    This proxies to one of the underlying implementations:
+    * {obj}`whl_archive`
+    * {obj}`pip_archive`
 
-    :::{versionchanged} 1.9.0
-    The `whl_library` is marked as reproducible if using starlark to extract and parse the
-    wheel contents without building an `sdist` first.
-    :::
+    Args:
+        name: {type}`str` The name of the repo.
+        **kwargs: The args passed to the underlying implementation.
+
+    Returns:
+        the repo metadata.
     """
-    return _whl_library(name = name, **kwargs)
+    whl_file = kwargs.get("whl_file")
+    urls = kwargs.get("urls", [])
+    filename = kwargs.get("filename")
+    if whl_file or (urls and filename and filename.endswith(".whl")):
+        return whl_archive(name = name, **kwargs)
+
+    return pip_library(name = name, **kwargs)
