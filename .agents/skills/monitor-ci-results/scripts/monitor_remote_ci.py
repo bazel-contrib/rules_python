@@ -199,9 +199,66 @@ def main():
                 with open(state_file, "w") as f:
                     json.dump(monitored, f)
 
+        # Check if all CI checks and jobs are finished and passed
+        if checks:
+            all_completed = True
+            any_failed = False
+            total_passed = 0
+
+            for check in checks:
+                state = check.get("state", "UNKNOWN")
+                name = check.get("name", "")
+                link = check.get("link", "")
+                if "buildkite" in name.lower() and link:
+                    jobs = get_buildkite_jobs(link)
+                    if not jobs:
+                        all_completed = False
+                    for job in jobs:
+                        jstate = job.get("state", "unknown")
+                        exit_status = job.get("exit_status")
+                        is_soft_failed = job.get("soft_failed") is True
+                        is_failed = (
+                            jstate in ["failed", "failing"]
+                            or (exit_status != 0 and exit_status is not None)
+                        ) and not is_soft_failed
+                        is_passed = (
+                            jstate in ["passed", "success"]
+                            or (jstate == "finished" and exit_status == 0)
+                            or is_soft_failed
+                        )
+                        if is_failed:
+                            any_failed = True
+                        elif is_passed:
+                            total_passed += 1
+                        else:
+                            all_completed = False
+                else:
+                    if state in ["SUCCESS", "success"]:
+                        total_passed += 1
+                    elif state in ["FAILURE", "failed"]:
+                        any_failed = True
+                    elif state in ["PENDING", "IN_PROGRESS", "queued", "running"]:
+                        all_completed = False
+
+            if all_completed and not any_failed and total_passed > 0:
+                print(
+                    f"✅ All {total_passed} remote CI checks for PR #{args.pr} PASSED!"
+                )
+                msg = f"✅ Remote CI checks for PR #{args.pr} completed successfully! ({total_passed} checks passed)"
+                subprocess.run(
+                    [
+                        "agentapi",
+                        "send-message",
+                        "--title=CI Checks Passed",
+                        args.conv_id,
+                        msg,
+                    ]
+                )
+                break
+
         time.sleep(args.interval)
 
-    print("🏁 CI monitoring service completed its scheduled iterations.")
+    print("🏁 CI monitoring service completed.")
 
 
 if __name__ == "__main__":
