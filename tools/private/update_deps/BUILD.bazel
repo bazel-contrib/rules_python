@@ -13,7 +13,8 @@
 # limitations under the License.
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
-load("//python:py_test.bzl", "py_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 licenses(["notice"])
 
@@ -65,10 +66,11 @@ py_binary(
     ],
 )
 
-py_test(
+pytest_test(
     name = "update_file_test",
     srcs = ["update_file_test.py"],
     imports = ["../../.."],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         ":update_file",
     ],
