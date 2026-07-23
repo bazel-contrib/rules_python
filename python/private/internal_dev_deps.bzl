@@ -65,6 +65,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@implicit_namespace_ns_sub2_whl//:ns_sub2-1.0-any-none-any.whl",
         requirement = "ns-sub2",
         enable_implicit_namespace_pkgs = False,
+        repo_prefix = "dummy",
     )
 
     whl_from_dir_repo(
@@ -77,6 +78,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@pkgutil_nspkg1_whl//:pkgutil_nspkg1-1.0-any-none-any.whl",
         requirement = "pkgutil_nspkg1",
         enable_implicit_namespace_pkgs = False,
+        repo_prefix = "dummy",
     )
 
     whl_from_dir_repo(
@@ -89,6 +91,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@pkgutil_nspkg2_whl//:pkgutil_nspkg2-1.0-any-none-any.whl",
         requirement = "pkgutil_nspkg2",
         enable_implicit_namespace_pkgs = False,
+        repo_prefix = "dummy",
     )
 
     whl_from_dir_repo(
@@ -100,6 +103,7 @@ def _internal_dev_deps_impl(mctx):
         name = "whl_with_data1",
         whl_file = "@whl_with_data1_whl//:whl_with_data1-1.0-any-none-any.whl",
         requirement = "whl-with-data1",
+        repo_prefix = "dummy",
     )
 
     whl_from_dir_repo(
@@ -111,6 +115,7 @@ def _internal_dev_deps_impl(mctx):
         name = "whl_with_data2",
         whl_file = "@whl_with_data2_whl//:whl_with_data2-1.0-any-none-any.whl",
         requirement = "whl-with-data2",
+        repo_prefix = "dummy",
     )
 
     _whl_library_from_dir(
@@ -129,6 +134,7 @@ def _internal_dev_deps_impl(mctx):
         requirement = "optional_dep",
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+        repo_prefix = "dummy",
     )
 
     # Setup for //tests/pypi/patch_whl/patch_whl_patch_test.py
@@ -147,6 +153,7 @@ def _internal_dev_deps_impl(mctx):
                 "whls": ["pkg-1.0-any-none-any.whl"],
             }),
         },
+        repo_prefix = "dummy",
     )
 
 def _whl_library_from_dir(*, name, output, root, **kwargs):

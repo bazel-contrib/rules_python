@@ -291,6 +291,9 @@ def _with_index_url(index_url, values):
     if not values:
         return values
 
+    if not index_url:
+        fail("BUG: no index_url")
+
     return struct(
         sdists = values.sdists,
         whls = values.whls,

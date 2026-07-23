@@ -310,21 +310,19 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_simple_py3_none_any_deadbeef_osx_aarch64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "simple_py3_none_any_deadbeef": {
             "filename": "simple-0.0.1-py3-none-any.whl",
-            "index_url": "https://example.com/simple/",
-            "requirement": "simple[foo]==0.0.1",
+            "index_url": "https://example.com/simple",
+            "requirement": "simple",
             "sha256": "deadbeef",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
-        "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+    })
+    pypi.whl_libraries().contains_exactly({
+        "simple_py3_none_any_deadbeef": {
             "filename": "simple-0.0.1-py3-none-any.whl",
-            "index_url": "https://example.com/simple/",
-            "requirement": "simple==0.0.1",
+            "index_url": "https://example.com/simple",
+            "requirement": "simple",
             "sha256": "deadbeef",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
@@ -435,8 +433,8 @@ _tests.append(_test_simple_multiple_python_versions)
 
 def _test_simple_with_markers(env):
     sub_tests = {
-        ("osx", "aarch64"): "torch==2.4.1 --hash=sha256:deadbeef",
-        ("linux", "x86_64"): "torch==2.4.1+cpu",
+        ("osx", "aarch64"): "torch",
+        ("linux", "x86_64"): "torch",
     }
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(env)
@@ -476,7 +474,7 @@ def _test_simple_with_markers(env):
                 "config_load": "@pypi//:config.bzl",
                 "dep_template": "@pypi//{name}:{target}",
                 "python_interpreter_target": "unit_test_interpreter_target",
-                "requirement": want_requirement,
+                "requirement": "torch==2.4.1 --hash=sha256:deadbeef",
             },
         })
         pypi.extra_aliases().contains_exactly({})
@@ -617,64 +615,116 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
         "torch": {
             "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef_linux_x86_64": [
                 whl_config_setting(
-                    target_platforms = ["cp312_linux_x86_64"],
+                    target_platforms = ("cp312_linux_x86_64",),
                     version = "3.12",
                 ),
             ],
             "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": [
                 whl_config_setting(
-                    target_platforms = ["cp312_linux_aarch64"],
+                    target_platforms = ("cp312_linux_aarch64",),
                     version = "3.12",
                 ),
             ],
             "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": [
                 whl_config_setting(
-                    target_platforms = ["cp312_windows_x86_64"],
+                    target_platforms = ("cp312_windows_x86_64",),
                     version = "3.12",
                 ),
             ],
             "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": [
                 whl_config_setting(
-                    target_platforms = ["cp312_osx_aarch64"],
+                    target_platforms = ("cp312_osx_aarch64",),
                     version = "3.12",
                 ),
             ],
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_312_torch_cp312_cp312_linux_x86_64_8800deef_linux_x86_64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "torch_cp312_cp312_linux_x86_64_8800deef": {
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
-            "index_url": "https://torch.index/torch/",
-            "requirement": "torch==2.4.1+cpu",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
             "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
-        "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
-            "index_url": "https://torch.index/torch/",
-            "requirement": "torch==2.4.1",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
             "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
-        "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "torch_cp312_cp312_win_amd64_3a570e5c": {
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
-            "index_url": "https://torch.index/torch/",
-            "requirement": "torch==2.4.1+cpu",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
             "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
-        "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "torch_cp312_none_macosx_11_0_arm64_72b484d5": {
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
-            "index_url": "https://torch.index/torch/",
-            "requirement": "torch==2.4.1",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
+            "urls": ["/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "torch_cp312_cp312_linux_x86_64_8800deef": {
+            "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
+            "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
+        },
+        "torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
+            "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
+            "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
+        },
+        "torch_cp312_cp312_win_amd64_3a570e5c": {
+            "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
+            "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
+        },
+        "torch_cp312_none_macosx_11_0_arm64_72b484d5": {
+            "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
+            "urls": ["/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "torch_cp312_cp312_linux_x86_64_8800deef": {
+            "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
+            "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
+        },
+        "torch_cp312_cp312_manylinux_2_17_aarch64_36109432": {
+            "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
+            "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
+        },
+        "torch_cp312_cp312_win_amd64_3a570e5c": {
+            "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
+            "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
+            "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
+        },
+        "torch_cp312_none_macosx_11_0_arm64_72b484d5": {
+            "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
+            "index_url": "https://torch.index/torch",
+            "requirement": "torch",
             "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
         },
@@ -813,18 +863,16 @@ simple==0.0.1 --hash=sha256:deadb00f
             },
         })
         want_whl_library = {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": test.expect_index_url,
-            "requirement": "simple==0.0.1",
+            "requirement": "simple",
             "sha256": "deadb00f",
             "urls": [test.expect_url],
         }
         if getattr(test, "envsubst", []):
             want_whl_library["envsubst"] = test.envsubst
         pypi.whl_libraries().contains_exactly({
-            "pypi_315_simple_py3_none_any_deadb00f": want_whl_library,
+            "simple_py3_none_any_deadb00f": want_whl_library,
         })
         pypi.extra_aliases().contains_exactly({})
 
@@ -1156,71 +1204,61 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         },
     })
     pypi.whl_libraries().contains_exactly({
+        "direct_without_sha_0_0_1_py3_none_any": {
+            "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
+            "requirement": "direct-without-sha",
+            "sha256": "",
+            "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
+            "whl_patches": {"my_patch": "1"},
+        },
+        "plat_py3_none_linux_x86_64_deadb44f": {
+            "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
+            "index_url": "https://pypi.org/simple",
+            "requirement": "plat-pkg",
+            "sha256": "deadb44f",
+            "urls": ["example2.org/index/plat_pkg/"],
+        },
         "pypi_315_any_name": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "direct_sdist_without_sha @ some-archive/any-name.tar.gz",
+            "requirement": "direct-sdist-without-sha",
             "sha256": "",
             "urls": ["some-archive/any-name.tar.gz"],
-        },
-        "pypi_315_direct_without_sha_0_0_1_py3_none_any": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
-            "requirement": "direct_without_sha==0.0.1",
-            "sha256": "",
-            "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
-            "whl_patches": {"my_patch": "1"},
         },
         "pypi_315_git_dep": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef",
+            "requirement": "git-dep",
         },
         "pypi_315_pip_fallback": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "pip_fallback==0.0.1",
+            "requirement": "pip-fallback",
         },
-        "pypi_315_plat_py3_none_linux_x86_64_deadb44f": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
-            "index_url": "https://pypi.org/simple",
-            "requirement": "plat_pkg==0.0.4",
-            "sha256": "deadb44f",
-            "urls": ["example2.org/index/plat_pkg/"],
-        },
-        "pypi_315_simple_py3_none_any_deadb00f": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "simple_py3_none_any_deadb00f": {
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://pypi.org/simple",
-            "requirement": "simple==0.0.1",
+            "requirement": "simple",
             "sha256": "deadb00f",
             "urls": ["example2.org"],
         },
-        "pypi_315_some_pkg_py3_none_any_deadbaaf": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "some_pkg_py3_none_any_deadbaaf": {
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
-            "requirement": "some_pkg==0.0.1",
+            "requirement": "some-pkg",
             "sha256": "deadbaaf",
             "urls": ["example-direct.org/some_pkg-0.0.1-py3-none-any.whl"],
         },
-        "pypi_315_some_py3_none_any_deadb33f": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
+        "some_py3_none_any_deadb33f": {
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
             "index_url": "https://with_index_url",
-            "requirement": "some_other_pkg==0.0.1",
+            "requirement": "some-other-pkg",
             "sha256": "deadb33f",
             "urls": ["example2.org/index/some_other_pkg/"],
         },
@@ -1251,8 +1289,8 @@ _tests.append(_test_simple_get_index)
 
 def _test_optimum_sys_platform_extra(env):
     sub_tests = {
-        ("osx", "aarch64"): "optimum[onnxruntime]==1.17.1",
-        ("linux", "aarch64"): "optimum[onnxruntime-gpu]==1.17.1",
+        ("osx", "aarch64"): "optimum",
+        ("linux", "aarch64"): "optimum",
     }
     for (host_os, host_arch), want_requirement in sub_tests.items():
         builder = hub_builder(
@@ -1369,13 +1407,13 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
+            "requirement": "optimum",
         },
         "pypi_315_optimum_myosxaarch64": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum[onnxruntime]==1.17.1",
+            "requirement": "optimum",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -1438,11 +1476,11 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum": {
+        "pypi_315_torch": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
+            "requirement": "torch==2.4.1+cpu",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -1498,16 +1536,15 @@ def _test_err_duplicate_repos(env):
     env.expect.that_dict(logs).keys().contains_exactly(["rules_python:unit-test FAIL:"])
     env.expect.that_collection(logs["rules_python:unit-test FAIL:"]).contains_exactly([
         """\
-Attempting to create a duplicate library pypi_315_foo for foo with different arguments. Already existing declaration has:
+Attempting to create a duplicate library pypi_315_foo with different arguments. Already existing declaration has:
     common: {
         "dep_template": "@pypi//{name}:{target}",
         "config_load": "@pypi//:config.bzl",
-        "requirement": "foo==0.0.1",
+        "requirement": "foo",
     }
     different: {
         "python_interpreter_target": ("unit_test_interpreter_target_1", "unit_test_interpreter_target_2"),
-    }\
-""",
+    }""",
     ]).in_order()
 
 _tests.append(_test_err_duplicate_repos)

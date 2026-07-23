@@ -11,6 +11,7 @@ load(":attrs.bzl", "use_isolated")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
+load(":pep508_requirement.bzl", "requirement")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -71,6 +72,9 @@ def hub_builder(
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         _whl_libraries = {},  # modified by _add_whl_library
+        # Mapping of whl_library_deps repo names and their kwargs.
+        # dict[str repo_name, dict[str, object] kwargs]
+        _whl_library_deps = {},  # modified by _add_whl_library
         # Map of repos and their config settings, and repo the config
         # setting originated from.
         # dict[str whl_name, dict[str config_setting, str repo_name]]
@@ -87,6 +91,7 @@ def hub_builder(
         # Functions to download according to the config
         # dict[str python_version, callable]
         _get_index_urls = {},
+        _default_index_url = {},
         # Tells whether to use the downloader for a package.
         # dict[str python_version, dict[str package_name, bool use_downloader]]
         _use_downloader = {},
@@ -113,6 +118,7 @@ def _build(self):
         extra_aliases = {},
         exposed_packages = [],
         whl_libraries = {},
+        whl_library_deps = {},
     )
     if self._logger.failed():
         return ret
@@ -142,6 +148,10 @@ def _build(self):
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         whl_libraries = self._whl_libraries,
+
+        # Mapping of whl_library_deps repo names and their kwargs.
+        # dict[str repo_name, dict[str, object] kwargs]
+        whl_library_deps = self._whl_library_deps,
     )
 
 def _pip_parse(self, module_ctx, pip_attr, python_version = None):
@@ -309,29 +319,58 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # disallow building from sdist.
         return
 
-    # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
-    # we are using pipstar and we are downloading the wheel using the downloader
-    #
-    # However, for that we should first have a different way to reference closures with
-    # extras. For example, if some package depends on `foo[extra]` and another depends on
-    # `foo`, we should have 2 py_library targets.
-    repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
+    forbidden_args = {
+        "annotation": True,
+        "extra_pip_args": True,
+        "python_interpreter": True,
+        "python_interpreter_target": True,
+    }
 
-    if repo_name in self._whl_libraries:
-        diff = _diff_dict(self._whl_libraries[repo_name], repo.args)
-        if diff:
-            self._logger.fail(lambda: (
-                "Attempting to create a duplicate library {repo_name} for {whl_name} with different arguments. Already existing declaration has:\n".format(
-                    repo_name = repo_name,
-                    whl_name = whl.name,
-                ) + "\n".join([
-                    "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
-                    for key, value in diff.items()
-                    if value
-                ])
-            ))
-            return
-    self._whl_libraries[repo_name] = repo.args
+    if [arg for arg in repo.args if arg in forbidden_args]:
+        # no reuse of the whl_library because we have args that force the extraction of the whl
+        # in the hub context. If we have whl-only pipstar extraction, then we can reuse the
+        # extracted sources.
+        repos_dict = self._whl_libraries
+        deps_args = dict(repo.args)
+        # deps_args["requirement"] = requirement(deps_args["requirement"]).name
+
+    else:
+        extract_args = {
+            k: v
+            for k, v in repo.args.items()
+            if k not in forbidden_args | {
+                "config_load": None,
+                "dep_template": None,
+            }
+        }
+        req = requirement(extract_args["requirement"])
+
+        # TODO @aignas 2026-07-04: add a test
+        extract_args["requirement"] = repo.args["requirement"]
+        _add_library(
+            self,
+            repos_dict = self._whl_libraries,
+            name = repo.base_repo_name,
+            args = extract_args,
+        )
+
+        deps_args = {
+            k: repo.args.get(k)
+            for k in [
+                "config_load",
+                "dep_template",
+                "group_deps",
+                "group_name",
+            ]
+        } | {
+            # TODO @aignas 2026-07-04: add a test
+            "extras": req.extras,
+            "whl_library": "@{}//:BUILD.bazel".format(repo.base_repo_name),
+        }
+        repos_dict = self._whl_library_deps
+
+    repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
+    _add_library(self, repos_dict = repos_dict, name = repo_name, args = deps_args)
 
     mapping = self._whl_map.setdefault(whl.name, {})
     if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
@@ -347,25 +386,43 @@ def _add_whl_library(self, *, python_version, whl, repo):
 
 ### end of setters, below we have various functions to implement the public methods
 
+def _add_library(self, *, repos_dict, name, args):
+    if name in repos_dict:
+        diff = _diff_dict(repos_dict[name], args)
+        if diff:
+            self._logger.fail(lambda: (
+                "Attempting to create a duplicate library {name} with different arguments. Already existing declaration has:\n".format(
+                    name = name,
+                ) + "\n".join([
+                    "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                    for key, value in diff.items()
+                    if value
+                ])
+            ))
+
+            return
+    repos_dict[name] = args
+
 def _set_get_index_urls(self, mctx, pip_attr):
+    python_version = pip_attr.python_version
+
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
     # form is honored when deciding whether the experimental index-url mode is
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
     # is treated as truthy and the mode is forced on, even when the env var
     # would expand to the empty string.
-    default_index_url = envsubst(
+    self._default_index_url[python_version] = envsubst(
         pip_attr.experimental_index_url,
         pip_attr.envsubst,
         mctx.getenv,
     ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
-    if not default_index_url:
+    if not self._default_index_url[python_version]:
         # parallel_download is set to True by default, so we are not checking/validating it
         # here
         return False
 
-    python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
@@ -373,7 +430,7 @@ def _set_get_index_urls(self, mctx, pip_attr):
     self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = (index_url or default_index_url).rstrip("/"),
+            index_url = (index_url or self._default_index_url[python_version]).rstrip("/"),
             extra_index_urls = [
                 x.rstrip("/")
                 for x in (extra_index_urls or default_extra_index_urls)
@@ -542,7 +599,7 @@ def _create_whl_repos(
         for src in whl.srcs:
             repo = _whl_repo(
                 src = src,
-                index_url = whl.index_url,
+                index_url = whl.index_url.rstrip("/"),
                 whl_library_args = whl_library_args,
                 download_only = pip_attr.download_only,
                 netrc = self._config.netrc or pip_attr.netrc,
@@ -657,6 +714,9 @@ def _whl_repo(
                     normalize_name(src.distribution),
                     *target_platforms
                 ),
+                base_repo_name = pypi_repo_name(
+                    normalize_name(src.distribution),
+                ),
                 args = args,
                 config_setting = whl_config_setting(
                     version = python_version,
@@ -685,6 +745,7 @@ def _whl_repo(
 
     return struct(
         repo_name = whl_repo_name(src.filename, src.sha256, *target_platforms),
+        base_repo_name = whl_repo_name(src.filename, src.sha256),
         args = args,
         config_setting = whl_config_setting(
             version = python_version,

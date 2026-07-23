@@ -42,6 +42,7 @@ def _test_filegroups(env):
             glob = glob,
         ),
         rules = struct(
+            py_library = lambda **kwargs: None,
             venv_rewrite_shebang = lambda **kwargs: None,
         ),
     )
@@ -64,7 +65,7 @@ def _test_filegroups(env):
         },
         {
             "name": "whl",
-            "srcs": [""],
+            "srcs": [":_whl_file"],
             "data": [],
             "visibility": ["//visibility:public"],
         },
@@ -82,10 +83,12 @@ def _test_copy(env):
         copy_files = {"file_src": "file_dest"},
         copy_executables = {"exec_src": "exec_dest"},
         native = struct(
+            filegroup = lambda **kwargs: None,
             glob = lambda *args, **kwargs: [],
         ),
         rules = struct(
             copy_file = lambda **kwargs: calls.append(kwargs),
+            py_library = lambda **kwargs: None,
             venv_rewrite_shebang = lambda **kwargs: None,
         ),
     )
@@ -152,7 +155,7 @@ def _test_whl_and_library_deps_from_requires(env):
     env.expect.that_collection(filegroup_calls).contains_exactly([
         {
             "name": "whl",
-            "srcs": ["foo-0-py3-none-any.whl"],
+            "srcs": [":_whl_file"],
             "data": ["@pypi//bar:whl"] + select({
                 ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
                 "//conditions:default": [],

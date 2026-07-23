@@ -490,7 +490,7 @@ def _package_srcs(
             logger.debug(lambda: "The whl dist is: {}".format(dist.filename if dist else dist))
 
             if extract_url_srcs and dist:
-                req_line = r.srcs.requirement
+                req_line = r.srcs.requirement_line
             elif can_fallback or (not extract_url_srcs and dist):
                 dist = struct(
                     url = "",

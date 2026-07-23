@@ -22,6 +22,7 @@ load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:text_util.bzl", "render")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -31,7 +32,7 @@ load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
-load(":whl_library.bzl", "whl_library")
+load(":whl_library.bzl", "whl_library", "whl_library_deps")
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -459,14 +460,38 @@ You cannot use both the additive_build_content and additive_build_content_file a
     exposed_packages = {}
     extra_aliases = {}
     whl_libraries = {}
+    whl_library_deps_map = {}
     for hub in pip_hub_map.values():
         out = hub.build()
 
         for whl_name, lib in out.whl_libraries.items():
+            # NOTE @aignas 2026-07-04: if the same wheel is downloaded from multiple
+            # indexes, this will fail, forcing the user to actually download the wheel
+            # from the same and deterministic location. This is usually the case for
+            # public wheels and users should setup the defaults.index_url to correct
+            # fall-back in rules_python we should handle the default index to substitute
+            # any index-url in requirements pointing to the public PyPI mirrors.
             if whl_name in whl_libraries:
-                fail("'{}' already in created".format(whl_name))
+                existing = whl_libraries[whl_name]
+
+                diff = _diff_dict(existing, lib)
+                if diff:
+                    fail("'{}' already in created:\n{}".format(
+                        whl_name,
+                        "\n".join([
+                            "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                            for key, value in diff.items()
+                            if value
+                        ]),
+                    ))
+
+            whl_libraries[whl_name] = lib
+
+        for deps_name, deps_args in out.whl_library_deps.items():
+            if deps_name in whl_library_deps_map:
+                fail("'{}' already in created".format(deps_name))
             else:
-                whl_libraries[whl_name] = lib
+                whl_library_deps_map[deps_name] = deps_args
 
         exposed_packages[hub.name] = out.exposed_packages
         extra_aliases[hub.name] = out.extra_aliases
@@ -483,6 +508,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
+        whl_library_deps = whl_library_deps_map,
         whl_mods = whl_mods,
         platform_config_settings = {
             hub_name: {
@@ -613,6 +639,9 @@ def _pip_impl(module_ctx):
 
     for name, args in mods.whl_libraries.items():
         whl_library(name = name, **args)
+
+    for name, args in mods.whl_library_deps.items():
+        whl_library_deps(name = name, **args)
 
     for hub_name, whl_map in mods.hub_whl_map.items():
         hub_repository(
@@ -1212,3 +1241,46 @@ This rule creates json files based on the whl_mods attribute.
         ),
     },
 )
+
+# TODO dedupe code
+
+def _diff_dict(first, second, *, ignore_keys = {}):
+    """A simple utility to shallow compare dictionaries.
+
+    Args:
+        first: The first dictionary to compare.
+        second: The second dictionary to compare.
+        ignore_keys: A set of keys to ignore during comparison.
+
+    Returns:
+        A dictionary containing the differences, with keys "common", "different",
+        "extra", and "missing", or None if the dictionaries are identical.
+    """
+    missing = {}
+    extra = {
+        key: value
+        for key, value in second.items()
+        if key not in first and key not in ignore_keys
+    }
+    common = {}
+    different = {}
+
+    for key, value in first.items():
+        if key in ignore_keys:
+            continue
+        elif key not in second:
+            missing[key] = value
+        elif value == second[key]:
+            common[key] = value
+        else:
+            different[key] = (value, second[key])
+
+    if missing or extra or different:
+        return {
+            "common": common,
+            "different": different,
+            "extra": extra,
+            "missing": missing,
+        }
+    else:
+        return None
