@@ -4,6 +4,7 @@ load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 py_library(
     name = "conftest",
+    testonly = True,
     srcs = ["conftest.py"],
     target_compatible_with = NOT_WINDOWS,
     deps = [
