@@ -609,7 +609,7 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
 }, **ATTRS)
 whl_library_attrs.update(AUTH_ATTRS)
 
-whl_library = repository_rule(
+_whl_library = repository_rule(
     attrs = whl_library_attrs,
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
@@ -626,3 +626,16 @@ wheel contents without building an `sdist` first.
         REPO_DEBUG_ENV_VAR,
     ],
 )
+
+def whl_library(name, **kwargs):
+    """Create a whl_library
+
+    Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
+    Instantiated from pip_repository and inherits config options from there.
+
+    :::{versionchanged} 1.9.0
+    The `whl_library` is marked as reproducible if using starlark to extract and parse the
+    wheel contents without building an `sdist` first.
+    :::
+    """
+    return _whl_library(name = name, **kwargs)
