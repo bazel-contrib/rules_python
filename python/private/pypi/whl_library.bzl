@@ -662,9 +662,6 @@ DEPRECATED. Only left for people who vendor requirements.bzl.
 The list of urls of the whl to be downloaded using bazel downloader. Using this
 attr makes `extra_pip_args` and `download_only` ignored.""",
     ),
-    "whl_file": attr.label(
-        doc = "The whl file that should be used instead of downloading or building the whl.",
-    ),
     "whl_patches": attr.label_keyed_string_dict(
         doc = """
 A label-keyed-string dict with patch files as keys and json-strings as values.
@@ -747,7 +744,6 @@ whl_archive_attrs = {
         "requirement",
         "sha256",
         "urls",
-        "whl_file",
         "whl_patches",
         # common attrs
         "enable_implicit_namespace_pkgs",
@@ -757,6 +753,11 @@ whl_archive_attrs = {
         "pip_data_exclude",
     ]
 }
+whl_archive_attrs.update({
+    "whl_file": attr.label(
+        doc = "The whl file that should be used instead of downloading or building the whl.",
+    ),
+})
 whl_archive_attrs.update(AUTH_ATTRS)
 
 whl_archive = repository_rule(
