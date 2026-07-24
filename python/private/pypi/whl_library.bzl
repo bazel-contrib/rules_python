@@ -652,6 +652,11 @@ Instantiated from pip_repository and inherits config options from there.
 The `whl_library` is marked as reproducible if using starlark to extract and parse the
 wheel contents without building an `sdist` first.
 :::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The whl-only pure Starlark operations have been refactored into {obj}`whl_archive` and the
+previously named {obj}`whl_library` repository became renamed to `pip_archive`.
+:::
 """,
     implementation = _whl_library_impl,
     environ = [
