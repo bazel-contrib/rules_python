@@ -309,6 +309,7 @@ def _to_purl(*, index, metadata, filename):
     return "pkg:pypi/{}@{}?{}".format(name, metadata.version, "&".join(["{}={}".format(key, val) for key, val in qualifiers.items()]))
 
 def _whl_extract(rctx, *, whl_path, logger, sdist_filename = None):
+    """Extract the wheel, apply patches and generate BUILD.bazel files."""
     if rctx.attr.whl_patches:
         patches = {}
         for patch_file, json_args in rctx.attr.whl_patches.items():
