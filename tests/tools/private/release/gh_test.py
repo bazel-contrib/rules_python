@@ -1,6 +1,8 @@
 import pytest
 
+from tools.private.release import shell
 from tools.private.release.gh import GitHub
+from tools.private.release.git import Git
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -59,3 +61,19 @@ def test_resolve_pr_number_invalid(mocker, gh):
     with pytest.raises(ValueError, match="Could not resolve PR reference"):
         gh.resolve_pr_number("invalid-ref")
     mock_run_cmd.assert_not_called()
+
+
+def test_auto_patched_helpers_prevent_real_execution(auto_patch_cmd_helpers):
+    # Calling run_cmd directly hits the mock
+    shell.run_cmd("echo", "test")
+    auto_patch_cmd_helpers.run_cmd.assert_called_with("echo", "test")
+
+    # Git._run_git hits the mock
+    git = Git(".")
+    git._run_git("status")
+    auto_patch_cmd_helpers.run_git.assert_called_with("status")
+
+    # GitHub._run_gh hits the mock
+    gh_obj = GitHub("foo/bar")
+    gh_obj._run_gh("issue", "list")
+    auto_patch_cmd_helpers.run_gh.assert_called_with("issue", "list")
