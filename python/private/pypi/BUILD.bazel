@@ -167,6 +167,7 @@ bzl_library(
     deps = [
         ":attrs",
         ":parse_requirements",
+        ":parse_requirements_txt",
         ":pep508_env",
         ":pep508_evaluate",
         ":python_tag",

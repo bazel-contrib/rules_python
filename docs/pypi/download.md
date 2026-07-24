@@ -24,8 +24,45 @@ pip.parse(
 use_repo(pip, "my_deps")
 ```
 
-For more documentation, see the Bzlmod examples under the {gh-path}`examples` folder or the documentation
-for the {obj}`@rules_python//python/extensions:pip.bzl` extension.
+For more documentation, see the Bzlmod examples under the
+{gh-path}`examples` folder or the documentation for the
+{obj}`@rules_python//python/extensions:pip.bzl` extension.
+
+## Dependency sources and exposed hub packages
+
+By default, every package in {attr}`pip.parse.requirements_lock` gets a public
+hub alias, such as `@my_deps//foo`. If you want only direct dependencies
+available to user code, set {attr}`pip.parse.srcs` to one or more requirement
+source files that list those direct packages:
+
+```starlark
+pip.parse(
+    hub_name = "my_deps",
+    python_version = "3.13",
+    requirements_lock = "//:requirements_lock.txt",
+    srcs = ["//:requirements.in"],
+)
+```
+
+Packages in the lock file that are not listed in the restricted requirement
+files still get generated wheel repositories, so direct dependencies can use
+their transitive dependencies. Their hub aliases are visible only to the
+generated wheel repositories and are not public targets for user code.
+
+When {attr}`pip.parse.requirements_lock` is set, the same `srcs` are also
+passed to a generated `@my_deps//:lock.update` target. Running that target
+updates the source-tree copy of the lock file, similar to repinning a generated
+dependency repository:
+
+```console
+bazel run @my_deps//:lock.update
+```
+
+The generated target uses the experimental {obj}`lock` rule, so configure the
+`uv` toolchain extension before running it.
+
+If a hub has multiple `pip.parse` calls with `srcs`, versioned targets such as
+`@my_deps//:lock_313.update` are generated instead.
 
 :::note}
 We are using a host-platform compatible toolchain by default to setup pip dependencies.

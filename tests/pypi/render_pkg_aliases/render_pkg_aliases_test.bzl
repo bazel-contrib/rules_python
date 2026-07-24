@@ -147,6 +147,30 @@ def _test_aliases_are_created_for_all_wheels(env):
 
 _tests.append(_test_aliases_are_created_for_all_wheels)
 
+def _test_restricted_aliases_are_not_public(env):
+    actual = render_multiplatform_pkg_aliases(
+        aliases = {
+            "bar": {
+                whl_config_setting(version = "3.1"): "pypi_31_bar",
+            },
+            "foo": {
+                whl_config_setting(version = "3.1"): "pypi_31_foo",
+            },
+        },
+        exposed_packages = ["foo"],
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains(
+        'package(default_visibility = ["//visibility:public"])',
+    )
+    env.expect.that_str(actual["bar/BUILD.bazel"]).contains("""\
+package(default_visibility = [
+    "@pypi_31_bar//:__pkg__",
+    "@pypi_31_foo//:__pkg__",
+])""")
+
+_tests.append(_test_restricted_aliases_are_not_public)
+
 def _test_aliases_with_groups(env):
     actual = render_pkg_aliases(
         aliases = {
