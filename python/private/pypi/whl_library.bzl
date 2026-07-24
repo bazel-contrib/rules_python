@@ -432,7 +432,7 @@ def _whl_archive_impl(rctx):
 
     return _whl_extract(rctx, whl_path = whl_path, logger = logger)
 
-def _whl_library_impl(rctx):
+def _pip_archive_impl(rctx):
     logger = repo_utils.logger(rctx)
 
     sdist_filename = None
@@ -658,7 +658,7 @@ The whl-only pure Starlark operations have been refactored into {obj}`whl_archiv
 previously named {obj}`whl_library` repository became renamed to `pip_archive`.
 :::
 """,
-    implementation = _whl_library_impl,
+    implementation = _pip_archive_impl,
     environ = [
         "RULES_PYTHON_PIP_ISOLATED",
         REPO_DEBUG_ENV_VAR,
