@@ -26,6 +26,8 @@ load(
     "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
+    "PY_SRCS_LABEL",
+    "WHEEL_FILE",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
@@ -75,6 +77,19 @@ def whl_library_targets_from_requires(
         include: {type}`list[str]` The list of packages to include.
         **kwargs: Extra args passed to the {obj}`whl_library_targets`
     """
+    group_name = kwargs.pop("group_name", None)
+    dep_template = kwargs.pop("dep_template", None)
+
+    whl_library_srcs(
+        name = name,
+        entry_points = entry_points,
+        tags = [
+            "pypi_name={}".format(metadata_name),
+            "pypi_version={}".format(metadata_version),
+        ],
+        **kwargs
+    )
+
     package_deps = _parse_requires_dist(
         name = metadata_name,
         requires_dist = requires_dist,
@@ -87,7 +102,8 @@ def whl_library_targets_from_requires(
         name = name,
         dependencies = package_deps.deps,
         dependencies_with_markers = package_deps.deps_select,
-        entry_points = entry_points,
+        group_name = group_name,
+        dep_template = dep_template,
         tags = [
             "pypi_name={}".format(metadata_name),
             "pypi_version={}".format(metadata_version),
@@ -110,19 +126,16 @@ def _parse_requires_dist(
         extras = extras,
     )
 
-def whl_library_targets(
+def whl_library_srcs(
         *,
         name,
-        dep_template,
         sdist_filename = None,
         data_exclude = [],
         srcs_exclude = [],
         tags = [],
-        dependencies = [],
         filegroups = None,
-        dependencies_with_markers = {},
         entry_points = {},
-        group_name = "",
+        visibility = ["//visibility:public"],
         data = [],
         copy_files = {},
         copy_executables = {},
@@ -143,21 +156,13 @@ def whl_library_targets(
     Args:
         name: {type}`str` The file to match for including it into the `whl`
             filegroup. This may be also parsed to generate extra metadata.
-        dep_template: {type}`str` The dep_template to use for dependency
-            interpolation.
         sdist_filename: {type}`str | None` If the wheel was built from an sdist,
             the filename of the sdist.
+        visibility: {type}`list[str]` The visibility of the source targets.
         tags: {type}`list[str]` The tags set on the `py_library`.
-        dependencies: {type}`list[str]` A list of dependencies.
-        dependencies_with_markers: {type}`dict[str, str]` A marker to evaluate
-            in order for the dep to be included.
         entry_points: {type}`list[dict]` A list of parsed entry point definitions.
         filegroups: {type}`dict[str, list[str]] | None` A dictionary of the target
             names and the glob matches. If `None`, defaults will be used.
-        group_name: {type}`str` name of the dependency group (if any) which
-            contains this library. If set, this library will behave as a shim
-            to group implementation rules which will provide simultaneously
-            installed dependencies which would otherwise form a cycle.
         copy_executables: {type}`dict[str, str]` The mapping between src and
             dest locations for the targets.
         copy_files: {type}`dict[str, str]` The mapping between src and
@@ -174,7 +179,6 @@ def whl_library_targets(
             directories are namespace packages.
         rules: {type}`struct` A struct with references to rules for creating targets.
     """
-    dependencies = sorted([normalize_name(d) for d in dependencies])
     tags = sorted(tags)
     data = [] + data
 
@@ -233,7 +237,7 @@ def whl_library_targets(
         native.filegroup(
             name = filegroup_name,
             srcs = srcs,
-            visibility = ["//visibility:public"],
+            visibility = visibility,
         )
 
     for src, dest in copy_files.items():
@@ -241,7 +245,7 @@ def whl_library_targets(
             name = dest + ".copy",
             src = src,
             out = dest,
-            visibility = ["//visibility:public"],
+            visibility = visibility,
         )
         data.append(dest)
     for src, dest in copy_executables.items():
@@ -250,9 +254,124 @@ def whl_library_targets(
             src = src,
             out = dest,
             is_executable = True,
-            visibility = ["//visibility:public"],
+            visibility = visibility,
         )
         data.append(dest)
+
+    if hasattr(native, "filegroup"):
+        native.filegroup(
+            name = WHEEL_FILE,
+            srcs = [name],
+            visibility = visibility,
+        )
+
+    if hasattr(rules, "py_library"):
+        srcs = native.glob(
+            ["site-packages/**/*.py"],
+            exclude = srcs_exclude,
+            # Empty sources are allowed to support wheels that don't have any
+            # pure-Python code, e.g. pymssql, which is written in Cython.
+            allow_empty = True,
+        )
+
+        # NOTE: pyi files should probably be excluded because they're carried
+        # by the pyi_srcs attribute. However, historical behavior included
+        # them in data and some tools currently rely on that.
+        _data_exclude = [
+            "**/*.py",
+            "**/*.pyc",
+            "**/*.pyc.*",  # During pyc creation, temp files named *.pyc.NNNN are created
+        ]
+        if sdist_filename:
+            _data_exclude.append("**/*.dist-info/RECORD")
+        for item in data_exclude:
+            if item not in _data_exclude:
+                _data_exclude.append(item)
+
+        data = data + native.glob(
+            ["site-packages/**/*"],
+            exclude = _data_exclude,
+            allow_empty = True,
+        )
+
+        pyi_srcs = native.glob(
+            ["site-packages/**/*.pyi"],
+            allow_empty = True,
+        )
+
+        if not enable_implicit_namespace_pkgs:
+            generated_namespace_package_files = select({
+                _IS_VENV_SITE_PACKAGES_YES: [],
+                "//conditions:default": rules.create_inits(
+                    srcs = srcs + data + pyi_srcs,
+                    ignored_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
+                    root = "site-packages",
+                ),
+            })
+            namespace_package_files += generated_namespace_package_files
+            srcs = srcs + generated_namespace_package_files
+
+        # This is done after create_inits() is called so that the data scheme
+        # files don't have such files created in their directories.
+        data = data + [DATA_LABEL]
+
+        rules.py_library(
+            name = PY_SRCS_LABEL,
+            srcs = srcs,
+            pyi_srcs = pyi_srcs,
+            data = data,
+            # This makes this directory a top-level in the python import
+            # search path for anything that depends on this.
+            imports = ["site-packages"],
+            tags = tags,
+            visibility = visibility,
+            experimental_venvs_site_packages = _VENV_SITE_PACKAGES_FLAG,
+            namespace_package_files = namespace_package_files,
+        )
+
+def whl_library_targets(
+        *,
+        name,
+        dep_template,
+        tags = [],
+        dependencies = [],
+        dependencies_with_markers = {},
+        group_name = "",
+        native = native,
+        namespace_package_files = [],
+        rules = struct(
+            copy_file = copy_file,
+            py_binary = py_binary,
+            py_library = py_library,
+            venv_entry_point = venv_entry_point,
+            venv_rewrite_shebang = venv_rewrite_shebang,
+            env_marker_setting = env_marker_setting,
+            create_inits = _create_inits,
+        ),
+        **_kwargs):
+    """Create all of the whl_library targets.
+
+    Args:
+        name: {type}`str` The file to match for including it into the `whl`
+            filegroup. This may be also parsed to generate extra metadata.
+        dep_template: {type}`str` The dep_template to use for dependency
+            interpolation.
+        tags: {type}`list[str]` The tags set on the `py_library`.
+        dependencies: {type}`list[str]` A list of dependencies.
+        dependencies_with_markers: {type}`dict[str, str]` A marker to evaluate
+            in order for the dep to be included.
+        group_name: {type}`str` name of the dependency group (if any) which
+            contains this library. If set, this library will behave as a shim
+            to group implementation rules which will provide simultaneously
+            installed dependencies which would otherwise form a cycle.
+        native: {type}`native` The native struct for overriding in tests.
+        namespace_package_files: {type}`list[str]` A list of labels of files whose
+            directories are namespace packages.
+        rules: {type}`struct` A struct with references to rules for creating targets.
+        **_kwargs: ignored args that are not needed.
+    """
+    dependencies = sorted([normalize_name(d) for d in dependencies])
+    tags = sorted(tags)
 
     _config_settings(
         dependencies_with_markers = dependencies_with_markers,
@@ -315,8 +434,9 @@ def whl_library_targets(
     if hasattr(native, "filegroup"):
         native.filegroup(
             name = whl_file_label,
-            srcs = [name],
-            data = _deps(
+            data = [
+                WHEEL_FILE,
+            ] + _deps(
                 deps = dependencies,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
@@ -325,64 +445,11 @@ def whl_library_targets(
         )
 
     if hasattr(rules, "py_library"):
-        srcs = native.glob(
-            ["site-packages/**/*.py"],
-            exclude = srcs_exclude,
-            # Empty sources are allowed to support wheels that don't have any
-            # pure-Python code, e.g. pymssql, which is written in Cython.
-            allow_empty = True,
-        )
-
-        # NOTE: pyi files should probably be excluded because they're carried
-        # by the pyi_srcs attribute. However, historical behavior included
-        # them in data and some tools currently rely on that.
-        _data_exclude = [
-            "**/*.py",
-            "**/*.pyc",
-            "**/*.pyc.*",  # During pyc creation, temp files named *.pyc.NNNN are created
-        ]
-        if sdist_filename:
-            _data_exclude.append("**/*.dist-info/RECORD")
-        for item in data_exclude:
-            if item not in _data_exclude:
-                _data_exclude.append(item)
-
-        data = data + native.glob(
-            ["site-packages/**/*"],
-            exclude = _data_exclude,
-            allow_empty = True,
-        )
-
-        pyi_srcs = native.glob(
-            ["site-packages/**/*.pyi"],
-            allow_empty = True,
-        )
-
-        if not enable_implicit_namespace_pkgs:
-            generated_namespace_package_files = select({
-                _IS_VENV_SITE_PACKAGES_YES: [],
-                "//conditions:default": rules.create_inits(
-                    srcs = srcs + data + pyi_srcs,
-                    ignored_dirnames = [],  # If you need to ignore certain folders, you can patch rules_python here to do so.
-                    root = "site-packages",
-                ),
-            })
-            namespace_package_files += generated_namespace_package_files
-            srcs = srcs + generated_namespace_package_files
-
-        # This is done after create_inits() is called so that the data scheme
-        # files don't have such files created in their directories.
-        data = data + [DATA_LABEL]
-
         rules.py_library(
             name = py_library_label,
-            srcs = srcs,
-            pyi_srcs = pyi_srcs,
-            data = data,
-            # This makes this directory a top-level in the python import
-            # search path for anything that depends on this.
-            imports = ["site-packages"],
-            deps = _deps(
+            deps = [
+                PY_SRCS_LABEL,
+            ] + _deps(
                 deps = dependencies,
                 deps_conditional = deps_conditional,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),

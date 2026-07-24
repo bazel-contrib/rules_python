@@ -682,7 +682,6 @@ whl_archive = repository_rule(
             "sha256",
             "urls",
             "whl_patches",
-            # common attrs
             "enable_implicit_namespace_pkgs",
             "envsubst",
             "pip_data_exclude",
