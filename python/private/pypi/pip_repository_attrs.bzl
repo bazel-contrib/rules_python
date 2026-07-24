@@ -21,6 +21,79 @@ repositories."""
 load(":attrs.bzl", COMMON_ATTRS = "ATTRS")
 
 ATTRS = {
+    "experimental_requirement_cycles": attr.string_list_dict(
+        default = {},
+        doc = """\
+A mapping of dependency cycle names to a list of requirements which form that cycle.
+
+Requirements which form cycles will be installed together and taken as
+dependencies together in order to ensure that the cycle is always satisified.
+
+Example:
+  `sphinx` depends on `sphinxcontrib-serializinghtml`
+  When listing both as requirements, ala
+
+  ```
+  py_binary(
+    name = "doctool",
+    ...
+    deps = [
+      "@pypi//sphinx:pkg",
+      "@pypi//sphinxcontrib_serializinghtml",
+     ]
+  )
+  ```
+
+  Will produce a Bazel error such as
+
+  ```
+  ERROR: .../external/pypi_sphinxcontrib_serializinghtml/BUILD.bazel:44:6: in alias rule @pypi_sphinxcontrib_serializinghtml//:pkg: cycle in dependency graph:
+      //:doctool (...)
+      @pypi//sphinxcontrib_serializinghtml:pkg (...)
+  .-> @pypi_sphinxcontrib_serializinghtml//:pkg (...)
+  |   @pypi_sphinxcontrib_serializinghtml//:_pkg (...)
+  |   @pypi_sphinx//:pkg (...)
+  |   @pypi_sphinx//:_pkg (...)
+  `-- @pypi_sphinxcontrib_serializinghtml//:pkg (...)
+  ```
+
+  Which we can resolve by configuring these two requirements to be installed together as a cycle
+
+  ```
+  pip_parse(
+    ...
+    experimental_requirement_cycles = {
+      "sphinx": [
+        "sphinx",
+        "sphinxcontrib-serializinghtml",
+      ]
+    },
+  )
+  ```
+
+Warning:
+  If a dependency participates in multiple cycles, all of those cycles must be
+  collapsed down to one. For instance `a <-> b` and `a <-> c` cannot be listed
+  as two separate cycles.
+""",
+    ),
+    "extra_hub_aliases": attr.string_list_dict(
+        doc = """\
+Extra aliases to make for specific wheels in the hub repo. This is useful when
+paired with the {attr}`whl_modifications`.
+
+:::{versionadded} 0.38.0
+
+For `pip.parse` with bzlmod
+:::
+
+:::{versionadded} 1.0.0
+
+For `pip_parse` with workspace.
+:::
+""",
+        mandatory = False,
+    ),
     "requirements_by_platform": attr.label_keyed_string_dict(
         doc = """\
 The requirements files and the comma delimited list of target platforms as values.
