@@ -537,7 +537,7 @@ def _remove_files(rctx, *basenames):
             paths.extend(path.readdir())
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
-whl_library_attrs = dict({
+_pip_archive_attrs = dict({
     "annotation": attr.label(
         doc = (
             "Optional json encoded file containing annotation to apply to the extracted wheel. " +
@@ -640,10 +640,10 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
     ),
     "_rule_name": attr.string(default = "whl_library"),
 }, **ATTRS)
-whl_library_attrs.update(AUTH_ATTRS)
+_pip_archive_attrs.update(AUTH_ATTRS)
 
-pip_library = repository_rule(
-    attrs = whl_library_attrs,
+pip_archive = repository_rule(
+    attrs = _pip_archive_attrs,
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
 Instantiated from pip_repository and inherits config options from there.
@@ -660,39 +660,35 @@ wheel contents without building an `sdist` first.
     ],
 )
 
-whl_archive_attrs = {
-    k: whl_library_attrs[k]
-    for k in [
-        "annotation",
-        "config_load",
-        "dep_template",
-        "filename",
-        "group_deps",
-        "group_name",
-        "index_url",
-        "repo",
-        "repo_prefix",
-        "requirement",
-        "sha256",
-        "urls",
-        "whl_patches",
-        # common attrs
-        "enable_implicit_namespace_pkgs",
-        "envsubst",
-        "experimental_requirement_cycles",
-        "extra_hub_aliases",
-        "pip_data_exclude",
-    ]
-}
-whl_archive_attrs.update({
-    "whl_file": attr.label(
-        doc = "The whl file that should be used instead of downloading or building the whl.",
-    ),
-})
-whl_archive_attrs.update(AUTH_ATTRS)
-
 whl_archive = repository_rule(
-    attrs = whl_archive_attrs,
+    attrs = {
+        k: _pip_archive_attrs[k]
+        for k in [
+            "annotation",
+            "config_load",
+            "dep_template",
+            "filename",
+            "group_deps",
+            "group_name",
+            "index_url",
+            "repo",
+            "repo_prefix",
+            "requirement",
+            "sha256",
+            "urls",
+            "whl_patches",
+            # common attrs
+            "enable_implicit_namespace_pkgs",
+            "envsubst",
+            "experimental_requirement_cycles",
+            "extra_hub_aliases",
+            "pip_data_exclude",
+        ]
+    } | {
+        "whl_file": attr.label(
+            doc = "The whl file that should be used instead of downloading or building the whl.",
+        ),
+    } | AUTH_ATTRS,
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
 
@@ -724,4 +720,4 @@ def whl_library(name, **kwargs):
     if whl_file or (urls and filename and filename.endswith(".whl")):
         return whl_archive(name = name, **kwargs)
 
-    return pip_library(name = name, **kwargs)
+    return pip_archive(name = name, **kwargs)
