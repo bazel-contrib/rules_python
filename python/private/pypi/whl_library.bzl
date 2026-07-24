@@ -308,6 +308,83 @@ def _to_purl(*, index, metadata, filename):
 
     return "pkg:pypi/{}@{}?{}".format(name, metadata.version, "&".join(["{}={}".format(key, val) for key, val in qualifiers.items()]))
 
+def _whl_extract(rctx, *, whl_path, logger, sdist_filename = None):
+    if rctx.attr.whl_patches:
+        patches = {}
+        for patch_file, json_args in rctx.attr.whl_patches.items():
+            patch_dst = struct(**json.decode(json_args))
+            if whl_path.basename in patch_dst.whls:
+                patches[patch_file] = patch_dst.patch_strip
+
+        if patches:
+            whl_path = patch_whl(
+                rctx,
+                whl_path = whl_path,
+                patches = patches,
+            )
+
+    whl_extract(rctx, whl_path = whl_path, logger = logger)
+
+    install_dir_path = whl_path.dirname.get_child("site-packages")
+    metadata = whl_metadata(
+        install_dir = install_dir_path,
+        read_fn = rctx.read,
+        logger = logger,
+    )
+    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
+
+    entry_points = _get_entry_points(rctx, install_dir_path, metadata)
+    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
+
+    build_file_contents = generate_whl_library_build_bazel(
+        name = whl_path.basename,
+        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
+            rctx.attr.repo_prefix,
+        ),
+        sdist_filename = sdist_filename,
+        config_load = rctx.attr.config_load,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
+        # TODO @aignas 2025-05-17: maybe have a build flag for this instead
+        enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
+        # TODO @aignas 2025-04-14: load through the hub:
+        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
+        data_exclude = rctx.attr.pip_data_exclude,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
+        namespace_package_files = namespace_package_files,
+        extras = requirement(rctx.attr.requirement).extras,
+        entry_points = entry_points,
+        purl = _to_purl(
+            index = rctx.attr.index_url,
+            metadata = metadata,
+            filename = sdist_filename or whl_path.basename,
+        ),
+    )
+
+    # Delete these in case the wheel had them. They generally don't cause
+    # a problem, but let's avoid the chance of that happening.
+    rctx.file("WORKSPACE")
+    rctx.file("WORKSPACE.bazel")
+    rctx.file("MODULE.bazel")
+    rctx.file("REPO.bazel", """\
+repo(
+    default_package_metadata = [
+        "//:package_metadata",
+    ],
+)
+""")
+
+    # BUILD files interfere with globbing and Bazel package boundaries.
+    _remove_files(rctx, "BUILD", "BUILD.bazel")
+    rctx.file("BUILD.bazel", build_file_contents)
+
+    if hasattr(rctx, "repo_metadata"):
+        return rctx.repo_metadata(reproducible = True)
+
+    return None
+
 def _whl_archive_impl(rctx):
     logger = repo_utils.logger(rctx)
 
@@ -352,80 +429,7 @@ def _whl_archive_impl(rctx):
         else:
             fail("Only wheels are supported")
 
-    if rctx.attr.whl_patches:
-        patches = {}
-        for patch_file, json_args in rctx.attr.whl_patches.items():
-            patch_dst = struct(**json.decode(json_args))
-            if whl_path.basename in patch_dst.whls:
-                patches[patch_file] = patch_dst.patch_strip
-
-        if patches:
-            whl_path = patch_whl(
-                rctx,
-                whl_path = whl_path,
-                patches = patches,
-            )
-
-    whl_extract(rctx, whl_path = whl_path, logger = logger)
-
-    install_dir_path = whl_path.dirname.get_child("site-packages")
-    metadata = whl_metadata(
-        install_dir = install_dir_path,
-        read_fn = rctx.read,
-        logger = logger,
-    )
-    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
-
-    entry_points = _get_entry_points(rctx, install_dir_path, metadata)
-    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
-
-    build_file_contents = generate_whl_library_build_bazel(
-        name = whl_path.basename,
-        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
-            rctx.attr.repo_prefix,
-        ),
-        config_load = rctx.attr.config_load,
-        metadata_name = metadata.name,
-        metadata_version = metadata.version,
-        requires_dist = metadata.requires_dist,
-        # TODO @aignas 2025-05-17: maybe have a build flag for this instead
-        enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
-        # TODO @aignas 2025-04-14: load through the hub:
-        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-        data_exclude = rctx.attr.pip_data_exclude,
-        group_deps = rctx.attr.group_deps,
-        group_name = rctx.attr.group_name,
-        namespace_package_files = namespace_package_files,
-        extras = requirement(rctx.attr.requirement).extras,
-        entry_points = entry_points,
-        purl = _to_purl(
-            index = rctx.attr.index_url,
-            metadata = metadata,
-            filename = whl_path.basename,
-        ),
-    )
-
-    # Delete these in case the wheel had them. They generally don't cause
-    # a problem, but let's avoid the chance of that happening.
-    rctx.file("WORKSPACE")
-    rctx.file("WORKSPACE.bazel")
-    rctx.file("MODULE.bazel")
-    rctx.file("REPO.bazel", """\
-repo(
-    default_package_metadata = [
-        "//:package_metadata",
-    ],
-)
-""")
-
-    # BUILD files interfere with globbing and Bazel package boundaries.
-    _remove_files(rctx, "BUILD", "BUILD.bazel")
-    rctx.file("BUILD.bazel", build_file_contents)
-
-    if hasattr(rctx, "repo_metadata"):
-        return rctx.repo_metadata(reproducible = True)
-
-    return None
+    return _whl_extract(rctx, whl_path = whl_path, logger = logger)
 
 def _whl_library_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -517,81 +521,7 @@ def _whl_library_impl(rctx):
     if not rctx.delete("whl_file.json"):
         fail("failed to delete the whl_file.json file")
 
-    if rctx.attr.whl_patches:
-        patches = {}
-        for patch_file, json_args in rctx.attr.whl_patches.items():
-            patch_dst = struct(**json.decode(json_args))
-            if whl_path.basename in patch_dst.whls:
-                patches[patch_file] = patch_dst.patch_strip
-
-        if patches:
-            whl_path = patch_whl(
-                rctx,
-                whl_path = whl_path,
-                patches = patches,
-            )
-
-    whl_extract(rctx, whl_path = whl_path, logger = logger)
-
-    install_dir_path = whl_path.dirname.get_child("site-packages")
-    metadata = whl_metadata(
-        install_dir = install_dir_path,
-        read_fn = rctx.read,
-        logger = logger,
-    )
-    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
-
-    entry_points = _get_entry_points(rctx, install_dir_path, metadata)
-    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
-
-    build_file_contents = generate_whl_library_build_bazel(
-        name = whl_path.basename,
-        sdist_filename = sdist_filename,
-        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
-            rctx.attr.repo_prefix,
-        ),
-        config_load = rctx.attr.config_load,
-        metadata_name = metadata.name,
-        metadata_version = metadata.version,
-        requires_dist = metadata.requires_dist,
-        # TODO @aignas 2025-05-17: maybe have a build flag for this instead
-        enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
-        # TODO @aignas 2025-04-14: load through the hub:
-        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-        data_exclude = rctx.attr.pip_data_exclude,
-        group_deps = rctx.attr.group_deps,
-        group_name = rctx.attr.group_name,
-        namespace_package_files = namespace_package_files,
-        extras = requirement(rctx.attr.requirement).extras,
-        entry_points = entry_points,
-        purl = _to_purl(
-            index = rctx.attr.index_url,
-            metadata = metadata,
-            filename = sdist_filename or whl_path.basename,
-        ),
-    )
-
-    # Delete these in case the wheel had them. They generally don't cause
-    # a problem, but let's avoid the chance of that happening.
-    rctx.file("WORKSPACE")
-    rctx.file("WORKSPACE.bazel")
-    rctx.file("MODULE.bazel")
-    rctx.file("REPO.bazel", """\
-repo(
-    default_package_metadata = [
-        "//:package_metadata",
-    ],
-)
-""")
-
-    # BUILD files interfere with globbing and Bazel package boundaries.
-    _remove_files(rctx, "BUILD", "BUILD.bazel")
-    rctx.file("BUILD.bazel", build_file_contents)
-
-    if hasattr(rctx, "repo_metadata"):
-        return rctx.repo_metadata(reproducible = True)
-
-    return None
+    return _whl_extract(rctx, whl_path = whl_path, logger = logger, sdist_filename = sdist_filename)
 
 def _remove_files(rctx, *basenames):
     paths = list(rctx.path(".").readdir())
@@ -748,6 +678,7 @@ whl_archive_attrs = {
         # common attrs
         "enable_implicit_namespace_pkgs",
         "envsubst",
+        "experimental_requirement_cycles",
         "extra_hub_aliases",
         "pip_data_exclude",
     ]
