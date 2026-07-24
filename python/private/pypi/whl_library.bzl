@@ -685,8 +685,6 @@ whl_archive = repository_rule(
             # common attrs
             "enable_implicit_namespace_pkgs",
             "envsubst",
-            "experimental_requirement_cycles",
-            "extra_hub_aliases",
             "pip_data_exclude",
         ]
     } | {
