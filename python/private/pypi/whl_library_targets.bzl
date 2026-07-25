@@ -447,7 +447,13 @@ def whl_library_targets(
     if hasattr(rules, "py_library"):
         rules.py_library(
             name = py_library_label,
+            srcs = [
+                # We include as srcs to ensure that the (locations :pkg) works as expected.
+                PY_SRCS_LABEL,
+            ],
             deps = [
+                # We include as deps, so that `PyInfo` and friends get propagated as deps.
+                # not sure if just including it as `srcs` is enough.
                 PY_SRCS_LABEL,
             ] + _deps(
                 deps = dependencies,
