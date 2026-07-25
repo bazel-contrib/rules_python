@@ -456,7 +456,6 @@ def whl_library_targets(
             ),
             tags = tags,
             visibility = impl_vis,
-            experimental_venvs_site_packages = _VENV_SITE_PACKAGES_FLAG,
             namespace_package_files = namespace_package_files,
         )
 
