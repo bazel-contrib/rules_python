@@ -59,6 +59,19 @@ def whl_library_targets_from_requires(
         entry_points = {},
         include = [],
         group_deps = [],
+        group_name = None,
+        dep_template = None,
+        data_exclude = [],
+        enable_implicit_namespace_pkgs = False,
+        sdist_filename = None,
+        namespace_package_files = [],
+        filegroups = None,
+        copy_files = {},
+        copy_executables = {},
+        srcs_exclude = [],
+        data = [],
+        visibility = ["//visibility:public"],
+        tags = [],
         **kwargs):
     """The macro to create whl targets from the METADATA.
 
@@ -75,18 +88,41 @@ def whl_library_targets_from_requires(
         extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
         entry_points: {type}`list[dict]` A list of parsed entry point definitions.
         include: {type}`list[str]` The list of packages to include.
-        **kwargs: Extra args passed to the {obj}`whl_library_targets`
+        group_name: {type}`str | None` name of the dependency group (if any).
+        dep_template: {type}`str | None` The dep_template to use.
+        data_exclude: {type}`list[str]` The globs for data attribute exclusion.
+        enable_implicit_namespace_pkgs: {type}`boolean` generate __init__.py files for namespace pkgs.
+        sdist_filename: {type}`str | None` The filename of the sdist.
+        namespace_package_files: {type}`list[str]` A list of labels of files whose directories are namespace packages.
+        filegroups: {type}`dict[str, list[str]] | None` A dictionary of the target names and the glob matches.
+        copy_files: {type}`dict[str, str]` The mapping between src and dest locations.
+        copy_executables: {type}`dict[str, str]` The mapping between src and dest locations for executables.
+        srcs_exclude: {type}`list[str]` The globs for srcs attribute exclusion.
+        data: {type}`list[str]` A list of labels to include as part of the `data` attribute.
+        visibility: {type}`list[str]` The visibility of the targets.
+        tags: {type}`list[str]` The tags set on the targets.
+        **kwargs: Extra args passed to the {obj}`whl_library_targets` and {obj}`whl_library_srcs`.
     """
-    group_name = kwargs.pop("group_name", None)
-    dep_template = kwargs.pop("dep_template", None)
+    pypi_tags = [
+        "pypi_name={}".format(metadata_name),
+        "pypi_version={}".format(metadata_version),
+    ]
+    all_tags = sorted(tags + pypi_tags)
 
     whl_library_srcs(
         name = name,
+        sdist_filename = sdist_filename,
+        data_exclude = data_exclude,
+        srcs_exclude = srcs_exclude,
+        tags = all_tags,
+        filegroups = filegroups,
         entry_points = entry_points,
-        tags = [
-            "pypi_name={}".format(metadata_name),
-            "pypi_version={}".format(metadata_version),
-        ],
+        visibility = visibility,
+        data = data,
+        copy_files = copy_files,
+        copy_executables = copy_executables,
+        enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
+        namespace_package_files = namespace_package_files,
         **kwargs
     )
 
@@ -104,10 +140,7 @@ def whl_library_targets_from_requires(
         dependencies_with_markers = package_deps.deps_select,
         group_name = group_name,
         dep_template = dep_template,
-        tags = [
-            "pypi_name={}".format(metadata_name),
-            "pypi_version={}".format(metadata_version),
-        ],
+        tags = all_tags,
         **kwargs
     )
 
@@ -338,7 +371,6 @@ def whl_library_targets(
         dependencies_with_markers = {},
         group_name = "",
         native = native,
-        namespace_package_files = [],
         rules = struct(
             copy_file = copy_file,
             py_binary = py_binary,
@@ -365,8 +397,6 @@ def whl_library_targets(
             to group implementation rules which will provide simultaneously
             installed dependencies which would otherwise form a cycle.
         native: {type}`native` The native struct for overriding in tests.
-        namespace_package_files: {type}`list[str]` A list of labels of files whose
-            directories are namespace packages.
         rules: {type}`struct` A struct with references to rules for creating targets.
         **_kwargs: ignored args that are not needed.
     """
@@ -462,7 +492,6 @@ def whl_library_targets(
             ),
             tags = tags,
             visibility = impl_vis,
-            namespace_package_files = namespace_package_files,
         )
 
 def _config_settings(dependencies_with_markers, rules, **kwargs):
