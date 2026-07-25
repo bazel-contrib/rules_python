@@ -144,21 +144,6 @@ def whl_library_targets_from_requires(
         **kwargs
     )
 
-def _parse_requires_dist(
-        *,
-        name,
-        requires_dist,
-        excludes,
-        include,
-        extras):
-    return deps(
-        name = normalize_name(name),
-        requires_dist = requires_dist,
-        excludes = excludes,
-        include = include,
-        extras = extras,
-    )
-
 def whl_library_srcs(
         *,
         name,
@@ -361,6 +346,21 @@ def whl_library_srcs(
             experimental_venvs_site_packages = _VENV_SITE_PACKAGES_FLAG,
             namespace_package_files = namespace_package_files,
         )
+
+def _parse_requires_dist(
+        *,
+        name,
+        requires_dist,
+        excludes,
+        include,
+        extras):
+    return deps(
+        name = normalize_name(name),
+        requires_dist = requires_dist,
+        excludes = excludes,
+        include = include,
+        extras = extras,
+    )
 
 def whl_library_targets(
         *,
