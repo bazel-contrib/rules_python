@@ -11,11 +11,22 @@ py_library(
     name = "release_lib",
     srcs = glob(
         ["*.py"],
-        exclude = ["changelog_news.py"],
+        exclude = [
+            "changelog_news.py",
+            "mock_gh.py",
+        ],
     ),
     deps = [
         ":changelog_news",
         "@dev_pip//packaging",
+    ],
+)
+
+py_library(
+    name = "mock_gh",
+    srcs = ["mock_gh.py"],
+    deps = [
+        ":release_lib",
     ],
 )
 

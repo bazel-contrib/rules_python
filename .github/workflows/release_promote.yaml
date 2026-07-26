@@ -1,4 +1,4 @@
-name: "Release: Promote RC"
+name: "Release: Promote"
 
 on:
   workflow_dispatch:
@@ -60,7 +60,7 @@ jobs:
           ARGS+=("--remote=origin")
           ARGS+=("--no-dry-run")
           
-          bazel run //tools/private/release -- promote-rc "${ARGS[@]}"
+          bazel run //tools/private/release -- promote "${ARGS[@]}"
 
   publish:
     needs: promote

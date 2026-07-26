@@ -1,0 +1,76 @@
+name: "Backport: Prepare"
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'The Backport Tracking Issue Number'
+        required: false
+        type: string
+      pr:
+        description: 'PR to backport (e.g. #123) (if no issue)'
+        required: false
+        type: string
+      from_minor:
+        description: 'From minor version (e.g. 1.7) (if no issue)'
+        required: false
+        type: string
+      to_minor:
+        description: 'To minor version (e.g. 1.9) (if no issue, optional)'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      issue:
+        description: 'The Backport Tracking Issue Number'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  backport_prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Backport Preparation Pipeline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ inputs.issue }}
+          PR: ${{ inputs.pr }}
+          FROM_MINOR: ${{ inputs.from_minor }}
+          TO_MINOR: ${{ inputs.to_minor }}
+        run: |
+          ARGS=()
+          if [ -n "$ISSUE" ]; then
+            ARGS+=("--issue=$ISSUE")
+          else
+            if [ -n "$PR" ]; then
+              ARGS+=("--pr=$PR")
+            fi
+            if [ -n "$FROM_MINOR" ]; then
+              ARGS+=("--from-minor=$FROM_MINOR")
+            fi
+            if [ -n "$TO_MINOR" ]; then
+              ARGS+=("--to-minor=$TO_MINOR")
+            fi
+          fi
+          bazel run //tools/private/release -- \
+            backport-prepare "${ARGS[@]}" --no-dry-run

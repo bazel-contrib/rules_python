@@ -8,7 +8,8 @@ _tests = []
 def _test_absolute_url(env):
     # Already absolute
     for already_absolute in [
-        "file://foo",
+        "file:///foo",
+        "file:///c:/foo",
         "https://foo.com",
         "http://foo.com",
     ]:
@@ -25,7 +26,13 @@ def _test_absolute_url(env):
     env.expect.that_str(urllib.absolute_url("https://example.com/relative/", "../relative/file.whl")).equals("https://example.com/relative/file.whl")
 
     # Relative URL for files
-    env.expect.that_str(urllib.absolute_url("file://{PYPI_BAZEL_WORKSPACE_ROOT}", "vendor/distro/file.whl")).equals("file://{PYPI_BAZEL_WORKSPACE_ROOT}/vendor/distro/file.whl")
+    env.expect.that_str(urllib.absolute_url("file://${PYPI_BAZEL_WORKSPACE_ROOT}", "vendor/distro/file.whl")).equals("file://${PYPI_BAZEL_WORKSPACE_ROOT}/vendor/distro/file.whl")
+    env.expect.that_str(urllib.absolute_url(
+        "file://${PYPI_BAZEL_WORKSPACE_ROOT}",
+        "vendor/distro/file.whl",
+        envsubst = ["PYPI_BAZEL_WORKSPACE_ROOT"],
+        getenv = {"PYPI_BAZEL_WORKSPACE_ROOT": "/some/dir"}.get,
+    )).equals("file:///some/dir/vendor/distro/file.whl")
 
 _tests.append(_test_absolute_url)
 
@@ -36,6 +43,7 @@ def _test_strip_empty_path_segments(env):
     env.expect.that_str(urllib.strip_empty_path_segments("scheme://with///multiple//empty/segments")).equals("scheme://with/multiple/empty/segments")
     env.expect.that_str(urllib.strip_empty_path_segments("scheme://with//trailing/slash/")).equals("scheme://with/trailing/slash/")
     env.expect.that_str(urllib.strip_empty_path_segments("scheme://with/trailing/slashes///")).equals("scheme://with/trailing/slashes/")
+    env.expect.that_str(urllib.strip_empty_path_segments("file:///home/user//foo")).equals("file:///home/user/foo")
 
 _tests.append(_test_strip_empty_path_segments)
 

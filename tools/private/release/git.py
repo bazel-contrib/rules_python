@@ -397,3 +397,25 @@ class Git:
             return True
         except subprocess.CalledProcessError:
             return False
+
+    def get_remote_branches(self, remote: str = "origin") -> list[str]:
+        """Returns a list of remote branches.
+
+        Args:
+            remote: The name of the remote.
+
+        Returns:
+            A list of branch names (without the remote prefix).
+        """
+        output = self._run_git("branch", "-r")
+        branches = []
+        if not output:
+            return branches
+        for line in output.splitlines():
+            line = line.strip()
+            if "->" in line:
+                continue
+            parts = line.split("/")
+            if len(parts) >= 2 and parts[0] == remote:
+                branches.append("/".join(parts[1:]))
+        return branches

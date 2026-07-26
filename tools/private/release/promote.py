@@ -18,7 +18,7 @@ from tools.private.release.utils import (
 )
 
 
-class PromoteRc:
+class Promote:
     """Class to promote a release candidate to final release."""
 
     def __init__(self, args, git: Git, gh: GitHub):
@@ -52,15 +52,12 @@ class PromoteRc:
             else:
                 version = determine_next_version()
 
-        latest_rc = get_latest_rc_tag(version, remote=args.remote)
-        if not latest_rc:
-            print(f"Error: No release candidate tags found matching {version}-rc*")
-            return 1
-
         # Verify final tag doesn't already exist
         if self.git.tag_exists(version):
             print(f"Error: Final tag {version} already exists.")
             return 1
+
+        is_first_release = version.endswith(".0")
 
         # Verify issue can be found
         issue_num = args.issue
@@ -74,14 +71,20 @@ class PromoteRc:
                 print(f"Error: Unexpected error finding tracking issue: {e}")
                 return 1
 
-        # Get commit SHA of the RC tag (which will be the same for the final tag)
-        commit_sha = self.git.get_commit_sha(latest_rc)
+        if is_first_release:
+            latest_rc = get_latest_rc_tag(version, remote=args.remote)
+            if not latest_rc:
+                print(f"Error: No release candidate tags found matching {version}-rc*")
+                return 1
+            commit_sha = self.git.get_commit_sha(latest_rc)
+        else:
+            latest_rc = None
 
         # Verify issue can be found and read it early
         print(f"Verifying tracking issue #{issue_num} format...")
         body = self.gh.get_issue_body(issue_num)
 
-        # Determine release branch name and verify it matches the RC tag commit
+        # Determine release branch name
         branch_version = ".".join(version.split(".")[:2])
         branch_name = f"release/{branch_version}"
         remote_branch = f"{args.remote}/{branch_name}"
@@ -97,34 +100,39 @@ class PromoteRc:
             )
             return 1
 
-        if commit_sha != branch_sha:
-            print(
-                f"Error: The latest RC tag {latest_rc} ({commit_sha[:8]}) is not at"
-                f" the head of release branch {remote_branch} ({branch_sha[:8]})."
-            )
-            metadata = {
-                "status": "error-rc-tag-not-branch-head",
-                "rc": latest_rc,
-                "branch_commit": branch_sha[:8],
-                "tag_commit": commit_sha[:8],
-            }
-            try:
-                updated_body = update_task_in_body(
-                    body, "Tag Final", checked=False, metadata=metadata
-                )
-            except ValueError as e:
-                print(f"Error: Tracking issue #{issue_num} is malformed: {e}")
-                return 1
-
-            if not args.dry_run:
-                self.gh.update_issue_body(issue_num, updated_body)
-                print(f"Updated tracking issue #{issue_num} with error status.")
-            else:
+        if is_first_release:
+            if commit_sha != branch_sha:
                 print(
-                    f"[DRY RUN] Would update tracking issue #{issue_num} with"
-                    f" error status."
+                    f"Error: The latest RC tag {latest_rc} ({commit_sha[:8]}) is not at"
+                    f" the head of release branch {remote_branch} ({branch_sha[:8]})."
                 )
-            return 1
+                metadata = {
+                    "status": "error-rc-tag-not-branch-head",
+                    "rc": latest_rc,
+                    "branch_commit": branch_sha[:8],
+                    "tag_commit": commit_sha[:8],
+                }
+                try:
+                    updated_body = update_task_in_body(
+                        body, "Tag Final", checked=False, metadata=metadata
+                    )
+                except ValueError as e:
+                    print(f"Error: Tracking issue #{issue_num} is malformed: {e}")
+                    return 1
+
+                if not args.dry_run:
+                    self.gh.update_issue_body(issue_num, updated_body)
+                    print(f"Updated tracking issue #{issue_num} with error status.")
+                else:
+                    print(
+                        f"[DRY RUN] Would update tracking issue #{issue_num} with"
+                        f" error status."
+                    )
+                return 1
+        else:
+            # Patch release: tag branch head directly
+            commit_sha = branch_sha
+            latest_rc = None
 
         # Verify issue is in the right format by trying to prepare the update (for success case)
         metadata = {"status": "done", "tag": version, "commit": commit_sha[:8]}
@@ -137,10 +145,15 @@ class PromoteRc:
             return 1
 
         # All pre-conditions met, perform modifications
+        promote_source = (
+            latest_rc
+            if is_first_release
+            else f"head of {branch_name} ({commit_sha[:8]})"
+        )
         if args.dry_run:
             print(
                 f"[DRY RUN] Pre-conditions passed successfully for promoting"
-                f" {latest_rc} to {version}."
+                f" {promote_source} to {version}."
             )
             print(f"[DRY RUN] Would tag commit {commit_sha[:8]} as {version}")
             print(f"[DRY RUN] Would push tag {version} to {args.remote}")
@@ -149,7 +162,7 @@ class PromoteRc:
             return 0
 
         print(
-            f"Promoting {latest_rc} to final release {version} (commit"
+            f"Promoting {promote_source} to final release {version} (commit"
             f" {commit_sha[:8]}) using tracking issue #{issue_num}..."
         )
 
@@ -177,9 +190,7 @@ class PromoteRc:
         if run_id := os.environ.get("GITHUB_RUN_ID"):
             release_workflow_url = f"{REPO_URL}/actions/runs/{run_id}"
         else:
-            release_workflow_url = (
-                f"{REPO_URL}/actions/workflows/release_promote_rc.yaml"
-            )
+            release_workflow_url = f"{REPO_URL}/actions/workflows/release_promote.yaml"
 
         comment_body = f"""**New Release Tagged!** 🐍🌿
 
@@ -197,7 +208,7 @@ Version **{version}** has been successfully generated and tagged on branch [`{br
     def add_parser(cls, subparsers):
         """Adds parser for promote-rc subcommand."""
         parser = subparsers.add_parser(
-            "promote-rc",
+            "promote",
             help="Promote the latest RC to final release.",
         )
         parser.add_argument(

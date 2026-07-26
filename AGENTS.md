@@ -42,6 +42,14 @@ because it interferes with code review comments.
 Follow the advice in `CONTRIBUTING.md` for PR descriptions. PR descriptions
 become the commit message upon merge.
 
+### Python pytest conventions
+
+* When registering pytest fixtures from helper modules in test files, use
+  `pytest_plugins = ["<module_path>"]`.
+* Name fixture functions with a `fixture_` prefix (e.g. `def fixture_foo():`),
+  and pass the public fixture name using the `name` parameter in
+  `@pytest.fixture(name="foo")`.
+
 ### Starlark style
 
 For doc strings, using triple quoted strings when the doc string is more than
@@ -98,7 +106,6 @@ def foo_test_suite(name):
     test_suite(name=name, tests=_tests)
 ```
 
-
 #### Repository rules
 
 The function argument `rctx` is a hint that the function is a repository rule,
@@ -121,7 +128,6 @@ The `repository_ctx` API docs are at: https://bazel.build/rules/lib/builtins/rep
     e.g. given `load("//foo:bar.bzl", ...)`, the target is `//foo:bar_bzl`.
   * For files outside rules_python: remove the `.bzl` suffix. e.g. given
     `load("@foo//foo:bar.bzl", ...)`, the target is `@foo//foo:bar`.
-* `bzl_library()` targets should be kept in alphabetical order by name.
 
 Example:
 
@@ -157,7 +163,6 @@ This repository contains 3 Bazel bzlmod modules.
  * All other code is part of `@rules_python`.
 
 `tests/support/` contains utility code and helpers for testing.
-
 
 `python/config_settings/BUILD.bazel` contains build flags that are part of the
 public API. DO NOT add, remove, or modify these build flags unless specifically
