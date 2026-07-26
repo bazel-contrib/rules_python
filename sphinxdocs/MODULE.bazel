@@ -9,6 +9,104 @@ bazel_dep(name = "stardoc", version = "0.7.2", repo_name = "io_bazel_stardoc")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "protobuf", version = "29.0-rc2", repo_name = "com_google_protobuf")
 bazel_dep(name = "rules_python", version = "1.8.5")
+local_path_override(
+    module_name = "rules_python",
+    path = "..",
+)
+
+python = use_extension(
+    "@rules_python//python/extensions:python.bzl",
+    "python",
+    dev_dependency = True,
+)
+python.toolchain(
+    python_version = "3.9",
+)
+python.toolchain(
+    python_version = "3.11",
+)
+use_repo(python, "pythons_hub")
+
+register_toolchains(
+    "@pythons_hub//:all",
+    dev_dependency = True,
+)
+
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.default(
+    base_url = "https://github.com/astral-sh/uv/releases/download",
+    manifest_filename = "dist-manifest.json",
+    version = "0.11.2",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:macos",
+        "@platforms//cpu:aarch64",
+    ],
+    platform = "aarch64-apple-darwin",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+    platform = "aarch64-unknown-linux-gnu",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:ppc64le",
+    ],
+    platform = "powerpc64le-unknown-linux-gnu",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:s390x",
+    ],
+    platform = "s390x-unknown-linux-gnu",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:riscv64",
+    ],
+    platform = "riscv64-unknown-linux-gnu",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
+    platform = "x86_64-apple-darwin",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:windows",
+        "@platforms//cpu:x86_64",
+    ],
+    platform = "x86_64-pc-windows-msvc",
+)
+uv.default(
+    compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    platform = "x86_64-unknown-linux-gnu",
+)
+uv.configure(
+    version = "0.11.2",
+)
+use_repo(uv, "uv")
+
+register_toolchains(
+    "@uv//:all",
+    dev_dependency = True,
+)
 
 dev_pip = use_extension(
     "@rules_python//python/extensions:pip.bzl",
@@ -18,7 +116,7 @@ dev_pip = use_extension(
 dev_pip.parse(
     hub_name = "dev_pip",
     python_version = "3.11",
-    requirements_lock = "@rules_python//docs:requirements.txt",
+    uv_lock = "//dev:uv.lock",
 )
 use_repo(dev_pip, "dev_pip")
 

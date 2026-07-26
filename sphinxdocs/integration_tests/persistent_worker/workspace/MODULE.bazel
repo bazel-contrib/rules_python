@@ -7,6 +7,10 @@ local_path_override(
 )
 
 bazel_dep(name = "rules_python", version = "1.8.5")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../../..",
+)
 
 dev_pip = use_extension(
     "@rules_python//python/extensions:pip.bzl",
@@ -16,7 +20,7 @@ dev_pip = use_extension(
 dev_pip.parse(
     hub_name = "dev_pip",
     python_version = "3.11",
-    requirements_lock = "@rules_python//docs:requirements.txt",
+    uv_lock = "@sphinxdocs//dev:uv.lock",
 )
 use_repo(dev_pip, "dev_pip")
 

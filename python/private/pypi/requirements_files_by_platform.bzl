@@ -73,6 +73,7 @@ def requirements_files_by_platform(
         requirements_linux = None,
         requirements_lock = None,
         requirements_windows = None,
+        uv_lock = None,
         platforms,
         extra_pip_args = None,
         python_version = None,
@@ -88,6 +89,7 @@ def requirements_files_by_platform(
         requirements_linux (label): The requirements file for the linux OS.
         requirements_lock (label): The requirements file for all OSes, or used as a fallback.
         requirements_windows (label): The requirements file for windows OS.
+        uv_lock (label): The uv.lock file for all OSes.
         extra_pip_args (string list): Extra pip arguments to perform extra validations and to
             be joined with args fined in files.
         python_version: str or None. This is needed when the get_index_urls is
@@ -106,11 +108,12 @@ def requirements_files_by_platform(
         requirements_linux or
         requirements_osx or
         requirements_windows or
-        requirements_by_platform
+        requirements_by_platform or
+        uv_lock
     ):
         fail_fn(
-            "A 'requirements_lock' attribute must be specified, a platform-specific lockfiles " +
-            "via 'requirements_by_platform' or an os-specific lockfiles must be specified " +
+            "A 'requirements_lock' or 'uv_lock' attribute must be specified, platform-specific lockfiles " +
+            "via 'requirements_by_platform' or os-specific lockfiles must be specified " +
             "via 'requirements_*' attributes",
         )
         return None
