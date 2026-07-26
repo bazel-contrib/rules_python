@@ -9,3 +9,16 @@ lock(
     out = "uv.lock",
     python_version = "3.9",
 )
+
+# Run bazel run //dev:requirements.update
+lock(
+    name = "requirements",
+    srcs = ["pyproject.toml"],
+    out = "requirements.txt",
+    args = [
+        "--emit-index-url",
+        "--universal",
+        "--upgrade",
+    ],
+    python_version = "3.9",
+)

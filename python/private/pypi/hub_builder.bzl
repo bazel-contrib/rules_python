@@ -498,7 +498,6 @@ def _create_whl_repos(
             requirements_lock = pip_attr.requirements_lock,
             requirements_osx = pip_attr.requirements_darwin,
             requirements_windows = pip_attr.requirements_windows,
-            uv_lock = pip_attr.uv_lock,
             extra_pip_args = pip_attr.extra_pip_args,
             platforms = sorted(platforms),  # here we only need keys
             python_version = full_version(

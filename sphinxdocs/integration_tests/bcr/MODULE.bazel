@@ -23,6 +23,7 @@ dev_pip = use_extension(
 dev_pip.parse(
     hub_name = "dev_pip",
     python_version = "3.11",
+    requirements_lock = "@sphinxdocs//dev:requirements.txt",
     uv_lock = "@sphinxdocs//dev:uv.lock",
 )
 use_repo(dev_pip, "dev_pip")
