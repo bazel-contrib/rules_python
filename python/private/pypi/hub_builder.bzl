@@ -9,6 +9,7 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":parse_requirements.bzl", "parse_requirements")
+load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":python_tag.bzl", "python_tag")
@@ -75,6 +76,9 @@ def hub_builder(
         # setting originated from.
         # dict[str whl_name, dict[str config_setting, str repo_name]]
         _whl_map = {},  # modified by _add_whl_library
+        # Lock update targets to generate in the hub repository.
+        # list[struct(out=str, python_version=str, srcs=list[str])]
+        _lock_targets = [],
 
         # Internal
 
@@ -112,6 +116,7 @@ def _build(self):
         group_map = {},
         extra_aliases = {},
         exposed_packages = [],
+        lock_targets = [],
         whl_libraries = {},
     )
     if self._logger.failed():
@@ -138,6 +143,9 @@ def _build(self):
         # The list of exposed packages in the hub.
         # list[str]
         exposed_packages = sorted(self._exposed_packages),
+        # The lock update targets in the hub.
+        # list[struct(name=str, out=str, python_version=str, srcs=list[str])]
+        lock_targets = _named_lock_targets(self._lock_targets),
 
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
@@ -178,7 +186,7 @@ def _pip_parse(self, module_ctx, pip_attr, python_version = None):
         ))
         return
 
-    _set_get_index_urls(self, module_ctx, pip_attr)
+    _set_get_index_urls(self, module_ctx, pip_attr, python_version)
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
@@ -187,6 +195,7 @@ def _pip_parse(self, module_ctx, pip_attr, python_version = None):
     )
     _add_group_map(self, pip_attr.experimental_requirement_cycles)
     _add_extra_aliases(self, pip_attr.extra_hub_aliases)
+    _add_lock_target(self, pip_attr, python_version)
     _create_whl_repos(
         self,
         module_ctx,
@@ -345,9 +354,97 @@ def _add_whl_library(self, *, python_version, whl, repo):
     else:
         mapping[repo.config_setting] = repo_name
 
+def _add_lock_target(self, pip_attr, python_version):
+    """Adds a generated hub lock update target when the parse attrs are complete.
+
+    Args:
+        self: implicitly added.
+        pip_attr: The `pip.parse` tag attributes.
+    """
+    if not pip_attr.srcs or not pip_attr.requirements_lock:
+        return
+
+    self._lock_targets.append(struct(
+        out = _source_file_path(pip_attr.requirements_lock),
+        python_version = python_version,
+        srcs = [str(src) for src in pip_attr.srcs],
+    ))
+
 ### end of setters, below we have various functions to implement the public methods
 
-def _set_get_index_urls(self, mctx, pip_attr):
+def _named_lock_targets(lock_targets):
+    if len(lock_targets) == 1:
+        target = lock_targets[0]
+        return [struct(
+            name = "lock",
+            out = target.out,
+            python_version = target.python_version,
+            srcs = target.srcs,
+        )]
+
+    return [
+        struct(
+            name = "lock_{}".format(version_label(target.python_version)),
+            out = target.out,
+            python_version = target.python_version,
+            srcs = target.srcs,
+        )
+        for target in sorted(lock_targets, key = lambda target: target.python_version)
+    ]
+
+def _source_file_path(label):
+    if type(label) == type(""):
+        return label
+
+    if label.package:
+        return "{}/{}".format(label.package, label.name)
+    else:
+        return label.name
+
+def _parse_dep_srcs(ctx, dep_srcs):
+    """Parse dependency source files into normalized package names.
+
+    Args:
+        ctx: A context that has .read function that would read contents from a label.
+        dep_srcs: List of files that express direct dependencies.
+
+    Returns:
+        dict[str, None] or None: The normalized packages present in the source
+            files, or None when there are no source files.
+    """
+    if not dep_srcs:
+        return None
+
+    exposed = {}
+    for file in dep_srcs:
+        parse_result = parse_requirements_txt(ctx.read(file))
+        for distribution, _ in parse_result.requirements:
+            exposed[normalize_name(distribution)] = None
+
+    return exposed
+
+def _exposed_packages(ctx, *, pip_attr, whls, logger):
+    """Returns hub packages exposed by platform support and direct dependency srcs."""
+    dep_srcs = _parse_dep_srcs(ctx, pip_attr.srcs)
+    exposed = {}
+    for whl in whls:
+        if not whl.is_exposed:
+            continue
+
+        # pip.parse srcs describe the direct dependencies for this parse tag.
+        # Platform-specific lock files have already been collapsed into `whls`.
+        if dep_srcs != None and whl.name not in dep_srcs:
+            logger.trace(lambda: (
+                "Package '{}' will not be exposed because it is not present " +
+                "in srcs"
+            ).format(whl.name))
+            continue
+
+        exposed[whl.name] = None
+
+    return exposed
+
+def _set_get_index_urls(self, mctx, pip_attr, python_version):
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
     # form is honored when deciding whether the experimental index-url mode is
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
@@ -365,7 +462,6 @@ def _set_get_index_urls(self, mctx, pip_attr):
         # here
         return False
 
-    python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
@@ -509,16 +605,17 @@ def _create_whl_repos(
         uv_lock = pip_attr.uv_lock,
         platforms = platforms,
         extra_pip_args = pip_attr.extra_pip_args,
-        get_index_urls = self._get_index_urls.get(pip_attr.python_version),
+        get_index_urls = self._get_index_urls.get(python_version),
         toml_decode = getattr(self._config, "toml_decode", None),
         logger = logger,
     )
 
-    _add_exposed_packages(self, {
-        whl.name: None
-        for whl in requirements_by_platform
-        if whl.is_exposed
-    })
+    _add_exposed_packages(self, _exposed_packages(
+        module_ctx,
+        pip_attr = pip_attr,
+        whls = requirements_by_platform,
+        logger = logger,
+    ))
 
     whl_modifications = {}
     if pip_attr.whl_modifications != None:

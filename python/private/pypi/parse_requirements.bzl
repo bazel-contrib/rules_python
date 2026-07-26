@@ -442,16 +442,37 @@ def _parse_requirements_from_req_files(
             logger = logger,
         )
 
+        # FIXME @aignas 2025-11-24: we can get the list of target platforms here
+        #
+        # However it is likely that we may stop exposing packages like torch in here
+        # which do not have wheels for all osx platforms.
+        #
+        # If users specify the target platforms accurately, then it is a different
+        # (better) story, but we may not be able to guarantee this
+        #
+        # target_platforms = [
+        #     p
+        #     for dist in package_srcs
+        #     for p in dist.target_platforms
+        # ]
+
+        normalized_name = normalize_name(name)
+        is_exposed = len(requirement_target_platforms) == len(requirements)
+
         item = struct(
-            name = normalize_name(name),
-            is_exposed = len(requirement_target_platforms) == len(requirements),
+            # Return normalized names
+            name = normalized_name,
+            is_exposed = is_exposed,
             is_multiple_versions = len(reqs.values()) > 1,
             index_url = pkg_sources.index_url if pkg_sources else "",
             srcs = package_srcs,
         )
         ret.append(item)
-        if not item.is_exposed and logger:
-            logger.trace(lambda: "Package '{}' will not be exposed because it is only present on a subset of platforms: {} out of {}".format(
+        if len(requirement_target_platforms) != len(requirements) and logger:
+            logger.trace(lambda: (
+                "Package '{}' will not be exposed because it is only present " +
+                "on a subset of platforms: {} out of {}"
+            ).format(
                 name,
                 sorted(requirement_target_platforms),
                 sorted(requirements),

@@ -86,7 +86,8 @@ def _test_exec_matches_target_python_version(name):
     )
 
     # This is never matched. It's just here so that toolchains from the
-    # environment don't match.
+    # environment don't match. Keep the target settings mismatched so this
+    # unconstrained toolchain cannot satisfy host execution platforms.
     native.toolchain(
         name = "99_target_default",
         toolchain_type = TARGET_TOOLCHAIN_TYPE,
@@ -119,6 +120,7 @@ def _test_exec_matches_target_python_version(name):
         name = "99_exec_default",
         toolchain_type = EXEC_TOOLS_TOOLCHAIN_TYPE,
         toolchain = ":exec_default",
+        target_settings = ["//python/config_settings:is_python_3.11"],
     )
 
     analysis_test(

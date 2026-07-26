@@ -167,6 +167,11 @@ and [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 * (pypi) `package_metadata` support, fixes 
   [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
 * (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+* (pypi) Added {attr}`pip.parse.srcs` to expose only packages listed in
+  requirement source files while keeping lockfile transitive dependencies
+  available internally, and to create a generated `lock.update` target in the
+  hub repository. Fixes
+  [#3413](https://github.com/bazel-contrib/rules_python/issues/3413).
 
 
 {#v2-0-3}
