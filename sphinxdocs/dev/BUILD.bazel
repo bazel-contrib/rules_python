@@ -7,7 +7,7 @@ lock(
     name = "uv_lock",
     srcs = ["//:pyproject.toml"],
     out = "uv.lock",
-    python_version = "3.9",
+    python_version = "3.10",
 )
 
 # Run bazel run //dev:requirements.update
@@ -20,5 +20,5 @@ lock(
         "--universal",
         "--upgrade",
     ],
-    python_version = "3.9",
+    python_version = "3.10",
 )
