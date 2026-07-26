@@ -28,18 +28,6 @@ register_toolchains(
     dev_dependency = True,
 )
 
-uv = use_extension(
-    "@rules_python//python/uv:uv.bzl",
-    "uv",
-    dev_dependency = True,
-)
-use_repo(uv, "uv")
-
-register_toolchains(
-    "@uv//:all",
-    dev_dependency = True,
-)
-
 dev_pip = use_extension(
     "@rules_python//python/extensions:pip.bzl",
     "pip",

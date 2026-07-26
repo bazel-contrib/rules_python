@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 # Run bazel run //dev:uv_lock.update
 lock(
     name = "uv_lock",
-    srcs = ["pyproject.toml"],
+    srcs = ["//:pyproject.toml"],
     out = "uv.lock",
     python_version = "3.9",
 )
@@ -13,7 +13,7 @@ lock(
 # Run bazel run //dev:requirements.update
 lock(
     name = "requirements",
-    srcs = ["pyproject.toml"],
+    srcs = ["//:pyproject.toml"],
     out = "requirements.txt",
     args = [
         "--emit-index-url",
