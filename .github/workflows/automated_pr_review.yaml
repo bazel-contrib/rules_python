@@ -62,7 +62,7 @@ jobs:
 
       # Upload extracted diff as artifact to pass to Job 2 safely as text data.
       - name: Upload Diff Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pr_diff
           path: pr_diff.txt
