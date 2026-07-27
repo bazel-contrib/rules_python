@@ -209,10 +209,29 @@ sphinx_build_binary(
     ],
 )
 
+py_binary(
+    name = "merge_pyproject_deps",
+    srcs = ["merge_pyproject_deps.py"],
+    python_version = "3.14",
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+)
+
+genrule(
+    name = "merge_pyproject",
+    srcs = [
+        "pyproject.toml",
+        "@sphinxdocs//:pyproject.toml",
+    ],
+    outs = ["merged/pyproject.toml"],
+    cmd = "$(location :merge_pyproject_deps) --output $@ $(location pyproject.toml) $(location @sphinxdocs//:pyproject.toml)",
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    tools = [":merge_pyproject_deps"],
+)
+
 # Run bazel run //docs:requirements.update
 lock(
     name = "requirements",
-    srcs = ["pyproject.toml"],
+    srcs = [":merge_pyproject"],
     out = "requirements.txt",
     args = [
         "--emit-index-url",
@@ -228,7 +247,7 @@ lock(
 # Run bazel run //docs:uv_lock.update
 lock(
     name = "uv_lock",
-    srcs = ["pyproject.toml"],
+    srcs = [":merge_pyproject"],
     out = "uv.lock",
     python_version = "3.9",
     visibility = ["//:__subpackages__"],

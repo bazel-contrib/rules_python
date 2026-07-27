@@ -5,11 +5,11 @@
 absl-py==2.3.1 ; python_full_version < '3.10' \
     --hash=sha256:a97820526f7fbfd2ec1bce83f3f25e3a14840dac0d8e02a0b71cd75db3f77fc9 \
     --hash=sha256:eeecf07f0c2a93ace0772c92e596ace6d3d3996c042b2128459aaae2a76de11d
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 absl-py==2.5.0 ; python_full_version >= '3.10' \
     --hash=sha256:0c996f25c0490700fadabe6351630f6111534fa0ae252cc6d2014ea3b141135f \
     --hash=sha256:0f17b89f2a4eaaedc4f28c622998aa690564b3012a396a4ffad0821007fe03ba
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 alabaster==0.7.16 ; python_full_version < '3.10' \
     --hash=sha256:75a8b99c28a5dad50dd7f8ccdd447a121ddb3892da9e53d1ca5cca3106d58d65 \
     --hash=sha256:b46733c07dce03ae4e150330b975c75737fa60f0a7c591b6c8bf4928a28e2c92
@@ -30,9 +30,9 @@ babel==2.18.0 \
     --hash=sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d \
     --hash=sha256:e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35
     # via sphinx
-certifi==2026.6.17 \
-    --hash=sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432 \
-    --hash=sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db
+certifi==2026.7.22 \
+    --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 \
+    --hash=sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
     # via requests
 charset-normalizer==3.4.9 \
     --hash=sha256:0327fcd59a935777d83410750c50600ee9571af2846f71ce40f25b13da1ef380 \
@@ -187,7 +187,7 @@ jinja2==3.1.6 \
 macholib==1.16.4 \
     --hash=sha256:da1a3fa8266e30f0ce7e97c6a54eefaae8edd1e5f86f3eb8b95457cae90265ea \
     --hash=sha256:f408c93ab2e995cd2c46e34fe328b130404be143469e41bc366c807448979362
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 markdown-it-py==3.0.0 ; python_full_version < '3.11' \
     --hash=sha256:355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1 \
     --hash=sha256:e3f60a94fa066dc52ec76661e37c851cb232d92f9886b15cb560aaada2df8feb
@@ -291,7 +291,7 @@ markupsafe==3.0.3 \
     --hash=sha256:f9e130248f4462aaa8e2552d547f36ddadbeaa573879158d721bbd33dfe4743a \
     --hash=sha256:fed51ac40f757d41b7c48425901843666a6677e3e8eb0abcff09e4ba6e664f50
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   jinja2
 mdit-py-plugins==0.4.2 ; python_full_version < '3.10' \
     --hash=sha256:0c673c3f889399a33b95e88d2f0d111b4447bdfea7f237dab2d488f459835636 \
@@ -308,15 +308,15 @@ mdurl==0.1.2 \
 myst-parser==3.0.1 ; python_full_version < '3.10' \
     --hash=sha256:6457aaa33a5d474aca678b8ead9b3dc298e89c68e67012e73146ea6fd54babf1 \
     --hash=sha256:88f0cb406cb363b077d176b51c476f62d60604d68a8dcdf4832e080441301a87
-    # via rules-python-docs (docs/pyproject.toml)
-myst-parser==5.1.0 ; python_full_version == '3.10.*' \
-    --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
-    --hash=sha256:ab69322dc6719dcc7f296479dbb70181b66df6ed315064f92dbc85c0e1bf2f02
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
+myst-parser==4.0.1 ; python_full_version == '3.10.*' \
+    --hash=sha256:5cfea715e4f3574138aecbf7d54132296bfd72bb614d31168f48c477a830a7c4 \
+    --hash=sha256:9134e88959ec3b5780aedf8a99680ea242869d012e8821db3126d427edc9c95d
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 myst-parser==5.1.0 ; python_full_version >= '3.11' \
     --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
     --hash=sha256:ab69322dc6719dcc7f296479dbb70181b66df6ed315064f92dbc85c0e1bf2f02
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 packaging==26.2 \
     --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e \
     --hash=sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661
@@ -327,7 +327,7 @@ packaging==26.2 \
 pefile==2024.8.26 \
     --hash=sha256:3ff6c5d8b43e8c37bb6e6dd5085658d658a7a0bdcd20b6a07b1fcfc1c4e9d632 \
     --hash=sha256:76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 pluggy==1.6.0 \
     --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
     --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
@@ -335,11 +335,11 @@ pluggy==1.6.0 \
 pyelftools==0.32 ; python_full_version < '3.10' \
     --hash=sha256:013df952a006db5e138b1edf6d8a68ecc50630adbd0d83a2d41e7f846163d738 \
     --hash=sha256:6de90ee7b8263e740c8715a925382d4099b354f29ac48ea40d840cf7aa14ace5
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 pyelftools==0.33 ; python_full_version >= '3.10' \
     --hash=sha256:660d82dcbeb8e83d1702bd97f223f761625da06111c0cc988eac6b8ab0c1b61f \
     --hash=sha256:f215ad5f47d3f1373a21496a6c9e0707c622840d0622f23ff7ce08678b020036
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 pygments==2.20.0 \
     --hash=sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f \
     --hash=sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176
@@ -350,23 +350,23 @@ pytest==8.4.2 ; python_full_version < '3.10' \
     --hash=sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01 \
     --hash=sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   pytest-bazel
     #   pytest-mock
 pytest==9.1.1 ; python_full_version >= '3.10' \
     --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 \
     --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   pytest-bazel
     #   pytest-mock
 pytest-bazel==0.1.6 \
     --hash=sha256:a29e80e1d67c3db801bdd4d0b6b742f2bfb48cd6841caa33401458e5c4e29c21
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 pytest-mock==3.15.1 \
     --hash=sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d \
     --hash=sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 pyyaml==6.0.3 \
     --hash=sha256:00c4bdeba853cc34e7dd471f16b4114f4162dc03e6b7afcc2128711f0eca823c \
     --hash=sha256:0150219816b6a1fa26fb4699fb7daa9caf09eb1999f3b70fb6e786805e80375a \
@@ -445,7 +445,7 @@ pyyaml==6.0.3 \
 readthedocs-sphinx-ext==2.2.5 \
     --hash=sha256:ee5fd5b99db9f0c180b2396cbce528aa36671951b9526bb0272dbfce5517bd27 \
     --hash=sha256:f8c56184ea011c972dd45a90122568587cc85b0127bc9cf064d17c68bc809daa
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 requests==2.32.5 ; python_full_version < '3.10' \
     --hash=sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6 \
     --hash=sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf
@@ -470,7 +470,7 @@ sphinx==7.4.7 ; python_full_version < '3.10' \
     --hash=sha256:242f92a7ea7e6c5b406fdc2615413890ba9f699114a9c09192d7dfead2ee9cfe \
     --hash=sha256:c2419e2135d11f1951cd994d6eb18a1835bd8fdd8429f9ca375dc1f3281bd239
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   myst-parser
     #   sphinx-reredirects
     #   sphinx-rtd-theme
@@ -479,7 +479,7 @@ sphinx==8.1.3 ; python_full_version == '3.10.*' \
     --hash=sha256:09719015511837b76bf6e03e42eb7595ac8c2e41eeb9c29c5b755c6b677992a2 \
     --hash=sha256:43c1911eecb0d3e161ad78611bc905d1ad0e523e4ddc202a58a821773dc4c927
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   myst-parser
     #   sphinx-reredirects
     #   sphinx-rtd-theme
@@ -488,7 +488,7 @@ sphinx==9.0.4 ; python_full_version == '3.11.*' \
     --hash=sha256:594ef59d042972abbc581d8baa577404abe4e6c3b04ef61bd7fc2acbd51f3fa3 \
     --hash=sha256:5bebc595a5e943ea248b99c13814c1c5e10b3ece718976824ffa7959ff95fffb
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   myst-parser
     #   sphinx-reredirects
     #   sphinx-rtd-theme
@@ -497,7 +497,7 @@ sphinx==9.1.0 ; python_full_version >= '3.12' \
     --hash=sha256:7741722357dd75f8190766926071fed3bdc211c74dd2d7d4df5404da95930ddb \
     --hash=sha256:c84fdd4e782504495fe4f2c0b3413d6c2bf388589bb352d439b2a3bb99991978
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   myst-parser
     #   sphinx-reredirects
     #   sphinx-rtd-theme
@@ -505,19 +505,19 @@ sphinx==9.1.0 ; python_full_version >= '3.12' \
 sphinx-autodoc2==0.5.0 \
     --hash=sha256:7d76044aa81d6af74447080182b6868c7eb066874edc835e8ddf810735b6565a \
     --hash=sha256:e867013b1512f9d6d7e6f6799f8b537d6884462acd118ef361f3f619a60b5c9e
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 sphinx-reredirects==0.1.6 ; python_full_version < '3.11' \
     --hash=sha256:c491cba545f67be9697508727818d8626626366245ae64456fe29f37e9bbea64 \
     --hash=sha256:efd50c766fbc5bf40cd5148e10c00f2c00d143027de5c5e48beece93cc40eeea
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 sphinx-reredirects==1.1.0 ; python_full_version >= '3.11' \
     --hash=sha256:4b5692273c72cd2d4d917f4c6f87d5919e4d6114a752d4be033f7f5f6310efd9 \
     --hash=sha256:fb9b195335ab14b43f8273287d0c7eeb637ba6c56c66581c11b47202f6718b29
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 sphinx-rtd-theme==3.1.0 \
     --hash=sha256:1785824ae8e6632060490f67cf3a72d404a85d2d9fc26bce3619944de5682b89 \
     --hash=sha256:b44276f2c276e909239a4f6c955aa667aaafeb78597923b1c60babc76db78e4c
-    # via rules-python-docs (docs/pyproject.toml)
+    # via rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
 sphinxcontrib-applehelp==2.0.0 \
     --hash=sha256:2f29ef331735ce958efa4734873f084941970894c6090408b079c61b2e1c06d1 \
     --hash=sha256:4cd3f0ec4ac5dd9c17ec65e9ab272c9b867ea77425228e68ecf08d6b28ddbdb5
@@ -602,7 +602,7 @@ typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
     # via
-    #   rules-python-docs (docs/pyproject.toml)
+    #   rules-python-docs (bazel-out/k8-fastbuild-ST-501889d92340/bin/docs/merged/pyproject.toml)
     #   astroid
     #   exceptiongroup
     #   sphinx-autodoc2
