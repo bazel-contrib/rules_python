@@ -2,6 +2,12 @@ load("@rules_python//python/uv:lock.bzl", "lock")
 
 package(default_visibility = ["//:__subpackages__"])
 
+filegroup(
+    name = "distribution",
+    srcs = glob(["**/*"]),
+    visibility = ["//:__pkg__"],
+)
+
 # Run bazel run //dev:uv_lock.update
 lock(
     name = "uv_lock",

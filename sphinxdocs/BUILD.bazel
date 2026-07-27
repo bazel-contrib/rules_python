@@ -12,6 +12,7 @@ filegroup(
             "tests/**",
         ],
     ) + [
+        "//dev:distribution",
         "//sphinxdocs:distribution",
     ],
     visibility = ["//visibility:public"],
