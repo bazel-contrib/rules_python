@@ -37,7 +37,7 @@ first in the import path. If you find yourself in this situation, then you'll
 need to manually configure coverage (see below).
 :::
 
-::::{note}
+:::{note}
 The bundled `coverage` wheel set covers CPython 3.9 through 3.14 (with
 freethreaded variants for 3.13+), and not every platform within that range.
 When the interpreter that `bazel coverage` actually selects has no bundled
@@ -49,13 +49,7 @@ below) instead.
 for the runtime toolchain resolution selected and only when coverage is being
 collected, so it does not fire for the many platforms toolchains are
 registered for but a given build never uses.
-
-:::{versionchanged} VERSION_NEXT_PATCH
-The warning is emitted by `py_runtime` during analysis. Previously it was
-emitted once per registered platform lacking a wheel, on every build,
-whether or not coverage was being collected.
 :::
-::::
 
 ## Manually configuring coverage
 
