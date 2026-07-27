@@ -115,12 +115,12 @@ def _map(
     platform: str,
     **kwargs: Any,
 ):
-    if platform not in _supported_platforms:
+    if platform and platform not in _supported_platforms:
         return None
 
     return Dep(
         name=name,
-        platform=_supported_platforms[platform],
+        platform=_supported_platforms[platform] if platform else "",
         python=python_version,
         url=url,
         sha256=digests["sha256"],
@@ -170,11 +170,16 @@ def main():
         data = json.loads(response.read().decode("utf-8"))
 
     urls = []
+    default_url = None
     for u in data["urls"]:
         if u["yanked"]:
             continue
 
         if not u["filename"].endswith(".whl"):
+            continue
+
+        if u["filename"].endswith("py3-none-any.whl"):
+            default_url = _map(name=args.name, platform="", **u)
             continue
 
         if u["python_version"] not in args.py:
@@ -196,7 +201,13 @@ def main():
     # Update the coverage_deps, which are used to register deps
     update_file(
         path=args.update_file,
-        snippet=f"_coverage_deps = {repr(Deps(urls))}\n",
+        snippet="\n".join(
+            [
+                f"_default = {repr(default_url)}",
+                f"_coverage_deps = {repr(Deps(urls))}",
+                "",
+            ]
+        ),
         start_marker="# START: maintained by 'bazel run //tools/private/update_deps:update_coverage_deps <version>'",
         end_marker="# END: maintained by 'bazel run //tools/private/update_deps:update_coverage_deps <version>'",
         dry_run=args.dry_run,

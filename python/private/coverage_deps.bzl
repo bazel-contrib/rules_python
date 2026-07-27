@@ -20,6 +20,10 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//python/private:version_label.bzl", "version_label")
 
 # START: maintained by 'bazel run //tools/private/update_deps:update_coverage_deps <version>'
+_default = (
+    "https://files.pythonhosted.org/packages/ec/16/114df1c291c22cac3b0c127a73e0af5c12ed7bbb6558d310429a0ae24023/coverage-7.10.7-py3-none-any.whl",
+    "f7941f6f2fe6dd6807a1208737b8a0cbcf1cc6d7b07d24998ad2d63590868260",
+)
 _coverage_deps = {
     "cp310": {
         "aarch64-apple-darwin": (
@@ -184,15 +188,10 @@ def coverage_dep(name, python_version, platform, visibility):
         return None
 
     abi = "cp" + version_label(python_version)
-    url, sha256 = _coverage_deps.get(abi, {}).get(platform, (None, ""))
+    url, sha256 = _coverage_deps.get(abi, {}).get(platform, _default)
 
-    if url == None:
-        # Toolchains are registered for every platform in PLATFORMS, most of
-        # which a given build never resolves, so warning here is noise. The
-        # empty-lcov outcome is reported by py_runtime instead, which is
-        # analyzed only for the runtime actually selected. See
-        # https://github.com/bazel-contrib/rules_python/issues/3950.
-        return None
+    # NOTE @aignas 2026-07-27: if the default is matched, then the same file may be extracted
+    # multiple times. The wheel is small enough to not matter in most cases.
 
     maybe(
         http_archive,
