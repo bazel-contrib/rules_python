@@ -1,6 +1,6 @@
 load("@rules_python//python/uv:lock.bzl", "lock")
 
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//:__subpackages__"])
 
 # Run bazel run //dev:uv_lock.update
 lock(
