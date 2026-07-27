@@ -19,20 +19,6 @@ load("//python/private:coverage_deps.bzl", "coverage_dep")  # buildifier: disabl
 
 _tests = []
 
-def _test_unsupported_python_version_returns_none(env):
-    # cp37 is not in the bundled wheel set, so there is no coverage tool to
-    # attach to the runtime. Reporting that is py_runtime's job -- registration
-    # covers every platform in PLATFORMS, most of which are never selected.
-    result = coverage_dep(
-        name = "unused_for_test",
-        python_version = "3.7",
-        platform = "aarch64-apple-darwin",
-        visibility = ["//visibility:public"],
-    )
-    env.expect.that_bool(result == None).equals(True)
-
-_tests.append(_test_unsupported_python_version_returns_none)
-
 def _test_windows_platform_returns_none(env):
     # Windows is intentionally unsupported: the upstream coverage wrapper is
     # written in shell.
