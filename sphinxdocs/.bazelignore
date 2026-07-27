@@ -2,3 +2,11 @@ bazel-bin
 bazel-out
 bazel-testlogs
 bazel-sphinxdocs
+integration_tests/bcr/bazel-bin
+integration_tests/bcr/bazel-bcr
+integration_tests/bcr/bazel-out
+integration_tests/bcr/bazel-testlogs
+integration_tests/persistent_worker/workspace/bazel-bin
+integration_tests/persistent_worker/workspace/bazel-out
+integration_tests/persistent_worker/workspace/bazel-testlogs
+integration_tests/persistent_worker/workspace/bazel-workspace

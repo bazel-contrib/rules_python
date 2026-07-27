@@ -18,3 +18,4 @@ When any CI job completes with errors or returns a non-zero exit code:
 ```bash
 ./scripts/monitor_remote_ci.py 3812 "0be435bd-96aa-4e1b-9c6f-727b31e80fa0" &
 ```
+*Note: Always include the trailing `&` when launching the monitoring script via tool calls to ensure it runs as a detached background task without blocking foreground execution.*

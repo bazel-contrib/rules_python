@@ -149,7 +149,10 @@ Tests are under the `tests/` directory.
 
 When testing, add `--config=fast-tests`.
 
-When building, add `--config=fast-tests`.
+When building test targets, add `--config=fast-tests`. Do NOT use
+`--config=fast-tests` when building non-test targets (such as `//docs:docs`),
+because `--config=fast-tests` enables `--build_tests_only=true`, which causes
+non-test targets to be silently ignored (finding 0 targets).
 
 The `--config=fast-tests` flag avoids running expensive and slow tests can that
 freeze the host machine or cause flakiness.
