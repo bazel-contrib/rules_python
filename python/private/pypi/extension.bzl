@@ -991,9 +991,12 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
 """,
         ),
         "uv_lock": attr.label(
-            doc = """\
+            doc = """
 (label, optional): A label pointing to the uv.lock file. If provided,
 the uv.lock file will be used as the primary source for package metadata.
+
+:::{versionadded} 2.2.0
+:::
 """,
         ),
         "whl_modifications": attr.label_keyed_string_dict(
