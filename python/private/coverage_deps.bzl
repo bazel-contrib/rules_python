@@ -17,7 +17,6 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:version_label.bzl", "version_label")
 
 # START: maintained by 'bazel run //tools/private/update_deps:update_coverage_deps <version>'
@@ -167,7 +166,7 @@ _coverage_deps = {
 
 _coverage_patch = Label("//python/private:coverage.patch")
 
-def coverage_dep(name, python_version, platform, visibility, logger = None):
+def coverage_dep(name, python_version, platform, visibility):
     """Register a single coverage dependency based on the python version and platform.
 
     Args:
@@ -175,37 +174,24 @@ def coverage_dep(name, python_version, platform, visibility, logger = None):
         python_version: The full python version.
         platform: The platform, which can be found in //python:versions.bzl PLATFORMS dict.
         visibility: The visibility of the coverage tool.
-        logger: {type}`repo_utils.logger | None` Optional logger used to emit a
-            warning when no wheel is available for the (python_version,
-            platform) pair. If not supplied, a default logger is constructed.
 
     Returns:
         The label of the coverage tool if the platform is supported, otherwise - None.
     """
-    if logger == None:
-        logger = repo_utils.logger(
-            struct(getenv = lambda _: None),
-            name = "coverage_dep",
-        )
-
     if "windows" in platform:
         # NOTE @aignas 2023-01-19: currently we do not support windows as the
-        # upstream coverage wrapper is written in shell. Do not log any warning
-        # for now as it is not actionable.
+        # upstream coverage wrapper is written in shell.
         return None
 
     abi = "cp" + version_label(python_version)
     url, sha256 = _coverage_deps.get(abi, {}).get(platform, (None, ""))
 
     if url == None:
-        logger.warn(lambda: (
-            "rules_python's bundled coverage tool has no wheel for " +
-            "python_version={}, platform={}. `bazel coverage` will produce " +
-            "empty lcov for py_test targets in this configuration. Either " +
-            "pin python_version to a version in the bundled set (see " +
-            "python/private/coverage_deps.bzl), or configure coverage " +
-            "manually via py_runtime.coverage_tool. See docs/coverage.md."
-        ).format(python_version, platform))
+        # Toolchains are registered for every platform in PLATFORMS, most of
+        # which a given build never resolves, so warning here is noise. The
+        # empty-lcov outcome is reported by py_runtime instead, which is
+        # analyzed only for the runtime actually selected. See
+        # https://github.com/bazel-contrib/rules_python/issues/3950.
         return None
 
     maybe(

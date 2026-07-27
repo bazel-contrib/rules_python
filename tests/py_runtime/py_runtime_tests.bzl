@@ -20,9 +20,49 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
+load("//python/private:py_runtime_rule.bzl", "coverage_tool_missing_message")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_runtime_info_subject.bzl", "py_runtime_info_subject")
 
 _tests = []
+_basic_tests = []
+
+def _test_coverage_warning_when_enabled_and_no_tool(env):
+    # The only case that warrants a warning: coverage is being collected and the
+    # runtime that was selected cannot produce any.
+    msg = coverage_tool_missing_message(
+        coverage_enabled = True,
+        coverage_tool = None,
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(False)
+    env.expect.that_str(msg).contains("has no coverage_tool")
+    env.expect.that_str(msg).contains("//fake:runtime")
+
+_basic_tests.append(_test_coverage_warning_when_enabled_and_no_tool)
+
+def _test_no_coverage_warning_when_coverage_disabled(env):
+    # Without `bazel coverage` the missing tool has no observable effect, so
+    # saying anything would be noise on every ordinary build.
+    msg = coverage_tool_missing_message(
+        coverage_enabled = False,
+        coverage_tool = None,
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(True)
+
+_basic_tests.append(_test_no_coverage_warning_when_coverage_disabled)
+
+def _test_no_coverage_warning_when_tool_present(env):
+    # A configured coverage tool is the working case, whether it came from the
+    # bundled wheel set or from py_runtime.coverage_tool directly.
+    msg = coverage_tool_missing_message(
+        coverage_enabled = True,
+        coverage_tool = "some-coverage-tool-file",
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(True)
+
+_basic_tests.append(_test_no_coverage_warning_when_tool_present)
 
 def _simple_binary_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name)
@@ -557,5 +597,6 @@ _tests.append(_test_version_info_from_flag)
 def py_runtime_test_suite(name):
     test_suite(
         name = name,
+        basic_tests = _basic_tests,
         tests = _tests,
     )
