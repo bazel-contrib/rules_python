@@ -402,7 +402,10 @@ bzl_library(
 bzl_library(
     name = "unified_hub_repo",
     srcs = ["unified_hub_repo.bzl"],
-    deps = ["//python/private:text_util"],
+    deps = [
+        "//python/private:normalize_name",
+        "//python/private:text_util",
+    ],
 )
 
 bzl_library(

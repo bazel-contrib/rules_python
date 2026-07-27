@@ -1,89 +1,85 @@
 import argparse
-import unittest
-from unittest.mock import patch
 
-from tests.tools.private.release.release_test_helper import _mock_git_and_gh
 from tools.private.release.add_backports import AddBackports
 
+pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
-class CmdAddBackportsTest(unittest.TestCase):
-    def setUp(self):
-        _mock_git_and_gh(self)
-        self.addCleanup(patch.stopall)
-        self.mock_gh.resolve_pr_number.side_effect = lambda x: int(
-            x.lstrip("#").split("/")[-1]
-        )
 
-    def test_add_backports_explicit_issue(self):
-        args = argparse.Namespace(issue=123, prs=["124", "125"])
-        self.mock_gh.get_issue_body.return_value = """
+def test_add_backports_explicit_issue(mock_gh):
+    args = argparse.Namespace(issue=123, prs=["124", "125"])
+    mock_gh.issues[123] = {
+        "title": "Release 2.1.0",
+        "body": """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
 - [ ] Tag Final
 
 ## Backports
-"""
-        result = AddBackports(args, self.mock_gh).run()
+""",
+        "labels": ["type: release"],
+        "number": 123,
+        "url": "https://github.com/bazel-contrib/rules_python/issues/123",
+    }
+    result = AddBackports(args, mock_gh).run()
 
-        self.assertEqual(result, 0)
-        self.mock_gh.get_issue_body.assert_called_once_with(123)
-        self.mock_gh.update_issue_body.assert_called_once()
-        call_args = self.mock_gh.update_issue_body.call_args[0]
-        self.assertEqual(call_args[0], 123)
-        self.assertIn("- [ ] #124", call_args[1])
-        self.assertIn("- [ ] #125", call_args[1])
-        # Should also auto-add Tag RC0
-        self.assertIn("- [ ] Tag RC0", call_args[1])
-        self.assertIn("- [ ] Sync Changelog #124", call_args[1])
-        self.assertIn("- [ ] Sync Changelog #125", call_args[1])
+    assert result == 0
+    updated_body = mock_gh.get_issue_body(123)
+    assert "- [ ] #124" in updated_body
+    assert "- [ ] #125" in updated_body
+    assert "- [ ] Tag RC0" in updated_body
+    assert "- [ ] Sync Changelog #124" in updated_body
+    assert "- [ ] Sync Changelog #125" in updated_body
 
-    def test_add_backports_auto_discover_success(self):
-        args = argparse.Namespace(issue=None, prs=["124"])
-        self.mock_gh.get_open_tracking_issues.return_value = [
-            {"number": 456, "title": "Release 2.1.0", "url": "http://..."}
-        ]
-        self.mock_gh.get_issue_body.return_value = """
+
+def test_add_backports_auto_discover_success(mock_gh):
+    args = argparse.Namespace(issue=None, prs=["124"])
+    issue_num = mock_gh.create_issue(
+        title="Release 2.1.0",
+        body="""
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
 - [ ] Tag Final
 
 ## Backports
-"""
-        result = AddBackports(args, self.mock_gh).run()
+""",
+        labels=["type: release"],
+    )
+    result = AddBackports(args, mock_gh).run()
 
-        self.assertEqual(result, 0)
-        self.mock_gh.get_open_tracking_issues.assert_called_once()
-        self.mock_gh.get_issue_body.assert_called_once_with(456)
-        self.mock_gh.update_issue_body.assert_called_once_with(456, unittest.mock.ANY)
+    assert result == 0
+    updated_body = mock_gh.get_issue_body(issue_num)
+    assert "- [ ] #124" in updated_body
 
-    def test_add_backports_auto_discover_no_issues(self):
-        args = argparse.Namespace(issue=None, prs=["124"])
-        self.mock_gh.get_open_tracking_issues.return_value = []
 
-        result = AddBackports(args, self.mock_gh).run()
+def test_add_backports_auto_discover_no_issues(mock_gh):
+    args = argparse.Namespace(issue=None, prs=["124"])
 
-        self.assertEqual(result, 1)
-        self.mock_gh.get_open_tracking_issues.assert_called_once()
-        self.mock_gh.get_issue_body.assert_not_called()
+    result = AddBackports(args, mock_gh).run()
 
-    def test_add_backports_auto_discover_multiple_issues(self):
-        args = argparse.Namespace(issue=None, prs=["124"])
-        self.mock_gh.get_open_tracking_issues.return_value = [
-            {"number": 456, "title": "Release 2.1.0", "url": "http://..."},
-            {"number": 789, "title": "Release 2.2.0", "url": "http://..."},
-        ]
+    assert result == 1
 
-        result = AddBackports(args, self.mock_gh).run()
 
-        self.assertEqual(result, 1)
-        self.mock_gh.get_open_tracking_issues.assert_called_once()
-        self.mock_gh.get_issue_body.assert_not_called()
+def test_add_backports_auto_discover_multiple_issues(mock_gh):
+    args = argparse.Namespace(issue=None, prs=["124"])
+    mock_gh.create_issue(
+        title="Release 2.1.0", body="## Backports\n", labels=["type: release"]
+    )
+    mock_gh.create_issue(
+        title="Release 2.2.0", body="## Backports\n", labels=["type: release"]
+    )
 
-    def test_add_backports_no_auto_add_rc_if_pending(self):
-        args = argparse.Namespace(issue=123, prs=["124"])
-        self.mock_gh.get_issue_body.return_value = """
+    result = AddBackports(args, mock_gh).run()
+
+    assert result == 1
+
+
+def test_add_backports_no_auto_add_rc_if_pending(mock_gh):
+    args = argparse.Namespace(issue=123, prs=["124"])
+    mock_gh.issues[123] = {
+        "title": "Release 2.1.0",
+        "body": """
 ## Checklist
 - [ ] Prepare Release
 - [ ] Create Release branch
@@ -91,17 +87,15 @@ class CmdAddBackportsTest(unittest.TestCase):
 - [ ] Tag Final
 
 ## Backports
-"""
-        result = AddBackports(args, self.mock_gh).run()
+""",
+        "labels": ["type: release"],
+        "number": 123,
+        "url": "https://github.com/bazel-contrib/rules_python/issues/123",
+    }
+    result = AddBackports(args, mock_gh).run()
 
-        self.assertEqual(result, 0)
-        self.mock_gh.update_issue_body.assert_called_once()
-        call_args = self.mock_gh.update_issue_body.call_args[0]
-        self.assertNotIn("Tag RC1", call_args[1])
-        # Tag RC0 should still be there
-        self.assertIn("- [ ] Tag RC0", call_args[1])
-        self.assertIn("- [ ] Sync Changelog #124", call_args[1])
-
-
-if __name__ == "__main__":
-    unittest.main()
+    assert result == 0
+    updated_body = mock_gh.get_issue_body(123)
+    assert "Tag RC1" not in updated_body
+    assert "- [ ] Tag RC0" in updated_body
+    assert "- [ ] Sync Changelog #124" in updated_body

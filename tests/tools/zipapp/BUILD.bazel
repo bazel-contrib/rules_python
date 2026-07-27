@@ -1,19 +1,23 @@
-load("//python:py_test.bzl", "py_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
-py_test(
+pytest_test(
     name = "zipper_test",
     srcs = ["zipper_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = ["//tools/private/zipapp:zipper_lib"],
 )
 
-py_test(
+pytest_test(
     name = "exe_zip_maker_test",
     srcs = ["exe_zip_maker_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = ["//tools/private/zipapp:exe_zip_maker_lib"],
 )
 
-py_test(
+pytest_test(
     name = "zip_main_maker_test",
     srcs = ["zip_main_maker_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = ["//tools/private/zipapp:zip_main_maker_lib"],
 )

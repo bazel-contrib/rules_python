@@ -17,11 +17,14 @@ from google.antigravity.types import BuiltinTools
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", required=True, help="Path to prompt file")
+    parser.add_argument("--diff-file", help="Path to pre-computed diff file")
     return parser.parse_args()
 
 
-def get_pr_diff() -> str:
+def get_pr_diff(diff_file: str | None = None) -> str:
     """Fetches the git diff for the current pull request against origin/main."""
+    if diff_file and Path(diff_file).exists():
+        return Path(diff_file).read_text()
     try:
         return subprocess.check_output(
             ["git", "diff", "origin/main...HEAD"], text=True, stderr=subprocess.DEVNULL
@@ -35,7 +38,7 @@ async def main():
 
     # Read prompt file and pre-hydrate with the exact PR code diff
     base_prompt = Path(args.prompt).read_text()
-    diff_text = get_pr_diff()
+    diff_text = get_pr_diff(args.diff_file)
     prompt = (
         f"{base_prompt}\n\n## Pull Request Git Diff\n"
         f"Here is the exact code diff for this pull request:\n```diff\n{diff_text}\n```"

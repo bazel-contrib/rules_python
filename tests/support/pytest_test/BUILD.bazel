@@ -1,5 +1,4 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -20,11 +19,11 @@ bzl_library(
 # These aliases are used to avoid duplicate targets in the deps list
 alias(
     name = "default_pytest",
-    actual = "@pypi//pytest" if BZLMOD_ENABLED else "//python/private:empty",
+    actual = "@pypi//pytest",
 )
 
 # These aliases are used to avoid duplicate targets in the deps list
 alias(
     name = "default_pytest_bazel",
-    actual = "@pypi//pytest_bazel" if BZLMOD_ENABLED else "//python/private:empty",
+    actual = "@pypi//pytest_bazel",
 )

@@ -63,6 +63,16 @@ you can set the `publish_to_pypi` input to `false`:
 gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ```
 
+### Manually publishing to PyPI
+
+If PyPI publishing failed or was skipped during the main release, the PyPI
+publishing workflow can be triggered manually using the GitHub CLI (`gh`) or
+via the [GitHub Actions UI](https://github.com/bazel-contrib/rules_python/actions/workflows/publish_pypi.yaml):
+
+```shell
+gh workflow run publish_pypi.yaml --ref <TAG> -f tag_name=<TAG>
+```
+
 ### Determining Semantic Version
 
 **rules_python** uses [semantic version](https://semver.org), so releases with
@@ -250,5 +260,6 @@ The checklist items use metadata suffix: `| key=value key2=value2`.
 ### PyPI user rules-python
 
 Part of the release process uploads packages to PyPI as the user `rules-python`.
-This account is managed by Google; contact rules-python-pyi@google.com if
-something needs to be done with the PyPI account.
+This account is managed by `rickeylev`. Note that Google also has recovery access
+and can be contacted at rules-python-pypi@google.com if something needs to be
+done with the PyPI account.

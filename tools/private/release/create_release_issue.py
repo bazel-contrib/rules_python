@@ -42,7 +42,7 @@ class CreateReleaseIssue:
             lines = [line for line in lines if not re.search(r"Tag RC\d+", line)]
             template_content = "\n".join(lines)
 
-        issue_num = self.gh.create_tracking_issue(version, template_content)
+        issue_num = self.gh.create_release_tracking_issue(version, template_content)
         print(f"Created tracking issue #{issue_num} for v{version}")
         return 0
 

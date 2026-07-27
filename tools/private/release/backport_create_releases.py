@@ -162,7 +162,7 @@ class BackportCreateReleases:
                         )
                         new_issue_num = "<NEW_ISSUE_NUM>"
                     else:
-                        new_issue_num = self._gh.create_tracking_issue(
+                        new_issue_num = self._gh.create_release_tracking_issue(
                             version, issue_template
                         )
                         print(

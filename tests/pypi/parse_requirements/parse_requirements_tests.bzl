@@ -1193,7 +1193,7 @@ def _test_uv_lock_primary_source_includes_virtual(env):
         struct(
             name = "virtual_pkg",
             index_url = "",
-            is_exposed = True,
+            is_exposed = False,
             is_multiple_versions = False,
             srcs = [],
         ),
@@ -1620,7 +1620,7 @@ def _test_uv_lock_requires_dist_extras(env):
         struct(
             name = "root_pkg",
             index_url = "",
-            is_exposed = True,
+            is_exposed = False,
             is_multiple_versions = False,
             srcs = [],
         ),

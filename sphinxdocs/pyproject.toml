@@ -1,0 +1,15 @@
+[project]
+name = "sphinxdocs"
+version = "0.0.0"
+
+dependencies = [
+    "absl-py",
+    "markupsafe",
+    "myst-parser",
+    "readthedocs-sphinx-ext",
+    "sphinx",
+    "sphinx-autodoc2",
+    "sphinx-reredirects",
+    "sphinx_rtd_theme >=2.0", # uv insists on downgrading for some reason
+    "typing-extensions",
+]

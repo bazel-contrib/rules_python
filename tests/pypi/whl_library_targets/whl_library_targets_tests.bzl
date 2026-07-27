@@ -17,7 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
     "//python/private/pypi:whl_library_targets.bzl",
-    "whl_library_targets",
+    "whl_library_srcs",
     "whl_library_targets_from_requires",
 )  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
@@ -34,9 +34,8 @@ def _test_filegroups(env):
             return []
         return include
 
-    whl_library_targets(
+    whl_library_srcs(
         name = "",
-        dep_template = "",
         native = struct(
             filegroup = lambda **kwargs: calls.append(kwargs),
             glob = glob,
@@ -63,9 +62,8 @@ def _test_filegroups(env):
             "visibility": ["//visibility:public"],
         },
         {
-            "name": "whl",
+            "name": "whl_file",
             "srcs": [""],
-            "data": [],
             "visibility": ["//visibility:public"],
         },
     ])  # buildifier: @unsorted-dict-items
@@ -75,9 +73,8 @@ _tests.append(_test_filegroups)
 def _test_copy(env):
     calls = []
 
-    whl_library_targets(
+    whl_library_srcs(
         name = "",
-        dep_template = None,
         filegroups = {},
         copy_files = {"file_src": "file_dest"},
         copy_executables = {"exec_src": "exec_dest"},
@@ -151,17 +148,23 @@ def _test_whl_and_library_deps_from_requires(env):
 
     env.expect.that_collection(filegroup_calls).contains_exactly([
         {
-            "name": "whl",
+            "name": "whl_file",
             "srcs": ["foo-0-py3-none-any.whl"],
-            "data": ["@pypi//bar:whl"] + select({
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "whl",
+            # NOTE @aignas 2026-07-25: depending on the brackets position one may get different
+            # results in the expectation.
+            "data": ["whl_file"] + (["@pypi//bar:whl"] + select({
                 ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
                 "//conditions:default": [],
-            }),
+            })),
             "visibility": ["//visibility:public"],
         },
     ])  # buildifier: @unsorted-dict-items
 
-    env.expect.that_collection(py_library_calls).has_size(1)
+    env.expect.that_collection(py_library_calls).has_size(2)
     if len(py_library_calls) != 1:
         return
     py_library_call = py_library_calls[0]
@@ -238,9 +241,8 @@ def _test_sdist_excludes_record(env):
     m_glob.results.append([])  # data
     m_glob.results.append([])  # pyi
 
-    whl_library_targets(
+    whl_library_srcs(
         name = "foo.whl",
-        dep_template = "@pypi_{name}//:{target}",
         sdist_filename = "foo.tar.gz",
         filegroups = {},
         native = struct(

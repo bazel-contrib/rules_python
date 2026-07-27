@@ -21,10 +21,10 @@ jobs:
       - name: Workflow trigger check
         run: echo "Workflow triggered successfully."
 
-  review:
+  # Job 1: Runs without secrets to extract the git diff from untrusted PR code.
+  # Keeps GEMINI_API_KEY away from any environment that checks out untrusted PR files.
+  prepare_diff:
     runs-on: ubuntu-latest
-    # Trigger only if it is a regular comment on a pull request, the comment body has a line
-    # starting with "/review", and the commenter is a maintainer (OWNER, MEMBER, or COLLABORATOR).
     if: >
       github.event_name == 'issue_comment' && github.event.issue.pull_request != null &&
       (startsWith(github.event.comment.body, '/review') ||
@@ -32,19 +32,18 @@ jobs:
        contains(github.event.comment.body, '\r\n/review')) &&
       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     steps:
-      - name: Checkout PR Branch
+      - name: Checkout PR Branch (Data Only)
         uses: actions/checkout@v7
         with:
-          # Note: In GHA, during an issue_comment event on a PR, github.event.pull_request is null
-          # and the PR number is placed inside github.event.issue.number (because every PR is an issue).
-          # Therefore, github.event.issue.number is the PR number when checking out refs/pull/<number>/head.
           ref: refs/pull/${{ github.event.pull_request.number || github.event.issue.number }}/head
+          path: untrusted_pr_head
           persist-credentials: false
 
       - name: Fetch Base Branch and Negotiate Minimal Diff History
         env:
           PR_COMMITS: ${{ github.event.pull_request.commits }}
         run: |
+          cd untrusted_pr_head
           # 1. Fetch the tip of main
           git fetch origin main:refs/remotes/origin/main --depth=1
 
@@ -59,8 +58,27 @@ jobs:
               git fetch --unshallow || git fetch --deepen=50
             fi
           fi
+          git diff origin/main...HEAD > ../pr_diff.txt
 
-      - name: Checkout Reviewbot (Base Branch)
+      # Upload extracted diff as artifact to pass to Job 2 safely as text data.
+      - name: Upload Diff Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr_diff
+          path: pr_diff.txt
+
+  # Job 2: Runs with secrets in base branch context.
+  review:
+    needs: prepare_diff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Diff Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pr_diff
+
+      # Check out reviewbot into a separate directory to isolate base branch tool code.
+      - name: Checkout Reviewbot (Base Branch Only)
         uses: actions/checkout@v7
         with:
           sparse-checkout: |
@@ -71,9 +89,16 @@ jobs:
         uses: astral-sh/setup-uv@v8.3.2
 
       - name: Run Antigravity Review
+        # Run inside reviewbot directory so execution context is the trusted base branch.
+        # This also helps prevent uv from looking for config files in locations it shouldn't,
+        # i.e. by default, uv will look in $PWD for a pyproject file to build.
+        working-directory: reviewbot
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          uv run reviewbot/tools/private/reviewbot/antigravity_review.py \
-            --prompt reviewbot/tools/private/reviewbot/prompt.txt
+          # Use --no-project to prevent uv from discovering or building pyproject.toml/setup.py
+          # in the workspace, ensuring only standalone script dependencies are resolved.
+          uv run --no-project --directory . tools/private/reviewbot/antigravity_review.py \
+            --prompt tools/private/reviewbot/prompt.txt \
+            --diff-file ../pr_diff.txt

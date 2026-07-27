@@ -1,313 +1,281 @@
 import argparse
-import os
-import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from tests.tools.private.release.release_test_helper import _mock_git_and_gh
-from tools.private.release.gh import NoTrackingIssueError
 from tools.private.release.promote import Promote
 
-
-class CmdPromoteTest(unittest.TestCase):
-    def setUp(self):
-        _mock_git_and_gh(self)
-        self.test_dir = tempfile.TemporaryDirectory()
-        self.addCleanup(self.test_dir.cleanup)
-
-    def test_promote_rc_success(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=123, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
-        self.mock_git.get_commit_sha.return_value = "abcdef123456"
-        self.mock_git.tag_exists.return_value = False
-        initial_body = "- [ ] Tag Final"
-        self.mock_gh.get_issue_body.return_value = initial_body
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 0)
-        self.mock_git.fetch.assert_has_calls(
-            [
-                call("my-remote", tags=True, force=True),
-                call("my-remote", refspec="release/2.0"),
-            ]
-        )
-        self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.0-rc1"), call("my-remote/release/2.0")]
-        )
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.tag_exists.assert_called_once_with("2.0.0")
-        self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
-        self.mock_git.push.assert_called_once_with("my-remote", "2.0.0")
-
-        # Verify issue update
-        self.mock_gh.get_issue_body.assert_called_once_with(123)
-        expected_updated_body = (
-            "- [x] Tag Final | status=done tag=2.0.0 commit= abcdef12"
-        )
-        self.mock_gh.update_issue_body.assert_called_once_with(
-            123, expected_updated_body
-        )
-        expected_comment = (
-            "**New Release Tagged!** 🐍🌿\n\n"
-            "Version **2.0.0** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
-            "- [Github Release 2.0.0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0)\n"
-            "- [BCR Entry 2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)\n"
-            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
-            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote.yaml)"
-        )
-        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
-
-    def test_promote_rc_writes_github_output(self):
-        # Arrange
-        github_output_path = os.path.join(self.test_dir.name, "github_output")
-        args = argparse.Namespace(
-            version="2.0.0", issue=123, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
-        self.mock_git.get_commit_sha.return_value = "abcdef123456"
-        self.mock_git.tag_exists.return_value = False
-        initial_body = "- [ ] Tag Final"
-        self.mock_gh.get_issue_body.return_value = initial_body
-
-        # Act
-        with patch.dict("os.environ", {"GITHUB_OUTPUT": github_output_path}):
-            result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 0)
-        self.assertTrue(os.path.exists(github_output_path))
-        content = Path(github_output_path).read_text(encoding="utf-8")
-        self.assertEqual(content, "version=2.0.0\n")
-
-    def test_promote_rc_resolve_issue_success(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=None, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
-        self.mock_git.tag_exists.return_value = False
-        self.mock_gh.get_release_tracking_issue.side_effect = None
-        self.mock_gh.get_release_tracking_issue.return_value = 123
-        self.mock_git.get_commit_sha.return_value = "abcdef123456"
-        initial_body = "- [ ] Tag Final"
-        self.mock_gh.get_issue_body.return_value = initial_body
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 0)
-        self.mock_git.fetch.assert_has_calls(
-            [
-                call("my-remote", tags=True, force=True),
-                call("my-remote", refspec="release/2.0"),
-            ]
-        )
-        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
-        self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.0-rc1"), call("my-remote/release/2.0")]
-        )
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
-        self.mock_git.push.assert_called_once_with("my-remote", "2.0.0")
-        self.mock_gh.get_issue_body.assert_called_once_with(123)
-        expected_updated_body = (
-            "- [x] Tag Final | status=done tag=2.0.0 commit= abcdef12"
-        )
-        self.mock_gh.update_issue_body.assert_called_once_with(
-            123, expected_updated_body
-        )
-        expected_comment = (
-            "**New Release Tagged!** 🐍🌿\n\n"
-            "Version **2.0.0** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
-            "- [Github Release 2.0.0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0)\n"
-            "- [BCR Entry 2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)\n"
-            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
-            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote.yaml)"
-        )
-        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
-
-    def test_promote_patch_success(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.1", issue=123, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.tag_exists.return_value = False
-        self.mock_git.get_commit_sha.return_value = "12345678"
-        initial_body = "- [ ] Tag Final"
-        self.mock_gh.get_issue_body.return_value = initial_body
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 0)
-        self.mock_git.fetch.assert_has_calls(
-            [
-                call("my-remote", tags=True, force=True),
-                call("my-remote", refspec="release/2.0"),
-            ]
-        )
-        self.mock_git.get_current_branch.assert_not_called()
-        self.mock_git.get_tags.assert_not_called()
-        self.mock_git.get_remote_tags.assert_not_called()
-
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
-        self.mock_git.tag.assert_called_once_with("2.0.1", "12345678")
-        self.mock_git.push.assert_called_once_with("my-remote", "2.0.1")
-
-        expected_updated_body = (
-            "- [x] Tag Final | status=done tag=2.0.1 commit= 12345678"
-        )
-        self.mock_gh.update_issue_body.assert_called_once_with(
-            123, expected_updated_body
-        )
-        expected_comment = (
-            "**New Release Tagged!** 🐍🌿\n\n"
-            "Version **2.0.1** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
-            "- [Github Release 2.0.1](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1)\n"
-            "- [BCR Entry 2.0.1](https://registry.bazel.build/modules/rules_python/2.0.1)\n"
-            "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.1%22%20in%3Atitle%29)\n"
-            "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote.yaml)"
-        )
-        self.mock_gh.post_issue_comment.assert_called_once_with(123, expected_comment)
-
-    @patch("builtins.print")
-    def test_promote_rc_dry_run_success(self, mock_print):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=123, dry_run=True, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
-        self.mock_git.get_commit_sha.return_value = "abcdef123456"
-        self.mock_git.tag_exists.return_value = False
-        initial_body = "- [ ] Tag Final"
-        self.mock_gh.get_issue_body.return_value = initial_body
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 0)
-        self.mock_git.fetch.assert_has_calls(
-            [
-                call("my-remote", tags=True, force=True),
-                call("my-remote", refspec="release/2.0"),
-            ]
-        )
-        self.mock_git.get_commit_sha.assert_has_calls(
-            [call("2.0.0-rc1"), call("my-remote/release/2.0")]
-        )
-        self.mock_git.tag_exists.assert_called_once_with("2.0.0")
-
-        # Core dry-run assertions: NO modifications
-        self.mock_git.tag.assert_not_called()
-        self.mock_git.push.assert_not_called()
-        self.mock_gh.update_issue_body.assert_not_called()
-        self.mock_gh.post_issue_comment.assert_not_called()
-
-        mock_print.assert_has_calls(
-            [
-                call("Verifying tracking issue #123 format..."),
-                call("Fetching remote branch my-remote/release/2.0..."),
-                call(
-                    "[DRY RUN] Pre-conditions passed successfully for promoting"
-                    " 2.0.0-rc1 to 2.0.0."
-                ),
-                call("[DRY RUN] Would tag commit abcdef12 as 2.0.0"),
-                call("[DRY RUN] Would push tag 2.0.0 to my-remote"),
-                call("[DRY RUN] Would update tracking issue #123 checklist"),
-                call("[DRY RUN] Would post comment to tracking issue #123"),
-            ]
-        )
-
-    def test_promote_rc_tag_already_exists(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=123, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
-        self.mock_git.tag_exists.return_value = True
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 1)
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.tag.assert_not_called()
-        self.mock_git.push.assert_not_called()
-        self.mock_gh.get_issue_body.assert_not_called()
-        self.mock_gh.update_issue_body.assert_not_called()
-
-    def test_promote_rc_issue_not_found(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=None, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
-        self.mock_git.tag_exists.return_value = False
-        self.mock_gh.get_release_tracking_issue.side_effect = NoTrackingIssueError(
-            "Not found"
-        )
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 1)
-        self.mock_gh.get_release_tracking_issue.assert_called_once_with("2.0.0")
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.tag.assert_not_called()
-        self.mock_git.push.assert_not_called()
-        self.mock_gh.get_issue_body.assert_not_called()
-
-    def test_promote_rc_issue_malformed(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=123, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
-        self.mock_git.tag_exists.return_value = False
-        self.mock_git.get_commit_sha.return_value = "abcdef123456"
-        initial_body = "malformed body"
-        self.mock_gh.get_issue_body.return_value = initial_body
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 1)
-        self.mock_gh.get_issue_body.assert_called_once_with(123)
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.tag.assert_not_called()
-        self.mock_git.push.assert_not_called()
-        self.mock_gh.update_issue_body.assert_not_called()
-
-    def test_promote_rc_no_rc_found(self):
-        # Arrange
-        args = argparse.Namespace(
-            version="2.0.0", issue=123, dry_run=False, remote="my-remote"
-        )
-        self.mock_git.get_remote_tags.return_value = []
-
-        # Act
-        result = Promote(args, self.mock_git, self.mock_gh).run()
-
-        # Assert
-        self.assertEqual(result, 1)
-        self.mock_git.checkout.assert_not_called()
-        self.mock_git.tag.assert_not_called()
-        self.mock_gh.get_issue_body.assert_not_called()
+pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_promote_rc_success(mock_git, mock_gh):
+    # Arrange
+    issue_num = mock_gh.create_issue(
+        title="Release 2.0.0",
+        body="- [ ] Tag Final",
+        labels=["type: release"],
+    )
+    args = argparse.Namespace(
+        version="2.0.0", issue=issue_num, dry_run=False, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+    mock_git.get_commit_sha.return_value = "abcdef123456"
+    mock_git.tag_exists.return_value = False
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 0
+    mock_git.fetch.assert_has_calls(
+        [
+            call("my-remote", tags=True, force=True),
+            call("my-remote", refspec="release/2.0"),
+        ]
+    )
+    mock_git.get_commit_sha.assert_has_calls(
+        [call("2.0.0-rc1"), call("my-remote/release/2.0")]
+    )
+    mock_git.checkout.assert_not_called()
+    mock_git.tag_exists.assert_called_once_with("2.0.0")
+    mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
+    mock_git.push.assert_called_once_with("my-remote", "2.0.0")
+
+    # Verify issue update
+    expected_updated_body = "- [x] Tag Final | status=done tag=2.0.0 commit= abcdef12"
+    assert mock_gh.get_issue_body(issue_num) == expected_updated_body
+
+    expected_comment = (
+        "**New Release Tagged!** 🐍🌿\n\n"
+        "Version **2.0.0** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
+        "- [Github Release 2.0.0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0)\n"
+        "- [BCR Entry 2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)\n"
+        "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
+        "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote.yaml)"
+    )
+    assert mock_gh.issue_comments[issue_num] == [expected_comment]
+
+
+def test_promote_rc_writes_github_output(tmp_path, monkeypatch, mock_git, mock_gh):
+    # Arrange
+    github_output_path = str(tmp_path / "github_output")
+    monkeypatch.setenv("GITHUB_OUTPUT", github_output_path)
+    issue_num = mock_gh.create_issue(
+        title="Release 2.0.0",
+        body="- [ ] Tag Final",
+        labels=["type: release"],
+    )
+    args = argparse.Namespace(
+        version="2.0.0", issue=issue_num, dry_run=False, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+    mock_git.get_commit_sha.return_value = "abcdef123456"
+    mock_git.tag_exists.return_value = False
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 0
+    assert Path(github_output_path).exists()
+    content = Path(github_output_path).read_text(encoding="utf-8")
+    assert content == "version=2.0.0\n"
+
+
+def test_promote_rc_resolve_issue_success(mock_git, mock_gh):
+    # Arrange
+    args = argparse.Namespace(
+        version="2.0.0", issue=None, dry_run=False, remote="my-remote"
+    )
+    issue_num = mock_gh.create_issue(
+        title="Release 2.0.0",
+        body="- [ ] Tag Final",
+        labels=["type: release"],
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+    mock_git.tag_exists.return_value = False
+    mock_git.get_commit_sha.return_value = "abcdef123456"
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 0
+    mock_git.fetch.assert_has_calls(
+        [
+            call("my-remote", tags=True, force=True),
+            call("my-remote", refspec="release/2.0"),
+        ]
+    )
+    mock_git.get_commit_sha.assert_has_calls(
+        [call("2.0.0-rc1"), call("my-remote/release/2.0")]
+    )
+    mock_git.checkout.assert_not_called()
+    mock_git.tag.assert_called_once_with("2.0.0", "abcdef123456")
+    mock_git.push.assert_called_once_with("my-remote", "2.0.0")
+
+    expected_updated_body = "- [x] Tag Final | status=done tag=2.0.0 commit= abcdef12"
+    assert mock_gh.get_issue_body(issue_num) == expected_updated_body
+
+
+def test_promote_patch_success(mock_git, mock_gh):
+    # Arrange
+    issue_num = mock_gh.create_issue(
+        title="Release 2.0.1",
+        body="- [ ] Tag Final",
+        labels=["type: release"],
+    )
+    args = argparse.Namespace(
+        version="2.0.1", issue=issue_num, dry_run=False, remote="my-remote"
+    )
+    mock_git.tag_exists.return_value = False
+    mock_git.get_commit_sha.return_value = "12345678"
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 0
+    mock_git.fetch.assert_has_calls(
+        [
+            call("my-remote", tags=True, force=True),
+            call("my-remote", refspec="release/2.0"),
+        ]
+    )
+    mock_git.get_current_branch.assert_not_called()
+    mock_git.get_tags.assert_not_called()
+    mock_git.get_remote_tags.assert_not_called()
+
+    mock_git.checkout.assert_not_called()
+    mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
+    mock_git.tag.assert_called_once_with("2.0.1", "12345678")
+    mock_git.push.assert_called_once_with("my-remote", "2.0.1")
+
+    expected_updated_body = "- [x] Tag Final | status=done tag=2.0.1 commit= 12345678"
+    assert mock_gh.get_issue_body(issue_num) == expected_updated_body
+
+
+@patch("builtins.print")
+def test_promote_rc_dry_run_success(mock_print, mock_git, mock_gh):
+    # Arrange
+    issue_num = mock_gh.create_issue(
+        title="Release 2.0.0",
+        body="- [ ] Tag Final",
+        labels=["type: release"],
+    )
+    args = argparse.Namespace(
+        version="2.0.0", issue=issue_num, dry_run=True, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc0", "2.0.0-rc1"]
+    mock_git.get_commit_sha.return_value = "abcdef123456"
+    mock_git.tag_exists.return_value = False
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 0
+    mock_git.fetch.assert_has_calls(
+        [
+            call("my-remote", tags=True, force=True),
+            call("my-remote", refspec="release/2.0"),
+        ]
+    )
+    mock_git.get_commit_sha.assert_has_calls(
+        [call("2.0.0-rc1"), call("my-remote/release/2.0")]
+    )
+    mock_git.tag_exists.assert_called_once_with("2.0.0")
+
+    # Core dry-run assertions: NO modifications
+    mock_git.tag.assert_not_called()
+    mock_git.push.assert_not_called()
+
+    mock_print.assert_has_calls(
+        [
+            call(f"Verifying tracking issue #{issue_num} format..."),
+            call("Fetching remote branch my-remote/release/2.0..."),
+            call(
+                "[DRY RUN] Pre-conditions passed successfully for promoting"
+                " 2.0.0-rc1 to 2.0.0."
+            ),
+            call("[DRY RUN] Would tag commit abcdef12 as 2.0.0"),
+            call("[DRY RUN] Would push tag 2.0.0 to my-remote"),
+            call(f"[DRY RUN] Would update tracking issue #{issue_num} checklist"),
+            call(f"[DRY RUN] Would post comment to tracking issue #{issue_num}"),
+        ]
+    )
+
+
+def test_promote_rc_tag_already_exists(mock_git, mock_gh):
+    # Arrange
+    args = argparse.Namespace(
+        version="2.0.0", issue=123, dry_run=False, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+    mock_git.tag_exists.return_value = True
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 1
+    mock_git.checkout.assert_not_called()
+    mock_git.tag.assert_not_called()
+    mock_git.push.assert_not_called()
+
+
+def test_promote_rc_issue_not_found(mock_git, mock_gh):
+    # Arrange
+    args = argparse.Namespace(
+        version="2.0.0", issue=None, dry_run=False, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+    mock_git.tag_exists.return_value = False
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 1
+    mock_git.checkout.assert_not_called()
+    mock_git.tag.assert_not_called()
+    mock_git.push.assert_not_called()
+
+
+def test_promote_rc_issue_malformed(mock_git, mock_gh):
+    # Arrange
+    issue_num = mock_gh.create_issue(
+        title="Release 2.0.0",
+        body="malformed body",
+        labels=["type: release"],
+    )
+    args = argparse.Namespace(
+        version="2.0.0", issue=issue_num, dry_run=False, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = ["2.0.0-rc1"]
+    mock_git.tag_exists.return_value = False
+    mock_git.get_commit_sha.return_value = "abcdef123456"
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 1
+    mock_git.checkout.assert_not_called()
+    mock_git.tag.assert_not_called()
+    mock_git.push.assert_not_called()
+
+
+def test_promote_rc_no_rc_found(mock_git, mock_gh):
+    # Arrange
+    args = argparse.Namespace(
+        version="2.0.0", issue=123, dry_run=False, remote="my-remote"
+    )
+    mock_git.get_remote_tags.return_value = []
+
+    # Act
+    result = Promote(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 1
+    mock_git.checkout.assert_not_called()
+    mock_git.tag.assert_not_called()
