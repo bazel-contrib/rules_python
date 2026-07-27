@@ -14,8 +14,16 @@
 """Tests for RunfilesGroupInfo support (--runfiles_groups)."""
 
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
-load("@rules_runfiles_group//runfiles_group:lib.bzl", "runfiles_groups")
-load("@rules_runfiles_group//runfiles_group:providers.bzl", "RunfilesGroupInfo")
+
+# Loaded via the shim, not from @rules_runfiles_group directly: the repo is
+# only defined for Bazel versions where the feature is available (see
+# runfiles_groups_shim in internal_config_repo.bzl).
+load(
+    "@rules_python_internal//:runfiles_groups_shim.bzl",
+    "ENABLED_FLAG_LABEL",
+    "RunfilesGroupInfo",
+    "runfiles_groups",
+)
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
@@ -25,7 +33,7 @@ load("//python/private:runfiles_groups.bzl", "PyRunfilesGroupsInfo")  # buildifi
 
 _tests = []
 
-_UPSTREAM_FLAG = str(Label("@rules_runfiles_group//runfiles_group:enabled"))
+_UPSTREAM_FLAG = str(Label(ENABLED_FLAG_LABEL))
 _RULES_PYTHON_FLAG = str(Label("//python/config_settings:runfiles_groups"))
 
 _ENABLED = {_UPSTREAM_FLAG: True}
