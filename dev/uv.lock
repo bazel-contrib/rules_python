@@ -868,7 +868,7 @@ wheels = [
 ]
 
 [[package]]
-name = "rules-python-docs"
+name = "rules-python-dev"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [

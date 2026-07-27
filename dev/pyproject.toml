@@ -1,5 +1,5 @@
 [project]
-name = "rules_python_docs"
+name = "rules_python_dev"
 version = "0.0.0"
 
 dependencies = [

@@ -143,12 +143,12 @@ load("@pypiserver//:requirements.bzl", install_pypiserver = "install_deps", pypi
 install_pypiserver()
 
 #####################
-# Install sphinx for doc generation.
+# Install dev dependencies.
 
 pip_parse(
     name = "dev_pip",
     python_interpreter_target = interpreter,
-    requirements_lock = "//docs:requirements.txt",
+    requirements_lock = "//dev:requirements.txt",
 )
 
 load("@dev_pip//:requirements.bzl", dev_pip_requirements = "all_requirements", docs_install_deps = "install_deps")
