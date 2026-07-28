@@ -1,4 +1,7 @@
-"""Implementation of the _py_extension_wrapper rule."""
+"""Implementation of the _py_extension_wrapper rule.
+
+EXPERIMENTAL: This feature is experimental and may be changed or removed without notice.
+"""
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
@@ -97,6 +100,12 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
 def create_py_extension_wrapper_rule_builder(**kwargs):
     """Create a rule builder for the wrapper."""
     builder = ruleb.Rule(
+        doc = """
+:::{include} /_includes/experimental_api.md
+:::
+
+Internal wrapper rule for py_extension targets.
+""",
         implementation = _py_extension_wrapper_impl,
         attrs = PY_EXTENSION_WRAPPER_ATTRS,
         provides = [PyInfo],

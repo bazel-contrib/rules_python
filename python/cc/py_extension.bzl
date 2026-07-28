@@ -1,4 +1,7 @@
-"""Public API for py_extension."""
+"""Public API for py_extension.
+
+EXPERIMENTAL: This feature is experimental and may be changed or removed without notice.
+"""
 
 load(
     "//python/private/cc:py_extension_macro.bzl",
