@@ -47,6 +47,19 @@ BEGIN_UNRELEASED_TEMPLATE
 END_UNRELEASED_TEMPLATE
 -->
 
+{#v1-9-2}
+## [1.9.2] - 2026-07-28
+
+[1.9.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.9.2
+
+{#v1-9-2-fixed}
+### Fixed
+* (executables) `py_binary_rule_builder()` / `py_test_rule_builder()` (from
+  `python/api/executables.bzl`) no longer fail at analysis time with a
+  visibility error when used to construct a custom rule from an external
+  module. Fixes
+  ([#3919](https://github.com/bazel-contrib/rules_python/pull/3919)).
+
 {#v1-9-1}
 ## [1.9.1] - 2026-05-14
 
