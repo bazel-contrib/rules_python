@@ -76,7 +76,7 @@ cc_library(
 )
 ```
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 :::
 """,
 )

@@ -1,0 +1,13 @@
+load(":rule.bzl", "custom_py_binary")
+
+# This target's mere existence is the regression test: analyzing it exercises
+# the implicit attr defaults (build_data_writer, debugger_if_target_config,
+# uncachable_version_file) that py_binary_rule_builder() bundles from
+# rules_python's private package, from a rule() call made in this external
+# module.
+custom_py_binary(
+    name = "app",
+    srcs = ["app.py"],
+    main = "app.py",
+    visibility = ["//visibility:public"],
+)

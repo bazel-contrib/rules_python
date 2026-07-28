@@ -17,7 +17,7 @@
 
 load(
     "//python:versions.bzl",
-    "DEFAULT_RELEASE_BASE_URL",
+    "DEFAULT_RELEASE_BASE_URLS",
     "MINOR_MAPPING",
     "PLATFORMS",
     "TOOL_VERSIONS",
@@ -89,28 +89,13 @@ def python_register_toolchains(
     if bzlmod_toolchain_call:
         register_toolchains = False
 
-    base_url = kwargs.pop("base_url", DEFAULT_RELEASE_BASE_URL)
+    base_urls = kwargs.pop("base_urls", DEFAULT_RELEASE_BASE_URLS)
     tool_versions = tool_versions or TOOL_VERSIONS
     minor_mapping = minor_mapping or MINOR_MAPPING
 
     python_version = full_version(version = python_version, minor_mapping = minor_mapping)
 
     toolchain_repo_name = "{name}_toolchains".format(name = name)
-
-    # When using unreleased Bazel versions, the version is an empty string
-    if native.bazel_version:
-        bazel_major = int(native.bazel_version.split(".")[0])
-        if bazel_major < 6:
-            if register_coverage_tool:
-                # buildifier: disable=print
-                print((
-                    "WARNING: ignoring register_coverage_tool=True when " +
-                    "registering @{name}: Bazel 6+ required, got {version}"
-                ).format(
-                    name = name,
-                    version = native.bazel_version,
-                ))
-            register_coverage_tool = False
 
     # list[str] of the platform names that were used
     loaded_platforms = []
@@ -123,7 +108,12 @@ def python_register_toolchains(
             continue
 
         loaded_platforms.append(platform)
-        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(platform, python_version, base_url, tool_versions)
+        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(
+            platform,
+            python_version,
+            base_urls = base_urls,
+            tool_versions = tool_versions,
+        )
 
         # allow passing in a tool version
         coverage_tool = None

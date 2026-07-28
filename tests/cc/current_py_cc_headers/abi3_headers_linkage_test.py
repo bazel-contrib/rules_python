@@ -1,5 +1,3 @@
-import os.path
-import pathlib
 import sys
 import unittest
 
@@ -12,7 +10,9 @@ class CheckLinkageTest(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("win"), "requires windows")
     def test_linkage_windows(self):
         rf = runfiles.Create()
-        dll_path = rf.Rlocation("rules_python/tests/cc/current_py_cc_headers/bin_abi3.dll")
+        dll_path = rf.Rlocation(
+            "rules_python/tests/cc/current_py_cc_headers/bin_abi3.dll"
+        )
         pe = pefile.PE(dll_path)
         if not hasattr(pe, "DIRECTORY_ENTRY_IMPORT"):
             self.fail("No import directory found.")

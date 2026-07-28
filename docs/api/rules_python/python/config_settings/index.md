@@ -24,6 +24,86 @@ This is a transition flag and will be removed in a subsequent release.
 ::::
 :::
 
+::::{bzl:flag} build_python_zip
+Controls if a `py_binary/py_test` output is a self-executable zipapp.
+
+When enabled, the output of `py_binary` or `py_test` targets will be a
+self-executable zipapp.
+
+:::{note}
+This affects _all_ `py_binary` and `py_test` targets in the build, not
+only the target(s) specified on the command line.
+:::
+
+Values:
+* `true`
+* `false`
+
+This flag replaces the Bazel builtin `--build_python_zip` flag.
+
+:::{versionadded} 1.7.0
+:::
+::::
+
+::::{bzl:flag} debugger
+A target for providing a custom debugger dependency.
+
+This flag is roughly equivalent to putting a target in `deps`. It allows
+injecting a dependency into executables (`py_binary`, `py_test`) without having
+to modify their deps. The expectation is it points to a target that provides an
+alternative debugger (pudb, winpdb, debugpy, etc).
+
+* Must provide {obj}`PyInfo`.
+* This dependency is only used for the target config, i.e. build tools don't
+  have it added.
+
+:::{note}
+Setting this flag adds the debugger dependency, but doesn't automatically set
+`PYTHONBREAKPOINT` to change `breakpoint()` behavior.
+:::
+
+:::{versionadded} 1.9.0
+:::
+::::
+
+::::{bzl:flag} experimental_python_import_all_repositories
+Controls whether repository directories are added to the import path.
+
+When enabled, the top-level directories in the runfiles root directory (which
+are presumbed to be repository directories) are added to the Python import
+search path.
+
+It's recommended to set this to **`false`** to avoid external dependencies
+unexpectedly interferring with import searching.
+
+Values;
+* `true` (default)
+* `false`
+
+This flag replaces the Bazel builtin
+`--experimental_python_import_all_repositories` flag.
+
+:::{versionadded} 1.7.0
+:::
+::::
+
+::::{bzl:flag} python_path
+A fallback path to use for Python for particular legacy Windows-specific code paths.
+
+Deprecated, do not use. This flag is largely a no-op and was replaced by
+toolchains. It only remains for some legacy Windows code-paths that will
+be removed.
+
+This flag replaces the Bazel builtin `--python_path` flag.
+
+:::{deprecated} 1.7.0
+Use toolchains instead.
+:::
+
+:::{versionadded} 1.7.0
+:::
+::::
+
 :::{bzl:flag} python_version
 Determines the default hermetic Python toolchain version. This can be set to
 one of the values that `rules_python` maintains.
@@ -32,6 +112,29 @@ one of the values that `rules_python` maintains.
 :::{bzl:target} python_version_major_minor
 Parses the value of the `python_version` and transforms it into a `X.Y` value.
 :::
+
+::::{bzl:flag} incompatible_default_to_explicit_init_py
+Controls if missing `__init__.py` files are generated or not.
+
+If false, `py_binary` and `py_test` will, for every `*.py` and `*.so` file,
+create `__init__.py` files for the containing directory, and all parent
+directories, that do not already have an `__init__.py` file. If true, this
+behavior is disabled.
+
+It's recommended to disable this behavior to avoid surprising import effects
+from directories being importable when they otherwise wouldn't be, and for
+how it can interfere with implicit namespace packages.
+
+Values:
+* `true`: do not generate missing `__init__.py` files
+* `false` (default): generate missing `__init__.py` files
+
+This flag replaces the Bazel builtin
+`--incompatible_default_to_explicit_init_py` flag.
+
+:::{versionadded} 1.7.0
+:::
+::::
 
 :::{bzl:target} is_python_*
 config_settings to match Python versions
@@ -66,7 +169,7 @@ If you need to match a version that isn't present, then you have two options:
    )
    ```
 
-2. Use {obj}`python.single_override` to re-introduce the desired version so
+2. Use {obj}`python.single_version_override` to re-introduce the desired version so
    that the corresponding `//python/config_setting:is_python_XXX` target is
    generated.
 :::
@@ -139,6 +242,44 @@ The `auto` value
 The `omit_if_generated_source` value was removed
 ::::
 
+::::{bzl:flag} validate_test_main
+Determines if `py_test` runs a build-time validation that its main module
+actually runs tests.
+
+A common `py_test` pitfall is to define test classes or functions but forget
+to add code that runs them (for example, assuming `py_test` automatically
+invokes `unittest` or `pytest`). When that happens, the test does nothing and
+silently passes.
+
+When enabled, a validation action statically analyzes the main module and
+fails the build if it defines test classes or functions but its top-level body
+is "inert" -- i.e. it only contains definitions, imports, assignments, and
+docstrings, with nothing that actually runs tests (such as an
+`if __name__ == "__main__":` guard that invokes a test runner).
+
+A module that defines no classes or functions at all (for example, one that
+only imports other modules) is always allowed, since it isn't the
+"defined some tests but forgot to run them" case this check targets.
+
+This is only applicable to `py_test` targets that have a `main` source file;
+targets using `main_module` are not checked.
+
+Values:
+
+* `auto`: (default) Automatically decide the effective value; the current
+  behavior is `disabled`.
+* `enabled`: Run the validation action.
+* `disabled`: Don't run the validation action.
+
+:::{note}
+Enabling this requires the exec tools toolchain (with an exec interpreter) to
+be registered, which is the case for the default hermetic toolchains.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} py_linux_libc
 Set what libc is used for the target platform. This will affect which whl binaries will be pulled and what toolchain will be auto-detected. Currently `rules_python` only supplies toolchains compatible with `glibc`.
 
@@ -168,48 +309,6 @@ This flag points to a target providing {obj}`EnvMarkerInfo`, which determines
 the values used when environment markers are resolved at build time.
 
 :::{versionadded} 1.5.0
-:::
-::::
-
-::::{bzl:flag} pip_whl
-Set what distributions are used in the `pip` integration.
-
-Values:
-* `auto`: Prefer `whl` distributions if they are compatible with a target
-  platform, but fallback to `sdist`. This is the default.
-* `only`: Only use `whl` distributions and error out if it is not available.
-* `no`: Only use `sdist` distributions. The wheels will be built non-hermetically in the `whl_library` repository rule.
-:::{versionadded} 0.33.0
-:::
-::::
-
-::::{bzl:flag} pip_whl_osx_arch
-Set what wheel types we should prefer when building on the OSX platform.
-
-Values:
-* `arch`: Prefer architecture specific wheels.
-* `universal`: Prefer universal wheels that usually are bigger and contain binaries for both, Intel and ARM architectures in the same wheel.
-:::{versionadded} 0.33.0
-:::
-::::
-
-::::{bzl:flag} pip_whl_glibc_version
-Set the minimum `glibc` version that the `py_binary` using `whl` distributions from a PyPI index should support.
-
-Values:
-* `""`: Select the lowest available version of each wheel giving you the maximum compatibility. This is the default.
-* `X.Y`: The string representation of a `glibc` version. The allowed values depend on the `requirements.txt` lock file contents.
-:::{versionadded} 0.33.0
-:::
-::::
-
-::::{bzl:flag} pip_whl_muslc_version
-Set the minimum `muslc` version that the `py_binary` using `whl` distributions from a PyPI index should support.
-
-Values:
-* `""`: Select the lowest available version of each wheel giving you the maximum compatibility. This is the default.
-* `X.Y`: The string representation of a `muslc` version. The allowed values depend on the `requirements.txt` lock file contents.
-:::{versionadded} 0.33.0
 :::
 ::::
 
@@ -289,6 +388,22 @@ Values:
 
 ::::
 
+::::{bzl:flag} venv
+Determines which PyPI repository hub is used when resolving package dependencies.
+
+This flag is transitioned on automatically by executable targets (`py_binary`, `py_test`)
+to select the appropriate concrete PyPI hub (e.g., when fallback or disjoint packages exist across multiple hubs).
+
+Values:
+* `auto`: (default) Resolves dependencies using the fallback or first available hub.
+* `<hub_name>`: Explicitly forces resolution of packages from the
+  specified concrete PyPI hub (corresponding to a
+  {obj}`pip.parse.hub_name` value).
+
+:::{versionadded} 2.2.0
+:::
+::::
+
 ::::{bzl:flag} venvs_use_declare_symlink
 
 Determines if relative symlinks are created using `declare_symlink()` at build
@@ -311,3 +426,16 @@ is created.
 :::{versionadded} 1.2.0
 :::
 ::::
+
+
+## Removed Flags
+
+:::{versionremoved} 2.1.0
+The following flags were removed:
+
+* `pip_whl`
+* `pip_whl_osx_arch`
+* `pip_whl_glibc_version`
+* `pip_whl_muslc_version`
+:::
+

@@ -26,6 +26,8 @@ load("//python:versions.bzl", "MINOR_MAPPING", "TOOL_VERSIONS")
 load("//python/private:pythons_hub.bzl", "hub_repo")  # buildifier: disable=bzl-visibility
 load("//python/private:runtime_env_repo.bzl", "runtime_env_repo")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:deps.bzl", "pypi_deps")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library.bzl", "whl_library")  # buildifier: disable=bzl-visibility
+load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")  # buildifier: disable=bzl-visibility
 
 def rules_python_internal_setup():
     """Setup for development and testing of rules_python itself."""
@@ -59,3 +61,25 @@ def rules_python_internal_setup():
     bazel_features_deps()
     rules_shell_dependencies()
     rules_shell_toolchains()
+
+    whl_from_dir_repo(
+        name = "whl_with_data1_whl",
+        root = "//tests/repos/whl_with_data1:BUILD.bazel",
+        output = "whl_with_data1-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "whl_with_data1",
+        whl_file = "@whl_with_data1_whl//:whl_with_data1-1.0-any-none-any.whl",
+        requirement = "whl-with-data1",
+    )
+
+    whl_from_dir_repo(
+        name = "whl_with_data2_whl",
+        root = "//tests/repos/whl_with_data2:BUILD.bazel",
+        output = "whl_with_data2-1.0-any-none-any.whl",
+    )
+    whl_library(
+        name = "whl_with_data2",
+        whl_file = "@whl_with_data2_whl//:whl_with_data2-1.0-any-none-any.whl",
+        requirement = "whl-with-data2",
+    )

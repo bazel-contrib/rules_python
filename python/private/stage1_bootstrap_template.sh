@@ -6,14 +6,38 @@ if [[ -n "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
   set -x
 fi
 
-# runfiles-relative path
+# Creates a symlink. If the symlink already exists, it is tolerated to avoid
+# race conditions during startup.
+function _symlink() {
+  local target="$1"
+  local link="$2"
+  if ln -s "$target" "$link" 2>/dev/null; then
+    return 0
+  fi
+  # If it failed, maybe it already exists because of a race.
+  if [[ -L "$link" || -e "$link" ]]; then
+    return 0
+  fi
+  # If it doesn't exist, maybe we don't have write permission in the directory.
+  local dir
+  dir=$(dirname "$link")
+  if [[ ! -w "$dir" ]]; then
+    echo >&2 "ERROR: Cannot create symlink $link: Directory $dir is not writable"
+  else
+    echo >&2 "ERROR: Failed to create symlink $link -> $target"
+  fi
+  return 1
+}
+
+
+# runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
-# runfiles-relative path to python interpreter to use.
+# runfiles-root-relative path to python interpreter to use.
 # This is the `bin/python3` path in the binary's venv.
 PYTHON_BINARY='%python_binary%'
 # The path that PYTHON_BINARY should symlink to.
-# runfiles-relative path, absolute path, or single word.
+# runfiles-root-relative path, absolute path, or single word.
 # Only applicable for zip files or when venv is recreated at runtime.
 PYTHON_BINARY_ACTUAL="%python_binary_actual%"
 
@@ -85,9 +109,9 @@ else
       stub_filename="$PWD/$stub_filename"
     fi
     while true; do
-      module_space="${stub_filename}.runfiles"
-      if [[ -d "$module_space" ]]; then
-        echo "$module_space"
+      runfiles_root="${stub_filename}.runfiles"
+      if [[ -d "$runfiles_root" ]]; then
+        echo "$runfiles_root"
         return 0
       fi
       if [[ "$stub_filename" == *.runfiles/* ]]; then
@@ -105,8 +129,8 @@ else
   RUNFILES_DIR=$(find_runfiles_root $0)
 fi
 
-if [[ -n "$RULES_PYTHON_TESTING_TELL_MODULE_SPACE" ]]; then
-  export RULES_PYTHON_TESTING_MODULE_SPACE="$RUNFILES_DIR"
+if [[ -n "$RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT" ]]; then
+  export RULES_PYTHON_TESTING_RUNFILES_ROOT="$RUNFILES_DIR"
 fi
 
 function find_python_interpreter() {
@@ -153,7 +177,7 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
   fi
   # The bin/ directory may not exist if it is empty.
   mkdir -p "$(dirname $python_exe)"
-  ln -s "$symlink_to" "$python_exe"
+  _symlink "$symlink_to" "$python_exe"
 elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   if [[ -n "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
     use_exec=1
@@ -211,7 +235,7 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
         read -r resolved_py_exe
         read -r resolved_site_packages
       } < <("$python_exe_actual" -I <<EOF
-import sys, site, os
+import sys, site
 print(sys.executable)
 print(site.getsitepackages(["$venv"])[-1])
 EOF
@@ -226,16 +250,16 @@ EOF
     fi
 
     mkdir -p "$venv/bin"
-    ln -s "$python_exe_actual" "$python_exe"
+    _symlink "$python_exe_actual" "$python_exe"
 
     if [[ ! -e "$venv_site_packages" ]]; then
       mkdir -p $(dirname $venv_site_packages)
-      ln -s "$runfiles_venv_site_packages" "$venv_site_packages"
+      _symlink "$runfiles_venv_site_packages" "$venv_site_packages"
     fi
   fi
 
   if [[ ! -e "$venv/pyvenv.cfg" ]]; then
-    ln -s "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
+    _symlink "$runfiles_venv/pyvenv.cfg" "$venv/pyvenv.cfg"
   fi
 else
   use_exec=1
@@ -285,8 +309,14 @@ fi
 
 export RUNFILES_DIR
 
+if command -v env >/dev/null 2>&1; then
+  ENV_CMD="env"
+else
+  ENV_CMD="/usr/bin/env"
+fi
+
 command=(
-  env
+  "$ENV_CMD"
   "${interpreter_env[@]}"
   "$python_exe"
   "${interpreter_args[@]}"

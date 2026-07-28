@@ -37,6 +37,20 @@ first in the import path. If you find yourself in this situation, then you'll
 need to manually configure coverage (see below).
 :::
 
+:::{note}
+The bundled `coverage` wheel set covers CPython 3.9 through 3.14 (with
+freethreaded variants for 3.13+), and not every platform within that range.
+When the interpreter that `bazel coverage` actually selects has no bundled
+wheel, `configure_coverage_tool = True` produces no coverage tool and
+`bazel coverage` emits empty lcov data; manually configure coverage (see
+below) instead.
+
+`py_runtime` warns when this happens. The warning is emitted during analysis,
+for the runtime toolchain resolution selected and only when coverage is being
+collected, so it does not fire for the many platforms toolchains are
+registered for but a given build never uses.
+:::
+
 ## Manually configuring coverage
 
 To manually configure coverage support, you'll need to set the

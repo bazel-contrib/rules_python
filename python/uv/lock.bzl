@@ -21,8 +21,13 @@ Differences with the legacy {obj}`compile_pip_requirements` rule:
 - This does not error out if the output file does not exist yet.
 - Supports transitions out of the box.
 
-Note, this does not provide a `test` target, if you would like to add a test
-target that always does the locking automatically to ensure that the
+Note, this does not provide a test target like {obj}`compile_pip_requirements` does.
+The `uv pip compile` command is not hermetic and thus a test based on it would most likely be flaky:
+- It may require auth injected into it, so most likely it requires a local tag added so that the bazel action runs without sandboxing.
+- It requires network access.
+
+Given those points, a test target should be an explicit and properly documented target and not a hidden implicit target.
+If, you would like to add a test target that always does the locking automatically to ensure that the
 `requirements.txt` file is up-to-date, add something similar to:
 
 ```starlark
@@ -37,6 +42,28 @@ lock(
 native_test(
     name = "requirements_test",
     src = "requirements.update",
+)
+```
+
+### `[tool.uv]` settings support
+
+When a `pyproject.toml` file is included in {attr}`lock.srcs`, the
+`--project` flag is automatically passed to `uv pip compile` using the
+directory of the shortest-path `pyproject.toml`. This causes `uv` to
+read `[tool.uv]` settings such as `no-build-isolation`,
+`exclude-dependencies`, and `[tool.uv.workspace]` from that file.
+
+If the auto-detection doesn't select the right project (e.g. in complex
+workspace layouts), use the `project` parameter to override it:
+
+```starlark
+lock(
+    name = "requirements",
+    srcs = [
+        "pyproject.toml",
+        "requirements.in",
+    ],
+    project = "subproject",
 )
 ```
 

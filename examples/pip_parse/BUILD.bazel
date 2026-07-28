@@ -45,9 +45,6 @@ py_test(
     deps = [":main"],
 )
 
-# For pip dependencies which have entry points, the `entry_point` macro can be
-# used from the generated `pip_parse` repository to access a runnable binary.
-
 py_console_script_binary(
     name = "yamllint",
     pkg = "@pypi//yamllint",
@@ -79,5 +76,8 @@ py_test(
         "WHEEL_DIST_INFO_CONTENTS": "$(rootpaths @pypi//requests:dist_info)",
         "YAMLLINT_ENTRY_POINT": "$(rlocationpath :yamllint)",
     },
-    deps = ["@rules_python//python/runfiles"],
+    deps = [
+        "@pypi//libclang",
+        "@rules_python//python/runfiles",
+    ],
 )

@@ -14,6 +14,7 @@ class RunTest(unittest.TestCase):
             "rules_python/tests/support/current_build_settings.json"
         )
         settings = json.loads(pathlib.Path(settings_path).read_text())
+
         if platform.system() == "Windows":
             self.assertEqual(
                 "/_magic_pyruntime_sentinel_do_not_use", settings["interpreter_path"]

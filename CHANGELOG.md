@@ -20,46 +20,568 @@ A brief description of the categories of changes:
 * Particular sub-systems are identified using parentheses, e.g. `(bzlmod)` or
   `(docs)`.
 
-<!--
-BEGIN_UNRELEASED_TEMPLATE
-
-{#v0-0-0}
+{#unreleased}
 ## Unreleased
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
 
-{#v0-0-0-removed}
-### Removed
+Unreleased changes are tracked as individual files in the [news/](./news)
+directory, or view the [latest generated
+changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
-* Nothing removed.
-{#v0-0-0-changed}
+{#v2-2-0}
+## [2.2.0] - 2026-06-30
+
+[2.2.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.2.0
+
+{#v2-2-0-changed}
 ### Changed
-* Nothing changed.
+* Renamed most public bzl_library targets from `{foo}_bzl` to `{foo}` to follow
+gazelle naming conventions. Deprecated aliases are left for backwards
+compatibility.
+* (binaries/tests) Added a deprecation warning for targets relying on implicit `__init__.py` creation.
 
-{#v0-0-0-fixed}
+{#v2-2-0-fixed}
 ### Fixed
-* Nothing fixed.
+* Fixed a flaky error on Windows 2022 when looking up the win32 version during
+site initialization by retrying the lookup
+([#3721](https://github.com/bazel-contrib/rules_python/issues/3721)).
+* (binaries) Fixed building of legacy zipapps on Windows execution platforms by
+  using a hermetic tool instead of host `cat`.
+* (bootstrap) Fixed stage 1 bootstrap imports when target outputs shadow
+  standard library modules.
+* (coverage) Skip lcov report when no data was collected.
+* (pypi) Fixed `experimental_index_url` checking truthiness before envsubst
+expansion.
+* (rules) Fixed venv output paths for `py_binary` and `py_test` targets whose
+names contain path separators so distinct targets with the same basename no
+longer share the same venv output directory.
+* (windows) Fixed build data generation on localized Windows installations.
 
-{#v0-0-0-added}
+{#v2-2-0-added}
 ### Added
-* Nothing added.
+* Added {bzl:obj}`features.loadable_symbols` to allow detecting public symbols
+exported by bzl files.
+* Exposed {bzl:obj}`VenvSymlinkEntry` and {bzl:obj}`VenvSymlinkKind` in
+{bzl:target}`//python:py_info.bzl`.
+* (pypi) Added `@pypi` repo: a unified hub of `pip.parse` hubs.
+* (pypi) Added a `dep` tag class to the `pip` bzlmod extension. This allows
+  modules to declare abstract PyPI dependencies, ensuring target structures
+  exist in the unified hub, while allowing other modules to provide the
+  concrete implementation via `pip.parse`.
+* (uv) Support for basic `uv.lock` generation via the `lock` rule
+and basic support for importing the `uv.lock` file itself. Since this
+may have bugs, please report this by creating new tickets.
+Work towards [#2787](https://github.com/bazel-contrib/rules_python/issues/2787)
+and [#1975](https://github.com/bazel-contrib/rules_python/issues/1975).
 
 
-END_UNRELEASED_TEMPLATE
--->
 
-{#v0-0-0}
-## Unreleased
+{#v2-1-0}
+## [2.1.0] - 2026-06-17
 
-[0.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/0.0.0
+[2.1.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.1.0
 
-{#v0-0-0-removed}
+{#v2-1-0-removed}
+### Removed
+* (build_data) Removed CONFIG_MODE from build data
+  ([#3793](https://github.com/bazel-contrib/rules_python/issues/3793)).
+* (coverage) Support for python 3.8 has been dropped from the bundled
+  `coverage.py` wheel set, since coverage.py 7.6.2 dropped it.
+
+{#v2-1-0-changed}
+### Changed
+* (bzlmod) How default runtimes are registered has changed to use a manifest
+  of SHAs and URLs. `TOOL_VERSIONS` in `python/versions.bzl` is now empty under
+  bzlmod.
+* (gazelle) WORKSPACE's bazel-gazelle dependency bumped from 0.36.0 to 0.47.0.
+  The go version was also bumped from 1.21.13 to 1.22.9.
+* (gazelle) `python_generate_pyi_deps` and `python_generate_pyi_srcs` now
+  default to `true`.
+* (pypi) The data files of a wheel (bin, includes, etc) are now always included
+  as a library's data dependencies.
+* (coverage) When `configure_coverage_tool = True` is set but the bundled
+  `coverage.py` wheel set has no entry for the requested python version and
+  platform, a warning is now printed instead of silently producing an empty
+  coverage report.
+
+{#v2-1-0-fixed}
+### Fixed
+* (gazelle) `py_library` and `py_test` targets with missing source files can now be
+  removed by Gazelle ([#3375](https://github.com/bazel-contrib/rules_python/issues/3375)). 
+  However `map_kind` and `alias_kind` will not be removed unless people are running a 
+  gazelle version that includes 
+  [bazel-gazelle#2362](https://github.com/bazel-contrib/bazel-gazelle/pull/2362)
+* (bootstrap) Fixed a potential race condition with symlink creation during
+  startup.
+* (gazelle) Fixed handling of auto-included `__init__.py` files when generating `py_binary`
+  targets ([#3729](https://github.com/bazel-contrib/rules_python/issues/3729)).
+* (entry_point) From now on `mypy` type checking will be skipped on the generated
+  files ([#3126](https://github.com/bazel-contrib/rules_python/issues/3126)).
+* (pypi) Support `--experimental_isolated_extension_usages`
+  ([#3668](https://github.com/bazel-contrib/rules_python/issues/3668)).
+* (uv) use the astral.sh mirror as the preferred url for binary downloads,
+  with github.com as a fallback; for uv >= 0.11.0, read the checksums directly
+  from the dist-manifest contents.
+* (pypi) Fix `importlib.metadata.files` by ensuring `RECORD` is included in
+  installed wheel targets, except when built from sdist
+  ([#3024](https://github.com/bazel-contrib/rules_python/issues/3024)).
+* (system_python) Fix AttributeError exception on Debian 10 Buster
+  python installations which may not set `sys._base_executable`
+  ([#3774](https://github.com/bazel-contrib/rules_python/issues/3774)).
+* (windows) Fix `py_test`/`py_binary` failure when the target name contains
+  path separators; the bootstrap stub is now declared as a sibling of the
+  `.exe` launcher
+  ([#3789](https://github.com/bazel-contrib/rules_python/issues/3789)).
+* Fix the forwarding of `target_compatible_with` from `compile_pip_requirements`
+  towards the underlying `*.update` target.
+  ([#3787](https://github.com/bazel-contrib/rules_python/pull/3787))
+* (uv) allow user overwrite the build environment using `--action_env` to allow
+  setting authentication for the index URL.
+  ([#3405](https://github.com/bazel-contrib/rules_python/issues/3405))
+* (uv) fix the execution of the `uv pip compile` in the sandbox. Work
+  towards better supporting `uv` out of the box on our platforms.
+  ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+* (uv) automatically pass the `--project` parameter based on the source files.
+  ([#3087](https://github.com/bazel-contrib/rules_python/issues/3087))
+* (coverage) handle nested coverage collection
+  ([#3823](https://github.com/bazel-contrib/rules_python/pull/3823))
+
+{#v2-1-0-added}
+### Added
+* (toolchain) Added {obj}`PyRuntimeInfo.interpreter_files_to_run` so action
+  consumers can execute an in-build runtime interpreter with its runfiles.
+* (toolchains) Support dynamically fetching and registering Python runtimes
+  from a python-build-standalone manifest file using
+  `python.override(add_runtime_manifest_urls = ..., runtime_manifest_sha = ...)`.
+* (toolchain) Added {obj}`python.override.toolchain_target_settings` to allow
+  adding `config_setting` labels to all registered toolchains.
+* (windows) Full venv support for Windows is available. Set
+  {obj}`--venvs_site_packages=yes` to enable.
+* (test/binaries) When {obj}`--venv_site_packages=yes` is enabled,
+  wheel `data`, `bin`, and `include` files are populated into the venv.
+* (runfiles) Added a pathlib-compatible API: {obj}`Runfiles.root()`
+  Fixes [#3296](https://github.com/bazel-contrib/rules_python/issues/3296).
+* (gazelle) Support alias_kind directive.
+  Fixes [#3183](https://github.com/bazel-contrib/rules_python/issues/3183).
+* (pypi) `package_metadata` support, fixes 
+  [#2054](https://github.com/bazel-contrib/rules_python/issues/2054).
+* (coverage) Add support for python 3.14 and bump `coverage.py` to 7.10.7.
+
+
+{#v2-0-3}
+## [2.0.3] - 2026-06-15
+
+[2.0.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.3
+
+{#v2-0-3-fixed}
+### Fixed
+* (pypi) Assume that all of the packages are available on a particular hub if
+  there is only a single PyPI compatible index to be used. This saves us an expensive
+  PyPI download and supports PyPI mirror implementations that do not support the root
+  index functionality. Fixes [#3769](https://github.com/bazel-contrib/rules_python/pull/3769).
+
+{#v2-0-2}
+## [2.0.2] - 2026-05-14
+
+[2.0.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.2
+
+{#v2-0-2-added}
+### Added
+* (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
+* (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
+* Python toolchain from [20260414] release.
+
+[20260325]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260325
+[20260414]: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
+
+{#v2-0-1}
+## [2.0.1] - 2026-05-08
+
+[2.0.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.1
+
+{#v2-0-1-fixed}
+### Fixed
+
+* (pypi) Fix the versions of packages that we are recording to a `MODULE.bazel.lock` file
+  facts by passing all of the versions to the `get_index` function.
+  Fixes [#3756](https://github.com/bazel-contrib/rules_python/issues/3756).
+* (bzlmod) Reduce default verbosity of our loggers for non-root modules
+  ([#3749](https://github.com/bazel-contrib/rules_python/issues/3749)).
+
+{#v2-0-0}
+## [2.0.0] - 2026-04-09
+
+[2.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0
+
+{#v2-0-0-removed}
+### Removed
+* Nothing removed.
+
+{#v2-0-0-changed}
+### Changed
+
+**Breaking**
+* {obj}`--windows_enable_symlinks` is required. Add `startup
+  --windows_enable_symlinks` to your `.bazelrc` to enable Bazel using full
+  symlink support on Windows.
+* venv-based binaries are created by default ({obj}`--bootstrap_impl=system_python`)
+  on supported platforms (Linux/Mac with Bazel 8+, or Windows).
+* `--build_python_zip` on Windows is ignored. Use {obj}`py_zipapp_binary` to create
+  zips of Python programs.
+* (pypi) Previously `experimental_index_url` users would not need to specify
+  target platforms if cross-building is required. From now we will only pull
+  wheels for the host OS to better align with how the rules work with the legacy
+  `pip` implementation. Use {obj}`pip.parse.target_platforms` to customize the
+  behavior.
+  Related to [#260](https://github.com/bazel-contrib/rules_python/issues/260).
+
+Other changes:
+* (pypi) Update dependencies used for `compile_pip_requirements`, building
+  sdists in the `whl_library` rule and fetching wheels using `pip`.
+* (pypi) Before using the bazel downloader to fetch the PyPI package metadata
+  we will from now on fetch the lists of available packages on each index. The
+  used package mappings will be written as facts to the `MODULE.bazel.lock` file
+  on supported bazel versions and it should be done at most once. As a result,
+  per-package {obj}`experimental_index_url_overrides` is no longer needed, but
+  if specified, it needs to be provided for all packages not on the default index. What
+  is more, the flags for `--index_url` and `--extra-index-url` now behave in the
+  same way as in `uv` or `pip`, i.e. we default to `--index-url` if the package
+  is not found in `--extra-index-url`.  Fixes
+  ([#3260](https://github.com/bazel-contrib/rules_python/issues/3260) and
+  [#2632](https://github.com/bazel-contrib/rules_python/issues/2632)).
+* (uv) We will now use the download URL specified in the `uv`'s
+ `dist_manifest.json` file. If you have redirects or blocking rules as part of
+  your downloader setup, you may need to adjust them. What is more, the default
+  uv version has been bumped `0.11.2`.
+* (runfiles): Type annotations are no longer tested for Python 3.9.
+* Windows no longer defaults to creating a zip file and extracting it; a
+  symlink-based runfiles tree is created, as on unix-like platforms.
+
+{#v2-0-0-fixed}
+### Fixed
+* (toolchain) Also set Make variables for local toolchains.
+* (zipapp) Resolve issue passing through compression settings in
+  `py_zippapp_binary` targets
+  ([#3646](https://github.com/bazel-contrib/rules_python/issues/3646)).
+* (toolchains) The pyc created at runtime in the stdlib should no longer
+  cause the Python runtime repository to be invalidated. The stdlib pyc files
+  _may_ be reused in between invocations, depending upon the sandboxing
+  configuration. See the {any}`RULES_PYTHON_PYCACHE_DIR` environment variable
+  for more information.
+  ([#3643](https://github.com/bazel-contrib/rules_python/issues/3643)).
+* (bootstrap) Fixed incorrect runfiles path construction in bootstrap
+  scripts when binary is defined in another bazel module
+  ([#3563](https://github.com/bazel-contrib/rules_python/issues/3563)).
+* (bootstrap) Resolve `RUNFILES_DIR` inheritance issues, which lead to a child
+  Python binary incorrectly using it's parent's Python binary environment
+  ([#3518](https://github.com/bazel-contrib/rules_python/issues/3518)).
+* (uv) Downloads for versions `>=0.10` work again. In order to fix this we had
+  drop support for `powerpc64` platform. People interested in the platform can
+  bring it back via the `uv.default` API. Like:
+  ```
+  uv.default(
+      compatible_with = [
+          "@platforms//os:linux",
+          "@platforms//cpu:ppc",
+      ],
+      platform = "powerpc64-unknown-linux-gnu",
+  )
+  ```
+  Fixes [#3676](https://github.com/bazel-contrib/rules_python/issues/3676).
+* (pypi) Fixes wheel extraction on hosts without python installed,
+  Fixes [#3712](https://github.com/bazel-contrib/rules_python/issues/3712).
+
+{#v2-0-0-added}
+### Added
+* (pypi) Write SimpleAPI contents to the `MODULE.bazel.lock` file if using
+  {obj}`experimental_index_url` which should speed up consecutive
+  initializations and should no longer require the network access if the cache is
+  hydrated.  Implements
+  [#2731](https://github.com/bazel-contrib/rules_python/issues/2731).
+* (pypi) The `--index-url` and `--extra-index-url` is now parsed from the lock
+  file and the {obj}`pip.parse.experimental_index_url` and
+  {obj}`pip.parse.experimental_extra_index_urls` is
+  no longer mandatory to leverage the bazel downloader.
+  Implements
+  [#1357](https://github.com/bazel-contrib/rules_python/issues/1357),
+  [#2951](https://github.com/bazel-contrib/rules_python/issues/2951).
+* (pypi) If cross-compilation is needed, use the {obj}`pip.parse.target_platforms`
+  to specify exactly which platforms should be supported.
+  Implements
+  [#260](https://github.com/bazel-contrib/rules_python/issues/260).
+* (wheel) Specifying a path ending in `/` as a destination in `data_files`
+  will now install file(s) to a folder, preserving their basename.
+* Various attributes and fields added to support venvs on Windows:
+  * {obj}`py_runtime.venv_bin_files` and {obj}`PyRuntime.venv_binfiles`
+    field added to specify additional Python runtime files Windows needs for
+    venvs.
+  * {obj}`PyExecutableInfo.venv_interpreter_runfiles`, and
+    {obj}`PyExecutableInfo.venv_interpreter_symlinks` adde
+* (wheel) Add support for `add_path_prefix` argument in `py_wheel` which can be
+  used to prepend a prefix to the files in the wheel.
+
+{#v1-9-1}
+## [1.9.1] - 2026-05-14
+
+[1.9.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.9.1
+
+{#v1-9-1-added}
+### Added
+* (toolchains) `3.13.12`, `3.14.3` Python toolchain from [20260325] release.
+* (toolchains) `3.10.20`, `3.11.15`, `3.12.13`, `3.13.13` `3.14.4`, `3.15.0a8`
+* Python toolchain from [20260414] release.
+
+{#v1-9-0}
+## [1.9.0] - 2026-02-21
+
+[1.9.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.9.0
+
+{#v1-9-0-removed}
+### Removed
+* Nothing removed.
+
+{#v1-9-0-changed}
+### Changed
+* **DEPRECATED: implicit zipapp support**
+  * Implicit zipapp output of `py_binary`/`py_test` has been deprecated and
+    replaced by separate {obj}`py_zipapp_binary` and {obj}`py_zipapp_test`
+    rules. See
+    [#3567](https://github.com/bazel-contrib/rules_python/issues/3567)
+    for a detailed migration guide.
+* (toolchains) stop exposing config settings in python toolchain alias repos.
+  Please consider depending on the flags defined in
+  `//python/config_setting/...` and the `@platforms` package instead.
+* (binaries/tests) The `PYTHONBREAKPOINT` environment variable is automatically inherited
+* (binaries/tests) The {obj}`stamp` attribute now transitions the Bazel builtin
+  {flag}`--stamp` flag.
+* (pypi) Now the RECORD file patches will follow the quoted or unquoted filenames convention
+  in order to make `pytorch` and friends easier to patch.
+* (wheel) `py_wheel` no longer expands the input depset during analysis,
+  improving analysis performance for targets with large dependency trees.
+* (binaries/tests) (Windows) `--enable_runfiles=true` is the default for
+  `py_binary/py_test`. Prior behavior can be restored by adding
+  `@rules_python//command_line_option:enable_runfiles=false` or
+  `@rules_python//command_line_option:enable_runfiles=INHERIT` to the
+  `config_settings` attribute. NOTE: `enable_runfiles=true` will
+  soon become **required for Windows**.
+
+{#v1-9-0-fixed}
+### Fixed
+* (tests) No more coverage warnings are being printed if there are no sources.
+  ([#2762](https://github.com/bazel-contrib/rules_python/issues/2762))
+* (gazelle) Ancestor `conftest.py` files are added in addition to sibling `conftest.py`.
+  ([#3497](https://github.com/bazel-contrib/rules_python/issues/3497)) Note
+  that this behavior can be reverted to the pre-1.9.0 behavior by setting the new
+  `python_include_ancestor_conftest` directive to `false`.
+* (binaries/tests) Stamped build data generated by Windows actions is readable
+
+{#v1-9-0-added}
+### Added
+* (binaries/tests) {obj}`--debugger`: allows specifying an extra dependency
+  to add to binaries/tests for custom debuggers.
+* (binaries/tests) Build information is now included in binaries and tests.
+  Use the `bazel_binary_info` module to access it. The {flag}`--stamp` flag will
+  add {obj}`--workspace_status_command` information.
+* (gazelle) A new directive `python_generate_pyi_srcs` has been added. When
+  `true`, a `py_*` target's `pyi_srcs` attribute will be set if any `.pyi` files
+  that are associated with the target's `srcs` are present.
+  ([#3354](https://github.com/bazel-contrib/rules_python/issues/3354)).
+* (zipapp) {obj}`py_zipapp_binary` and {obj}`py_zipapp_test` rules added. These
+  will replace `--build_python_zip` and the zip output group of
+  `py_binary/py_test`. The zipapp rules support more functionality, correctness,
+  and have better build performance.
+* (toolchains) Added {obj}`PyExecToolsInfo.exec_runtime` for more easily
+  getting an RBE-compatible runtime to use for build actions.
+* (providers) {obj}`PyExecutableInfo` has several new fields to aid packaging
+  of binaries: {obj}`PyExecutableInfo.app_runfiles`,
+  {obj}`PyExecutableInfo.interpreter_args`,
+  {obj}`PyExecutableInfo.stage2_bootstrap`, and
+  {obj}`PyExecutableInfo.venv_python_exe`.
+* (tools/wheelmaker.py) Added support for URL requirements according to PEP 508
+  in Requires-Dist metadata. ([#3569](https://github.com/bazel-contrib/rules_python/pull/3569))
+* (gazelle) A new directive `python_include_ancestor_conftest` has been added.
+  When `false`, ancestor `conftest` targets are not automatically added to
+  {bzl:obj}`py_test` target dependencies. This `false` behavior is how things
+  were in `rules_python` before 1.9.0. The default is `true`, as the prior behavior
+  was technically incorrect.
+  ([#3596](https://github.com/bazel-contrib/rules_python/pull/3596))
+
+
+{#v1-8-5}
+## [1.8.5] - 2026-02-22
+
+[1.8.5]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.5
+
+{#v1-8-5-fixed}
+### Fixed
+* (runfiles) Fixed `CurrentRepository()` raising `ValueError` on Windows.
+  ([#3579](https://github.com/bazel-contrib/rules_python/issues/3579))
+* (pypi) `pip_parse` no longer silently drops PEP 508 URL-based requirements
+  (`pkg @ https://...`) when `extract_url_srcs=False` (the default for
+  `pip_repository`).
+* (pypi) Extras in requirement strings are now normalized per PEP 685,
+  fixing missing transitive dependencies when extras contain hyphens
+  (e.g., `sqlalchemy[postgresql-psycopg2binary]`).
+  ([#3587](https://github.com/bazel-contrib/rules_python/issues/3587))
+
+{#v1-8-4}
+## [1.8.4] - 2026-02-10
+
+[1.8.4]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.4
+
+{#v1-8-4-fixed}
+### Fixed
+* (pipstar): A corner case of evaluation of version specifiers (`"1.2" ~= "1.2.0"`)
+  has been fixed improving compatibility with the PEP440 standard.
+  Fixes [#3580](https://github.com/bazel-contrib/rules_python/issues/3580).
+* (pipstar): We now add read permissions after extracting wheels for the cases
+  where the `whl` file is missing them.
+  Fixes [#3554](https://github.com/bazel-contrib/rules_python/issues/3554).
+
+{#v1-8-3}
+## [1.8.3] - 2026-01-27
+
+[1.8.3]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.3
+
+{#v1-8-3-fixed}
+### Fixed
+* (pipstar) Fix whl extraction on Windows when bazelrc has XX flags.
+  Fixes [#3543](https://github.com/bazel-contrib/rules_python/issues/3543).
+
+{#v1-8-2}
+## [1.8.2] - 2026-01-24
+
+[1.8.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.2
+
+{#v1-8-2-fixed}
+### Fixed
+* (venvs) relax the C library filename check to make tensorflow work
+  Fixes [#3524](https://github.com/bazel-contrib/rules_python/issues/3529).
+
+{#v1-8-1}
+## [1.8.1] - 2026-01-20
+
+[1.8.1]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.1
+
+{#v1-8-1-fixed}
+### Fixed
+* (pipstar) Extra resolution that refers back to the package being resolved works again.
+  Fixes [#3524](https://github.com/bazel-contrib/rules_python/issues/3524).
+
+{#v1-8-0}
+## [1.8.0] - 2025-12-19
+
+[1.8.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.8.0
+
+{#v1-8-0-known-issues}
+### Known Issues
+* (gazelle) Windows support for the Gazelle plugin may be broken. See
+  [#3416](https://github.com/bazel-contrib/rules_python/issues/3416) for
+  details and possible workarounds.
+
+{#v1-8-0-removed}
+### Removed
+* (toolchain) Remove all of the python 3.8 toolchain support out of the box. Users need
+  to pass the `TOOL_VERSIONS` that include 3.8 toolchains or use the `bzlmod` APIs to add
+  them back. This means any hub `pip.parse` calls that target `3.8` will be ignored from
+  now on. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
+  {bzl:obj}`python.single_version_override`, like:
+
+  ```starlark
+  python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+
+  python.single_version_override(
+      python_version = "3.8.20",
+      sha256 = {
+          "aarch64-apple-darwin": "2ddfc04bdb3e240f30fb782fa1deec6323799d0e857e0b63fa299218658fd3d4",
+          "aarch64-unknown-linux-gnu": "9d8798f9e79e0fc0f36fcb95bfa28a1023407d51a8ea5944b4da711f1f75f1ed",
+          "x86_64-apple-darwin": "68d060cd373255d2ca5b8b3441363d5aa7cc45b0c11bbccf52b1717c2b5aa8bb",
+          "x86_64-pc-windows-msvc": "41b6709fec9c56419b7de1940d1f87fa62045aff81734480672dcb807eedc47e",
+          "x86_64-unknown-linux-gnu": "285e141c36f88b2e9357654c5f77d1f8fb29cc25132698fe35bb30d787f38e87",
+      },
+      urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20241002/cpython-{python_version}+20241002-{platform}-{build}.tar.gz"],
+  )
+  ```
+* (toolchain) Remove all of the python 3.9 toolchain versions except for the `3.9.25`.
+  This version has reached EOL and will no longer receive any security fixes, please update to
+  `3.10` or above. ([#2704](https://github.com/bazel-contrib/rules_python/issues/2704))
+* (toolchain) `ignore_root_user_error` has now been flipped to be always enabled and
+  the `chmod` of the python toolchain directories have been removed. From now on `rules_python`
+  always adds the `pyc` files to the glob excludes and in order to avoid any problems when using
+  the toolchains in the repository phase, ensure that you pass `-B` to the python interpreter.
+  ([#2016](https://github.com/bazel-contrib/rules_python/issues/2016))
+
+{#v1-8-0-changed}
+### Changed
+* (toolchains) Use toolchains from the [20251031] release.
+* (gazelle) Internally split modules mapping generation to be per-wheel for concurrency and caching.
+* (pip) `pipstar` has been enabled for all `whl_library` instances where the whl
+  is passed through a label or downloaded using the bazel downloader
+  ([#2949](https://github.com/bazel-contrib/rules_python/issues/2949)).
+* (pypi) `pipstar` flag default has been flipped to be on by default.
+  It can be disabled through `RULES_PYTHON_ENABLE_PIPSTAR=0` environment variable.
+  If you do need to disable it, please add a comment to
+  [#2949](https://github.com/bazel-contrib/rules_python/issues/2949).
+* (gazelle deps) rules_go bumped from 0.55.1 to 0.59.0
+* (gazelle deps) gazelle bumped from 0.36.0 to 0.47.0
+
+{#v1-8-0-fixed}
+### Fixed
+* (gazelle) Remove {obj}`py_binary` targets with invalid `srcs`. This includes files
+  that are not generated or regular files.
+  [#3046](https://github.com/bazel-contrib/rules_python/pull/3046)
+* (runfiles) Fix incorrect Python runfiles path assumption - the existing
+  implementation assumes that it is always four levels below the runfiles
+  directory, leading to incorrect path checks
+  ([#3085](https://github.com/bazel-contrib/rules_python/issues/3085)).
+* (toolchains) local toolchains now tell the `sys.abiflags` value of the
+  underlying runtime.
+* (toolchains) various local toolchain fixes: add abi3 header targets,
+  fixes to linking, Windows DLL detection, and defines for free threaded
+  runtimes.
+* (toolchains) The `python_headers` target is now compatible with
+  layering_check.
+* (performance) 90% reduction in py_binary/py_test analysis phase cost.
+  ([#3381](https://github.com/bazel-contrib/rules_python/pull/3381)).
+* (gazelle) Fix `gazelle_python_manifest.test` so that it accesses manifest files via `runfile` path handling rather than directly ([#3397](https://github.com/bazel-contrib/rules_python/issues/3397)).
+* (core rules) For the system_python bootstrap, the runfiles root is added to
+  sys.path.
+* (sphinxdocs) The sphinxdocs `.serve` target is now compatible with Bazel's `--symlink_prefix`
+  flag ([#3410](https://github.com/bazel-contrib/rules_python/issues/3410)).
+
+{#v1-8-0-added}
+### Added
+* (toolchains) `3.9.25` Python toolchain from [20251031] release.
+* (toolchains) `3.13.10`, `3.14.1` Python toolchain from [20251202] release.
+* (toolchains) `3.13.11`, `3.14.2`, `3.15.0a2` Python toolchains from [20251209] release.
+* (pypi) API to tell `pip.parse` which platforms users care about. This is very useful to  ensure
+  that when users do `bazel query` for their deps, they don't have to download all of the
+  dependencies for all of the available wheels. Torch wheels can be up of 1GB and it takes a lot
+  of time to download those, which is unnecessary if only the host platform builds are necessary
+  to be performed. This is mainly for backwards/forwards compatibility whilst rolling out
+  `RULES_PYTHON_ENABLE_PIPSTAR=1` by default. Users of `experimental_index_url` that perform
+  cross-builds should add {obj}`target_platforms` to their `pip.parse` invocations, which will
+  become mandatory if any cross-builds are required from the next release.
+* (py_library) Attribute {obj}`namespace_package_files` added. It is a hint for
+  optimizing venv creation.
+
+[20251031]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251031
+[20251202]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251202
+[20251209]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251209
+
+{#v1-7-0}
+## [1.7.0] - 2025-10-11
+
+[1.7.0]: https://github.com/bazel-contrib/rules_python/releases/tag/1.7.0
+
+{#v1-7-0-removed}
 ### Removed
 * (core rules) Support for Bazel's long deprecated "extra actions" has been
   removed
   ([#3215](https://github.com/bazel-contrib/rules_python/issues/3215)).
 
-{#v0-0-0-changed}
+{#v1-7-0-changed}
 ### Changed
 * (deps) bumped rules_cc dependency to `0.1.5`.
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, `PYTHONPATH` is no
@@ -69,9 +591,31 @@ END_UNRELEASED_TEMPLATE
 * (bootstrap) For {obj}`--bootstrap_impl=system_python`, the sys.path order has
   changed from `[app paths, stdlib, runtime site-packages]` to `[stdlib, app
   paths, runtime site-packages]`.
+* (pip) Publishing deps are no longer pulled via `experimental_index_url`.
+  ([#2937](https://github.com/bazel-contrib/rules_python/issues/2937)).
+* (toolchains) `py_runtime` and `PyRuntimeInfo` reject Python 2 settings.
+  Setting `py_runtime.python_version = "PY2"` or non-None
+  `PyRuntimeInfo.py2_runtime` is an error.
+* (pypi) `pipstar` flag has been implemented for `WORKSPACE` and can be flipped to be enabled using `RULES_PYTHON_ENABLE_PIPSTAR=1` environment variable. If you do, please
+  add a comment to
+  [#2949](https://github.com/bazel-contrib/rules_python/issues/2949) if you run into any
+  problems.
+  With this release we are deprecating {obj}`pip.parse.experimental_target_platforms` and
+  `pip_repository.experimental_target_platforms`. For users using `WORKSPACE` and
+  vendoring the `requirements.bzl` file, please re-vendor so that downstream is unaffected
+  when the APIs get removed. If you need to customize the way the dependencies get
+  evaluated, see [our docs](https://rules-python.readthedocs.io/en/latest/pypi/download.html#customizing-requires-dist-resolution) on customizing `Requires-Dist` resolution.
+* (toolchains) Added Python versions 3.15.0a1, 3.14.0, 3.13.9, 3.12.12, 3.11.14, 3.10.19, and 3.9.24
+  from the [20251014] release.
+* (deps) (bzlmod) Upgraded to `bazel-skylib` version
+  [1.8.2](https://github.com/bazelbuild/bazel-skylib/releases/tag/1.8.2)
 
-{#v0-0-0-fixed}
+[20251014]: https://github.com/astral-sh/python-build-standalone/releases/tag/20251014
+
+{#v1-7-0-fixed}
 ### Fixed
+* (rules) The `PyInfo` constructor was setting the wrong value for
+  `has_py3_only_sources` - this is now fixed.
 * (bootstrap) The stage1 bootstrap script now correctly handles nested `RUNFILES_DIR`
   environments, fixing issues where a `py_binary` calls another `py_binary`
   ([#3187](https://github.com/bazel-contrib/rules_python/issues/3187)).
@@ -79,11 +623,27 @@ END_UNRELEASED_TEMPLATE
   length errors due to too long environment variables.
 * (bootstrap) {obj}`--bootstrap_impl=script` now supports the `-S` interpreter
   setting.
-* (venvs) {obj}`--vens_site_packages=yes` no longer errors when packages with
+* (venvs) {obj}`--venvs_site_packages=yes` no longer errors when packages with
   overlapping files or directories are used together.
   ([#3204](https://github.com/bazel-contrib/rules_python/issues/3204)).
+* (venvs) {obj}`--venvs_site_packages=yes` works for packages that dynamically
+  link to shared libraries
+  ([#3228](https://github.com/bazel-contrib/rules_python/issues/3228)).
+* (venvs) {obj}`--venvs_site_packages=yes` includes `pth` files at the root of the
+  site-packages folder
+  ([#3339](https://github.com/bazel-contrib/rules_python/issues/3339)).
+* (uv) {obj}`//python/uv:lock.bzl%lock` now works with a local platform
+  runtime.
+* (pypi) `linux_riscv64` is added to the platforms list in `_pip_repository_impl`,
+  which fixes [a build issue for tensorflow on riscv64](https://github.com/bazel-contrib/rules_python/discussions/2729).
+* (toolchains) WORKSPACE builds now correctly register musl and freethreaded
+  variants. Setting {obj}`--py_linux_libc=musl` and `--py_freethreaded=yes` now
+  activate them, respectively.
+  ([#3262](https://github.com/bazel-contrib/rules_python/issues/3262)).
+* (rules) {obj}`py_console_script_binary` is now compatible with symbolic macros
+  ([#3195](https://github.com/bazel-contrib/rules_python/pull/3195)).
 
-{#v0-0-0-added}
+{#v1-7-0-added}
 ### Added
 * (runfiles) The Python runfiles library now supports Bazel's
   `--incompatible_compact_repo_mapping_manifest` flag.
@@ -107,6 +667,10 @@ END_UNRELEASED_TEMPLATE
     {obj}`py_cc_toolchain.headers_abi3`, and {obj}`PyCcToolchainInfo.headers_abi3`.
   * {obj}`//python:features.bzl%features.headers_abi3` can be used to
     feature-detect the presense of the above.
+* (toolchains) Local toolchains can use a label for the interpreter to use.
+* (pypi) Support for environment marker handling and `experimental_index_url` handling for
+  Windows ARM64 for Python 3.11 and later
+  ([#2276](https://github.com/bazel-contrib/rules_python/issues/2276)).
 
 {#v1-6-3}
 ## [1.6.3] - 2025-09-21
@@ -120,7 +684,7 @@ END_UNRELEASED_TEMPLATE
   the right wheel when there are multiple wheels for the target platform
   (e.g. `musllinux_1_1_x86_64` and `musllinux_1_2_x86_64`). If the user
   wants to set the minimum version for the selection algorithm, use the
-  {attr}`pip.defaults.whl_platform_tags` attribute to configure that. If
+  {obj}`pip.default.whl_platform_tags` attribute to configure that. If
   `musllinux_*_x86_64` is specified, we will choose the lowest available
   wheel version. Fixes [#3250](https://github.com/bazel-contrib/rules_python/issues/3250).
 

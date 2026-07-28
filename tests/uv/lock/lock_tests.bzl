@@ -14,6 +14,7 @@
 
 ""
 
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:native_binary.bzl", "native_test")
 load("//python/uv:lock.bzl", "lock")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
@@ -65,6 +66,8 @@ def lock_test_suite(name):
             "requirements.update",
             "requirements.run",
             "testdata/requirements.txt",
+            "uv_lock_test.run",
+            ":requirements",
         ],
         main = "lock_run_test.py",
         tags = [
@@ -77,19 +80,26 @@ def lock_test_suite(name):
             # `--index-url`.
             "no-remote-exec",
         ],
-        # FIXME @aignas 2025-03-19: It seems that currently:
-        # 1. The Windows runners are not compatible with the `uv` Windows binaries.
-        # 2. The Python launcher is having trouble launching scripts from within the Python test.
-        target_compatible_with = select({
-            "@platforms//os:windows": ["@platforms//:incompatible"],
-            "//conditions:default": [],
-        }),
     )
 
-    # document and check that this actually works
-    native_test(
+    # Document and check that the action output matches the in-source file.
+    diff_test(
         name = "requirements_test",
-        src = ":requirements.update",
+        timeout = "short",
+        file1 = ":requirements",
+        file2 = "testdata/requirements.txt",
+    )
+
+    lock(
+        name = "uv_lock_test",
+        srcs = ["testdata/pyproject.toml"],
+        out = "testdata/uv_lock_expected.lock",
+        tags = ["no-remote-exec"],
+    )
+
+    native_test(
+        name = "uv_lock_test_check",
+        src = ":uv_lock_test.update",
         target_compatible_with = select({
             "@platforms//os:windows": ["@platforms//:incompatible"],
             "//conditions:default": [],
@@ -100,6 +110,8 @@ def lock_test_suite(name):
         name = name,
         tests = [
             ":requirements_test",
+            "//tests/uv/lock/pyproject_toml:requirements_test",
             ":requirements_run_tests",
+            ":uv_lock_test_check",
         ],
     )

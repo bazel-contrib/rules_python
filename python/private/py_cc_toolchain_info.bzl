@@ -64,7 +64,7 @@ fields:
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 The {obj}`features.headers_abi3` attribute can be used to detect if this
 attribute is available or not.
 :::

@@ -1,0 +1,8 @@
+load("//python:py_test.bzl", "py_test")
+
+py_test(
+    name = "news_test",
+    srcs = ["news_test.py"],
+    data = ["//news:news_files"],
+    deps = ["//python/runfiles"],
+)

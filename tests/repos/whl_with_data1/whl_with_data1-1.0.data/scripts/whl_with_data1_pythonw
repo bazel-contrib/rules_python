@@ -1,0 +1,9 @@
+#!pythonw
+import sys
+
+# On Windows, pythonw doesn't have stdout/stderr streams,
+# so output has to be written to a file.
+with open(sys.argv[1], "w") as fp:
+    fp.write("hello from whl_with_data1_pythonw\n")
+    fp.write(sys.executable)
+    fp.write("\n")

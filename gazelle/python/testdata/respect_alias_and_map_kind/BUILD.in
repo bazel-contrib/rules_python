@@ -1,0 +1,16 @@
+load(":mylib.bzl", "my_py_library")
+
+# gazelle:alias_kind my_py_library py_library
+# gazelle:map_kind py_test my_test :mytest.bzl
+
+my_py_library(
+    name = "respect_alias_and_map_kind",
+    srcs = ["__init__.py"],
+)
+
+my_test(
+    name = "respect_alias_and_map_kind_test",
+    srcs = ["__test__.py"],
+    main = "__test__.py",
+    deps = [],
+)

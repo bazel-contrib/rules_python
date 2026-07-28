@@ -105,7 +105,7 @@ integration test.
    ```
    bazel run //tools/private/update_deps:update_coverage_deps <VERSION>
    # for example:
-   # bazel run //tools/private/update_deps:update_coverage_deps 7.6.1
+   # bazel run //tools/private/update_deps:update_coverage_deps 7.10.7
    ```
 
 ## Updating tool dependencies
@@ -117,6 +117,7 @@ to have everything self-documented, we have a special target,
 of the requirement-updating scripts in sequence in one go. This can be done once per release as
 we prepare for releases.
 
+(creating-backport-prs)=
 ## Creating Backport PRs
 
 The steps to create a backport PR are:

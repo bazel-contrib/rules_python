@@ -16,6 +16,10 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_python_internal//:rules_python_config.bzl", "config")
+load("//python/private:py_interpreter_program.bzl", "PyInterpreterProgramInfo")
+load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
+load(":builders.bzl", "builders")
 load(":cc_helper.bzl", "cc_helper")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "PyInfoBuilder")
@@ -36,120 +40,113 @@ PYTHON_FILE_EXTENSIONS = [
     "dylib",  # Python C modules, Mac specific
     "py",
     "pyc",
+    "pth",  # import 'pth' files
     "pyi",
     "so",  # Python C modules, usually Linux
 ]
 
+BUILTIN_BUILD_PYTHON_ZIP = [] if config.bazel_10_or_later else [
+    "//command_line_option:build_python_zip",
+]
+
+# Not an actual provider. Provider used for memory efficiency.
+# buildifier: disable=name-conventions
+ExplicitSymlink = provider(
+    doc = """
+A runfile that should be created as a symlink pointing to a specific location.
+
+This is only needed on Windows, where Bazel doesn't preserve declare_symlink
+with relative paths. This is basically manually captures what using
+declare_symlink(), symlink() and runfiles like so would capture:
+
+```
+link = declare_symlink(...)
+link_to_path = relative_path(from=link, to=target)
+symlink(output=link, target_path=link_to_path)
+runfiles.add([link, target])
+```
+""",
+    fields = {
+        "files": "depset[File] of files that should be included if this symlink is used",
+        "link_to_path": "Path the symlink should point to",
+        "runfiles_path": "runfiles-root-relative path for the symlink",
+        "venv_path": "venv-root-relative path for the symlink",
+    },
+)
+
+def maybe_builtin_build_python_zip(value, settings = None):
+    settings = settings or {}
+    if not config.bazel_10_or_later:
+        settings["//command_line_option:build_python_zip"] = value
+
+    return settings
+
+def _find_launcher_maker(ctx):
+    if config.bazel_9_or_later:
+        return (ctx.toolchains[LAUNCHER_MAKER_TOOLCHAIN_TYPE].binary, LAUNCHER_MAKER_TOOLCHAIN_TYPE)
+    return (ctx.executable._windows_launcher_maker, None)
+
+def create_windows_exe_launcher(
+        ctx,
+        *,
+        output,
+        python_binary_path,
+        use_zip_file):
+    """Creates a Windows exe launcher.
+
+    Args:
+        ctx: The rule context.
+        output: The output file for the launcher.
+        python_binary_path: The path to the Python binary.
+        use_zip_file: Whether to use a zip file.
+    """
+    launch_info = ctx.actions.args()
+    launch_info.use_param_file("%s", use_always = True)
+    launch_info.set_param_file_format("multiline")
+    launch_info.add("binary_type=Python")
+    launch_info.add(ctx.workspace_name, format = "workspace_name=%s")
+    launch_info.add(
+        "1" if py_internal.runfiles_enabled(ctx) else "0",
+        format = "symlink_runfiles_enabled=%s",
+    )
+    launch_info.add(python_binary_path, format = "python_bin_path=%s")
+    launch_info.add("1" if use_zip_file else "0", format = "use_zip_file=%s")
+
+    launcher = ctx.attr._launcher[DefaultInfo].files_to_run.executable
+    executable, toolchain = _find_launcher_maker(ctx)
+    ctx.actions.run(
+        executable = executable,
+        arguments = [launcher.path, launch_info, output.path],
+        inputs = [launcher],
+        outputs = [output],
+        mnemonic = "PyBuildLauncher",
+        progress_message = "Creating launcher for %{label}",
+        # Needed to inherit PATH when using non-MSVC compilers like MinGW
+        use_default_shell_env = True,
+        toolchain = toolchain,
+    )
+
 def create_binary_semantics_struct(
         *,
-        create_executable,
-        get_cc_details_for_binary,
-        get_central_uncachable_version_file,
-        get_coverage_deps,
-        get_debugger_deps,
-        get_extra_common_runfiles_for_binary,
-        get_extra_providers,
-        get_extra_write_build_data_env,
-        get_interpreter_path,
-        get_imports,
         get_native_deps_dso_name,
-        get_native_deps_user_link_flags,
-        get_stamp_flag,
-        maybe_precompile,
-        should_build_native_deps_dso,
-        should_create_init_files,
-        should_include_build_data):
+        should_build_native_deps_dso):
     """Helper to ensure a semantics struct has all necessary fields.
 
     Call this instead of a raw call to `struct(...)`; it'll help ensure all
     the necessary functions are being correctly provided.
 
     Args:
-        create_executable: Callable; creates a binary's executable output. See
-            py_executable.bzl#py_executable_base_impl for details.
-        get_cc_details_for_binary: Callable that returns a `CcDetails` struct; see
-            `create_cc_detail_struct`.
-        get_central_uncachable_version_file: Callable that returns an optional
-            Artifact; this artifact is special: it is never cached and is a copy
-            of `ctx.version_file`; see py_builtins.copy_without_caching
-        get_coverage_deps: Callable that returns a list of Targets for making
-            coverage work; only called if coverage is enabled.
-        get_debugger_deps: Callable that returns a list of Targets that provide
-            custom debugger support; only called for target-configuration.
-        get_extra_common_runfiles_for_binary: Callable that returns a runfiles
-            object of extra runfiles a binary should include.
-        get_extra_providers: Callable that returns extra providers; see
-            py_executable.bzl#_create_providers for details.
-        get_extra_write_build_data_env: Callable that returns a dict[str, str]
-            of additional environment variable to pass to build data generation.
-        get_interpreter_path: Callable that returns an optional string, which is
-            the path to the Python interpreter to use for running the binary.
-        get_imports: Callable that returns a list of the target's import
-            paths (from the `imports` attribute, so just the target's own import
-            path strings, not from dependencies).
         get_native_deps_dso_name: Callable that returns a string, which is the
             basename (with extension) of the native deps DSO library.
-        get_native_deps_user_link_flags: Callable that returns a list of strings,
-            which are any extra linker flags to pass onto the native deps DSO
-            linking action.
-        get_stamp_flag: Callable that returns bool of if the --stamp flag was
-            enabled or not.
-        maybe_precompile: Callable that may optional precompile the input `.py`
-            sources and returns the full set of desired outputs derived from
-            the source files (e.g., both py and pyc, only one of them, etc).
         should_build_native_deps_dso: Callable that returns bool; True if
             building a native deps DSO is supported, False if not.
-        should_create_init_files: Callable that returns bool; True if
-            `__init__.py` files should be generated, False if not.
-        should_include_build_data: Callable that returns bool; True if
-            build data should be generated, False if not.
     Returns:
         A "BinarySemantics" struct.
     """
     return struct(
         # keep-sorted
-        create_executable = create_executable,
-        get_cc_details_for_binary = get_cc_details_for_binary,
-        get_central_uncachable_version_file = get_central_uncachable_version_file,
-        get_coverage_deps = get_coverage_deps,
-        get_debugger_deps = get_debugger_deps,
-        get_extra_common_runfiles_for_binary = get_extra_common_runfiles_for_binary,
-        get_extra_providers = get_extra_providers,
-        get_extra_write_build_data_env = get_extra_write_build_data_env,
-        get_imports = get_imports,
-        get_interpreter_path = get_interpreter_path,
         get_native_deps_dso_name = get_native_deps_dso_name,
-        get_native_deps_user_link_flags = get_native_deps_user_link_flags,
-        get_stamp_flag = get_stamp_flag,
-        maybe_precompile = maybe_precompile,
         should_build_native_deps_dso = should_build_native_deps_dso,
-        should_create_init_files = should_create_init_files,
-        should_include_build_data = should_include_build_data,
-    )
-
-def create_library_semantics_struct(
-        *,
-        get_cc_info_for_library,
-        get_imports,
-        maybe_precompile):
-    """Create a `LibrarySemantics` struct.
-
-    Call this instead of a raw call to `struct(...)`; it'll help ensure all
-    the necessary functions are being correctly provided.
-
-    Args:
-        get_cc_info_for_library: Callable that returns a CcInfo for the library;
-            see py_library_impl for arg details.
-        get_imports: Callable; see create_binary_semantics_struct.
-        maybe_precompile: Callable; see create_binary_semantics_struct.
-    Returns:
-        a `LibrarySemantics` struct.
-    """
-    return struct(
-        # keep sorted
-        get_cc_info_for_library = get_cc_info_for_library,
-        get_imports = get_imports,
-        maybe_precompile = maybe_precompile,
     )
 
 def create_cc_details_struct(
@@ -197,27 +194,6 @@ def create_cc_details_struct(
         **kwargs
     )
 
-def create_executable_result_struct(*, extra_files_to_build, output_groups, extra_runfiles = None):
-    """Creates a `CreateExecutableResult` struct.
-
-    This is the return value type of the semantics create_executable function.
-
-    Args:
-        extra_files_to_build: depset of File; additional files that should be
-            included as default outputs.
-        output_groups: dict[str, depset[File]]; additional output groups that
-            should be returned.
-        extra_runfiles: A runfiles object of additional runfiles to include.
-
-    Returns:
-        A `CreateExecutableResult` struct.
-    """
-    return struct(
-        extra_files_to_build = extra_files_to_build,
-        output_groups = output_groups,
-        extra_runfiles = extra_runfiles,
-    )
-
 def csv(values):
     """Convert a list of strings to comma separated value string."""
     return ", ".join(sorted(values))
@@ -240,12 +216,8 @@ def collect_cc_info(ctx, extra_deps = []):
     Returns:
         CcInfo provider of merged information.
     """
-    deps = ctx.attr.deps
-    if extra_deps:
-        deps = list(deps)
-        deps.extend(extra_deps)
     cc_infos = []
-    for dep in deps:
+    for dep in collect_deps(ctx, extra_deps):
         if CcInfo in dep:
             cc_infos.append(dep[CcInfo])
 
@@ -254,28 +226,27 @@ def collect_cc_info(ctx, extra_deps = []):
 
     return cc_common.merge_cc_infos(cc_infos = cc_infos)
 
-def collect_imports(ctx, semantics):
+def collect_imports(ctx, extra_deps = []):
     """Collect the direct and transitive `imports` strings.
 
     Args:
         ctx: {type}`ctx` the current target ctx
-        semantics: semantics object for fetching direct imports.
+        extra_deps: list of Target to also collect imports from.
 
     Returns:
         {type}`depset[str]` of import paths
     """
+
     transitive = []
-    for dep in ctx.attr.deps:
+    for dep in collect_deps(ctx, extra_deps):
         if PyInfo in dep:
             transitive.append(dep[PyInfo].imports)
         if BuiltinPyInfo != None and BuiltinPyInfo in dep:
             transitive.append(dep[BuiltinPyInfo].imports)
-    return depset(direct = semantics.get_imports(ctx), transitive = transitive)
+    return depset(direct = get_imports(ctx), transitive = transitive)
 
 def get_imports(ctx):
     """Gets the imports from a rule's `imports` attribute.
-
-    See create_binary_semantics_struct for details about this function.
 
     Args:
         ctx: Rule ctx.
@@ -514,6 +485,17 @@ def target_platform_has_any_constraint(ctx, constraints):
             return True
     return False
 
+def is_windows_platform(ctx):
+    """Check if target platform is windows.
+
+    Args:
+      ctx: rule context.
+
+    Returns:
+      True if target platform is windows.
+    """
+    return target_platform_has_any_constraint(ctx, ctx.attr._windows_constraints)
+
 def relative_path(from_, to):
     """Compute a relative path from one path to another.
 
@@ -561,3 +543,152 @@ def runfiles_root_path(ctx, short_path):
         return short_path[3:]
     else:
         return "{}/{}".format(ctx.workspace_name, short_path)
+
+def collect_deps(ctx, extra_deps = []):
+    """Collect the dependencies from the rule's context.
+
+    Args:
+        ctx: rule ctx
+        extra_deps: list of Target to also collect dependencies from.
+
+    Returns:
+        list of Target
+    """
+    deps = ctx.attr.deps
+    if extra_deps:
+        deps = list(deps)
+        deps.extend(extra_deps)
+    return deps
+
+def maybe_create_repo_mapping(ctx, *, runfiles):
+    """Creates a repo mapping manifest if bzlmod is enabled.
+
+    There isn't a way to reference the repo mapping Bazel implicitly
+    creates, so we have to manually create it ourselves.
+
+    Args:
+        ctx: rule ctx.
+        runfiles: runfiles object to generate mapping for.
+
+    Returns:
+        File object if the repo mapping manifest was created, None otherwise.
+    """
+    if not py_internal.is_bzlmod_enabled(ctx):
+        return None
+
+    # We have to add `.custom` because `{name}.repo_mapping` is used by Bazel
+    # internally.
+    repo_mapping_manifest = ctx.actions.declare_file(ctx.label.name + ".custom.repo_mapping")
+    py_internal.create_repo_mapping_manifest(
+        ctx = ctx,
+        runfiles = runfiles,
+        output = repo_mapping_manifest,
+    )
+    return repo_mapping_manifest
+
+def actions_run(
+        ctx,
+        *,
+        executable,
+        toolchain = None,
+        **kwargs):
+    """Runs a tool as an action, supporting py_interpreter_program targets.
+
+    This is wrapper around `ctx.actions.run()` that sets some useful defaults,
+    supports handling `py_interpreter_program` targets, and some other features
+    to let the target being run influence the action invocation.
+
+    Args:
+        ctx: The rule context. The rule must have the
+            `//python:exec_tools_toolchain_type` toolchain available.
+        executable: The executable to run. This can be a target that provides
+            `PyInterpreterProgramInfo` or a regular executable target. If it
+            provides `testing.ExecutionInfo`, the requirements will be added to
+            the execution requirements.
+        toolchain: The toolchain type to use. Must be None or
+            `//python:exec_tools_toolchain_type`.
+        **kwargs: Additional arguments to pass to `ctx.actions.run()`.
+            `mnemonic` and `progress_message` are required.
+    """
+    mnemonic = kwargs.pop("mnemonic", None)
+    if not mnemonic:
+        fail("actions_run: missing required argument 'mnemonic'")
+
+    progress_message = kwargs.pop("progress_message", None)
+    if not progress_message:
+        fail("actions_run: missing required argument 'progress_message'")
+
+    tools = kwargs.pop("tools", None)
+    tools = list(tools) if tools else []
+
+    action_arguments = []
+    action_env = {
+        "PYTHONHASHSEED": "0",  # Helps avoid non-deterministic behavior
+        "PYTHONNOUSERSITE": "1",  # Helps avoid non-deterministic behavior
+        "PYTHONSAFEPATH": "1",  # Helps avoid incorrect import issues
+    }
+    default_info = executable[DefaultInfo]
+    action_inputs = builders.DepsetBuilder()
+    action_inputs.add(kwargs.pop("inputs", None) or [])
+    if PyInterpreterProgramInfo in executable:
+        if toolchain and toolchain != EXEC_TOOLS_TOOLCHAIN_TYPE:
+            fail(("Action {}: tool {} provides PyInterpreterProgramInfo, which " +
+                  "requires the `toolchain` arg be " +
+                  "None or {}, got: {}").format(
+                mnemonic,
+                executable,
+                EXEC_TOOLS_TOOLCHAIN_TYPE,
+                toolchain,
+            ))
+        exec_runtime = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools.exec_runtime
+        if exec_runtime.interpreter:
+            action_exe = exec_runtime.interpreter
+            action_inputs.add(exec_runtime.files)
+        elif exec_runtime.interpreter_path:
+            action_exe = exec_runtime.interpreter_path
+        else:
+            fail(("Action {}: PyRuntimeInfo from exec tools toolchain is " +
+                  "malformed: requires one of `interpreter` or " +
+                  "`interpreter_path` set").format(
+                mnemonic,
+            ))
+
+        program_info = executable[PyInterpreterProgramInfo]
+
+        interpreter_args = ctx.actions.args()
+        interpreter_args.add_all(program_info.interpreter_args)
+        interpreter_args.add(default_info.files_to_run.executable)
+        action_arguments.append(interpreter_args)
+
+        action_env.update(program_info.env)
+
+        tools.append(default_info.files_to_run)
+        toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE
+    else:
+        action_exe = executable[DefaultInfo].files_to_run
+
+    execution_requirements = {}
+    if testing.ExecutionInfo in executable:
+        execution_requirements.update(executable[testing.ExecutionInfo].requirements)
+
+    # Give precedence to caller's execution requirements.
+    execution_requirements.update(kwargs.pop("execution_requirements", None) or {})
+
+    # Give precedence to caller's env.
+    action_env.update(kwargs.pop("env", None) or {})
+
+    # Handle arguments=None
+    action_arguments.extend(list(kwargs.pop("arguments", None) or []))
+
+    ctx.actions.run(
+        executable = action_exe,
+        arguments = action_arguments,
+        tools = tools,
+        env = action_env,
+        execution_requirements = execution_requirements,
+        toolchain = toolchain,
+        mnemonic = mnemonic,
+        progress_message = progress_message,
+        inputs = action_inputs.build(),
+        **kwargs
+    )

@@ -23,5 +23,6 @@ py_test(
     deps = [
         ":bar",
         ":conftest",
+        "//:conftest",
     ],
 )

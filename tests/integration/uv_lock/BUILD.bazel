@@ -1,0 +1,26 @@
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@rules_python//python/uv:lock.bzl", "lock")
+load(":uv_runner.bzl", "uv_runner")
+
+lock(
+    name = "requirements",
+    srcs = ["requirements.in"],
+    out = "requirements.txt",
+    tags = ["no-remote-exec"],
+)
+
+uv_runner(
+    name = "uv",
+    is_windows = select({
+        "@platforms//os:windows": True,
+        "//conditions:default": False,
+    }),
+    tags = ["manual"],
+)
+
+diff_test(
+    name = "requirements_diff_test",
+    timeout = "short",
+    file1 = ":requirements",
+    file2 = ":requirements.txt",
+)

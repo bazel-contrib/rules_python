@@ -1,0 +1,104 @@
+name: Automated Code Review
+
+# TODO: Eventually, use pull_request_target instead of pull_request.
+# pull_request_target runs in the base branch context and has access
+# to secrets (like GEMINI_API_KEY) even for fork PRs.
+# Using pull_request for now during setup/testing.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Always runs so the workflow run exits cleanly without a "No jobs ran" error
+  # when the review job's if-condition evaluates to false.
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Workflow trigger check
+        run: echo "Workflow triggered successfully."
+
+  # Job 1: Runs without secrets to extract the git diff from untrusted PR code.
+  # Keeps GEMINI_API_KEY away from any environment that checks out untrusted PR files.
+  prepare_diff:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'issue_comment' && github.event.issue.pull_request != null &&
+      (startsWith(github.event.comment.body, '/review') ||
+       contains(github.event.comment.body, '\n/review') ||
+       contains(github.event.comment.body, '\r\n/review')) &&
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    steps:
+      - name: Checkout PR Branch (Data Only)
+        uses: actions/checkout@v7
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number || github.event.issue.number }}/head
+          path: untrusted_pr_head
+          persist-credentials: false
+
+      - name: Fetch Base Branch and Negotiate Minimal Diff History
+        env:
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
+        run: |
+          cd untrusted_pr_head
+          # 1. Fetch the tip of main
+          git fetch origin main:refs/remotes/origin/main --depth=1
+
+          # 2. Check if we already have the merge base (common ancestor)
+          if ! git merge-base origin/main HEAD >/dev/null 2>&1; then
+            # If we know the exact number of commits in the PR, deepen by (PR_COMMITS + 10)
+            if [ -n "$PR_COMMITS" ] && [ "$PR_COMMITS" != "null" ]; then
+              git fetch --deepen="$((PR_COMMITS + 10))"
+            fi
+            # 3. If it's an issue_comment event (where PR_COMMITS is null) or still shallow, unshallow/deepen
+            if ! git merge-base origin/main HEAD >/dev/null 2>&1; then
+              git fetch --unshallow || git fetch --deepen=50
+            fi
+          fi
+          git diff origin/main...HEAD > ../pr_diff.txt
+
+      # Upload extracted diff as artifact to pass to Job 2 safely as text data.
+      - name: Upload Diff Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr_diff
+          path: pr_diff.txt
+
+  # Job 2: Runs with secrets in base branch context.
+  review:
+    needs: prepare_diff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Diff Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: pr_diff
+
+      # Check out reviewbot into a separate directory to isolate base branch tool code.
+      - name: Checkout Reviewbot (Base Branch Only)
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            tools/private/reviewbot
+          path: reviewbot
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+
+      - name: Run Antigravity Review
+        # Run inside reviewbot directory so execution context is the trusted base branch.
+        # This also helps prevent uv from looking for config files in locations it shouldn't,
+        # i.e. by default, uv will look in $PWD for a pyproject file to build.
+        working-directory: reviewbot
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use --no-project to prevent uv from discovering or building pyproject.toml/setup.py
+          # in the workspace, ensuring only standalone script dependencies are resolved.
+          uv run --no-project --directory . tools/private/reviewbot/antigravity_review.py \
+            --prompt tools/private/reviewbot/prompt.txt \
+            --diff-file ../pr_diff.txt

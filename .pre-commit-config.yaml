@@ -21,7 +21,7 @@ repos:
     hooks:
       - id: check-merge-conflict
   - repo: https://github.com/keith/pre-commit-buildifier
-    rev: 6.1.0
+    rev: 8.2.1
     hooks:
       - id: buildifier
         args: &args
@@ -29,18 +29,15 @@ repos:
           - --warnings=all
       - id: buildifier-lint
         args: *args
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Keep in sync with .github/workflows/ruff.yaml
+    rev: v0.15.14
     hooks:
-      - id: isort
-        name: isort (python)
-        args:
-          - --profile
-          - black
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
+      - id: ruff-check
+        args: [--fix]
+        exclude: testdata
+      - id: ruff-format
+        exclude: testdata
   - repo: local
     hooks:
       - id: update-deleted-packages
@@ -48,6 +45,29 @@ repos:
         language: system
         # 7.x is necessary until https://github.com/bazel-contrib/rules_bazel_integration_test/pull/414
         # is merged and released
-        entry: env USE_BAZEL_VERSION=7.x bazel run @rules_bazel_integration_test//tools:update_deleted_packages
+        entry: ./tools/update_deleted_packages.sh
         files: ^((examples|tests)/.*/(MODULE.bazel|WORKSPACE|WORKSPACE.bzlmod|BUILD.bazel)|.bazelrc)$
+        pass_filenames: false
+      - id: sort-runtimes-manifest
+        name: Sort runtimes manifest
+        language: system
+        entry: ./python/private/tools/sort_manifest.py
+        files: ^python/private/runtimes_manifest\.txt$
+      - id: sync-runtimes-manifest
+        name: Sync runtimes manifest workspace
+        language: system
+        entry: ./python/private/tools/sync_runtimes_manifest_workspace.py
+        files: ^python/private/runtimes_manifest\.txt$
+        pass_filenames: false
+      - id: sync-downloader-configs
+        name: Sync downloader configs
+        language: system
+        entry: ./tools/private/sync_downloader_configs.py
+        files: downloader_config\.cfg$
+        pass_filenames: false
+      - id: gazelle
+        name: Run Gazelle
+        language: system
+        entry: bazel run //tools/private/gazelle
+        files: (\.bzl|\.bazel|BUILD|WORKSPACE(\.bzlmod)?)$
         pass_filenames: false

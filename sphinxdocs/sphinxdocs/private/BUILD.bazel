@@ -1,0 +1,147 @@
+# Copyright 2023 The Bazel Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_library.bzl", "py_library")
+load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+# These are only exported because they're passed as files to the @sphinxdocs
+# macros, and thus must be visible to other packages. They should only be
+# referenced by the @sphinxdocs macros.
+exports_files(
+    [
+        "readthedocs_install.py",
+        "sphinx_build.py",
+        "sphinx_server.py",
+        "sphinx_run_template.sh",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**/*"]),
+    visibility = ["//sphinxdocs:__pkg__"],
+)
+
+bzl_library(
+    name = "util",
+    srcs = ["util.bzl"],
+    deps = [
+        "@bazel_skylib//lib:types",
+    ],
+)
+
+bzl_library(
+    name = "sphinx_docs_library_macro",
+    srcs = ["sphinx_docs_library_macro.bzl"],
+    deps = [
+        ":sphinx_docs_library",
+        ":util",
+    ],
+)
+
+bzl_library(
+    name = "sphinx_docs_library",
+    srcs = ["sphinx_docs_library.bzl"],
+    deps = [":sphinx_docs_library_info"],
+)
+
+bzl_library(
+    name = "sphinx_docs_library_info",
+    srcs = ["sphinx_docs_library_info.bzl"],
+)
+
+bzl_library(
+    name = "sphinx",
+    srcs = ["sphinx.bzl"],
+    deps = [
+        ":sphinx_docs_library_info",
+        ":util",
+        "@bazel_skylib//:bzl_library",
+        "@bazel_skylib//lib:paths",
+        "@bazel_skylib//lib:types",
+        "@bazel_skylib//rules:build_test",
+        "@bazel_skylib//rules:common_settings",
+        "@io_bazel_stardoc//stardoc:stardoc_lib",
+        "@rules_python//python:py_binary_bzl",
+    ],
+)
+
+bzl_library(
+    name = "sphinx_stardoc",
+    srcs = ["sphinx_stardoc.bzl"],
+    deps = [
+        ":sphinx_docs_library_macro",
+        ":util",
+        "//sphinxdocs:sphinx",
+        "@bazel_skylib//:bzl_library",
+        "@bazel_skylib//lib:paths",
+        "@bazel_skylib//lib:types",
+        "@bazel_skylib//rules:build_test",
+        "@io_bazel_stardoc//stardoc:stardoc_lib",
+    ],
+)
+
+bzl_library(
+    name = "readthedocs",
+    srcs = ["readthedocs.bzl"],
+    deps = [
+        ":util",
+        "@rules_python//python:py_binary_bzl",
+    ],
+)
+
+bzl_library(
+    name = "visibility",
+    srcs = ["visibility.bzl"],
+)
+
+py_binary(
+    name = "inventory_builder",
+    srcs = ["inventory_builder.py"],
+    # Only public because it's an implicit attribute
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+py_binary(
+    name = "proto_to_markdown",
+    srcs = ["proto_to_markdown.py"],
+    # Only public because it's an implicit attribute
+    visibility = NOT_ACTUALLY_PUBLIC,
+    deps = [":proto_to_markdown_lib"],
+)
+
+py_library(
+    name = "proto_to_markdown_lib",
+    srcs = ["proto_to_markdown.py"],
+    # Only public because it's an implicit attribute
+    visibility = NOT_ACTUALLY_PUBLIC,
+    deps = [
+        ":stardoc_output_proto_py_pb2",
+    ],
+)
+
+py_proto_library(
+    name = "stardoc_output_proto_py_pb2",
+    deps = [
+        "@io_bazel_stardoc//stardoc/proto:stardoc_output_proto",
+    ],
+)

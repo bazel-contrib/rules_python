@@ -53,6 +53,7 @@ def py_console_script_binary(
         script = None,
         binary_rule = py_binary,
         shebang = "",
+        main = None,
         **kwargs):
     """Generate a py_binary for a console_script entry_point.
 
@@ -66,6 +67,8 @@ def py_console_script_binary(
             package as the `pkg` Label.
         script: {type}`str`, The console script name that the py_binary is going to be
             generated for. Defaults to the normalized name attribute.
+        main: {type}`str`, the python file to be generated, defaults to `<name>_entry_point.py` to
+            be compatible with symbolic macros.
         binary_rule: {type}`callable`, The rule/macro to use to instantiate
             the target. It's expected to behave like {obj}`py_binary`.
             Defaults to {obj}`py_binary`.
@@ -73,13 +76,13 @@ def py_console_script_binary(
             Defaults to empty string.
         **kwargs: Extra parameters forwarded to `binary_rule`.
     """
-    main = "rules_python_entry_point_{}.py".format(name)
+    main = main or name + "_entry_point.py"
 
     if kwargs.pop("srcs", None):
         fail("passing 'srcs' attribute to py_console_script_binary is unsupported")
 
     py_console_script_gen(
-        name = "_{}_gen".format(name),
+        name = name + "_gen__",
         entry_points_txt = entry_points_txt or _dist_info(pkg),
         out = main,
         console_script = script,

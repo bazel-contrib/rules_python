@@ -1,0 +1,33 @@
+import %workspace%/.bazelrc.deleted_packages
+
+test --test_output=errors
+
+build --incompatible_default_to_explicit_init_py
+build --@rules_python//python/config_settings:incompatible_default_to_explicit_init_py=True
+
+# Ensure ongoing compatibility with this flag.
+common --incompatible_disallow_struct_provider_syntax
+# Makes Bazel 7 act more like Bazel 8
+common --incompatible_use_plus_in_repo_names
+
+# Explicitly enable for Windows
+build --enable_runfiles
+
+# Local disk cache greatly speeds up builds if the regular cache is lost
+common --disk_cache=~/.cache/bazel/bazel-disk-cache
+common --experimental_downloader_config=downloader_config.cfg
+common --http_timeout_scaling=10.0
+common --experimental_repository_downloader_retries=10
+
+common --incompatible_python_disallow_native_rules
+common --incompatible_no_implicit_file_export
+# Pass host PATH to build and test actions so bazel_from_env (used by rules_bazel_integration_test
+# for local 'self' testing) can locate the user's bazel binary without disabling strict action env.
+common --action_env=PATH
+common --test_env=PATH
+
+build --lockfile_mode=update
+
+common:fast-tests --build_tests_only=true
+common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
+common:fast-tests --test_tag_filters=-large,-enormous,-integration-test

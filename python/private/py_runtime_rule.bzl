@@ -21,9 +21,44 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
+load(":version.bzl", "version")
 
 _py_builtins = py_internal
+
+def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
+    """Build the warning for a selected runtime that cannot produce coverage.
+
+    Kept separate from the rule implementation so the decision is unit testable
+    without having to capture analysis-phase output.
+
+    Args:
+        coverage_enabled: {type}`bool` whether the build is collecting coverage.
+        coverage_tool: {type}`File | None` the runtime's coverage entry point.
+        label: {type}`Label` the `py_runtime` being analyzed.
+
+    Returns:
+        {type}`str | None` the message to print, or `None` when no warning is
+        warranted.
+    """
+    if not coverage_enabled or coverage_tool:
+        return None
+
+    return """
+======================================================================
+WARNING: Python runtime {label} has no coverage_tool.
+  `bazel coverage` will produce empty lcov data for py_test targets that
+  resolve to this runtime.
+
+  For rules_python's hermetic toolchains, enable the bundled coverage.py:
+    python.toolchain(configure_coverage_tool = True)           # bzlmod
+    python_register_toolchains(register_coverage_tool = True)  # WORKSPACE
+  A bundled wheel must exist for this interpreter's version and platform;
+  python/private/coverage_deps.bzl lists what ships with rules_python.
+
+  Otherwise, set py_runtime.coverage_tool directly. See
+  https://rules-python.readthedocs.io/en/latest/coverage.html
+======================================================================
+""".format(label = label)
 
 def _py_runtime_impl(ctx):
     interpreter_path = ctx.attr.interpreter_path or None  # Convert empty string to None
@@ -39,6 +74,7 @@ def _py_runtime_impl(ctx):
     runfiles = ctx.runfiles()
 
     hermetic = bool(interpreter)
+    interpreter_files_to_run = None
     if not hermetic:
         if runtime_files:
             fail("if 'interpreter_path' is given then 'files' must be empty")
@@ -46,9 +82,23 @@ def _py_runtime_impl(ctx):
             fail("interpreter_path must be an absolute path")
     else:
         interpreter_di = interpreter[DefaultInfo]
+        interpreter_file = None
 
-        if interpreter_di.files_to_run and interpreter_di.files_to_run.executable:
-            interpreter = interpreter_di.files_to_run.executable
+        if _is_singleton_depset(interpreter_di.files):
+            interpreter_file = interpreter_di.files.to_list()[0]
+
+        is_executable_source_file = (
+            interpreter_file and
+            interpreter_file.is_source and
+            interpreter_di.files_to_run and
+            interpreter_di.files_to_run.executable == interpreter_file
+        )
+
+        if is_executable_source_file:
+            # Source files Bazel treats as executable, e.g. direct file labels
+            # and filegroups: preserve historical runtime-file expansion, but
+            # do not expose a FilesToRunProvider.
+            interpreter = interpreter_file
             runfiles = runfiles.merge(interpreter_di.default_runfiles)
 
             runtime_files = depset(transitive = [
@@ -56,8 +106,22 @@ def _py_runtime_impl(ctx):
                 interpreter_di.default_runfiles.files,
                 runtime_files,
             ])
-        elif _is_singleton_depset(interpreter_di.files):
-            interpreter = interpreter_di.files.to_list()[0]
+        elif interpreter_di.files_to_run and interpreter_di.files_to_run.executable:
+            # Executable rule target: use the executable and preserve the full
+            # FilesToRunProvider so action consumers can stage its runfiles.
+            interpreter = interpreter_di.files_to_run.executable
+            interpreter_files_to_run = interpreter_di.files_to_run
+            runfiles = runfiles.merge(interpreter_di.default_runfiles)
+
+            runtime_files = depset(transitive = [
+                interpreter_di.files,
+                interpreter_di.default_runfiles.files,
+                runtime_files,
+            ])
+        elif interpreter_file:
+            # Non-executable rule with exactly one output: preserve the
+            # historical file-only interpreter behavior.
+            interpreter = interpreter_file
         else:
             fail("interpreter must be an executable target or must produce exactly one file.")
 
@@ -79,6 +143,19 @@ def _py_runtime_impl(ctx):
         coverage_tool = None
         coverage_files = None
 
+    # Reported here rather than where the toolchains are registered: this rule is
+    # analyzed once per configuration, and only for the runtime that toolchain
+    # resolution actually selected, so the empty-lcov outcome is real rather than
+    # hypothetical. See https://github.com/bazel-contrib/rules_python/issues/3950.
+    coverage_warning = coverage_tool_missing_message(
+        coverage_enabled = ctx.configuration.coverage_enabled,
+        coverage_tool = coverage_tool,
+        label = ctx.label,
+    )
+    if coverage_warning:
+        # buildifier: disable=print
+        print(coverage_warning)
+
     python_version = ctx.attr.python_version
 
     interpreter_version_info = ctx.attr.interpreter_version_info
@@ -87,10 +164,9 @@ def _py_runtime_impl(ctx):
         if python_version_flag:
             interpreter_version_info = _interpreter_version_info_from_version_str(python_version_flag)
 
-    # TODO: Uncomment this after --incompatible_python_disable_py2 defaults to true
-    # if ctx.fragments.py.disable_py2 and python_version == "PY2":
-    #     fail("Using Python 2 is not supported and disabled; see " +
-    #          "https://github.com/bazelbuild/bazel/issues/15684")
+    if python_version == "PY2":
+        fail("Using Python 2 is not supported and disabled; see " +
+             "https://github.com/bazelbuild/bazel/issues/15684")
 
     pyc_tag = ctx.attr.pyc_tag
     if not pyc_tag and (ctx.attr.implementation_name and
@@ -125,16 +201,15 @@ def _py_runtime_impl(ctx):
     py_runtime_info_kwargs.update(dict(
         implementation_name = ctx.attr.implementation_name,
         interpreter_version_info = interpreter_version_info,
+        interpreter_files_to_run = interpreter_files_to_run,
         pyc_tag = pyc_tag,
         stage2_bootstrap_template = ctx.file.stage2_bootstrap_template,
         zip_main_template = ctx.file.zip_main_template,
         abi_flags = abi_flags,
         site_init_template = ctx.file.site_init_template,
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
+        venv_bin_files = ctx.files.venv_bin_files,
     ))
-
-    if not IS_BAZEL_7_OR_HIGHER:
-        builtin_py_runtime_info_kwargs.pop("bootstrap_template")
 
     providers = [
         PyRuntimeInfo(**py_runtime_info_kwargs),
@@ -364,8 +439,9 @@ See {obj}`PyRuntimeInfo.supports_build_time_venv` for docs.
 """,
                 default = True,
             ),
+            "venv_bin_files": attr.label_list(allow_files = True),
             "zip_main_template": attr.label(
-                default = "//python/private:zip_main_template",
+                default = "//python/private/zipapp:zip_main_template",
                 allow_single_file = True,
                 doc = """
 The template to use for a zip's top-level `__main__.py` file.
@@ -388,18 +464,14 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 )
 
 def _is_singleton_depset(files):
-    # Bazel 6 doesn't have this helper to optimize detecting singleton depsets.
-    if _py_builtins:
-        return _py_builtins.is_singleton_depset(files)
-    else:
-        return len(files.to_list()) == 1
+    return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    parts = version_str.split(".")
+    v = version.parse(version_str)
     version_info = {}
+    parts = list(v.release)
     for key in ("major", "minor", "micro"):
         if not parts:
             break
         version_info[key] = parts.pop(0)
-
     return version_info

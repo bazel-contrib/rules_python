@@ -1,0 +1,5 @@
+load(":pypi_cache_tests.bzl", "pypi_cache_test_suite")
+
+pypi_cache_test_suite(
+    name = "pypi_cache_tests",
+)

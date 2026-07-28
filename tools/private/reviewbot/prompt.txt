@@ -1,0 +1,3 @@
+Use the review-pr skill to review the files modified in this pull request.
+Summarize your findings and suggest specific, actionable improvements.
+Group your findings into clear, descriptive nits or suggestions.

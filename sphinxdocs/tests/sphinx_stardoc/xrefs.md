@@ -36,7 +36,7 @@ Various tests of cross referencing support
 
 ## Using origin keys
 
-* provider using `{type}`: {type}`"@rules_python//sphinxdocs/tests/sphinx_stardoc:bzl_rule.bzl%GenericInfo"`
+* provider using `{type}`: {type}`"//tests/sphinx_stardoc:bzl_rule.bzl%GenericInfo"`
 
 ## Any xref
 

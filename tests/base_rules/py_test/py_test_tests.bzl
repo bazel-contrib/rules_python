@@ -16,12 +16,14 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_test.bzl", "py_test")
+load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load(
     "//tests/base_rules:py_executable_base_tests.bzl",
     "create_executable_tests",
 )
 load("//tests/base_rules:util.bzl", pt_util = "util")
-load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "LINUX_X86_64", "MAC_X86_64")
+load("//tests/support:support.bzl", "CC_TOOLCHAIN", "CROSSTOOL_TOP", "PY_TOOLCHAINS")
+load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 # The Windows CI currently runs as root, which breaks when
 # the analysis tests try to install (but not use, because
@@ -39,14 +41,6 @@ _SKIP_WINDOWS = {
 _tests = []
 
 def _test_mac_requires_darwin_for_execution(name, config):
-    # Bazel 5.4 has a bug where every access of testing.ExecutionInfo is
-    # a different object that isn't equal to any other, which prevents
-    # rules_testing from detecting it properly and fails with an error.
-    # This is fixed in Bazel 6+.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
-
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -59,9 +53,9 @@ def _test_mac_requires_darwin_for_execution(name, config):
         config_settings = {
             "//command_line_option:cpu": "darwin_x86_64",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
-            "//command_line_option:extra_execution_platforms": [MAC_X86_64],
+            "//command_line_option:extra_execution_platforms": [platform_targets.MAC_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
-            "//command_line_option:platforms": [MAC_X86_64],
+            "//command_line_option:platforms": [platform_targets.MAC_X86_64],
         },
         attr_values = _SKIP_WINDOWS,
     )
@@ -74,13 +68,6 @@ def _test_mac_requires_darwin_for_execution_impl(env, target):
 _tests.append(_test_mac_requires_darwin_for_execution)
 
 def _test_non_mac_doesnt_require_darwin_for_execution(name, config):
-    # Bazel 5.4 has a bug where every access of testing.ExecutionInfo is
-    # a different object that isn't equal to any other, which prevents
-    # rules_testing from detecting it properly and fails with an error.
-    # This is fixed in Bazel 6+.
-    if not pt_util.is_bazel_6_or_higher():
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         config.rule,
         name = name + "_subject",
@@ -93,9 +80,9 @@ def _test_non_mac_doesnt_require_darwin_for_execution(name, config):
         config_settings = {
             "//command_line_option:cpu": "k8",
             "//command_line_option:crosstool_top": CROSSTOOL_TOP,
-            "//command_line_option:extra_execution_platforms": [LINUX_X86_64],
+            "//command_line_option:extra_execution_platforms": [platform_targets.LINUX_X86_64],
             "//command_line_option:extra_toolchains": [CC_TOOLCHAIN],
-            "//command_line_option:platforms": [LINUX_X86_64],
+            "//command_line_option:platforms": [platform_targets.LINUX_X86_64],
         },
         attr_values = _SKIP_WINDOWS,
     )
@@ -109,6 +96,61 @@ def _test_non_mac_doesnt_require_darwin_for_execution_impl(env, target):
     ).requirements().keys().not_contains("requires-darwin")
 
 _tests.append(_test_non_mac_doesnt_require_darwin_for_execution)
+
+_VALIDATE_TEST_MAIN_CONFIG_SETTINGS = {
+    "//command_line_option:extra_toolchains": [PY_TOOLCHAINS, CC_TOOLCHAIN],
+    labels.EXEC_TOOLS_TOOLCHAIN: "enabled",
+}
+
+def _test_validate_test_main_enabled(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [name + "_subject.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_validate_test_main_enabled_impl,
+        target = name + "_subject",
+        config_settings = _VALIDATE_TEST_MAIN_CONFIG_SETTINGS | {
+            labels.VALIDATE_TEST_MAIN: "enabled",
+        },
+        attr_values = _SKIP_WINDOWS,
+    )
+
+def _test_validate_test_main_enabled_impl(env, target):
+    mnemonics = [a.mnemonic for a in target.actions]
+    env.expect.that_collection(mnemonics).contains("PyValidateTestMain")
+    env.expect.that_bool(
+        hasattr(target[OutputGroupInfo], "_validation"),
+    ).equals(True)
+
+_tests.append(_test_validate_test_main_enabled)
+
+def _test_validate_test_main_disabled(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [name + "_subject.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_validate_test_main_disabled_impl,
+        target = name + "_subject",
+        config_settings = _VALIDATE_TEST_MAIN_CONFIG_SETTINGS | {
+            labels.VALIDATE_TEST_MAIN: "disabled",
+        },
+        attr_values = _SKIP_WINDOWS,
+    )
+
+def _test_validate_test_main_disabled_impl(env, target):
+    mnemonics = [a.mnemonic for a in target.actions]
+    env.expect.that_collection(mnemonics).not_contains("PyValidateTestMain")
+    env.expect.that_bool(
+        hasattr(target[OutputGroupInfo], "_validation"),
+    ).equals(False)
+
+_tests.append(_test_validate_test_main_disabled)
 
 def py_test_test_suite(name):
     config = struct(rule = py_test)

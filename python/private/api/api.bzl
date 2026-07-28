@@ -13,7 +13,7 @@
 # limitations under the License.
 """Implementation of py_api."""
 
-_PY_COMMON_API_LABEL = Label("//python/private/api:py_common_api")
+_PY_COMMON_API_LABEL = Label("//python/private/api:py_common_api_impl")
 
 ApiImplInfo = provider(
     doc = "Provider to hold an API implementation",

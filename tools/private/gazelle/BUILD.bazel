@@ -1,0 +1,21 @@
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+gazelle_binary(
+    name = "gazelle_bin",
+    languages = [
+        "@bazel_skylib_gazelle_plugin//bzl",
+    ],
+    # Marked manual to avoid building in CI, which fails due to copt settings.
+    tags = ["manual"],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_bin",
+    # Marked manual to avoid building in CI, which fails due to copt settings.
+    tags = ["manual"],
+)

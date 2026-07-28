@@ -1,0 +1,2 @@
+[console_scripts]
+whl_with_data2_bin = whl_with_data2:main

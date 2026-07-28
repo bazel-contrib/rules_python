@@ -1,0 +1,9 @@
+# gazelle:map_kind py_library my_lib :mytest.bzl
+# gazelle:map_kind py_binary my_bin :mytest.bzl
+# gazelle:map_kind py_test my_test :mytest.bzl
+
+py_library(name = "naming_convention_mapped_fail")
+
+py_binary(name = "naming_convention_mapped_fail_bin")
+
+py_test(name = "naming_convention_mapped_fail_test")

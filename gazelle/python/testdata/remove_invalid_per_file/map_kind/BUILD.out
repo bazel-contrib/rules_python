@@ -1,0 +1,19 @@
+load("@rules_python//python:defs.bzl", "py_library")
+load(":mylib.bzl", "my_py_test")
+
+# gazelle:python_generation_mode file
+# gazelle:map_kind py_binary my_py_binary :mylib.bzl
+# gazelle:map_kind py_test my_py_test :mylib.bzl
+
+# Valid py_library — bar.py exists on disk, should be kept.
+py_library(
+    name = "bar",
+    srcs = ["bar.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+# Valid mapped py_test — bar_test.py exists on disk, should be kept.
+my_py_test(
+    name = "bar_test",
+    srcs = ["bar_test.py"],
+)

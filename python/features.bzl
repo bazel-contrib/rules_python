@@ -13,8 +13,6 @@
 # limitations under the License.
 """Allows detecting of rules_python features that aren't easily detected."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
-
 # This is a magic string expanded by `git archive`, as set by `.gitattributes`
 # See https://git-scm.com/docs/git-archive/2.29.0#Documentation/git-archive.txt-export-subst
 _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
@@ -22,13 +20,23 @@ _VERSION_PRIVATE = "$Format:%(describe:tags=true)$"
 def _features_typedef():
     """Information about features rules_python has implemented.
 
+    ::::{field} targets
+    :type: dict[str, bool]
+
+    A map of public API targets available in rules_python for feature detection
+    purposes.
+
+    :::{versionadded} 1.9.0
+    :::
+    ::::
+
     ::::{field} headers_abi3
     :type: bool
 
     True if the {obj}`@rules_python//python/cc:current_py_cc_headers_abi3`
     target is available.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 1.7.0
     :::
     ::::
 
@@ -38,6 +46,15 @@ def _features_typedef():
     True if the precompile attributes are available.
 
     :::{versionadded} 0.33.0
+    :::
+    ::::
+
+    ::::{field} loadable_symbols
+    :type: dict[str, list[str]]
+
+    A map of bzl paths to the list of public symbols they export.
+
+    :::{versionadded} 2.2.0
     :::
     ::::
 
@@ -65,14 +82,68 @@ def _features_typedef():
     optional trailing `-rcN`. For unreleased versions, it is an empty string.
     :::{versionadded} 0.38.0
     ::::
+
+    ::::{field} zipapp_rules
+    :type: bool
+
+    Whether the rules_python version has the `py_zipapp_*` rules
+
+    :::{versionadded} 1.9.0
+    ::::
     """
+
+_TARGETS = {
+    "//command_line_option:build_runfile_links": True,
+    "//command_line_option:enable_runfiles": True,
+    "//command_line_option:extra_toolchains": True,
+    "//python/api:api": True,
+    "//python/api:executables": True,
+    "//python/api:libraries": True,
+    "//python/cc:current_py_cc_headers_abi3": True,
+    "//python/cc:py_cc_toolchain": True,
+    "//python/cc:py_cc_toolchain_info": True,
+    "//python/config_settings:venv": True,
+    "//python/entry_points:py_console_script_binary": True,
+    "//python/local_toolchains:repos": True,
+    "//python:defs": True,
+    "//python:features": True,
+    "//python:packaging": True,
+    "//python:pip": True,
+    "//python:proto": True,
+    "//python:py_binary": True,
+    "//python:py_cc_link_params_info": True,
+    "//python:py_exec_tools_info": True,
+    "//python:py_exec_tools_toolchain": True,
+    "//python:py_executable_info": True,
+    "//python:py_import": True,
+    "//python:py_info": True,
+    "//python:py_library": True,
+    "//python:py_runtime": True,
+    "//python:py_runtime_info": True,
+    "//python:py_runtime_pair": True,
+    "//python:py_test": True,
+    "//python:repositories": True,
+    "//python:versions": True,
+}
+
+_LOADABLE_SYMBOLS = {
+    "//python:py_info.bzl": [
+        # keep sorted
+        "PyInfo",
+        "VenvSymlinkEntry",
+        "VenvSymlinkKind",
+    ],
+}
 
 features = struct(
     TYPEDEF = _features_typedef,
     # keep sorted
     headers_abi3 = True,
+    loadable_symbols = _LOADABLE_SYMBOLS,
     precompile = True,
     py_info_venv_symlinks = True,
-    uses_builtin_rules = not config.enable_pystar,
+    targets = _TARGETS,
+    uses_builtin_rules = False,
     version = _VERSION_PRIVATE if "$Format" not in _VERSION_PRIVATE else "",
+    zipapp_rules = True,
 )

@@ -35,7 +35,7 @@ This target provides:
 
 * `CcInfo`: The C++ information about the Python ABI3 headers.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 The {obj}`features.headers_abi3` attribute can be used to detect if this target
 is available or not.
 :::

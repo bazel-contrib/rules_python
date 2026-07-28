@@ -21,16 +21,13 @@ _RENDER = {
     "copy_files": render.dict,
     "data": render.list,
     "data_exclude": render.list,
-    "dependencies": render.list,
-    "dependencies_by_platform": lambda x: render.dict(x, value_repr = render.list),
-    "entry_points": render.dict,
+    "entry_points": render.dict_dict,
     "extras": render.list,
     "group_deps": render.list,
     "include": str,
     "requires_dist": render.list,
     "srcs_exclude": render.list,
     "tags": render.list,
-    "target_platforms": render.list,
 }
 
 # NOTE @aignas 2024-10-25: We have to keep this so that files in
@@ -41,6 +38,12 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
+package_metadata(
+    name = "package_metadata",
+    purl = {purl},
+    visibility = ["//:__subpackages__"],
+)
+
 {fn}(
 {kwargs}
 )
@@ -49,13 +52,17 @@ package(default_visibility = ["//visibility:public"])
 def generate_whl_library_build_bazel(
         *,
         annotation = None,
-        default_python_version = None,
+        config_load,
+        purl = None,
+        requires_dist = [],
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
     Args:
         annotation: The annotation for the build file.
-        default_python_version: The python version to use to parse the METADATA.
+        config_load: {type}`str` The location from where to load the config.
+        purl: The purl.
+        requires_dist: {type}`list[str]` The list of dependencies from the METADATA file.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -63,40 +70,18 @@ def generate_whl_library_build_bazel(
         A complete BUILD file as a string
     """
 
-    loads = []
-    if kwargs.get("tags"):
-        fn = "whl_library_targets"
+    loads = [
+        """load("@package_metadata//rules:package_metadata.bzl", "package_metadata")""",
+    ]
 
-        # legacy path
-        unsupported_args = [
-            "requires",
-            "metadata_name",
-            "metadata_version",
-            "include",
-        ]
+    fn = "whl_library_targets_from_requires"
+    if not requires_dist:
+        # no deps, we can leave the extra loads out
+        pass
     else:
-        fn = "whl_library_targets_from_requires"
-        unsupported_args = [
-            "dependencies",
-            "dependencies_by_platform",
-            "target_platforms",
-            "default_python_version",
-        ]
-        dep_template = kwargs.get("dep_template")
-        loads.append(
-            """load("{}", "{}")""".format(
-                dep_template.format(
-                    name = "",
-                    target = "config.bzl",
-                ),
-                "whl_map",
-            ),
-        )
-        kwargs["include"] = "whl_map"
-
-    for arg in unsupported_args:
-        if kwargs.get(arg):
-            fail("BUG, unsupported arg: '{}'".format(arg))
+        loads.append("""load("{}", "{}")""".format(config_load, "packages"))
+        kwargs["include"] = "packages"
+        kwargs["requires_dist"] = requires_dist
 
     loads.extend([
         """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
@@ -111,8 +96,6 @@ def generate_whl_library_build_bazel(
         kwargs["srcs_exclude"] = annotation.srcs_exclude_glob
         if annotation.additive_build_content:
             additional_content.append(annotation.additive_build_content)
-    if default_python_version:
-        kwargs["default_python_version"] = default_python_version
 
     contents = "\n".join(
         [
@@ -123,6 +106,7 @@ def generate_whl_library_build_bazel(
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())
                 ])),
+                purl = repr(purl),
             ),
         ] + additional_content,
     )

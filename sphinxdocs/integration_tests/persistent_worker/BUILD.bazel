@@ -1,0 +1,8 @@
+load("//integration_tests:integration_test.bzl", "sphinxdocs_integration_test")
+
+package(default_visibility = ["//visibility:public"])
+
+sphinxdocs_integration_test(
+    name = "persistent_worker_test",
+    py_main = "persistent_worker_test.py",
+)

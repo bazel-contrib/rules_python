@@ -13,7 +13,6 @@
 # limitations under the License.
 """Starlark tests for py_runtime rule."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
@@ -21,14 +20,49 @@ load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
-load("//tests/base_rules:util.bzl", br_util = "util")
+load("//python/private:py_runtime_rule.bzl", "coverage_tool_missing_message")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_runtime_info_subject.bzl", "py_runtime_info_subject")
 
 _tests = []
+_basic_tests = []
 
-_SKIP_TEST = {
-    "target_compatible_with": ["@platforms//:incompatible"],
-}
+def _test_coverage_warning_when_enabled_and_no_tool(env):
+    # The only case that warrants a warning: coverage is being collected and the
+    # runtime that was selected cannot produce any.
+    msg = coverage_tool_missing_message(
+        coverage_enabled = True,
+        coverage_tool = None,
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(False)
+    env.expect.that_str(msg).contains("has no coverage_tool")
+    env.expect.that_str(msg).contains("//fake:runtime")
+
+_basic_tests.append(_test_coverage_warning_when_enabled_and_no_tool)
+
+def _test_no_coverage_warning_when_coverage_disabled(env):
+    # Without `bazel coverage` the missing tool has no observable effect, so
+    # saying anything would be noise on every ordinary build.
+    msg = coverage_tool_missing_message(
+        coverage_enabled = False,
+        coverage_tool = None,
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(True)
+
+_basic_tests.append(_test_no_coverage_warning_when_coverage_disabled)
+
+def _test_no_coverage_warning_when_tool_present(env):
+    # A configured coverage tool is the working case, whether it came from the
+    # bundled wheel set or from py_runtime.coverage_tool directly.
+    msg = coverage_tool_missing_message(
+        coverage_enabled = True,
+        coverage_tool = "some-coverage-tool-file",
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(True)
+
+_basic_tests.append(_test_no_coverage_warning_when_tool_present)
 
 def _simple_binary_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name)
@@ -48,28 +82,33 @@ _simple_binary = rule(
     executable = True,
 )
 
-def _test_bootstrap_template(name):
-    # The bootstrap_template arg isn't present in older Bazel versions, so
-    # we have to conditionally pass the arg and mark the test incompatible.
-    if config.enable_pystar:
-        py_runtime_kwargs = {"bootstrap_template": "bootstrap.txt"}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
+def _source_file_wrapper_impl(ctx):
+    return [DefaultInfo(
+        files = depset([ctx.file.src]),
+        runfiles = ctx.runfiles(files = ctx.files.data),
+    )]
 
+_source_file_wrapper = rule(
+    implementation = _source_file_wrapper_impl,
+    attrs = {
+        "data": attr.label_list(allow_files = True),
+        "src": attr.label(allow_single_file = True, mandatory = True),
+    },
+)
+
+def _test_bootstrap_template(name):
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         interpreter_path = "/py",
         python_version = "PY3",
-        **py_runtime_kwargs
+        bootstrap_template = "bootstrap.txt",
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = _test_bootstrap_template_impl,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_bootstrap_template_impl(env, target):
@@ -81,29 +120,19 @@ def _test_bootstrap_template_impl(env, target):
 _tests.append(_test_bootstrap_template)
 
 def _test_cannot_have_both_inbuild_and_system_interpreter(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {
-            "interpreter": "fake_interpreter",
-            "interpreter_path": "/some/path",
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {
-            "interpreter_path": "/some/path",
-        }
-        attr_values = _SKIP_TEST
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
-        **py_runtime_kwargs
+        interpreter = "fake_interpreter",
+        interpreter_path = "/some/path",
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = _test_cannot_have_both_inbuild_and_system_interpreter_impl,
         expect_failure = True,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_cannot_have_both_inbuild_and_system_interpreter_impl(env, target):
@@ -114,25 +143,19 @@ def _test_cannot_have_both_inbuild_and_system_interpreter_impl(env, target):
 _tests.append(_test_cannot_have_both_inbuild_and_system_interpreter)
 
 def _test_cannot_specify_files_for_system_interpreter(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {"files": ["foo.txt"]}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         interpreter_path = "/foo",
         python_version = "PY3",
-        **py_runtime_kwargs
+        files = ["foo.txt"],
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = _test_cannot_specify_files_for_system_interpreter_impl,
         expect_failure = True,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_cannot_specify_files_for_system_interpreter_impl(env, target):
@@ -143,21 +166,12 @@ def _test_cannot_specify_files_for_system_interpreter_impl(env, target):
 _tests.append(_test_cannot_specify_files_for_system_interpreter)
 
 def _test_coverage_tool_executable(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {
-            "coverage_tool": name + "_coverage_tool",
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
-
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
         interpreter_path = "/bogus",
-        **py_runtime_kwargs
+        coverage_tool = name + "_coverage_tool",
     )
     rt_util.helper_target(
         _simple_binary,
@@ -168,7 +182,7 @@ def _test_coverage_tool_executable(name):
         name = name,
         target = name + "_subject",
         impl = _test_coverage_tool_executable_impl,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_coverage_tool_executable_impl(env, target):
@@ -183,14 +197,10 @@ def _test_coverage_tool_executable_impl(env, target):
 _tests.append(_test_coverage_tool_executable)
 
 def _test_coverage_tool_plain_files(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {
-            "coverage_tool": name + "_coverage_tool",
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
+    py_runtime_kwargs = {
+        "coverage_tool": name + "_coverage_tool",
+    }
+    attr_values = {}
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
@@ -239,10 +249,53 @@ def _test_in_build_interpreter(name):
 def _test_in_build_interpreter_impl(env, target):
     info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
     info.python_version().equals("PY3")
-    info.files().contains_predicate(matching.file_basename_equals("file1.txt"))
+    info.files().contains_exactly([
+        "{package}/fake_interpreter",
+        "{package}/file1.txt",
+    ])
     info.interpreter().path().contains("fake_interpreter")
+    env.expect.that_bool(info.actual.interpreter_files_to_run == None).equals(True)
 
 _tests.append(_test_in_build_interpreter)
+
+def _test_non_executable_source_file_interpreter_keeps_file_only_behavior(name):
+    rt_util.helper_target(
+        _source_file_wrapper,
+        name = name + "_wrapped_interpreter",
+        src = "fake_interpreter",
+        data = ["runfile.txt"],
+    )
+
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        interpreter = name + "_wrapped_interpreter",
+        python_version = "PY3",
+        files = ["file1.txt"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_non_executable_source_file_interpreter_keeps_file_only_behavior_impl,
+    )
+
+def _test_non_executable_source_file_interpreter_keeps_file_only_behavior_impl(env, target):
+    target = env.expect.that_target(target)
+    py_runtime_info = target.provider(
+        PyRuntimeInfo,
+        factory = py_runtime_info_subject,
+    )
+    py_runtime_info.interpreter().short_path_equals("{package}/fake_interpreter")
+    env.expect.that_bool(py_runtime_info.actual.interpreter_files_to_run == None).equals(True)
+    py_runtime_info.files().contains_exactly([
+        "{package}/file1.txt",
+    ])
+
+    target.default_outputs().contains_exactly([
+        "{package}/file1.txt",
+    ])
+
+_tests.append(_test_non_executable_source_file_interpreter_keeps_file_only_behavior)
 
 def _test_interpreter_binary_with_multiple_outputs(name):
     rt_util.helper_target(
@@ -271,6 +324,9 @@ def _test_interpreter_binary_with_multiple_outputs_impl(env, target):
         factory = py_runtime_info_subject,
     )
     py_runtime_info.interpreter().short_path_equals("{package}/{test_name}_built_interpreter")
+    py_runtime_info.interpreter_files_to_run().executable().short_path_equals(
+        "{package}/{test_name}_built_interpreter",
+    )
     py_runtime_info.files().contains_exactly([
         "{package}/extra_default_output.txt",
         "{package}/runfile.txt",
@@ -316,6 +372,9 @@ def _test_interpreter_binary_with_single_output_and_runfiles_impl(env, target):
         factory = py_runtime_info_subject,
     )
     py_runtime_info.interpreter().short_path_equals("{package}/{test_name}_built_interpreter")
+    py_runtime_info.interpreter_files_to_run().executable().short_path_equals(
+        "{package}/{test_name}_built_interpreter",
+    )
     py_runtime_info.files().contains_exactly([
         "{package}/runfile.txt",
         "{package}/{test_name}_built_interpreter",
@@ -334,14 +393,8 @@ def _test_interpreter_binary_with_single_output_and_runfiles_impl(env, target):
 _tests.append(_test_interpreter_binary_with_single_output_and_runfiles)
 
 def _test_must_have_either_inbuild_or_system_interpreter(name):
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {
-            "interpreter_path": "/some/path",
-        }
-        attr_values = _SKIP_TEST
+    py_runtime_kwargs = {}
+    attr_values = {}
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
@@ -377,22 +430,18 @@ def _test_system_interpreter(name):
     )
 
 def _test_system_interpreter_impl(env, target):
-    env.expect.that_target(target).provider(
+    info = env.expect.that_target(target).provider(
         PyRuntimeInfo,
         factory = py_runtime_info_subject,
-    ).interpreter_path().equals("/system/python")
+    )
+    info.interpreter_path().equals("/system/python")
+    env.expect.that_bool(info.actual.interpreter_files_to_run == None).equals(True)
 
 _tests.append(_test_system_interpreter)
 
 def _test_system_interpreter_must_be_absolute(name):
-    # Bazel 5.4 will entirely crash when an invalid interpreter_path
-    # is given.
-    if br_util.is_bazel_6_or_higher():
-        py_runtime_kwargs = {"interpreter_path": "relative/path"}
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {"interpreter_path": "/junk/value/for/bazel5.4"}
-        attr_values = _SKIP_TEST
+    py_runtime_kwargs = {"interpreter_path": "relative/path"}
+    attr_values = {}
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
@@ -415,28 +464,19 @@ def _test_system_interpreter_must_be_absolute_impl(env, target):
 _tests.append(_test_system_interpreter_must_be_absolute)
 
 def _interpreter_version_info_test(name, interpreter_version_info, impl, expect_failure = True):
-    if config.enable_pystar:
-        py_runtime_kwargs = {
-            "interpreter_version_info": interpreter_version_info,
-        }
-        attr_values = {}
-    else:
-        py_runtime_kwargs = {}
-        attr_values = _SKIP_TEST
-
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
         interpreter_path = "/py",
-        **py_runtime_kwargs
+        interpreter_version_info = interpreter_version_info,
     )
     analysis_test(
         name = name,
         target = name + "_subject",
         impl = impl,
         expect_failure = expect_failure,
-        attr_values = attr_values,
+        attr_values = {},
     )
 
 def _test_interpreter_version_info_must_define_major_and_minor_only_major(name):
@@ -530,9 +570,6 @@ def _test_interpreter_version_info_parses_values_to_struct_impl(env, target):
 _tests.append(_test_interpreter_version_info_parses_values_to_struct)
 
 def _test_version_info_from_flag(name):
-    if not config.enable_pystar:
-        rt_util.skip_test(name)
-        return
     py_runtime(
         name = name + "_subject",
         interpreter_version_info = None,
@@ -560,5 +597,6 @@ _tests.append(_test_version_info_from_flag)
 def py_runtime_test_suite(name):
     test_suite(
         name = name,
+        basic_tests = _basic_tests,
         tests = _tests,
     )

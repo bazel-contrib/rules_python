@@ -1,9 +1,10 @@
 # Support Policy
 
-The Bazel community maintains this repository. Neither Google nor the Bazel team
-provides support for the code. However, this repository is part of the test
-suite used to vet new Bazel releases. See the <project:#contributing>
-page for information on our development workflow.
+This is a community maintained project run by volunteers. What that means in
+practice is:
+
+* Responses to issues and PRs depend on available time and energy.
+* If you care, contribute (see <project:#contributing>) and get involved.
 
 ## Supported rules_python Versions
 
@@ -25,10 +26,9 @@ patch 1.4, version 1.5 must be patched first.
 
 Backports can be requested by [creating an issue with the patch release
 template][patch-release-issue] or by sending a pull request performing the backport.
-See the dev guide for [how to create a backport PR][backport-pr].
+See the dev guide for [how to create a backport PR](creating-backport-prs).
 
 [patch-release-issue]: https://github.com/bazelbuild/rules_python/issues/new?template=patch_release_request.md
-[backport-pr]: devguide.html#creating-backport-prs
 
 ## Supported Bazel Versions
 
@@ -61,8 +61,9 @@ are Linux, Mac, and Windows.
 
 In order to better describe different support levels, the following acts as a rough
 guideline for different platform tiers:
-* Tier 0 - The platforms that our CI runs on: `linux_x86_64`, `osx_x86_64`, `RBE linux_x86_64`.
-* Tier 1 - The platforms that are similar enough to what the CI runs on: `linux_aarch64`, `osx_arm64`.
+* Tier 0 - The platforms that our CI runs on: `linux_x86_64`, `osx_arm64`, `RBE linux_x86_64`.
+* Tier 1 - The platforms that are similar enough to what the CI runs on: `linux_aarch64`,
+  `osx_x86_64`.
   What is more, `windows_x86_64` is in this list, as we run tests in CI, but
   developing for Windows is more challenging, and features may come later to
   this platform.

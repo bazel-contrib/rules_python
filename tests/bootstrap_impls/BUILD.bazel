@@ -13,6 +13,7 @@
 # limitations under the License.
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:py_test.bzl", "py_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
@@ -23,7 +24,7 @@ py_reconfig_binary(
     srcs = ["bin.py"],
     bootstrap_impl = "script",
     # Force it to not be self-executable
-    build_python_zip = "no",
+    build_python_zip = False,
     main = "bin.py",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
 )
@@ -50,14 +51,14 @@ sh_test(
 
 sh_py_run_test(
     name = "run_binary_zip_no_test",
-    build_python_zip = "no",
+    build_python_zip = False,
     py_src = "bin.py",
     sh_src = "run_binary_zip_no_test.sh",
 )
 
 sh_py_run_test(
     name = "run_binary_zip_yes_test",
-    build_python_zip = "yes",
+    build_python_zip = True,
     py_src = "bin.py",
     sh_src = "run_binary_zip_yes_test.sh",
 )
@@ -81,7 +82,7 @@ sh_py_run_test(
 sh_py_run_test(
     name = "run_binary_bootstrap_script_zip_yes_test",
     bootstrap_impl = "script",
-    build_python_zip = "yes",
+    build_python_zip = True,
     py_src = "bin.py",
     sh_src = "run_binary_zip_yes_test.sh",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
@@ -90,7 +91,7 @@ sh_py_run_test(
 sh_py_run_test(
     name = "run_binary_bootstrap_script_zip_no_test",
     bootstrap_impl = "script",
-    build_python_zip = "no",
+    build_python_zip = False,
     py_src = "bin.py",
     sh_src = "run_binary_zip_no_test.sh",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
@@ -102,6 +103,18 @@ sh_py_run_test(
     py_src = "bin.py",
     sh_src = "run_binary_find_runfiles_test.sh",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_reconfig_test(
+    name = "bazel_tools_importable_system_python_test",
+    srcs = ["bazel_tools_importable_test.py"],
+    bootstrap_impl = "system_python",
+    # Necessary because bazel_tools doesn't have __init__.py files.
+    legacy_create_init = True,
+    main = "bazel_tools_importable_test.py",
+    deps = [
+        "@bazel_tools//tools/python/runfiles",
+    ],
 )
 
 py_reconfig_test(
@@ -121,6 +134,32 @@ py_reconfig_test(
     env = {"BOOTSTRAP": "system_python"},
     imports = ["./site-packages"],
     main = "sys_path_order_test.py",
+)
+
+genrule(
+    name = "stdlib_shadowing_outputs",
+    outs = [
+        "shutil.py",
+        "types.py",
+    ],
+    cmd = """
+cat > $(@D)/shutil.py <<'PY'
+raise RuntimeError("target output shutil.py shadowed the stdlib shutil module")
+PY
+cat > $(@D)/types.py <<'PY'
+raise RuntimeError("target output types.py shadowed the stdlib types module")
+PY
+""",
+)
+
+py_reconfig_test(
+    name = "stdlib_shadowing_system_python_test",
+    srcs = [
+        "stdlib_shadowing_test.py",
+        ":stdlib_shadowing_outputs",
+    ],
+    bootstrap_impl = "system_python",
+    main = "stdlib_shadowing_test.py",
 )
 
 py_reconfig_test(
@@ -176,6 +215,14 @@ sh_test(
         "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
     }),
+)
+
+py_test(
+    name = "system_python_nodeps_test",
+    srcs = ["system_python_nodeps_test.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "system_python",
+    },
 )
 
 relative_path_test_suite(name = "relative_path_tests")

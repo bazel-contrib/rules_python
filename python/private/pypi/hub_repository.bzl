@@ -50,7 +50,7 @@ def _impl(rctx):
         "config.bzl",
         rctx.attr._config_template,
         substitutions = {
-            "%%WHL_MAP%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
+            "%%PACKAGES%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
         },
     )
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
@@ -100,7 +100,7 @@ in the pip.parse tag class.
 """,
         ),
         "_config_template": attr.label(
-            default = ":config.bzl.tmpl.bzlmod",
+            default = ":config.bzl.tmpl",
         ),
         "_requirements_bzl_template": attr.label(
             default = ":requirements.bzl.tmpl.bzlmod",

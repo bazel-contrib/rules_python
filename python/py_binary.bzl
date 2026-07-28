@@ -14,13 +14,7 @@
 
 """Public entry point for py_binary."""
 
-load("@rules_python_internal//:rules_python_config.bzl", "config")
-load("//python/private:py_binary_macro.bzl", _starlark_py_binary = "py_binary")
-load("//python/private:register_extension_info.bzl", "register_extension_info")
-load("//python/private:util.bzl", "add_migration_tag")
-
-# buildifier: disable=native-python
-_py_binary_impl = _starlark_py_binary if config.enable_pystar else native.py_binary
+load("//python/private:py_binary_macro.bzl", _py_binary = "py_binary")
 
 def py_binary(**attrs):
     """Creates an executable Python program.
@@ -34,6 +28,11 @@ def py_binary(**attrs):
     * `srcs_version`: cannot be `PY2` or `PY2ONLY`
     * `tags`: May have special marker values added, if not already present.
 
+    :::{versionchanged} 1.9.0
+    The `PYTHONBREAKPOINT` environment variable is inherited. Use in combination
+    with {obj}`--debugger` to customize the debugger available and used.
+    :::
+
     Args:
       **attrs: Rule attributes forwarded onto the underlying {rule}`py_binary`.
     """
@@ -42,9 +41,4 @@ def py_binary(**attrs):
     if attrs.get("srcs_version") in ("PY2", "PY2ONLY"):
         fail("Python 2 is no longer supported: https://github.com/bazel-contrib/rules_python/issues/886")
 
-    _py_binary_impl(**add_migration_tag(attrs))
-
-register_extension_info(
-    extension = py_binary,
-    label_regex_for_dep = "{extension_name}",
-)
+    _py_binary(**attrs)

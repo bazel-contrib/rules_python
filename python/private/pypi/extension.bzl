@@ -14,28 +14,30 @@
 
 "pip module extension for use with bzlmod"
 
-load("@bazel_features//:features.bzl", "bazel_features")
 load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("@toml.bzl", "toml")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
+load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load(":evaluate_markers.bzl", EVALUATE_MARKERS_SRCS = "SRCS")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
+load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
+load(":unified_hub_repo.bzl", "unified_hub_repo")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
 
     This creates the JSON files used to modify the creation of different wheels.
-"""
+    """
     for hub_name, whl_maps in whl_mods_dict.items():
         whl_mods = {}
 
@@ -56,6 +58,128 @@ def _whl_mods_impl(whl_mods_dict):
             whl_mods = whl_mods,
         )
 
+def default_platforms():
+    """Return the built-in default platform definitions.
+
+    These provide the platform metadata needed for pip wheel resolution
+    (whl_abi_tags, whl_platform_tags, config_settings, etc.) across all
+    common OS/arch combinations. They are always used as the starting point
+    for build_config; root modules can override individual platforms via
+    pip.default tags.
+
+    Returns:
+        A dict of platform name to platform config dicts.
+    """
+    # NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility. Whilst we
+    # stabilize the API this list may be updated with a mention in the CHANGELOG.
+
+    platforms = {}
+
+    # Linux platforms
+    for cpu in ["x86_64", "aarch64"]:
+        for freethreaded in ["", "_freethreaded"]:
+            platform_name = "linux_{}{}".format(cpu, freethreaded)
+            platforms[platform_name] = {
+                "arch_name": cpu,
+                "config_settings": [
+                    "@platforms//cpu:{}".format(cpu),
+                    "@platforms//os:linux",
+                    "//python/config_settings:_is_py_freethreaded_{}".format(
+                        "yes" if freethreaded else "no",
+                    ),
+                ],
+                "env": {"platform_version": "0"},
+                "marker": "python_version >= '3.13'" if freethreaded else "",
+                "name": platform_name,
+                "os_name": "linux",
+                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                    "abi3",
+                    "cp{major}{minor}",
+                ],
+                "whl_platform_tags": [
+                    "linux_{}".format(cpu),
+                    "manylinux_*_{}".format(cpu),
+                ],
+            }
+
+    # macOS platforms
+    for cpu, platform_tag_cpus in {
+        "aarch64": ["universal2", "arm64"],
+        "x86_64": ["universal2", "x86_64"],
+    }.items():
+        for freethreaded in ["", "_freethreaded"]:
+            platform_name = "osx_{}{}".format(cpu, freethreaded)
+            platforms[platform_name] = {
+                "arch_name": cpu,
+                "config_settings": [
+                    "@platforms//cpu:{}".format(cpu),
+                    "@platforms//os:osx",
+                    "//python/config_settings:_is_py_freethreaded_{}".format(
+                        "yes" if freethreaded else "no",
+                    ),
+                ],
+                "env": {"platform_version": "14.0"},
+                "marker": "python_version >= '3.13'" if freethreaded else "",
+                "name": platform_name,
+                "os_name": "osx",
+                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                    "abi3",
+                    "cp{major}{minor}",
+                ],
+                "whl_platform_tags": [
+                    "macosx_*_{}".format(suffix)
+                    for suffix in platform_tag_cpus
+                ],
+            }
+
+    # Windows x86_64 platforms
+    for freethreaded in ["", "_freethreaded"]:
+        platform_name = "windows_x86_64{}".format(freethreaded)
+        platforms[platform_name] = {
+            "arch_name": "x86_64",
+            "config_settings": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows",
+                "//python/config_settings:_is_py_freethreaded_{}".format(
+                    "yes" if freethreaded else "no",
+                ),
+            ],
+            "env": {"platform_version": "0"},
+            "marker": "python_version >= '3.13'" if freethreaded else "",
+            "name": platform_name,
+            "os_name": "windows",
+            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                "abi3",
+                "cp{major}{minor}",
+            ],
+            "whl_platform_tags": ["win_amd64"],
+        }
+
+    # Windows aarch64 platforms
+    for freethreaded in ["", "_freethreaded"]:
+        platform_name = "windows_aarch64{}".format(freethreaded)
+        platforms[platform_name] = {
+            "arch_name": "aarch64",
+            "config_settings": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows",
+                "//python/config_settings:_is_py_freethreaded_{}".format(
+                    "yes" if freethreaded else "no",
+                ),
+            ],
+            "env": {"platform_version": "0"},
+            "marker": "python_version >= '3.13'" if freethreaded else "python_version >= '3.11'",
+            "name": platform_name,
+            "os_name": "windows",
+            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                "abi3",
+                "cp{major}{minor}",
+            ],
+            "whl_platform_tags": ["win_arm64"],
+        }
+
+    return platforms
+
 def _configure(config, *, override = False, **kwargs):
     """Set the value in the config if the value is provided"""
     env = kwargs.get("env")
@@ -71,25 +195,38 @@ def _configure(config, *, override = False, **kwargs):
 def build_config(
         *,
         module_ctx,
-        enable_pipstar):
+        enable_pipstar_extract):
     """Parse 'configure' and 'default' extension tags
 
     Args:
         module_ctx: {type}`module_ctx` module context.
-        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
-            evaluation of the extension.
+        enable_pipstar_extract: {type}`bool | None` a flag to also not pass Python
+            interpreter to `whl_library` when possible.
 
     Returns:
         A struct with the configuration.
     """
+    default_hub = None
     defaults = {
-        "platforms": {},
+        "platforms": default_platforms(),
+        "python_version": None,
     }
     for mod in module_ctx.modules:
         if not (mod.is_root or mod.name == "rules_python"):
             continue
 
         for tag in mod.tags.default:
+            if tag.default_hub:
+                if mod.is_root:
+                    if default_hub:
+                        fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
+                    default_hub = tag.default_hub
+            pyproject_toml = tag.pyproject_toml
+            if pyproject_toml:
+                pyproject = read_pyproject(module_ctx, pyproject_toml)
+                if pyproject.requires_python:
+                    defaults["python_version"] = version_from_requires_python(pyproject.requires_python)
+
             platform = tag.platform
             if platform:
                 specific_config = defaults["platforms"].setdefault(platform, {})
@@ -112,6 +249,7 @@ def build_config(
             _configure(
                 defaults,
                 override = mod.is_root,
+                index_url = tag.index_url,
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
                 netrc = tag.netrc,
@@ -122,27 +260,31 @@ def build_config(
 
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
+        default_hub = default_hub,
+        index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
         netrc = defaults.get("netrc", None),
+        python_version = defaults.get("python_version", None),
         platforms = {
             name: _plat(**values)
             for name, values in defaults["platforms"].items()
         },
-        enable_pipstar = enable_pipstar,
+        enable_pipstar_extract = enable_pipstar_extract,
+        toml_decode = toml.decode,
     )
 
 def parse_modules(
         module_ctx,
         _fail = fail,
         simpleapi_download = simpleapi_download,
-        enable_pipstar = False,
+        enable_pipstar_extract = False,
         **kwargs):
     """Implementation of parsing the tag classes for the extension and return a struct for registering repositories.
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         simpleapi_download: Used for testing overrides
-        enable_pipstar: {type}`bool` a flag to enable dropping Python dependency for
-            evaluation of the extension.
+        enable_pipstar_extract: {type}`bool` a flag to enable dropping Python dependency for
+            extracting wheels.
         _fail: {type}`function` the failure function, mainly for testing.
         **kwargs: Extra arguments passed to the hub_builder.
 
@@ -180,7 +322,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    config = build_config(module_ctx = module_ctx, enable_pipstar = enable_pipstar)
+    config = build_config(module_ctx = module_ctx, enable_pipstar_extract = enable_pipstar_extract)
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -215,12 +357,54 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     # Used to track all the different pip hubs and the spoke pip Python
     # versions.
+    # dict[str repo, HubBuilder]
+    # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = {}
+    simpleapi_cache = pypi_cache(mctx = module_ctx)
+
+    is_pypi_hub_reserved = module_ctx.getenv("RULES_PYTHON_PYPI_HUB_RESERVED", "0") == "1"
+    renamed_default_hub = None
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
+            python_version = pip_attr.python_version
+            if not python_version and pip_attr.pyproject_toml:
+                pyproject = read_pyproject(module_ctx, pip_attr.pyproject_toml)
+                if pyproject.requires_python:
+                    python_version = version_from_requires_python(pyproject.requires_python)
+            python_version = python_version or config.python_version
+            if not python_version:
+                _fail("pip.parse() requires one of `python_version`, `pyproject_toml`, or `pip.default(pyproject_toml=...)` to be set")
+
             hub_name = pip_attr.hub_name
+            if hub_name == "pypi":
+                if is_pypi_hub_reserved:
+                    renamed_name = mod.name + "_pypi"
+                    print(
+                        (
+                            "WARNING: The PyPI hub name 'pypi' is reserved " +
+                            "(module '{}'). The hub was renamed to '{}'. " +
+                            "Please rename your hub."
+                        ).format(
+                            mod.name,
+                            renamed_name,
+                        ),
+                    )  # buildifier: disable=print
+                    hub_name = renamed_name
+                    if not renamed_default_hub:
+                        renamed_default_hub = hub_name
+                else:
+                    print(
+                        (
+                            "WARNING: The PyPI hub name 'pypi' is reserved " +
+                            "(module '{}'). Please rename your hub, otherwise " +
+                            "a future release will rename it to '{}_pypi'."
+                        ).format(
+                            mod.name,
+                            mod.name,
+                        ),
+                    )  # buildifier: disable=print
+
             if hub_name not in pip_hub_map:
                 builder = hub_builder(
                     name = hub_name,
@@ -231,11 +415,10 @@ You cannot use both the additive_build_content and additive_build_content_file a
                     simpleapi_cache = simpleapi_cache,
                     # TODO @aignas 2025-09-06: do not use kwargs
                     minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
-                    evaluate_markers_fn = kwargs.get("evaluate_markers", None),
                     available_interpreters = kwargs.get("available_interpreters", INTERPRETER_LABELS),
-                    logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name),
+                    logger = repo_utils.logger(module_ctx, "pypi:hub:" + hub_name, mod = mod),
                 )
-                pip_hub_map[pip_attr.hub_name] = builder
+                pip_hub_map[hub_name] = builder
             elif pip_hub_map[hub_name].module_name != mod.name:
                 # We cannot have two hubs with the same name in different
                 # modules.
@@ -251,12 +434,22 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 ))
 
             else:
-                builder = pip_hub_map[pip_attr.hub_name]
+                builder = pip_hub_map[hub_name]
 
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
+                python_version = python_version,
             )
+
+    # dict[str package, dict[str, None] extra_targets]
+    declared_deps = {}
+    for mod in module_ctx.modules:
+        for dep_attr in mod.tags.dep:
+            name = normalize_name(dep_attr.name)
+            targets = declared_deps.setdefault(name, {})
+            for target in dep_attr.extra_targets:
+                targets[target] = None
 
     # Keeps track of all the hub's whl repos across the different versions.
     # dict[hub, dict[whl, dict[version, str pip]]]
@@ -282,8 +475,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
 
     return struct(
         config = config,
+        declared_deps = declared_deps,
+        default_hub = config.default_hub or renamed_default_hub,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
+        facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
         whl_libraries = whl_libraries,
@@ -295,6 +491,50 @@ You cannot use both the additive_build_content and additive_build_content_file a
             }
             for hub_name in hub_whl_map
         },
+    )
+
+def _create_unified_hub_repo(mods):
+    if "pypi" in mods.hub_whl_map:
+        return
+
+    hubs = sorted(mods.hub_whl_map.keys())
+    if mods.default_hub and mods.default_hub not in hubs:
+        fail("default_hub '%s' is not a defined PyPI hub. Available hubs: %s" % (mods.default_hub, ", ".join(hubs)))
+
+    packages = {}
+    extra_aliases = {}
+
+    for hub_name in hubs:
+        for pkg_name in mods.exposed_packages.get(hub_name, []):
+            norm_pkg = normalize_name(pkg_name)
+            if norm_pkg not in packages:
+                packages[norm_pkg] = []
+            if hub_name not in packages[norm_pkg]:
+                packages[norm_pkg].append(hub_name)
+
+            extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
+            for alias_name in extra:
+                qual_alias = "%s:%s" % (norm_pkg, alias_name)
+                if qual_alias not in extra_aliases:
+                    extra_aliases[qual_alias] = []
+                if hub_name not in extra_aliases[qual_alias]:
+                    extra_aliases[qual_alias].append(hub_name)
+
+    for norm_pkg, extra_targets in mods.declared_deps.items():
+        if norm_pkg not in packages:
+            packages[norm_pkg] = []
+
+        for target_name in extra_targets:
+            qual_alias = "%s:%s" % (norm_pkg, target_name)
+            if qual_alias not in extra_aliases:
+                extra_aliases[qual_alias] = []
+
+    unified_hub_repo(
+        name = "pypi",
+        default_hub = mods.default_hub or (hubs[0] if hubs else ""),
+        extra_aliases = extra_aliases,
+        hubs = hubs,
+        packages = packages,
     )
 
 def _pip_impl(module_ctx):
@@ -363,7 +603,10 @@ def _pip_impl(module_ctx):
         module_ctx: module contents
     """
 
-    mods = parse_modules(module_ctx, enable_pipstar = rp_config.enable_pipstar)
+    mods = parse_modules(
+        module_ctx,
+        enable_pipstar_extract = rp_config.bazel_8_or_later,
+    )
 
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
@@ -385,13 +628,17 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
         )
 
-    if bazel_features.external_deps.extension_metadata_has_reproducible:
-        # NOTE @aignas 2025-04-15: this is set to be reproducible, because the
-        # results after calling the PyPI index should be reproducible on each
-        # machine.
-        return module_ctx.extension_metadata(reproducible = True)
+    _create_unified_hub_repo(mods)
+
+    # The code is smart to not return facts if we don't support the mechanism for that.
+    # Hence we should not pass it to the metadata
+    if mods.facts:
+        return module_ctx.extension_metadata(
+            reproducible = True,
+            facts = mods.facts,
+        )
     else:
-        return None
+        return module_ctx.extension_metadata(reproducible = True)
 
 _default_attrs = {
     "arch_name": attr.string(
@@ -405,11 +652,13 @@ Either this or {attr}`env` `platform_machine` key should be specified.
 """,
     ),
     "config_settings": attr.label_list(
-        mandatory = True,
         doc = """\
 The list of labels to `config_setting` targets that need to be matched for the platform to be
-selected.
+selected. Mandatory if platform is specified.
 """,
+    ),
+    "default_hub": attr.string(
+        doc = "The name of the concrete PyPI hub to use by default when {flag}`--venv=auto`.",
     ),
     "env": attr.string_dict(
         doc = """\
@@ -429,10 +678,30 @@ Supported keys:
 * `platform_system`, defaults to a value inferred from the {attr}`os_name`.
 * `platform_version`, defaults to `0`.
 * `sys_platform`, defaults to a value inferred from the {attr}`os_name`.
+""",
+    ),
+    "index_url": attr.string(
+        doc = """\
+The index URL to use as a default when downloading packages from PyPI. This is used if nothing is
+specified via `--index-url` or `--extra-index-url` parameters in the `requirements.txt` file or via
+the {attr}`pip.parse.extra_pip_args`.
 
-::::{note}
-This is only used if the {envvar}`RULES_PYTHON_ENABLE_PIPSTAR` is enabled.
-::::
+This value is going to be subject to `envsubst` substitutions if necessary, look at the
+{attr}`pip.parse.envsubst` documentation for more information..
+
+The indexes must support Simple API as described here:
+https://packaging.python.org/en/latest/specifications/simple-repository-api/
+
+Index metadata will be used to get `sha256` values for packages even if the
+`sha256` values are not present in the requirements.txt lock file.
+
+Defaults to `https://pypi.org/simple`.
+
+:::{versionadded} 2.0.0
+This has been added as a replacement for 
+{obj}`pip.parse.experimental_index_url` and 
+{obj}`pip.parse.experimental_extra_index_urls`.
+:::
 """,
     ),
     "marker": attr.string(
@@ -467,6 +736,23 @@ If you are defining custom platforms in your project and don't want things to cl
 [isolation] feature.
 
 [isolation]: https://bazel.build/rules/lib/globals/module#use_extension.isolate
+""",
+    ),
+    "pyproject_toml": attr.label(
+        mandatory = False,
+        doc = """\
+Label pointing to pyproject.toml file to read the default Python version from.
+When specified, reads the `requires-python` field from pyproject.toml and uses
+it as the default python_version for all `pip.parse()` calls that don't
+explicitly specify one.
+
+:::{note}
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+This is designed to work with dependency management tools like Renovate.
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
     ),
     "whl_abi_tags": attr.string_list(
@@ -550,17 +836,11 @@ def _pip_parse_ext_attrs(**kwargs):
     attrs = dict({
         "experimental_extra_index_urls": attr.string_list(
             doc = """\
-The extra index URLs to use for downloading wheels using bazel downloader.
-Each value is going to be subject to `envsubst` substitutions if necessary.
+May be removed in future releases.
 
-The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
-
-This is equivalent to `--extra-index-urls` `pip` option.
-
-:::{versionchanged} 1.1.0
-Starting with this version we will iterate over each index specified until
-we find metadata for all references distributions.
+:::{versionchanged} 2.0.0
+This is deprecated, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
             default = [],
@@ -568,25 +848,11 @@ we find metadata for all references distributions.
         "experimental_index_url": attr.string(
             default = kwargs.get("experimental_index_url", ""),
             doc = """\
-The index URL to use for downloading wheels using bazel downloader. This value is going
-to be subject to `envsubst` substitutions if necessary.
+May be removed in future releases.
 
-The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
-
-In the future this could be defaulted to `https://pypi.org` when this feature becomes
-stable.
-
-This is equivalent to `--index-url` `pip` option.
-
-:::{versionchanged} 0.37.0
-If {attr}`download_only` is set, then `sdist` archives will be discarded and `pip.parse` will
-operate in wheel-only mode.
-:::
-
-:::{versionchanged} 1.4.0
-Index metadata will be used to deduct `sha256` values for packages even if the
-`sha256` values are not present in the requirements.txt lock file.
+:::{versionchanged} 2.0.0
+This is deprecated, please use {obj}`pip.default.index_url` or pass the `--index-url` parameter via the
+lock-file or {obj}`pip.parse.extra_pip_args`.
 :::
 """,
         ),
@@ -612,6 +878,11 @@ https://packaging.python.org/en/latest/specifications/simple-repository-api/
             doc = """
 The name of the repo pip dependencies will be accessible from.
 
+The hub name `"pypi"` is reserved for the automatically generated
+[Unified @pypi Hub](unified-pypi-hub) repository. Please choose a different name
+for your concrete hubs. See [Unified @pypi Hub](unified-pypi-hub) for how to
+handle collisions.
+
 This name must be unique between modules; unless your module is guaranteed to
 always be the root module, it's highly recommended to include your module name
 in the hub name. Repo mapping, `use_repo(..., pip="my_modules_pip_deps")`, can
@@ -627,6 +898,12 @@ is not required. Each hub is a separate resolution of pip dependencies. This
 means if different programs need different versions of some library, separate
 hubs can be created, and each program can use its respective hub's targets.
 Targets from different hubs should not be used together.
+
+:::{versionchanged} 2.2.0
+Using the hub name `"pypi"` is deprecated and is changed to
+`{module_name}_pypi` depending on the
+{envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` environment variable.
+:::
 """,
         ),
         "parallel_download": attr.bool(
@@ -646,8 +923,23 @@ find in case extra indexes are specified.
 """,
             default = True,
         ),
+        "pyproject_toml": attr.label(
+            mandatory = False,
+            doc = """\
+Label pointing to a pyproject.toml file to read the Python version from.
+When specified, the `requires-python` field is used as the `python_version`
+for this `pip.parse()` call, unless `python_version` is set explicitly.
+
+:::{note}
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "python_version": attr.string(
-            mandatory = True,
+            mandatory = False,
             doc = """
 The Python version the dependencies are targetting, in Major.Minor format
 (e.g., "3.11") or patch level granularity (e.g. "3.11.1").
@@ -655,6 +947,15 @@ The Python version the dependencies are targetting, in Major.Minor format
 If an interpreter isn't explicitly provided (using `python_interpreter` or
 `python_interpreter_target`), then the version specified here must have
 a corresponding `python.toolchain()` configured.
+
+:::{seealso}
+The {obj}`pyproject_toml` attribute for getting the version from a project file.
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+No longer mandatory if the {obj}`pyproject_toml` attribute or
+{obj}`pip.default.pyproject_toml` is specified.
+:::
 """,
         ),
         "simpleapi_skip": attr.string_list(
@@ -669,18 +970,40 @@ EXPERIMENTAL: this may be removed without notice.
 :::
 """,
         ),
+        "target_platforms": attr.string_list(
+            default = [],
+            doc = """\
+The list of platforms for which we would evaluate the requirements files. If you need to be able to
+only evaluate for a particular platform (e.g. "linux_x86_64"), then put it in here.
+
+If you want `freethreaded` variant, then you can use `_freethreaded` suffix as `rules_python` is
+defining target platforms for these variants in its `MODULE.bazel` file. The identifiers for this
+function in general are the same as used in the {obj}`pip.default.platform` attribute.
+
+If you only care for the host platform and do not have a usecase to cross-build, then you can put in
+a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
+
+:::{include} /_includes/experimental_api.md
+:::
+
+:::{versionadded} 1.8.0
+:::
+""",
+        ),
+        "uv_lock": attr.label(
+            doc = """
+(label, optional): A label pointing to the uv.lock file. If provided,
+the uv.lock file will be used as the primary source for package metadata.
+
+:::{versionadded} 2.2.0
+:::
+""",
+        ),
         "whl_modifications": attr.label_keyed_string_dict(
             mandatory = False,
             doc = """\
 A dict of labels to wheel names that is typically generated by the whl_modifications.
 The labels are JSON config files describing the modifications.
-""",
-        ),
-        "_evaluate_markers_srcs": attr.label_list(
-            default = EVALUATE_MARKERS_SRCS,
-            doc = """\
-The list of labels to use as SRCS for the marker evaluation code. This ensures that the
-code will be re-evaluated when any of files in the default changes.
 """,
         ),
     }, **ATTRS)
@@ -773,7 +1096,33 @@ Apply any overrides (e.g. patches) to a given Python distribution defined by
 other tags in this extension.""",
 )
 
+_dep_tag = tag_class(
+    attrs = {
+        "extra_targets": attr.string_list(
+            doc = """\
+A list of extra target names in the package that are expected to be available.
+See {obj}`pip.parse.extra_hub_aliases`.
+""",
+            default = [],
+        ),
+        "name": attr.string(
+            doc = "The name of a pypi package. Note that the name is normalized.",
+            mandatory = True,
+        ),
+    },
+    doc = """\
+Declare an abstract PyPI dependency to ensure its target structure exists in the unified hub.
+
+This is useful for targets or rules that need to depend on a package (e.g., `@pypi//numpy`)
+but do not want to force a specific version or concrete requirements lock file on their
+consumers. The concrete version and implementation must be provided by downstreams calling
+`pip.parse`. If they are not, the target will still be defined, but it will result in an
+execution-phase error when built.
+""",
+)
+
 pypi = module_extension(
+    environ = ["RULES_PYTHON_PYPI_HUB_RESERVED"],
     doc = """\
 This extension is used to make dependencies from pip available.
 
@@ -787,6 +1136,14 @@ can be made to configure different Python versions, and will be grouped by
 the `hub_name` argument. This allows the same logical name, e.g. `@pip//numpy`
 to automatically resolve to different, Python version-specific, libraries.
 
+A unified `@pypi` proxy repository is always generated (unless a hub is
+explicitly named "pypi") to route dependencies dynamically. See
+[Unified @pypi Hub](unified-pypi-hub) for details.
+
+Environment Variables:
+- `RULES_PYTHON_PYPI_HUB_RESERVED`: Enable fallback renaming for reserved hub name collisions.
+  See the {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` documentation for details.
+
 pip.whl_mods:
 This tag class is used to help create JSON files to describe modifications to
 the BUILD files for wheels.
@@ -798,9 +1155,10 @@ the BUILD files for wheels.
             doc = """\
 This tag class allows for more customization of how the configuration for the hub repositories is built.
 
+It can also be used to designate the default hub for the automatically
+generated [Unified @pypi Hub](unified-pypi-hub) using the `default_hub`
+attribute.
 
-:::{include} /_includes/experimtal_api.md
-:::
 
 :::{seealso}
 The [environment markers][environment_markers] specification for the explanation of the
@@ -813,6 +1171,7 @@ terms used in this extension.
 :::
 """,
         ),
+        "dep": _dep_tag,
         "override": _override_tag,
         "parse": tag_class(
             attrs = _pip_parse_ext_attrs(),
@@ -821,6 +1180,9 @@ This tag class is used to create a pip hub and all of the spokes that are part o
 This tag class reuses most of the attributes found in {bzl:obj}`pip_parse`.
 The exception is it does not use the arg 'repo_prefix'.  We set the repository
 prefix for the user and the alias arg is always True in bzlmod.
+
+You can use the automatically generated [Unified @pypi Hub](unified-pypi-hub)
+repository to route package dependencies dynamically at build time.
 """,
         ),
         "whl_mods": tag_class(

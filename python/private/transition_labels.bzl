@@ -10,12 +10,10 @@ load(":common_labels.bzl", "labels")
 _BASE_TRANSITION_LABELS = [
     labels.ADD_SRCS_TO_RUNFILES,
     labels.BOOTSTRAP_IMPL,
+    labels.DEBUGGER,
     labels.EXEC_TOOLS_TOOLCHAIN,
+    "//command_line_option:extra_toolchains",
     labels.PIP_ENV_MARKER_CONFIG,
-    labels.PIP_WHL_MUSLC_VERSION,
-    labels.PIP_WHL,
-    labels.PIP_WHL_GLIBC_VERSION,
-    labels.PIP_WHL_OSX_ARCH,
     labels.PIP_WHL_OSX_VERSION,
     labels.PRECOMPILE,
     labels.PRECOMPILE_SOURCE_RETENTION,
@@ -23,6 +21,7 @@ _BASE_TRANSITION_LABELS = [
     labels.PYTHON_VERSION,
     labels.PY_FREETHREADED,
     labels.PY_LINUX_LIBC,
+    labels.VENV,
     labels.VENVS_SITE_PACKAGES,
     labels.VENVS_USE_DECLARE_SYMLINK,
 ]

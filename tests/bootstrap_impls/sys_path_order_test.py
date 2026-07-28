@@ -33,9 +33,13 @@ class SysPathOrderTest(unittest.TestCase):
         # error messages are more informative.
         categorized_paths = []
         for i, value in enumerate(sys.path):
-            # The runtime's root repo may be added to sys.path, but it
-            # counts as a user directory, not stdlib directory.
-            if value in (sys.prefix, sys.base_prefix):
+            # On Windows, the `pythonXY.zip` entry shows up as `$venv/Scripts/pythonXY.zip`
+            # While it's technically part of the venv, it's considered the stdlib.
+            if os.name == "nt" and re.search("python.*[.]zip$", value):
+                category = "stdlib"
+            elif value in (sys.prefix, sys.base_prefix):
+                # The runtime's root repo may be added to sys.path, but it
+                # counts as a user directory, not stdlib directory.
                 category = "user"
             elif value.startswith(sys.base_prefix):
                 # The runtime's site-package directory might be called

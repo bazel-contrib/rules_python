@@ -1,7 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("//python:py_test.bzl", "py_test")
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
+load("@rules_python//python:py_test.bzl", "py_test")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load("//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_stardocs")
 
@@ -15,7 +14,7 @@ _TARGET_COMPATIBLE_WITH = select({
     "@platforms//os:linux": [],
     "@platforms//os:macos": [],
     "//conditions:default": ["@platforms//:incompatible"],
-}) if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"]
+})
 
 sphinx_docs(
     name = "docs",
@@ -70,7 +69,6 @@ sphinx_stardoc(
     deps = [":func_and_providers_bzl"],
 )
 
-# A bzl_library with multiple sources
 bzl_library(
     name = "func_and_providers_bzl",
     srcs = [
@@ -90,6 +88,7 @@ bzl_library(
     srcs = ["bzl_typedef.bzl"],
 )
 
+# A bzl_library with multiple sources
 sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building

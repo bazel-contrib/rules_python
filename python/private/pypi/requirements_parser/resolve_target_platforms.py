@@ -21,7 +21,6 @@ import json
 import pathlib
 
 from packaging.requirements import Requirement
-
 from python.private.pypi.whl_installer.platform import Platform
 
 INPUT_HELP = """\

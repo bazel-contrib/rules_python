@@ -2,11 +2,10 @@
 
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS")
 load("//python/private:py_info.bzl", "PyInfo")
-load("//python/private:py_internal.bzl", "py_internal")
-load("//python/private:reexports.bzl", "BuiltinPyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 
@@ -57,8 +56,8 @@ def _py_extension_impl(ctx):
         _check_limited_api_compatibility(ctx, ctx.attr.py_limited_api)
 
         output_filename = "{module_name}.abi3.{ext}".format(
-            module_name=module_name,
-            ext=ext,
+            module_name = module_name,
+            ext = ext,
         )
     else:
         py_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE]
@@ -67,9 +66,9 @@ def _py_extension_impl(ctx):
         platform_tag = _get_platform(cc_toolchain)
         output_filename = "{module_name}.{pyc_tag}{abi_flags}-{platform}.{ext}".format(
             module_name = module_name,
-            pyc_tag = py_runtime.pyc_tag,      # e.g. "cpython-311"
+            pyc_tag = py_runtime.pyc_tag,  # e.g. "cpython-311"
             abi_flags = py_runtime.abi_flags,  # e.g. "" or "d"
-            platform = platform_tag,           # e.g. "x86_64-linux-gnu"
+            platform = platform_tag,  # e.g. "x86_64-linux-gnu"
             ext = "so",
         )
     py_dso = ctx.actions.declare_file(output_filename)
@@ -82,35 +81,31 @@ def _py_extension_impl(ctx):
 
     # Add target-level linkopts last so users can override.
     user_link_flags.extend(ctx.attr.linkopts)
-    print((
-        "===LINK:\n" +
-        "  user_link_flags={user_link_flags}"
-    ).format(
-        user_link_flags = user_link_flags,
-    ))
 
     # todo: add linker script to hide symbols by default
-    # py_internal allows using some private apis, which may or may not be needed.
     # based upon cc_shared_library.bzl
-    cc_linking_outputs = py_internal.link(
+    cc_linking_outputs = cc_common.link(
         actions = ctx.actions,
         feature_configuration = feature_configuration,
         cc_toolchain = cc_toolchain,
         linking_contexts = linking_contexts,
         user_link_flags = user_link_flags,
         # todo: add additional_inputs
-        name = ctx.label.name,
+        # Append a prefix/suffix so the intermediate shared library isn't named
+        # like a standard general-purpose dynamic library (e.g. libfoo.so).
+        name = "_{name}.pyextimpl".format(name = ctx.label.name),
         output_type = "dynamic_library",
-        main_output = py_dso,
         # todo: maybe variables_extension
         # todo: maybe additional_outputs
     )
-    print((
-        "===LINK OUTPUT:\n" +
-        "  {}"
-    ).format(
-        cc_linking_outputs,
-    ))
+
+    # cc_common.link(main_output) is a private-use API, so we have to manually
+    # symlink the output to the desired name.
+    linked_so = cc_linking_outputs.library_to_link.resolved_symlink_dynamic_library or cc_linking_outputs.library_to_link.dynamic_library
+    ctx.actions.symlink(
+        output = py_dso,
+        target_file = linked_so,
+    )
 
     # Propagate CcInfo from dynamic and external deps, but not static ones.
     dynamic_cc_info = CcInfo(linking_context = dynamic_linking_context)
@@ -137,9 +132,8 @@ def _py_extension_impl(ctx):
         propagated_cc_info,
     ]
 
-_MaybeBuiltinPyInfo = [[BuiltinPyInfo]] if BuiltinPyInfo != None else []
-
 PY_EXTENSION_ATTRS = COMMON_ATTRS | {
+    "copts": lambda: attrb.StringList(),
     "dynamic_deps": lambda: attrb.LabelList(
         providers = [CcSharedLibraryInfo],
         doc = "cc_shared_library targets to be dynamically linked.",
@@ -150,12 +144,6 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
         doc = "cc_library targets with external linkage.",
         default = [],
     ),
-    "static_deps": lambda: attrb.LabelList(
-        providers = [CcInfo],
-        doc = "cc_library targets to be statically and privately linked.",
-        default = [],
-    ),
-    "copts": lambda: attrb.StringList(),
     "linkopts": lambda: attrb.StringList(),
     "module_name": lambda: attrb.String(),
     "py_limited_api": lambda: attrb.String(
@@ -182,7 +170,12 @@ PY_EXTENSION_ATTRS = COMMON_ATTRS | {
 
             Set to 'none' (the default) to build a standard, version-specific extension.
             """,
-        default = "none"
+        default = "none",
+    ),
+    "static_deps": lambda: attrb.LabelList(
+        providers = [CcInfo],
+        doc = "cc_library targets to be statically and privately linked.",
+        default = [],
     ),
 }
 
@@ -205,16 +198,16 @@ py_extension = create_py_extension_rule_builder().build()
 
 # Map Bazel's internal CPU names to PEP 3149 standard architecture names
 _BAZEL_CPU_TO_PEP_ARCH = {
-    "k8": "x86_64",
-    "amd64": "x86_64",
-    "x86_64": "x86_64",
     "aarch64": "aarch64",
+    "amd64": "x86_64",
     "arm64": "arm64",
-    "darwin": "x86_64",       # Historical Bazel Mac CPU
-    "darwin_x86_64": "x86_64",
-    "darwin_arm64": "arm64",
-    "x64_windows": "x86_64",
     "arm64_windows": "arm64",
+    "darwin": "x86_64",  # Historical Bazel Mac CPU
+    "darwin_arm64": "arm64",
+    "darwin_x86_64": "x86_64",
+    "k8": "x86_64",
+    "x64_windows": "x86_64",
+    "x86_64": "x86_64",
 }
 
 def _get_extension(cc_toolchain):
@@ -245,6 +238,7 @@ def _get_platform(cc_toolchain):
     Returns:
         The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
     """
+
     # Get the GNU target name (e.g., "local-linux-gnu" or "x86_64-unknown-linux-gnu")
     target_name = cc_toolchain.target_gnu_system_name
 
@@ -260,9 +254,11 @@ def _get_platform(cc_toolchain):
     # Handle the "local" placeholder by falling back to cc_toolchain.cpu
     if arch == "local":
         cpu = cc_toolchain.cpu
+
         # Resolve the Bazel CPU name to a standard PEP architecture
         arch = _BAZEL_CPU_TO_PEP_ARCH.get(cpu, cpu)
-    # Normalize standard names if they came from a full target_name
+        # Normalize standard names if they came from a full target_name
+
     elif arch == "amd64":
         arch = "x86_64"
     elif arch == "aarch64":
@@ -291,7 +287,6 @@ def _get_platform(cc_toolchain):
 
     return platform_tag
 
-
 def _version_to_hex(version_str):
     """Converts a version string like '3.10' to Python's version hex '0x030a0000'."""
     parts = version_str.split(".")
@@ -309,8 +304,7 @@ def _version_to_hex(version_str):
     # Format the minor version as a 2-digit hex (e.g., 10 -> "0a")
     # Starlark doesn't seem to support %02x formatting
 
-    return "0x03%x%x0000" % (int(minor/16), minor%16)
-
+    return "0x03%x%x0000" % (int(minor // 16), minor % 16)
 
 def _check_limited_api_compatibility(ctx, ext_version_str):
     """Validates that all C++ dependencies are binary-compatible with the extension's Limited API target."""
@@ -392,4 +386,4 @@ def _check_limited_api_compatibility(ctx, ext_version_str):
                         ext_hex = ext_version_hex,
                         dep = dep.label,
                         dep_hex = limited_api_define_value,
-            ))
+                    ))

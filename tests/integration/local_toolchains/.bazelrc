@@ -1,4 +1,6 @@
+startup --windows_enable_symlinks
 common --action_env=RULES_PYTHON_BZLMOD_DEBUG=1
+common --repo_env=RULES_PYTHON_BZLMOD_DEBUG=1
 common --lockfile_mode=off
 test --test_output=errors
 # Windows requires these for multi-python support:

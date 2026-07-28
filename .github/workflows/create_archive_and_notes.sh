@@ -13,25 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit -o nounset -o pipefail
+set -o nounset
+set -o pipefail
+set -o errexit
 
-# Exclude dot directories, specifically, this file so that we don't
-# find the substring we're looking for in our own file.
-# Exclude CONTRIBUTING.md, RELEASING.md because they document how to use these strings.
-if grep --exclude=CONTRIBUTING.md --exclude=RELEASING.md --exclude-dir=.* VERSION_NEXT_ -r; then
-  echo
-  echo "Found VERSION_NEXT markers indicating version needs to be specified"
+set -x
+
+TAG=$1
+if [ -z "$TAG" ]; then
+  echo "ERROR: TAG env var must be set"
   exit 1
 fi
+# If the workflow checks out one commit, but is releasing another
+git fetch origin tag "$TAG"
 
-# Set by GH actions, see
-# https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-TAG=${GITHUB_REF_NAME}
+# Update our local state so that check_version_markers searches what we expect
+git checkout "$TAG"
+$(dirname $0)/check_version_markers.sh
+
 # A prefix is added to better match the GitHub generated archives.
 PREFIX="rules_python-${TAG}"
 ARCHIVE="rules_python-$TAG.tar.gz"
-git archive --format=tar --prefix=${PREFIX}/ ${TAG} | gzip > $ARCHIVE
-SHA=$(shasum -a 256 $ARCHIVE | awk '{print $1}')
+git archive --format=tar "--prefix=${PREFIX}/" "$TAG" | gzip > "$ARCHIVE"
+SHA=$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')
 
 cat > release_notes.txt << EOF
 

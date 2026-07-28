@@ -5,13 +5,10 @@ import ext_shared
 from elftools.elf.dynamic import DynamicSection
 from elftools.elf.elffile import ELFFile
 
-from python.runfiles import runfiles
-
 
 class PyExtensionTest(unittest.TestCase):
     def test_inspect_elf(self):
-        r = runfiles.Create()
-        ext_path = r.Rlocation("rules_python/tests/cc/py_extension/ext_shared.so")
+        ext_path = ext_shared.__file__
         self.assertTrue(
             os.path.exists(ext_path), f"Could not find ext_shared.so at {ext_path}"
         )

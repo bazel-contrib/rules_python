@@ -17,10 +17,8 @@
 This is reused in other files updating coverage deps and pip deps.
 """
 
-import argparse
 import difflib
 import pathlib
-import sys
 
 
 def _writelines(path: pathlib.Path, out: str):

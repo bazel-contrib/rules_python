@@ -17,7 +17,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load(":common.bzl", "runfiles_root_path")
-load(":sentinel.bzl", "SentinelInfo")
+load(":sentinel_impl.bzl", "SentinelInfo")
 load(":toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 
 def _interpreter_binary_impl(ctx):

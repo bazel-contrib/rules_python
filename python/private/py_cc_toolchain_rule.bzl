@@ -22,7 +22,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(":common_labels.bzl", "labels")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
-load(":sentinel.bzl", "SentinelInfo")
+load(":sentinel_impl.bzl", "SentinelInfo")
 
 def _py_cc_toolchain_impl(ctx):
     if ctx.attr.libs:
@@ -79,7 +79,7 @@ Target that provides the Python ABI3 (stable abi) headers.
 
 Typically this is a cc_library target.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 1.7.0
 The {obj}`features.headers_abi3` attribute can be used to detect if this
 attribute is available or not.
 :::

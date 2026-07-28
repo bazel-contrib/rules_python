@@ -70,9 +70,11 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.LabelConvention,
 		pythonconfig.LabelNormalization,
 		pythonconfig.GeneratePyiDeps,
+		pythonconfig.GeneratePyiSrcs,
 		pythonconfig.ExperimentalAllowRelativeImports,
 		pythonconfig.GenerateProto,
 		pythonconfig.PythonResolveSiblingImports,
+		pythonconfig.PythonIncludeAncestorConftest,
 	}
 }
 
@@ -242,6 +244,12 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetGeneratePyiDeps(v)
+		case pythonconfig.GeneratePyiSrcs:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetGeneratePyiSrcs(v)
 		case pythonconfig.GenerateProto:
 			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
 			if err != nil {
@@ -254,6 +262,12 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetResolveSiblingImports(v)
+		case pythonconfig.PythonIncludeAncestorConftest:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetIncludeAncestorConftest(v)
 		}
 	}
 

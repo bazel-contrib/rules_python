@@ -64,112 +64,6 @@ here do not cause packages to be re-fetched. Don't fetch different things based
 on the value of these variables.
 """,
     ),
-    "experimental_requirement_cycles": attr.string_list_dict(
-        default = {},
-        doc = """\
-A mapping of dependency cycle names to a list of requirements which form that cycle.
-
-Requirements which form cycles will be installed together and taken as
-dependencies together in order to ensure that the cycle is always satisified.
-
-Example:
-  `sphinx` depends on `sphinxcontrib-serializinghtml`
-  When listing both as requirements, ala
-
-  ```
-  py_binary(
-    name = "doctool",
-    ...
-    deps = [
-      "@pypi//sphinx:pkg",
-      "@pypi//sphinxcontrib_serializinghtml",
-     ]
-  )
-  ```
-
-  Will produce a Bazel error such as
-
-  ```
-  ERROR: .../external/pypi_sphinxcontrib_serializinghtml/BUILD.bazel:44:6: in alias rule @pypi_sphinxcontrib_serializinghtml//:pkg: cycle in dependency graph:
-      //:doctool (...)
-      @pypi//sphinxcontrib_serializinghtml:pkg (...)
-  .-> @pypi_sphinxcontrib_serializinghtml//:pkg (...)
-  |   @pypi_sphinxcontrib_serializinghtml//:_pkg (...)
-  |   @pypi_sphinx//:pkg (...)
-  |   @pypi_sphinx//:_pkg (...)
-  `-- @pypi_sphinxcontrib_serializinghtml//:pkg (...)
-  ```
-
-  Which we can resolve by configuring these two requirements to be installed together as a cycle
-
-  ```
-  pip_parse(
-    ...
-    experimental_requirement_cycles = {
-      "sphinx": [
-        "sphinx",
-        "sphinxcontrib-serializinghtml",
-      ]
-    },
-  )
-  ```
-
-Warning:
-  If a dependency participates in multiple cycles, all of those cycles must be
-  collapsed down to one. For instance `a <-> b` and `a <-> c` cannot be listed
-  as two separate cycles.
-""",
-    ),
-    "experimental_target_platforms": attr.string_list(
-        default = [],
-        doc = """\
-*NOTE*: This will be removed in the next major version, so please consider migrating
-to `bzlmod` and rely on {attr}`pip.parse.requirements_by_platform` for this feature.
-
-A list of platforms that we will generate the conditional dependency graph for
-cross platform wheels by parsing the wheel metadata. This will generate the
-correct dependencies for packages like `sphinx` or `pylint`, which include
-`colorama` when installed and used on Windows platforms.
-
-An empty list means falling back to the legacy behaviour where the host
-platform is the target platform.
-
-WARNING: It may not work as expected in cases where the python interpreter
-implementation that is being used at runtime is different between different platforms.
-This has been tested for CPython only.
-
-For specific target platforms use values of the form `<os>_<arch>` where `<os>`
-is one of `linux`, `osx`, `windows` and arch is one of `x86_64`, `x86_32`,
-`aarch64`, `s390x` and `ppc64le`.
-
-You can also target a specific Python version by using `cp3<minor_version>_<os>_<arch>`.
-If multiple python versions are specified as target platforms, then select statements
-of the `lib` and `whl` targets will include usage of version aware toolchain config
-settings like `@rules_python//python/config_settings:is_python_3.y`.
-
-Special values: `host` (for generating deps for the host platform only) and
-`<prefix>_*` values. For example, `cp39_*`, `linux_*`, `cp39_linux_*`.
-
-NOTE: this is not for cross-compiling Python wheels but rather for parsing the `whl` METADATA correctly.
-""",
-    ),
-    "extra_hub_aliases": attr.string_list_dict(
-        doc = """\
-Extra aliases to make for specific wheels in the hub repo. This is useful when
-paired with the {attr}`whl_modifications`.
-
-:::{versionadded} 0.38.0
-
-For `pip.parse` with bzlmod
-:::
-
-:::{versionadded} 1.0.0
-
-For `pip_parse` with workspace.
-:::
-""",
-        mandatory = False,
-    ),
     "extra_pip_args": attr.string_list(
         doc = """Extra arguments to pass on to pip. Must not contain spaces.
 
@@ -240,7 +134,7 @@ def use_isolated(ctx, attr):
     use_isolated = attr.isolated
 
     # The environment variable will take precedence over the attribute
-    isolated_env = ctx.os.environ.get("RULES_PYTHON_PIP_ISOLATED", None)
+    isolated_env = ctx.getenv("RULES_PYTHON_PIP_ISOLATED", None)
     if isolated_env != None:
         if isolated_env.lower() in ("0", "false"):
             use_isolated = False

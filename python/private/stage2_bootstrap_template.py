@@ -9,23 +9,30 @@ import sys
 # and is a special case of #7091.
 #
 # Python 3.11 introduced an PYTHONSAFEPATH (-P) option that disables this
-# behaviour, which we set in the stage 1 bootstrap.
+# behaviour, which we set in the stage 1 bootstrap. Isolated mode (-I) also
+# disables it, including on older interpreters without safe_path.
 # So the prepended entry needs to be removed only if the above option is either
 # unset or not supported by the interpreter.
 # NOTE: This can be removed when Python 3.10 and below is no longer supported
-if not getattr(sys.flags, "safe_path", False):
+if (
+    not getattr(sys.flags, "safe_path", False)
+    and not getattr(sys.flags, "isolated", False)
+    and sys.path
+):
     del sys.path[0]
 
 import contextlib
 import os
 import re
 import runpy
+import types
 import uuid
+from functools import cache
 
 # ===== Template substitutions start =====
 # We just put them in one place so its easy to tell which are used.
 
-# Runfiles-relative path to the main Python source file.
+# Runfiles-root-relative path to the main Python source file.
 # Empty if MAIN_MODULE is used
 MAIN_PATH = "%main%"
 
@@ -41,19 +48,69 @@ VENV_ROOT = "%venv_root%"
 # string otherwise.
 VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 
+# Whether we should generate coverage data.
+# string, 1 or 0
+COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
+
+# runfiles-root-relative path to a file with binary-specific build information
+# It uses forward slashes, so must be converted for proper usage on Windows.
+BUILD_DATA_FILE = "%build_data_file%"
+
 # ===== Template substitutions end =====
 
+IS_WINDOWS = os.name == "nt"
+IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
 
-# Return True if running on Windows
-def is_windows():
-    return os.name == "nt"
+# Windows APIs can be picky about slashes depending on the context,
+# so convert to backslashes to avoid any issues.
+# Related: some logic checks path strings, which needs uniform separators.
+if IS_WINDOWS:
+
+    def norm_slashes(s):
+        return s.replace("/", "\\")
+
+    MAIN_PATH = norm_slashes(MAIN_PATH)
+    VENV_ROOT = norm_slashes(VENV_ROOT)
+    VENV_SITE_PACKAGES = norm_slashes(VENV_SITE_PACKAGES)
+    BUILD_DATA_FILE = norm_slashes(BUILD_DATA_FILE)
+
+
+class BazelBinaryInfoModule(types.ModuleType):
+    BUILD_DATA_FILE = BUILD_DATA_FILE
+
+    @cache
+    def get_build_data(self):
+        """Returns a string of the raw build data."""
+        try:
+            # Prefer dep via pypi
+            import runfiles
+        except ImportError:
+            from python.runfiles import runfiles
+        rlocation_path = self.BUILD_DATA_FILE
+        path = runfiles.Create().Rlocation(rlocation_path)
+        if IS_WINDOWS:
+            path = os.path.normpath(path)
+        try:
+            # Use utf-8-sig to handle Windows BOM
+            with open(path, encoding="utf-8-sig") as fp:
+                return fp.read()
+        except Exception as exc:
+            if hasattr(exc, "add_note"):
+                exc.add_note(f"runfiles lookup path: {rlocation_path}")
+                exc.add_note(f"exists: {os.path.exists(path)}")
+                can_read = os.access(path, os.R_OK)
+                exc.add_note(f"readable: {can_read}")
+            raise
+
+
+sys.modules["bazel_binary_info"] = BazelBinaryInfoModule("bazel_binary_info")
 
 
 def get_windows_path_with_unc_prefix(path):
     path = path.strip()
 
     # No need to add prefix for non-Windows platforms.
-    if not is_windows() or sys.version_info[0] < 3:
+    if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
     # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
@@ -79,50 +136,36 @@ def get_windows_path_with_unc_prefix(path):
         return path
 
     # Lets start the unicode fun
-    if path.startswith(unicode_prefix):
+    if path.startswith(unicode_prefix):  # noqa: F821
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
-
-
-def search_path(name):
-    """Finds a file in a given search path."""
-    search_path = os.getenv("PATH", os.defpath).split(os.pathsep)
-    for directory in search_path:
-        if directory:
-            path = os.path.join(directory, name)
-            if os.path.isfile(path) and os.access(path, os.X_OK):
-                return path
-    return None
-
-
-def is_verbose():
-    return bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
+    return unicode_prefix + os.path.abspath(path)  # noqa: F821
 
 
 def print_verbose(*args, mapping=None, values=None):
-    if is_verbose():
-        if mapping is not None:
-            for key, value in sorted((mapping or {}).items()):
-                print(
-                    "bootstrap: stage 2:",
-                    *args,
-                    f"{key}={value!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        elif values is not None:
-            for i, v in enumerate(values):
-                print(
-                    "bootstrap: stage 2:",
-                    *args,
-                    f"[{i}] {v!r}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        else:
-            print("bootstrap: stage 2:", *args, file=sys.stderr, flush=True)
+    if not IS_VERBOSE:
+        return
+    if mapping is not None:
+        for key, value in sorted((mapping or {}).items()):
+            print(
+                "bootstrap: stage 2:",
+                *args,
+                f"{key}={value!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    elif values is not None:
+        for i, v in enumerate(values):
+            print(
+                "bootstrap: stage 2:",
+                *args,
+                f"[{i}] {v!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+    else:
+        print("bootstrap: stage 2:", *args, file=sys.stderr, flush=True)
 
 
 def print_verbose_coverage(*args):
@@ -133,7 +176,7 @@ def print_verbose_coverage(*args):
 
 def is_verbose_coverage():
     """Returns True if VERBOSE_COVERAGE is non-empty in the environment."""
-    return os.environ.get("VERBOSE_COVERAGE") or is_verbose()
+    return os.environ.get("VERBOSE_COVERAGE") or IS_VERBOSE
 
 
 def find_runfiles_root(main_rel_path):
@@ -155,16 +198,23 @@ def find_runfiles_root(main_rel_path):
     if runfiles_dir and os.path.exists(os.path.join(runfiles_dir, main_rel_path)):
         return runfiles_dir
 
+    # Clear RUNFILES_DIR & RUNFILES_MANIFEST_FILE since the runfiles dir was
+    # not found. These can be correctly set for a parent Python process, but
+    # inherited by the child, and not correct for it. Later bootstrap code
+    # assumes they're are correct if set.
+    os.environ.pop("RUNFILES_DIR", None)
+    os.environ.pop("RUNFILES_MANIFEST_FILE", None)
+
     stub_filename = sys.argv[0]
     if not os.path.isabs(stub_filename):
         stub_filename = os.path.join(os.getcwd(), stub_filename)
 
     while True:
-        module_space = stub_filename + (".exe" if is_windows() else "") + ".runfiles"
+        module_space = stub_filename + (".exe" if IS_WINDOWS else "") + ".runfiles"
         if os.path.isdir(module_space):
             return module_space
 
-        runfiles_pattern = r"(.*\.runfiles)" + (r"\\" if is_windows() else "/") + ".*"
+        runfiles_pattern = r"(.*\.runfiles)" + (r"\\" if IS_WINDOWS else "/") + ".*"
         matchobj = re.match(runfiles_pattern, stub_filename)
         if matchobj:
             return matchobj.group(1)
@@ -177,6 +227,8 @@ def find_runfiles_root(main_rel_path):
         else:
             stub_filename = os.path.join(os.path.dirname(stub_filename), target)
 
+    # The `--enable_runfiles=false` flag is likely set, which isn't fully
+    # supported.
     raise AssertionError("Cannot find .runfiles directory for %s" % sys.argv[0])
 
 
@@ -309,9 +361,8 @@ def _maybe_collect_coverage(enable):
     print_verbose_coverage("Instrumented Files:\n" + "\n".join(instrumented_files))
     print_verbose_coverage("Sources:\n" + "\n".join(unique_dirs))
 
-    import uuid
-
     import coverage
+    from coverage.exceptions import NoDataError
 
     coverage_dir = os.environ["COVERAGE_DIR"]
     unique_id = uuid.uuid4()
@@ -319,11 +370,17 @@ def _maybe_collect_coverage(enable):
     # We need for coveragepy to use relative paths.  This can only be configured
     # using an rc file.
     rcfile_name = os.path.join(coverage_dir, ".coveragerc_{}".format(unique_id))
+    disable_warnings = (
+        "disable_warnings = module-not-imported, no-data-collected"
+        if COVERAGE_INSTRUMENTED
+        else ""
+    )
     print_verbose_coverage("coveragerc file:", rcfile_name)
     with open(rcfile_name, "w") as rcfile:
         rcfile.write(
             f"""[run]
 relative_files = True
+{disable_warnings}
 source =
 \t{source}
 """
@@ -355,17 +412,27 @@ source =
             yield
         finally:
             cov.stop()
-            lcov_path = os.path.join(coverage_dir, "pylcov.dat")
+            lcov_path = os.path.join(coverage_dir, "pylcov_{}.dat".format(unique_id))
             print_verbose_coverage("generating lcov from:", lcov_path)
-            cov.lcov_report(
-                outfile=lcov_path,
-                # Ignore errors because sometimes instrumented files aren't
-                # readable afterwards. e.g. if they come from /dev/fd or if
-                # they were transient code-under-test in /tmp
-                ignore_errors=True,
-            )
-            if os.path.isfile(lcov_path):
-                unresolve_symlinks(lcov_path)
+            try:
+                cov.lcov_report(
+                    outfile=lcov_path,
+                    # Ignore errors because sometimes instrumented files aren't
+                    # readable afterwards. e.g. if they come from /dev/fd or if
+                    # they were transient code-under-test in /tmp
+                    ignore_errors=True,
+                )
+            except NoDataError:
+                # coverage.py raises NoDataError if no instrumented Python code ran
+                # (e.g. tests not running Python, or subprocess-only binaries).
+                # Skip the report to avoid failing otherwise passing tests.
+                # See https://github.com/bazel-contrib/rules_python/issues/2762.
+                print_verbose_coverage(
+                    "no coverage data collected; skipping lcov report:", lcov_path
+                )
+            else:
+                if os.path.isfile(lcov_path):
+                    unresolve_symlinks(lcov_path)
     finally:
         try:
             os.unlink(rcfile_name)
@@ -377,12 +444,32 @@ source =
 
 
 def _add_site_packages(site_packages):
+    if sys.prefix != sys.base_prefix:
+        venv_root = sys.prefix + os.sep
+        saw_venv_site_packages = False
+    else:
+        venv_root = None
+        saw_venv_site_packages = True
     first_global_offset = len(sys.path)
     for i, p in enumerate(sys.path):
+        # Handle the Windows venv case: when a temporary directory is created
+        # for the venv, we want the build-time venv in runfiles to come after
+        # the venv site-packages directory.
+        if venv_root:
+            is_venv_path = (p + os.sep).startswith(venv_root)
+            if is_venv_path:
+                if p.endswith("site-packages"):
+                    saw_venv_site_packages = True
+                is_after_venv_site_packages = False
+            else:
+                is_after_venv_site_packages = saw_venv_site_packages
+        else:
+            is_after_venv_site_packages = True
+
         # We assume the first *-packages is the runtime's.
         # *-packages is matched because Debian may use dist-packages
         # instead of site-packages.
-        if p.endswith("-packages"):
+        if p.endswith("-packages") and is_after_venv_site_packages:
             first_global_offset = i
             break
     prev_len = len(sys.path)
@@ -409,7 +496,7 @@ def main():
     # runfiles root
     if MAIN_PATH:
         main_rel_path = MAIN_PATH
-        if is_windows():
+        if IS_WINDOWS:
             main_rel_path = main_rel_path.replace("/", os.sep)
 
         runfiles_root = find_runfiles_root(main_rel_path)
@@ -457,8 +544,10 @@ def main():
         # means only other generated files are importable (not source files).
         #
         # To replicate this behavior, we add main's directory within the runfiles
-        # when safe path isn't enabled.
-        if not getattr(sys.flags, "safe_path", False):
+        # when safe path or isolated mode isn't enabled.
+        if not getattr(sys.flags, "safe_path", False) and not getattr(
+            sys.flags, "isolated", False
+        ):
             prepend_path_entries = [
                 os.path.join(runfiles_root, os.path.dirname(main_rel_path))
             ]

@@ -26,7 +26,7 @@ class WheelRecordTest(unittest.TestCase):
         self.assertEqual(list(record), list(expected))
 
     def test_get_files(self) -> None:
-        pattern = "(examples/wheel/lib/.*\.txt$|.*main)"
+        pattern = r"(examples/wheel/lib/.*\.txt$|.*main)"
         record = extract_wheel_files.get_record(_WHEEL)
         files = extract_wheel_files.get_files(record, pattern)
         expected = [

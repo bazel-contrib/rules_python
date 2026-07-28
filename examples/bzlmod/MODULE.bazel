@@ -12,18 +12,15 @@ local_path_override(
     path = "../..",
 )
 
-# (py_proto_library specific) Add the protobuf library for well-known types (e.g. `Any`, `Timestamp`, etc)
-bazel_dep(name = "protobuf", version = "27.0", repo_name = "com_google_protobuf")
-
 # Only needed to make rules_python's CI happy. rules_java 8.3.0+ is needed so
 # that --java_runtime_version=remotejdk_11 works with Bazel 8.
-bazel_dep(name = "rules_java", version = "8.3.1")
+bazel_dep(name = "rules_java", version = "8.16.1")
 
 # Only needed to make rules_python's CI happy. A test verifies that
 # MODULE.bazel.lock is cross-platform friendly, and there are transitive
 # dependencies on rules_rust, so we need rules_rust 0.54.1+ where such issues
 # were fixed.
-bazel_dep(name = "rules_rust", version = "0.54.1")
+bazel_dep(name = "rules_rust", version = "0.67.0")
 
 # We next initialize the python toolchain using the extension.
 # You can set different Python versions in this block.
@@ -55,7 +52,6 @@ python.override(
     # require versions not listed here.
     # available_python_versions = [
     #     "3.10.9",
-    #     "3.9.18",
     #     "3.9.19",
     #     # The following is used by the `other_module` and we need to include it here
     #     # as well.
@@ -65,7 +61,7 @@ python.override(
     # instead of rules_python's defaulting to the latest available version,
     # controls what full version is used when `3.x` is requested.
     minor_mapping = {
-        "3.9": "3.9.19",
+        "3.9": "3.9.25",
     },
 )
 
@@ -169,10 +165,13 @@ pip.default(
     env = {
         "platform_version": "0",
     },
+    # Windows ARM64 support has been added only on 3.11 and above, hence, constrain
+    # the availability of the platform for those python versions.
+    marker = "python_version >= '3.11'",
     os_name = "windows",
     platform = "windows_aarch64",
     whl_abi_tags = [],  # default to all ABIs
-    whl_platform_tags = ["win_amd64"],
+    whl_platform_tags = ["win_arm64"],
 )
 
 # To fetch pip dependencies, use pip.parse. We can pass in various options,
@@ -184,18 +183,6 @@ pip.default(
 pip.parse(
     # We can use `envsubst in the above
     envsubst = ["PIP_INDEX_URL"],
-    # Use the bazel downloader to query the simple API for downloading the sources
-    # Note, that we can use envsubst for this value.
-    experimental_index_url = "${PIP_INDEX_URL:-https://pypi.org/simple}",
-    # One can also select a particular index for a particular package.
-    # This ensures that the setup is resistant against confusion attacks.
-    # experimental_index_url_overrides = {
-    #    "my_package": "https://different-index-url.com",
-    # },
-    # Or you can specify extra indexes like with `pip`:
-    # experimental_extra_index_urls = [
-    #    "https://different-index-url.com",
-    # ],
     experimental_requirement_cycles = {
         "sphinx": [
             "sphinx",
@@ -206,17 +193,19 @@ pip.parse(
             "sphinxcontrib-serializinghtml",
         ],
     },
-    # You can use one of the values below to specify the target platform
-    # to generate the dependency graph for.
-    experimental_target_platforms = [
-        # Specifying the target platforms explicitly
-        "cp39_linux_x86_64",
-        "cp39_linux_*",
-        "cp39_*",
-    ],
     extra_hub_aliases = {
         "wheel": ["generated_file"],
     },
+    extra_pip_args = [
+        # Use the bazel downloader to query the simple API for downloading the sources
+        # Note, that we can use envsubst for this value.
+        # One can also select a particular index for a particular package.
+        # This ensures that the setup is resistant against confusion attacks.
+        # experimental_index_url_overrides = {
+        #    "my_package": "https://different-index-url.com",
+        # },
+        "--index-url=${PIP_INDEX_URL:-https://pypi.org/simple}",
+    ],
     hub_name = "pip",
     python_version = "3.9",
     requirements_lock = "requirements_lock_3_9.txt",
@@ -239,30 +228,34 @@ pip.parse(
             "sphinxcontrib-serializinghtml",
         ],
     },
-    # You can use one of the values below to specify the target platform
-    # to generate the dependency graph for.
-    experimental_target_platforms = [
-        # Using host python version
-        "linux_*",
-        "osx_*",
-        "windows_*",
-        # Or specifying an exact platform
-        "linux_x86_64",
-        # Or the following to get the `host` platform only
-        "host",
-    ],
     hub_name = "pip",
     python_version = "3.10",
     # The requirements files for each platform that we want to support.
     requirements_by_platform = {
         # Default requirements file for needs to explicitly provide the platforms
         "//:requirements_lock_3_10.txt": "linux_*,osx_*",
+        "//:requirements_windows_3_10.txt": "windows_x86_64",
+    },
+    # These modifications were created above and we
+    # are providing pip.parse with the label of the mod
+    # and the name of the wheel.
+    whl_modifications = {
+        "@whl_mods_hub//:requests.json": "requests",
+        "@whl_mods_hub//:wheel.json": "wheel",
+    },
+)
+pip.parse(
+    hub_name = "pip",
+    python_version = "3.11",
+    requirements_by_platform = {
+        # Default requirements file for needs to explicitly provide the platforms
+        "//:requirements_lock_3_11.txt": "linux_*,osx_*",
         # This API allows one to specify additional platforms that the users
         # configure the toolchains for themselves. In this example we add
         # `windows_aarch64` to illustrate that `rules_python` won't fail to
         # process the value, but it does not mean that this example will work
         # on Windows ARM.
-        "//:requirements_windows_3_10.txt": "windows_x86_64,windows_aarch64",
+        "//:requirements_windows_3_11.txt": "windows_x86_64,windows_aarch64",
     },
     # These modifications were created above and we
     # are providing pip.parse with the label of the mod
@@ -291,12 +284,6 @@ bazel_dep(name = "other_module", version = "", repo_name = "our_other_module")
 local_path_override(
     module_name = "other_module",
     path = "other_module",
-)
-
-bazel_dep(name = "foo_external", version = "")
-local_path_override(
-    module_name = "foo_external",
-    path = "py_proto_library/foo_external",
 )
 
 # example test dependencies

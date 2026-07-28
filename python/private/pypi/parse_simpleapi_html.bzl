@@ -16,88 +16,129 @@
 Parse SimpleAPI HTML in Starlark.
 """
 
-def parse_simpleapi_html(*, url, content):
+load("//python/private:normalize_name.bzl", "normalize_name")
+load(":version_from_filename.bzl", "version_from_filename")
+
+def parse_simpleapi_html(*, content, parse_index = False):
     """Get the package URLs for given shas by parsing the Simple API HTML.
 
     Args:
-        url(str): The URL that the HTML content can be downloaded from.
-        content(str): The Simple API HTML content.
+        content: {type}`str` The Simple API HTML content.
+        parse_index: {type}`bool` whether to parse the content as the index page of the PyPI index,
+            e.g. the `https://pypi.org/simple/`. This only has the URLs for the individual package.
 
     Returns:
-        A list of structs with:
-        * filename: The filename of the artifact.
-        * version: The version of the artifact.
-        * url: The URL to download the artifact.
-        * sha256: The sha256 of the artifact.
-        * metadata_sha256: The whl METADATA sha256 if we can download it. If this is
-          present, then the 'metadata_url' is also present. Defaults to "".
-        * metadata_url: The URL for the METADATA if we can download it. Defaults to "".
+        If it is the index page, return the map of package to URL it can be queried from.
+        Otherwise, a list of structs with:
+          * filename: {type}`str` The filename of the artifact.
+          * version: {type}`str` The version of the artifact.
+          * url: {type}`str` The URL to download the artifact.
+          * sha256: {type}`str` The sha256 of the artifact.
+          * metadata_sha256: {type}`str` The whl METADATA sha256 if we can download it. If this is
+            present, then the 'metadata_url' is also present. Defaults to "".
+          * metadata_url: {type}`str` The URL for the METADATA if we can download it. Defaults to "".
+          * yanked: {type}`str | None` the yank reason if the package is yanked. If it is not yanked,
+              then it will be `None`. An empty string yank reason means that the package is yanked but
+              the reason is not provided.
     """
     sdists = {}
     whls = {}
-    lines = content.split("<a href=\"")
+    sha256s_by_version = {}
 
-    _, _, api_version = lines[0].partition("name=\"pypi:repository-version\" content=\"")
-    api_version, _, _ = api_version.partition("\"")
-
-    # We must assume the 1.0 if it is not present
-    # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#clients
-    api_version = api_version or "1.0"
-    api_version = tuple([int(i) for i in api_version.split(".")])
+    # 1. Faster Version Extraction
+    # Search only the first 2KB for versioning metadata instead of splitting everything
+    api_version = (1, 0)
+    meta_idx = content.find('name="pypi:repository-version"')
+    if meta_idx != -1:
+        # Find 'content="' after the name attribute
+        v_start = content.find('content="', meta_idx)
+        if v_start != -1:
+            v_end = content.find('"', v_start + 9)
+            v_str = content[v_start + 9:v_end]
+            if v_str:
+                api_version = tuple([int(i) for i in v_str.split(".")])
 
     if api_version >= (2, 0):
         # We don't expect to have version 2.0 here, but have this check in place just in case.
         # https://packaging.python.org/en/latest/specifications/simple-repository-api/#versioning-pypi-s-simple-api
         fail("Unsupported API version: {}".format(api_version))
 
-    # Each line follows the following pattern
-    # <a href="https://...#sha256=..." attribute1="foo" ... attributeN="bar">filename</a><br />
-    sha256s_by_version = {}
-    for line in lines[1:]:
-        dist_url, _, tail = line.partition("#sha256=")
-        dist_url = _absolute_url(url, dist_url)
+    packages = {}
 
-        sha256, _, tail = tail.partition("\"")
+    # 2. Iterate using find() to avoid huge list allocations from .split("<a ")
+    cursor = 0
+    for _ in range(1000000):  # Safety break for Starlark
+        start_tag = content.find("<a ", cursor)
+        if start_tag == -1:
+            break
 
-        # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
-        yanked = "data-yanked" in line
+        # Find the closing </a> tag first, then find the end of the opening
+        # <a ...> tag using rfind. This correctly handles attributes that
+        # contain > characters, e.g. data-requires-python=">=3.6".
+        end_tag = content.find("</a>", start_tag)
+        if end_tag == -1:
+            break
+        tag_end = content.rfind(">", start_tag, end_tag)
+        if tag_end == -1 or tag_end <= start_tag:
+            cursor = end_tag + 4
+            continue
 
-        head, _, _ = tail.rpartition("</a>")
-        maybe_metadata, _, filename = head.rpartition(">")
-        version = _version(filename)
+        # Extract only the necessary slices
+        filename = content[tag_end + 1:end_tag].strip()
+        attr_part = content[start_tag + 3:tag_end]
+
+        # Update cursor for next iteration
+        cursor = end_tag + 4
+
+        attrs = _parse_attrs(attr_part)
+        href = attrs.get("href", "")
+        if not href:
+            continue
+
+        if parse_index:
+            pkg_name = filename
+            packages[normalize_name(pkg_name)] = href
+            continue
+
+        # 3. Efficient Attribute Parsing
+        dist_url, _, sha256 = href.partition("#sha256=")
+
+        # Handle Yanked status
+        yanked = None
+        if "data-yanked" in attrs:
+            yanked = _unescape_pypi_html(attrs["data-yanked"])
+
+        version = version_from_filename(filename)
         sha256s_by_version.setdefault(version, []).append(sha256)
 
+        # 4. Optimized Metadata Check (PEP 714)
         metadata_sha256 = ""
         metadata_url = ""
-        for metadata_marker in ["data-core-metadata", "data-dist-info-metadata"]:
-            metadata_marker = metadata_marker + "=\"sha256="
-            if metadata_marker in maybe_metadata:
-                # Implement https://peps.python.org/pep-0714/
-                _, _, tail = maybe_metadata.partition(metadata_marker)
-                metadata_sha256, _, _ = tail.partition("\"")
-                metadata_url = dist_url + ".metadata"
-                break
+
+        # Dist-info is more common in modern PyPI
+        m_val = attrs.get("data-dist-info-metadata") or attrs.get("data-core-metadata")
+        if m_val and m_val != "false":
+            _, _, metadata_sha256 = m_val.partition("sha256=")
+            metadata_url = dist_url + ".metadata"
+
+        # 5. Result object
+        dist = struct(
+            filename = filename,
+            version = version,
+            url = dist_url,
+            sha256 = sha256,
+            metadata_sha256 = metadata_sha256,
+            metadata_url = metadata_url,
+            yanked = yanked,
+        )
 
         if filename.endswith(".whl"):
-            whls[sha256] = struct(
-                filename = filename,
-                version = version,
-                url = dist_url,
-                sha256 = sha256,
-                metadata_sha256 = metadata_sha256,
-                metadata_url = _absolute_url(url, metadata_url) if metadata_url else "",
-                yanked = yanked,
-            )
+            whls[sha256] = dist
         else:
-            sdists[sha256] = struct(
-                filename = filename,
-                version = version,
-                url = dist_url,
-                sha256 = sha256,
-                metadata_sha256 = "",
-                metadata_url = "",
-                yanked = yanked,
-            )
+            sdists[sha256] = dist
+
+    if parse_index:
+        return packages
 
     return struct(
         sdists = sdists,
@@ -105,68 +146,76 @@ def parse_simpleapi_html(*, url, content):
         sha256s_by_version = sha256s_by_version,
     )
 
-_SDIST_EXTS = [
-    ".tar",  # handles any compression
-    ".zip",
-]
+def _parse_attrs(attr_string):
+    """Parses attributes from a pre-sliced string."""
+    attrs = {}
+    parts = attr_string.split('"')
 
-def _version(filename):
-    # See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#binary-distribution-format
+    for i in range(0, len(parts) - 1, 2):
+        raw_key = parts[i].strip()
+        if not raw_key:
+            continue
 
-    _, _, tail = filename.partition("-")
-    version, _, _ = tail.partition("-")
-    if version != tail:
-        # The format is {name}-{version}-{whl_specifiers}.whl
-        return version
+        key_parts = raw_key.split(" ")
+        current_key = key_parts[-1].rstrip("=")
 
-    # NOTE @aignas 2025-03-29: most of the files are wheels, so this is not the common path
+        # Batch handle booleans
+        for j in range(len(key_parts) - 1):
+            b = key_parts[j].strip()
+            if b:
+                attrs[b] = ""
 
-    # {name}-{version}.{ext}
-    for ext in _SDIST_EXTS:
-        version, _, _ = version.partition(ext)  # build or name
+        attrs[current_key] = parts[i + 1]
 
-    return version
+    # Final trailing boolean check
+    last = parts[-1].strip()
+    if last:
+        for b in last.split(" "):
+            if b:
+                attrs[b] = ""
+    return attrs
 
-def _get_root_directory(url):
-    scheme_end = url.find("://")
-    if scheme_end == -1:
-        fail("Invalid URL format")
+def _unescape_pypi_html(text):
+    """Unescape HTML text.
 
-    scheme = url[:scheme_end]
-    host_end = url.find("/", scheme_end + 3)
-    if host_end == -1:
-        host_end = len(url)
-    host = url[scheme_end + 3:host_end]
+    Decodes standard HTML entities used in the Simple API.
+    Specifically targets characters used in URLs and attribute values.
 
-    return "{}://{}".format(scheme, host)
+    Args:
+        text: {type}`str` The text to replace.
 
-def _is_downloadable(url):
-    """Checks if the URL would be accepted by the Bazel downloader.
-
-    This is based on Bazel's HttpUtils::isUrlSupportedByDownloader
+    Returns:
+        A string with unescaped characters
     """
-    return url.startswith("http://") or url.startswith("https://") or url.startswith("file://")
 
-def _absolute_url(index_url, candidate):
-    if candidate == "":
-        return candidate
+    # 1. Short circuit for the most common case
+    if not text or "&" not in text:
+        return text
 
-    if _is_downloadable(candidate):
-        return candidate
+    # 2. Check for the most frequent PEP 503 entities first (version constraints).
+    # Re-ordering based on frequency reduces unnecessary checks for rare entities.
+    if "&gt;" in text:
+        text = text.replace("&gt;", ">")
+    if "&lt;" in text:
+        text = text.replace("&lt;", "<")
 
-    if candidate.startswith("/"):
-        # absolute path
-        root_directory = _get_root_directory(index_url)
-        return "{}{}".format(root_directory, candidate)
+    # 3. Grouped check for numeric entities.
+    # If '&#' isn't there, we skip 4 distinct string scans.
+    if "&#" in text:
+        if "&#39;" in text:
+            text = text.replace("&#39;", "'")
+        if "&#x27;" in text:
+            text = text.replace("&#x27;", "'")
+        if "&#10;" in text:
+            text = text.replace("&#10;", "\n")
+        if "&#13;" in text:
+            text = text.replace("&#13;", "\r")
 
-    if candidate.startswith(".."):
-        # relative path with up references
-        candidate_parts = candidate.split("..")
-        last = candidate_parts[-1]
-        for _ in range(len(candidate_parts) - 1):
-            index_url, _, _ = index_url.rstrip("/").rpartition("/")
+    if "&quot;" in text:
+        text = text.replace("&quot;", '"')
 
-        return "{}/{}".format(index_url, last.strip("/"))
+    # 4. Handle ampersands last to prevent double-decoding.
+    if "&amp;" in text:
+        text = text.replace("&amp;", "&")
 
-    # relative path without up-references
-    return "{}/{}".format(index_url.rstrip("/"), candidate)
+    return text

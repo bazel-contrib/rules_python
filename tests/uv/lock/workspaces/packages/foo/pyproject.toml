@@ -1,0 +1,7 @@
+[project]
+name = "foo"
+version = "0.0.0"
+dependencies = ["black"]
+
+[tool.uv]
+no-build-isolation = true

@@ -1,2 +1,2 @@
 # This is for running publishing tests
-pypiserver
+pypiserver>=2.2.0

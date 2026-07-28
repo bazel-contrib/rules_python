@@ -29,6 +29,19 @@ compile_pip_requirements(
     requirements_txt = "requirements_lock.txt",
 )
 
+genquery(
+    name = "requirements_update_data",
+    expression = """
+some(labels(data, @compile_pip_requirements//:requirements.update) intersect @compile_pip_requirements//:requirements.in) union
+some(labels(data, @compile_pip_requirements//:requirements.update) intersect @compile_pip_requirements//:requirements_extra.in)
+""",
+    scope = [
+        "@compile_pip_requirements//:requirements.update",
+        "@compile_pip_requirements//:requirements.in",
+        "@compile_pip_requirements//:requirements_extra.in",
+    ],
+)
+
 compile_pip_requirements(
     name = "requirements_nohashes",
     src = "requirements.txt",

@@ -1,0 +1,22 @@
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
+
+pytest_test(
+    name = "pytest_script_venv_test",
+    srcs = [
+        "basic_test.py",
+    ],
+    config_settings = {
+        "@rules_python//python/config_settings:bootstrap_impl": "script",
+        "@rules_python//python/config_settings:venvs_site_packages": "yes",
+    },
+    target_compatible_with = SUPPORTS_BZLMOD,
+)
+
+pytest_test(
+    name = "pytest_default_test",
+    srcs = [
+        "basic_test.py",
+    ],
+    target_compatible_with = SUPPORTS_BZLMOD,
+)

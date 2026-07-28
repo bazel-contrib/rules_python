@@ -12,136 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""
+"""Unit tests for //python/extensions:python.bzl bzlmod extension."""
 
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:python.bzl", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private:repo_utils.bzl", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//tests/support/mocks:python_ext.bzl", "python_ext")
 
 _tests = []
 
-def _mock_mctx(*modules, environ = {}, mocked_files = {}):
-    return struct(
-        path = lambda x: struct(exists = x in mocked_files, _file = x),
-        read = lambda x, watch = None: mocked_files[x._file if "_file" in dir(x) else x],
-        getenv = environ.get,
-        os = struct(environ = environ),
-        modules = [
-            struct(
-                name = modules[0].name,
-                tags = modules[0].tags,
-                is_root = modules[0].is_root,
-            ),
-        ] + [
-            struct(
-                name = mod.name,
-                tags = mod.tags,
-                is_root = False,
-            )
-            for mod in modules[1:]
-        ],
-    )
-
-def _mod(*, name, defaults = [], toolchain = [], override = [], single_version_override = [], single_version_platform_override = [], is_root = True):
-    return struct(
-        name = name,
-        tags = struct(
-            defaults = defaults,
-            toolchain = toolchain,
-            override = override,
-            single_version_override = single_version_override,
-            single_version_platform_override = single_version_platform_override,
-        ),
+def _rules_python_module(is_root = False):
+    """A mock of what the real rules_python MODULE.bazel looks like."""
+    return python_ext.module(
+        name = "rules_python",
+        defaults = [python_ext.defaults(python_version = "3.11")],
+        toolchain = [python_ext.toolchain(python_version = "3.11")],
         is_root = is_root,
     )
 
-def _defaults(python_version = None, python_version_env = None, python_version_file = None):
-    return struct(
-        python_version = python_version,
-        python_version_env = python_version_env,
-        python_version_file = python_version_file,
-    )
-
-def _toolchain(python_version, *, is_default = False, **kwargs):
-    return struct(
-        is_default = is_default,
-        python_version = python_version,
-        **kwargs
-    )
-
-def _override(
-        auth_patterns = {},
-        available_python_versions = [],
-        base_url = "",
-        ignore_root_user_error = True,
-        minor_mapping = {},
-        netrc = "",
-        register_all_versions = False):
-    return struct(
-        auth_patterns = auth_patterns,
-        available_python_versions = available_python_versions,
-        base_url = base_url,
-        ignore_root_user_error = ignore_root_user_error,
-        minor_mapping = minor_mapping,
-        netrc = netrc,
-        register_all_versions = register_all_versions,
-    )
-
-def _single_version_override(
-        python_version = "",
-        sha256 = {},
-        urls = [],
-        patch_strip = 0,
-        patches = [],
-        strip_prefix = "python",
-        distutils_content = "",
-        distutils = None):
-    if not python_version:
-        fail("missing mandatory args: python_version ({})".format(python_version))
-
-    return struct(
-        python_version = python_version,
-        sha256 = sha256,
-        urls = urls,
-        patch_strip = patch_strip,
-        patches = patches,
-        strip_prefix = strip_prefix,
-        distutils_content = distutils_content,
-        distutils = distutils,
-    )
-
-def _single_version_platform_override(
-        coverage_tool = None,
-        patch_strip = 0,
-        patches = [],
-        platform = "",
-        python_version = "",
-        sha256 = "",
-        strip_prefix = "python",
-        urls = []):
-    if not platform or not python_version:
-        fail("missing mandatory args: platform ({}) and python_version ({})".format(platform, python_version))
-
-    return struct(
-        sha256 = sha256,
-        urls = urls,
-        strip_prefix = strip_prefix,
-        platform = platform,
-        coverage_tool = coverage_tool,
-        python_version = python_version,
-        patch_strip = patch_strip,
-        patches = patches,
-        target_compatible_with = [],
-        target_settings = [],
-        os_name = "",
-        arch = "",
-    )
-
-def _test_default(env):
+def _test_default_from_rules_python_when_rules_python_is_root(env):
+    """Verify that rules_python (as root module) default is applied."""
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
+        module_ctx = python_ext.mctx(
+            _rules_python_module(is_root = True),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
@@ -152,12 +47,10 @@ def _test_default(env):
     env.expect.that_dict(py.config.minor_mapping).contains_exactly(MINOR_MAPPING)
     env.expect.that_collection(py.config.kwargs).has_size(0)
     env.expect.that_collection(py.config.default.keys()).contains_exactly([
-        "base_url",
-        "ignore_root_user_error",
+        "base_urls",
         "tool_versions",
         "platforms",
     ])
-    env.expect.that_bool(py.config.default["ignore_root_user_error"]).equals(True)
     env.expect.that_str(py.default_python_version).equals("3.11")
 
     want_toolchain = struct(
@@ -167,12 +60,13 @@ def _test_default(env):
     )
     env.expect.that_collection(py.toolchains).contains_exactly([want_toolchain])
 
-_tests.append(_test_default)
+_tests.append(_test_default_from_rules_python_when_rules_python_is_root)
 
-def _test_default_some_module(env):
+def _test_default_from_rules_python_when_rules_python_is_not_root(env):
+    """Verify that rules_python default applies when rules_python is not the root module."""
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")], is_root = False),
+        module_ctx = python_ext.mctx(
+            _rules_python_module(),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
@@ -186,12 +80,19 @@ def _test_default_some_module(env):
     )
     env.expect.that_collection(py.toolchains).contains_exactly([want_toolchain])
 
-_tests.append(_test_default_some_module)
+_tests.append(_test_default_from_rules_python_when_rules_python_is_not_root)
 
 def _test_default_with_patch_version(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11.2")]),
+        module_ctx = python_ext.mctx(
+            modules = [
+                python_ext.module(
+                    name = "alpha",
+                    is_root = True,
+                    toolchain = [python_ext.toolchain(python_version = "3.11.2")],
+                ),
+                _rules_python_module(is_root = False),
+            ],
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
@@ -203,115 +104,30 @@ def _test_default_with_patch_version(env):
         python_version = "3.11.2",
         register_coverage_tool = False,
     )
-    env.expect.that_collection(py.toolchains).contains_exactly([want_toolchain])
+    env.expect.that_collection(py.toolchains).contains_at_least([want_toolchain])
 
 _tests.append(_test_default_with_patch_version)
 
-def _test_default_non_rules_python(env):
-    py = parse_modules(
-        module_ctx = _mock_mctx(
-            # NOTE @aignas 2024-09-06: the first item in the module_ctx.modules
-            # could be a non-root module, which is the case if the root module
-            # does not make any calls to the extension.
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")], is_root = False),
-        ),
-        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
-    )
-
-    env.expect.that_str(py.default_python_version).equals("3.11")
-    rules_python_toolchain = struct(
-        name = "python_3_11",
-        python_version = "3.11",
-        register_coverage_tool = False,
-    )
-    env.expect.that_collection(py.toolchains).contains_exactly([rules_python_toolchain])
-
-_tests.append(_test_default_non_rules_python)
-
-def _test_default_non_rules_python_ignore_root_user_error(env):
-    py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
-                name = "my_module",
-                toolchain = [_toolchain("3.12", ignore_root_user_error = False)],
-            ),
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
-        ),
-        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
-    )
-
-    env.expect.that_bool(py.config.default["ignore_root_user_error"]).equals(False)
-    env.expect.that_str(py.default_python_version).equals("3.12")
-
-    my_module_toolchain = struct(
-        name = "python_3_12",
-        python_version = "3.12",
-        register_coverage_tool = False,
-    )
-    rules_python_toolchain = struct(
-        name = "python_3_11",
-        python_version = "3.11",
-        register_coverage_tool = False,
-    )
-    env.expect.that_collection(py.toolchains).contains_exactly([
-        rules_python_toolchain,
-        my_module_toolchain,
-    ]).in_order()
-
-_tests.append(_test_default_non_rules_python_ignore_root_user_error)
-
-def _test_default_non_rules_python_ignore_root_user_error_non_root_module(env):
-    py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "my_module", toolchain = [_toolchain("3.13")]),
-            _mod(name = "some_module", toolchain = [_toolchain("3.12", ignore_root_user_error = False)]),
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
-        ),
-        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
-    )
-
-    env.expect.that_str(py.default_python_version).equals("3.13")
-    env.expect.that_bool(py.config.default["ignore_root_user_error"]).equals(True)
-
-    my_module_toolchain = struct(
-        name = "python_3_13",
-        python_version = "3.13",
-        register_coverage_tool = False,
-    )
-    some_module_toolchain = struct(
-        name = "python_3_12",
-        python_version = "3.12",
-        register_coverage_tool = False,
-    )
-    rules_python_toolchain = struct(
-        name = "python_3_11",
-        python_version = "3.11",
-        register_coverage_tool = False,
-    )
-    env.expect.that_collection(py.toolchains).contains_exactly([
-        some_module_toolchain,
-        rules_python_toolchain,
-        my_module_toolchain,  # this was the only toolchain, default to that
-    ]).in_order()
-
-_tests.append(_test_default_non_rules_python_ignore_root_user_error_non_root_module)
-
 def _test_toolchain_ordering(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_module",
+                is_root = True,
                 toolchain = [
-                    _toolchain("3.10"),
-                    _toolchain("3.10.15"),
-                    _toolchain("3.10.18"),
-                    _toolchain("3.10.13"),
-                    _toolchain("3.11.1"),
-                    _toolchain("3.11.10"),
-                    _toolchain("3.11.13", is_default = True),
+                    python_ext.toolchain(python_version = "3.10"),
+                    python_ext.toolchain(python_version = "3.10.15"),
+                    python_ext.toolchain(python_version = MINOR_MAPPING["3.10"]),
+                    python_ext.toolchain(python_version = "3.10.13"),
+                    python_ext.toolchain(python_version = "3.11.1"),
+                    python_ext.toolchain(python_version = "3.11.10"),
+                    python_ext.toolchain(
+                        python_version = MINOR_MAPPING["3.11"],
+                        is_default = True,
+                    ),
                 ],
             ),
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
+            _rules_python_module(),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
@@ -320,16 +136,8 @@ def _test_toolchain_ordering(env):
         for t in py.toolchains
     ]
 
-    env.expect.that_str(py.default_python_version).equals("3.11.13")
-    env.expect.that_dict(py.config.minor_mapping).contains_exactly({
-        "3.10": "3.10.18",
-        "3.11": "3.11.13",
-        "3.12": "3.12.11",
-        "3.13": "3.13.6",
-        "3.14": "3.14.0rc1",
-        "3.8": "3.8.20",
-        "3.9": "3.9.23",
-    })
+    env.expect.that_str(py.default_python_version).equals(MINOR_MAPPING["3.11"])
+    env.expect.that_dict(py.config.minor_mapping).contains_exactly(MINOR_MAPPING)
     env.expect.that_collection(got_versions).contains_exactly([
         # First the full-version toolchains that are in minor_mapping
         # so that they get matched first if only the `python_version` is in MINOR_MAPPING
@@ -337,9 +145,9 @@ def _test_toolchain_ordering(env):
         # The default version is always set in the `python_version` flag, so know, that
         # the default match will be somewhere in the first bunch.
         "3.10",
-        "3.10.18",
+        MINOR_MAPPING["3.10"],
         "3.11",
-        "3.11.13",
+        MINOR_MAPPING["3.11"],
         # Next, the rest, where we will match things based on the `python_version` being
         # the same
         "3.10.15",
@@ -352,12 +160,16 @@ _tests.append(_test_toolchain_ordering)
 
 def _test_default_from_defaults(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_root_module",
-                defaults = [_defaults(python_version = "3.11")],
-                toolchain = [_toolchain("3.10"), _toolchain("3.11"), _toolchain("3.12")],
+                defaults = [python_ext.defaults(python_version = "3.11")],
                 is_root = True,
+                toolchain = [
+                    python_ext.toolchain(python_version = "3.10"),
+                    python_ext.toolchain(python_version = "3.11"),
+                    python_ext.toolchain(python_version = "3.12"),
+                ],
             ),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -379,12 +191,21 @@ _tests.append(_test_default_from_defaults)
 
 def _test_default_from_defaults_env(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_root_module",
-                defaults = [_defaults(python_version = "3.11", python_version_env = "PYENV_VERSION")],
-                toolchain = [_toolchain("3.10"), _toolchain("3.11"), _toolchain("3.12")],
+                defaults = [
+                    python_ext.defaults(
+                        python_version = "3.11",
+                        python_version_env = "PYENV_VERSION",
+                    ),
+                ],
                 is_root = True,
+                toolchain = [
+                    python_ext.toolchain(python_version = "3.10"),
+                    python_ext.toolchain(python_version = "3.11"),
+                    python_ext.toolchain(python_version = "3.12"),
+                ],
             ),
             environ = {"PYENV_VERSION": "3.12"},
         ),
@@ -407,14 +228,22 @@ _tests.append(_test_default_from_defaults_env)
 
 def _test_default_from_defaults_file(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_root_module",
-                defaults = [_defaults(python_version_file = "@@//:.python-version")],
-                toolchain = [_toolchain("3.10"), _toolchain("3.11"), _toolchain("3.12")],
+                defaults = [
+                    python_ext.defaults(
+                        python_version_file = "@@//:.python-version",
+                    ),
+                ],
                 is_root = True,
+                toolchain = [
+                    python_ext.toolchain(python_version = "3.10"),
+                    python_ext.toolchain(python_version = "3.11"),
+                    python_ext.toolchain(python_version = "3.12"),
+                ],
             ),
-            mocked_files = {"@@//:.python-version": "3.12\n"},
+            mock_files = {"@@//:.python-version": "3.12\n"},
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
@@ -433,12 +262,86 @@ def _test_default_from_defaults_file(env):
 
 _tests.append(_test_default_from_defaults_file)
 
+def _test_default_from_single_toolchain(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_root_module",
+                is_root = True,
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+    env.expect.that_str(py.default_python_version).equals("3.12")
+
+_tests.append(_test_default_from_single_toolchain)
+
+def _test_defaults_overrides_single_toolchain(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_root_module",
+                defaults = [
+                    # This relies on rules_python registering 3.11
+                    python_ext.defaults(python_version = "3.11"),
+                ],
+                is_root = True,
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+    env.expect.that_str(py.default_python_version).equals("3.11")
+
+_tests.append(_test_defaults_overrides_single_toolchain)
+
+def _test_defaults_overrides_toolchains_setting_is_default(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_root_module",
+                defaults = [python_ext.defaults(python_version = "3.13")],
+                is_root = True,
+                toolchain = [
+                    python_ext.toolchain(python_version = "3.13"),
+                    python_ext.toolchain(
+                        python_version = "3.12",
+                        is_default = True,
+                    ),
+                ],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+    env.expect.that_str(py.default_python_version).equals("3.13")
+
+_tests.append(_test_defaults_overrides_toolchains_setting_is_default)
+
 def _test_first_occurance_of_the_toolchain_wins(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(name = "my_module", toolchain = [_toolchain("3.12")]),
-            _mod(name = "some_module", toolchain = [_toolchain("3.12", configure_coverage_tool = True)]),
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
+        module_ctx = python_ext.mctx(
+            modules = [
+                python_ext.module(
+                    name = "my_module",
+                    is_root = True,
+                    toolchain = [python_ext.toolchain(python_version = "3.12")],
+                ),
+                python_ext.module(
+                    name = "some_module",
+                    is_root = False,
+                    toolchain = [
+                        python_ext.toolchain(
+                            python_version = "3.12",
+                            configure_coverage_tool = True,
+                        ),
+                    ],
+                ),
+                _rules_python_module(),
+            ],
             environ = {
                 "RULES_PYTHON_BZLMOD_DEBUG": "1",
             },
@@ -467,8 +370,8 @@ def _test_first_occurance_of_the_toolchain_wins(env):
 
     env.expect.that_dict(py.debug_info).contains_exactly({
         "toolchains_registered": [
-            {"ignore_root_user_error": True, "module": {"is_root": True, "name": "my_module"}, "name": "python_3_12"},
-            {"ignore_root_user_error": True, "module": {"is_root": False, "name": "rules_python"}, "name": "python_3_11"},
+            {"module": {"is_root": True, "name": "my_module"}, "name": "python_3_12"},
+            {"module": {"is_root": False, "name": "rules_python"}, "name": "python_3_11"},
         ],
     })
 
@@ -476,25 +379,25 @@ _tests.append(_test_first_occurance_of_the_toolchain_wins)
 
 def _test_auth_overrides(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_module",
-                toolchain = [_toolchain("3.12")],
+                is_root = True,
                 override = [
-                    _override(
-                        netrc = "/my/netrc",
+                    python_ext.override(
                         auth_patterns = {"foo": "bar"},
+                        netrc = "/my/netrc",
                     ),
                 ],
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
             ),
-            _mod(name = "rules_python", toolchain = [_toolchain("3.11")]),
+            _rules_python_module(),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
 
     env.expect.that_dict(py.config.default).contains_at_least({
         "auth_patterns": {"foo": "bar"},
-        "ignore_root_user_error": True,
         "netrc": "/my/netrc",
     })
     env.expect.that_str(py.default_python_version).equals("3.12")
@@ -516,47 +419,79 @@ def _test_auth_overrides(env):
 
 _tests.append(_test_auth_overrides)
 
+def _test_add_target_settings(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
+                override = [
+                    python_ext.override(
+                        add_target_settings = [
+                            "@@//my:custom_setting",
+                        ],
+                    ),
+                ],
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    env.expect.that_collection(
+        py.config.add_target_settings,
+    ).contains_exactly(["@@//my:custom_setting"])
+
+_tests.append(_test_add_target_settings)
+
 def _test_add_new_version(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_module",
-                toolchain = [_toolchain("3.13")],
-                single_version_override = [
-                    _single_version_override(
-                        python_version = "3.13.0",
-                        sha256 = {
-                            "aarch64-unknown-linux-gnu": "deadbeef",
-                        },
-                        urls = ["example.org"],
-                        patch_strip = 0,
-                        patches = [],
-                        strip_prefix = "prefix",
-                        distutils_content = "",
-                        distutils = None,
-                    ),
-                ],
-                single_version_platform_override = [
-                    _single_version_platform_override(
-                        sha256 = "deadb00f",
-                        urls = ["something.org", "else.org"],
-                        strip_prefix = "python",
-                        platform = "aarch64-unknown-linux-gnu",
-                        coverage_tool = "specific_cov_tool",
-                        python_version = "3.13.99",
-                        patch_strip = 2,
-                        patches = ["specific-patch.txt"],
-                    ),
-                ],
+                is_root = True,
                 override = [
-                    _override(
-                        base_url = "",
-                        available_python_versions = ["3.12.4", "3.13.0", "3.13.1", "3.13.99"],
+                    python_ext.override(
+                        available_python_versions = [
+                            "3.12.4",
+                            "3.13.0",
+                            "3.13.1",
+                            "3.13.99",
+                        ],
+                        base_urls = [],
                         minor_mapping = {
                             "3.13": "3.13.99",
                         },
                     ),
                 ],
+                single_version_override = [
+                    python_ext.single_version_override(
+                        distutils = None,
+                        distutils_content = "",
+                        patch_strip = 0,
+                        patches = [],
+                        python_version = "3.13.0",
+                        sha256 = {
+                            "aarch64-unknown-linux-gnu": "deadbeef",
+                        },
+                        strip_prefix = "prefix",
+                        urls = ["example.org"],
+                    ),
+                ],
+                single_version_platform_override = [
+                    python_ext.single_version_platform_override(
+                        coverage_tool = "specific_cov_tool",
+                        patch_strip = 2,
+                        patches = ["specific-patch.txt"],
+                        platform = "aarch64-unknown-linux-gnu",
+                        python_version = "3.13.99",
+                        sha256 = "deadb00f",
+                        strip_prefix = "python",
+                        urls = ["something.org", "else.org"],
+                    ),
+                ],
+                toolchain = [python_ext.toolchain(python_version = "3.13")],
             ),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -598,12 +533,24 @@ _tests.append(_test_add_new_version)
 
 def _test_register_all_versions(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_module",
-                toolchain = [_toolchain("3.13")],
+                is_root = True,
+                override = [
+                    python_ext.override(
+                        available_python_versions = [
+                            "3.12.4",
+                            "3.13.0",
+                            "3.13.1",
+                            "3.13.99",
+                        ],
+                        base_urls = [],
+                        register_all_versions = True,
+                    ),
+                ],
                 single_version_override = [
-                    _single_version_override(
+                    python_ext.single_version_override(
                         python_version = "3.13.0",
                         sha256 = {
                             "aarch64-unknown-linux-gnu": "deadbeef",
@@ -612,20 +559,14 @@ def _test_register_all_versions(env):
                     ),
                 ],
                 single_version_platform_override = [
-                    _single_version_platform_override(
-                        sha256 = "deadb00f",
-                        urls = ["something.org"],
+                    python_ext.single_version_platform_override(
                         platform = "aarch64-unknown-linux-gnu",
                         python_version = "3.13.99",
+                        sha256 = "deadb00f",
+                        urls = ["something.org"],
                     ),
                 ],
-                override = [
-                    _override(
-                        base_url = "",
-                        available_python_versions = ["3.12.4", "3.13.0", "3.13.1", "3.13.99"],
-                        register_all_versions = True,
-                    ),
-                ],
+                toolchain = [python_ext.toolchain(python_version = "3.13")],
             ),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -661,48 +602,127 @@ def _test_register_all_versions(env):
 
 _tests.append(_test_register_all_versions)
 
-def _test_add_patches(env):
+def _test_ignore_unsupported_versions(env):
     py = parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_module",
-                toolchain = [_toolchain("3.13")],
+                is_root = True,
+                override = [
+                    python_ext.override(
+                        available_python_versions = [
+                            "3.12.4",
+                            "3.13.0",
+                            "3.13.1",
+                        ],
+                        base_urls = [],
+                        minor_mapping = {
+                            "3.12": "3.12.4",
+                            "3.13": "3.13.1",
+                        },
+                    ),
+                ],
                 single_version_override = [
-                    _single_version_override(
+                    python_ext.single_version_override(
                         python_version = "3.13.0",
                         sha256 = {
-                            "aarch64-apple-darwin": "deadbeef",
                             "aarch64-unknown-linux-gnu": "deadbeef",
                         },
                         urls = ["example.org"],
-                        patch_strip = 1,
-                        patches = ["common.txt"],
-                        strip_prefix = "prefix",
-                        distutils_content = "",
-                        distutils = None,
                     ),
                 ],
                 single_version_platform_override = [
-                    _single_version_platform_override(
-                        sha256 = "deadb00f",
-                        urls = ["something.org", "else.org"],
-                        strip_prefix = "python",
+                    python_ext.single_version_platform_override(
                         platform = "aarch64-unknown-linux-gnu",
-                        coverage_tool = "specific_cov_tool",
-                        python_version = "3.13.0",
-                        patch_strip = 2,
-                        patches = ["specific-patch.txt"],
+                        python_version = "3.13.99",
+                        sha256 = "deadb00f",
+                        urls = ["something.org"],
                     ),
                 ],
+                toolchain = [
+                    python_ext.toolchain(python_version = "3.11"),
+                    python_ext.toolchain(python_version = "3.12"),
+                    python_ext.toolchain(
+                        python_version = "3.13",
+                        is_default = True,
+                    ),
+                ],
+            ),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    env.expect.that_str(py.default_python_version).equals("3.13")
+    env.expect.that_collection(py.config.default["tool_versions"].keys()).contains_exactly([
+        "3.12.4",
+        "3.13.0",
+        "3.13.1",
+    ])
+    env.expect.that_dict(py.config.minor_mapping).contains_exactly({
+        # The mapping is calculated automatically
+        "3.12": "3.12.4",
+        "3.13": "3.13.1",
+    })
+    env.expect.that_collection(py.toolchains).contains_exactly([
+        struct(
+            name = name,
+            python_version = version,
+            register_coverage_tool = False,
+        )
+        for name, version in {
+            # NOTE: that '3.11' wont be actually registered and present in the
+            # `tool_versions` above.
+            "python_3_11": "3.11",
+            "python_3_12": "3.12",
+            "python_3_13": "3.13",
+        }.items()
+    ])
+
+_tests.append(_test_ignore_unsupported_versions)
+
+def _test_add_patches(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
                 override = [
-                    _override(
-                        base_url = "",
+                    python_ext.override(
                         available_python_versions = ["3.13.0"],
+                        base_urls = [],
                         minor_mapping = {
                             "3.13": "3.13.0",
                         },
                     ),
                 ],
+                single_version_override = [
+                    python_ext.single_version_override(
+                        distutils = None,
+                        distutils_content = "",
+                        patch_strip = 1,
+                        patches = ["common.txt"],
+                        python_version = "3.13.0",
+                        sha256 = {
+                            "aarch64-apple-darwin": "deadbeef",
+                            "aarch64-unknown-linux-gnu": "deadbeef",
+                        },
+                        strip_prefix = "prefix",
+                        urls = ["example.org"],
+                    ),
+                ],
+                single_version_platform_override = [
+                    python_ext.single_version_platform_override(
+                        coverage_tool = "specific_cov_tool",
+                        patch_strip = 2,
+                        patches = ["specific-patch.txt"],
+                        platform = "aarch64-unknown-linux-gnu",
+                        python_version = "3.13.0",
+                        sha256 = "deadb00f",
+                        strip_prefix = "python",
+                        urls = ["something.org", "else.org"],
+                    ),
+                ],
+                toolchain = [python_ext.toolchain(python_version = "3.13")],
             ),
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
@@ -741,14 +761,15 @@ _tests.append(_test_add_patches)
 def _test_fail_two_overrides(env):
     errors = []
     parse_modules(
-        module_ctx = _mock_mctx(
-            _mod(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
                 name = "my_module",
-                toolchain = [_toolchain("3.13")],
+                is_root = True,
                 override = [
-                    _override(base_url = "foo"),
-                    _override(base_url = "bar"),
+                    python_ext.override(base_urls = ["foo"]),
+                    python_ext.override(base_urls = ["bar"]),
                 ],
+                toolchain = [python_ext.toolchain(python_version = "3.13")],
             ),
         ),
         _fail = errors.append,
@@ -764,19 +785,26 @@ def _test_single_version_override_errors(env):
     for test in [
         struct(
             overrides = [
-                _single_version_override(python_version = "3.12.4", distutils_content = "foo"),
-                _single_version_override(python_version = "3.12.4", distutils_content = "foo"),
+                python_ext.single_version_override(
+                    distutils_content = "foo",
+                    python_version = "3.12.4",
+                ),
+                python_ext.single_version_override(
+                    distutils_content = "foo",
+                    python_version = "3.12.4",
+                ),
             ],
             want_error = "Only a single 'python.single_version_override' can be present for '3.12.4'",
         ),
     ]:
         errors = []
         parse_modules(
-            module_ctx = _mock_mctx(
-                _mod(
+            module_ctx = python_ext.mctx(
+                python_ext.module(
                     name = "my_module",
-                    toolchain = [_toolchain("3.13")],
+                    is_root = True,
                     single_version_override = test.overrides,
+                    toolchain = [python_ext.toolchain(python_version = "3.13")],
                 ),
             ),
             _fail = errors.append,
@@ -790,31 +818,46 @@ def _test_single_version_platform_override_errors(env):
     for test in [
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12.4", platform = "foo", coverage_tool = "foo"),
-                _single_version_platform_override(python_version = "3.12.4", platform = "foo", coverage_tool = "foo"),
+                python_ext.single_version_platform_override(
+                    coverage_tool = "foo",
+                    platform = "foo",
+                    python_version = "3.12.4",
+                ),
+                python_ext.single_version_platform_override(
+                    coverage_tool = "foo",
+                    platform = "foo",
+                    python_version = "3.12.4",
+                ),
             ],
             want_error = "Only a single 'python.single_version_platform_override' can be present for '(\"3.12.4\", \"foo\")'",
         ),
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "3.12", platform = "foo"),
+                python_ext.single_version_platform_override(
+                    platform = "foo",
+                    python_version = "3.12",
+                ),
             ],
             want_error = "The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '3.12'",
         ),
         struct(
             overrides = [
-                _single_version_platform_override(python_version = "foo", platform = "foo"),
+                python_ext.single_version_platform_override(
+                    platform = "foo",
+                    python_version = "foo",
+                ),
             ],
             want_error = "Failed to parse PEP 440 version identifier 'foo'. Parse error at 'foo'",
         ),
     ]:
         errors = []
         parse_modules(
-            module_ctx = _mock_mctx(
-                _mod(
+            module_ctx = python_ext.mctx(
+                python_ext.module(
                     name = "my_module",
-                    toolchain = [_toolchain("3.13")],
+                    is_root = True,
                     single_version_platform_override = test.overrides,
+                    toolchain = [python_ext.toolchain(python_version = "3.13")],
                 ),
             ),
             _fail = lambda *a: errors.append(" ".join(a)),
@@ -835,3 +878,17 @@ def python_test_suite(name):
         name: the name of the test suite
     """
     test_suite(name = name, basic_tests = _tests)
+
+def register_python_tests(name):
+    """Registers the python tests if Bzlmod is enabled, otherwise defines an empty test_suite.
+
+    Args:
+        name: The name of the test target.
+    """
+    if BZLMOD_ENABLED:
+        python_test_suite(name = name)
+    else:
+        native.test_suite(
+            name = name,
+            tests = [],
+        )

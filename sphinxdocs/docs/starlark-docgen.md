@@ -13,7 +13,7 @@ While the `sphinx_stardoc` rule doesn't require Sphinx itself, the source
 it generates requires some additional Sphinx plugins and config settings.
 
 When defining the `sphinx_build_binary` target, also depend on:
-* `@rules_python//sphinxdocs/src/sphinx_bzl:sphinx_bzl`
+* `//sphinxdocs/src/sphinx_bzl:sphinx_bzl`
 * `myst_parser` (e.g. `@pypi//myst_parser`)
 * `typing_extensions` (e.g. `@pypi//myst_parser`)
 
@@ -21,7 +21,7 @@ When defining the `sphinx_build_binary` target, also depend on:
 sphinx_build_binary(
     name = "sphinx-build",
     deps = [
-        "@rules_python//sphinxdocs/src/sphinx_bzl",
+        "//sphinxdocs/src/sphinx_bzl",
         "@pypi//myst_parser",
         "@pypi//typing_extensions",
         ...
@@ -81,7 +81,7 @@ still possible to create such objects using `struct` and lambdas. For the
 purposes of documentation, they can be documented by creating a module-level
 `struct` with matching fields *and* also a field named `TYPEDEF`. When the
 `sphinx_stardoc` rule sees a struct with a `TYPEDEF` field, it generates doc
-using the {rst:directive}`bzl:typedef` directive and puts all the struct's fields
+using the {rst:dir}`bzl:typedef` directive and puts all the struct's fields
 within the typedef. The net result is the rendered docs look similar to how
 a class would be documented in other programming languages.
 

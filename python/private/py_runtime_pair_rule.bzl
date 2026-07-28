@@ -17,9 +17,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load(":common_labels.bzl", "labels")
-load(":flags.bzl", "read_possibly_native_flag")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":util.bzl", "IS_BAZEL_7_OR_HIGHER")
 
 def _py_runtime_pair_impl(ctx):
     if ctx.attr.py2_runtime != None:
@@ -38,10 +36,9 @@ def _py_runtime_pair_impl(ctx):
     else:
         py3_runtime = None
 
-    # TODO: Uncomment this after --incompatible_python_disable_py2 defaults to true
-    # if _is_py2_disabled(ctx) and py2_runtime != None:
-    #     fail("Using Python 2 is not supported and disabled; see " +
-    #          "https://github.com/bazelbuild/bazel/issues/15684")
+    if py2_runtime != None:
+        fail("Using Python 2 is not supported and disabled; see " +
+             "https://github.com/bazelbuild/bazel/issues/15684")
 
     extra_kwargs = {}
     if ctx.attr._visible_for_testing[BuildSettingInfo].value:
@@ -58,19 +55,10 @@ def _get_py_runtime_info(target):
     # py_binary (implemented in Java) performs a type check on the provider
     # value to verify it is an instance of the Java-implemented PyRuntimeInfo
     # class.
-    if (IS_BAZEL_7_OR_HIGHER and PyRuntimeInfo in target) or BuiltinPyRuntimeInfo == None:
+    if (PyRuntimeInfo in target) or BuiltinPyRuntimeInfo == None:
         return target[PyRuntimeInfo]
     else:
         return target[BuiltinPyRuntimeInfo]
-
-# buildifier: disable=unused-variable
-def _is_py2_disabled(ctx):
-    # Because this file isn't bundled with Bazel, so we have to conditionally
-    # check for this flag.
-    # TODO: Remove this once all supported Balze versions have this flag.
-    if not hasattr(ctx.fragments.py, "disable_py"):
-        return False
-    return read_possibly_native_flag(ctx, "disable_py2")
 
 _MaybeBuiltinPyRuntimeInfo = [[BuiltinPyRuntimeInfo]] if BuiltinPyRuntimeInfo != None else []
 

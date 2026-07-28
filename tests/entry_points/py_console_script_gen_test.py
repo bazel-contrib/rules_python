@@ -162,7 +162,7 @@ class RunTest(unittest.TestCase):
             raise
 
         if __name__ == "__main__":
-            sys.exit(baz())
+            sys.exit(baz())  # type: ignore
         """
         )
         self.assertEqual(want, got)
@@ -194,8 +194,8 @@ class RunTest(unittest.TestCase):
 
             got = out.read_text()
 
-        self.assertRegex(got, "from foo\.baz import Bar")
-        self.assertRegex(got, "sys\.exit\(Bar\.baz\(\)\)")
+        self.assertRegex(got, r"from foo\.baz import Bar")
+        self.assertRegex(got, r"sys\.exit\(Bar\.baz\(\)\)")
 
     def test_shebang_included(self):
         with tempfile.TemporaryDirectory() as tmpdir:

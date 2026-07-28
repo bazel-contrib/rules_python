@@ -523,7 +523,7 @@ Tag: cp38-abi3-{os_string}_{arch}
 
         with zipfile.ZipFile(filename) as zf:
             self.assertAllEntriesHasReproducibleMetadata(zf)
-            metadata_file = None
+            metadata_file = None  # noqa: F841
             self.assertEqual(
                 zf.namelist(),
                 [
@@ -566,7 +566,9 @@ Tag: cp38-abi3-{os_string}_{arch}
             )
 
     def test_requires_dist_depends_on_extras(self):
-        filename = self._get_path("requires_dist_depends_on_extras-0.0.1-py3-none-any.whl")
+        filename = self._get_path(
+            "requires_dist_depends_on_extras-0.0.1-py3-none-any.whl"
+        )
 
         with zipfile.ZipFile(filename) as zf:
             self.assertAllEntriesHasReproducibleMetadata(zf)
@@ -591,7 +593,9 @@ Tag: cp38-abi3-{os_string}_{arch}
             )
 
     def test_requires_dist_depends_on_extras_file(self):
-        filename = self._get_path("requires_dist_depends_on_extras_using_file-0.0.1-py3-none-any.whl")
+        filename = self._get_path(
+            "requires_dist_depends_on_extras_using_file-0.0.1-py3-none-any.whl"
+        )
 
         with zipfile.ZipFile(filename) as zf:
             self.assertAllEntriesHasReproducibleMetadata(zf)
@@ -613,6 +617,25 @@ Tag: cp38-abi3-{os_string}_{arch}
                     "Requires-Dist: extra_requires[example]==0.0.1",
                 ],
                 requires,
+            )
+
+    def test_data_files_installed_in_folder(self):
+        filename = self._get_path(
+            "data_files_installed_in_folder-0.0.1-py3-none-any.whl"
+        )
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            self.assertEqual(
+                zf.namelist(),
+                [
+                    "data_files_installed_in_folder-0.0.1.dist-info/WHEEL",
+                    "data_files_installed_in_folder-0.0.1.dist-info/METADATA",
+                    "data_files_installed_in_folder-0.0.1.data/data/NOTICE",
+                    "data_files_installed_in_folder-0.0.1.data/data/README.md",
+                    "data_files_installed_in_folder-0.0.1.data/scripts/NOTICE",
+                    "data_files_installed_in_folder-0.0.1.dist-info/RECORD",
+                ],
             )
 
 

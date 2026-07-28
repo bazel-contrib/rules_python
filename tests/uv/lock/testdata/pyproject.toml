@@ -1,0 +1,5 @@
+[project]
+name = "test-project"
+version = "0.0.1"
+dependencies = ["requests"]
+requires-python = ">=3.9"

@@ -117,9 +117,9 @@ def gazelle_python_manifest(
     if requirements:
         attrs = {
             "env": {
-                "_TEST_MANIFEST": "$(rootpath {})".format(manifest),
+                "_TEST_MANIFEST": "$(rlocationpath {})".format(manifest),
                 "_TEST_MANIFEST_GENERATOR_HASH": "$(rlocationpath {})".format(manifest_generator_hash),
-                "_TEST_REQUIREMENTS": "$(rootpath {})".format(requirements),
+                "_TEST_REQUIREMENTS": "$(rlocationpath {})".format(requirements),
             },
             "size": "small",
         }
@@ -184,6 +184,7 @@ def _sources_hash_impl(ctx):
     args.add_all(all_srcs)
     ctx.actions.run(
         outputs = [hash_file],
+        mnemonic = "PyGazelleManifestHash",
         inputs = all_srcs,
         arguments = [args],
         executable = ctx.executable._hasher,

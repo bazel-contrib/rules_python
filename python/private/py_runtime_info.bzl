@@ -13,8 +13,6 @@
 # limitations under the License.
 """Providers for Python rules."""
 
-load(":util.bzl", "define_bazel_6_provider")
-
 DEFAULT_STUB_SHEBANG = "#!/usr/bin/env python3"
 
 _PYTHON_VERSION_VALUES = ["PY2", "PY3"]
@@ -57,6 +55,7 @@ def _PyRuntimeInfo_init(
         interpreter_path = None,
         interpreter = None,
         files = None,
+        interpreter_files_to_run = None,
         coverage_tool = None,
         coverage_files = None,
         pyc_tag = None,
@@ -68,12 +67,22 @@ def _PyRuntimeInfo_init(
         zip_main_template = None,
         abi_flags = "",
         site_init_template = None,
-        supports_build_time_venv = True):
+        supports_build_time_venv = True,
+        venv_bin_files = None):
     if (interpreter_path and interpreter) or (not interpreter_path and not interpreter):
         fail("exactly one of interpreter or interpreter_path must be specified")
 
     if interpreter_path and files != None:
         fail("cannot specify 'files' if 'interpreter_path' is given")
+
+    if interpreter_path and interpreter_files_to_run:
+        fail("cannot specify 'interpreter_files_to_run' if 'interpreter_path' is given")
+
+    if interpreter_files_to_run:
+        if not interpreter_files_to_run.executable:
+            fail("'interpreter_files_to_run' must have an executable")
+        if interpreter_files_to_run.executable != interpreter:
+            fail("'interpreter_files_to_run.executable' must match 'interpreter'")
 
     if (coverage_tool and not coverage_files) or (not coverage_tool and coverage_files):
         fail(
@@ -113,6 +122,7 @@ def _PyRuntimeInfo_init(
         "files": files,
         "implementation_name": implementation_name,
         "interpreter": interpreter,
+        "interpreter_files_to_run": interpreter_files_to_run,
         "interpreter_path": interpreter_path,
         "interpreter_version_info": interpreter_version_info_struct_from_dict(interpreter_version_info),
         "pyc_tag": pyc_tag,
@@ -121,10 +131,11 @@ def _PyRuntimeInfo_init(
         "stage2_bootstrap_template": stage2_bootstrap_template,
         "stub_shebang": stub_shebang,
         "supports_build_time_venv": supports_build_time_venv,
+        "venv_bin_files": venv_bin_files,
         "zip_main_template": zip_main_template,
     }
 
-PyRuntimeInfo, _unused_raw_py_runtime_info_ctor = define_bazel_6_provider(
+PyRuntimeInfo, _unused_raw_py_runtime_info_ctor = provider(
     doc = """Contains information about a Python runtime, as returned by the `py_runtime`
 rule.
 
@@ -240,6 +251,19 @@ If this is an in-build runtime, this field is a `File` representing the
 interpreter. Otherwise, this is `None`. Note that an in-build runtime can use
 either a prebuilt, checked-in interpreter or an interpreter built from source.
 """,
+        "interpreter_files_to_run": """
+:type: None | FilesToRunProvider
+
+The `FilesToRunProvider` for the interpreter target when this runtime was
+created from an executable target. This includes the interpreter executable and
+the runfiles metadata needed to use it as an action tool. Rules that execute the
+interpreter in an action should use this field so Bazel can stage the
+interpreter together with its runfiles. This is `None` for platform runtimes
+using `interpreter_path` and for file-only interpreter targets.
+
+:::{versionadded} 2.1.0
+:::
+""",
         "interpreter_path": """
 :type: str | None
 
@@ -336,6 +360,14 @@ to meet two criteria:
 
 :::{versionadded} 1.5.0
 :::
+""",
+        "venv_bin_files": """
+:type: list[File]
+
+Files that should be added to the venv's `bin/` (or platform-specific equivalent)
+directory (using the file's basename).
+
+:::{versionadded} 2.0.0
 """,
         "zip_main_template": """
 :type: File

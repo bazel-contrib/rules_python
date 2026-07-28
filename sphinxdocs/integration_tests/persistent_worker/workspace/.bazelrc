@@ -1,0 +1,8 @@
+# Disable disk caching and remote action caching so Bazel is forced to dispatch builds
+# directly to the running persistent worker instead of restoring pre-built HTML cache results across test steps.
+common --disk_cache=
+build --noremote_accept_cached
+common --http_timeout_scaling=10.0
+common --experimental_repository_downloader_retries=10
+common --experimental_downloader_config=downloader_config.cfg
+common --lockfile_mode=off

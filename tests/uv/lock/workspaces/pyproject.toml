@@ -1,0 +1,10 @@
+[project]
+name = "test"
+version = "0.0.0"
+dependencies = ["requests"]
+
+[tool.uv]
+no-build-isolation = true
+
+[tool.uv.workspace]
+members = ["packages/*"]

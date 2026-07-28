@@ -34,13 +34,35 @@ define_local_runtime_toolchain_impl(
     major = "{major}",
     minor = "{minor}",
     micro = "{micro}",
+    abi_flags = "{abi_flags}",
+    os = "{os}",
+    implementation_name = "{implementation_name}",
     interpreter_path = "{interpreter_path}",
     interface_library = {interface_library},
     libraries = {libraries},
-    implementation_name = "{implementation_name}",
-    os = "{os}",
+    defines = {defines},
+    abi3_interface_library = {abi3_interface_library},
+    abi3_libraries = {abi3_libraries},
+    additional_dlls = {additional_dlls},
 )
 """
+
+def _expand_incompatible_template():
+    return _TOOLCHAIN_IMPL_TEMPLATE.format(
+        major = "0",
+        minor = "0",
+        micro = "0",
+        abi_flags = "",
+        os = "@platforms//:incompatible",
+        implementation_name = "incompatible",
+        interpreter_path = "/incompatible",
+        interface_library = "None",
+        libraries = "[]",
+        defines = "[]",
+        abi3_interface_library = "None",
+        abi3_libraries = "[]",
+        additional_dlls = "[]",
+    )
 
 def _norm_path(path):
     """Returns a path using '/' separators and no trailing slash."""
@@ -49,33 +71,39 @@ def _norm_path(path):
         path = path[:-1]
     return path
 
-def _symlink_first_library(rctx, logger, libraries):
+def _symlink_libraries(rctx, logger, libraries, shlib_suffix):
     """Symlinks the shared libraries into the lib/ directory.
+
+    Individual files are symlinked instead of the whole directory because
+    shared_lib_dirs contains multiple search paths for the shared libraries,
+    and the python files may be missing from any of those directories, and
+    any of those directories may include non-python runtime libraries,
+    as would be the case if LIBDIR were, for example, /usr/lib.
 
     Args:
         rctx: A repository_ctx object
         logger: A repo_utils.logger object
-        libraries: A list of static library paths to potentially symlink.
+        libraries: paths to libraries to attempt to symlink.
+        shlib_suffix: Optional. Ensure that the generated symlinks end with this suffix.
     Returns:
-        A single library path linked by the action.
+        A list of library paths (under lib/) linked by the action.
     """
-    linked = None
-    for target in libraries:
-        origin = rctx.path(target)
+    result = []
+    for source in libraries:
+        origin = rctx.path(source)
         if not origin.exists:
             # The reported names don't always exist; it depends on the particulars
             # of the runtime installation.
             continue
-        if target.endswith("/Python"):
-            linked = "lib/{}.dylib".format(origin.basename)
+        if shlib_suffix and not origin.basename.endswith(shlib_suffix):
+            target = "lib/{}{}".format(origin.basename, shlib_suffix)
         else:
-            linked = "lib/{}".format(origin.basename)
-        logger.debug("Symlinking {} to {}".format(origin, linked))
-        repo_utils.watch(rctx, origin)
-        rctx.symlink(origin, linked)
-        break
-
-    return linked
+            target = "lib/{}".format(origin.basename)
+        logger.debug(lambda: "Symlinking {} to {}".format(origin, target))
+        rctx.watch(origin)
+        rctx.symlink(origin, target)
+        result.append(target)
+    return result
 
 def _local_runtime_repo_impl(rctx):
     logger = repo_utils.logger(rctx)
@@ -142,37 +170,55 @@ def _local_runtime_repo_impl(rctx):
     # path is an error. Silently skip, since includes are only necessary
     # if C extensions are built.
     if include_path.exists and include_path.is_dir:
-        repo_utils.watch_tree(rctx, include_path)
+        rctx.watch_tree(include_path)
     else:
         pass
 
     # The cc_library.includes values have to be non-absolute paths, otherwise
     # the toolchain will give an error. Work around this error by making them
     # appear as part of this repo.
+    logger.debug(lambda: "Symlinking {} to include".format(include_path))
     rctx.symlink(include_path, "include")
 
     rctx.report_progress("Symlinking external Python shared libraries")
-    interface_library = _symlink_first_library(rctx, logger, info["interface_libraries"])
-    shared_library = _symlink_first_library(rctx, logger, info["dynamic_libraries"])
-    static_library = _symlink_first_library(rctx, logger, info["static_libraries"])
 
-    libraries = []
-    if shared_library:
-        libraries.append(shared_library)
-    elif static_library:
-        libraries.append(static_library)
+    interface_library = None
+    if info["dynamic_libraries"]:
+        libraries = _symlink_libraries(rctx, logger, info["dynamic_libraries"][:1], info["shlib_suffix"])
+        symlinked = _symlink_libraries(rctx, logger, info["interface_libraries"][:1], None)
+        if symlinked:
+            interface_library = symlinked[0]
     else:
-        logger.warn("No external python libraries found.")
+        libraries = _symlink_libraries(rctx, logger, info["static_libraries"], None)
+        if not libraries:
+            logger.info("No python libraries found.")
+
+    abi3_interface_library = None
+    if info["abi_dynamic_libraries"]:
+        abi3_libraries = _symlink_libraries(rctx, logger, info["abi_dynamic_libraries"][:1], info["shlib_suffix"])
+        symlinked = _symlink_libraries(rctx, logger, info["abi_interface_libraries"][:1], None)
+        if symlinked:
+            abi3_interface_library = symlinked[0]
+    else:
+        abi3_libraries = []
+        logger.info("No abi3 python libraries found.")
+
+    additional_dlls = _symlink_libraries(rctx, logger, info["additional_dlls"], None)
 
     build_bazel = _TOOLCHAIN_IMPL_TEMPLATE.format(
         major = info["major"],
         minor = info["minor"],
         micro = info["micro"],
+        abi_flags = info["abi_flags"],
+        os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
+        implementation_name = info["implementation_name"],
         interpreter_path = _norm_path(interpreter_path),
         interface_library = repr(interface_library),
         libraries = repr(libraries),
-        implementation_name = info["implementation_name"],
-        os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
+        defines = repr(info["defines"]),
+        abi3_interface_library = repr(abi3_interface_library),
+        abi3_libraries = repr(abi3_libraries),
+        additional_dlls = repr(additional_dlls),
     )
     logger.debug(lambda: "BUILD.bazel\n{}".format(build_bazel))
 
@@ -200,13 +246,37 @@ a system having the necessary Python installed.
             doc = """
 An absolute path or program name on the `PATH` env var.
 
+*Mutually exclusive with `interpreter_target`.*
+
 Values with slashes are assumed to be the path to a program. Otherwise, it is
 treated as something to search for on `PATH`
 
 Note that, when a plain program name is used, the path to the interpreter is
 resolved at repository evalution time, not runtime of any resulting binaries.
+
+If not set, defaults to `python3`.
+
+:::{seealso}
+The {obj}`interpreter_target` attribute for getting the interpreter from
+a label
+:::
 """,
-            default = "python3",
+            default = "",
+        ),
+        "interpreter_target": attr.label(
+            doc = """
+A label to a Python interpreter executable.
+
+*Mutually exclusive with `interpreter_path`.*
+
+On Windows, if the path doesn't exist, various suffixes will be tried to
+find a usable path.
+
+:::{seealso}
+The {obj}`interpreter_path` attribute for getting the interpreter from
+a path or PATH environment lookup.
+:::
+""",
         ),
         "on_failure": attr.string(
             default = _OnFailure.SKIP,
@@ -235,17 +305,36 @@ How to handle errors when trying to automatically determine settings.
     environ = ["PATH", REPO_DEBUG_ENV_VAR, "DEVELOPER_DIR", "XCODE_VERSION"],
 )
 
-def _expand_incompatible_template():
-    return _TOOLCHAIN_IMPL_TEMPLATE.format(
-        interpreter_path = "/incompatible",
-        implementation_name = "incompatible",
-        interface_library = "None",
-        libraries = "[]",
-        major = "0",
-        minor = "0",
-        micro = "0",
-        os = "@platforms//:incompatible",
+def _find_python_exe_from_target(rctx):
+    base_path = rctx.path(rctx.attr.interpreter_target)
+    if base_path.exists:
+        return base_path, None
+    attempted_paths = [base_path]
+
+    # Try to convert a unix-y path to a Windows path. On Linux/Mac,
+    # the path is usually `bin/python3`. On Windows, it's simply
+    # `python.exe`.
+    basename = base_path.basename.rstrip("3")
+    path = base_path.dirname.dirname.get_child(basename)
+    path = rctx.path("{}.exe".format(path))
+    if path.exists:
+        return path, None
+    attempted_paths.append(path)
+
+    # Try adding .exe to the base path
+    path = rctx.path("{}.exe".format(base_path))
+    if path.exists:
+        return path, None
+    attempted_paths.append(path)
+
+    describe_failure = lambda: (
+        "Target '{target}' could not be resolved to a valid path. " +
+        "Attempted paths: {paths}"
+    ).format(
+        target = rctx.attr.interpreter_target,
+        paths = "\n".join([str(p) for p in attempted_paths]),
     )
+    return None, describe_failure
 
 def _resolve_interpreter_path(rctx):
     """Find the absolute path for an interpreter.
@@ -260,20 +349,27 @@ def _resolve_interpreter_path(rctx):
           returns a description of why it couldn't be resolved
         A path object or None. The path may not exist.
     """
-    if "/" not in rctx.attr.interpreter_path and "\\" not in rctx.attr.interpreter_path:
-        # Provide a bit nicer integration with pyenv: recalculate the runtime if the
-        # user changes the python version using e.g. `pyenv shell`
-        repo_utils.getenv(rctx, "PYENV_VERSION")
-        result = repo_utils.which_unchecked(rctx, rctx.attr.interpreter_path)
-        resolved_path = result.binary
-        describe_failure = result.describe_failure
+    if rctx.attr.interpreter_path and rctx.attr.interpreter_target:
+        fail("interpreter_path and interpreter_target are mutually exclusive")
+
+    if rctx.attr.interpreter_target:
+        resolved_path, describe_failure = _find_python_exe_from_target(rctx)
     else:
-        repo_utils.watch(rctx, rctx.attr.interpreter_path)
-        resolved_path = rctx.path(rctx.attr.interpreter_path)
-        if not resolved_path.exists:
-            describe_failure = lambda: "Path not found: {}".format(repr(rctx.attr.interpreter_path))
+        interpreter_path = rctx.attr.interpreter_path or "python3"
+        if "/" not in interpreter_path and "\\" not in interpreter_path:
+            # Provide a bit nicer integration with pyenv: recalculate the runtime if the
+            # user changes the python version using e.g. `pyenv shell`
+            rctx.getenv("PYENV_VERSION")
+            result = repo_utils.which_unchecked(rctx, interpreter_path)
+            resolved_path = result.binary
+            describe_failure = result.describe_failure
         else:
-            describe_failure = None
+            rctx.watch(interpreter_path)
+            resolved_path = rctx.path(interpreter_path)
+            if not resolved_path.exists:
+                describe_failure = lambda: "Path not found: {}".format(repr(interpreter_path))
+            else:
+                describe_failure = None
 
     return struct(
         resolved_path = resolved_path,

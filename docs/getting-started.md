@@ -11,6 +11,8 @@ For more detailed information about configuring `rules_python`, see:
 * [Configuring third-party dependencies (pip/PyPI)](./pypi/index)
 * [API docs](api/index)
 
+A [screen recording](https://www.youtube.com/watch?v=Xtuh-WipOnk) on configuring rules_python for beginners is also available.
+
 ## Including dependencies
 
 The first step to using `rules_python` is to add the dependency to

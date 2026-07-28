@@ -214,7 +214,7 @@ def python_toolchain_build_file_content(
             user_repository_name = "{}_{}".format(user_repository_name, platform),
             python_version = python_version,
             set_python_version_constraint = set_python_version_constraint,
-            target_settings = [],
+            target_settings = meta.target_settings,
         ))
     return "\n\n".join(entries)
 
@@ -592,7 +592,7 @@ def _get_host_impl_repo_name(*, rctx, logger, python_version, os_name, cpu_name,
             os_name.upper(),
             cpu_name.upper(),
         )
-        preference = repo_utils.getenv(rctx, env_var)
+        preference = rctx.getenv(env_var)
         if preference == None:
             logger.info("Consider using '{}' to select from one of the platforms: {}".format(
                 env_var,

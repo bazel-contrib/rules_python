@@ -6,6 +6,7 @@ import time
 import unittest
 from contextlib import closing
 from pathlib import Path
+from urllib.error import URLError
 from urllib.request import urlopen
 
 
@@ -50,17 +51,16 @@ class TestTwineUpload(unittest.TestCase):
             ],
         )
 
-        line = "Hit Ctrl-C to quit"
         interval = 0.1
         wait_seconds = 40
         for _ in range(int(wait_seconds / interval)):  # 40 second timeout
-            current_logs = self.log_file.read_text()
-            if line in current_logs:
-                print(current_logs.strip())
-                print("...")
-                break
-
-            time.sleep(0.1)
+            try:
+                with urlopen(self.url, timeout=1) as response:
+                    if response.status == 200:
+                        break
+            except (URLError, OSError):
+                pass
+            time.sleep(interval)
         else:
             raise RuntimeError(
                 f"Could not get the server running fast enough, waited for {wait_seconds}s"
@@ -98,13 +98,15 @@ class TestTwineUpload(unittest.TestCase):
             got_content = response.read().decode("utf-8")
             want_content = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Links for example-minimal-library</title>
     </head>
     <body>
         <h1>Links for example-minimal-library</h1>
-             <a href="/packages/example_minimal_library-0.0.1-py3-none-any.whl#sha256=ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d">example_minimal_library-0.0.1-py3-none-any.whl</a><br>
+            <a href="/packages/example_minimal_library-0.0.1-py3-none-any.whl#sha256=ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d">example_minimal_library-0.0.1-py3-none-any.whl</a><br>
     </body>
 </html>"""
             self.assertEqual(

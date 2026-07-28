@@ -1,0 +1,42 @@
+module(
+    name = "sphinxdocs",
+    version = "0.0.0",
+    compatibility_level = 1,
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "stardoc", version = "0.7.2", repo_name = "io_bazel_stardoc")
+bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "protobuf", version = "29.0-rc2", repo_name = "com_google_protobuf")
+bazel_dep(name = "rules_python", version = "2.2.0")
+
+dev_pip = use_extension(
+    "@rules_python//python/extensions:pip.bzl",
+    "pip",
+    dev_dependency = True,
+)
+dev_pip.parse(
+    hub_name = "dev_pip",
+    python_version = "3.11",
+    requirements_lock = "//dev:requirements.txt",
+    uv_lock = "//dev:uv.lock",
+)
+use_repo(dev_pip, "dev_pip")
+
+bazel_dep(name = "rules_bazel_integration_test", version = "0.37.1", dev_dependency = True)
+
+bazel_binaries = use_extension(
+    "@rules_bazel_integration_test//:extensions.bzl",
+    "bazel_binaries",
+    dev_dependency = True,
+)
+bazel_binaries.local(
+    name = "self",
+    path = "integration_tests/bazel_from_env",
+)
+use_repo(
+    bazel_binaries,
+    "bazel_binaries",
+    "bazel_binaries_bazelisk",
+    "build_bazel_bazel_self",
+)

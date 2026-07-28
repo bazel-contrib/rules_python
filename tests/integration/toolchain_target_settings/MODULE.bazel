@@ -1,0 +1,24 @@
+module(name = "module_under_test")
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.13")
+
+# Gate ALL default-registered toolchains behind the "prebuilt" config setting.
+# This prevents them from being a silent fallback when a different toolchain
+# family is requested.
+python.override(
+    add_target_settings = ["@@//:is_prebuilt"],
+)
+
+# Register //:family as a transition setting so py_binary/py_test
+# config_settings can set it.
+config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+config.add_transition_setting(setting = "//:family")

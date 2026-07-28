@@ -14,13 +14,14 @@
 
 ""
 
-load("//python/private/pypi:group_library.bzl", _group_library = "group_library")
 load("//python/private/pypi:package_annotation.bzl", _package_annotation = "package_annotation")
 load("//python/private/pypi:pip_repository.bzl", _pip_repository = "pip_repository")
+load("//python/private/pypi:whl_config_repo.bzl", _whl_config_repo = "whl_config_repo")
 load("//python/private/pypi:whl_library.bzl", _whl_library = "whl_library")
 
 # Re-exports for backwards compatibility
-group_library = _group_library
+group_library = _whl_config_repo
 pip_repository = _pip_repository
 whl_library = _whl_library
+whl_config_repo = _whl_config_repo
 package_annotation = _package_annotation

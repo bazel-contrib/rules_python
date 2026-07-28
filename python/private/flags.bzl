@@ -39,7 +39,6 @@ load(":enum.bzl", "FlagEnum", "enum")
 _POSSIBLY_NATIVE_FLAGS = {
     "build_python_zip": (lambda ctx: ctx.fragments.py.build_python_zip, "native"),
     "default_to_explicit_init_py": (lambda ctx: ctx.fragments.py.default_to_explicit_init_py, "native"),
-    "disable_py2": (lambda ctx: ctx.fragments.py.disable_py2, "native"),
     "python_import_all_repositories": (lambda ctx: ctx.fragments.bazel_py.python_import_all_repositories, "native"),
     "python_path": (lambda ctx: ctx.fragments.bazel_py.python_path, "native"),
 }
@@ -72,7 +71,7 @@ def read_possibly_native_flag(ctx, flag_name):
         return _POSSIBLY_NATIVE_FLAGS[flag_name][0](ctx)
     else:
         # Starlark definition of "--foo" is assumed to be a label dependency named "_foo".
-        return getattr(ctx.attr, "_" + flag_name)[BuildSettingInfo].value
+        return getattr(ctx.attr, "_" + flag_name + "_flag")[BuildSettingInfo].value
 
 def _AddSrcsToRunfilesFlag_is_enabled(ctx):
     value = ctx.attr._add_srcs_to_runfiles_flag[BuildSettingInfo].value
@@ -86,6 +85,27 @@ AddSrcsToRunfilesFlag = FlagEnum(
     ENABLED = "enabled",
     DISABLED = "disabled",
     is_enabled = _AddSrcsToRunfilesFlag_is_enabled,
+)
+
+def _ValidateTestMainFlag_is_enabled(ctx):
+    value = ctx.attr._validate_test_main_flag[BuildSettingInfo].value
+    if value == ValidateTestMainFlag.AUTO:
+        # Default off; intended to be flipped to enabled in a future major
+        # version (e.g. rules_python 3.0).
+        value = ValidateTestMainFlag.DISABLED
+    return value == ValidateTestMainFlag.ENABLED
+
+# Determines if py_test runs a validation action that statically checks the
+# main module actually runs tests (instead of silently passing).
+# buildifier: disable=name-conventions
+ValidateTestMainFlag = FlagEnum(
+    # Automatically decide the effective value; currently resolves to disabled.
+    AUTO = "auto",
+    # Run the validation action.
+    ENABLED = "enabled",
+    # Don't run the validation action.
+    DISABLED = "disabled",
+    is_enabled = _ValidateTestMainFlag_is_enabled,
 )
 
 def _string_flag_impl(ctx):

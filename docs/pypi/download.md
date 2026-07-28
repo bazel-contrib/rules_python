@@ -50,6 +50,114 @@ You can use the pip extension multiple times. This configuration will create
 multiple external repos that have no relation to one another and may result in
 downloading the same wheels numerous times.
 
+(unified-pypi-hub)=
+## Unified `@pypi` Hub for Multi-Hub Configurations
+
+:::{versionadded} 2.2.0
+Unified `@pypi` hub repository for Bzlmod multi-hub configurations.
+:::
+
+When you call the `pip` extension multiple times with different `hub_name`
+attributes, `rules_python` automatically generates a unified `@pypi` hub
+repository (unless one of your concrete hubs is explicitly named `"pypi"`).
+
+This unified `@pypi` repository acts as a dynamic proxy that routes package
+dependencies to the active concrete hub at build time. This is especially
+useful in monorepos where shared library targets need to depend on PyPI
+packages without knowing which specific hub or requirements lock file the
+consuming binary is using.
+
+#### Reserved `"pypi"` Hub Name
+
+The hub name `"pypi"` is **reserved** for the automatically generated unified
+hub repository. Defining a concrete hub named `"pypi"` will cause a collision.
+
+For details on how this collision is handled and resolved via environment
+variables, see the {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` documentation.
+
+#### Configuring the Unified Hub
+
+To configure the unified hub, define your concrete hubs as usual, and
+optionally designate a default hub using the `pip.default` tag's
+`default_hub` attribute:
+
+```starlark
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Define concrete hub 'pypi_a'
+pip.parse(
+    hub_name = "pypi_a",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_a.txt",
+)
+
+# Define concrete hub 'pypi_b'
+pip.parse(
+    hub_name = "pypi_b",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_b.txt",
+)
+
+# Designate 'pypi_b' as the default hub for the unified '@pypi' repository
+pip.default(default_hub = "pypi_b")
+
+# Import the unified hub repository
+use_repo(pip, "pypi")
+```
+
+#### Dynamic Routing at Build Time
+
+By default, the unified `@pypi` repository will resolve packages from the
+designated `default_hub`. You can dynamically switch the active hub for a build
+using the `--@rules_python//python/config_settings:venv` command-line flag
+or via target transitions:
+
+```bash
+# Build using packages from 'pypi_a'
+bazel build --@rules_python//python/config_settings:venv=pypi_a //my:binary
+```
+
+Shared library targets can simply depend on the unified hub (e.g.,
+`@pypi//numpy`), and the dependency will automatically resolve to the correct
+wheel version from the active hub during the build.
+
+### Declaring Abstract Dependencies (pip.dep)
+
+:::{versionadded} 2.2.0
+Declaring abstract PyPI dependencies via `pip.dep` tags.
+:::
+
+Sometimes a shared library target or a ruleset needs to depend on a PyPI
+package (e.g., `@pypi//numpy`), but does not want to force a specific package
+version or a concrete `requirements.txt` lock file on its consumers.
+
+Instead of calling `pip.parse()`, the module can declare its dependency using
+the `pip.dep` tag:
+
+```starlark
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Declare an abstract dependency on 'numpy' and specify extra targets that
+# are expected to be available in the package.
+pip.dep(
+    name = "numpy",
+    extra_targets = ["extra-alias"],
+)
+```
+
+This ensures that the target structure `@pypi//numpy` (and
+`@pypi//numpy:extra-alias`) exists in the unified `@pypi` hub repository, so the
+declaring module can compile and analyze successfully without needing any local
+requirements file.
+
+The actual concrete implementation and version of the package must be provided
+by a downstream module calling `pip.parse`.
+
+If a downstream module attempts to build a target that depends on an abstract
+dependency, but has not provided a concrete implementation for it via any
+`pip.parse` call, the build will fail at execution time.
+
+
 As with any repository rule or extension, if you would like to ensure that `pip_parse` is
 re-executed to pick up a non-hermetic change to your environment (e.g., updating your system
 `python` interpreter), you can force it to re-execute by running `bazel sync --only [pip_parse
@@ -104,14 +212,28 @@ the years, people started needing support for building containers, and usually, 
 fetching dependencies for a particular target platform that may be different from the host
 platform.
 
-Multi-platform support for cross-building the wheels can be done in two ways:
-1. using {attr}`experimental_index_url` for the {bzl:obj}`pip.parse` bzlmod tag class
-2. using the {attr}`pip.parse.download_only` setting.
+Multi-platform support for cross-building the wheels can be done by
+using {attr}`target_platforms` for the {bzl:obj}`pip.parse` bzlmod tag class
 
 :::{warning}
 This will not work for sdists with C extensions, but pure Python sdists may still work using the first
 approach.
 :::
+
+By default, `rules_python` selects the host `{os}_{arch}` platform from its `MODULE.bazel`
+file. This means that `rules_python` by default does not provide cross-platform building support
+because some packages have very large wheels and users should be able to use `bazel query` with
+minimal overhead. As a result, users should configure their `pip.parse`
+calls and select which platforms they want to target via the
+{attr}`pip.parse.target_platforms` attribute:
+```starlark
+    # Example of enabling free threaded and non-freethreaded switching on the host platform:
+    target_platforms = ["{os}_{arch}", "{os}_{arch}_freethreaded"],
+
+    # As another example, to enable building for `linux_x86_64` containers and the host platform:
+    # target_platforms = ["{os}_{arch}", "linux_x86_64"],
+)
+```
 
 ### Using `download_only` attribute
 
@@ -168,11 +290,6 @@ available on the PyPI index that you use.
 
 ### Customizing `Requires-Dist` resolution
 
-:::{note}
-Currently this is disabled by default, but you can turn it on using 
-{envvar}`RULES_PYTHON_ENABLE_PIPSTAR` environment variable.
-:::
-
 In order to understand what dependencies to pull for a particular package,
 `rules_python` parses the `whl` file [`METADATA`][metadata].
 Packages can express dependencies via `Requires-Dist`, and they can add conditions using
@@ -197,16 +314,6 @@ additional keys, which become available during dependency evaluation.
 (bazel-downloader)=
 ### Bazel downloader and multi-platform wheel hub repository.
 
-:::{warning}
-This is currently still experimental, and whilst it has been proven to work in quite a few
-environments, the APIs are still being finalized, and there may be changes to the APIs for this
-feature without much notice.
-
-The issues that you can subscribe to for updates are:
-* {gh-issue}`260`
-* {gh-issue}`1357`
-:::
-
 The {obj}`pip` extension supports pulling information from `PyPI` (or a compatible mirror), and it
 will ensure that the [bazel downloader][bazel_downloader] is used for downloading the wheels.
 
@@ -218,14 +325,10 @@ This provides the following benefits:
 * Allow using transitions and targeting free-threaded and musl platforms more easily.
 * Avoids `pip` for wheel fetching and results in much faster dependency fetching.
 
-To enable the feature specify {attr}`pip.parse.experimental_index_url` as shown in
-the {gh-path}`examples/bzlmod/MODULE.bazel` example.
-
-Similar to [uv](https://docs.astral.sh/uv/configuration/indexes/), one can override the
-index that is used for a single package. By default, we first search in the index specified by
-{attr}`pip.parse.experimental_index_url`, then we iterate through the
-{attr}`pip.parse.experimental_extra_index_urls` unless there are overrides specified via
-{attr}`pip.parse.experimental_index_url_overrides`.
+Similar to [uv](https://docs.astral.sh/uv/configuration/indexes/), one can override the index that
+is used for a single package. By default, we first search in the indexes specified by
+`--extra-index-url`, then we fall back to the `--index-url` setting unless there are overrides
+specified via {attr}`pip.parse.experimental_index_url_overrides`.
 
 When using this feature during the `pip` extension evaluation you will see the accessed indexes similar to below:
 ```console
@@ -249,15 +352,57 @@ that by parsing the `whl` filename based on [PEP600], [PEP656] standards. This
 allows the user to configure the behaviour by using the following publicly
 available flags:
 * {obj}`--@rules_python//python/config_settings:py_linux_libc` for selecting the Linux libc variant.
-* {obj}`--@rules_python//python/config_settings:pip_whl` for selecting `whl` distribution preference.
-* {obj}`--@rules_python//python/config_settings:pip_whl_osx_arch` for selecting MacOS wheel preference.
-* {obj}`--@rules_python//python/config_settings:pip_whl_glibc_version` for selecting the GLIBC version compatibility.
-* {obj}`--@rules_python//python/config_settings:pip_whl_muslc_version` for selecting the musl version compatibility.
-* {obj}`--@rules_python//python/config_settings:pip_whl_osx_version` for selecting MacOS version compatibility.
 
 [bazel_downloader]: https://bazel.build/rules/lib/builtins/repository_ctx#download
 [pep600]: https://peps.python.org/pep-0600/
 [pep656]: https://peps.python.org/pep-0656/
+
+## Internal dependencies and private repositories
+
+The `rules_python` Bazel module downloads Python interpreters and
+dependencies as part of its functionality. These artifacts are fetched
+using Bazel's internal HTTP downloader, not using the `pip` tool.
+
+If you are in a network-restricted environment and must use internal
+registries, you can configure the Bazel downloader to redirect all of
+these downloads to a different registry.
+
+Example of a `bazel_downloader.cfg`:
+```cfg
+all_blocked_message See internal.mirror.lan/registry/ for more information
+allow s3.amazon.com
+
+# Rewrite everything to files.pythonhosted to the internal mirror with two
+# capture groups: the first group matches the host and is appended first,
+# the second matches the entire path and is appended second
+rewrite (files.pythonhosted.org)/(.*) internal.mirror.lan/python/$1/$2
+rewrite (pypi.python.org)/(.*) internal.mirror.lan/python/$1/$2
+
+# Allow the internal mirror and block everything else
+allow internal.mirror.lan
+block *
+```
+
+Use the config file with `--experimental_downloader_config=bazel_downloader.cfg`.
+
+### How the config is parsed:
+
+* Uses Java regular expressions
+* Matching is performed only on host and path components of the URL, not the scheme
+* Directives are applied in the following order: `rewrite, allow, block`
+* Back references are numbered starting from `$1`
+* Expressions must match the entire string being tested, not just find a substring.
+
+If your patterns don't seem to match or rewrite:
+
+* Begin with simple patterns to ensure they match as expected.
+* Be cautious when using `block` statements to avoid unintentionally blocking necessary downloads. Add `block` statements incrementally and test thoroughly after each change.
+
+### References:
+
+* [Configuring Bazel's Downloader](https://blog.aspect.build/configuring-bazels-downloader)
+* [URLRewriterConfig.java Source Code](https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/bazel/repository/downloader/UrlRewriterConfig.java)
+* [Issue 3519](https://github.com/bazel-contrib/rules_python/issues/3519)
 
 (credential-helper)=
 ## Credential Helper
@@ -296,6 +441,7 @@ Bazel will call this file like `cred_helper.sh get` and use the returned JSON to
 into whatever HTTP(S) request it performs against `example.com`.
 
 See the [Credential Helper Spec][cred-helper-spec] for more details.
+
 
 [rfc7617]: https://datatracker.ietf.org/doc/html/rfc7617
 [cred-helper-design]: https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md

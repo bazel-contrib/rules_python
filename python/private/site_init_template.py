@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """site initialization logic for Bazel-built py_binary targets."""
+
 import os
 import os.path
 import sys
@@ -26,6 +27,8 @@ _WORKSPACE_NAME = "%workspace_name%"
 _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 # Runfiles-relative path to the coverage tool entry point, if any.
 _COVERAGE_TOOL = "%coverage_tool%"
+# True if the runfiles root should be added to sys.path
+_ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
 
 
 def _is_verbose():
@@ -95,7 +98,15 @@ def _get_windows_path_with_unc_prefix(path):
     # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
     import platform
 
-    if platform.win32_ver()[1] >= "10.0.14393":
+    win32_version = None
+    # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
+    for _ in range(3):
+        try:
+            win32_version = platform.win32_ver()[1]
+            break
+        except (ValueError, KeyError):
+            pass
+    if win32_version and win32_version >= "10.0.14393":
         return path
 
     # import sysconfig only now to maintain python 2.6 compatibility
@@ -125,31 +136,35 @@ def _search_path(name):
 
 
 def _setup_sys_path():
-    """Perform Bazel/binary specific sys.path setup.
-
-    NOTE: We do not add _RUNFILES_ROOT to sys.path for two reasons:
-    1. Under workspace, it makes every external repository importable. If a Bazel
-       repository matches a Python import name, they conflict.
-    2. Under bzlmod, the repo names in the runfiles directory aren't importable
-       Python names, so there's no point in adding the runfiles root to sys.path.
-    """
+    """Perform Bazel/binary specific sys.path setup."""
+    _print_verbose("site init: initial sys.path:\n", "\n".join(sys.path))
     seen = set(sys.path)
-    python_path_entries = []
 
-    def _maybe_add_path(path):
+    def _maybe_add_path(path, reason):
         if path in seen:
             return
         path = _get_windows_path_with_unc_prefix(path)
         if _is_windows():
             path = path.replace("/", os.sep)
 
-        _print_verbose("append sys.path:", path)
+        _print_verbose("append sys.path:", reason, ":", path)
         sys.path.append(path)
         seen.add(path)
 
+    # Adding the runfiles root to sys.path is a legacy behavior that will be
+    # removed. We don't want to add it to sys.path for two reasons:
+    # 1. Under workspace, it makes every external repository importable. If a Bazel
+    #    repository matches a Python import name, they conflict.
+    # 2. Under bzlmod, the repo names in the runfiles directory aren't importable
+    #    Python names, so there's no point in adding the runfiles root to sys.path.
+    # For temporary compatibility with the original system_python bootstrap
+    # behavior, it is conditionally added for that boostrap mode.
+    if _ADD_RUNFILES_ROOT_TO_SYS_PATH:
+        _maybe_add_path(_RUNFILES_ROOT, "runfiles-root")
+
     for rel_path in _IMPORTS_STR.split(":"):
         abs_path = os.path.join(_RUNFILES_ROOT, rel_path)
-        _maybe_add_path(abs_path)
+        _maybe_add_path(abs_path, "imports-strs")
 
     if _IMPORT_ALL:
         repo_dirs = sorted(
@@ -157,9 +172,9 @@ def _setup_sys_path():
         )
         for d in repo_dirs:
             if os.path.isdir(d):
-                _maybe_add_path(d)
+                _maybe_add_path(d, "import-all")
     else:
-        _maybe_add_path(os.path.join(_RUNFILES_ROOT, _WORKSPACE_NAME))
+        _maybe_add_path(os.path.join(_RUNFILES_ROOT, _WORKSPACE_NAME), "workspace-root")
 
     # COVERAGE_DIR is set if coverage is enabled and instrumentation is configured
     # for something, though it could be another program executing this one or
@@ -191,7 +206,7 @@ def _setup_sys_path():
             # it with the directory of the program it starts. Our actual sys.path[0] is
             # the runfiles directory, which must not be replaced.
             # CoverageScript.do_execute() undoes this sys.path[0] setting.
-            _maybe_add_path(coverage_dir)
+            _maybe_add_path(coverage_dir, "coverage-dir")
             coverage_setup = True
         else:
             _print_verbose_coverage(

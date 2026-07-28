@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 
@@ -6,6 +7,12 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 py_binary(
     name = "generator",
     srcs = ["generator.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "merger",
+    srcs = ["merger.py"],
     visibility = ["//visibility:public"],
 )
 
@@ -33,8 +40,26 @@ py_test(
     deps = [":generator"],
 )
 
+py_test(
+    name = "test_merger",
+    srcs = ["test_merger.py"],
+    data = [
+        "django_types_wheel",
+        "pytest_wheel",
+    ],
+    imports = ["."],
+    main = "test_merger.py",
+    deps = [":merger"],
+)
+
 filegroup(
     name = "distribution",
     srcs = glob(["**"]),
     visibility = ["//:__pkg__"],
+)
+
+bzl_library(
+    name = "def",
+    srcs = ["def.bzl"],
+    visibility = ["//visibility:public"],
 )

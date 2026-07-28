@@ -45,33 +45,25 @@ current_toolchain(
 )
 
 bzl_library(
-    name = "lock_bzl",
+    name = "lock",
     srcs = ["lock.bzl"],
-    # EXPERIMENTAL: Visibility is restricted to allow for changes.
-    visibility = ["//:__subpackages__"],
-    deps = ["//python/uv/private:lock_bzl"],
+    deps = ["//python/uv/private:lock"],
 )
 
 bzl_library(
-    name = "uv_bzl",
+    name = "uv",
     srcs = ["uv.bzl"],
-    # EXPERIMENTAL: Visibility is restricted to allow for changes.
-    visibility = ["//:__subpackages__"],
-    deps = ["//python/uv/private:uv_bzl"],
+    deps = ["//python/uv/private:uv"],
 )
 
 bzl_library(
-    name = "uv_toolchain_bzl",
+    name = "uv_toolchain",
     srcs = ["uv_toolchain.bzl"],
-    # EXPERIMENTAL: Visibility is restricted to allow for changes.
-    visibility = ["//:__subpackages__"],
-    deps = ["//python/uv/private:uv_toolchain_bzl"],
+    deps = ["//python/uv/private:uv_toolchain"],
 )
 
 bzl_library(
-    name = "uv_toolchain_info_bzl",
+    name = "uv_toolchain_info",
     srcs = ["uv_toolchain_info.bzl"],
-    # EXPERIMENTAL: Visibility is restricted to allow for changes.
-    visibility = ["//:__subpackages__"],
-    deps = ["//python/uv/private:uv_toolchain_info_bzl"],
+    deps = ["//python/uv/private:uv_toolchain_info"],
 )

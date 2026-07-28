@@ -14,10 +14,7 @@
 
 import argparse
 import json
-import pathlib
 from typing import Any, Dict, Set
-
-from python.private.pypi.whl_installer.platform import Platform
 
 
 def parser(**kwargs: Any) -> argparse.ArgumentParser:
@@ -42,17 +39,6 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
         help="Extra arguments to pass down to pip.",
     )
     parser.add_argument(
-        "--platform",
-        action="extend",
-        type=Platform.from_string,
-        help="Platforms to target dependencies. Can be used multiple times.",
-    )
-    parser.add_argument(
-        "--enable-pipstar",
-        action="store_true",
-        help="Disable certain code paths if we expect to process the whl in Starlark.",
-    )
-    parser.add_argument(
         "--pip_data_exclude",
         action="store",
         help="Additional data exclusion parameters to add to the pip packages BUILD file.",
@@ -67,11 +53,6 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
         action="store_true",
         help="Use 'pip download' instead of 'pip wheel'. Disables building wheels from source, but allows use of "
         "--platform, --python-version, --implementation, and --abi in --extra_pip_args.",
-    )
-    parser.add_argument(
-        "--whl-file",
-        type=pathlib.Path,
-        help="Extract a whl file to be used within Bazel.",
     )
     return parser
 

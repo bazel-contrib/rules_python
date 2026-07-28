@@ -1,0 +1,10 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+licenses(["notice"])
+
+build_test(
+    name = "docs_build_test",
+    targets = [
+        "//docs:docs",
+    ],
+)

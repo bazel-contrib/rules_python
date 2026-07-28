@@ -1,0 +1,5 @@
+filegroup(
+    name = "packages",
+    srcs = ["//tests/uv/lock/workspaces/packages/foo:pyproject.toml"],
+    visibility = ["//tests/uv/lock/workspaces:__pkg__"],
+)

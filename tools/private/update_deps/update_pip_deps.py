@@ -96,7 +96,7 @@ def _get_deps(report: dict) -> list[Dep]:
                 url=dep["download_info"]["url"],
                 sha256=dep["download_info"]["archive_info"]["hash"][len("sha256=") :],
             )
-        except:
+        except Exception:
             debug_dep = textwrap.indent(json.dumps(dep, indent=4), " " * 4)
             print(f"Could not parse the response from 'pip':\n{debug_dep}")
             raise

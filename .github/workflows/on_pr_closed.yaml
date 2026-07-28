@@ -1,0 +1,113 @@
+name: "On PR Closed"
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  # This job always runs to prevent GHA from marking the run as failed when
+  # all other jobs are skipped.
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No-op"
+
+  check_if_backport:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    outputs:
+      should_process: ${{ steps.check.outputs.should_process }}
+    steps:
+      - name: Check if PR is a backport candidate
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Check if there is any active release issue
+          ACTIVE_ISSUES=$(gh issue list --repo ${{ github.repository }} --label "type: release" --state open --json number)
+          if [ "$ACTIVE_ISSUES" = "[]" ] || [ -z "$ACTIVE_ISSUES" ]; then
+            echo "No active release tracking issue found. Skipping."
+            echo "should_process=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Check if PR has "/backport" in comments (only comments, not body)
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json comments)
+          
+          if echo "$PR_DATA" | jq -r '.comments[].body' | grep -qE '^[[:space:]]*/backport([[:space:]]|$)'; then
+            echo "Found /backport comment. Proceeding."
+            echo "should_process=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No /backport comment found. Skipping."
+            echo "should_process=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  process_backports:
+    needs: check_if_backport
+    if: needs.check_if_backport.outputs.should_process == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Process Backports
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          bazel run //tools/private/release -- on-pr-merged \
+            "$PR_NUMBER" \
+            --remote origin \
+            --no-dry-run
+
+  complete_sync_changelog:
+    if: |
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'type: sync-changelog')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Complete Sync Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          bazel run //tools/private/release -- complete-sync-changelog \
+            --pr "$PR_NUMBER"
+
+

@@ -19,15 +19,8 @@
 # rules_testing or as config_setting values, which don't support Label in some
 # places.
 
+load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
-load("//python/private:util.bzl", "IS_BAZEL_7_OR_HIGHER")  # buildifier: disable=bzl-visibility
-
-MAC = Label("//tests/support:mac")
-MAC_X86_64 = Label("//tests/support:mac_x86_64")
-LINUX = Label("//tests/support:linux")
-LINUX_X86_64 = Label("//tests/support:linux_x86_64")
-WINDOWS = Label("//tests/support:windows")
-WINDOWS_X86_64 = Label("//tests/support:windows_x86_64")
 
 PY_TOOLCHAINS = str(Label("//tests/support/py_toolchains:all"))
 CC_TOOLCHAIN = str(Label("//tests/support/cc_toolchains:all"))
@@ -40,14 +33,13 @@ CUSTOM_RUNTIME = str(Label("//tests/support:custom_runtime"))
 SUPPORTS_BOOTSTRAP_SCRIPT = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
-}) if IS_BAZEL_7_OR_HIGHER else ["@platforms//:incompatible"]
+})
 
-SUPPORTS_BZLMOD_UNIXY = select({
-    "@platforms//os:windows": ["@platforms//:incompatible"],
-    "//conditions:default": [],
-}) if BZLMOD_ENABLED else ["@platforms//:incompatible"]
+SUPPORTS_BZLMOD = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"]
 
 NOT_WINDOWS = select({
     "@platforms//os:windows": ["@platforms//:incompatible"],
     "//conditions:default": [],
 })
+
+BAZEL_8_OR_LATER = [] if config.bazel_8_or_later else ["@platforms//:incompatible"]

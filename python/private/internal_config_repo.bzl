@@ -21,29 +21,23 @@ settings for rules to later use.
 load("//python/private:text_util.bzl", "render")
 load(":repo_utils.bzl", "repo_utils")
 
-_ENABLE_PIPSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PIPSTAR"
-_ENABLE_PIPSTAR_DEFAULT = "0"
-_ENABLE_PYSTAR_ENVVAR_NAME = "RULES_PYTHON_ENABLE_PYSTAR"
-_ENABLE_PYSTAR_DEFAULT = "1"
 _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME = "RULES_PYTHON_DEPRECATION_WARNINGS"
 _ENABLE_DEPRECATION_WARNINGS_DEFAULT = "0"
 
 _CONFIG_TEMPLATE = """
 config = struct(
-  enable_pystar = {enable_pystar},
-  enable_pipstar = {enable_pipstar},
+  build_python_zip_default = {build_python_zip_default},
+  supports_whl_extraction = {supports_whl_extraction},
+  enable_pystar = True,
   enable_deprecation_warnings = {enable_deprecation_warnings},
+  extract_needs_chmod = {extract_needs_chmod},
+  bazel_8_or_later = {bazel_8_or_later},
+  bazel_9_or_later = {bazel_9_or_later},
+  bazel_10_or_later = {bazel_10_or_later},
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
   BuiltinPyCcLinkParamsProvider = getattr(getattr(native, "legacy_globals", None), "PyCcLinkParamsProvider", {builtin_py_cc_link_params_provider}),
 )
-"""
-
-# The py_internal symbol is only accessible from within @rules_python, so we have to
-# load it from there and re-export it so that rules_python can later load it.
-_PY_INTERNAL_SHIM = """
-load("@rules_python//tools/build_defs/python/private:py_internal_renamed.bzl", "py_internal_renamed")
-py_internal_impl = py_internal_renamed
 """
 
 ROOT_BUILD_TEMPLATE = """
@@ -56,19 +50,13 @@ package(
 )
 
 bzl_library(
-    name = "rules_python_config_bzl",
-    srcs = ["rules_python_config.bzl"]
-)
-
-bzl_library(
-    name = "py_internal_bzl",
-    srcs = ["py_internal.bzl"],
-    deps = [{py_internal_dep}],
-)
-
-bzl_library(
-    name = "extra_transition_settings_bzl",
+    name = "extra_transition_settings",
     srcs = ["extra_transition_settings.bzl"],
+)
+
+bzl_library(
+    name = "rules_python_config",
+    srcs = ["rules_python_config.bzl"],
 )
 """
 
@@ -88,16 +76,23 @@ _TRANSITION_SETTINGS_DEBUG_TEMPLATE = """
 """
 
 def _internal_config_repo_impl(rctx):
-    pystar_requested = _bool_from_environ(rctx, _ENABLE_PYSTAR_ENVVAR_NAME, _ENABLE_PYSTAR_DEFAULT)
-
-    # Bazel 7+ (dev and later) has native.starlark_doc_extract, and thus the
-    # py_internal global, which are necessary for the pystar implementation.
-    if pystar_requested and hasattr(native, "starlark_doc_extract"):
-        enable_pystar = pystar_requested
+    # An empty version signifies a development build, which is treated as
+    # the latest version.
+    if native.bazel_version:
+        version_parts = native.bazel_version.split(".")
+        bazel_major_version = int(version_parts[0])
+        bazel_minor_version = int(version_parts[1])
     else:
-        enable_pystar = False
+        bazel_major_version = 99999
+        bazel_minor_version = 99999
 
-    if not native.bazel_version or int(native.bazel_version.split(".")[0]) >= 8:
+    supports_whl_extraction = False
+    extract_needs_chmod = bazel_major_version < 8 or (bazel_major_version == 8 and bazel_minor_version < 6)
+    if bazel_major_version >= 8:
+        # Extracting .whl files requires Bazel 8.3.0 or later.
+        if bazel_major_version > 8 or bazel_minor_version >= 3:
+            supports_whl_extraction = True
+
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
@@ -107,33 +102,21 @@ def _internal_config_repo_impl(rctx):
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
-        enable_pystar = enable_pystar,
-        enable_pipstar = _bool_from_environ(rctx, _ENABLE_PIPSTAR_ENVVAR_NAME, _ENABLE_PIPSTAR_DEFAULT),
+        build_python_zip_default = repo_utils.get_platforms_os_name(rctx) == "windows",
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
+        supports_whl_extraction = str(supports_whl_extraction),
+        extract_needs_chmod = str(extract_needs_chmod),
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
+        bazel_8_or_later = str(bazel_major_version >= 8),
+        bazel_9_or_later = str(bazel_major_version >= 9),
+        bazel_10_or_later = str(bazel_major_version > 9),
     ))
-
-    if enable_pystar:
-        shim_content = _PY_INTERNAL_SHIM
-        py_internal_dep = '"@rules_python//tools/build_defs/python/private:py_internal_renamed_bzl"'
-    else:
-        shim_content = "py_internal_impl = None\n"
-        py_internal_dep = ""
-
-    # Bazel 5 doesn't support repository visibility, so just use public
-    # as a stand-in
-    if native.bazel_version.startswith("5."):
-        visibility = "//visibility:public"
-    else:
-        visibility = "@rules_python//:__subpackages__"
 
     rctx.file("BUILD", ROOT_BUILD_TEMPLATE.format(
-        py_internal_dep = py_internal_dep,
-        visibility = visibility,
+        visibility = "@rules_python//:__subpackages__",
     ))
-    rctx.file("py_internal.bzl", shim_content)
 
     rctx.file(
         "extra_transition_settings.bzl",
@@ -155,7 +138,7 @@ def _internal_config_repo_impl(rctx):
 internal_config_repo = repository_rule(
     implementation = _internal_config_repo_impl,
     configure = True,
-    environ = [_ENABLE_PYSTAR_ENVVAR_NAME],
+    environ = [],
     attrs = {
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),
@@ -163,4 +146,4 @@ internal_config_repo = repository_rule(
 )
 
 def _bool_from_environ(rctx, key, default):
-    return bool(int(repo_utils.getenv(rctx, key, default)))
+    return bool(int(rctx.getenv(key, default)))

@@ -45,7 +45,7 @@ def requirement(spec):
     extras_unparsed, _, _ = extras_unparsed.partition("]")
     for char in _STRIP:
         requires, _, _ = requires.partition(char)
-    extras = extras_unparsed.replace(" ", "").split(",")
+    extras = [normalize_name(e) for e in extras_unparsed.replace(" ", "").split(",") if e]
     name = requires.strip(" ")
     name = normalize_name(name)
 

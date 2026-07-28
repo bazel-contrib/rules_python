@@ -34,8 +34,8 @@ actual=$($bin)
 # How we detect if a zip file was executed from depends on which bootstrap
 # is used.
 # bootstrap_impl=script outputs RULES_PYTHON_ZIP_DIR:<somepath>
-# bootstrap_impl=system_python outputs file:.*Bazel.runfiles
-expected_pattern="RULES_PYTHON_ZIP_DIR:/\|file:.*Bazel.runfiles"
+# bootstrap_impl=system_python outputs file:.*Bazel.runfiles (or .exe.runfiles on Windows)
+expected_pattern="RULES_PYTHON_ZIP_DIR:/\|file:.*Bazel.runfiles\|file:.*\.exe\.runfiles"
 if ! (echo "$actual" | grep "$expected_pattern" ) >/dev/null; then
   echo "expected output to match: $expected_pattern"
   echo "but got: $actual"

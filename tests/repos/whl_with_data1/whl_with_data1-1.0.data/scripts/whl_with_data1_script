@@ -1,0 +1,5 @@
+#!python
+import sys
+
+print("hello from whl_with_data1_script")
+print(sys.executable)

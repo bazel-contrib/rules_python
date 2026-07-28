@@ -14,6 +14,7 @@
 
 """Get the requirement files by platform."""
 
+load(":argparse.bzl", "argparse")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
 def _default_platforms(*, filter, platforms):
@@ -46,33 +47,9 @@ def _default_platforms(*, filter, platforms):
     return match
 
 def _platforms_from_args(extra_pip_args):
-    platform_values = []
-
-    if not extra_pip_args:
-        return platform_values
-
-    for arg in extra_pip_args:
-        if platform_values and platform_values[-1] == "":
-            platform_values[-1] = arg
-            continue
-
-        if arg == "--platform":
-            platform_values.append("")
-            continue
-
-        if not arg.startswith("--platform"):
-            continue
-
-        _, _, plat = arg.partition("=")
-        if not plat:
-            _, _, plat = arg.partition(" ")
-        if plat:
-            platform_values.append(plat)
-        else:
-            platform_values.append("")
-
+    platform_values = argparse.platform(extra_pip_args, [])
     if not platform_values:
-        return []
+        return platform_values
 
     platforms = {
         p.target_platform: None
@@ -96,6 +73,7 @@ def requirements_files_by_platform(
         requirements_linux = None,
         requirements_lock = None,
         requirements_windows = None,
+        uv_lock = None,
         platforms,
         extra_pip_args = None,
         python_version = None,
@@ -111,6 +89,7 @@ def requirements_files_by_platform(
         requirements_linux (label): The requirements file for the linux OS.
         requirements_lock (label): The requirements file for all OSes, or used as a fallback.
         requirements_windows (label): The requirements file for windows OS.
+        uv_lock (label): The uv.lock file, or used as primary source.
         extra_pip_args (string list): Extra pip arguments to perform extra validations and to
             be joined with args fined in files.
         python_version: str or None. This is needed when the get_index_urls is
@@ -129,10 +108,11 @@ def requirements_files_by_platform(
         requirements_linux or
         requirements_osx or
         requirements_windows or
-        requirements_by_platform
+        requirements_by_platform or
+        uv_lock
     ):
         fail_fn(
-            "A 'requirements_lock' attribute must be specified, a platform-specific lockfiles " +
+            "A 'requirements_lock' or 'uv_lock' attribute must be specified, a platform-specific lockfiles " +
             "via 'requirements_by_platform' or an os-specific lockfiles must be specified " +
             "via 'requirements_*' attributes",
         )
@@ -140,9 +120,12 @@ def requirements_files_by_platform(
 
     platforms_from_args = _platforms_from_args(extra_pip_args)
     if logger:
-        logger.debug(lambda: "Platforms from pip args: {}".format(platforms_from_args))
+        logger.debug(lambda: "Platforms from pip args: {} (from {})".format(platforms_from_args, extra_pip_args))
 
-    default_platforms = platforms
+    input_platforms = platforms
+    default_platforms = [_platform(p, python_version) for p in platforms]
+    if logger:
+        logger.debug(lambda: "Input platforms: {}".format(input_platforms))
 
     if platforms_from_args:
         lock_files = [
@@ -163,9 +146,12 @@ def requirements_files_by_platform(
             fail_fn("only a single 'requirements_lock' file can be used when using '--platform' pip argument, consider specifying it via 'requirements_lock' attribute")
             return None
 
-        files_by_platform = [
-            (lock_files[0], platforms_from_args),
-        ]
+        if not lock_files:
+            files_by_platform = []
+        else:
+            files_by_platform = [
+                (lock_files[0], platforms_from_args),
+            ]
         if logger:
             logger.debug(lambda: "Files by platform with the platform set in the args: {}".format(files_by_platform))
     else:
@@ -174,6 +160,7 @@ def requirements_files_by_platform(
                 platform
                 for filter_or_platform in specifier.split(",")
                 for platform in (_default_platforms(filter = filter_or_platform, platforms = platforms) if filter_or_platform.endswith("*") else [filter_or_platform])
+                if _platform(platform, python_version) in default_platforms
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
@@ -227,11 +214,11 @@ def requirements_files_by_platform(
                 configured_platforms[p] = file
 
         elif logger:
-            logger.warn(lambda: "File {} will be ignored because there are no configured platforms: {}".format(
+            logger.info(lambda: "File {} will be ignored because there are no configured platforms: {} out of {}".format(
                 file,
                 default_platforms,
+                input_platforms,
             ))
-            continue
 
         if logger:
             logger.debug(lambda: "Configured platforms for file {} are {}".format(file, plats))
@@ -255,5 +242,9 @@ def requirements_files_by_platform(
     ret = {}
     for plat, file in requirements.items():
         ret.setdefault(file, []).append(_platform(plat, python_version = python_version))
+
+    for file, _plats in files_by_platform:
+        if file not in ret and _plats != None:
+            ret[file] = []
 
     return ret

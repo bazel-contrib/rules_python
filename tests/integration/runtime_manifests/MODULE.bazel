@@ -1,0 +1,19 @@
+module(name = "runtime_manifests")
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.override(
+    add_runtime_manifest_urls = [
+        "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/SHA256SUMS",
+    ],
+    register_all_versions = True,
+    runtime_manifest_sha = "ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f",
+)
+python.toolchain(
+    python_version = "3.11.15",
+)

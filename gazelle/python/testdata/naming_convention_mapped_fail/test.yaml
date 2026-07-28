@@ -1,0 +1,7 @@
+---
+expect:
+  exit_code: 1
+  stderr: |
+    gazelle: ERROR: failed to generate target "//:naming_convention_mapped_fail" of kind "my_lib": a target of kind "py_library" with the same name already exists. Use the '# gazelle:python_library_naming_convention' directive to change the naming convention.
+    gazelle: ERROR: failed to generate target "//:naming_convention_mapped_fail_bin" of kind "my_bin": a target of kind "py_binary" with the same name already exists. Use the '# gazelle:python_binary_naming_convention' directive to change the naming convention.
+    gazelle: ERROR: failed to generate target "//:naming_convention_mapped_fail_test" of kind "my_test": a target of kind "py_test" with the same name already exists. Use the '# gazelle:python_test_naming_convention' directive to change the naming convention.

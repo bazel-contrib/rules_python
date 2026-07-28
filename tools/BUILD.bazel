@@ -31,6 +31,7 @@ filegroup(
         "wheelmaker.py",
         "//tools/launcher:distribution",
         "//tools/precompiler:distribution",
+        "//tools/private:distribution",
         "//tools/publish:distribution",
     ],
     visibility = ["//:__pkg__"],

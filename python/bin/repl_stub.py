@@ -16,9 +16,9 @@ The logic for PYTHONSTARTUP is handled in python/private/repl_template.py.
 # Capture the globals from PYTHONSTARTUP so we can pass them on to the console.
 console_locals = globals().copy()
 
-import code
-import rlcompleter
-import sys
+import code  # noqa: E402
+import rlcompleter  # noqa: E402
+import sys  # noqa: E402
 
 
 class DynamicCompleter(rlcompleter.Completer):
@@ -62,10 +62,7 @@ try:
     elif "GNU readline" in readline.__doc__:  # type: ignore
         readline.parse_and_bind("tab: complete")
     else:
-        print(
-            "Could not enable tab completion: "
-            "unable to determine readline backend"
-        )
+        print("Could not enable tab completion: unable to determine readline backend")
 except ImportError:
     print(
         "Could not enable tab completion: "

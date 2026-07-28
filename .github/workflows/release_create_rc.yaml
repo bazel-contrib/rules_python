@@ -1,0 +1,69 @@
+name: "Release: Create RC"
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'The Release Tracking Issue Number (e.g., 142)'
+        required: true
+        type: string
+      comment_id:
+        description: 'The ID of the comment that triggered this run (optional)'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      issue:
+        description: 'The Release Tracking Issue Number (e.g., 142)'
+        required: true
+        type: string
+      comment_id:
+        description: 'The ID of the comment that triggered this run (optional)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  tag_rc:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tagger.outputs.tag_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Attempt RC Tagging
+        id: tagger
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ inputs.issue }}
+          COMMENT_ID: ${{ inputs.comment_id }}
+        run: |
+          ARGS=()
+          if [ -n "$COMMENT_ID" ]; then
+            ARGS+=("--triggering-comment=$COMMENT_ID")
+          fi
+          bazel run //tools/private/release -- \
+            create-rc --issue "$ISSUE" --remote origin "${ARGS[@]}"
+
+  call_release:
+    needs: tag_rc
+    uses: ./.github/workflows/release_publish.yaml
+    with:
+      tag_name: ${{ needs.tag_rc.outputs.tag_name }}
+    secrets: inherit

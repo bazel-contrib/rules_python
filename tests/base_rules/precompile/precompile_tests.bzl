@@ -14,7 +14,6 @@
 
 """Tests for precompiling behavior."""
 
-load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
@@ -42,9 +41,6 @@ _COMMON_CONFIG_SETTINGS = {
 _tests = []
 
 def _test_executable_precompile_attr_enabled_setup(name, py_rule, **kwargs):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_rule,
         name = name + "_subject",
@@ -112,9 +108,6 @@ def _test_precompile_enabled_py_test(name):
 _tests.append(_test_precompile_enabled_py_test)
 
 def _test_precompile_enabled_py_library_setup(name, impl, config_settings):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_library,
         name = name + "_subject",
@@ -178,9 +171,6 @@ def _test_precompile_enabled_py_library_add_to_runfiles_enabled_impl(env, target
 _tests.append(_test_precompile_enabled_py_library_add_to_runfiles_enabled)
 
 def _test_pyc_only(name):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_binary,
         name = name + "_subject",
@@ -231,9 +221,6 @@ def _test_pyc_only_impl(env, target):
     )
 
 def _test_precompiler_action(name):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_binary,
         name = name + "_subject",
@@ -325,9 +312,6 @@ def _verify_runfiles(contains_patterns, not_contains_patterns):
     return _verify_runfiles_impl
 
 def _test_precompile_flag_enabled_pyc_collection_attr_include_pyc(name):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     _setup_precompile_flag_pyc_collection_attr_interaction(
         name = name,
         precompile_flag = "enabled",
@@ -351,9 +335,6 @@ def _test_precompile_flag_enabled_pyc_collection_attr_disabled(name):
     """Verify that a binary can opt-out of using implicit pycs even when
     precompiling is enabled by default.
     """
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     _setup_precompile_flag_pyc_collection_attr_interaction(
         name = name,
         precompile_flag = "enabled",
@@ -376,9 +357,6 @@ _tests.append(_test_precompile_flag_enabled_pyc_collection_attr_disabled)
 def _test_precompile_flag_disabled_pyc_collection_attr_include_pyc(name):
     """Verify that a binary can opt-in to using pycs even when precompiling is
     disabled by default."""
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     _setup_precompile_flag_pyc_collection_attr_interaction(
         name = name,
         precompile_flag = "disabled",
@@ -398,9 +376,6 @@ def _test_precompile_flag_disabled_pyc_collection_attr_include_pyc(name):
 _tests.append(_test_precompile_flag_disabled_pyc_collection_attr_include_pyc)
 
 def _test_precompile_flag_disabled_pyc_collection_attr_disabled(name):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     _setup_precompile_flag_pyc_collection_attr_interaction(
         name = name,
         precompile_flag = "disabled",
@@ -424,9 +399,6 @@ def _test_pyc_collection_disabled_library_omit_source(name):
     """Verify that, when a binary doesn't include implicit pyc files, libraries
     that set omit_source still have the py source file included.
     """
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_binary,
         name = name + "_subject",
@@ -469,9 +441,6 @@ def _test_pyc_collection_disabled_library_omit_source_impl(env, target):
 _tests.append(_test_pyc_collection_disabled_library_omit_source)
 
 def _test_pyc_collection_include_dep_omit_source(name):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_binary,
         name = name + "_subject",
@@ -513,9 +482,6 @@ def _test_pyc_collection_include_dep_omit_source_impl(env, target):
 _tests.append(_test_pyc_collection_include_dep_omit_source)
 
 def _test_precompile_attr_inherit_pyc_collection_disabled_precompile_flag_enabled(name):
-    if not rp_config.enable_pystar:
-        rt_util.skip_test(name = name)
-        return
     rt_util.helper_target(
         py_binary,
         name = name + "_subject",

@@ -1,0 +1,12 @@
+
+# Helper config to run most tests without waiting an inordinate amount
+# of time or freezing the system
+common:fast-tests --build_tests_only=true
+common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
+common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
+
+# Helper config for running a single test locally and investigating resulting state
+common:testone --test_output=streamed
+common:testone --test_strategy=standalone
+common:testone --spawn_strategy=standalone
+common:testone --strategy=standalone

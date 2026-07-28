@@ -1,0 +1,48 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+licenses(["notice"])
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**"]),
+)
+
+filegroup(
+    name = "zip_main_template",
+    srcs = ["zip_main_template.py"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "zip_shell_template",
+    srcs = ["zip_shell_template.sh"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "zipapp_stage2_bootstrap_template",
+    srcs = ["zipapp_stage2_bootstrap_template.py"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "py_zipapp_rule",
+    srcs = ["py_zipapp_rule.bzl"],
+    deps = [
+        "//python/private:attributes",
+        "//python/private:builders",
+        "//python/private:common",
+        "//python/private:common_labels",
+        "//python/private:py_executable_info",
+        "//python/private:py_internal",
+        "//python/private:py_runtime_info",
+        "//python/private:toolchain_types",
+        "//python/private:transition_labels",
+        "@bazel_skylib//lib:paths",
+        "@rules_python_internal//:rules_python_config",
+    ],
+)

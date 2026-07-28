@@ -1,6 +1,4 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
-load("@rules_shell//shell:sh_test.bzl", "sh_test")
-load("//:version.bzl", "BAZEL_VERSION")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,30 +24,4 @@ build_test(
         "//python/cc:py_cc_toolchain_info_bzl",
         "//python/entry_points:py_console_script_binary_bzl",
     ],
-)
-
-genrule(
-    name = "assert_bazelversion",
-    srcs = ["//:.bazelversion"],
-    outs = ["assert_bazelversion_test.sh"],
-    cmd = """\
-set -o errexit -o nounset -o pipefail
-current=$$(cat "$(execpath //:.bazelversion)")
-cat > "$@" <<EOF
-#!/usr/bin/env bash
-set -o errexit -o nounset -o pipefail
-if [[ \"$${{current}}\" != \"{expected}\" ]]; then
-    >&2 echo "ERROR: current bazel version '$${{current}}' is not the expected '{expected}'"
-    exit 1
-fi
-EOF
-""".format(
-        expected = BAZEL_VERSION,
-    ),
-    executable = True,
-)
-
-sh_test(
-    name = "assert_bazelversion_test",
-    srcs = [":assert_bazelversion_test.sh"],
 )

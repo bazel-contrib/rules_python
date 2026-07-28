@@ -1,7 +1,7 @@
-:::{bzl:currentfile} //sphinxdocs:BUILD.bazel
+:::{bzl:currentfile} //:BUILD.bazel
 :::
 
-# //sphinxdocs
+# //
 
 :::{bzl:flag} extra_defines
 Additional `-D` values to add to every Sphinx build.

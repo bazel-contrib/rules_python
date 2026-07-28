@@ -60,10 +60,10 @@ def py_repositories(transition_settings = []):
     )
     http_archive(
         name = "bazel_skylib",
-        sha256 = "d00f1389ee20b60018e92644e0948e16e350a7707219e7a390fb0a99b6ec9262",
+        sha256 = "6e78f0e57de26801f6f564fa7c4a48dc8b36873e416257a92bbb0937eeac8446",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.0/bazel-skylib-1.7.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.0/bazel-skylib-1.7.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.8.2/bazel-skylib-1.8.2.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.8.2/bazel-skylib-1.8.2.tar.gz",
         ],
     )
     http_archive(
@@ -71,6 +71,18 @@ def py_repositories(transition_settings = []):
         sha256 = "b8b918a85f9144c01f6cfe0f45e4f2838c7413961a8ff23bc0c6cdf8bb07a3b6",
         strip_prefix = "rules_cc-0.1.5",
         urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
+    )
+    http_archive(
+        name = "toml.bzl",
+        sha256 = "63633c762bdb4d836add5a9a81deeeae93c4b2edbd62ac032733020b5652b90a",
+        strip_prefix = "toml.bzl-0.4.0",
+        url = "https://github.com/jvolkman/toml.bzl/releases/download/v0.4.0/toml.bzl-v0.4.0.tar.gz",
+    )
+    http_archive(
+        name = "package_metadata",
+        sha256 = "8f27dc7393e3f3bdc793bdc4ba36d67a63c22cc9d38cc65d3204654974ea4563",
+        strip_prefix = "supply-chain-0.0.7/metadata",
+        url = "https://github.com/bazel-contrib/supply-chain/releases/download/v0.0.7/supply-chain-v0.0.7.tar.gz",
     )
 
     # Needed by rules_cc, triggered by @rules_java_prebuilt in Bazel by using @rules_cc//cc:defs.bzl
