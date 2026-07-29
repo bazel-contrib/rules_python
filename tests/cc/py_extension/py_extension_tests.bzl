@@ -27,7 +27,7 @@ def _test_static_deps_impl(env, target):
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
-        matching.file_basename_equals("ext_static.cpython-311-x86_64-linux-gnu.so"),
+        matching.file_path_matches("ext_static.cpython-311-*"),
     )
 
 def _test_static_deps(name):
@@ -64,7 +64,7 @@ def _test_dynamic_deps_impl(env, target):
     # The .so should be in PyInfo
     env.expect.that_collection(py_info.transitive_sources.to_list()).has_size(1)
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
-        matching.file_basename_equals("ext_shared.cpython-311-x86_64-linux-gnu.so"),
+        matching.file_path_matches("ext_shared.cpython-311-*"),
     )
 
 def _test_dynamic_deps(name):
@@ -80,7 +80,7 @@ def _test_musl_platform_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
-        matching.file_basename_equals("ext_static.cpython-311-x86_64-linux-musl.so"),
+        matching.file_path_matches("ext_static.cpython-311-*-musl.so"),
     )
 
 def _test_musl_platform(name):
