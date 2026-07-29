@@ -116,8 +116,13 @@ def py_extension(
     if exports_filter:
         csl_kwargs["exports_filter"] = exports_filter
     else:
+        pkg = native.package_name()
+        pkg_prefix = ("//" + pkg) if pkg else "//"
         csl_kwargs["exports_filter"] = select({
-            "@platforms//os:windows": ["//...", "@..."],
+            "@platforms//os:windows": [
+                pkg_prefix,
+                "@rules_python//python/cc",
+            ],
             "//conditions:default": [],
         })
     module_name = kwargs.get("module_name", name)
