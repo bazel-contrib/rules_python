@@ -39,8 +39,11 @@ def _current_py_cc_libs_impl(ctx):
                 elif lib.dynamic_library:
                     files.append(lib.dynamic_library)
 
+    # Filter out .dll files so MSVC link.exe never receives .dll binary files on command line
+    link_files = [f for f in files if not f.path.endswith(".dll")]
+
     providers.append(DefaultInfo(
-        files = depset(files),
+        files = depset(link_files),
         default_runfiles = default_runfiles,
         data_runfiles = data_runfiles,
     ))
