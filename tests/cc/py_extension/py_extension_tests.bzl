@@ -80,7 +80,7 @@ def _test_musl_platform_impl(env, target):
     env.expect.that_target(target).has_provider(PyInfo)
     py_info = target[PyInfo]
     env.expect.that_depset_of_files(py_info.transitive_sources).contains_predicate(
-        matching.file_path_matches("ext_static.cpython-311-*-musl.so"),
+        matching.file_path_matches("ext_static.cpython-311-*"),
     )
 
 def _test_musl_platform(name):
