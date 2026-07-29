@@ -134,7 +134,7 @@ def py_extension(
         csl_kwargs["exports_filter"] = select({
             "@platforms//os:windows": [
                 ":__subpackages__",
-                str(Label("//:__subpackages__")),
+                str(Label("//python/cc:__subpackages__")),
             ],
             "//conditions:default": [],
         })
