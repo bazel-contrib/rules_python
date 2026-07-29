@@ -121,15 +121,13 @@ def py_extension(
         csl_kwargs["exports_filter"] = select({
             "@platforms//os:windows": [
                 pkg_prefix,
-                "@rules_python//python/cc",
+                str(Label("//python/cc:current_py_cc_libs")),
             ],
             "//conditions:default": [],
         })
-    module_name = kwargs.get("module_name", name)
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
         "@platforms//os:osx": ["-undefined", "dynamic_lookup"],
-        "@platforms//os:windows": ["/EXPORT:PyInit_" + module_name],
         "//conditions:default": [],
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
