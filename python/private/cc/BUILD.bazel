@@ -47,8 +47,7 @@ bzl_library(
     deps = [
         ":py_extension_rule",
         "//python/private:util",
-        "@rules_cc//cc:cc_library_bzl",
-        "@rules_cc//cc:cc_shared_library_bzl",
+        "@rules_cc//cc:core_rules",
     ],
 )
 
@@ -64,6 +63,6 @@ bzl_library(
         "//python/private:rule_builders",
         "//python/private:toolchain_types",
         "@bazel_skylib//lib:dicts",
-        "@rules_cc//cc/common:cc_shared_library_info_bzl",
+        "@rules_cc//cc/common",
     ],
 )
