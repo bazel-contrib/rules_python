@@ -123,18 +123,25 @@ def py_extension(
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
 
-    csl_additional_linker_inputs = select({
+    csl_deps_with_win = csl_deps + select({
         "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
         "//conditions:default": [],
     })
 
     if exports_filter:
         csl_kwargs["exports_filter"] = exports_filter
+    else:
+        csl_kwargs["exports_filter"] = select({
+            "@platforms//os:windows": [
+                ":__subpackages__",
+                "@rules_python//python/cc:current_py_cc_libs",
+            ],
+            "//conditions:default": [],
+        })
 
     cc_shared_library(
         name = csl_name,
-        deps = csl_deps,
-        additional_linker_inputs = csl_additional_linker_inputs,
+        deps = csl_deps_with_win,
         dynamic_deps = dynamic_deps,
         visibility = ["//visibility:private"],
         **csl_kwargs
