@@ -51,10 +51,10 @@ py_extension(
 py_extension(
     # A python extension that dynamically links to another shared library
     name = "ext_shared",
-    imports = ["."],
     dynamic_deps = [
         ":add_one_shared",
     ],
+    imports = ["."],
     deps = [
         #
         ":ext_shared_impl",
