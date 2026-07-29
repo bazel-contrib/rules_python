@@ -117,9 +117,14 @@ def py_extension(
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
 
+    csl_deps_with_win = csl_deps + select({
+        "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
+        "//conditions:default": [],
+    })
+
     cc_shared_library(
         name = csl_name,
-        deps = csl_deps,
+        deps = csl_deps_with_win,
         dynamic_deps = dynamic_deps,
         visibility = ["//visibility:private"],
         **csl_kwargs
