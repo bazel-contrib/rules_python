@@ -1,6 +1,7 @@
 """Macro for creating Python extensions.
 
-EXPERIMENTAL: This feature is experimental and may be changed or removed without notice.
+:::{include} /_includes/experimental_api.md
+:::
 """
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")

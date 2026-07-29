@@ -1,6 +1,7 @@
 """Public API for py_extension.
 
-EXPERIMENTAL: This feature is experimental and may be changed or removed without notice.
+:::{include} /_includes/experimental_api.md
+:::
 """
 
 load(

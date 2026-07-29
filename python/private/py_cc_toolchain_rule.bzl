@@ -26,7 +26,7 @@ load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
 load(":sentinel_impl.bzl", "SentinelInfo")
 
 def _get_platform_tag(sys_platform, platform_machine, libc):
-    """Derives the PEP 3149 platform tag string based on target PEP 508 sys_platform, platform_machine, and libc.
+    """Derives the PEP 3149 platform tag string.
 
     Note that these are platform tags for C extension filenames, not
     PEP 425 tags for wheels.

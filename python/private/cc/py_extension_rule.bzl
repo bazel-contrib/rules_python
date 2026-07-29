@@ -1,6 +1,7 @@
 """Implementation of the _py_extension_wrapper rule.
 
-EXPERIMENTAL: This feature is experimental and may be changed or removed without notice.
+:::{include} /_includes/experimental_api.md
+:::
 """
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
@@ -98,14 +99,9 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
 )
 
 def create_py_extension_wrapper_rule_builder(**kwargs):
-    """Create a rule builder for the wrapper."""
+    """Create a rule builder for the private internal wrapper rule."""
     builder = ruleb.Rule(
-        doc = """
-:::{include} /_includes/experimental_api.md
-:::
-
-Internal wrapper rule for py_extension targets.
-""",
+        doc = "Private internal helper rule for py_extension targets.",
         implementation = _py_extension_wrapper_impl,
         attrs = PY_EXTENSION_WRAPPER_ATTRS,
         provides = [PyInfo],
@@ -149,9 +145,9 @@ def _get_platform(ctx):
     """
     py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
     py_cc_toolchain = py_toolchain.py_cc_toolchain
+    if not py_cc_toolchain.platform_tag:
+        fail(
+            "ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
+            "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.",
+        )
     return py_cc_toolchain.platform_tag
-
-    fail(
-        "ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
-        "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.",
-    )
