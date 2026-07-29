@@ -20,7 +20,6 @@ load("@sphinxdocs//sphinxdocs:sphinx_stardoc.bzl", "sphinx_stardoc", "sphinx_sta
 load("//python:defs.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
-load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -207,29 +206,4 @@ sphinx_build_binary(
         "@dev_pip//typing_extensions",
         "@sphinxdocs//sphinxdocs/src/sphinx_bzl",
     ],
-)
-
-# Run bazel run //docs:requirements.update
-lock(
-    name = "requirements",
-    srcs = ["pyproject.toml"],
-    out = "requirements.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--upgrade",
-    ],
-    # NOTE @aignas 2025-08-17: here we select the lowest actively supported version so that the
-    # requirements file is generated to be compatible with Python version 3.9 or greater.
-    python_version = "3.9",
-    visibility = ["//:__subpackages__"],
-)
-
-# Run bazel run //docs:uv_lock.update
-lock(
-    name = "uv_lock",
-    srcs = ["pyproject.toml"],
-    out = "uv.lock",
-    python_version = "3.9",
-    visibility = ["//:__subpackages__"],
 )

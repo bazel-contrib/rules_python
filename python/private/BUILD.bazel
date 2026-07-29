@@ -358,7 +358,6 @@ bzl_library(
     name = "coverage_deps",
     srcs = ["coverage_deps.bzl"],
     deps = [
-        ":repo_utils",
         ":version_label",
         "//python/private:bazel_tools",
     ],
@@ -776,7 +775,6 @@ bzl_library(
         ":coverage_deps",
         ":full_version",
         ":python_repository",
-        ":repo_utils",
         ":toolchains_repo",
         "//python:versions",
     ],

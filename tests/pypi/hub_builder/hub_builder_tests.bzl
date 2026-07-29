@@ -79,6 +79,7 @@ def hub_builder(
             },
             netrc = None,
             auth_patterns = None,
+            toml_decode = json.decode,
         ),
         whl_overrides = whl_overrides,
         minor_mapping = minor_mapping or {"3.15": "3.15.19"},
@@ -150,6 +151,30 @@ def _test_simple(env):
     pypi.extra_aliases().contains_exactly({})
 
 _tests.append(_test_simple)
+
+def _test_uv_lock_only(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "uv.lock": """{"package":[{"name":"simple","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl"}]}]}""",
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = None,
+            uv_lock = "uv.lock",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.group_map().contains_exactly({})
+
+_tests.append(_test_uv_lock_only)
 
 def _test_simple_multiple_requirements(env):
     sub_tests = {

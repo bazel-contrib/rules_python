@@ -12,68 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"Tests for the warning emitted by coverage_dep when no wheel is available."
+"Tests for coverage_dep's handling of platforms with no bundled wheel."
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:coverage_deps.bzl", "coverage_dep")  # buildifier: disable=bzl-visibility
-load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
-def _capturing_logger():
-    """Build a (logger, captured_messages_list) pair.
-
-    The logger has its verbosity set to INFO so WARN messages are captured but
-    nothing noisier than necessary is emitted. The printer collects the second
-    positional argument from each printer invocation (the formatted message).
-    """
-    captured = []
-    logger = repo_utils.logger(
-        struct(
-            getenv = {
-                REPO_DEBUG_ENV_VAR: None,
-                REPO_VERBOSITY_ENV_VAR: "INFO",
-            }.get,
-        ),
-        name = "unit-test",
-        printer = lambda _key, message: captured.append(message),
-    )
-    return logger, captured
-
-def _test_unsupported_python_version_warns(env):
-    # cp37 is not in the bundled wheel set; coverage_dep should return None
-    # and emit a warning describing the misconfiguration.
-    logger, captured = _capturing_logger()
-    result = coverage_dep(
-        name = "unused_for_test",
-        python_version = "3.7",
-        platform = "aarch64-apple-darwin",
-        visibility = ["//visibility:public"],
-        logger = logger,
-    )
-    env.expect.that_bool(result == None).equals(True)
-    env.expect.that_int(len(captured)).equals(1)
-    env.expect.that_str(captured[0]).contains("no wheel for")
-    env.expect.that_str(captured[0]).contains("python_version=3.7")
-    env.expect.that_str(captured[0]).contains("platform=aarch64-apple-darwin")
-
-_tests.append(_test_unsupported_python_version_warns)
-
-def _test_windows_platform_is_silent(env):
-    # Windows is intentionally unsupported and not actionable; coverage_dep
-    # must return None without logging anything.
-    logger, captured = _capturing_logger()
+def _test_windows_platform_returns_none(env):
+    # Windows is intentionally unsupported: the upstream coverage wrapper is
+    # written in shell.
     result = coverage_dep(
         name = "unused_for_test",
         python_version = "3.10",
         platform = "x86_64-pc-windows-msvc",
         visibility = ["//visibility:public"],
-        logger = logger,
     )
     env.expect.that_bool(result == None).equals(True)
-    env.expect.that_int(len(captured)).equals(0)
 
-_tests.append(_test_windows_platform_is_silent)
+_tests.append(_test_windows_platform_returns_none)
 
 # NOTE: there is intentionally no unit test for the supported-wheel path
 # (where coverage_dep returns a non-None label and emits no warning).

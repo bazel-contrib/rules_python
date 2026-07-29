@@ -13,7 +13,7 @@ multirun(
             "requirements_linux",
         ]
     ] + [
-        "//docs:requirements.update",
+        "//dev:requirements.update",
     ],
     tags = ["manual"],
 )

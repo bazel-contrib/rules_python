@@ -43,7 +43,7 @@ def _test_fail_no_requirements(env):
         fail_fn = errors.append,
     )
     env.expect.that_str(errors[0]).equals("""\
-A 'requirements_lock' attribute must be specified, a platform-specific lockfiles via 'requirements_by_platform' or an os-specific lockfiles must be specified via 'requirements_*' attributes""")
+A 'requirements_lock' or 'uv_lock' attribute must be specified, a platform-specific lockfiles via 'requirements_by_platform' or an os-specific lockfiles must be specified via 'requirements_*' attributes""")
 
 _tests.append(_test_fail_no_requirements)
 
@@ -318,6 +318,25 @@ def _test_host_only_os_with_fallback(env):
     })
 
 _tests.append(_test_host_only_os_with_fallback)
+
+def _test_uv_lock_only(env):
+    """Verify that using only uv_lock without requirements_lock succeeds."""
+    got = requirements_files_by_platform(
+        uv_lock = "uv.lock",
+    )
+    env.expect.that_dict(got).contains_exactly({})
+
+_tests.append(_test_uv_lock_only)
+
+def _test_uv_lock_with_platform_arg(env):
+    """Verify that using uv_lock with --platform argument succeeds."""
+    got = requirements_files_by_platform(
+        uv_lock = "uv.lock",
+        extra_pip_args = ["--platform", "linux_x86_64"],
+    )
+    env.expect.that_dict(got).contains_exactly({})
+
+_tests.append(_test_uv_lock_with_platform_arg)
 
 def requirements_files_by_platform_test_suite(name):
     """Create the test suite.

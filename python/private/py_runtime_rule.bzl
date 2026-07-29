@@ -25,6 +25,41 @@ load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
+def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
+    """Build the warning for a selected runtime that cannot produce coverage.
+
+    Kept separate from the rule implementation so the decision is unit testable
+    without having to capture analysis-phase output.
+
+    Args:
+        coverage_enabled: {type}`bool` whether the build is collecting coverage.
+        coverage_tool: {type}`File | None` the runtime's coverage entry point.
+        label: {type}`Label` the `py_runtime` being analyzed.
+
+    Returns:
+        {type}`str | None` the message to print, or `None` when no warning is
+        warranted.
+    """
+    if not coverage_enabled or coverage_tool:
+        return None
+
+    return """
+======================================================================
+WARNING: Python runtime {label} has no coverage_tool.
+  `bazel coverage` will produce empty lcov data for py_test targets that
+  resolve to this runtime.
+
+  For rules_python's hermetic toolchains, enable the bundled coverage.py:
+    python.toolchain(configure_coverage_tool = True)           # bzlmod
+    python_register_toolchains(register_coverage_tool = True)  # WORKSPACE
+  A bundled wheel must exist for this interpreter's version and platform;
+  python/private/coverage_deps.bzl lists what ships with rules_python.
+
+  Otherwise, set py_runtime.coverage_tool directly. See
+  https://rules-python.readthedocs.io/en/latest/coverage.html
+======================================================================
+""".format(label = label)
+
 def _py_runtime_impl(ctx):
     interpreter_path = ctx.attr.interpreter_path or None  # Convert empty string to None
     interpreter = ctx.attr.interpreter
@@ -107,6 +142,19 @@ def _py_runtime_impl(ctx):
     else:
         coverage_tool = None
         coverage_files = None
+
+    # Reported here rather than where the toolchains are registered: this rule is
+    # analyzed once per configuration, and only for the runtime that toolchain
+    # resolution actually selected, so the empty-lcov outcome is real rather than
+    # hypothetical. See https://github.com/bazel-contrib/rules_python/issues/3950.
+    coverage_warning = coverage_tool_missing_message(
+        coverage_enabled = ctx.configuration.coverage_enabled,
+        coverage_tool = coverage_tool,
+        label = ctx.label,
+    )
+    if coverage_warning:
+        # buildifier: disable=print
+        print(coverage_warning)
 
     python_version = ctx.attr.python_version
 
