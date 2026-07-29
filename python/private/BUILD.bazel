@@ -514,6 +514,7 @@ bzl_library(
     srcs = ["py_cc_toolchain_rule.bzl"],
     deps = [
         ":common_labels",
+        ":flags",
         ":py_cc_toolchain_info",
         ":sentinel_impl",
         "@bazel_skylib//rules:common_settings",
