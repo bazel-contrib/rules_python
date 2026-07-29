@@ -21,7 +21,10 @@ def _py_cc_toolchain_info_subject_new(info, *, meta):
         headers = lambda *a, **k: _py_cc_toolchain_info_subject_headers(self, *a, **k),
         headers_abi3 = lambda *a, **k: _py_cc_toolchain_info_subject_headers_abi3(self, *a, **k),
         libs = lambda *a, **k: _py_cc_toolchain_info_subject_libs(self, *a, **k),
+        platform_machine = lambda *a, **k: _py_cc_toolchain_info_subject_platform_machine(self, *a, **k),
+        platform_tag = lambda *a, **k: _py_cc_toolchain_info_subject_platform_tag(self, *a, **k),
         python_version = lambda *a, **k: _py_cc_toolchain_info_subject_python_version(self, *a, **k),
+        sys_platform = lambda *a, **k: _py_cc_toolchain_info_subject_sys_platform(self, *a, **k),
         actual = info,
     )
     self = struct(actual = info, meta = meta)
@@ -54,10 +57,28 @@ def _py_cc_toolchain_info_subject_libs(self):
         ),
     )
 
+def _py_cc_toolchain_info_subject_platform_machine(self):
+    return subjects.str(
+        self.actual.platform_machine,
+        meta = self.meta.derive("platform_machine()"),
+    )
+
+def _py_cc_toolchain_info_subject_platform_tag(self):
+    return subjects.str(
+        self.actual.platform_tag,
+        meta = self.meta.derive("platform_tag()"),
+    )
+
 def _py_cc_toolchain_info_subject_python_version(self):
     return subjects.str(
         self.actual.python_version,
         meta = self.meta.derive("python_version()"),
+    )
+
+def _py_cc_toolchain_info_subject_sys_platform(self):
+    return subjects.str(
+        self.actual.sys_platform,
+        meta = self.meta.derive("sys_platform()"),
     )
 
 # Disable this to aid doc generation

@@ -1,4 +1,8 @@
-"""Macro for creating Python extensions."""
+"""Macro for creating Python extensions.
+
+:::{include} /_includes/experimental_api.md
+:::
+"""
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
@@ -24,7 +28,7 @@ def py_extension(
         **kwargs):
     """Creates a Python extension module.
 
-    :::{include} /_includes/volatile_api.md
+    :::{include} /_includes/experimental_api.md
     :::
 
     By default, extensions are created within their workspace package directory

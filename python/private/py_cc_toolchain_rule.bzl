@@ -25,8 +25,8 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
 load(":sentinel_impl.bzl", "SentinelInfo")
 
-def _get_platform_tag(os, cpu, libc):
-    """Derives the PEP 3149 platform tag string based on target OS, CPU, and libc.
+def _get_platform_tag(sys_platform, platform_machine, libc):
+    """Derives the PEP 3149 platform tag string.
 
     Note that these are platform tags for C extension filenames, not
     PEP 425 tags for wheels.
@@ -41,25 +41,25 @@ def _get_platform_tag(os, cpu, libc):
       - https://github.com/python/cpython/commit/3b8124884c3655b4cf2629d741b18c1a38181805
 
     Args:
-        os: Target OS, e.g. "windows", "macos", "linux"
-        cpu: Target CPU architecture, e.g. "x86_64", "aarch64", "x86_32"
+        sys_platform: Target PEP 508 OS marker, e.g. "win32", "darwin", "linux"
+        platform_machine: Target PEP 508 CPU marker, e.g. "x86_64", "aarch64", "x86_32"
         libc: Target C library variant, e.g. "gnu", "musl"
 
     Returns:
         The platform tag, e.g. "x86_64-linux-gnu", "darwin", or "win_amd64"
     """
-    if os == "windows":
-        if cpu == "x86_64":
+    if sys_platform == "win32":
+        if platform_machine in ("x86_64", "amd64"):
             return "win_amd64"
-        if cpu == "aarch64":
+        if platform_machine in ("aarch64", "arm64"):
             return "win_arm64"
         return "win32"
-    if os == "macos":
+    if sys_platform == "darwin":
         return "darwin"
 
-    cpu_val = cpu if cpu else "x86_64"
+    machine_val = platform_machine if platform_machine else "x86_64"
     libc_val = libc if libc else "gnu"
-    return "{}-linux-{}".format(cpu_val, libc_val)
+    return "{}-linux-{}".format(machine_val, libc_val)
 
 def _py_cc_toolchain_impl(ctx):
     if ctx.attr.libs:
@@ -92,14 +92,13 @@ def _py_cc_toolchain_impl(ctx):
         abi_tag = "cpython-{}{}{}".format(version_parts[0], version_parts[1], abi_flags)
 
     platform_tag = _get_platform_tag(
-        os = ctx.attr.os,
-        cpu = ctx.attr.cpu,
+        sys_platform = ctx.attr.sys_platform,
+        platform_machine = ctx.attr.platform_machine,
         libc = ctx.attr.libc,
     )
 
     py_cc_toolchain = PyCcToolchainInfo(
         abi_tag = abi_tag,
-        platform_tag = platform_tag,
         headers = struct(
             providers_map = {
                 "CcInfo": ctx.attr.headers[CcInfo],
@@ -108,7 +107,10 @@ def _py_cc_toolchain_impl(ctx):
         ),
         headers_abi3 = headers_abi3,
         libs = libs,
+        platform_machine = ctx.attr.platform_machine,
+        platform_tag = platform_tag,
         python_version = ctx.attr.python_version,
+        sys_platform = ctx.attr.sys_platform,
     )
     extra_kwargs = {}
     if ctx.attr._visible_for_testing[BuildSettingInfo].value:
@@ -123,10 +125,6 @@ py_cc_toolchain = rule(
     attrs = {
         "abi_tag": attr.string(
             doc = "The ABI tag for extension modules, e.g. 'cpython-311'",
-            default = "",
-        ),
-        "cpu": attr.string(
-            doc = "Target CPU architecture, e.g. 'x86_64', 'aarch64', 'x86_32'",
             default = "",
         ),
         "headers": attr.label(
@@ -158,13 +156,21 @@ attribute is available or not.
                    "Typically this is a cc_library target of `.so` files."),
             providers = [CcInfo],
         ),
-        "os": attr.string(
-            doc = "Target OS, e.g. 'linux', 'macos', 'windows'",
+        "platform_machine": attr.string(
+            doc = """
+Target architecture as a PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarch64', 'x86_32'.
+""",
             default = "",
         ),
         "python_version": attr.string(
             doc = "The Major.minor Python version, e.g. 3.11",
             mandatory = True,
+        ),
+        "sys_platform": attr.string(
+            doc = """
+Target OS as a PEP 508 `sys_platform` marker, e.g. 'linux', 'darwin', 'win32'.
+""",
+            default = "",
         ),
         "_py_freethreaded_flag": attr.label(
             default = labels.PY_FREETHREADED,
