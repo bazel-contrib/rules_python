@@ -22,10 +22,13 @@ def _current_py_cc_libs_impl(ctx):
     default_runfiles = None
     data_runfiles = None
     files = []
+    transitive_files = []
     for p in py_cc_toolchain.libs.providers_map.values():
         if hasattr(p, "data_runfiles"):
             default_runfiles = p.default_runfiles
             data_runfiles = p.data_runfiles
+            if hasattr(p, "files"):
+                transitive_files.append(p.files)
 
     cc_infos = [p for p in py_cc_toolchain.libs.providers_map.values() if hasattr(p, "linking_context")]
     if cc_infos:
@@ -40,7 +43,7 @@ def _current_py_cc_libs_impl(ctx):
                     files.append(lib.dynamic_library)
 
     providers.append(DefaultInfo(
-        files = depset(files),
+        files = depset(files, transitive = transitive_files),
         default_runfiles = default_runfiles,
         data_runfiles = data_runfiles,
     ))
