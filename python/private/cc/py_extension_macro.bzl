@@ -115,16 +115,7 @@ def py_extension(
     csl_kwargs = copy_propagating_kwargs(kwargs)
     if exports_filter:
         csl_kwargs["exports_filter"] = exports_filter
-    else:
-        pkg = native.package_name()
-        pkg_prefix = ("//" + pkg) if pkg else "//"
-        csl_kwargs["exports_filter"] = select({
-            "@platforms//os:windows": [
-                pkg_prefix,
-                str(Label("//python/cc:current_py_cc_libs")),
-            ],
-            "//conditions:default": [],
-        })
+
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
         "@platforms//os:osx": ["-undefined", "dynamic_lookup"],
@@ -136,6 +127,17 @@ def py_extension(
         "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
         "//conditions:default": [],
     })
+
+    if exports_filter:
+        csl_kwargs["exports_filter"] = exports_filter
+    else:
+        csl_kwargs["exports_filter"] = select({
+            "@platforms//os:windows": [
+                ":__subpackages__",
+                str(Label("//:__subpackages__")),
+            ],
+            "//conditions:default": [],
+        })
 
     cc_shared_library(
         name = csl_name,
