@@ -26,3 +26,9 @@ to handle PR creation or description drafting.
 3. **Return Status**: Direct the subagent to communicate the PR number or draft
    status back using `send_message` (or `agentapi send-message`) with the
    parent conversation ID, or include it in its final completion response.
+4. **Publish Artifact**: Upon receiving the subagent completion message, the
+   main agent must publish `pr_info.md` to display the artifact directly in
+   the primary user UI.
+5. **Interactive Actions**: To present custom action choices to the user
+   (e.g., "Create PR", "Create Draft PR"), the main agent can use the
+   `ask_question` tool with custom options.
