@@ -80,6 +80,10 @@ cc_library(
 
 cc_shared_library(
     name = "add_one_shared",
+    user_link_flags = select({
+        "@platforms//os:windows": ["/EXPORT:add_one"],
+        "//conditions:default": [],
+    }),
     deps = [":add_one_impl"],
 )
 
