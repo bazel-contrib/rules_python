@@ -4,7 +4,6 @@ from tests.cc.py_extension import ext_pkg_test
 
 
 class PyExtensionPkgTest(unittest.TestCase):
-
     def test_import_via_package(self):
         self.assertEqual(ext_pkg_test.get_magic_number(), 42)
 
