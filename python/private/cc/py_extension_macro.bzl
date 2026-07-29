@@ -36,27 +36,38 @@ def py_extension(
 
     To customize import path behavior:
     - `imports`: Pass `imports = ["..."]` to append custom search directories to
-      `sys.path` (matching `py_library`).
-    - `module_name`: Pass `module_name = "custom_name"` to override the base module
-      filename.
+      `sys.path` (matching {attr}`py_library.imports`).
+    - `module_name`: Pass `module_name = "custom_name"` to override the base
+      module filename.
 
     Args:
-        name: Target name.
-        srcs: Optional C/C++ source files to compile directly for this extension.
-        hdrs: Optional header files for the srcs.
-        copts: Optional compiler flags for srcs.
-        defines: Optional preprocessor defines for srcs.
-        includes: Optional header include search paths passed to internal cc_library.
-        linkopts: Optional link options passed to internal cc_library and cc_shared_library.
-        linkshared: Deprecated and ignored. Extensions are always linked dynamically.
-        linkstatic: Optional linkstatic flag passed to internal cc_library.
-        deps: cc_library targets to statically link into the extension.
-        dynamic_deps: cc_shared_library targets to dynamically link.
-        exports_filter: Filter for exported symbols passed to cc_shared_library.
-        user_link_flags: Additional link flags passed to cc_shared_library.
-        visibility: Target visibility.
-        data: Optional list of files or targets needed by this extension at runtime.
-        **kwargs: Additional arguments passed to the underlying wrapper rule.
+        name: {type}`str` Target name.
+        srcs: {type}`list[Label | str] | None` C/C++ source files to compile
+            directly for this extension.
+        hdrs: {type}`list[Label | str] | None` Header files for `srcs`.
+        copts: {type}`list[str] | None` Compiler flags for `srcs`.
+        defines: {type}`list[str] | None` Preprocessor defines for `srcs`.
+        includes: {type}`list[str] | None` Header include search paths passed
+            to internal `cc_library`.
+        linkopts: {type}`list[str] | None` Link options passed to internal
+            `cc_library` and `cc_shared_library`.
+        linkshared: {type}`bool | None` Deprecated and ignored. Extensions are
+            always linked dynamically.
+        linkstatic: {type}`bool | None` The `linkstatic` flag passed to
+            internal `cc_library`.
+        deps: {type}`list[Label | str] | None` `cc_library` targets to
+            statically link into the extension.
+        dynamic_deps: {type}`list[Label | str] | None` `cc_shared_library`
+            targets to dynamically link.
+        exports_filter: {type}`list[str] | None` Filter for exported symbols
+            passed to `cc_shared_library`.
+        user_link_flags: {type}`list[str] | None` Additional link flags passed
+            to `cc_shared_library`.
+        visibility: {type}`list[Label | str] | None` Target visibility.
+        data: {type}`list[Label | str] | None` List of files or targets needed
+            by this extension at runtime.
+        **kwargs: {type}`dict` Additional arguments passed to the underlying
+            wrapper rule.
     """
     add_tag(kwargs, "@rules_python//python/cc:py_extension")
     _ = linkshared  # buildifier: disable=unused-variable
