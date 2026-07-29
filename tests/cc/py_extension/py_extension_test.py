@@ -1,4 +1,5 @@
 import os
+import sys
 import unittest
 
 import ext_shared
@@ -7,6 +8,9 @@ from elftools.elf.elffile import ELFFile
 
 
 class PyExtensionTest(unittest.TestCase):
+    @unittest.skipIf(
+        sys.platform != "linux", "ELF inspection is only supported on Linux"
+    )
     def test_inspect_elf(self):
         ext_path = ext_shared.__file__
         self.assertTrue(
