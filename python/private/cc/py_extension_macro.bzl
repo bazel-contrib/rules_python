@@ -115,6 +115,11 @@ def py_extension(
     csl_kwargs = copy_propagating_kwargs(kwargs)
     if exports_filter:
         csl_kwargs["exports_filter"] = exports_filter
+    else:
+        csl_kwargs["exports_filter"] = select({
+            "@platforms//os:windows": ["//...", "@..."],
+            "//conditions:default": [],
+        })
     module_name = kwargs.get("module_name", name)
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
