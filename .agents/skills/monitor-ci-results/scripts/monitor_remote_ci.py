@@ -104,6 +104,7 @@ def main():
             name = check.get("name", "unknown")
             state = check.get("state", "UNKNOWN")
             link = check.get("link", "")
+            bucket = check.get("bucket", "")
 
             if "buildkite" in name.lower() and link:
                 jobs = get_buildkite_jobs(link)
@@ -202,7 +203,7 @@ def main():
                             f"⚠️ Remote CI Buildkite Job '{jname}' completed with errors!\n\n"
                             f"Build ID: {build_id} | Job ID: {jid}\n"
                             f"Log URL: {job.get('log_url', link)}\n\n"
-                            f"Start subagent: run analyze-ci-failure skill on this failure"
+                            f"Action required: Start a subagent to run the analyze-ci-failure skill for '{jname}' with build ID '{build_id}' and job ID '{jid}'."
                         )
                         subprocess.run(
                             [
@@ -240,12 +241,16 @@ def main():
                 with open(state_file, "w") as f:
                     json.dump(monitored, f)
 
-            elif state in ["FAILURE", "failed"] and name not in monitored:
+            elif (
+                state.upper() in ["FAILURE", "FAIL", "CANCELLED", "TIMED_OUT"]
+                or bucket == "fail"
+            ) and name not in monitored:
                 print(f"🚨 Notifying failure for GitHub check '{name}'...")
+                job_id = link.split("/")[-1] if "/" in link else link
                 msg = (
                     f"⚠️ Remote CI GitHub Check '{name}' completed with errors!\n\n"
                     f"Link: {link}\n\n"
-                    f"Start subagent: run analyze-ci-failure skill on this failure"
+                    f"Action required: Start a subagent to run the analyze-ci-failure skill for '{name}' with link '{link}' and job ID '{job_id}'."
                 )
                 subprocess.run(
                     [
