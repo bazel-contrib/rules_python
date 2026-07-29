@@ -19,7 +19,14 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 def _current_py_cc_libs_impl(ctx):
     py_cc_toolchain = ctx.toolchains["//python/cc:toolchain_type"].py_cc_toolchain
     providers = [p for p in py_cc_toolchain.libs.providers_map.values() if not hasattr(p, "data_runfiles")]
+    default_runfiles = None
+    data_runfiles = None
     files = []
+    for p in py_cc_toolchain.libs.providers_map.values():
+        if hasattr(p, "data_runfiles"):
+            default_runfiles = p.default_runfiles
+            data_runfiles = p.data_runfiles
+
     cc_infos = [p for p in py_cc_toolchain.libs.providers_map.values() if hasattr(p, "linking_context")]
     if cc_infos:
         cc_info = cc_infos[0]
@@ -31,7 +38,12 @@ def _current_py_cc_libs_impl(ctx):
                     files.append(lib.interface_library)
                 if lib.dynamic_library:
                     files.append(lib.dynamic_library)
-    providers.append(DefaultInfo(files = depset(files)))
+
+    providers.append(DefaultInfo(
+        files = depset(files),
+        default_runfiles = default_runfiles,
+        data_runfiles = data_runfiles,
+    ))
     return providers
 
 current_py_cc_libs = rule(
