@@ -506,6 +506,7 @@ bzl_library(
     deps = [
         ":py_cc_toolchain_rule",
         ":util",
+        "//python/private/pypi:pep508_env",
     ],
 )
 
