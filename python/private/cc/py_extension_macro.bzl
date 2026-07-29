@@ -75,6 +75,13 @@ def py_extension(
 
     csl_deps = []
 
+    py_cc_headers_and_win_libs = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ] + select({
+        "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
+        "//conditions:default": [],
+    })
+
     # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
         impl_lib_name = "_" + name + "_impl"
@@ -91,7 +98,7 @@ def py_extension(
             hdrs = hdrs,
             copts = (copts or []) + ["-fPIC"],
             defines = defines,
-            deps = (deps or []) + ["@rules_python//python/cc:current_py_cc_headers"],
+            deps = (deps or []) + py_cc_headers_and_win_libs,
             visibility = ["//visibility:private"],
             **impl_lib_kwargs
         )
