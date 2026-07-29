@@ -166,6 +166,7 @@ bzl_library(
     srcs = ["hub_builder.bzl"],
     deps = [
         ":attrs",
+        ":hashes",
         ":parse_requirements",
         ":pep508_env",
         ":pep508_evaluate",
@@ -222,6 +223,7 @@ bzl_library(
     srcs = ["parse_requirements.bzl"],
     deps = [
         ":argparse",
+        ":hashes",
         ":index_sources",
         ":parse_requirements_txt",
         ":pep508_evaluate",
@@ -237,6 +239,7 @@ bzl_library(
     name = "parse_simpleapi_html",
     srcs = ["parse_simpleapi_html.bzl"],
     deps = [
+        ":hashes",
         ":version_from_filename",
         "//python/private:normalize_name",
     ],
@@ -535,8 +538,14 @@ bzl_library(
 )
 
 bzl_library(
+    name = "hashes",
+    srcs = ["hashes.bzl"],
+)
+
+bzl_library(
     name = "index_sources",
     srcs = ["index_sources.bzl"],
+    deps = [":hashes"],
 )
 
 bzl_library(

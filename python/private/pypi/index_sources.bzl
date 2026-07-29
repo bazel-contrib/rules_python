@@ -16,6 +16,8 @@
 A file that houses private functions used in the `bzlmod` extension with the same name.
 """
 
+load(":hashes.bzl", "HASH_ALGOS")
+
 # Just list them here and me super conservative
 _KNOWN_EXTS = [
     # Note, the following source in pip has more extensions
@@ -43,8 +45,10 @@ def index_sources(line):
         line(str): The requirements.txt entry.
 
     Returns:
-        A struct with shas attribute containing:
-            * `shas` - list[str]; shas to download from pypi_index.
+        A struct with hashes attribute containing:
+            * `hashes` - list[str]; `<algo>:<digest>` hashes of the artifacts
+                to download from pypi_index. Note that any hash algorithm from
+                {obj}`HASH_ALGOS` is accepted, not only `sha256`.
             * `version` - str; version of the package.
             * `marker` - str; the marker expression, as per PEP508 spec.
             * `requirement` - str; a requirement line without the marker. This can
@@ -58,10 +62,12 @@ def index_sources(line):
 
     marker, _, _ = maybe_hashes.partition("--hash=")
     maybe_hashes = maybe_hashes or line
-    shas = [
-        sha.strip()
-        for sha in maybe_hashes.split("--hash=sha256:")[1:]
-    ]
+    hashes = []
+    for h in maybe_hashes.split("--hash=")[1:]:
+        algo, sep, digest = h.strip().partition(" ")[0].partition(":")
+        algo = algo.lower()
+        if sep and digest and algo in HASH_ALGOS:
+            hashes.append("{}:{}".format(algo, digest))
 
     marker = marker.strip()
     if head == line:
@@ -71,7 +77,7 @@ def index_sources(line):
 
     requirement_line = "{} {}".format(
         requirement,
-        " ".join(["--hash=sha256:{}".format(sha) for sha in shas]),
+        " ".join(["--hash={}".format(h) for h in hashes]),
     ).strip()
 
     url = ""
@@ -80,9 +86,14 @@ def index_sources(line):
         maybe_requirement, _, url_and_rest = requirement.partition("@")
         url = url_and_rest.strip().partition(" ")[0].strip()
 
-        url, _, sha256 = url.partition("#sha256=")
-        if sha256:
-            shas.append(sha256)
+        url, _, fragment = url.partition("#")
+        algo, sep, digest = fragment.partition("=")
+        algo = algo.lower()
+        if sep and digest and algo in HASH_ALGOS:
+            hashes.append("{}:{}".format(algo, digest))
+        elif fragment:
+            # Not a hash fragment (e.g. `#egg=`), keep it as part of the URL.
+            url = "{}#{}".format(url, fragment)
         _, _, filename = url.rpartition("/")
 
         # Replace URL encoded characters and luckily there is only one case
@@ -104,7 +115,7 @@ def index_sources(line):
         requirement = requirement,
         requirement_line = requirement_line,
         version = version,
-        shas = sorted(shas),
+        hashes = sorted(hashes),
         marker = marker,
         url = url,
         filename = filename,

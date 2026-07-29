@@ -232,8 +232,14 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
 
     retrieved_versions = {}
 
-    for url, sha256 in known_facts.get("dist_hashes", {}).get(root_url, {}).get(distribution, {}).items():
-        filename = known_facts.get("dist_filenames", {}).get(root_url, {}).get(distribution, {}).get(sha256)
+    for url, stored_hash in known_facts.get("dist_hashes", {}).get(root_url, {}).get(distribution, {}).items():
+        # The values are either bare sha256 hex digests or `<algo>:<digest>` when the
+        # index advertises a digest calculated with a different hash algorithm.
+        algo, sep, digest = stored_hash.partition(":")
+        if not sep:
+            algo, digest = "sha256", stored_hash
+
+        filename = known_facts.get("dist_filenames", {}).get(root_url, {}).get(distribution, {}).get(url)
         if not filename:
             _, _, filename = url.rpartition("/")
 
@@ -251,16 +257,17 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         else:
             dists = known_sources.setdefault("sdists", {})
 
-        known_sources.setdefault("sha256s_by_version", {}).setdefault(version, []).append(sha256)
+        known_sources.setdefault("sha256s_by_version", {}).setdefault(version, []).append(digest)
 
-        dists.setdefault(sha256, struct(
-            sha256 = sha256,
+        dists.setdefault(digest, struct(
+            sha256 = digest if algo == "sha256" else "",
+            hashes = {algo: digest} if digest else {},
             filename = filename,
             version = version,
             metadata_url = "",
             metadata_sha256 = "",
             url = url,
-            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(sha256),
+            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(stored_hash),
         ))
 
     if not known_sources:
@@ -318,7 +325,9 @@ def _store_facts(facts, fact_version, index_url, value):
     #   "dist_hashes": {
     #     "<index_url>": {
     #       "<last segment>": {
-    #         "<dist url>": "<sha256>",
+    #         # A bare sha256 hex digest or "<algo>:<digest>" when the index
+    #         # advertises a digest calculated with a different hash algorithm.
+    #         "<dist url>": "<hash>",
     #       },
     #     },
     #   },
@@ -332,16 +341,23 @@ def _store_facts(facts, fact_version, index_url, value):
     #   "dist_yanked": {
     #     "<index_url>": {
     #       "<last segment>": {
-    #         "<sha256>": "<reason>",   # if the package is yanked
+    #         "<hash>": "<reason>",   # if the package is yanked
     #       },
     #     },
     #   },
     # },
-    for sha256, d in (value.sdists | value.whls).items():
-        facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, sha256)
+    for digest, d in (value.sdists | value.whls).items():
+        stored_hash = digest
+        if digest and d.sha256 != digest:
+            for algo, h in d.hashes.items():
+                if h == digest:
+                    stored_hash = "{}:{}".format(algo, digest)
+                    break
+
+        facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, stored_hash)
         if not d.url.endswith(d.filename):
             facts.setdefault("dist_filenames", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, d.filename)
         if d.yanked != None:
-            facts.setdefault("dist_yanked", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(sha256, d.yanked)
+            facts.setdefault("dist_yanked", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(stored_hash, d.yanked)
 
     return value

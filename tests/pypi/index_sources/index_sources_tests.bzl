@@ -26,7 +26,7 @@ def _test_no_simple_api_sources(env):
             requirement_line = "foo @ git+https://github.com/org/foo.git@deadbeef",
             marker = "",
             url = "git+https://github.com/org/foo.git@deadbeef",
-            shas = [],
+            hashes = [],
             version = "",
             filename = "",
         ),
@@ -59,7 +59,7 @@ def _test_no_simple_api_sources(env):
             requirement_line = "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef",
             marker = "",
             url = "https://someurl.org/package.whl",
-            shas = ["deadbeef"],
+            hashes = ["sha256:deadbeef"],
             version = "0.0.1",
             filename = "package.whl",
         ),
@@ -68,7 +68,7 @@ def _test_no_simple_api_sources(env):
             requirement_line = "foo==0.0.1 @ https://someurl.org/package.whl --hash=sha256:deadbeef",
             marker = "python_version < \"2.7\"",
             url = "https://someurl.org/package.whl",
-            shas = ["deadbeef"],
+            hashes = ["sha256:deadbeef"],
             version = "0.0.1",
             filename = "package.whl",
         ),
@@ -80,7 +80,7 @@ def _test_no_simple_api_sources(env):
             requirement_line = "foo[extra] @ https://example.org/foo-1.0.tar.gz --hash=sha256:deadbe0f",
             marker = "",
             url = "https://example.org/foo-1.0.tar.gz",
-            shas = ["deadbe0f"],
+            hashes = ["sha256:deadbe0f"],
             version = "",
             filename = "foo-1.0.tar.gz",
         ),
@@ -89,14 +89,14 @@ def _test_no_simple_api_sources(env):
             requirement_line = "torch @ https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl#sha256=deadbeef",
             marker = "",
             url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp311-cp311-linux_x86_64.whl",
-            shas = ["deadbeef"],
+            hashes = ["sha256:deadbeef"],
             version = "",
             filename = "torch-2.6.0+cpu-cp311-cp311-linux_x86_64.whl",
         ),
     }
     for input, want in inputs.items():
         got = index_sources(input)
-        env.expect.that_collection(got.shas).contains_exactly(want.shas if hasattr(want, "shas") else [])
+        env.expect.that_collection(got.hashes).contains_exactly(want.hashes if hasattr(want, "hashes") else [])
         env.expect.that_str(got.version).equals(want.version)
         env.expect.that_str(got.requirement).equals(want.requirement)
         env.expect.that_str(got.requirement_line).equals(got.requirement_line)
@@ -109,9 +109,9 @@ _tests.append(_test_no_simple_api_sources)
 def _test_simple_api_sources(env):
     tests = {
         "foo==0.0.2 --hash=sha256:deafbeef    --hash=sha256:deadbeef": struct(
-            shas = [
-                "deadbeef",
-                "deafbeef",
+            hashes = [
+                "sha256:deadbeef",
+                "sha256:deafbeef",
             ],
             marker = "",
             requirement = "foo==0.0.2",
@@ -119,9 +119,9 @@ def _test_simple_api_sources(env):
             url = "",
         ),
         "foo[extra]==0.0.2; (python_version < 2.7 or extra == \"@\") --hash=sha256:deafbeef    --hash=sha256:deadbeef": struct(
-            shas = [
-                "deadbeef",
-                "deafbeef",
+            hashes = [
+                "sha256:deadbeef",
+                "sha256:deafbeef",
             ],
             marker = "(python_version < 2.7 or extra == \"@\")",
             requirement = "foo[extra]==0.0.2",
@@ -131,7 +131,7 @@ def _test_simple_api_sources(env):
     }
     for input, want in tests.items():
         got = index_sources(input)
-        env.expect.that_collection(got.shas).contains_exactly(want.shas)
+        env.expect.that_collection(got.hashes).contains_exactly(want.hashes)
         env.expect.that_str(got.version).equals("0.0.2")
         env.expect.that_str(got.requirement).equals(want.requirement)
         env.expect.that_str(got.requirement_line).equals(want.requirement_line)
@@ -139,6 +139,62 @@ def _test_simple_api_sources(env):
         env.expect.that_str(got.url).equals(want.url)
 
 _tests.append(_test_simple_api_sources)
+
+def _test_non_sha256_hashes(env):
+    tests = {
+        # A `#sha512=` URL fragment, as any hash algorithm is allowed by PEP 503.
+        "foo @ https://example.org/foo-0.0.1-py3-none-any.whl#sha512=deadbeef": struct(
+            hashes = ["sha512:deadbeef"],
+            marker = "",
+            requirement = "foo",
+            requirement_line = "foo @ https://example.org/foo-0.0.1-py3-none-any.whl#sha512=deadbeef",
+            url = "https://example.org/foo-0.0.1-py3-none-any.whl",
+            version = "",
+            filename = "foo-0.0.1-py3-none-any.whl",
+        ),
+        # Unknown algorithms are dropped.
+        "foo==0.0.2 --hash=egg:deadbeef": struct(
+            hashes = [],
+            marker = "",
+            requirement = "foo==0.0.2",
+            requirement_line = "foo==0.0.2",
+            url = "",
+            version = "0.0.2",
+            filename = "",
+        ),
+        "foo==0.0.2 --hash=sha512:deadbeef": struct(
+            hashes = ["sha512:deadbeef"],
+            marker = "",
+            requirement = "foo==0.0.2",
+            requirement_line = "foo==0.0.2 --hash=sha512:deadbeef",
+            url = "",
+            version = "0.0.2",
+            filename = "",
+        ),
+        "foo==0.0.2 --hash=sha512:deafbeef    --hash=sha256:deadbeef": struct(
+            hashes = [
+                "sha256:deadbeef",
+                "sha512:deafbeef",
+            ],
+            marker = "",
+            requirement = "foo==0.0.2",
+            requirement_line = "foo==0.0.2 --hash=sha512:deafbeef --hash=sha256:deadbeef",
+            url = "",
+            version = "0.0.2",
+            filename = "",
+        ),
+    }
+    for input, want in tests.items():
+        got = index_sources(input)
+        env.expect.that_collection(got.hashes).contains_exactly(want.hashes)
+        env.expect.that_str(got.version).equals(want.version)
+        env.expect.that_str(got.requirement).equals(want.requirement)
+        env.expect.that_str(got.requirement_line).equals(want.requirement_line)
+        env.expect.that_str(got.marker).equals(want.marker)
+        env.expect.that_str(got.url).equals(want.url)
+        env.expect.that_str(got.filename).equals(want.filename)
+
+_tests.append(_test_non_sha256_hashes)
 
 def index_sources_test_suite(name):
     """Create the test suite.

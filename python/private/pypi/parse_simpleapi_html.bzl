@@ -17,6 +17,7 @@ Parse SimpleAPI HTML in Starlark.
 """
 
 load("//python/private:normalize_name.bzl", "normalize_name")
+load(":hashes.bzl", "HASH_ALGOS")
 load(":version_from_filename.bzl", "version_from_filename")
 
 def parse_simpleapi_html(*, content, parse_index = False):
@@ -29,11 +30,17 @@ def parse_simpleapi_html(*, content, parse_index = False):
 
     Returns:
         If it is the index page, return the map of package to URL it can be queried from.
-        Otherwise, a list of structs with:
+        Otherwise, a struct with `whls` and `sdists` dicts keyed by the hex digest advertised
+        in the URL fragment (PEP 503, most commonly `sha256`, but any algorithm from
+        {obj}`HASH_ALGOS` is accepted) and `sha256s_by_version` mapping each version to the
+        digests of its artifacts. The dict values are structs with:
           * filename: {type}`str` The filename of the artifact.
           * version: {type}`str` The version of the artifact.
           * url: {type}`str` The URL to download the artifact.
-          * sha256: {type}`str` The sha256 of the artifact.
+          * sha256: {type}`str` The sha256 of the artifact, may be empty if the index
+            advertises a different hash algorithm.
+          * hashes: {type}`dict[str, str]` The hex digests of the artifact keyed by the hash
+            algorithm name.
           * metadata_sha256: {type}`str` The whl METADATA sha256 if we can download it. If this is
             present, then the 'metadata_url' is also present. Defaults to "".
           * metadata_url: {type}`str` The URL for the METADATA if we can download it. Defaults to "".
@@ -101,7 +108,18 @@ def parse_simpleapi_html(*, content, parse_index = False):
             continue
 
         # 3. Efficient Attribute Parsing
-        dist_url, _, sha256 = href.partition("#sha256=")
+        # PEP 503 says the URL fragment SHOULD be `#<hashname>=<hashvalue>` where the
+        # hash name may be any algorithm from `hashlib`, not only `sha256`.
+        dist_url, _, fragment = href.partition("#")
+        algo, sep, digest = fragment.partition("=")
+        algo = algo.lower()
+        if not (sep and digest and algo in HASH_ALGOS):
+            if fragment:
+                # Not a hash fragment, keep it as part of the URL.
+                dist_url = "{}#{}".format(dist_url, fragment)
+            algo = ""
+            digest = ""
+        sha256 = digest if algo == "sha256" else ""
 
         # Handle Yanked status
         yanked = None
@@ -109,7 +127,7 @@ def parse_simpleapi_html(*, content, parse_index = False):
             yanked = _unescape_pypi_html(attrs["data-yanked"])
 
         version = version_from_filename(filename)
-        sha256s_by_version.setdefault(version, []).append(sha256)
+        sha256s_by_version.setdefault(version, []).append(digest)
 
         # 4. Optimized Metadata Check (PEP 714)
         metadata_sha256 = ""
@@ -127,15 +145,16 @@ def parse_simpleapi_html(*, content, parse_index = False):
             version = version,
             url = dist_url,
             sha256 = sha256,
+            hashes = {algo: digest} if algo else {},
             metadata_sha256 = metadata_sha256,
             metadata_url = metadata_url,
             yanked = yanked,
         )
 
         if filename.endswith(".whl"):
-            whls[sha256] = dist
+            whls[digest] = dist
         else:
-            sdists[sha256] = dist
+            sdists[digest] = dist
 
     if parse_index:
         return packages

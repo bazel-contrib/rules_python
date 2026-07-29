@@ -296,6 +296,71 @@ def _test_whls(env):
 
 _tests.append(_test_whls)
 
+def _test_non_sha256_fragment(env):
+    """The index may advertise digests calculated with any hash algorithm (PEP 503)."""
+
+    html = _generate_html(
+        struct(
+            attrs = [
+                'href="https://example.org/full-url/foo-0.0.1-py3-none-any.whl#sha512=deadbeef"',
+            ],
+            filename = "foo-0.0.1-py3-none-any.whl",
+        ),
+        struct(
+            attrs = [
+                'href="https://example.org/full-url/foo-0.0.1.tar.gz#sha512=deadb00f"',
+            ],
+            filename = "foo-0.0.1.tar.gz",
+        ),
+        struct(
+            # A non-hash fragment is kept as part of the URL.
+            attrs = [
+                'href="https://example.org/full-url/foo-0.0.2-py3-none-any.whl#egg=foo"',
+            ],
+            filename = "foo-0.0.2-py3-none-any.whl",
+        ),
+    )
+    got = parse_simpleapi_html(content = html)
+
+    env.expect.that_collection(got.whls).has_size(2)
+    env.expect.that_collection(got.sdists).has_size(1)
+    env.expect.that_dict(got.sha256s_by_version).contains_exactly({
+        "0.0.1": ["deadbeef", "deadb00f"],
+        "0.0.2": [""],
+    })
+
+    whl = got.whls["deadbeef"]
+    env.expect.that_str(whl.sha256).equals("")
+    env.expect.that_dict(whl.hashes).contains_exactly({"sha512": "deadbeef"})
+    env.expect.that_str(whl.url).equals("https://example.org/full-url/foo-0.0.1-py3-none-any.whl")
+
+    sdist = got.sdists["deadb00f"]
+    env.expect.that_str(sdist.sha256).equals("")
+    env.expect.that_dict(sdist.hashes).contains_exactly({"sha512": "deadb00f"})
+
+    no_hash_whl = got.whls[""]
+    env.expect.that_dict(no_hash_whl.hashes).contains_exactly({})
+    env.expect.that_str(no_hash_whl.url).equals("https://example.org/full-url/foo-0.0.2-py3-none-any.whl#egg=foo")
+
+_tests.append(_test_non_sha256_fragment)
+
+def _test_sha256_fragment_hashes(env):
+    html = _generate_html(
+        struct(
+            attrs = [
+                'href="https://example.org/full-url/foo-0.0.1-py3-none-any.whl#sha256=deadbeef"',
+            ],
+            filename = "foo-0.0.1-py3-none-any.whl",
+        ),
+    )
+    got = parse_simpleapi_html(content = html)
+
+    whl = got.whls["deadbeef"]
+    env.expect.that_str(whl.sha256).equals("deadbeef")
+    env.expect.that_dict(whl.hashes).contains_exactly({"sha256": "deadbeef"})
+
+_tests.append(_test_sha256_fragment_hashes)
+
 def parse_simpleapi_html_test_suite(name):
     """Create the test suite.
 

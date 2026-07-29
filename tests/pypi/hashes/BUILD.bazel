@@ -1,0 +1,3 @@
+load(":hashes_tests.bzl", "hashes_test_suite")
+
+hashes_test_suite(name = "hashes_tests")

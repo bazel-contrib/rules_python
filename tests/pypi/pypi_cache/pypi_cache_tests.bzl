@@ -98,6 +98,8 @@ def _test_pypi_cache_writes_to_facts(env):
                 version = "1.0.0",
                 filename = "pkg-1.0.0.tar.gz",
                 url = "https://pypi.org/files/pkg-1.0.0.tar.gz",
+                sha256 = "sha_sdist",
+                hashes = {"sha256": "sha_sdist"},
                 yanked = "",
             ),
         },
@@ -106,6 +108,8 @@ def _test_pypi_cache_writes_to_facts(env):
                 version = "1.0.0",
                 filename = "pkg-1.0.0-py3-none-any.whl",
                 url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+                sha256 = "sha_whl",
+                hashes = {"sha256": "sha_whl"},
                 yanked = "Security issue",
             ),
             # This won't get stored
@@ -113,6 +117,8 @@ def _test_pypi_cache_writes_to_facts(env):
                 version = "1.1.0",
                 filename = "pkg-1.1.0-py3-none-any.whl",
                 url = "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl",
+                sha256 = "sha_whl_2",
+                hashes = {"sha256": "sha_whl_2"},
                 yanked = None,
             ),
         },
@@ -231,6 +237,7 @@ def _test_pypi_cache_reads_from_facts(env):
         sdists = {
             "sha_sdist": struct(
                 sha256 = "sha_sdist",
+                hashes = {"sha256": "sha_sdist"},
                 version = "1.0.0",
                 filename = "pkg-1.0.0.tar.gz",
                 metadata_url = "",
@@ -242,6 +249,7 @@ def _test_pypi_cache_reads_from_facts(env):
         whls = {
             "sha_whl": struct(
                 sha256 = "sha_whl",
+                hashes = {"sha256": "sha_whl"},
                 version = "1.0.0",
                 filename = "pkg-1.0.0-py3-none-any.whl",
                 url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
@@ -294,6 +302,7 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
         sdists = {
             "sha_sdist_1.0.0": struct(
                 sha256 = "sha_sdist_1.0.0",
+                hashes = {"sha256": "sha_sdist_1.0.0"},
                 version = "1.0.0",
                 filename = "pkg-1.0.0.tar.gz",
                 metadata_url = "",
@@ -305,6 +314,7 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
         whls = {
             "sha_whl_1.0.0": struct(
                 sha256 = "sha_whl_1.0.0",
+                hashes = {"sha256": "sha_whl_1.0.0"},
                 version = "1.0.0",
                 filename = "pkg-1.0.0-py3-none-any.whl",
                 metadata_url = "",
@@ -335,6 +345,72 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     })
 
 _tests.append(_test_pypi_cache_reads_from_facts_drops_unaccessed_dists)
+
+def _test_pypi_cache_facts_non_sha256_round_trip(env):
+    """Verifies that digests of other hash algorithms survive the facts round trip."""
+    mock_ctx = mocks.mctx(facts = {})
+    cache = _cache(env, mctx = mock_ctx)
+
+    fake_result = struct(
+        sdists = {},
+        whls = {
+            "whl_digest": struct(
+                version = "1.0.0",
+                filename = "pkg-1.0.0-py3-none-any.whl",
+                url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+                sha256 = "",
+                hashes = {"sha512": "whl_digest"},
+                yanked = None,
+            ),
+        },
+        sha256s_by_version = {
+            "1.0.0": ["whl_digest"],
+        },
+    )
+
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    cache.setdefault(key, fake_result)
+
+    # The hash algorithm is stored in the facts
+    cache.get_facts().contains_exactly({
+        "dist_hashes": {
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
+                },
+            },
+        },
+        "fact_version": "v1",  # Facts version
+    })
+
+    # And a cache that only has the facts reconstructs the digests
+    cache = _cache(env, mctx = mocks.mctx(facts = {
+        "dist_hashes": {
+            "https://{PYPI_INDEX_URL}": {
+                "pkg": {
+                    "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
+                },
+            },
+        },
+        "fact_version": "v1",  # Facts version
+    }))
+
+    got = cache.get(key)
+    got.whls().contains_exactly({
+        "whl_digest": struct(
+            sha256 = "",
+            hashes = {"sha512": "whl_digest"},
+            version = "1.0.0",
+            filename = "pkg-1.0.0-py3-none-any.whl",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+            yanked = None,
+        ),
+    })
+    got.sha256s_by_version().contains_exactly({"1.0.0": ["whl_digest"]})
+
+_tests.append(_test_pypi_cache_facts_non_sha256_round_trip)
 
 def _test_memory_cache_index_urls(env):
     """Verifies that the cache returns stored values for index_urls."""

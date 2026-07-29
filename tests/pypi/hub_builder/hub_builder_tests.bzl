@@ -358,6 +358,78 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
 
 _tests.append(_test_simple_extras_vs_no_extras_simpleapi)
 
+def _test_simple_sha512_simpleapi(env):
+    """Non-sha256 pins match the index digests and are downloaded with `integrity`."""
+
+    def mockread_simpleapi(*_, parse_index, **__):
+        if parse_index:
+            content = """\
+    <a href="/simple/>simple</a><br/>
+"""
+        else:
+            content = """\
+    <a href="/simple-0.0.1-py3-none-any.whl#sha512=deadbeef">simple-0.0.1-py3-none-any.whl</a><br/>
+"""
+        return struct(
+            output = parse_simpleapi_html(
+                content = content,
+                parse_index = parse_index,
+            ),
+            success = True,
+        )
+
+    builder = hub_builder(
+        env,
+        simpleapi_download_fn = lambda *args, **kwargs: simpleapi_download(
+            read_simpleapi = mockread_simpleapi,
+            *args,
+            **kwargs
+        ),
+    )
+    builder.pip_parse(
+        mocks.mctx(
+            mock_files = {
+                "win.txt": "simple==0.0.1 --hash=sha512:deadbeef",
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_windows = "win.txt",
+            experimental_index_url = "https://example.com",
+            target_platforms = ["windows_aarch64"],
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple_py3_none_any_deadbeef": [
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_windows_aarch64",
+                    ],
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple_py3_none_any_deadbeef": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": "https://example.com/simple/",
+            "integrity": "sha512-3q2+7w==",
+            "requirement": "simple==0.0.1",
+            "sha256": "",
+            "urls": ["/simple-0.0.1-py3-none-any.whl"],
+        },
+    })
+
+_tests.append(_test_simple_sha512_simpleapi)
+
 def _test_simple_multiple_python_versions(env):
     builder = hub_builder(
         env,
@@ -791,6 +863,7 @@ simple==0.0.1 --hash=sha256:deadb00f
                             yanked = None,
                             filename = "simple-0.0.1-py3-none-any.whl",
                             sha256 = "deadb00f",
+                            hashes = {"sha256": "deadb00f"},
                             url = test.expect_url,
                         ),
                     },
@@ -981,6 +1054,7 @@ def _test_simple_get_index(env):
                         yanked = None,
                         filename = "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
                         sha256 = "deadb44f",
+                        hashes = {"sha256": "deadb44f"},
                         url = "example2.org/index/plat_pkg/",
                     ),
                 },
@@ -996,6 +1070,7 @@ def _test_simple_get_index(env):
                         yanked = None,
                         filename = "simple-0.0.1-py3-none-any.whl",
                         sha256 = "deadb00f",
+                        hashes = {"sha256": "deadb00f"},
                         url = "example2.org",
                     ),
                 },
@@ -1004,6 +1079,7 @@ def _test_simple_get_index(env):
                         yanked = None,
                         filename = "simple-0.0.1.tar.gz",
                         sha256 = "deadbeef",
+                        hashes = {"sha256": "deadbeef"},
                         url = "example.org",
                     ),
                 },
@@ -1015,6 +1091,7 @@ def _test_simple_get_index(env):
                         yanked = None,
                         filename = "some-other-pkg-0.0.1-py3-none-any.whl",
                         sha256 = "deadb33f",
+                        hashes = {"sha256": "deadb33f"},
                         url = "example2.org/index/some_other_pkg/",
                     ),
                 },

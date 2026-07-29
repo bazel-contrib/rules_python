@@ -93,6 +93,9 @@ foo==0.0.3 --hash=sha256:deadbaaf --hash=sha256:deadb11f --hash=sha256:5d15t
 
 foo==0.0.3 --hash=sha256:deadbaaf
 """,
+        "requirements_sha512": """\
+foo==0.0.1 --hash=sha512:deadbeef
+""",
         "requirements_windows": """\
 foo[extra]==0.0.2 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
@@ -108,6 +111,7 @@ bar==0.0.1 --hash=sha256:deadb00f
         "uv_lock_foo_requires_dist_extras": """{"package":[{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"root-pkg","source":{"virtual":"."},"version":"0.0.0","dependencies":[{"name":"foo"}],"metadata":{"requires-dist":[{"name":"foo","extras":["all"]}]}}]}""",
         "uv_lock_foo_resolution_markers_dedup": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","resolution-markers":["sys_platform == 'linux'"],"wheels":[{"hash":"sha256:aaa","url":"https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl"},{"hash":"sha256:bbb","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.2","resolution-markers":["sys_platform == 'darwin'"],"wheels":[{"hash":"sha256:ccc","url":"https://files.pythonhosted.org/packages/foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl"},{"hash":"sha256:ddd","url":"https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_sdist": """{"package":[{"name":"foo","sdist":{"hash":"sha256:feedcafe","url":"https://files.pythonhosted.org/packages/foo-0.0.1.tar.gz"},"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
+        "uv_lock_foo_sha512": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha512:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0"}]}""",
         "uv_lock_foo_with_extras": """{"package":[{"name":"foo","provides-extras":["extra"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo.git"},"version":"0.1.0"}]}""",
@@ -193,6 +197,7 @@ def _test_simple(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -222,6 +227,7 @@ def _test_direct_urls_integration(env):
                     filename = "foo-1.1.tar.gz",
                     requirement_line = "foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz",
                     sha256 = "",
+                    hashes = {},
                     target_platforms = ["osx_x86_64"],
                     url = "https://github.com/org/foo/downloads/foo-1.1.tar.gz",
                     yanked = None,
@@ -232,6 +238,7 @@ def _test_direct_urls_integration(env):
                     filename = "package.whl",
                     requirement_line = "foo[extra]",
                     sha256 = "",
+                    hashes = {},
                     target_platforms = ["linux_x86_64"],
                     url = "https://some-url/package.whl",
                     yanked = None,
@@ -264,6 +271,7 @@ def _test_direct_urls_no_extract(env):
                     filename = "",
                     requirement_line = "foo @ https://github.com/org/foo/downloads/foo-1.1.tar.gz",
                     sha256 = "",
+                    hashes = {},
                     target_platforms = ["osx_x86_64"],
                     url = "",
                     yanked = None,
@@ -274,6 +282,7 @@ def _test_direct_urls_no_extract(env):
                     filename = "",
                     requirement_line = "foo[extra] @ https://some-url/package.whl",
                     sha256 = "",
+                    hashes = {},
                     target_platforms = ["linux_x86_64"],
                     url = "",
                     yanked = None,
@@ -309,6 +318,7 @@ def _test_extra_pip_args(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -339,6 +349,7 @@ def _test_dupe_requirements(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -371,6 +382,7 @@ def _test_multi_os(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -389,6 +401,7 @@ def _test_multi_os(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
                 struct(
@@ -399,6 +412,7 @@ def _test_multi_os(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -437,6 +451,7 @@ def _test_multi_os_legacy(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -455,6 +470,7 @@ def _test_multi_os_legacy(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
                 struct(
@@ -465,6 +481,7 @@ def _test_multi_os_legacy(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -523,6 +540,7 @@ def _test_env_marker_resolution(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -541,6 +559,7 @@ def _test_env_marker_resolution(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -572,6 +591,7 @@ def _test_different_package_version(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
                 struct(
@@ -582,6 +602,7 @@ def _test_different_package_version(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -613,6 +634,7 @@ def _test_different_package_extras(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
                 struct(
@@ -623,6 +645,7 @@ def _test_different_package_extras(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -653,6 +676,7 @@ def _test_optional_hash(env):
                     url = "https://example.org/bar-0.0.4.whl",
                     filename = "bar-0.0.4.whl",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -671,6 +695,7 @@ def _test_optional_hash(env):
                     url = "https://example.org/foo-0.0.5.whl",
                     filename = "foo-0.0.5.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     yanked = None,
                 ),
             ],
@@ -701,6 +726,7 @@ def _test_git_sources(env):
                     url = "",
                     filename = "",
                     sha256 = "",
+                    hashes = {},
                     yanked = None,
                 ),
             ],
@@ -743,6 +769,7 @@ def _test_overlapping_shas_with_index_results(env):
                     "5d15t": struct(
                         url = "sdist",
                         sha256 = "5d15t",
+                        hashes = {"sha256": "5d15t"},
                         filename = "foo-0.0.1.tar.gz",
                         yanked = None,
                     ),
@@ -751,12 +778,14 @@ def _test_overlapping_shas_with_index_results(env):
                     "deadb11f": struct(
                         url = "super2",
                         sha256 = "deadb11f",
+                        hashes = {"sha256": "deadb11f"},
                         filename = "foo-0.0.1-py3-none-macosx_14_0_x86_64.whl",
                         yanked = None,
                     ),
                     "deadbaaf": struct(
                         url = "super2",
                         sha256 = "deadbaaf",
+                        hashes = {"sha256": "deadbaaf"},
                         filename = "foo-0.0.1-py3-none-any.whl",
                         yanked = None,
                     ),
@@ -778,6 +807,7 @@ def _test_overlapping_shas_with_index_results(env):
                     filename = "foo-0.0.1-py3-none-any.whl",
                     requirement_line = "foo==0.0.3",
                     sha256 = "deadbaaf",
+                    hashes = {"sha256": "deadbaaf"},
                     target_platforms = ["cp39_linux_x86_64"],
                     url = "super2",
                     yanked = None,
@@ -788,6 +818,7 @@ def _test_overlapping_shas_with_index_results(env):
                     filename = "foo-0.0.1-py3-none-macosx_14_0_x86_64.whl",
                     requirement_line = "foo==0.0.3",
                     sha256 = "deadb11f",
+                    hashes = {"sha256": "deadb11f"},
                     target_platforms = ["cp39_osx_x86_64"],
                     url = "super2",
                     yanked = None,
@@ -797,6 +828,64 @@ def _test_overlapping_shas_with_index_results(env):
     ])
 
 _tests.append(_test_overlapping_shas_with_index_results)
+
+def _test_non_sha256_hash_matching(env):
+    """Test that non-sha256 pins are matched against the index digests."""
+    got = parse_requirements(
+        requirements_by_platform = {
+            "requirements_sha512": ["cp311_linux_x86_64"],
+        },
+        platforms = {
+            "cp311_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.11.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none"],
+                whl_platform_tags = ["any"],
+            ),
+        },
+        get_index_urls = lambda _, __, **kwargs: {
+            "foo": struct(
+                index_url = "https://example.com",
+                sdists = {},
+                whls = {
+                    "deadbeef": struct(
+                        url = "https://example.com/foo-0.0.1-py3-none-any.whl",
+                        sha256 = "",
+                        hashes = {"sha512": "deadbeef"},
+                        filename = "foo-0.0.1-py3-none-any.whl",
+                        yanked = None,
+                    ),
+                },
+            ),
+        },
+    )
+
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "https://example.com",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    requirement_line = "foo==0.0.1",
+                    sha256 = "",
+                    hashes = {"sha512": "deadbeef"},
+                    target_platforms = ["cp311_linux_x86_64"],
+                    url = "https://example.com/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_non_sha256_hash_matching)
 
 def _test_get_index_urls_different_versions(env):
     """Test that different versions from index URLs are matched correctly per platform."""
@@ -835,12 +924,14 @@ def _test_get_index_urls_different_versions(env):
                     "deadb11f": struct(
                         url = "super2",
                         sha256 = "deadb11f",
+                        hashes = {"sha256": "deadb11f"},
                         filename = "foo-0.0.2-py3-none-any.whl",
                         yanked = None,
                     ),
                     "deadbaaf": struct(
                         url = "super2",
                         sha256 = "deadbaaf",
+                        hashes = {"sha256": "deadbaaf"},
                         filename = "foo-0.0.1-py3-none-any.whl",
                         yanked = None,
                     ),
@@ -862,6 +953,7 @@ def _test_get_index_urls_different_versions(env):
                     filename = "",
                     requirement_line = "boo==0.0.4 --hash=sha256:deadbaaf",
                     sha256 = "",
+                    hashes = {},
                     target_platforms = ["cp39_linux_x86_64"],
                     url = "",
                     yanked = None,
@@ -880,6 +972,7 @@ def _test_get_index_urls_different_versions(env):
                     filename = "",
                     requirement_line = "foo==0.0.1 --hash=sha256:deadbeef",
                     sha256 = "",
+                    hashes = {},
                     target_platforms = ["cp39_linux_x86_64"],
                     url = "",
                     yanked = None,
@@ -890,6 +983,7 @@ def _test_get_index_urls_different_versions(env):
                     filename = "foo-0.0.2-py3-none-any.whl",
                     requirement_line = "foo==0.0.2",
                     sha256 = "deadb11f",
+                    hashes = {"sha256": "deadb11f"},
                     target_platforms = ["cp310_linux_x86_64"],
                     url = "super2",
                     yanked = None,
@@ -972,6 +1066,7 @@ def _test_get_index_urls_single_py_version(env):
                     "deadb11f": struct(
                         url = "super2",
                         sha256 = "deadb11f",
+                        hashes = {"sha256": "deadb11f"},
                         filename = "foo-0.0.2-py3-none-any.whl",
                         yanked = None,
                     ),
@@ -993,6 +1088,7 @@ def _test_get_index_urls_single_py_version(env):
                     filename = "foo-0.0.2-py3-none-any.whl",
                     requirement_line = "foo==0.0.2",
                     sha256 = "deadb11f",
+                    hashes = {"sha256": "deadb11f"},
                     target_platforms = ["cp310_linux_x86_64"],
                     url = "super2",
                     yanked = None,
@@ -1063,6 +1159,7 @@ def _test_uv_lock_consistent(env):
                     target_platforms = ["linux_x86_64", "windows_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1091,6 +1188,7 @@ def _test_uv_lock_primary_source(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1099,6 +1197,35 @@ def _test_uv_lock_primary_source(env):
     ])
 
 _tests.append(_test_uv_lock_primary_source)
+
+def _test_uv_lock_non_sha256_hash(env):
+    """Test that non-sha256 uv.lock hashes are propagated to the sources."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_foo_sha512",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "https://pypi.org/simple/foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    sha256 = "",
+                    hashes = {"sha512": "deadbeef"},
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_non_sha256_hash)
 
 def _test_uv_lock_primary_source_multiple_versions(env):
     """Test that uv.lock with multiple versions of the same package works."""
@@ -1119,6 +1246,7 @@ def _test_uv_lock_primary_source_multiple_versions(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1129,6 +1257,7 @@ def _test_uv_lock_primary_source_multiple_versions(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.2-py3-none-any.whl",
                     sha256 = "deadb11f",
+                    hashes = {"sha256": "deadb11f"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1157,6 +1286,7 @@ def _test_uv_lock_primary_source_with_extras(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1185,6 +1315,7 @@ def _test_uv_lock_primary_source_includes_virtual(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1223,6 +1354,7 @@ def _test_uv_lock_cross_consistent(env):
                     target_platforms = ["linux_x86_64", "windows_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1251,6 +1383,7 @@ def _test_uv_lock_vcs_entry(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo.git",
                     sha256 = "",
+                    hashes = {},
                     url = "https://github.com/org/foo.git",
                     yanked = None,
                 ),
@@ -1279,6 +1412,7 @@ def _test_uv_lock_rules_python_pkg_not_skipped(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "rules_python-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1312,6 +1446,7 @@ def _test_uv_lock_no_consistency_check(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1340,6 +1475,7 @@ def _test_uv_lock_multiple_packages(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "bar-0.0.1.tar.gz",
                     sha256 = "deadb00f",
+                    hashes = {"sha256": "deadb00f"},
                     url = "https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz",
                     yanked = None,
                 ),
@@ -1358,6 +1494,7 @@ def _test_uv_lock_multiple_packages(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1387,6 +1524,7 @@ def _test_uv_lock_with_extra_pip_args(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1419,6 +1557,7 @@ def _test_uv_lock_multi_os_with_requirements(env):
                     target_platforms = ["linux_aarch64", "linux_x86_64", "windows_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1447,6 +1586,7 @@ def _test_uv_lock_extras_optional_deps(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1475,6 +1615,7 @@ def _test_uv_lock_extras_dep_edge(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "bar-0.0.2-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/bar-0.0.2-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1493,6 +1634,7 @@ def _test_uv_lock_extras_dep_edge(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "baadbeef",
+                    hashes = {"sha256": "baadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
@@ -1528,6 +1670,7 @@ def _test_uv_lock_wheel_dedup_single_version(env):
                     target_platforms = ["cp39_linux_x86_64"],
                     filename = "foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
                     sha256 = "aaa",
+                    hashes = {"sha256": "aaa"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
                     yanked = None,
                 ),
@@ -1574,6 +1717,7 @@ def _test_uv_lock_wheel_dedup_resolution_markers(env):
                     target_platforms = ["cp39_linux_x86_64"],
                     filename = "foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
                     sha256 = "aaa",
+                    hashes = {"sha256": "aaa"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl",
                     yanked = None,
                 ),
@@ -1584,6 +1728,7 @@ def _test_uv_lock_wheel_dedup_resolution_markers(env):
                     target_platforms = ["cp39_osx_aarch64"],
                     filename = "foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl",
                     sha256 = "ccc",
+                    hashes = {"sha256": "ccc"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl",
                     yanked = None,
                 ),
@@ -1612,6 +1757,7 @@ def _test_uv_lock_requires_dist_extras(env):
                     target_platforms = ["linux_x86_64"],
                     filename = "foo-0.0.1-py3-none-any.whl",
                     sha256 = "deadbeef",
+                    hashes = {"sha256": "deadbeef"},
                     url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
                     yanked = None,
                 ),
