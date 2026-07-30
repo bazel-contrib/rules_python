@@ -340,8 +340,8 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://example.com/simple/",
+            "integrity": "sha256-3q2+7w==",
             "requirement": "simple[foo]==0.0.1",
-            "sha256": "deadbeef",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": {
@@ -349,8 +349,8 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://example.com/simple/",
+            "integrity": "sha256-3q2+7w==",
             "requirement": "simple==0.0.1",
-            "sha256": "deadbeef",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
     })
@@ -423,7 +423,6 @@ def _test_simple_sha512_simpleapi(env):
             "index_url": "https://example.com/simple/",
             "integrity": "sha512-3q2+7w==",
             "requirement": "simple==0.0.1",
-            "sha256": "",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
     })
@@ -744,8 +743,8 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
             "index_url": "https://torch.index/torch/",
+            "integrity": "sha256-iADe7wAmAR1QLAwlbMS2fQAjR/Y8OjjNjkXx9EXGE2Q=",
             "requirement": "torch==2.4.1+cpu",
-            "sha256": "8800deef0026011d502c0c256cc4b67d002347f63c3a38cd8e45f1f445c61364",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": {
@@ -753,8 +752,8 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
             "index_url": "https://torch.index/torch/",
+            "integrity": "sha256-NhCUMrEL1xY8mzDOiW88LMobhrl2X5VqFZTw/0MJHio=",
             "requirement": "torch==2.4.1",
-            "sha256": "36109432b10bd7163c9b30ce896f3c2cca1b86b9765f956a1594f0ff43091e2a",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": {
@@ -762,8 +761,8 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
             "index_url": "https://torch.index/torch/",
+            "integrity": "sha256-OlcOXFU0Fc293+Z5IHMns6OAayHGreoU+6d2hNFhnpc=",
             "requirement": "torch==2.4.1+cpu",
-            "sha256": "3a570e5c553415cdbddfe679207327b3a3806b21c6adea14fba77684d1619e97",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": {
@@ -771,8 +770,8 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "dep_template": "@pypi//{name}:{target}",
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
             "index_url": "https://torch.index/torch/",
+            "integrity": "sha256-crSE1bbOwac1vz+locSIPQF0hpjF6c/b60/6t8eYfg0=",
             "requirement": "torch==2.4.1",
-            "sha256": "72b484d5b6cec1a735bf3fa5a1c4883d01748698c5e9cfdbeb4ffab7c7987e0d",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
         },
     })
@@ -859,16 +858,15 @@ simple==0.0.1 --hash=sha256:deadb00f
             return {
                 "simple": struct(
                     whls = {
-                        "deadb00f": struct(
+                        "sha256:deadb00f": struct(
                             yanked = None,
                             filename = "simple-0.0.1-py3-none-any.whl",
-                            sha256 = "deadb00f",
-                            hashes = {"sha256": "deadb00f"},
+                            digest = "sha256:deadb00f",
                             url = test.expect_url,
                         ),
                     },
                     sdists = {},
-                    sha256s_by_version = {},
+                    hashes_by_version = {},
                     index_url = test.expect_index_url,
                 ),
             }
@@ -915,8 +913,8 @@ simple==0.0.1 --hash=sha256:deadb00f
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": test.expect_index_url,
+            "integrity": "sha256-3q2wDw==",
             "requirement": "simple==0.0.1",
-            "sha256": "deadb00f",
             "urls": [test.expect_url],
         }
         if getattr(test, "envsubst", []):
@@ -1050,36 +1048,33 @@ def _test_simple_get_index(env):
         return {
             "plat_pkg": struct(
                 whls = {
-                    "deadb44f": struct(
+                    "sha256:deadb44f": struct(
                         yanked = None,
                         filename = "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
-                        sha256 = "deadb44f",
-                        hashes = {"sha256": "deadb44f"},
+                        digest = "sha256:deadb44f",
                         url = "example2.org/index/plat_pkg/",
                     ),
                 },
                 sdists = {},
-                sha256s_by_version = {
-                    "0.0.4": ["deadb44f"],
+                hashes_by_version = {
+                    "0.0.4": ["sha256:deadb44f"],
                 },
                 index_url = "https://pypi.org/simple",
             ),
             "simple": struct(
                 whls = {
-                    "deadb00f": struct(
+                    "sha256:deadb00f": struct(
                         yanked = None,
                         filename = "simple-0.0.1-py3-none-any.whl",
-                        sha256 = "deadb00f",
-                        hashes = {"sha256": "deadb00f"},
+                        digest = "sha256:deadb00f",
                         url = "example2.org",
                     ),
                 },
                 sdists = {
-                    "deadbeef": struct(
+                    "sha256:deadbeef": struct(
                         yanked = None,
                         filename = "simple-0.0.1.tar.gz",
-                        sha256 = "deadbeef",
-                        hashes = {"sha256": "deadbeef"},
+                        digest = "sha256:deadbeef",
                         url = "example.org",
                     ),
                 },
@@ -1087,18 +1082,17 @@ def _test_simple_get_index(env):
             ),
             "some_other_pkg": struct(
                 whls = {
-                    "deadb33f": struct(
+                    "sha256:deadb33f": struct(
                         yanked = None,
                         filename = "some-other-pkg-0.0.1-py3-none-any.whl",
-                        sha256 = "deadb33f",
-                        hashes = {"sha256": "deadb33f"},
+                        digest = "sha256:deadb33f",
                         url = "example2.org/index/some_other_pkg/",
                     ),
                 },
                 sdists = {},
-                sha256s_by_version = {
-                    "0.0.1": ["deadb33f"],
-                    "0.0.3": ["deadbeef"],
+                hashes_by_version = {
+                    "0.0.1": ["sha256:deadb33f"],
+                    "0.0.3": ["sha256:deadbeef"],
                 },
                 index_url = "https://with_index_url",
             ),
@@ -1263,17 +1257,17 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "dep_template": "@pypi//{name}:{target}",
             "extra_pip_args": ["--extra-args-for-sdist-building"],
             "filename": "any-name.tar.gz",
+            "integrity": "",
             "python_interpreter_target": "unit_test_interpreter_target",
             "requirement": "direct_sdist_without_sha @ some-archive/any-name.tar.gz",
-            "sha256": "",
             "urls": ["some-archive/any-name.tar.gz"],
         },
         "pypi_315_direct_without_sha_0_0_1_py3_none_any": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
+            "integrity": "",
             "requirement": "direct_without_sha==0.0.1",
-            "sha256": "",
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
             "whl_patches": {"my_patch": "1"},
         },
@@ -1296,8 +1290,8 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "dep_template": "@pypi//{name}:{target}",
             "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
             "index_url": "https://pypi.org/simple",
+            "integrity": "sha256-3q20Tw==",
             "requirement": "plat_pkg==0.0.4",
-            "sha256": "deadb44f",
             "urls": ["example2.org/index/plat_pkg/"],
         },
         "pypi_315_simple_py3_none_any_deadb00f": {
@@ -1305,16 +1299,16 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://pypi.org/simple",
+            "integrity": "sha256-3q2wDw==",
             "requirement": "simple==0.0.1",
-            "sha256": "deadb00f",
             "urls": ["example2.org"],
         },
         "pypi_315_some_pkg_py3_none_any_deadbaaf": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
+            "integrity": "sha256-3q26rw==",
             "requirement": "some_pkg==0.0.1",
-            "sha256": "deadbaaf",
             "urls": ["example-direct.org/some_pkg-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_some_py3_none_any_deadb33f": {
@@ -1322,8 +1316,8 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "dep_template": "@pypi//{name}:{target}",
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
             "index_url": "https://with_index_url",
+            "integrity": "sha256-3q2zPw==",
             "requirement": "some_other_pkg==0.0.1",
-            "sha256": "deadb33f",
             "urls": ["example2.org/index/some_other_pkg/"],
         },
     })

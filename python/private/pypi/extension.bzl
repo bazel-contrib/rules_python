@@ -692,8 +692,8 @@ This value is going to be subject to `envsubst` substitutions if necessary, look
 The indexes must support Simple API as described here:
 https://packaging.python.org/en/latest/specifications/simple-repository-api/
 
-Index metadata will be used to get `sha256` values for packages even if the
-`sha256` values are not present in the requirements.txt lock file.
+Index metadata will be used to get the hash digest values for packages even
+if the `--hash` values are not present in the requirements.txt lock file.
 
 Defaults to `https://pypi.org/simple`.
 

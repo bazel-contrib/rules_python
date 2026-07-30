@@ -78,7 +78,7 @@ def _test_sdist(env):
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
-                sha256 = "deadbeefasource",
+                digest = "sha256:deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
                 yanked = None,
                 version = "0.0.1",
@@ -95,7 +95,7 @@ def _test_sdist(env):
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
-                sha256 = "deadbeefasource",
+                digest = "sha256:deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
                 version = "0.0.1",
                 yanked = "",
@@ -112,7 +112,7 @@ def _test_sdist(env):
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
-                sha256 = "deadbeefasource",
+                digest = "sha256:deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
                 version = "0.0.1",
                 # NOTE @aignas 2026-03-09: we preserve the white space
@@ -130,7 +130,7 @@ def _test_sdist(env):
             ),
             struct(
                 filename = "foo-0.0.1.tar.gz",
-                sha256 = "deadbeefasource",
+                digest = "sha256:deadbeefasource",
                 url = "https://example.org/full-url/foo-0.0.1.tar.gz",
                 version = "0.0.1",
                 yanked = "",
@@ -143,22 +143,22 @@ def _test_sdist(env):
         got = parse_simpleapi_html(content = html)
         env.expect.that_collection(got.sdists).has_size(1)
         env.expect.that_collection(got.whls).has_size(0)
-        env.expect.that_collection(got.sha256s_by_version).has_size(1)
+        env.expect.that_collection(got.hashes_by_version).has_size(1)
         if not got:
             fail("expected at least one element, but did not get anything from:\n{}".format(html))
 
         actual = env.expect.that_struct(
-            got.sdists[want.sha256],
+            got.sdists[want.digest],
             attrs = dict(
                 filename = subjects.str,
-                sha256 = subjects.str,
+                digest = subjects.str,
                 url = subjects.str,
                 yanked = subjects.str,
                 version = subjects.str,
             ),
         )
         actual.filename().equals(want.filename)
-        actual.sha256().equals(want.sha256)
+        actual.digest().equals(want.digest)
         actual.url().equals(want.url)
         actual.yanked().equals(want.yanked)
         actual.version().equals(want.version)
@@ -182,7 +182,7 @@ def _test_whls(env):
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
-                sha256 = "deadbeef",
+                digest = "sha256:deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 version = "0.0.2",
                 yanked = None,
@@ -202,7 +202,7 @@ def _test_whls(env):
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
-                sha256 = "deadbeef",
+                digest = "sha256:deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 version = "0.0.2",
                 yanked = None,
@@ -221,7 +221,7 @@ def _test_whls(env):
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
-                sha256 = "deadbeef",
+                digest = "sha256:deadbeef",
                 version = "0.0.2",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 yanked = None,
@@ -240,7 +240,7 @@ def _test_whls(env):
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "deadb00f",
                 metadata_url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
-                sha256 = "deadbeef",
+                digest = "sha256:deadbeef",
                 version = "0.0.2",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 yanked = None,
@@ -258,7 +258,7 @@ def _test_whls(env):
                 filename = "foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 metadata_sha256 = "",
                 metadata_url = "",
-                sha256 = "deadbeef",
+                digest = "sha256:deadbeef",
                 url = "https://example.org/full-url/foo-0.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
                 version = "0.0.2",
                 yanked = None,
@@ -275,12 +275,12 @@ def _test_whls(env):
             fail("expected at least one element, but did not get anything from:\n{}".format(html))
 
         actual = env.expect.that_struct(
-            got.whls[want.sha256],
+            got.whls[want.digest],
             attrs = dict(
                 filename = subjects.str,
                 metadata_sha256 = subjects.str,
                 metadata_url = subjects.str,
-                sha256 = subjects.str,
+                digest = subjects.str,
                 url = subjects.str,
                 yanked = subjects.str,
                 version = subjects.str,
@@ -289,7 +289,7 @@ def _test_whls(env):
         actual.filename().equals(want.filename)
         actual.metadata_sha256().equals(want.metadata_sha256)
         actual.metadata_url().equals(want.metadata_url)
-        actual.sha256().equals(want.sha256)
+        actual.digest().equals(want.digest)
         actual.url().equals(want.url)
         actual.yanked().equals(want.yanked)
         actual.version().equals(want.version)
@@ -324,27 +324,25 @@ def _test_non_sha256_fragment(env):
 
     env.expect.that_collection(got.whls).has_size(2)
     env.expect.that_collection(got.sdists).has_size(1)
-    env.expect.that_dict(got.sha256s_by_version).contains_exactly({
-        "0.0.1": ["deadbeef", "deadb00f"],
+    env.expect.that_dict(got.hashes_by_version).contains_exactly({
+        "0.0.1": ["sha512:deadbeef", "sha512:deadb00f"],
         "0.0.2": [""],
     })
 
-    whl = got.whls["deadbeef"]
-    env.expect.that_str(whl.sha256).equals("")
-    env.expect.that_dict(whl.hashes).contains_exactly({"sha512": "deadbeef"})
+    whl = got.whls["sha512:deadbeef"]
+    env.expect.that_str(whl.digest).equals("sha512:deadbeef")
     env.expect.that_str(whl.url).equals("https://example.org/full-url/foo-0.0.1-py3-none-any.whl")
 
-    sdist = got.sdists["deadb00f"]
-    env.expect.that_str(sdist.sha256).equals("")
-    env.expect.that_dict(sdist.hashes).contains_exactly({"sha512": "deadb00f"})
+    sdist = got.sdists["sha512:deadb00f"]
+    env.expect.that_str(sdist.digest).equals("sha512:deadb00f")
 
     no_hash_whl = got.whls[""]
-    env.expect.that_dict(no_hash_whl.hashes).contains_exactly({})
+    env.expect.that_str(no_hash_whl.digest).equals("")
     env.expect.that_str(no_hash_whl.url).equals("https://example.org/full-url/foo-0.0.2-py3-none-any.whl#egg=foo")
 
 _tests.append(_test_non_sha256_fragment)
 
-def _test_sha256_fragment_hashes(env):
+def _test_sha256_fragment_digest(env):
     html = _generate_html(
         struct(
             attrs = [
@@ -355,11 +353,10 @@ def _test_sha256_fragment_hashes(env):
     )
     got = parse_simpleapi_html(content = html)
 
-    whl = got.whls["deadbeef"]
-    env.expect.that_str(whl.sha256).equals("deadbeef")
-    env.expect.that_dict(whl.hashes).contains_exactly({"sha256": "deadbeef"})
+    whl = got.whls["sha256:deadbeef"]
+    env.expect.that_str(whl.digest).equals("sha256:deadbeef")
 
-_tests.append(_test_sha256_fragment_hashes)
+_tests.append(_test_sha256_fragment_digest)
 
 def parse_simpleapi_html_test_suite(name):
     """Create the test suite.

@@ -34,7 +34,7 @@ def simpleapi_download(
     """Download Simple API HTML.
 
     First it queries all of the indexes for available packages and then it downloads the contents of
-    the per-package URLs and sha256 values. This is to enable us to use bazel_downloader with
+    the per-package URLs and hash digest values. This is to enable us to use bazel_downloader with
     `requirements.txt` files. As a side effect we also are able to "cross-compile" by fetching the
     right wheel for the right target platform through the information that we retrieve here.
 
@@ -294,6 +294,6 @@ def _with_index_url(index_url, values):
     return struct(
         sdists = values.sdists,
         whls = values.whls,
-        sha256s_by_version = values.sha256s_by_version,
+        hashes_by_version = values.hashes_by_version,
         index_url = index_url,
     )

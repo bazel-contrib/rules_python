@@ -43,7 +43,7 @@ def _test_simple(env):
             output = struct(
                 sdists = {"deadbeef": url.strip("/").split("/")[-1]},
                 whls = {"deadb33f": url.strip("/").split("/")[-1]},
-                sha256s_by_version = {"fizz": url.strip("/").split("/")[-1]},
+                hashes_by_version = {"fizz": url.strip("/").split("/")[-1]},
             ),
             success = True,
         )
@@ -71,19 +71,19 @@ def _test_simple(env):
         "bar": struct(
             index_url = "https://main.com/bar/",
             sdists = {"deadbeef": "bar"},
-            sha256s_by_version = {"fizz": "bar"},
+            hashes_by_version = {"fizz": "bar"},
             whls = {"deadb33f": "bar"},
         ),
         "baz": struct(
             index_url = "https://main.com/baz/",
             sdists = {"deadbeef": "baz"},
-            sha256s_by_version = {"fizz": "baz"},
+            hashes_by_version = {"fizz": "baz"},
             whls = {"deadb33f": "baz"},
         ),
         "foo": struct(
             index_url = "https://extra.com/foo/",
             sdists = {"deadbeef": "foo"},
-            sha256s_by_version = {"fizz": "foo"},
+            hashes_by_version = {"fizz": "foo"},
             whls = {"deadb33f": "foo"},
         ),
     })
@@ -115,7 +115,7 @@ def _test_index_overrides(env):
             output = struct(
                 sdists = {"deadbeef": url.strip("/").split("/")[-1]},
                 whls = {"deadb33f": url.strip("/").split("/")[-1]},
-                sha256s_by_version = {"fizz": url.strip("/").split("/")[-1]},
+                hashes_by_version = {"fizz": url.strip("/").split("/")[-1]},
             ),
             success = True,
         )
@@ -147,19 +147,19 @@ def _test_index_overrides(env):
         "ba_z": struct(
             index_url = "https://main.com/ba-z/",
             sdists = {"deadbeef": "ba-z"},
-            sha256s_by_version = {"fizz": "ba-z"},
+            hashes_by_version = {"fizz": "ba-z"},
             whls = {"deadb33f": "ba-z"},
         ),
         "bar": struct(
             index_url = "https://main.com/bar/",
             sdists = {"deadbeef": "bar"},
-            sha256s_by_version = {"fizz": "bar"},
+            hashes_by_version = {"fizz": "bar"},
             whls = {"deadb33f": "bar"},
         ),
         "foo": struct(
             index_url = "https://extra.com/foo/",
             sdists = {"deadbeef": "foo"},
-            sha256s_by_version = {"fizz": "foo"},
+            hashes_by_version = {"fizz": "foo"},
             whls = {"deadb33f": "foo"},
         ),
     })

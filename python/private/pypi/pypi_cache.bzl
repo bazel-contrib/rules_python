@@ -13,7 +13,10 @@ load(":version_from_filename.bzl", "version_from_filename")
 # This value should be changed whenever the storage format changes.
 # Changing it simply means the information cached in the lockfile has to be
 # recomputed.
-_FACT_VERSION = "v1"
+#
+# v2: the `dist_hashes` values and the `dist_yanked` keys are canonical
+#     `<algo>:<digest>` strings instead of bare sha256 hex digests.
+_FACT_VERSION = "v2"
 
 def pypi_cache(mctx = None, store = None):
     """The cache for PyPI index queries.
@@ -135,23 +138,23 @@ def _filter_packages(dists, requested_versions):
         }
         return result if result else None
 
-    sha256s_by_version = {}
+    hashes_by_version = {}
     whls = {}
     sdists = {}
 
-    for sha256, d in dists.sdists.items():
+    for digest, d in dists.sdists.items():
         if d.version not in requested_versions:
             continue
 
-        sdists[sha256] = d
-        sha256s_by_version.setdefault(d.version, []).append(sha256)
+        sdists[digest] = d
+        hashes_by_version.setdefault(d.version, []).append(digest)
 
-    for sha256, d in dists.whls.items():
+    for digest, d in dists.whls.items():
         if d.version not in requested_versions:
             continue
 
-        whls[sha256] = d
-        sha256s_by_version.setdefault(d.version, []).append(sha256)
+        whls[digest] = d
+        hashes_by_version.setdefault(d.version, []).append(digest)
 
     if not whls and not sdists:
         # TODO @aignas 2026-03-08: add logging
@@ -161,9 +164,9 @@ def _filter_packages(dists, requested_versions):
     return struct(
         whls = whls,
         sdists = sdists,
-        sha256s_by_version = {
+        hashes_by_version = {
             k: sorted(v)
-            for k, v in sha256s_by_version.items()
+            for k, v in hashes_by_version.items()
         },
     )
 
@@ -232,20 +235,14 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
 
     retrieved_versions = {}
 
-    for url, stored_hash in known_facts.get("dist_hashes", {}).get(root_url, {}).get(distribution, {}).items():
-        # The values are either bare sha256 hex digests or `<algo>:<digest>` when the
-        # index advertises a digest calculated with a different hash algorithm.
-        algo, sep, digest = stored_hash.partition(":")
-        if not sep:
-            algo, digest = "sha256", stored_hash
-
+    for url, digest in known_facts.get("dist_hashes", {}).get(root_url, {}).get(distribution, {}).items():
         filename = known_facts.get("dist_filenames", {}).get(root_url, {}).get(distribution, {}).get(url)
         if not filename:
             _, _, filename = url.rpartition("/")
 
         version = version_from_filename(filename)
         if version not in requested_versions:
-            # TODO @aignas 2026-01-21: do the check by requested shas at some point
+            # TODO @aignas 2026-01-21: do the check by requested digests at some point
             # We don't have sufficient info in the lock file, need to call the API
             #
             continue
@@ -257,17 +254,16 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         else:
             dists = known_sources.setdefault("sdists", {})
 
-        known_sources.setdefault("sha256s_by_version", {}).setdefault(version, []).append(digest)
+        known_sources.setdefault("hashes_by_version", {}).setdefault(version, []).append(digest)
 
         dists.setdefault(digest, struct(
-            sha256 = digest if algo == "sha256" else "",
-            hashes = {algo: digest} if digest else {},
+            digest = digest,
             filename = filename,
             version = version,
             metadata_url = "",
             metadata_sha256 = "",
             url = url,
-            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(stored_hash),
+            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(digest),
         ))
 
     if not known_sources:
@@ -282,9 +278,9 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     output = struct(
         whls = known_sources.get("whls", {}),
         sdists = known_sources.get("sdists", {}),
-        sha256s_by_version = {
+        hashes_by_version = {
             k: sorted(v)
-            for k, v in known_sources.get("sha256s_by_version", {}).items()
+            for k, v in known_sources.get("hashes_by_version", {}).items()
         },
     )
 
@@ -325,9 +321,8 @@ def _store_facts(facts, fact_version, index_url, value):
     #   "dist_hashes": {
     #     "<index_url>": {
     #       "<last segment>": {
-    #         # A bare sha256 hex digest or "<algo>:<digest>" when the index
-    #         # advertises a digest calculated with a different hash algorithm.
-    #         "<dist url>": "<hash>",
+    #         # An empty string if the index does not advertise any digest.
+    #         "<dist url>": "<algo>:<digest>",
     #       },
     #     },
     #   },
@@ -341,23 +336,16 @@ def _store_facts(facts, fact_version, index_url, value):
     #   "dist_yanked": {
     #     "<index_url>": {
     #       "<last segment>": {
-    #         "<hash>": "<reason>",   # if the package is yanked
+    #         "<algo>:<digest>": "<reason>",   # if the package is yanked
     #       },
     #     },
     #   },
     # },
     for digest, d in (value.sdists | value.whls).items():
-        stored_hash = digest
-        if digest and d.sha256 != digest:
-            for algo, h in d.hashes.items():
-                if h == digest:
-                    stored_hash = "{}:{}".format(algo, digest)
-                    break
-
-        facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, stored_hash)
+        facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, digest)
         if not d.url.endswith(d.filename):
             facts.setdefault("dist_filenames", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, d.filename)
         if d.yanked != None:
-            facts.setdefault("dist_yanked", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(stored_hash, d.yanked)
+            facts.setdefault("dist_yanked", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(digest, d.yanked)
 
     return value

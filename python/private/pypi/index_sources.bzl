@@ -16,7 +16,7 @@
 A file that houses private functions used in the `bzlmod` extension with the same name.
 """
 
-load(":hashes.bzl", "HASH_ALGOS")
+load(":hash.bzl", "hash")
 
 # Just list them here and me super conservative
 _KNOWN_EXTS = [
@@ -48,7 +48,7 @@ def index_sources(line):
         A struct with hashes attribute containing:
             * `hashes` - list[str]; `<algo>:<digest>` hashes of the artifacts
                 to download from pypi_index. Note that any hash algorithm from
-                {obj}`HASH_ALGOS` is accepted, not only `sha256`.
+                {obj}`hash.ALGOS` is accepted, not only `sha256`.
             * `version` - str; version of the package.
             * `marker` - str; the marker expression, as per PEP508 spec.
             * `requirement` - str; a requirement line without the marker. This can
@@ -64,10 +64,10 @@ def index_sources(line):
     maybe_hashes = maybe_hashes or line
     hashes = []
     for h in maybe_hashes.split("--hash=")[1:]:
-        algo, sep, digest = h.strip().partition(" ")[0].partition(":")
-        algo = algo.lower()
-        if sep and digest and algo in HASH_ALGOS:
-            hashes.append("{}:{}".format(algo, digest))
+        algo, _, hex_digest = h.strip().partition(" ")[0].partition(":")
+        digest = hash.digest(algo, hex_digest)
+        if digest:
+            hashes.append(digest)
 
     marker = marker.strip()
     if head == line:
@@ -87,10 +87,10 @@ def index_sources(line):
         url = url_and_rest.strip().partition(" ")[0].strip()
 
         url, _, fragment = url.partition("#")
-        algo, sep, digest = fragment.partition("=")
-        algo = algo.lower()
-        if sep and digest and algo in HASH_ALGOS:
-            hashes.append("{}:{}".format(algo, digest))
+        algo, _, hex_digest = fragment.partition("=")
+        digest = hash.digest(algo, hex_digest)
+        if digest:
+            hashes.append(digest)
         elif fragment:
             # Not a hash fragment (e.g. `#egg=`), keep it as part of the URL.
             url = "{}#{}".format(url, fragment)

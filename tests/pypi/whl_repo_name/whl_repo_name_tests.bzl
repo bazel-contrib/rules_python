@@ -25,6 +25,18 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
+def _test_simple_canonical_digest(env):
+    got = whl_repo_name("foo-1.2.3-py3-none-any.whl", "sha256:deadbeef")
+    env.expect.that_str(got).equals("foo_py3_none_any_deadbeef")
+
+_tests.append(_test_simple_canonical_digest)
+
+def _test_simple_canonical_digest_other_algo(env):
+    got = whl_repo_name("foo-1.2.3-py3-none-any.whl", "sha512:deadbeef000deadbeef")
+    env.expect.that_str(got).equals("foo_py3_none_any_deadbeef")
+
+_tests.append(_test_simple_canonical_digest_other_algo)
+
 def _test_simple_no_sha(env):
     got = whl_repo_name("foo-1.2.3-py3-none-any.whl", "")
     env.expect.that_str(got).equals("foo_1_2_3_py3_none_any")

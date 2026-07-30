@@ -18,25 +18,31 @@
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
-def whl_repo_name(filename, sha256, *target_platforms):
+def whl_repo_name(filename, digest, *target_platforms):
     """Return a valid whl_library repo name given a distribution filename.
 
     Args:
         filename: {type}`str` the filename of the distribution.
-        sha256: {type}`str` the sha256 of the distribution.
+        digest: {type}`str` the digest of the distribution, either as a
+            canonical `<algo>:<hex digest>` string or a bare hex digest.
         *target_platforms: {type}`list[str]` the extra suffixes to append.
             Only used when we need to support different extras per version.
 
     Returns:
         a string that can be used in {obj}`whl_library`.
     """
+
+    # Strip the `<algo>:` prefix so that the name only contains the hex digest
+    # and stays the same as it has always been for bare sha256 values.
+    digest = digest.rpartition(":")[2]
+
     parts = []
 
     if not filename.endswith(".whl"):
         # Then the filename is basically foo-3.2.1.<ext>
         name, _, tail = filename.rpartition("-")
         parts.append(normalize_name(name))
-        if sha256:
+        if digest:
             parts.append("sdist")
             version = ""
         else:
@@ -56,8 +62,8 @@ def whl_repo_name(filename, sha256, *target_platforms):
         parts.append(abi_tag)
         parts.append(platform_tag)
 
-    if sha256:
-        parts.append(sha256[:8])
+    if digest:
+        parts.append(digest[:8])
     elif version:
         parts.insert(1, version)
 

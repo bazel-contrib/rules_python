@@ -30,7 +30,7 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/uv/private:uv_lock_to_requirements.bzl", "uv_lock_extras_map")  # buildifier: disable=bzl-visibility
 load(":argparse.bzl", "argparse")
-load(":hashes.bzl", "preferred_digest")
+load(":hash.bzl", "hash")
 load(":index_sources.bzl", "index_sources")
 load(":parse_requirements_txt.bzl", "parse_requirements_txt")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -83,7 +83,8 @@ def parse_requirements(
          * `index_url`: {type}`str` The index URL used to download the package.
          * `srcs`: {type}`list[struct]` A list of per-distribution source entries, each
            containing: `distribution`, `extra_pip_args`, `requirement_line`,
-           `target_platforms`, `filename`, `sha256`, `hashes`, `url`, `yanked`.
+           `target_platforms`, `filename`, `digest`, `url`, `yanked`. The `digest`
+           is a `<algo>:<digest>` string or empty if the artifact digest is unknown.
     """
     if uv_lock and toml_decode:
         uv_lock = toml_decode(ctx.read(uv_lock))
@@ -204,12 +205,10 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         for wheel in pkg.get("wheels", []):
             url = wheel["url"]
             _, _, filename = url.rpartition("/")
-            hashes = _parse_uv_lock_hash(wheel.get("hash", ""))
             candidates.append(struct(
                 filename = filename,
                 url = url,
-                sha256 = hashes.get("sha256", ""),
-                hashes = hashes,
+                digest = _parse_uv_lock_hash(wheel.get("hash", "")),
                 kind = "wheel",
             ))
 
@@ -218,12 +217,10 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         if sdist:
             url = sdist["url"]
             _, _, filename = url.rpartition("/")
-            hashes = _parse_uv_lock_hash(sdist.get("hash", ""))
             sdist_struct = struct(
                 filename = filename,
                 url = url,
-                sha256 = hashes.get("sha256", ""),
-                hashes = hashes,
+                digest = _parse_uv_lock_hash(sdist.get("hash", "")),
                 kind = "sdist",
             )
 
@@ -234,8 +231,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             git_struct = struct(
                 filename = filename,
                 url = url,
-                sha256 = "",
-                hashes = {},
+                digest = "",
                 kind = "git",
                 source = pkg["source"],
             )
@@ -268,7 +264,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         # Group platforms by resolved source
         src_to_plats = {}
         for p, src in plat_to_src.items():
-            key = src.filename + preferred_digest(src.hashes)
+            key = src.filename + src.digest
             src_to_plats.setdefault(key, struct(src = src, plats = [])).plats.append(p)
 
         # Build resolved_srcs
@@ -286,8 +282,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
                 requirement_line = requirement_line,
                 target_platforms = plats,
                 filename = src.filename,
-                sha256 = src.sha256,
-                hashes = src.hashes,
+                digest = src.digest,
                 url = src.url,
                 yanked = None,
             ))
@@ -320,11 +315,8 @@ def _parse_uv_lock_hash(hash_str):
     The algorithm is not necessarily `sha256` because uv records the strongest
     digest that the index offers.
     """
-    algo, sep, digest = hash_str.partition(":")
-    if not sep or not digest:
-        return {}
-
-    return {algo.lower(): digest}
+    algo, _, hex_digest = hash_str.partition(":")
+    return hash.digest(algo, hex_digest)
 
 def _parse_requirements_from_req_files(
         ctx,
@@ -512,8 +504,7 @@ def _package_srcs(
                 dist = struct(
                     url = "",
                     filename = "",
-                    sha256 = "",
-                    hashes = {},
+                    digest = "",
                     yanked = None,
                 )
                 req_line = r.srcs.requirement_line
@@ -533,8 +524,7 @@ def _package_srcs(
                     requirement_line = req_line,
                     target_platforms = [],
                     filename = dist.filename,
-                    sha256 = dist.sha256,
-                    hashes = dist.hashes,
+                    digest = dist.digest,
                     url = dist.url,
                     yanked = dist.yanked,
                 ),
@@ -623,16 +613,10 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             return None, True
 
         # Handle direct URLs in requirements
-        url_hashes = {}
-        for requirement_hash in requirement.srcs.hashes:
-            algo, _, digest = requirement_hash.partition(":")
-            url_hashes.setdefault(algo, digest)
-
         dist = struct(
             url = requirement.srcs.url,
             filename = requirement.srcs.filename,
-            sha256 = url_hashes.get("sha256", ""),
-            hashes = url_hashes,
+            digest = hash.preferred_digest(requirement.srcs.hashes),
             yanked = None,
         )
 
@@ -648,19 +632,13 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
     hashes_to_use = requirement.srcs.hashes
     if not hashes_to_use:
         version = requirement.srcs.version
-        hashes_to_use = index_urls.sha256s_by_version.get(version, [])
+        hashes_to_use = index_urls.hashes_by_version.get(version, [])
         logger.warn(lambda: "requirement file has been generated without hashes, will use all hashes for the given version {} that could find on the index:\n    {}".format(version, hashes_to_use))
 
-    for requirement_hash in hashes_to_use:
+    for digest in hashes_to_use:
         # For now if the artifact is marked as yanked we just ignore it.
         #
         # See https://packaging.python.org/en/latest/specifications/simple-repository-api/#adding-yank-support-to-the-simple-api
-
-        # The hashes from the requirements files are of the `<algo>:<digest>` form
-        # whereas the values from the index fallback above are bare digests.
-        _, sep, digest = requirement_hash.partition(":")
-        if not sep:
-            digest = requirement_hash
 
         maybe_whl = index_urls.whls.get(digest)
         if maybe_whl and maybe_whl.yanked == None:
@@ -672,7 +650,7 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             sdist = maybe_sdist
             continue
 
-        logger.warn(lambda: "Could not find a whl or an sdist with hash {}; note that the index may be advertising digests calculated with a different hash algorithm".format(requirement_hash))
+        logger.warn(lambda: "Could not find a whl or an sdist with hash {}; note that the index may be advertising digests calculated with a different hash algorithm".format(digest))
 
     yanked = {}
     for dist in whls + [sdist]:
@@ -693,8 +671,8 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
     if not whls and not sdist:
         # If there are no suitable wheels to handle for now allow fallback to pip, it
         # may be a little bit more helpful when debugging? Most likely something is
-        # going a bit wrong here, should we raise an error because the sha256 have most
-        # likely mismatched? We are already printing a warning above.
+        # going a bit wrong here, should we raise an error because the digests have
+        # most likely mismatched? We are already printing a warning above.
         return None, True
 
     # Select a single wheel that can work on the target_platform

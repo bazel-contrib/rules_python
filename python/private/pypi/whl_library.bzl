@@ -576,9 +576,8 @@ For example if your whl depends on `numpy` and your Python package repo is named
     "integrity": attr.string(
         doc = """\
 The expected checksum of the downloaded whl in Subresource Integrity format
-(e.g. `sha512-...`). Only used when `urls` is passed and `sha256` is empty,
-e.g. when the requirements have been locked against an index that advertises
-digests using a hash algorithm other than sha256.
+(e.g. `sha256-...` or `sha512-...`). Only used when `urls` is passed. If
+`sha256` is also set, it takes precedence over this attribute.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

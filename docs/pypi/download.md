@@ -342,8 +342,9 @@ This does not mean that `rules_python` is fetching the wheels eagerly; rather,
 it means that it is calling the PyPI server to get the Simple API response
 to get the list of all available source and wheel distributions. Once it has
 gotten all of the available distributions, it will select the right ones depending
-on the `sha256` values in your `requirements_lock.txt` file. If `sha256` hashes
-are not present in the requirements file, we will fall back to matching by version
+on the `--hash` values in your `requirements_lock.txt` file (any hash algorithm
+advertised by the index can be matched, not only `sha256`). If hashes are not
+present in the requirements file, we will fall back to matching by version
 specified in the lock file.
 
 Fetching the distribution information from the PyPI allows `rules_python` to
