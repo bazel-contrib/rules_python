@@ -84,12 +84,13 @@ def _py_cc_toolchain_impl(ctx):
 
     abi_tag = ctx.attr.abi_tag
     if not abi_tag:
-        # Derive default: cpython-XX[t]
+        # Derive default: cpython-XX[t] on POSIX, cpXX[t] on Windows
         version_parts = ctx.attr.python_version.split(".")
         abi_flags = ""
         if ctx.attr._py_freethreaded_flag[BuildSettingInfo].value == FreeThreadedFlag.YES:
             abi_flags += "t"
-        abi_tag = "cpython-{}{}{}".format(version_parts[0], version_parts[1], abi_flags)
+        prefix = "cp" if ctx.attr.sys_platform == "win32" else "cpython-"
+        abi_tag = "{}{}{}{}".format(prefix, version_parts[0], version_parts[1], abi_flags)
 
     platform_tag = _get_platform_tag(
         sys_platform = ctx.attr.sys_platform,
