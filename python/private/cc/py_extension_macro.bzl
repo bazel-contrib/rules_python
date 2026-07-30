@@ -24,7 +24,6 @@ def py_extension(
         exports_filter = None,
         user_link_flags = None,
         visibility = None,
-        data = None,
         **kwargs):
     """Creates a Python extension module.
 
@@ -65,8 +64,6 @@ def py_extension(
         user_link_flags: {type}`list[str] | None` Additional link flags passed
             to `cc_shared_library`.
         visibility: {type}`list[Label | str] | None` Target visibility.
-        data: {type}`list[Label | str] | None` List of files or targets needed
-            by this extension at runtime.
         **kwargs: {type}`dict` Additional arguments passed to the underlying
             wrapper rule.
     """
@@ -169,9 +166,6 @@ def py_extension(
             "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
             "//conditions:default": "glibc",
         })
-
-    if data != None:
-        kwargs["data"] = data
 
     # 6. Filter out C++ specific compilation/linking attributes before invoking wrapper rule
     for cc_attr in ("includes", "linkopts", "linkshared", "linkstatic", "features"):
