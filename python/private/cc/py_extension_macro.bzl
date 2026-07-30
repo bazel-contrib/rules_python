@@ -140,18 +140,25 @@ def py_extension(
     # - On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
     #   C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
     #   dynamically resolved at runtime when CPython loads the shared library (.so).
-    # - On Windows, link.exe automatically receives the CPython import library (.lib)
-    #   via CcInfo in deps.
+    # - On Windows, link.exe receives the CPython import library (.lib) passed via
+    #   current_py_cc_libs.
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
         "@platforms//os:osx": ["-undefined", "dynamic_lookup"],
+        "@platforms//os:windows": ["$(locations @rules_python//python/cc:current_py_cc_libs)"],
         "//conditions:default": [],
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
 
+    csl_additional_linker_inputs = select({
+        "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
+        "//conditions:default": [],
+    })
+
     cc_shared_library(
         name = csl_name,
         deps = final_csl_deps,
+        additional_linker_inputs = csl_additional_linker_inputs,
         dynamic_deps = dynamic_deps,
         visibility = ["//visibility:private"],
         **csl_kwargs
