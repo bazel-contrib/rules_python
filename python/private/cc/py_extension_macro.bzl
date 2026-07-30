@@ -75,27 +75,15 @@ def py_extension(
 
     csl_deps = []
 
-    deps_list = list(deps) if deps else []
-    has_headers = any([
-        d in ("@rules_python//python/cc:current_py_cc_headers", "//python/cc:current_py_cc_headers", ":current_py_cc_headers")
-        for d in deps_list
-    ])
-    has_libs = any([
-        d in ("@rules_python//python/cc:current_py_cc_libs", "//python/cc:current_py_cc_libs", ":current_py_cc_libs")
-        for d in deps_list
-    ])
-
-    extra_deps = []
-    if not has_headers:
-        extra_deps.append("@rules_python//python/cc:current_py_cc_headers")
-
-    if not has_libs:
-        impl_deps = deps_list + extra_deps + select({
-            "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
-            "//conditions:default": [],
-        })
-    else:
-        impl_deps = deps_list + extra_deps
+    # Private alias targets are appended to avoid "duplicate dependency label" errors
+    # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
+    # in their deps attribute (including when deps is a select() expression).
+    py_cc_headers_and_win_libs = [
+        "//python/private/cc:current_py_cc_headers",
+    ] + select({
+        "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs"],
+        "//conditions:default": [],
+    })
 
     # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
@@ -113,7 +101,7 @@ def py_extension(
             hdrs = hdrs,
             copts = (copts or []) + ["-fPIC"],
             defines = defines,
-            deps = impl_deps,
+            deps = (deps or []) + py_cc_headers_and_win_libs,
             visibility = ["//visibility:private"],
             **impl_lib_kwargs
         )
@@ -133,8 +121,9 @@ def py_extension(
     # symbols exposed by cc_shared_library. On Windows MSVC, cc_shared_library uses
     # exports_filter to inspect the .obj files of matching targets and generate a .def
     # file containing all __declspec(dllexport) symbols (such as PyInit_<name>).
-    # Defaulting to [":all"] matches all targets in the current package.
-    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else [":all"]
+    # Defaulting to csl_deps ensures only the targets in this extension (e.g. _impl)
+    # are inspected, rather than all targets in the package.
+    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else csl_deps
 
     # Platform-specific link flags:
     # - On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython

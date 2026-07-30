@@ -20,6 +20,21 @@ cc_library(
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
+# Private aliases to avoid "duplicate dependency label" errors when users
+# explicitly pass //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
+# in the deps attribute (including when deps is a select() expression).
+alias(
+    name = "current_py_cc_headers",
+    actual = "//python/cc:current_py_cc_headers",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+alias(
+    name = "current_py_cc_libs",
+    actual = "//python/cc:current_py_cc_libs",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
 bzl_library(
     name = "py_extension_macro_bzl",
     deps = [

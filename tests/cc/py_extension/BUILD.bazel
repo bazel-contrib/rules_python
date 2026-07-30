@@ -38,6 +38,18 @@ py_extension(
 #####
 
 py_extension(
+    # A python extension that includes current_py_cc_headers inside a select() in deps.
+    # Verifies that select() in deps works cleanly without duplicate label or type error.
+    name = "ext_explicit_headers_select",
+    srcs = ["ext_source.c"],
+    deps = select({
+        "//conditions:default": ["@rules_python//python/cc:current_py_cc_headers"],
+    }),
+)
+
+#####
+
+py_extension(
     # A python extension that gets its code from a statically-linked library
     name = "ext_static",
     deps = [":static_dep"],
