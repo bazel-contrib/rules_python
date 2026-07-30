@@ -16,12 +16,13 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
+load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", "util")
 load("//python/cc:py_extension.bzl", "py_extension")
 
 def _test_limited_pass_impl(env, target):
-    env.expect.that_target(target).default_outputs().contains(
-        "tests/cc/py_extension/{}.abi3.so".format(target.label.name),
+    env.expect.that_depset_of_files(target[DefaultInfo].files).contains_predicate(
+        matching.file_path_matches("tests/cc/py_extension/{}.abi3.*".format(target.label.name)),
     )
 
 def _test_limited_same_version(name):
