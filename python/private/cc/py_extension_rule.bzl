@@ -17,7 +17,7 @@ def _py_extension_wrapper_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
 
     cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
-    ext = _get_extension(cc_toolchain)
+    ext = _get_extension(ctx, cc_toolchain)
     use_py_limited_api = bool(ctx.attr.py_limited_api)
     if use_py_limited_api:
         output_filename = "{module_name}.abi3.{ext}".format(
@@ -95,6 +95,7 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
             providers = [CcSharedLibraryInfo],
             doc = "The cc_shared_library target to wrap.",
         ),
+        "_windows_constraint": lambda: attrb.Label(default = "@platforms//os:windows"),
     },
 )
 
@@ -116,23 +117,28 @@ def create_py_extension_wrapper_rule_builder(**kwargs):
 
 py_extension_wrapper = create_py_extension_wrapper_rule_builder().build()
 
-def _get_extension(cc_toolchain):
-    """
-    Derives the appropriate file extension from the C++ toolchain.
+def _get_extension(ctx, cc_toolchain):
+    """Derives the appropriate file extension from the platform and C++ toolchain.
 
     Args:
-        cc_toolchain: The CcToolchainInfo provider (usually obtained via
-          ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc)
+        ctx: The rule context.
+        cc_toolchain: The CcToolchainInfo provider.
 
     Returns:
         The extension, e.g. "so" or "pyd"
     """
-
-    # Windows uses .pyd; Unix (Linux/macOS) uses .so for Python modules
     target_name = cc_toolchain.target_gnu_system_name
-    is_windows = "windows" in target_name or "mingw" in target_name or "msvc" in target_name
-    ext = "pyd" if is_windows else "so"
-    return ext
+    py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+    py_cc_toolchain = py_toolchain.py_cc_toolchain
+    platform_tag = py_cc_toolchain.platform_tag or ""
+    is_windows = (
+        "windows" in target_name or
+        "mingw" in target_name or
+        "msvc" in target_name or
+        platform_tag.startswith("win") or
+        ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo])
+    )
+    return "pyd" if is_windows else "so"
 
 def _get_platform(ctx):
     """Derives the PEP 3149 platform tag from the active Python C++ toolchain.
