@@ -74,6 +74,9 @@ def py_extension(
     _ = linkshared  # buildifier: disable=unused-variable
 
     csl_deps = []
+
+    # -fPIC (Position Independent Code) is required when compiling C/C++ sources into
+    # dynamic/shared libraries (.so/.dylib/.pyd) so code can be loaded at arbitrary addresses.
     copts = (copts or []) + ["-fPIC"]
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
@@ -114,6 +117,7 @@ def py_extension(
     elif deps:
         final_csl_deps = deps
     else:
+        # 2. If no static deps or sources were specified, use empty target for CSL requirement
         final_csl_deps = ["//python/private/cc:empty"]
 
     # 4. Create the underlying cc_shared_library
@@ -125,7 +129,9 @@ def py_extension(
     # exports_filter to inspect the .obj files of matching targets and generate a .def
     # file containing all __declspec(dllexport) symbols (such as PyInit_<name>).
     # Defaulting to final_csl_deps ensures only the targets in this extension (e.g. _impl)
-    # are inspected, rather than all targets in the package.
+    # are inspected, rather than all targets in the package. Note: current_py_cc_libs
+    # provides an import library (.lib), not object files (.obj), so MSVC link.exe
+    # does not re-export CPython runtime symbols.
     csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else final_csl_deps
 
     # Platform-specific link flags:
