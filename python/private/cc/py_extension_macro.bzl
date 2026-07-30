@@ -136,15 +136,13 @@ def py_extension(
     # does not re-export CPython runtime symbols.
     csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else final_csl_deps
 
-    # Platform-specific link flags:
-    # - On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
-    #   C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
-    #   dynamically resolved at runtime when CPython loads the shared library (.so).
-    # - On Windows, link.exe receives the CPython import library (.lib) passed via
-    #   current_py_cc_libs.
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
+        # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
+        # C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
+        # dynamically resolved at runtime when CPython loads the shared library (.so).
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
-        "@platforms//os:osx": ["-undefined", "dynamic_lookup"],
+        # On Windows, link.exe receives the CPython import library (.lib) passed via
+        # current_py_cc_libs.
         "@platforms//os:windows": ["$(locations @rules_python//python/cc:current_py_cc_libs)"],
         "//conditions:default": [],
     })
