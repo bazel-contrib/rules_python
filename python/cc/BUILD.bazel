@@ -83,5 +83,6 @@ alias(
 bzl_library(
     name = "py_extension",
     srcs = ["py_extension.bzl"],
+    visibility = ["//visibility:public"],
     deps = ["//python/private/cc:py_extension_macro"],
 )
