@@ -18,39 +18,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 
 def _current_py_cc_libs_impl(ctx):
     py_cc_toolchain = ctx.toolchains["//python/cc:toolchain_type"].py_cc_toolchain
-    providers = [p for p in py_cc_toolchain.libs.providers_map.values() if not hasattr(p, "data_runfiles")]
-    default_runfiles = None
-    data_runfiles = None
-    files = []
-    for p in py_cc_toolchain.libs.providers_map.values():
-        if hasattr(p, "data_runfiles"):
-            default_runfiles = p.default_runfiles
-            data_runfiles = p.data_runfiles
-
-    cc_infos = [p for p in py_cc_toolchain.libs.providers_map.values() if hasattr(p, "linking_context")]
-    if cc_infos:
-        cc_info = cc_infos[0]
-        for input in cc_info.linking_context.linker_inputs.to_list():
-            for lib in input.libraries:
-                if lib.static_library:
-                    files.append(lib.static_library)
-                if lib.interface_library:
-                    files.append(lib.interface_library)
-                elif lib.dynamic_library:
-                    files.append(lib.dynamic_library)
-
-    # On Windows MSVC, user_link_flags passes $(locations @rules_python//python/cc:current_py_cc_libs)
-    # to link.exe. MSVC link.exe accepts import libraries (.lib) but fails with
-    # LNK1107 if passed raw DLL binaries (.dll). We filter out .dll files so
-    # DefaultInfo.files only contains linkable library files (.lib / .a).
-    link_files = [f for f in files if not f.path.endswith(".dll")]
-
-    providers.append(DefaultInfo(
-        files = depset(link_files),
-        default_runfiles = default_runfiles,
-        data_runfiles = data_runfiles,
-    ))
-    return providers
+    return list(py_cc_toolchain.libs.providers_map.values())
 
 current_py_cc_libs = rule(
     implementation = _current_py_cc_libs_impl,
