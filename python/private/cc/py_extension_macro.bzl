@@ -75,9 +75,11 @@ def py_extension(
 
     csl_deps = []
 
-    # -fPIC (Position Independent Code) is required when compiling C/C++ sources into
-    # dynamic/shared libraries (.so/.dylib/.pyd) so code can be loaded at arbitrary addresses.
-    copts = (copts or []) + ["-fPIC"]
+    copts = (copts or []) + [
+        # -fPIC (Position Independent Code) is required when compiling C/C++ sources into
+        # dynamic/shared libraries (.so/.dylib/.pyd) so code can be loaded at arbitrary addresses.
+        "-fPIC",
+    ]
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
@@ -117,7 +119,7 @@ def py_extension(
     elif deps:
         final_csl_deps = deps
     else:
-        # 2. If no static deps or sources were specified, use empty target for CSL requirement
+        # cc_shared_library requires a dependency, so use an empty library when none are given.
         final_csl_deps = ["//python/private/cc:empty"]
 
     # 4. Create the underlying cc_shared_library
