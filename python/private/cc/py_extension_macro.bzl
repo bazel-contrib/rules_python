@@ -75,16 +75,27 @@ def py_extension(
 
     csl_deps = []
 
-    # CPython headers are required for compiling C extension sources.
-    # On Windows MSVC, link.exe does not support unresolved symbol lookup at link time
-    # (unlike Linux/macOS dynamic lookup), so the python3xx.lib import library from
-    # current_py_cc_libs must be linked explicitly to resolve CPython C-API symbols.
-    py_cc_headers_and_win_libs = [
-        "@rules_python//python/cc:current_py_cc_headers",
-    ] + select({
-        "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
-        "//conditions:default": [],
-    })
+    deps_list = list(deps) if deps else []
+    has_headers = any([
+        d in ("@rules_python//python/cc:current_py_cc_headers", "//python/cc:current_py_cc_headers", ":current_py_cc_headers")
+        for d in deps_list
+    ])
+    has_libs = any([
+        d in ("@rules_python//python/cc:current_py_cc_libs", "//python/cc:current_py_cc_libs", ":current_py_cc_libs")
+        for d in deps_list
+    ])
+
+    extra_deps = []
+    if not has_headers:
+        extra_deps.append("@rules_python//python/cc:current_py_cc_headers")
+
+    if not has_libs:
+        impl_deps = deps_list + extra_deps + select({
+            "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
+            "//conditions:default": [],
+        })
+    else:
+        impl_deps = deps_list + extra_deps
 
     # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
@@ -102,7 +113,7 @@ def py_extension(
             hdrs = hdrs,
             copts = (copts or []) + ["-fPIC"],
             defines = defines,
-            deps = (deps or []) + py_cc_headers_and_win_libs,
+            deps = impl_deps,
             visibility = ["//visibility:private"],
             **impl_lib_kwargs
         )
