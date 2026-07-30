@@ -104,6 +104,7 @@ def main():
             name = check.get("name", "unknown")
             state = check.get("state", "UNKNOWN")
             link = check.get("link", "")
+            bucket = check.get("bucket", "")
 
             if "buildkite" in name.lower() and link:
                 jobs = get_buildkite_jobs(link)
@@ -111,24 +112,32 @@ def main():
                 passed = 0
                 failed = 0
                 running = 0
+                blocked = 0
                 other = 0
 
                 for job in jobs:
                     jstate = job.get("state", "unknown")
                     exit_status = job.get("exit_status")
                     is_soft_failed = job.get("soft_failed") is True
+                    is_blocked = jstate in ["blocked", "blocked_failed"]
                     is_failed = (
-                        jstate in ["failed", "failing"]
-                        or (exit_status != 0 and exit_status is not None)
-                    ) and not is_soft_failed
+                        (
+                            jstate in ["failed", "failing"]
+                            or (exit_status != 0 and exit_status is not None)
+                        )
+                        and not is_soft_failed
+                        and not is_blocked
+                    )
                     is_passed = (
                         jstate in ["passed", "success"]
                         or (jstate == "finished" and exit_status == 0)
                         or is_soft_failed
-                    )
-                    is_running = jstate in ["running", "scheduled"]
+                    ) and not is_blocked
+                    is_running = jstate in ["running", "scheduled"] and not is_blocked
 
-                    if is_failed:
+                    if is_blocked:
+                        blocked += 1
+                    elif is_failed:
                         failed += 1
                     elif is_passed:
                         passed += 1
@@ -140,7 +149,7 @@ def main():
                 build_id = link.split("/")[-1].split("#")[0]
                 print(
                     f"Buildkite #{build_id}: {len(jobs)} total jobs "
-                    f"(Passed: {passed}, Failed: {failed}, Running: {running}, Other: {other})"
+                    f"(Passed: {passed}, Failed: {failed}, Running: {running}, Blocked: {blocked}, Other: {other})"
                 )
 
                 for job in jobs:
@@ -151,12 +160,42 @@ def main():
 
                     exit_status = job.get("exit_status")
                     is_soft_failed = job.get("soft_failed") is True
+                    is_blocked = jstate in ["blocked", "blocked_failed"]
                     is_failed = (
-                        jstate in ["failed", "failing"]
-                        or (exit_status != 0 and exit_status is not None)
-                    ) and not is_soft_failed
+                        (
+                            jstate in ["failed", "failing"]
+                            or (exit_status != 0 and exit_status is not None)
+                        )
+                        and not is_soft_failed
+                        and not is_blocked
+                    )
 
-                    if is_failed and jkey not in monitored:
+                    if is_blocked:
+                        jkey_blocked = f"bk_blocked_{jid}"
+                        if jkey_blocked not in monitored:
+                            print(
+                                f"⏸️ Notifying blocked state for Buildkite job '{jname}' (ID: {jid})..."
+                            )
+                            msg = (
+                                f"⚠️ Remote CI Buildkite Job '{jname}' is blocked!\n\n"
+                                f"Build ID: {build_id} | Job ID: {jid}\n"
+                                f"Log URL: {job.get('log_url', link)}\n\n"
+                                f"The user must confirm whether to run the CI jobs."
+                            )
+                            subprocess.run(
+                                [
+                                    "agentapi",
+                                    "send-message",
+                                    "--title=CI Job Blocked",
+                                    args.conv_id,
+                                    msg,
+                                ]
+                            )
+                            monitored[jkey_blocked] = time.time()
+                            with open(state_file, "w") as f:
+                                json.dump(monitored, f)
+
+                    elif is_failed and jkey not in monitored:
                         print(
                             f"🚨 Notifying failure for Buildkite job '{jname}' (ID: {jid})..."
                         )
@@ -164,7 +203,7 @@ def main():
                             f"⚠️ Remote CI Buildkite Job '{jname}' completed with errors!\n\n"
                             f"Build ID: {build_id} | Job ID: {jid}\n"
                             f"Log URL: {job.get('log_url', link)}\n\n"
-                            f"Start subagent: run analyze-ci-failure skill on this failure"
+                            f"Action required: Start a subagent to run the analyze-ci-failure skill for '{jname}' with build ID '{build_id}' and job ID '{jid}'."
                         )
                         subprocess.run(
                             [
@@ -179,12 +218,39 @@ def main():
                         with open(state_file, "w") as f:
                             json.dump(monitored, f)
 
-            elif state in ["FAILURE", "failed"] and name not in monitored:
+            elif (
+                state.upper() in ["ACTION_REQUIRED", "BLOCKED"]
+                and f"gh_blocked_{name}" not in monitored
+            ):
+                print(f"⏸️ Notifying blocked state for GitHub check '{name}'...")
+                msg = (
+                    f"⚠️ Remote CI GitHub Check '{name}' is blocked!\n\n"
+                    f"Link: {link}\n\n"
+                    f"The user must confirm whether to run the CI jobs."
+                )
+                subprocess.run(
+                    [
+                        "agentapi",
+                        "send-message",
+                        "--title=CI Check Blocked",
+                        args.conv_id,
+                        msg,
+                    ]
+                )
+                monitored[f"gh_blocked_{name}"] = time.time()
+                with open(state_file, "w") as f:
+                    json.dump(monitored, f)
+
+            elif (
+                state.upper() in ["FAILURE", "FAIL", "CANCELLED", "TIMED_OUT"]
+                or bucket == "fail"
+            ) and name not in monitored:
                 print(f"🚨 Notifying failure for GitHub check '{name}'...")
+                job_id = link.split("/")[-1] if "/" in link else link
                 msg = (
                     f"⚠️ Remote CI GitHub Check '{name}' completed with errors!\n\n"
                     f"Link: {link}\n\n"
-                    f"Start subagent: run analyze-ci-failure skill on this failure"
+                    f"Action required: Start a subagent to run the analyze-ci-failure skill for '{name}' with link '{link}' and job ID '{job_id}'."
                 )
                 subprocess.run(
                     [
