@@ -75,6 +75,10 @@ def py_extension(
 
     csl_deps = []
 
+    # CPython headers are required for compiling C extension sources.
+    # On Windows MSVC, link.exe does not support unresolved symbol lookup at link time
+    # (unlike Linux/macOS dynamic lookup), so the python3xx.lib import library from
+    # current_py_cc_libs must be linked explicitly to resolve CPython C-API symbols.
     py_cc_headers_and_win_libs = [
         "@rules_python//python/cc:current_py_cc_headers",
     ] + select({
@@ -113,8 +117,20 @@ def py_extension(
     # 4. Create the underlying cc_shared_library
     csl_name = "_" + name + "_csl"
     csl_kwargs = copy_propagating_kwargs(kwargs)
+
+    # exports_filter specifies which target dependencies should have their exported
+    # symbols exposed by cc_shared_library. On Windows MSVC, cc_shared_library uses
+    # exports_filter to inspect the .obj files of matching targets and generate a .def
+    # file containing all __declspec(dllexport) symbols (such as PyInit_<name>).
+    # Defaulting to [":all"] matches all targets in the current package.
     csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else [":all"]
 
+    # Platform-specific link flags:
+    # - On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
+    #   C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
+    #   dynamically resolved at runtime when CPython loads the shared library (.so).
+    # - On Windows, link.exe receives the CPython import library (.lib) passed via
+    #   current_py_cc_libs.
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
         "@platforms//os:osx": ["-undefined", "dynamic_lookup"],

@@ -26,6 +26,18 @@ py_extension(
 #####
 
 py_extension(
+    # A python extension that explicitly includes current_py_cc_headers in deps.
+    # Verifies that explicit current_py_cc_headers does not cause a duplicate label error.
+    name = "ext_explicit_headers",
+    srcs = ["ext_source.c"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
+
+py_extension(
     # A python extension that gets its code from a statically-linked library
     name = "ext_static",
     deps = [":static_dep"],

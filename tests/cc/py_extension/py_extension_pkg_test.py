@@ -1,15 +1,4 @@
-import os
-import sys
 import unittest
-
-if sys.platform == "win32":
-    for path in sys.path:
-        abs_p = os.path.abspath(path)
-        if os.path.isdir(abs_p):
-            try:
-                os.add_dll_directory(abs_p)
-            except Exception:
-                pass
 
 from tests.cc.py_extension import ext_pkg_test
 

@@ -2,15 +2,6 @@ import os
 import sys
 import unittest
 
-if sys.platform == "win32":
-    for path in sys.path:
-        abs_p = os.path.abspath(path)
-        if os.path.isdir(abs_p):
-            try:
-                os.add_dll_directory(abs_p)
-            except Exception:
-                pass
-
 import ext_shared
 from elftools.elf.dynamic import DynamicSection
 from elftools.elf.elffile import ELFFile

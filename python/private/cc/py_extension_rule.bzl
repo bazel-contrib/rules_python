@@ -7,8 +7,9 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python/private:attr_builders.bzl", "attrb")
-load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS")
+load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:builders.bzl", "builders")
+load("//python/private:common.bzl", "is_windows_platform")
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
@@ -16,8 +17,7 @@ load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
 def _py_extension_wrapper_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
 
-    cc_toolchain = ctx.toolchains["@bazel_tools//tools/cpp:toolchain_type"].cc
-    ext = _get_extension(ctx, cc_toolchain)
+    ext = _get_extension(ctx)
     use_py_limited_api = bool(ctx.attr.py_limited_api)
     if use_py_limited_api:
         output_filename = "{module_name}.abi3.{ext}".format(
@@ -84,6 +84,7 @@ def _py_extension_wrapper_impl(ctx):
 PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
     COMMON_ATTRS,
     IMPORTS_ATTRS,
+    WINDOWS_CONSTRAINTS_ATTRS,
     {
         "libc": lambda: attrb.String(default = "glibc"),
         "module_name": lambda: attrb.String(),
@@ -95,7 +96,6 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
             providers = [CcSharedLibraryInfo],
             doc = "The cc_shared_library target to wrap.",
         ),
-        "_windows_constraint": lambda: attrb.Label(default = "@platforms//os:windows"),
     },
 )
 
@@ -117,28 +117,19 @@ def create_py_extension_wrapper_rule_builder(**kwargs):
 
 py_extension_wrapper = create_py_extension_wrapper_rule_builder().build()
 
-def _get_extension(ctx, cc_toolchain):
-    """Derives the appropriate file extension from the platform and C++ toolchain.
+def _get_extension(ctx):
+    """Derives the appropriate file extension for C extensions from target platform.
+
+    Note: On macOS, CPython C extensions use .so (PEP 3149), not .dylib.
+    Windows uses .pyd.
 
     Args:
         ctx: The rule context.
-        cc_toolchain: The CcToolchainInfo provider.
 
     Returns:
         The extension, e.g. "so" or "pyd"
     """
-    target_name = cc_toolchain.target_gnu_system_name
-    py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
-    py_cc_toolchain = py_toolchain.py_cc_toolchain
-    platform_tag = py_cc_toolchain.platform_tag or ""
-    is_windows = (
-        "windows" in target_name or
-        "mingw" in target_name or
-        "msvc" in target_name or
-        platform_tag.startswith("win") or
-        ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo])
-    )
-    return "pyd" if is_windows else "so"
+    return "pyd" if is_windows_platform(ctx) else "so"
 
 def _get_platform(ctx):
     """Derives the PEP 3149 platform tag from the active Python C++ toolchain.

@@ -39,7 +39,10 @@ def _current_py_cc_libs_impl(ctx):
                 elif lib.dynamic_library:
                     files.append(lib.dynamic_library)
 
-    # Filter out .dll files so MSVC link.exe never receives .dll binary files on command line
+    # On Windows MSVC, user_link_flags passes $(locations @rules_python//python/cc:current_py_cc_libs)
+    # to link.exe. MSVC link.exe accepts import libraries (.lib) but fails with
+    # LNK1107 if passed raw DLL binaries (.dll). We filter out .dll files so
+    # DefaultInfo.files only contains linkable library files (.lib / .a).
     link_files = [f for f in files if not f.path.endswith(".dll")]
 
     providers.append(DefaultInfo(
