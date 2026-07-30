@@ -1,4 +1,4 @@
-"""Implementation of the _py_extension_wrapper rule.
+"""Implementation of rules supporting py_extension.
 
 :::{include} /_includes/experimental_api.md
 :::
