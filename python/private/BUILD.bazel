@@ -109,6 +109,9 @@ alias(
         "@platforms//os:windows": ":build_data_writer.ps1",
         "//conditions:default": ":build_data_writer.sh",
     }),
+    # Not actually public. Only public because it's an implicit dependency of
+    # rules built via py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
 )
 
 bzl_library(
@@ -700,6 +703,9 @@ bzl_library(
 
 define_uncachable_version_file(
     name = "uncachable_version_file",
+    # Not actually public. Only public because it's an implicit dependency of
+    # rules built via py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
 )
 
 bzl_library(
@@ -837,6 +843,9 @@ alias(
         ":is_bazel_config_mode_target": "//python/config_settings:debugger",
         "//conditions:default": "//python/private:empty",
     }),
+    # Not actually public. Only public because it's an implicit dependency of
+    # rules built via py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
 )
 
 bazel_config_mode(name = "bazel_config_mode")
@@ -888,8 +897,16 @@ current_interpreter_executable(
 
 py_library(
     name = "empty",
+    # Not actually public. Only public because it's the resolved default of
+    # debugger_if_target_config, an implicit dependency of rules built via
+    # py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
 )
 
 sentinel(
     name = "sentinel",
+    # Not actually public. Only public because it's the resolved default of
+    # uncachable_version_file, an implicit dependency of rules built via
+    # py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
 )

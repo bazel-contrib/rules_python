@@ -28,12 +28,13 @@ actions depending on this file will always re-run.
     implementation = _uncachable_version_file_impl,
 )
 
-def define_uncachable_version_file(name):
+def define_uncachable_version_file(name, visibility = None):
     native.alias(
         name = name,
         actual = select({
             ":stamp_detect": ":uncachable_version_file_impl",
             "//conditions:default": ":sentinel",
         }),
+        visibility = visibility,
     )
     uncachable_version_file(name = "uncachable_version_file_impl")
