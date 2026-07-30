@@ -5,6 +5,7 @@ load("//python:py_test.bzl", "py_test")
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
 load(":dependency_graph_tests.bzl", "dependency_graph_test_suite")
+load(":py_extension_build_test.bzl", "py_extension_build_test")
 load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
 load(":py_limited_api_tests.bzl", "py_limited_api_test_suite")
 
@@ -17,7 +18,7 @@ licenses(["notice"])
 
 #####
 
-py_extension(
+py_extension_build_test(
     # An extension defined solely by source files, with no deps
     name = "ext_source",
     srcs = ["ext_source.c"],
@@ -25,7 +26,7 @@ py_extension(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # A python extension that explicitly includes current_py_cc_headers in deps.
     # Verifies that explicit current_py_cc_headers does not cause a duplicate label error.
     name = "ext_explicit_headers",
@@ -37,7 +38,7 @@ py_extension(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # A python extension that includes current_py_cc_headers inside a select() in deps.
     # Verifies that select() in deps works cleanly without duplicate label or type error.
     name = "ext_explicit_headers_select",
@@ -49,7 +50,7 @@ py_extension(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # A python extension that gets its code from a statically-linked library
     name = "ext_static",
     deps = [":static_dep"],
@@ -63,7 +64,7 @@ cc_library(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # An extension that also depends on a data file
     name = "ext_with_data",
     data = ["some_data.txt"],
@@ -72,7 +73,7 @@ py_extension(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # A python extension that dynamically links to another shared library
     name = "ext_shared",
     dynamic_deps = [
@@ -133,7 +134,7 @@ cc_library(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # An extension that uses the Python limited API
     name = "ext_limited",
     py_limited_api = "3.8",
@@ -155,7 +156,7 @@ cc_library(
 
 #####
 
-py_extension(
+py_extension_build_test(
     # An extension with its PyInit_* function in a static dependency
     name = "ext_init_in_dep",
     deps = [":ext_init_in_dep_impl"],

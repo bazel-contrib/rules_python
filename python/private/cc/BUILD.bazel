@@ -24,13 +24,13 @@ cc_library(
 # explicitly pass //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
 # in the deps attribute (including when deps is a select() expression).
 alias(
-    name = "current_py_cc_headers",
+    name = "current_py_cc_headers_private_alias",
     actual = "//python/cc:current_py_cc_headers",
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 alias(
-    name = "current_py_cc_libs",
+    name = "current_py_cc_libs_private_alias",
     actual = "//python/cc:current_py_cc_libs",
     visibility = NOT_ACTUALLY_PUBLIC,
 )

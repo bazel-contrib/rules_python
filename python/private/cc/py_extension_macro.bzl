@@ -74,16 +74,18 @@ def py_extension(
     _ = linkshared  # buildifier: disable=unused-variable
 
     csl_deps = []
+    copts = (copts or []) + ["-fPIC"]
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
     # in their deps attribute (including when deps is a select() expression).
     py_cc_headers_and_win_libs = [
-        "//python/private/cc:current_py_cc_headers",
+        "//python/private/cc:current_py_cc_headers_private_alias",
     ] + select({
-        "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs"],
+        "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs_private_alias"],
         "//conditions:default": [],
     })
+    deps = (deps or []) + py_cc_headers_and_win_libs
 
     # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
@@ -99,19 +101,20 @@ def py_extension(
             name = impl_lib_name,
             srcs = srcs,
             hdrs = hdrs,
-            copts = (copts or []) + ["-fPIC"],
+            copts = copts,
             defines = defines,
-            deps = (deps or []) + py_cc_headers_and_win_libs,
+            deps = deps,
             visibility = ["//visibility:private"],
             **impl_lib_kwargs
         )
         csl_deps.append(":" + impl_lib_name)
-    elif deps:
-        csl_deps.extend(deps)
 
-    # 2. If no static deps or sources were specified, use empty target for CSL requirement
-    if not csl_deps:
-        csl_deps.append("//python/private/cc:empty")
+    if csl_deps:
+        final_csl_deps = csl_deps
+    elif deps:
+        final_csl_deps = deps
+    else:
+        final_csl_deps = ["//python/private/cc:empty"]
 
     # 4. Create the underlying cc_shared_library
     csl_name = "_" + name + "_csl"
@@ -121,9 +124,9 @@ def py_extension(
     # symbols exposed by cc_shared_library. On Windows MSVC, cc_shared_library uses
     # exports_filter to inspect the .obj files of matching targets and generate a .def
     # file containing all __declspec(dllexport) symbols (such as PyInit_<name>).
-    # Defaulting to csl_deps ensures only the targets in this extension (e.g. _impl)
+    # Defaulting to final_csl_deps ensures only the targets in this extension (e.g. _impl)
     # are inspected, rather than all targets in the package.
-    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else csl_deps
+    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else final_csl_deps
 
     # Platform-specific link flags:
     # - On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
@@ -144,12 +147,9 @@ def py_extension(
         "//conditions:default": [],
     })
 
-    if exports_filter:
-        csl_kwargs["exports_filter"] = exports_filter
-
     cc_shared_library(
         name = csl_name,
-        deps = csl_deps,
+        deps = final_csl_deps,
         additional_linker_inputs = csl_additional_linker_inputs,
         dynamic_deps = dynamic_deps,
         visibility = ["//visibility:private"],
