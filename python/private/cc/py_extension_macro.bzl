@@ -113,16 +113,12 @@ def py_extension(
     # 4. Create the underlying cc_shared_library
     csl_name = "_" + name + "_csl"
     csl_kwargs = copy_propagating_kwargs(kwargs)
-    if exports_filter:
-        csl_kwargs["exports_filter"] = exports_filter
+    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else [":all"]
 
     effective_user_link_flags = (user_link_flags or linkopts or []) + select({
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
         "@platforms//os:osx": ["-undefined", "dynamic_lookup"],
-        "@platforms//os:windows": [
-            "$(locations @rules_python//python/cc:current_py_cc_libs)",
-            "/WHOLEARCHIVE",
-        ],
+        "@platforms//os:windows": ["$(locations @rules_python//python/cc:current_py_cc_libs)"],
         "//conditions:default": [],
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
