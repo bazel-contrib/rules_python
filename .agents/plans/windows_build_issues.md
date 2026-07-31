@@ -43,18 +43,14 @@ cc_shared_library(
 2. Furthermore, Bazel dereferences `alias` targets (such as `//python/private/cc:current_py_cc_libs_private_alias` pointing to `//python/cc:current_py_cc_libs`) when resolving target dependencies in `cc_shared_library`. If `exports_filter` only contains the alias target label string, `cc_shared_library` fails to match the dereferenced actual target label, filtering out `current_py_cc_libs` and omitting `python311.lib`.
 
 ### Solution
-Use `str(Label("//python/cc:current_py_cc_libs"))` alongside `str(Label("//python/private/cc:current_py_cc_libs_private_alias"))` inside the macro body:
+Include `py_cc_libs_alias` in `csl_deps_with_win`, and default `exports_filter` to `csl_deps_with_win` when `exports_filter` is `None`:
 ```bzl
-py_cc_libs_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
-py_cc_libs_target = str(Label("//python/cc:current_py_cc_libs"))
-win_exports_filter = select({
-    "@platforms//os:windows": [py_cc_libs_target, py_cc_libs_alias],
-    "//conditions:default": [],
-})
-csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else (csl_deps_with_win + win_exports_filter)
+if exports_filter != None:
+    csl_kwargs["exports_filter"] = exports_filter
+else:
+    csl_kwargs["exports_filter"] = csl_deps_with_win
 ```
-
-> **Important Scoping Note**: `str(Label(...))` **must** be evaluated inside macro bodies (`def py_extension(...)`) rather than as top-level `.bzl` module constants. At top-level module load time, `str(Label(...))` bakes in the repo-root canonical prefix (`@@//...`). Evaluating `str(Label(...))` dynamically inside the macro body ensures `Label` stringification resolves in the caller's evaluation context (e.g. `@@rules_python+...`), matching `cc_shared_library`'s canonical target labels correctly.
+This ensures `cc_shared_library` retains `py_cc_libs_alias` and its underlying toolchain library `python3xx.lib` in its `deps` and `exports_filter` graph without adding restrictive package label strings that fail to match external toolchain repository labels (e.g. `@@+python+python_3_11_15...//:python_lib`).
 
 ---
 
