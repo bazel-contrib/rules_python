@@ -86,7 +86,6 @@ def py_extension(
 
     py_cc_headers_alias = "//python/private/cc:current_py_cc_headers_private_alias"
     py_cc_libs_alias = "//python/private/cc:current_py_cc_libs_private_alias"
-    py_cc_libs_target = "//python/cc:current_py_cc_libs"
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
@@ -132,34 +131,34 @@ def py_extension(
     csl_name = "_" + name + "_csl"
     csl_kwargs = copy_propagating_kwargs(kwargs)
 
-    if srcs or hdrs:
-        csl_deps_with_win = final_csl_deps + select({
-            "@platforms//os:windows": [py_cc_libs_alias],
-            "//conditions:default": [],
-        })
+    if exports_filter != None:
+        csl_kwargs["exports_filter"] = exports_filter
     else:
-        csl_deps_with_win = final_csl_deps
-
-    win_exports_filter = select({
-        "@platforms//os:windows": [py_cc_libs_target, py_cc_libs_alias],
-        "//conditions:default": [],
-    })
-
-    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else (csl_deps_with_win + win_exports_filter)
+        csl_kwargs["exports_filter"] = final_csl_deps
 
     effective_user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
         # C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
         # dynamically resolved at runtime when CPython loads the shared library (.so).
         "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
+        # On Windows MSVC, CPython import libraries (python3xx.lib) are declared with
+        # system_provided = True in cc_import, suppressing automatic propagation of the
+        # .lib file path to link.exe. We explicitly pass $(locations ...) to provide the
+        # path of the CPython import library to MSVC link.exe.
+        "@platforms//os:windows": ["$(locations //python/cc:current_py_cc_libs)"],
         "//conditions:default": [],
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
 
+    csl_additional_linker_inputs = (additional_linker_inputs or []) + select({
+        "@platforms//os:windows": [Label("//python/cc:current_py_cc_libs")],
+        "//conditions:default": [],
+    })
+
     cc_shared_library(
         name = csl_name,
-        deps = csl_deps_with_win,
-        additional_linker_inputs = additional_linker_inputs,
+        deps = final_csl_deps,
+        additional_linker_inputs = csl_additional_linker_inputs,
         dynamic_deps = dynamic_deps,
         visibility = ["//visibility:private"],
         **csl_kwargs

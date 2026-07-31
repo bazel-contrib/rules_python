@@ -9,48 +9,36 @@ This document tracks the technical problems, root causes, and solutions encounte
 ### Problem
 When linking C extension shared libraries (`.dll` / `.pyd`) on Windows using MSVC, `link.exe` failed with:
 ```
-LINK : fatal error LNK1104: cannot open file 'python3.lib'
+LINK : fatal error LNK1104: cannot open file 'python311.lib' (or 'python3.lib')
 ```
 
 ### Root Cause
-When C/C++ source files `#include <Python.h>`, CPython's headers include `#pragma comment(lib, "python3.lib")` (when `Py_LIMITED_API` is set) or `#pragma comment(lib, "python3xx.lib")`. MSVC embeds a `/DEFAULTLIB:python3.lib` directive inside the compiled `.obj` files.
-
-When `cc_shared_library` links these `.obj` files into a `.dll`, `link.exe` attempts to locate `python3.lib`.
-By default, `cc_shared_library` applies `exports_filter` to prune transitive dependencies. If `current_py_cc_libs` is only in `deps` of the internal `cc_library` (`_impl`) but not listed in `deps` or `exports_filter` of `cc_shared_library`, `cc_shared_library` prunes `current_py_cc_libs` from `link.exe`'s command-line inputs. As a result, `python3.lib` is omitted, causing `link.exe` to fail.
+1. **`cc_import` `system_provided = True`**: In `python/private/hermetic_runtime_repo_setup.bzl`, CPython import libraries (`python311.lib` / `python3.lib`) are declared with `cc_import(..., system_provided = True)`. `system_provided = True` signals to Bazel that the library is provided by the host environment, causing Bazel's `CcInfo` provider to intentionally suppress propagating the `.lib` file paths to `link.exe`.
+2. **MSVC `#pragma comment` Directive**: When C/C++ source files `#include <Python.h>`, CPython's MSVC headers embed `#pragma comment(lib, "python311.lib")` into compiled `.obj` files. When `link.exe` runs, it reads the `#pragma comment` and searches for `python311.lib`. Because `system_provided = True` suppressed the `.lib` file path from linker flags, `link.exe` fails with `LNK1104`.
 
 ### Solution
-In `py_extension_macro.bzl`, append `//python/private/cc:current_py_cc_libs_private_alias` to `deps` and `exports_filter` of `cc_shared_library` specifically on Windows:
+In `py_extension_macro.bzl`, explicitly pass `$(locations //python/cc:current_py_cc_libs)` to `user_link_flags` and `Label("//python/cc:current_py_cc_libs")` to `additional_linker_inputs` on Windows:
 ```bzl
-csl_deps_with_win = final_csl_deps + select({
-    "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs_private_alias"],
+effective_user_link_flags = user_link_flags + select({
+    "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
+    "@platforms//os:windows": ["$(locations //python/cc:current_py_cc_libs)"],
     "//conditions:default": [],
 })
-csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else csl_deps_with_win
+csl_kwargs["user_link_flags"] = effective_user_link_flags
+
+csl_additional_linker_inputs = (additional_linker_inputs or []) + select({
+    "@platforms//os:windows": [Label("//python/cc:current_py_cc_libs")],
+    "//conditions:default": [],
+})
 
 cc_shared_library(
     name = csl_name,
-    deps = csl_deps_with_win,
+    deps = final_csl_deps,
+    additional_linker_inputs = csl_additional_linker_inputs,
     ...
 )
 ```
-
----
-
-## 2. Hardcoded Repository Labels & Alias Dereferencing in `exports_filter` under Bzlmod
-
-### Problem
-1. Hardcoded label strings like `"@rules_python//python/cc:current_py_cc_libs"` failed to match targets during Bzlmod execution because Bazel rewrites module repository names (e.g. `rules_python~~python~...`), causing `exports_filter` to miss the target and prune `python3.lib`.
-2. Furthermore, Bazel dereferences `alias` targets (such as `//python/private/cc:current_py_cc_libs_private_alias` pointing to `//python/cc:current_py_cc_libs`) when resolving target dependencies in `cc_shared_library`. If `exports_filter` only contains the alias target label string, `cc_shared_library` fails to match the dereferenced actual target label, filtering out `current_py_cc_libs` and omitting `python311.lib`.
-
-### Solution
-Include `py_cc_libs_alias` in `csl_deps_with_win`, and default `exports_filter` to `csl_deps_with_win` when `exports_filter` is `None`:
-```bzl
-if exports_filter != None:
-    csl_kwargs["exports_filter"] = exports_filter
-else:
-    csl_kwargs["exports_filter"] = csl_deps_with_win
-```
-This ensures `cc_shared_library` retains `py_cc_libs_alias` and its underlying toolchain library `python3xx.lib` in its `deps` and `exports_filter` graph without adding restrictive package label strings that fail to match external toolchain repository labels (e.g. `@@+python+python_3_11_15...//:python_lib`).
+This forces Bazel to resolve the exact path of the CPython import library in the execroot and pass it directly to `link.exe` as a user link flag and build input.
 
 ---
 
