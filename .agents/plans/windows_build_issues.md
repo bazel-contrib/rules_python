@@ -43,16 +43,18 @@ cc_shared_library(
 2. Furthermore, Bazel dereferences `alias` targets (such as `//python/private/cc:current_py_cc_libs_private_alias` pointing to `//python/cc:current_py_cc_libs`) when resolving target dependencies in `cc_shared_library`. If `exports_filter` only contains the alias target label string, `cc_shared_library` fails to match the dereferenced actual target label, filtering out `current_py_cc_libs` and omitting `python311.lib`.
 
 ### Solution
-Use `str(Label("//python/cc:current_py_cc_libs"))` alongside `str(Label("//python/private/cc:current_py_cc_libs_private_alias"))` in `exports_filter`:
+Use `str(Label("//python/cc:current_py_cc_libs"))` alongside `str(Label("//python/private/cc:current_py_cc_libs_private_alias"))` inside the macro body:
 ```bzl
-py_cc_libs_win_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
-py_cc_libs_win_target = str(Label("//python/cc:current_py_cc_libs"))
+py_cc_libs_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
+py_cc_libs_target = str(Label("//python/cc:current_py_cc_libs"))
 win_exports_filter = select({
-    "@platforms//os:windows": [py_cc_libs_win_target, py_cc_libs_win_alias],
+    "@platforms//os:windows": [py_cc_libs_target, py_cc_libs_alias],
     "//conditions:default": [],
 })
 csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else (csl_deps_with_win + win_exports_filter)
 ```
+
+> **Important Scoping Note**: `str(Label(...))` **must** be evaluated inside macro bodies (`def py_extension(...)`) rather than as top-level `.bzl` module constants. At top-level module load time, `str(Label(...))` bakes in the repo-root canonical prefix (`@@//...`). Evaluating `str(Label(...))` dynamically inside the macro body ensures `Label` stringification resolves in the caller's evaluation context (e.g. `@@rules_python+...`), matching `cc_shared_library`'s canonical target labels correctly.
 
 ---
 
