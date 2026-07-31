@@ -16,6 +16,25 @@ def fetch_log(build_id, job_id, output_path):
     else:
         log_url = f"https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/{build_id}/jobs/{job_id}/download.txt"
 
+    # Check if this is a GitHub Actions job
+    gh_match = re.search(r"github\.com/.*/job/(\d+)", log_url) or re.search(
+        r"^(\d+)$", job_id
+    )
+    if gh_match:
+        gh_job_id = gh_match.group(1)
+        print(f"📥 Fetching GitHub Action log for job {gh_job_id} using gh CLI...")
+        cmd = ["gh", "run", "view", "--job", gh_job_id, "--log"]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            with open(output_path, "w") as f:
+                f.write(res.stdout)
+            return True
+        except Exception as e:
+            print(
+                f"⚠️ Failed to fetch GitHub log via gh CLI for job {gh_job_id}: {e}",
+                file=sys.stderr,
+            )
+
     if not log_url.endswith("/download.txt") and "buildkite.com" in log_url:
         log_url = re.sub(r"/log$", "/download.txt", log_url)
 
@@ -55,6 +74,10 @@ def parse_log(log_path):
                 "no such package",
                 "no such target",
                 "exit code",
+                "##[error]",
+                "Would reformat:",
+                "would be reformatted",
+                "error]",
             ]
         ):
             errors.append(line.strip())
