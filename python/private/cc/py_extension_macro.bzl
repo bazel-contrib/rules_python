@@ -84,13 +84,16 @@ def py_extension(
         "-fPIC",
     ]
 
+    py_cc_headers_alias = str(Label("//python/private/cc:current_py_cc_headers_private_alias"))
+    py_cc_libs_win_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
+
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
     # in their deps attribute (including when deps is a select() expression).
     py_cc_headers_and_win_libs = [
-        "//python/private/cc:current_py_cc_headers_private_alias",
+        py_cc_headers_alias,
     ] + select({
-        "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs_private_alias"],
+        "@platforms//os:windows": [py_cc_libs_win_alias],
         "//conditions:default": [],
     })
     deps = (deps or []) + py_cc_headers_and_win_libs
@@ -128,10 +131,13 @@ def py_extension(
     csl_name = "_" + name + "_csl"
     csl_kwargs = copy_propagating_kwargs(kwargs)
 
-    csl_deps_with_win = final_csl_deps + select({
-        "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs_private_alias"],
-        "//conditions:default": [],
-    })
+    if srcs or hdrs:
+        csl_deps_with_win = final_csl_deps + select({
+            "@platforms//os:windows": [py_cc_libs_win_alias],
+            "//conditions:default": [],
+        })
+    else:
+        csl_deps_with_win = final_csl_deps
 
     # exports_filter specifies which target dependencies should have their exported
     # symbols exposed by cc_shared_library. On Windows MSVC, cc_shared_library uses
