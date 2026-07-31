@@ -8,17 +8,6 @@ load(":py_extension_build_test.bzl", "py_extension_build_test")
 
 licenses(["notice"])
 
-exports_files([
-    "add_one.c",
-    "add_one.h",
-    "add_one_helper.c",
-    "add_one_helper.h",
-    "ext_shared.c",
-    "some_data.txt",
-    "static_dep.c",
-    "static_dep.h",
-])
-
 #####
 
 py_extension_build_test(
@@ -56,6 +45,7 @@ py_extension_build_test(
 py_extension_build_test(
     # A python extension that gets its code from a statically-linked library
     name = "ext_static",
+    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [":static_dep"],
 )
 
@@ -71,6 +61,7 @@ py_extension_build_test(
     # An extension that also depends on a data file
     name = "ext_with_data",
     data = ["some_data.txt"],
+    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [":static_dep"],
 )
 
@@ -83,6 +74,7 @@ py_extension_build_test(
         ":add_one_shared",
     ],
     imports = ["."],
+    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [
         #
         ":ext_shared_impl",
@@ -112,7 +104,6 @@ cc_shared_library(
         "@platforms//os:windows": ["/EXPORT:add_one"],
         "//conditions:default": [],
     }),
-    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [":add_one_impl"],
 )
 
@@ -124,7 +115,6 @@ cc_library(
 cc_library(
     name = "add_one_impl",
     srcs = ["add_one.c"],
-    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [
         ":add_one_headers",
         ":add_one_helper",
