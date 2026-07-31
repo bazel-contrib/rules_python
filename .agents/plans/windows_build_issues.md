@@ -36,13 +36,23 @@ cc_shared_library(
 
 ---
 
-## 2. Hardcoded Repository Labels in `exports_filter` under Bzlmod
+## 2. Hardcoded Repository Labels & Alias Dereferencing in `exports_filter` under Bzlmod
 
 ### Problem
-Hardcoded label strings like `"@rules_python//python/cc:current_py_cc_libs"` failed to match targets during Bzlmod execution because Bazel rewrites module repository names (e.g. `rules_python~~python~...`), causing `exports_filter` to miss the target and prune `python3.lib`.
+1. Hardcoded label strings like `"@rules_python//python/cc:current_py_cc_libs"` failed to match targets during Bzlmod execution because Bazel rewrites module repository names (e.g. `rules_python~~python~...`), causing `exports_filter` to miss the target and prune `python3.lib`.
+2. Furthermore, Bazel dereferences `alias` targets (such as `//python/private/cc:current_py_cc_libs_private_alias` pointing to `//python/cc:current_py_cc_libs`) when resolving target dependencies in `cc_shared_library`. If `exports_filter` only contains the alias target label string, `cc_shared_library` fails to match the dereferenced actual target label, filtering out `current_py_cc_libs` and omitting `python311.lib`.
 
 ### Solution
-Use `str(Label("//python/cc:current_py_cc_libs"))`, `:__subpackages__`, or private alias targets (`//python/private/cc:current_py_cc_libs_private_alias`) so Starlark label expansion evaluates to canonical Bzlmod repository names.
+Use `str(Label("//python/cc:current_py_cc_libs"))` alongside `str(Label("//python/private/cc:current_py_cc_libs_private_alias"))` in `exports_filter`:
+```bzl
+py_cc_libs_win_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
+py_cc_libs_win_target = str(Label("//python/cc:current_py_cc_libs"))
+win_exports_filter = select({
+    "@platforms//os:windows": [py_cc_libs_win_target, py_cc_libs_win_alias],
+    "//conditions:default": [],
+})
+csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else (csl_deps_with_win + win_exports_filter)
+```
 
 ---
 
