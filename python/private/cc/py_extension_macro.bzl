@@ -84,8 +84,9 @@ def py_extension(
         "-fPIC",
     ]
 
-    py_cc_headers_alias = str(Label("//python/private/cc:current_py_cc_headers_private_alias"))
-    py_cc_libs_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
+    py_cc_headers_alias = "//python/private/cc:current_py_cc_headers_private_alias"
+    py_cc_libs_alias = "//python/private/cc:current_py_cc_libs_private_alias"
+    py_cc_libs_target = "//python/cc:current_py_cc_libs"
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
@@ -139,10 +140,12 @@ def py_extension(
     else:
         csl_deps_with_win = final_csl_deps
 
-    if exports_filter != None:
-        csl_kwargs["exports_filter"] = exports_filter
-    else:
-        csl_kwargs["exports_filter"] = csl_deps_with_win
+    win_exports_filter = select({
+        "@platforms//os:windows": [py_cc_libs_target, py_cc_libs_alias],
+        "//conditions:default": [],
+    })
+
+    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else (csl_deps_with_win + win_exports_filter)
 
     effective_user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
