@@ -21,7 +21,7 @@ https://github.com/bazel-contrib/rules_python/issues/824 is considered done.
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(":common_labels.bzl", "labels")
-load(":flags.bzl", "FreeThreadedFlag")
+load(":flags.bzl", "FreeThreadedFlag", "LibcFlag")
 load(":py_cc_toolchain_info.bzl", "PyCcToolchainInfo")
 load(":sentinel_impl.bzl", "SentinelInfo")
 
@@ -59,6 +59,8 @@ def _get_platform_tag(sys_platform, platform_machine, libc):
 
     machine_val = platform_machine if platform_machine else "x86_64"
     libc_val = libc if libc else "gnu"
+    if libc_val == LibcFlag.GLIBC:
+        libc_val = "gnu"
     return "{}-linux-{}".format(machine_val, libc_val)
 
 def _py_cc_toolchain_impl(ctx):
@@ -82,6 +84,12 @@ def _py_cc_toolchain_impl(ctx):
     else:
         headers_abi3 = None
 
+    abi_flags = ctx.attr.abi_flags
+    if abi_flags == "<AUTO>":
+        abi_flags = ""
+        if ctx.attr._py_freethreaded_flag[BuildSettingInfo].value == FreeThreadedFlag.YES:
+            abi_flags += "t"
+
     abi_tag = ctx.attr.abi_tag
     if not abi_tag:
         # Derive default ABI tag:
@@ -92,19 +100,19 @@ def _py_cc_toolchain_impl(ctx):
         #   - https://github.com/python/cpython/issues/67169
         #   - https://github.com/python/cpython/commit/03a144bb6ac3d7631a3bdb895e2a1f2d021fb08b
         version_parts = ctx.attr.python_version.split(".")
-        abi_flags = ""
-        if ctx.attr._py_freethreaded_flag[BuildSettingInfo].value == FreeThreadedFlag.YES:
-            abi_flags += "t"
         prefix = "cp" if ctx.attr.sys_platform == "win32" else "cpython-"
         abi_tag = "{}{}{}{}".format(prefix, version_parts[0], version_parts[1], abi_flags)
+
+    libc = ctx.attr.libc or LibcFlag.get_value(ctx)
 
     platform_tag = _get_platform_tag(
         sys_platform = ctx.attr.sys_platform,
         platform_machine = ctx.attr.platform_machine,
-        libc = ctx.attr.libc,
+        libc = libc,
     )
 
     py_cc_toolchain = PyCcToolchainInfo(
+        abi_flags = abi_flags,
         abi_tag = abi_tag,
         headers = struct(
             providers_map = {
@@ -130,6 +138,16 @@ def _py_cc_toolchain_impl(ctx):
 py_cc_toolchain = rule(
     implementation = _py_cc_toolchain_impl,
     attrs = {
+        "abi_flags": attr.string(
+            default = "<AUTO>",
+            doc = """
+The runtime's ABI flags, i.e. `sys.abiflags`.
+
+If not set, or set to `<AUTO>`, the ABI flags are automatically derived
+from `--//python/config_settings:py_freethreaded` (e.g., `'t'` when
+free-threaded is enabled, or `''` otherwise).
+""",
+        ),
         "abi_tag": attr.string(
             doc = "The ABI tag for extension modules, e.g. 'cpython-311'",
             default = "",
@@ -181,6 +199,9 @@ Target OS as a PEP 508 `sys_platform` marker, e.g. 'linux', 'darwin', 'win32'.
         ),
         "_py_freethreaded_flag": attr.label(
             default = labels.PY_FREETHREADED,
+        ),
+        "_py_linux_libc_flag": attr.label(
+            default = labels.PY_LINUX_LIBC,
         ),
         "_visible_for_testing": attr.label(
             default = labels.VISIBLE_FOR_TESTING,

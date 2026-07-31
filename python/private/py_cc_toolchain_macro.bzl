@@ -36,10 +36,5 @@ def py_cc_toolchain(**kwargs):
         kwargs["sys_platform"] = select(sys_platform_select_map)
     if kwargs.get("platform_machine") == None:
         kwargs["platform_machine"] = select(platform_machine_select_map)
-    if kwargs.get("libc") == None:
-        kwargs["libc"] = select({
-            Label("//python/config_settings:_is_py_linux_libc_musl"): "musl",
-            "//conditions:default": "gnu",
-        })
 
     _py_cc_toolchain(**kwargs)

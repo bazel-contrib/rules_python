@@ -18,6 +18,7 @@ load("@rules_testing//lib:truth.bzl", "subjects")
 def _py_cc_toolchain_info_subject_new(info, *, meta):
     # buildifier: disable=uninitialized
     public = struct(
+        abi_flags = lambda *a, **k: _py_cc_toolchain_info_subject_abi_flags(self, *a, **k),
         headers = lambda *a, **k: _py_cc_toolchain_info_subject_headers(self, *a, **k),
         headers_abi3 = lambda *a, **k: _py_cc_toolchain_info_subject_headers_abi3(self, *a, **k),
         libs = lambda *a, **k: _py_cc_toolchain_info_subject_libs(self, *a, **k),
@@ -29,6 +30,12 @@ def _py_cc_toolchain_info_subject_new(info, *, meta):
     )
     self = struct(actual = info, meta = meta)
     return public
+
+def _py_cc_toolchain_info_subject_abi_flags(self):
+    return subjects.str(
+        self.actual.abi_flags,
+        meta = self.meta.derive("abi_flags()"),
+    )
 
 def _py_cc_toolchain_info_subject_headers(self):
     return subjects.struct(

@@ -10,6 +10,7 @@ load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:builders.bzl", "builders")
 load("//python/private:common.bzl", "get_imports", "is_windows_platform")
+load("//python/private:flags.bzl", "LibcFlag")
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "CC_TOOLCHAIN_TYPE", "PY_CC_TOOLCHAIN_TYPE")
@@ -69,7 +70,7 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
     WINDOWS_CONSTRAINTS_ATTRS,
     {
         "libc": lambda: attrb.String(
-            default = "glibc",
+            default = LibcFlag.GLIBC,
             doc = "Target C library variant (e.g., glibc, musl).",
         ),
         "module_name": lambda: attrb.String(

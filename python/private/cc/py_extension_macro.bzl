@@ -6,6 +6,7 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
+load("//python/private:flags.bzl", "LibcFlag")
 load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
 load(":py_extension_rule.bzl", "py_extension_wrapper")
 
@@ -169,9 +170,9 @@ def py_extension(
 
     # 5. Propagate attributes to wrapper rule
     kwargs["libc"] = libc if libc != None else select({
-        "@rules_python//python/config_settings:_is_py_linux_libc_glibc": "glibc",
-        "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
-        "//conditions:default": "glibc",
+        "@rules_python//python/config_settings:_is_py_linux_libc_glibc": LibcFlag.GLIBC,
+        "@rules_python//python/config_settings:_is_py_linux_libc_musl": LibcFlag.MUSL,
+        "//conditions:default": LibcFlag.GLIBC,
     })
     kwargs["module_name"] = module_name
     kwargs["py_limited_api"] = py_limited_api

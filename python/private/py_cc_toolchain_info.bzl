@@ -17,6 +17,11 @@
 PyCcToolchainInfo = provider(
     doc = "C/C++ information about the Python runtime.",
     fields = {
+        "abi_flags": """\
+:type: str
+
+The runtime's ABI flags, i.e. `sys.abiflags` (e.g. 't' for free-threaded builds).
+""",
         "abi_tag": """\
 :type: str
 

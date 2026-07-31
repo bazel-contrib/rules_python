@@ -47,6 +47,7 @@ def _test_py_cc_toolchain_impl(env, target):
         meta = env.expect.meta.derive(expr = "py_cc_toolchain_info"),
     )
     toolchain.python_version().equals("3.999")
+    toolchain.abi_flags().equals("")
 
     # ===== Verify headers info =====
     headers_providers = toolchain.headers().providers_map()
