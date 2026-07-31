@@ -10,8 +10,7 @@ load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:builders.bzl", "builders")
 load("//python/private:common.bzl", "get_imports", "is_windows_platform")
-load("//python/private:flags.bzl", "LibcFlag")
-load("//python/private:py_info.bzl", "PyInfo")
+load("//python/private:py_info.bzl", "PyInfo", "PyInfoBuilder")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "CC_TOOLCHAIN_TYPE", "PY_CC_TOOLCHAIN_TYPE")
 
@@ -53,15 +52,16 @@ def _py_extension_wrapper_impl(ctx):
     runfiles_builder.add(csl_target[DefaultInfo].default_runfiles)
     runfiles = runfiles_builder.build(ctx)
 
+    py_info_builder = PyInfoBuilder.new()
+    py_info_builder.transitive_sources.add(py_dso)
+    py_info_builder.imports.add(get_imports(ctx))
+
     return [
         DefaultInfo(
             files = depset([py_dso]),
             runfiles = runfiles,
         ),
-        PyInfo(
-            transitive_sources = depset([py_dso]),
-            imports = depset(get_imports(ctx)),
-        ),
+        py_info_builder.build(),
     ]
 
 PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
@@ -69,10 +69,6 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
     IMPORTS_ATTRS,
     WINDOWS_CONSTRAINTS_ATTRS,
     {
-        "libc": lambda: attrb.String(
-            default = LibcFlag.GLIBC,
-            doc = "Target C library variant (e.g., glibc, musl).",
-        ),
         "module_name": lambda: attrb.String(
             doc = "Custom Python module name. If not set, defaults to name.",
         ),
@@ -131,7 +127,9 @@ def _get_platform(ctx):
     py_cc_toolchain = py_toolchain.py_cc_toolchain
     if not py_cc_toolchain.platform_tag:
         fail(
-            "ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
-            "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.",
+            ("ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
+             "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.").format(
+                self = ctx.label,
+            ),
         )
     return py_cc_toolchain.platform_tag

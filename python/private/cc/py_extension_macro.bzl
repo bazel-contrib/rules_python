@@ -6,7 +6,6 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
-load("//python/private:flags.bzl", "LibcFlag")
 load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
 load(":py_extension_rule.bzl", "py_extension_wrapper")
 
@@ -24,7 +23,6 @@ def py_extension(
         exports_filter = None,
         user_link_flags = None,
         additional_linker_inputs = None,
-        libc = None,
         module_name = None,
         py_limited_api = None,
         **kwargs):
@@ -68,8 +66,6 @@ def py_extension(
             use `linkopts`.
         additional_linker_inputs: {type}`list[Label | str] | None` Additional
             linker inputs passed to `cc_shared_library`.
-        libc: {type}`str | None` Target C library variant (e.g., `"glibc"`,
-            `"musl"`). If not set, defaults to {flag}`--py_linux_libc`.
         module_name: {type}`str | None` Custom Python module name. If not set,
             defaults to `name`.
         py_limited_api: {type}`str | None` Python limited API version string
@@ -161,11 +157,6 @@ def py_extension(
     )
 
     # 5. Propagate attributes to wrapper rule
-    kwargs["libc"] = libc if libc != None else select({
-        "@rules_python//python/config_settings:_is_py_linux_libc_glibc": LibcFlag.GLIBC,
-        "@rules_python//python/config_settings:_is_py_linux_libc_musl": LibcFlag.MUSL,
-        "//conditions:default": LibcFlag.GLIBC,
-    })
     kwargs["module_name"] = module_name
     kwargs["py_limited_api"] = py_limited_api
 

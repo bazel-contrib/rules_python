@@ -43,7 +43,7 @@ def _get_platform_tag(sys_platform, platform_machine, libc):
     Args:
         sys_platform: Target PEP 508 OS marker, e.g. "win32", "darwin", "linux"
         platform_machine: Target PEP 508 CPU marker, e.g. "x86_64", "aarch64", "x86_32"
-        libc: Target C library variant, e.g. "gnu", "musl"
+        libc: Target C library variant, e.g. "glibc", "musl"
 
     Returns:
         The platform tag, e.g. "x86_64-linux-gnu", "darwin", or "win_amd64"
@@ -58,9 +58,7 @@ def _get_platform_tag(sys_platform, platform_machine, libc):
         return "darwin"
 
     machine_val = platform_machine if platform_machine else "x86_64"
-    libc_val = libc if libc else "gnu"
-    if libc_val == LibcFlag.GLIBC:
-        libc_val = "gnu"
+    libc_val = "gnu" if libc == LibcFlag.GLIBC else libc
     return "{}-linux-{}".format(machine_val, libc_val)
 
 def _py_cc_toolchain_impl(ctx):
@@ -173,7 +171,7 @@ attribute is available or not.
             providers = [[SentinelInfo], [CcInfo]],
         ),
         "libc": attr.string(
-            doc = "Target C library variant, e.g. 'gnu', 'musl'",
+            doc = "Target C library variant, e.g. 'glibc', 'musl'",
             default = "",
         ),
         "libs": attr.label(
