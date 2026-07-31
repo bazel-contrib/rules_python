@@ -128,15 +128,19 @@ def py_extension(
     csl_name = "_" + name + "_csl"
     csl_kwargs = copy_propagating_kwargs(kwargs)
 
+    csl_deps_with_win = final_csl_deps + select({
+        "@platforms//os:windows": ["//python/private/cc:current_py_cc_libs_private_alias"],
+        "//conditions:default": [],
+    })
+
     # exports_filter specifies which target dependencies should have their exported
     # symbols exposed by cc_shared_library. On Windows MSVC, cc_shared_library uses
     # exports_filter to inspect the .obj files of matching targets and generate a .def
     # file containing all __declspec(dllexport) symbols (such as PyInit_<name>).
-    # Defaulting to final_csl_deps ensures only the targets in this extension (e.g. _impl)
-    # are inspected, rather than all targets in the package. Note: current_py_cc_libs
-    # provides an import library (.lib), not object files (.obj), so MSVC link.exe
-    # does not re-export CPython runtime symbols.
-    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else final_csl_deps
+    # Defaulting to csl_deps_with_win ensures only the targets in this extension (e.g. _impl)
+    # and Windows CPython import libraries are included and inspected, rather than all
+    # targets in the package.
+    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else csl_deps_with_win
 
     effective_user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
@@ -149,7 +153,7 @@ def py_extension(
 
     cc_shared_library(
         name = csl_name,
-        deps = final_csl_deps,
+        deps = csl_deps_with_win,
         additional_linker_inputs = additional_linker_inputs,
         dynamic_deps = dynamic_deps,
         visibility = ["//visibility:private"],
