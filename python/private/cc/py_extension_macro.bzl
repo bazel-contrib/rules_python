@@ -86,6 +86,7 @@ def py_extension(
 
     py_cc_headers_alias = str(Label("//python/private/cc:current_py_cc_headers_private_alias"))
     py_cc_libs_win_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
+    py_cc_libs_win_target = str(Label("//python/cc:current_py_cc_libs"))
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
@@ -139,14 +140,19 @@ def py_extension(
     else:
         csl_deps_with_win = final_csl_deps
 
+    win_exports_filter = select({
+        "@platforms//os:windows": [py_cc_libs_win_target, py_cc_libs_win_alias],
+        "//conditions:default": [],
+    })
+
     # exports_filter specifies which target dependencies should have their exported
     # symbols exposed by cc_shared_library. On Windows MSVC, cc_shared_library uses
     # exports_filter to inspect the .obj files of matching targets and generate a .def
     # file containing all __declspec(dllexport) symbols (such as PyInit_<name>).
-    # Defaulting to csl_deps_with_win ensures only the targets in this extension (e.g. _impl)
-    # and Windows CPython import libraries are included and inspected, rather than all
-    # targets in the package.
-    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else csl_deps_with_win
+    # Defaulting to csl_deps_with_win + win_exports_filter ensures only the targets in
+    # this extension (e.g. _impl) and Windows CPython import libraries (both alias and
+    # actual resolved target) are included and inspected, rather than all targets in the package.
+    csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else (csl_deps_with_win + win_exports_filter)
 
     effective_user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
