@@ -15,15 +15,17 @@ def py_extension(
         hdrs = None,
         copts = None,
         defines = None,
+        local_defines = None,
         includes = None,
         linkopts = None,
-        linkshared = None,
-        linkstatic = None,
         deps = None,
         dynamic_deps = None,
         exports_filter = None,
         user_link_flags = None,
-        visibility = None,
+        additional_linker_inputs = None,
+        libc = None,
+        module_name = None,
+        py_limited_api = None,
         **kwargs):
     """Creates a Python extension module.
 
@@ -47,14 +49,13 @@ def py_extension(
         hdrs: {type}`list[Label | str] | None` Header files for `srcs`.
         copts: {type}`list[str] | None` Compiler flags for `srcs`.
         defines: {type}`list[str] | None` Preprocessor defines for `srcs`.
+        local_defines: {type}`list[str] | None` Preprocessor defines for `srcs`
+            passed to internal `cc_library`.
         includes: {type}`list[str] | None` Header include search paths passed
             to internal `cc_library`.
         linkopts: {type}`list[str] | None` Link options passed to internal
-            `cc_library` and `cc_shared_library`.
-        linkshared: {type}`bool | None` Deprecated and ignored. Extensions are
-            always linked dynamically.
-        linkstatic: {type}`bool | None` The `linkstatic` flag passed to
-            internal `cc_library`.
+            `cc_library` created for `srcs`/`hdrs`. To pass linker flags to
+            `cc_shared_library`, use `user_link_flags`.
         deps: {type}`list[Label | str] | None` `cc_library` targets to
             statically link into the extension.
         dynamic_deps: {type}`list[Label | str] | None` `cc_shared_library`
@@ -62,13 +63,21 @@ def py_extension(
         exports_filter: {type}`list[str] | None` Filter for exported symbols
             passed to `cc_shared_library`.
         user_link_flags: {type}`list[str] | None` Additional link flags passed
-            to `cc_shared_library`.
-        visibility: {type}`list[Label | str] | None` Target visibility.
+            to `cc_shared_library`. To pass linker flags that apply to `srcs`,
+            use `linkopts`.
+        additional_linker_inputs: {type}`list[Label | str] | None` Additional
+            linker inputs passed to `cc_shared_library`.
+        libc: {type}`str | None` Target C library variant (e.g., `"glibc"`,
+            `"musl"`). If not set, defaults to {flag}`--py_linux_libc`.
+        module_name: {type}`str | None` Custom Python module name. If not set,
+            defaults to `name`.
+        py_limited_api: {type}`str | None` Python limited API version string
+            (e.g., `"3.8"`).
         **kwargs: {type}`dict` Additional arguments passed to the underlying
             wrapper rule.
     """
     add_tag(kwargs, "@rules_python//python/cc:py_extension")
-    _ = linkshared  # buildifier: disable=unused-variable
+    user_link_flags = user_link_flags or []
 
     csl_deps = []
 
@@ -97,14 +106,13 @@ def py_extension(
             impl_lib_kwargs["includes"] = includes
         if linkopts:
             impl_lib_kwargs["linkopts"] = linkopts
-        if linkstatic != None:
-            impl_lib_kwargs["linkstatic"] = linkstatic
         cc_library(
             name = impl_lib_name,
             srcs = srcs,
             hdrs = hdrs,
             copts = copts,
             defines = defines,
+            local_defines = local_defines,
             deps = deps,
             visibility = ["//visibility:private"],
             **impl_lib_kwargs
@@ -133,7 +141,7 @@ def py_extension(
     # does not re-export CPython runtime symbols.
     csl_kwargs["exports_filter"] = exports_filter if exports_filter != None else final_csl_deps
 
-    effective_user_link_flags = (user_link_flags or linkopts or []) + select({
+    effective_user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
         # C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
         # dynamically resolved at runtime when CPython loads the shared library (.so).
@@ -145,7 +153,7 @@ def py_extension(
     })
     csl_kwargs["user_link_flags"] = effective_user_link_flags
 
-    csl_additional_linker_inputs = select({
+    csl_additional_linker_inputs = (additional_linker_inputs or []) + select({
         "@platforms//os:windows": ["@rules_python//python/cc:current_py_cc_libs"],
         "//conditions:default": [],
     })
@@ -159,13 +167,14 @@ def py_extension(
         **csl_kwargs
     )
 
-    # 5. Select default libc constraint if not provided
-    if "libc" not in kwargs:
-        kwargs["libc"] = select({
-            "@rules_python//python/config_settings:_is_py_linux_libc_glibc": "glibc",
-            "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
-            "//conditions:default": "glibc",
-        })
+    # 5. Propagate attributes to wrapper rule
+    kwargs["libc"] = libc if libc != None else select({
+        "@rules_python//python/config_settings:_is_py_linux_libc_glibc": "glibc",
+        "@rules_python//python/config_settings:_is_py_linux_libc_musl": "musl",
+        "//conditions:default": "glibc",
+    })
+    kwargs["module_name"] = module_name
+    kwargs["py_limited_api"] = py_limited_api
 
     # 6. Filter out C++ specific compilation/linking attributes before invoking wrapper rule
     for cc_attr in ("includes", "linkopts", "linkshared", "linkstatic", "features"):
@@ -175,6 +184,5 @@ def py_extension(
     py_extension_wrapper(
         name = name,
         src = ":" + csl_name,
-        visibility = visibility,
         **kwargs
     )

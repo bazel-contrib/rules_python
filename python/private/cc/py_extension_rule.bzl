@@ -9,10 +9,10 @@ load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:builders.bzl", "builders")
-load("//python/private:common.bzl", "is_windows_platform")
+load("//python/private:common.bzl", "get_imports", "is_windows_platform")
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:rule_builders.bzl", "ruleb")
-load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "CC_TOOLCHAIN_TYPE", "PY_CC_TOOLCHAIN_TYPE")
 
 def _py_extension_wrapper_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
@@ -52,24 +52,6 @@ def _py_extension_wrapper_impl(ctx):
     runfiles_builder.add(csl_target[DefaultInfo].default_runfiles)
     runfiles = runfiles_builder.build(ctx)
 
-    # Resolve imports paths relative to the target package and repository:
-    # 1. Default (imports = []): No extra search paths are added to sys.path,
-    #    enforcing clean package-qualified imports (e.g. `from foo.bar import ext`).
-    # 2. Relative paths (e.g. imports = ["."]): Resolved relative to `repo_name/package_name`
-    #    so passing `imports = ["."]` adds the target's package directory to sys.path.
-    # 3. Absolute paths (starting with "/"): Stripped of leading "/" and resolved relative to runfiles root.
-    imports_list = []
-    repo_name = ctx.label.workspace_name or ctx.workspace_name
-    for path in ctx.attr.imports:
-        if path.startswith("/"):
-            imports_list.append(path[1:])
-        else:
-            pkg = ctx.label.package
-            full_path = "{}/{}".format(pkg, path) if pkg else path
-            if repo_name:
-                full_path = "{}/{}".format(repo_name, full_path)
-            imports_list.append(full_path)
-
     return [
         DefaultInfo(
             files = depset([py_dso]),
@@ -77,7 +59,7 @@ def _py_extension_wrapper_impl(ctx):
         ),
         PyInfo(
             transitive_sources = depset([py_dso]),
-            imports = depset(imports_list),
+            imports = depset(get_imports(ctx)),
         ),
     ]
 
@@ -86,10 +68,16 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
     IMPORTS_ATTRS,
     WINDOWS_CONSTRAINTS_ATTRS,
     {
-        "libc": lambda: attrb.String(default = "glibc"),
-        "module_name": lambda: attrb.String(),
+        "libc": lambda: attrb.String(
+            default = "glibc",
+            doc = "Target C library variant (e.g., glibc, musl).",
+        ),
+        "module_name": lambda: attrb.String(
+            doc = "Custom Python module name. If not set, defaults to name.",
+        ),
         "py_limited_api": lambda: attrb.String(
             default = "",
+            doc = "Python limited API version string (e.g., '3.8').",
         ),
         "src": lambda: attrb.Label(
             mandatory = True,
@@ -99,21 +87,19 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
     },
 )
 
-def create_py_extension_wrapper_rule_builder(**kwargs):
+def create_py_extension_wrapper_rule_builder():
     """Create a rule builder for the private internal wrapper rule."""
-    builder = ruleb.Rule(
+    return ruleb.Rule(
         doc = "Private internal helper rule for py_extension targets.",
         implementation = _py_extension_wrapper_impl,
         attrs = PY_EXTENSION_WRAPPER_ATTRS,
         provides = [PyInfo],
         toolchains = [
             ruleb.ToolchainType(PY_CC_TOOLCHAIN_TYPE),
-            ruleb.ToolchainType("@bazel_tools//tools/cpp:toolchain_type"),
+            ruleb.ToolchainType(CC_TOOLCHAIN_TYPE),
         ],
         fragments = ["cpp"],
-        **kwargs
     )
-    return builder
 
 py_extension_wrapper = create_py_extension_wrapper_rule_builder().build()
 

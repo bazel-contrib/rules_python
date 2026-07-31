@@ -39,27 +39,6 @@ alias(
 )
 
 bzl_library(
-    name = "py_extension_macro_bzl",
-    deps = [
-        ":py_extension_rule_bzl",
-        "//python/private:util",
-        "@rules_cc//cc:core_rules",
-    ],
-)
-
-bzl_library(
-    name = "py_extension_rule_bzl",
-    deps = [
-        "//python/private:attr_builders",
-        "//python/private:attributes",
-        "//python/private:py_info",
-        "//python/private:rule_builders",
-        "//python/private:toolchain_types",
-        "@rules_cc//cc/common",
-    ],
-)
-
-bzl_library(
     name = "py_extension_macro",
     srcs = ["py_extension_macro.bzl"],
     deps = [

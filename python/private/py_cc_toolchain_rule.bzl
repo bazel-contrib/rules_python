@@ -87,9 +87,10 @@ def _py_cc_toolchain_impl(ctx):
         # Derive default ABI tag:
         # On POSIX: cpython-XX[t] (PEP 3149 / PEP 703)
         # On Windows: cpXX[t] (PEP 3149 / PEP 703, CPython issue & commit):
+        #   - https://peps.python.org/pep-3149/
+        #   - https://peps.python.org/pep-0703/
         #   - https://github.com/python/cpython/issues/67169
         #   - https://github.com/python/cpython/commit/03a144bb6ac3d7631a3bdb895e2a1f2d021fb08b
-        #   - https://peps.python.org/pep-0703/
         version_parts = ctx.attr.python_version.split(".")
         abi_flags = ""
         if ctx.attr._py_freethreaded_flag[BuildSettingInfo].value == FreeThreadedFlag.YES:
