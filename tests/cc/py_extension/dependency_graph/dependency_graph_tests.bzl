@@ -20,6 +20,8 @@ load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:util.bzl", "util")
 
+_tests = []
+
 # For tests 1 and 2
 def _create_dynamic_deps_helpers(name):
     util.helper_target(
@@ -72,6 +74,8 @@ def _test_csl_dynamic_deps_top(name):
         impl = _csl_dynamic_deps_test_impl,
     )
 
+_tests.append(_test_csl_dynamic_deps_top)
+
 def _csl_dynamic_deps_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
     csl_info = target[CcSharedLibraryInfo]
@@ -96,6 +100,8 @@ def _test_pyext_dynamic_deps_cslB(name):
         impl = _cslB_deps_test_impl,
     )
 
+_tests.append(_test_pyext_dynamic_deps_cslB)
+
 def _test_pyext_dynamic_deps_cslC(name):
     _create_dynamic_deps_helpers(name)
     analysis_test(
@@ -103,6 +109,8 @@ def _test_pyext_dynamic_deps_cslC(name):
         target = name + "_cslC",
         impl = _cslC_deps_test_impl,
     )
+
+_tests.append(_test_pyext_dynamic_deps_cslC)
 
 def _cslC_deps_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
@@ -179,6 +187,8 @@ def _test_csl_static_sharing_top(name):
         impl = _csl_static_sharing_test_impl,
     )
 
+_tests.append(_test_csl_static_sharing_top)
+
 def _csl_static_sharing_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
     csl_info = target[CcSharedLibraryInfo]
@@ -204,6 +214,8 @@ def _test_pyext_static_sharing_cslB(name):
         impl = _cslB_static_sharing_test_impl,
     )
 
+_tests.append(_test_pyext_static_sharing_cslB)
+
 def _cslB_static_sharing_test_impl(env, target):
     env.expect.that_target(target).has_provider(CcSharedLibraryInfo)
     csl_info = target[CcSharedLibraryInfo]
@@ -220,11 +232,5 @@ def _cslB_static_sharing_test_impl(env, target):
 def dependency_graph_test_suite(name):
     test_suite(
         name = name,
-        tests = [
-            _test_csl_dynamic_deps_top,
-            _test_pyext_dynamic_deps_cslB,
-            _test_pyext_dynamic_deps_cslC,
-            _test_csl_static_sharing_top,
-            _test_pyext_static_sharing_cslB,
-        ],
+        tests = _tests,
     )
