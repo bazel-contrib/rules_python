@@ -4,15 +4,7 @@ load("//python:py_test.bzl", "py_test")
 
 # buildifier: disable=bzl-visibility
 load("//python/cc:py_extension.bzl", "py_extension")
-load(":dependency_graph_tests.bzl", "dependency_graph_test_suite")
 load(":py_extension_build_test.bzl", "py_extension_build_test")
-load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
-load(":py_limited_api_tests.bzl", "py_limited_api_test_suite")
-
-package(
-    default_testonly = True,
-    default_visibility = ["//visibility:private"],
-)
 
 licenses(["notice"])
 
@@ -53,6 +45,7 @@ py_extension_build_test(
 py_extension_build_test(
     # A python extension that gets its code from a statically-linked library
     name = "ext_static",
+    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [":static_dep"],
 )
 
@@ -68,6 +61,7 @@ py_extension_build_test(
     # An extension that also depends on a data file
     name = "ext_with_data",
     data = ["some_data.txt"],
+    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [":static_dep"],
 )
 
@@ -80,6 +74,7 @@ py_extension_build_test(
         ":add_one_shared",
     ],
     imports = ["."],
+    visibility = ["//tests/cc/py_extension:__subpackages__"],
     deps = [
         #
         ":ext_shared_impl",
@@ -195,16 +190,4 @@ py_test(
     deps = [
         ":ext_pkg_test",
     ],
-)
-
-py_extension_analysis_test_suite(
-    name = "py_extension_analysis_tests",
-)
-
-py_limited_api_test_suite(
-    name = "py_limited_api_tests",
-)
-
-dependency_graph_test_suite(
-    name = "dependency_graph_tests",
 )

@@ -22,7 +22,7 @@ load("//python/cc:py_extension.bzl", "py_extension")
 
 def _test_limited_pass_impl(env, target):
     env.expect.that_depset_of_files(target[DefaultInfo].files).contains_predicate(
-        matching.file_path_matches("tests/cc/py_extension/{}.abi3.*".format(target.label.name)),
+        matching.file_path_matches("tests/cc/py_extension/py_limited_api/{}.abi3.*".format(target.label.name)),
     )
 
 def _test_limited_same_version(name):
