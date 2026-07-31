@@ -86,7 +86,8 @@ def py_extension(
 
     py_cc_headers_alias = str(Label("//python/private/cc:current_py_cc_headers_private_alias"))
     py_cc_libs_alias = str(Label("//python/private/cc:current_py_cc_libs_private_alias"))
-    py_cc_libs_target = str(Label("//python/cc:current_py_cc_libs"))
+    py_cc_subpackages = str(Label("//python/cc:__subpackages__"))
+    py_private_cc_subpackages = str(Label("//python/private/cc:__subpackages__"))
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
@@ -141,7 +142,7 @@ def py_extension(
         csl_deps_with_win = final_csl_deps
 
     win_exports_filter = select({
-        "@platforms//os:windows": [py_cc_libs_target, py_cc_libs_alias],
+        "@platforms//os:windows": [py_cc_subpackages, py_private_cc_subpackages],
         "//conditions:default": [],
     })
 
