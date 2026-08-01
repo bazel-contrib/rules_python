@@ -229,8 +229,9 @@ def whl_library_srcs(
         filegroups = {
             EXTRACTED_WHEEL_FILES: dict(
                 include = ["**"],
-                exclude = (
-                    _BAZEL_REPO_FILE_GLOBS +
+                # The Bazel repo files are always excluded; only the sdist
+                # filename is conditional on `sdist_filename`.
+                exclude = _BAZEL_REPO_FILE_GLOBS + (
                     [sdist_filename] if sdist_filename else []
                 ),
             ),
