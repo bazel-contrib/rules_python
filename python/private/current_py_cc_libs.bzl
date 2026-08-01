@@ -28,8 +28,8 @@ def _current_py_cc_libs_impl(ctx):
             data_runfiles = p.data_runfiles
 
     cc_infos = [p for p in py_cc_toolchain.libs.providers_map.values() if hasattr(p, "linking_context")]
-    if cc_infos:
-        cc_info = cc_infos[0]
+    cc_infos += [p for p in py_cc_toolchain.headers.providers_map.values() if hasattr(p, "linking_context")]
+    for cc_info in cc_infos:
         for input in cc_info.linking_context.linker_inputs.to_list():
             for lib in input.libraries:
                 if lib.static_library:
@@ -44,10 +44,6 @@ def _current_py_cc_libs_impl(ctx):
     # LNK1107 if passed raw DLL binaries (.dll). We filter out .dll files so
     # DefaultInfo.files only contains linkable library files (.lib / .a).
     link_files = [f for f in files if not f.path.endswith(".dll")]
-    if not link_files:
-        empty_file = ctx.actions.declare_file(ctx.label.name + ".empty")
-        ctx.actions.write(empty_file, "")
-        link_files = [empty_file]
 
     providers.append(DefaultInfo(
         files = depset(link_files),
