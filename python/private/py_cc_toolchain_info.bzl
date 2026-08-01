@@ -25,7 +25,9 @@ The runtime's ABI flags, i.e. `sys.abiflags` (e.g. 't' for free-threaded builds)
         "abi_tag": """\
 :type: str
 
-The ABI tag for extension modules, e.g. 'cpython-311' or 'cpython-313t'.
+The ABI tag for extension modules, equivalent to the `SOABI` sysconfig var
+(see [PEP 3149](https://peps.python.org/pep-3149/)), e.g. 'cpython-311' or
+'cpython-313t'.
 """,
         "headers": """\
 :type: struct

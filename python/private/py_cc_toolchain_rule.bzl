@@ -147,7 +147,11 @@ free-threaded is enabled, or `''` otherwise).
 """,
         ),
         "abi_tag": attr.string(
-            doc = "The ABI tag for extension modules, e.g. 'cpython-311'",
+            doc = """\
+The ABI tag for extension modules, equivalent to the `SOABI` sysconfig var
+(see [PEP 3149](https://peps.python.org/pep-3149/)), e.g. 'cpython-311' or
+'cpython-313t'.
+""",
             default = "",
         ),
         "headers": attr.label(
