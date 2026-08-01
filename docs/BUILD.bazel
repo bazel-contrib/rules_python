@@ -128,6 +128,7 @@ sphinx_stardocs(
         "//python/api:rule_builders",
         "//python/cc:py_cc_toolchain",
         "//python/cc:py_cc_toolchain_info",
+        "//python/cc:py_extension",
         "//python/entry_points:py_console_script_binary",
         "//python/extensions:config",
         "//python/extensions:python",

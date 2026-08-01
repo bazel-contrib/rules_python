@@ -53,6 +53,9 @@ def py_extension(
     - `module_name`: Pass `module_name = "custom_name"` to override the base
       module filename.
 
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+
     Args:
         name: {type}`str` Target name.
         srcs: {type}`list[Label | str] | None` C/C++ source files to compile
