@@ -277,6 +277,60 @@ def _test_sdist_excludes_record(env):
 
 _tests.append(_test_sdist_excludes_record)
 
+def _test_exclude_bazel_files(env):
+    # Regression test: the `extracted_whl_files` glob must always exclude the
+    # Bazel repo files, even when the wheel is not built from an sdist.
+    for sdist_filename in [None, "foo.tar.gz"]:
+        m_glob = mocks.glob()
+        m_glob.results.append([])  # bin
+        m_glob.results.append([])  # rewrite-bin
+        m_glob.results.append([])  # extracted_whl_files
+        m_glob.results.append([])  # dist_info
+        m_glob.results.append([])  # data
+
+        whl_library_srcs(
+            name = "foo.whl",
+            sdist_filename = sdist_filename,
+            native = struct(
+                filegroup = lambda **_: None,
+                glob = m_glob.glob,
+            ),
+            rules = struct(
+                venv_rewrite_shebang = lambda **kwargs: None,
+            ),
+        )
+
+        expected_exclude = [
+            "BUILD",
+            "BUILD.bazel",
+            "REPO.bazel",
+            "WORKSPACE",
+            "WORKSPACE.bzlmod",
+            "WORKSPACE.bazel",
+        ]
+        if sdist_filename:
+            expected_exclude.append(sdist_filename)
+
+        env.expect.that_collection(m_glob.calls).contains_exactly([
+            mocks.glob_call(["bin/*"], allow_empty = True),
+            mocks.glob_call(["rewrite-bin/*"], allow_empty = True),
+            mocks.glob_call(
+                include = ["**"],
+                exclude = expected_exclude,
+                allow_empty = True,
+            ),
+            mocks.glob_call(
+                include = ["site-packages/*.dist-info/**"],
+                allow_empty = True,
+            ),
+            mocks.glob_call(
+                include = ["data/**", "bin/**", "include/**"],
+                allow_empty = True,
+            ),
+        ])
+
+_tests.append(_test_exclude_bazel_files)
+
 def whl_library_targets_test_suite(name):
     """create the test suite.
 
