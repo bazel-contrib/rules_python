@@ -204,7 +204,12 @@ def _get_python_library_info(base_executable) -> dict[str, Any]:
                 #
                 # See: https://docs.python.org/3/extending/windows.html
                 # https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation
-                interface_path = os.path.join(root_dir, libname[:-3] + "lib")
+                lib_filename = libname[:-3] + "lib"
+                for s_dir in search_directories:
+                    candidate = os.path.join(s_dir, lib_filename)
+                    if os.path.exists(candidate):
+                        interface_path = candidate
+                        break
             elif libname.endswith(".so"):
                 # It's possible, though unlikely, that interface stubs (.ifso) exist.
                 interface_path = os.path.join(root_dir, libname[:-2] + "ifso")
