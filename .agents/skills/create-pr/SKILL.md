@@ -4,8 +4,6 @@ description: Propose, draft, or create a pull request by delegating to a
   subagent
 ---
 
-@/.agents/rules/pr.md
-
 When creating a Pull Request for local changes or a branch, invoke a subagent
 to handle PR creation or description drafting.
 
@@ -14,8 +12,9 @@ to handle PR creation or description drafting.
 1. Launch a subagent using `invoke_subagent` with `TypeName: "self"` (or
    `agentapi new-conversation`).
 2. Provide a prompt to the subagent directing it to:
-   - Read `CONTRIBUTING.md` (specifically the sections on **Commit messages
-     and PR descriptions** and **Documenting changes**) before drafting.
+   - Include `@/.agents/rules/pr.md` and read `CONTRIBUTING.md` (specifically
+     the sections on **Commit messages and PR descriptions** and
+     **Documenting changes**) before drafting.
    - Strictly adhere to `CONTRIBUTING.md` rules for:
      - **PR Title**: Follow conventional commit style and title formatting.
        For agent rules, skills, and system updates, use `agents:` prefix.
