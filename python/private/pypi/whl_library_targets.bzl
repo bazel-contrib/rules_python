@@ -329,9 +329,6 @@ def whl_library_srcs(
         data = data + [DATA_LABEL]
 
         rules.py_library(
-            # TODO @aignas 2026-07-26: once the srcs and library repos are separated, we should
-            # remove `PY_SRCS_LABEL and just use PY_LIBRARY_PUBLIC_LABEL. That will improve the
-            # amount of labels we are creating.
             name = pkg_name,
             srcs = srcs,
             pyi_srcs = pyi_srcs,
@@ -401,9 +398,6 @@ def whl_library_deps_targets(
             DATA_LABEL: repo_label(DATA_LABEL),
         }
 
-    # TODO @aignas 2026-07-26: add a test when the group_name is specified and the requires_dist is
-    # empty list. We should essentially include in the group with the least amount of targets.
-
     # If this library is a member of a group, its public label aliases need to
     # point to the group implementation rule not the implementation rules. We
     # also need to mark the implementation rules as visible to the group
@@ -444,11 +438,12 @@ def whl_library_deps_targets(
             impl_vis = visibility
 
     if not requires_dist:
-        # If the package is in a group but has no deps, we will correctly alias the right
-        # thing.
+        # If the package is in a group but has no deps, we still need the public labels to
+        # point at the srcs targets so that the group implementation can use them. We don't
+        # need any of the extra targets, so just create the aliases.
         aliases = aliases | {
-            py_library_label: repo_label(PY_LIBRARY_PUBLIC_LABEL),
-            whl_file_label: repo_label(WHEEL_FILE_PUBLIC_LABEL),
+            py_library_label: repo_label(PY_SRCS_LABEL),
+            whl_file_label: repo_label(WHEEL_FILE),
         }
 
     for alias, actual in aliases.items():
@@ -477,10 +472,13 @@ def whl_library_deps_targets(
     )
 
     if hasattr(native, "filegroup"):
+        # We include the whl file as srcs so that `$(location :whl)` expands to the whl file.
+        # The transitive dependencies are available via the `data` attribute.
         native.filegroup(
             name = whl_file_label,
+            srcs = [repo_label(WHEEL_FILE)],
             data = _deps(
-                deps = [repo_label(WHEEL_FILE)],
+                deps = [],
                 package_deps = package_deps,
                 tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
             ),
@@ -493,8 +491,9 @@ def whl_library_deps_targets(
             # We include as srcs to ensure that the (locations :pkg) works as expected.
             srcs = [repo_label(PY_SRCS_LABEL)],
             deps = _deps(
-                # We include as deps, so that `PyInfo` and friends get propagated as deps.
-                # not sure if just including it as `srcs` is enough.
+                # We include as deps, so that `PyInfo` and friends (e.g. `pyi_srcs`) get
+                # propagated. Just passing the target as `srcs` is not enough to propagate
+                # `pyi_srcs`, see `tests/base_rules/py_library`.
                 deps = [repo_label(PY_SRCS_LABEL)],
                 package_deps = package_deps,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),

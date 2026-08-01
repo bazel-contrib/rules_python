@@ -152,7 +152,8 @@ def _test_whl_library_deps_targets(env):
             "name": "whl",
             # NOTE @aignas 2026-07-25: depending on the brackets position one may get different
             # results in the expectation.
-            "data": ["whl_file", "@pypi//bar:whl"] + select({
+            "srcs": ["whl_file"],
+            "data": ["@pypi//bar:whl"] + select({
                 ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
                 "//conditions:default": [],
             }),
@@ -187,6 +188,54 @@ def _test_whl_library_deps_targets(env):
     ])  # buildifier: @unsorted-dict-items
 
 _tests.append(_test_whl_library_deps_targets)
+
+def _test_whl_library_deps_targets_no_deps(env):
+    alias_calls = []
+    filegroup_calls = []
+    py_library_calls = []
+    env_marker_setting_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [],
+        group_name = "qux",
+        repo = None,
+        aliases = {},
+        extras = [],
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+            config_setting = lambda **_: None,
+            glob = lambda **_: [],
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+        ),
+    )
+
+    # If the package is in a group but has no deps, then the public labels should be aliases
+    # to the srcs targets and no other targets should be created.
+    env.expect.that_collection(alias_calls).contains_exactly([
+        {
+            "name": "pkg",
+            "actual": "srcs",
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "whl",
+            "actual": "whl_file",
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(filegroup_calls).contains_exactly([])
+    env.expect.that_collection(py_library_calls).contains_exactly([])
+    env.expect.that_collection(env_marker_setting_calls).contains_exactly([])
+
+_tests.append(_test_whl_library_deps_targets_no_deps)
 
 def _test_sdist_excludes_record(env):
     py_library_calls = []

@@ -91,6 +91,18 @@ class TestContents(unittest.TestCase):
             ],
         )
 
+    def test_whl_location(self):
+        self.assertTrue(
+            os.environ["WHL_LOCATION"].endswith("requests-2.34.2-py3-none-any.whl"),
+            msg=os.environ["WHL_LOCATION"],
+        )
+        self.assertTrue(
+            os.environ["WHL_DEPS_LOCATION"].endswith(
+                "requests-2.34.2-py3-none-any.whl"
+            ),
+            msg=os.environ["WHL_DEPS_LOCATION"],
+        )
+
     @staticmethod
     def _read_file(env_var: str) -> list[str]:
         return set(Path(os.environ[env_var]).read_text().splitlines())

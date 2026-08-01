@@ -3,10 +3,12 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
+load("//python:py_info.bzl", "PyInfo")
 load("//python:py_library.bzl", "py_library")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//tests/base_rules:base_tests.bzl", "create_base_tests")
 load("//tests/base_rules:util.bzl", pt_util = "util")
+load("//tests/support:py_info_subject.bzl", "py_info_subject")
 
 _tests = []
 
@@ -140,6 +142,63 @@ def _test_files_to_compile_impl(env, target):
     ])
 
 _tests.append(_test_files_to_compile)
+
+def _test_pyi_srcs_not_propagated_via_srcs(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_lib",
+        srcs = ["lib.py"],
+        pyi_srcs = ["lib.pyi"],
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [name + "_lib"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_pyi_srcs_not_propagated_via_srcs_impl,
+    )
+
+def _test_pyi_srcs_not_propagated_via_srcs_impl(env, target):
+    info = env.expect.that_target(target).provider(
+        PyInfo,
+        factory = py_info_subject,
+    )
+    info.transitive_pyi_files().contains_exactly([])
+
+_tests.append(_test_pyi_srcs_not_propagated_via_srcs)
+
+def _test_pyi_srcs_propagated_via_deps(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_lib",
+        srcs = ["lib.py"],
+        pyi_srcs = ["lib.pyi"],
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [name + "_lib"],
+        deps = [name + "_lib"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_pyi_srcs_propagated_via_deps_impl,
+    )
+
+def _test_pyi_srcs_propagated_via_deps_impl(env, target):
+    info = env.expect.that_target(target).provider(
+        PyInfo,
+        factory = py_info_subject,
+    )
+    info.transitive_pyi_files().contains_exactly([
+        "{package}/lib.pyi",
+    ])
+
+_tests.append(_test_pyi_srcs_propagated_via_deps)
 
 def py_library_test_suite(name):
     config = struct(rule = py_library, base_test_rule = py_library)
