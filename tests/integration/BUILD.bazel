@@ -42,6 +42,7 @@ default_test_runner(
 rules_python_integration_test(
     name = "bzlmod_lockfile_test",
     bazel_versions = ["9.1.0"],
+    py_main = "bzlmod_lockfile_test.py",
 )
 
 test_suite(
