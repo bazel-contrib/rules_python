@@ -124,12 +124,12 @@ def main():
     parser.add_argument("conv_id", help="Conversation ID to report back to")
     args = parser.parse_args()
 
-    skill_dir = os.path.abspath(os.path.dirname(__file__))
-    logs_dir = os.path.join(skill_dir, "ci_logs")
-    os.makedirs(logs_dir, exist_ok=True)
+    skill_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    scratch_dir = os.path.join(skill_dir, "scratch")
+    os.makedirs(scratch_dir, exist_ok=True)
 
     safe_jname = re.sub(r"[^a-zA-Z0-9]", "_", args.job_name)
-    log_path = os.path.join(logs_dir, f"ci_{safe_jname}_{args.job_id}.log")
+    log_path = os.path.join(scratch_dir, f"ci_{safe_jname}_{args.job_id}.log")
 
     fetch_log(args.build_id, args.job_id, log_path)
 
@@ -137,7 +137,7 @@ def main():
     errors = parse_log(log_path)
     plan = create_plan(args.job_name, log_path, errors)
 
-    plan_file = os.path.join(logs_dir, f"ci_plan_{safe_jname}.md")
+    plan_file = os.path.join(scratch_dir, f"ci_plan_{safe_jname}.md")
     with open(plan_file, "w") as f:
         f.write(plan)
 

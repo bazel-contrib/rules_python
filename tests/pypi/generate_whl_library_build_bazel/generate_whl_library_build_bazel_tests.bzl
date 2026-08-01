@@ -23,17 +23,11 @@ def _test_all_workspace(env):
     want = """\
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
-load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
 
-package_metadata(
-    name = "package_metadata",
-    purl = None,
-    visibility = ["//:__subpackages__"],
-)
-
-whl_library_targets_from_requires(
+whl_library_targets(
     copy_executables = {
         "exec_src": "exec_dest",
     },
@@ -53,6 +47,7 @@ whl_library_targets_from_requires(
     ],
     group_name = "qux",
     include = packages,
+    metadata_name = "foo",
     name = "foo.whl",
     requires_dist = [
         "foo",
@@ -60,11 +55,23 @@ whl_library_targets_from_requires(
         "qux",
     ],
     srcs_exclude = ["srcs_exclude_all"],
+    tags = [
+        "pypi_name=foo",
+        "pypi_version=0",
+    ],
+)
+
+package_metadata(
+    name = "package_metadata",
+    purl = "foo",
+    visibility = ["//:__subpackages__"],
 )
 
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
         requires_dist = ["foo", "bar-baz", "qux"],
@@ -80,6 +87,7 @@ whl_library_targets_from_requires(
         config_load = "@pypi//:config.bzl",
         group_name = "qux",
         group_deps = ["foo", "fox", "qux"],
+        purl = "foo",
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
@@ -89,17 +97,11 @@ def _test_all(env):
     want = """\
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
-load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
 
-package_metadata(
-    name = "package_metadata",
-    purl = None,
-    visibility = ["//:__subpackages__"],
-)
-
-whl_library_targets_from_requires(
+whl_library_targets(
     copy_executables = {
         "exec_src": "exec_dest",
     },
@@ -119,6 +121,7 @@ whl_library_targets_from_requires(
     ],
     group_name = "qux",
     include = packages,
+    metadata_name = "foo",
     name = "foo.whl",
     requires_dist = [
         "foo",
@@ -126,11 +129,23 @@ whl_library_targets_from_requires(
         "qux",
     ],
     srcs_exclude = ["srcs_exclude_all"],
+    tags = [
+        "pypi_name=foo",
+        "pypi_version=0",
+    ],
+)
+
+package_metadata(
+    name = "package_metadata",
+    purl = "foo",
+    visibility = ["//:__subpackages__"],
 )
 
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
         requires_dist = ["foo", "bar-baz", "qux"],
@@ -145,6 +160,7 @@ whl_library_targets_from_requires(
         ),
         config_load = "@pypi//:config.bzl",
         group_name = "qux",
+        purl = "foo",
         group_deps = ["foo", "fox", "qux"],
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
@@ -155,17 +171,11 @@ def _test_all_with_loads(env):
     want = """\
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
-load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets_from_requires")
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
 
-package_metadata(
-    name = "package_metadata",
-    purl = None,
-    visibility = ["//:__subpackages__"],
-)
-
-whl_library_targets_from_requires(
+whl_library_targets(
     copy_executables = {
         "exec_src": "exec_dest",
     },
@@ -185,6 +195,7 @@ whl_library_targets_from_requires(
     ],
     group_name = "qux",
     include = packages,
+    metadata_name = "foo",
     name = "foo.whl",
     requires_dist = [
         "foo",
@@ -192,11 +203,23 @@ whl_library_targets_from_requires(
         "qux",
     ],
     srcs_exclude = ["srcs_exclude_all"],
+    tags = [
+        "pypi_name=foo",
+        "pypi_version=0",
+    ],
+)
+
+package_metadata(
+    name = "package_metadata",
+    purl = "foo",
+    visibility = ["//:__subpackages__"],
 )
 
 # SOMETHING SPECIAL AT THE END
 """
     actual = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
         dep_template = "@pypi//{name}:{target}",
         name = "foo.whl",
         requires_dist = ["foo", "bar-baz", "qux"],
@@ -212,6 +235,7 @@ whl_library_targets_from_requires(
         group_name = "qux",
         config_load = "@pypi//:config.bzl",
         group_deps = ["foo", "fox", "qux"],
+        purl = "foo",
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 

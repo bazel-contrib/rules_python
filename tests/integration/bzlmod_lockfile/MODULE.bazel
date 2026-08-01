@@ -12,8 +12,8 @@ python.toolchain(python_version = "3.13")
 # TODO: This test module should also verify that isolate = True works, will do in a followup PR.
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
-    hub_name = "pypi",
+    hub_name = "pypi_lockfile",
     python_version = "3.13",
     requirements_lock = "//:requirements_lock.txt",
 )
-use_repo(pip, "pypi")
+use_repo(pip, pypi = "pypi_lockfile")

@@ -25,6 +25,7 @@ _RENDER = {
     "extras": render.list,
     "group_deps": render.list,
     "include": str,
+    "repo": lambda maybe_label: repr(str(maybe_label)),
     "requires_dist": render.list,
     "srcs_exclude": render.list,
     "tags": render.list,
@@ -38,19 +39,22 @@ _TEMPLATE = """\
 
 package(default_visibility = ["//visibility:public"])
 
-package_metadata(
-    name = "package_metadata",
-    purl = {purl},
-    visibility = ["//:__subpackages__"],
-)
-
 {fn}(
 {kwargs}
 )
 """
 
+_PURL = """\
+package_metadata(
+    name = "package_metadata",
+    purl = {purl},
+    visibility = ["//:__subpackages__"],
+)
+"""
+
 def generate_whl_library_build_bazel(
         *,
+        metadata_version,
         annotation = None,
         config_load,
         purl = None,
@@ -59,6 +63,7 @@ def generate_whl_library_build_bazel(
     """Generate a BUILD file for an unzipped Wheel
 
     Args:
+        metadata_version: The version to use for tag generation.
         annotation: The annotation for the build file.
         config_load: {type}`str` The location from where to load the config.
         purl: The purl.
@@ -74,13 +79,25 @@ def generate_whl_library_build_bazel(
         """load("@package_metadata//rules:package_metadata.bzl", "package_metadata")""",
     ]
 
-    fn = "whl_library_targets_from_requires"
+    if kwargs.get("repo"):
+        fn = "whl_library_deps_targets"
+    else:
+        fn = "whl_library_targets"
+
+    tags = [
+        "pypi_name={}".format(kwargs.get("metadata_name")),
+        "pypi_version={}".format(metadata_version),
+    ]
+    kwargs["tags"] = tags
+
     if not requires_dist:
         # no deps, we can leave the extra loads out
         pass
-    else:
+    elif config_load:
         loads.append("""load("{}", "{}")""".format(config_load, "packages"))
         kwargs["include"] = "packages"
+        kwargs["requires_dist"] = requires_dist
+    else:
         kwargs["requires_dist"] = requires_dist
 
     loads.extend([
@@ -106,9 +123,8 @@ def generate_whl_library_build_bazel(
                     "{} = {},".format(k, _RENDER.get(k, repr)(v))
                     for k, v in sorted(kwargs.items())
                 ])),
-                purl = repr(purl),
             ),
-        ] + additional_content,
+        ] + ([_PURL.format(purl = repr(purl))] if purl else []) + additional_content,
     )
 
     # NOTE: Ensure that we terminate with a new line

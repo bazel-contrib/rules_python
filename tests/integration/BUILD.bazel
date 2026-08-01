@@ -137,6 +137,10 @@ rules_python_integration_test(
     py_main = "uv_lock_test.py",
 )
 
+rules_python_integration_test(
+    name = "whl_library_test",
+)
+
 py_library(
     name = "runner_lib",
     srcs = ["runner.py"],

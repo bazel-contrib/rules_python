@@ -19,7 +19,7 @@ local_path_override(
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
-    hub_name = "pypi",
+    hub_name = "pypi_compile",
     python_version = "3.9",
     requirements_lock = "@compile_pip_requirements//:requirements_lock.txt",
 )

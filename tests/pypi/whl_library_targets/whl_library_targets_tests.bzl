@@ -17,8 +17,8 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
     "//python/private/pypi:whl_library_targets.bzl",
+    "whl_library_deps_targets",
     "whl_library_srcs",
-    "whl_library_targets_from_requires",
 )  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 
@@ -105,7 +105,7 @@ def _test_copy(env):
 
 _tests.append(_test_copy)
 
-def _test_whl_and_library_deps_from_requires(env):
+def _test_whl_library_deps_targets(env):
     filegroup_calls = []
     py_library_calls = []
     env_marker_setting_calls = []
@@ -118,10 +118,9 @@ def _test_whl_and_library_deps_from_requires(env):
     m_glob.results.append(["site-packages/foo/DATA.txt"])  # data
     m_glob.results.append(["site-packages/foo/PYI.pyi"])  # pyi
 
-    whl_library_targets_from_requires(
+    whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
         metadata_name = "Foo",
-        metadata_version = "0",
         dep_template = "@pypi//{name}:{target}",
         requires_dist = [
             "foo",  # this self-edge will be ignored
@@ -130,11 +129,13 @@ def _test_whl_and_library_deps_from_requires(env):
             "booo",  # this is effectively excluded due to the list below
         ],
         include = ["foo", "bar", "bar_baz"],
-        data_exclude = [],
         # Overrides for testing
-        filegroups = {},
+        repo = None,
+        aliases = None,
+        extras = [],
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: None,
             config_setting = lambda **_: None,
             glob = m_glob.glob,
         ),
@@ -148,79 +149,35 @@ def _test_whl_and_library_deps_from_requires(env):
 
     env.expect.that_collection(filegroup_calls).contains_exactly([
         {
-            "name": "whl_file",
-            "srcs": ["foo-0-py3-none-any.whl"],
-            "visibility": ["//visibility:public"],
-        },
-        {
             "name": "whl",
             # NOTE @aignas 2026-07-25: depending on the brackets position one may get different
             # results in the expectation.
-            "data": ["whl_file"] + (["@pypi//bar:whl"] + select({
+            "srcs": ["whl_file"],
+            "data": ["@pypi//bar:whl"] + select({
                 ":is_include_bar_baz_true": ["@pypi//bar_baz:whl"],
                 "//conditions:default": [],
-            })),
+            }),
             "visibility": ["//visibility:public"],
         },
     ])  # buildifier: @unsorted-dict-items
 
-    env.expect.that_collection(py_library_calls).has_size(2)
+    env.expect.that_collection(py_library_calls).has_size(1)
     if len(py_library_calls) != 1:
         return
     py_library_call = py_library_calls[0]
 
     env.expect.that_dict(py_library_call).contains_exactly({
         "name": "pkg",
-        "srcs": ["site-packages/foo/SRCS.py"] + select({
-            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
-            "//conditions:default": ["_create_inits_target"],
-        }),
-        "pyi_srcs": ["site-packages/foo/PYI.pyi"],
-        "data": ["site-packages/foo/DATA.txt", "data"],
-        "imports": ["site-packages"],
-        "deps": ["@pypi//bar:pkg"] + select({
+        "srcs": ["srcs"],
+        "deps": ["srcs", "@pypi//bar:pkg"] + select({
             ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
             "//conditions:default": [],
         }),
-        "tags": ["pypi_name=Foo", "pypi_version=0"],
+        "tags": [],
         "visibility": ["//visibility:public"],
-        "experimental_venvs_site_packages": Label("//python/config_settings:venvs_site_packages"),
-        "namespace_package_files": [] + select({
-            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
-            "//conditions:default": ["_create_inits_target"],
-        }),
     })  # buildifier: @unsorted-dict-items
 
-    env.expect.that_collection(m_glob.calls).contains_exactly([
-        # bin call
-        mocks.glob_call(
-            ["bin/*"],
-            allow_empty = True,
-        ),
-        # rewrite-bin call
-        mocks.glob_call(
-            ["rewrite-bin/*"],
-            allow_empty = True,
-        ),
-        # srcs call
-        mocks.glob_call(
-            ["site-packages/**/*.py"],
-            exclude = [],
-            allow_empty = True,
-        ),
-        # data call
-        mocks.glob_call(
-            ["site-packages/**/*"],
-            exclude = [
-                "**/*.py",
-                "**/*.pyc",
-                "**/*.pyc.*",
-            ],
-            allow_empty = True,
-        ),
-        # pyi call
-        mocks.glob_call(["site-packages/**/*.pyi"], allow_empty = True),
-    ])
+    env.expect.that_collection(m_glob.calls).contains_exactly([])
 
     env.expect.that_collection(env_marker_setting_calls).contains_exactly([
         {
@@ -230,7 +187,55 @@ def _test_whl_and_library_deps_from_requires(env):
         },
     ])  # buildifier: @unsorted-dict-items
 
-_tests.append(_test_whl_and_library_deps_from_requires)
+_tests.append(_test_whl_library_deps_targets)
+
+def _test_whl_library_deps_targets_no_deps(env):
+    alias_calls = []
+    filegroup_calls = []
+    py_library_calls = []
+    env_marker_setting_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [],
+        group_name = "qux",
+        repo = None,
+        aliases = {},
+        extras = [],
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+            config_setting = lambda **_: None,
+            glob = lambda **_: [],
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+        ),
+    )
+
+    # If the package is in a group but has no deps, then the public labels should be aliases
+    # to the srcs targets and no other targets should be created.
+    env.expect.that_collection(alias_calls).contains_exactly([
+        {
+            "name": "pkg",
+            "actual": "srcs",
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "whl",
+            "actual": "whl_file",
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+    env.expect.that_collection(filegroup_calls).contains_exactly([])
+    env.expect.that_collection(py_library_calls).contains_exactly([])
+    env.expect.that_collection(env_marker_setting_calls).contains_exactly([])
+
+_tests.append(_test_whl_library_deps_targets_no_deps)
 
 def _test_sdist_excludes_record(env):
     py_library_calls = []
@@ -271,6 +276,60 @@ def _test_sdist_excludes_record(env):
     ])
 
 _tests.append(_test_sdist_excludes_record)
+
+def _test_exclude_bazel_files(env):
+    # Regression test: the `extracted_whl_files` glob must always exclude the
+    # Bazel repo files, even when the wheel is not built from an sdist.
+    for sdist_filename in [None, "foo.tar.gz"]:
+        m_glob = mocks.glob()
+        m_glob.results.append([])  # bin
+        m_glob.results.append([])  # rewrite-bin
+        m_glob.results.append([])  # extracted_whl_files
+        m_glob.results.append([])  # dist_info
+        m_glob.results.append([])  # data
+
+        whl_library_srcs(
+            name = "foo.whl",
+            sdist_filename = sdist_filename,
+            native = struct(
+                filegroup = lambda **_: None,
+                glob = m_glob.glob,
+            ),
+            rules = struct(
+                venv_rewrite_shebang = lambda **kwargs: None,
+            ),
+        )
+
+        expected_exclude = [
+            "BUILD",
+            "BUILD.bazel",
+            "REPO.bazel",
+            "WORKSPACE",
+            "WORKSPACE.bzlmod",
+            "WORKSPACE.bazel",
+        ]
+        if sdist_filename:
+            expected_exclude.append(sdist_filename)
+
+        env.expect.that_collection(m_glob.calls).contains_exactly([
+            mocks.glob_call(["bin/*"], allow_empty = True),
+            mocks.glob_call(["rewrite-bin/*"], allow_empty = True),
+            mocks.glob_call(
+                include = ["**"],
+                exclude = expected_exclude,
+                allow_empty = True,
+            ),
+            mocks.glob_call(
+                include = ["site-packages/*.dist-info/**"],
+                allow_empty = True,
+            ),
+            mocks.glob_call(
+                include = ["data/**", "bin/**", "include/**"],
+                allow_empty = True,
+            ),
+        ])
+
+_tests.append(_test_exclude_bazel_files)
 
 def whl_library_targets_test_suite(name):
     """create the test suite.

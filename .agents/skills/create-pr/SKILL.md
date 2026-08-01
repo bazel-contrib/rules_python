@@ -15,6 +15,7 @@ to handle PR creation or description drafting.
      and PR descriptions** and **Documenting changes**) before drafting.
    - Strictly adhere to `CONTRIBUTING.md` rules for:
      - **PR Title**: Follow conventional commit style and title formatting.
+       For agent rules, skills, and system updates, use `agents:` prefix.
      - **PR Body**: Include rationale, high-level summary, and structure.
      - **Formatting**: Follow repository style guidelines and structure.
    - Create a Markdown artifact (`pr_info.md`) containing the PR title, body,
@@ -23,6 +24,9 @@ to handle PR creation or description drafting.
      description, **do not** run `gh pr create`—just create the `pr_info.md`
      artifact for the user to review. Otherwise, execute `gh pr create` with
      the formatted title and body.
+   - **Targeting Upstream Repo**: When executing `gh pr create`, always target
+     the upstream repository by passing `--repo bazel-contrib/rules_python` and
+     `--head <fork_owner>:<branch_name>`.
 3. **Return Status**: Direct the subagent to communicate the PR number or draft
    status back using `send_message` (or `agentapi send-message`) with the
    parent conversation ID, or include it in its final completion response.

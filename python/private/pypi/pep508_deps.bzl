@@ -44,6 +44,12 @@ def deps(
         * deps_select: {type}`dict[str, list[str]]` dependencies to include on particular
               subset of target platforms.
     """
+    if not requires_dist:
+        return struct(
+            deps = [],
+            deps_select = {},
+        )
+
     reqs = sorted(
         [requirement(r) for r in requires_dist],
         key = lambda x: "{}:{}:".format(x.name, sorted(x.extras), x.marker),
