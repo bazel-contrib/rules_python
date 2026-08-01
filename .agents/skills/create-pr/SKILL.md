@@ -1,6 +1,7 @@
 ---
 name: create-pr
-description: Create a pull request by delegating to a subagent
+description: Propose, draft, or create a pull request by delegating to a
+  subagent
 ---
 
 When creating a Pull Request for local changes or a branch, invoke a subagent
