@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import fcntl
 import json
 import os
 import subprocess
@@ -79,9 +80,49 @@ def main():
     )
     args = parser.parse_args()
 
-    skill_dir = os.path.abspath(os.path.dirname(__file__))
+    skill_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    scratch_dir = os.path.join(skill_dir, "scratch")
+    os.makedirs(scratch_dir, exist_ok=True)
 
-    state_file = os.path.join(skill_dir, f"monitored_state_pr_{args.pr}.json")
+    # Acquire lock for PR to avoid duplicate monitoring processes
+    lock_file_path = os.path.join(scratch_dir, f".monitored_pr_{args.pr}.lock")
+    lock_file = open(lock_file_path, "a+")
+    running_agent_conv_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID", "")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_file.seek(0)
+        lock_file.truncate(0)
+        lock_data = {
+            "pid": os.getpid(),
+            "agent_conv_id": running_agent_conv_id,
+            "notify_conv_id": args.conv_id,
+        }
+        lock_file.write(json.dumps(lock_data) + "\n")
+        lock_file.flush()
+    except (BlockingIOError, OSError):
+        existing_agent_conv = ""
+        try:
+            lock_file.seek(0)
+            content = lock_file.read().strip()
+            if content:
+                data = json.loads(content)
+                existing_agent_conv = data.get("agent_conv_id", "") or data.get(
+                    "conv_id", ""
+                )
+        except Exception:
+            pass
+
+        subagent_str = (
+            f" under agent/subagent conversation '{existing_agent_conv}'"
+            if existing_agent_conv
+            else ""
+        )
+        print(
+            f"ℹ️ Continuous remote CI monitoring for PR #{args.pr} is already running in another process{subagent_str}. Exiting."
+        )
+        sys.exit(0)
+
+    state_file = os.path.join(scratch_dir, f"monitored_state_pr_{args.pr}.json")
     monitored = {}
     if os.path.exists(state_file):
         try:
