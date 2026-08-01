@@ -98,7 +98,7 @@ EXECUTABLE_ATTRS = dicts.add(
 Arguments that are only applicable to the interpreter.
 
 The args an interpreter supports are specific to the interpreter. For
-CPython, see https://docs.python.org/3/using/cmdline.html.
+CPython, see <https://docs.python.org/3/using/cmdline.html>.
 
 :::{note}
 Only supported for {obj}`--bootstrap_impl=script`. Ignored otherwise.
@@ -147,7 +147,7 @@ Module name to execute as the main program.
 When set, `srcs` is not required, and it is assumed the module is
 provided by a dependency.
 
-See https://docs.python.org/3/using/cmdline.html#cmdoption-m for more
+See <https://docs.python.org/3/using/cmdline.html#cmdoption-m> for more
 information about running modules as the main program.
 
 This is mutually exclusive with {obj}`main`.

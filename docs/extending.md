@@ -23,7 +23,7 @@ Extending the core rules is most useful when you want all or most of the
 behavior of a core rule.
 :::
 
-Follow or comment on https://github.com/bazel-contrib/rules_python/issues/1647
+Follow or comment on {gh-issue}`1647`
 for the development of APIs to support custom derived rules.
 
 ## Creating custom rules
