@@ -159,7 +159,7 @@ def py_extension(
         "//conditions:default": [],
     })
     user_link_flags = user_link_flags + select({
-        labels.PLATFORMS_OS_WINDOWS: ["$(locations " + _PY_CC_LIBS_ACTUAL_BASE_TARGET + ")"],
+        labels.PLATFORMS_OS_WINDOWS: ["$(locations " + _PY_CC_LIBS_ACTUAL_CANONICAL_TARGET + ")"],
         "//conditions:default": [],
     })
     additional_linker_inputs = additional_linker_inputs + select({
