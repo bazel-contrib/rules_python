@@ -6,8 +6,18 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
+load("//python/private:common_labels.bzl", "labels")
 load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
 load(":py_extension_rule.bzl", "py_extension_wrapper")
+
+_PY_CC_HEADERS_ALIAS_BASE_TARGET = "//python/private/cc:current_py_cc_headers_private_alias"
+_PY_CC_HEADERS_ALIAS_CANONICAL_LABEL = Label(_PY_CC_HEADERS_ALIAS_BASE_TARGET)
+
+_PY_CC_LIBS_ALIAS_BASE_TARGET = "//python/private/cc:current_py_cc_libs_private_alias"
+_PY_CC_LIBS_ALIAS_CANONICAL_LABEL = Label(_PY_CC_LIBS_ALIAS_BASE_TARGET)
+
+_PY_CC_LIBS_ACTUAL_BASE_TARGET = "//python/cc:current_py_cc_libs"
+_PY_CC_LIBS_ACTUAL_CANONICAL_LABEL = Label(_PY_CC_LIBS_ACTUAL_BASE_TARGET)
 
 def py_extension(
         name,
@@ -74,29 +84,25 @@ def py_extension(
             wrapper rule.
     """
     add_tag(kwargs, "@rules_python//python/cc:py_extension")
+    additional_linker_inputs = additional_linker_inputs or []
+    copts = copts or []
+    deps = deps or []
     user_link_flags = user_link_flags or []
 
     csl_deps = []
 
-    copts = (copts or []) + [
+    copts = copts + select({
         # -fPIC (Position Independent Code) is required when compiling C/C++ sources into
         # dynamic/shared libraries (.so/.dylib/.pyd) so code can be loaded at arbitrary addresses.
-        "-fPIC",
-    ]
-
-    py_cc_headers_alias = "//python/private/cc:current_py_cc_headers_private_alias"
-    py_cc_libs_alias = "//python/private/cc:current_py_cc_libs_private_alias"
+        # MSVC on Windows does not support or require -fPIC.
+        labels.PLATFORMS_OS_WINDOWS: [],
+        "//conditions:default": ["-fPIC"],
+    })
 
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
     # in their deps attribute (including when deps is a select() expression).
-    py_cc_headers_and_win_libs = [
-        py_cc_headers_alias,
-    ] + select({
-        "@platforms//os:windows": [py_cc_libs_alias],
-        "//conditions:default": [],
-    })
-    deps = (deps or []) + py_cc_headers_and_win_libs
+    deps = deps + [_PY_CC_HEADERS_ALIAS_CANONICAL_LABEL]
 
     # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
@@ -134,47 +140,54 @@ def py_extension(
     if exports_filter != None:
         csl_kwargs["exports_filter"] = exports_filter
     else:
-        csl_kwargs["exports_filter"] = final_csl_deps
+        csl_kwargs["exports_filter"] = [str(d) for d in final_csl_deps]
 
-    effective_user_link_flags = user_link_flags + select({
+    user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
         # C-API symbols (e.g. PyModule_Create) remain unresolved at link time and are
         # dynamically resolved at runtime when CPython loads the shared library (.so).
-        "@platforms//os:macos": ["-undefined", "dynamic_lookup"],
-        # On Windows MSVC, CPython import libraries (python3xx.lib) are declared with
-        # system_provided = True in cc_import, suppressing automatic propagation of the
-        # .lib file path to link.exe. We explicitly pass $(locations ...) to provide the
-        # path of the CPython import library to MSVC link.exe.
-        "@platforms//os:windows": ["$(locations //python/cc:current_py_cc_libs)"],
+        labels.PLATFORMS_OS_MACOS: ["-undefined", "dynamic_lookup"],
         "//conditions:default": [],
     })
-    csl_kwargs["user_link_flags"] = effective_user_link_flags
 
-    csl_additional_linker_inputs = (additional_linker_inputs or []) + select({
-        "@platforms//os:windows": [Label("//python/cc:current_py_cc_libs")],
+    # Windows-specific CPython linking requirements:
+    # 1. Windows requires .lib files when linking, so they must be added to deps.
+    # 2. CPython import libraries (python3xx.lib) are declared with system_provided = True
+    #    in cc_import, suppressing automatic propagation of the .lib file path to link.exe.
+    #    We explicitly pass $(locations ...) to provide the path of the CPython import library to MSVC link.exe.
+    # 3. We pass current_py_cc_libs as an additional linker input to ensure the .lib file is available to the link action.
+    deps = deps + select({
+        labels.PLATFORMS_OS_WINDOWS: [_PY_CC_LIBS_ALIAS_CANONICAL_LABEL],
+        "//conditions:default": [],
+    })
+    user_link_flags = user_link_flags + select({
+        labels.PLATFORMS_OS_WINDOWS: ["$(locations " + _PY_CC_LIBS_ACTUAL_BASE_TARGET + ")"],
+        "//conditions:default": [],
+    })
+    additional_linker_inputs = additional_linker_inputs + select({
+        labels.PLATFORMS_OS_WINDOWS: [_PY_CC_LIBS_ACTUAL_CANONICAL_LABEL],
         "//conditions:default": [],
     })
 
     cc_shared_library(
         name = csl_name,
         deps = final_csl_deps,
-        additional_linker_inputs = csl_additional_linker_inputs,
+        additional_linker_inputs = additional_linker_inputs,
         dynamic_deps = dynamic_deps,
+        user_link_flags = user_link_flags,
         visibility = ["//visibility:private"],
         **csl_kwargs
     )
 
-    # 5. Propagate attributes to wrapper rule
-    kwargs["module_name"] = module_name
-    kwargs["py_limited_api"] = py_limited_api
-
-    # 6. Filter out C++ specific compilation/linking attributes before invoking wrapper rule
+    # 5. Filter out C++ specific compilation/linking attributes before invoking wrapper rule
     for cc_attr in ("includes", "linkopts", "linkshared", "linkstatic", "features"):
         kwargs.pop(cc_attr, None)
 
-    # 7. Wrap with py_extension_wrapper for PEP 3149 naming & PyInfo
+    # 6. Wrap with py_extension_wrapper for PEP 3149 naming & PyInfo
     py_extension_wrapper(
         name = name,
         src = ":" + csl_name,
+        module_name = module_name,
+        py_limited_api = py_limited_api,
         **kwargs
     )
