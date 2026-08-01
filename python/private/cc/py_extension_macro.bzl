@@ -10,6 +10,8 @@ load("//python/private:common_labels.bzl", "labels")
 load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
 load(":py_extension_rule.bzl", "py_extension_wrapper")
 
+_EMPTY_CANONICAL_TARGET = str(Label("//python/private/cc:empty"))
+
 _PY_CC_HEADERS_ALIAS_BASE_TARGET = "//python/private/cc:current_py_cc_headers_private_alias"
 _PY_CC_HEADERS_ALIAS_CANONICAL_TARGET = str(Label(_PY_CC_HEADERS_ALIAS_BASE_TARGET))
 
@@ -125,13 +127,11 @@ def py_extension(
         )
         csl_deps.append(":" + impl_lib_name)
 
-    if csl_deps:
-        final_csl_deps = csl_deps
-    elif deps:
-        final_csl_deps = deps
-    else:
+    if not csl_deps:
+        csl_deps = deps
+    if not csl_deps:
         # cc_shared_library requires a dependency, so use an empty library when none are given.
-        final_csl_deps = ["//python/private/cc:empty"]
+        csl_deps = [_EMPTY_CANONICAL_TARGET]
 
     # 4. Create the underlying cc_shared_library
     csl_name = "_" + name + "_csl"
@@ -139,8 +139,6 @@ def py_extension(
 
     if exports_filter != None:
         csl_kwargs["exports_filter"] = exports_filter
-    else:
-        csl_kwargs["exports_filter"] = final_csl_deps
 
     user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
@@ -171,7 +169,7 @@ def py_extension(
 
     cc_shared_library(
         name = csl_name,
-        deps = final_csl_deps,
+        deps = csl_deps,
         additional_linker_inputs = additional_linker_inputs,
         dynamic_deps = dynamic_deps,
         user_link_flags = user_link_flags,
