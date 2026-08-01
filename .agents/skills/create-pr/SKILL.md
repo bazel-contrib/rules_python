@@ -4,6 +4,8 @@ description: Propose, draft, or create a pull request by delegating to a
   subagent
 ---
 
+@/.agents/rules/pr.md
+
 When creating a Pull Request for local changes or a branch, invoke a subagent
 to handle PR creation or description drafting.
 
