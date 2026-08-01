@@ -58,3 +58,6 @@ MODULE.bazel.lock
 # Buildkite logs
 *Windows*.log
 
+# Agent scratch directories
+.agents/**/scratch
+

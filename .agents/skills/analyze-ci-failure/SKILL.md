@@ -15,7 +15,7 @@ check, invoke this skill by running:
 1. **Resolves Log**: Automatically resolves the Buildkite job download URL or
    fetches GitHub Actions logs via `gh` CLI.
 2. **Downloads & Ingests**: Fetches the full raw CI log file and saves it
-   locally.
+   locally to `.agents/skills/analyze-ci-failure/scratch/`.
 3. **Smart Error Extraction**: Scans log lines for critical failure signatures
    (`Traceback`, `ERROR:`, `FAILED:`, missing packages, compiler aborts, linter
    errors).

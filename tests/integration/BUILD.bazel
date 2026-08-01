@@ -42,6 +42,7 @@ default_test_runner(
 rules_python_integration_test(
     name = "bzlmod_lockfile_test",
     bazel_versions = ["9.1.0"],
+    py_main = "bzlmod_lockfile_test.py",
 )
 
 test_suite(
@@ -135,6 +136,10 @@ rules_python_integration_test(
         ":uv_lock_pypi_server_lib",
     ],
     py_main = "uv_lock_test.py",
+)
+
+rules_python_integration_test(
+    name = "whl_library_test",
 )
 
 py_library(

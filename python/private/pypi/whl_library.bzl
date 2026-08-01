@@ -332,6 +332,12 @@ def _whl_extract(rctx, *, whl_path, logger, sdist_filename = None):
         read_fn = rctx.read,
         logger = logger,
     )
+    rctx.file("metadata.json", json.encode_indent({
+        "name": metadata.name,
+        "provides_extra": metadata.provides_extra,
+        "requires_dist": metadata.requires_dist,
+        "version": metadata.version,
+    }))
     namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
 
     entry_points = _get_entry_points(rctx, install_dir_path, metadata)
@@ -430,6 +436,8 @@ def _whl_archive_impl(rctx):
             whl_path = rctx.path(filename)
         else:
             fail("Only wheels are supported")
+    else:
+        fail("Either 'whl_file' or 'urls' and 'filename' needs to be specified")
 
     return _whl_extract(rctx, whl_path = whl_path, logger = logger)
 
@@ -689,7 +697,6 @@ whl_archive = repository_rule(
             "group_name",
             "index_url",
             "integrity",
-            "repo",
             "repo_prefix",
             "requirement",
             "sha256",
@@ -715,7 +722,74 @@ Does not depend on any python.
     ],
 )
 
-def whl_library(name, **kwargs):
+def _whl_deps_library_impl(rctx):
+    logger = repo_utils.logger(rctx)
+
+    if rctx.attr.metadata_file and rctx.attr.metadata:
+        logger.fail("Only one of 'metadata_file' and 'metadata' can be specified")
+        return
+    if not (rctx.attr.metadata_file or rctx.attr.metadata):
+        logger.fail("At least one of 'metadata_file' and 'metadata' must be specified")
+        return
+
+    if rctx.attr.metadata_file:
+        metadata_contents = rctx.read(rctx.attr.metadata_file)
+    else:
+        metadata_contents = rctx.attr.metadata
+
+    metadata = struct(**json.decode(metadata_contents))
+
+    build_file_contents = generate_whl_library_build_bazel(
+        dep_template = rctx.attr.dep_template or "@{}{{name}}//:{{target}}".format(
+            rctx.attr.repo_prefix,
+        ),
+        config_load = rctx.attr.config_load,
+        metadata_name = metadata.name,
+        metadata_version = metadata.version,
+        requires_dist = metadata.requires_dist,
+        group_deps = rctx.attr.group_deps,
+        group_name = rctx.attr.group_name,
+        repo = rctx.attr.repo or (
+            str(rctx.attr.metadata_file) if rctx.attr.metadata_file else None
+        ),
+        extras = requirement(rctx.attr.requirement).extras,
+    )
+    rctx.file("BUILD.bazel", build_file_contents)
+
+whl_deps_library = repository_rule(
+    attrs = {
+        k: _pip_archive_attrs[k]
+        for k in [
+            "config_load",
+            "dep_template",
+            "group_deps",
+            "group_name",
+            "requirement",
+        ]
+    } | {
+        "metadata": attr.string(
+            doc = """
+The subset of the METADATA contents that is needed for generation of the dependencies.
+* name: {type}`str`
+* version: {type}`str`
+* provides_extra: {type}`list[str]`
+* requires_dist: {type}`list[str]`
+""",
+        ),
+        "metadata_file": attr.label(doc = "An alternative way to pass {attr}`metadata` but as a file."),
+        "repo": attr.label(doc = "A label at the root of the repo to get stuff from."),
+    },
+    doc = """
+A repo rule that reuses the sources from a different place and then creates the necessary targets
+so that this can be used in the repo.
+
+Does not depend on any python.
+""",
+    implementation = _whl_deps_library_impl,
+    environ = [REPO_DEBUG_ENV_VAR],
+)
+
+def whl_library(name, repo = None, **kwargs):
     """Create a whl_library.
 
     This proxies to one of the underlying implementations:
@@ -724,15 +798,18 @@ def whl_library(name, **kwargs):
 
     Args:
         name: {type}`str` The name of the repo.
+        repo: Unused, will be dropped in the next major release.
         **kwargs: The args passed to the underlying implementation.
 
     Returns:
         the repo metadata.
     """
+    _ = repo  # buildifier: disable=unused-variable
+
     whl_file = kwargs.get("whl_file")
     urls = kwargs.get("urls", [])
     filename = kwargs.get("filename")
     if whl_file or (urls and filename and filename.endswith(".whl")):
-        return whl_archive(name = name, **kwargs)
-
-    return pip_archive(name = name, **kwargs)
+        whl_archive(name = name, **kwargs)
+    else:
+        pip_archive(name = name, **kwargs)

@@ -43,31 +43,89 @@ def get_build_url_from_pr(pr_number):
 
 def normalize_build_target(target):
     # Transforms https://buildkite.com/bazel/rules-python-python/builds/15707
-    # into bazel/rules-python-python/15707
-    m = re.search(r"buildkite\.com/([^/]+)/([^/]+)/builds/(\d+)", target)
+    # into (org/pipeline, 15707)
+    m = re.search(r"buildkite\.com/([^/]+/[^/]+)/builds/(\d+)", target)
     if m:
-        return f"{m.group(1)}/{m.group(2)}/{m.group(3)}"
-    return target
+        return m.group(1), m.group(2)
+    parts = target.split("/")
+    if len(parts) == 3:
+        return f"{parts[0]}/{parts[1]}", parts[2]
+    elif len(parts) == 2:
+        return parts[0], parts[1]
+    return "bazel/rules-python-python", target
+
+
+def retry_job_by_uuid(job_id):
+    check_cli("bk", "https://github.com/buildkite/cli")
+    print(f"🚀 Retrying individual job UUID: {job_id}")
+    return subprocess.run(["bk", "job", "retry", job_id])
+
+
+def retry_jobs_by_name(pipeline, build_number, job_pattern):
+    check_cli("bk", "https://github.com/buildkite/cli")
+    cmd = ["bk", "build", "view", str(build_number), "-p", pipeline, "--json"]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(res.stdout)
+        jobs = data.get("jobs", [])
+        matched = []
+        for j in jobs:
+            name = j.get("name", "") or j.get("label", "")
+            state = j.get("state", "")
+            jid = j.get("id")
+            if jid and (
+                re.search(job_pattern, name, re.IGNORECASE)
+                or job_pattern.lower() in name.lower()
+            ):
+                matched.append((jid, name, state))
+
+        if not matched:
+            print(
+                f"⚠️ No jobs found matching pattern '{job_pattern}' in build #{build_number}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        for jid, name, state in matched:
+            print(f"🚀 Retrying job '{name}' (ID: {jid}, status: {state})...")
+            subprocess.run(["bk", "job", "retry", jid])
+    except Exception as e:
+        print(f"❌ Error fetching build jobs: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Retry failed Buildkite jobs using the 'bk' CLI."
+        description="Retry Buildkite jobs individually using 'bk job retry' or rebuild the whole build using 'bk build rebuild'."
     )
     parser.add_argument(
         "args",
         nargs="+",
-        help="Target build (org pipeline build OR a single PR# / URL / ID)",
+        help="Target build (PR#, Buildkite URL, or org/pipeline/build)",
     )
     parser.add_argument(
         "--jobs",
         "--job-name",
         dest="job_name",
-        help="Specific job name or pattern to retry",
+        help="Specific job name or regex pattern to retry individually via 'bk job retry'",
+    )
+    parser.add_argument(
+        "--job-id",
+        dest="job_id",
+        help="Specific job UUID to retry individually via 'bk job retry'",
+    )
+    parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Rebuild the entire build afresh via 'bk build rebuild'",
     )
     args = parser.parse_args()
 
     check_cli("bk", "https://github.com/buildkite/cli")
+
+    if args.job_id:
+        res = retry_job_by_uuid(args.job_id)
+        sys.exit(res.returncode)
 
     if len(args.args) == 3:
         target = f"{args.args[0]}/{args.args[1]}/{args.args[2]}"
@@ -75,7 +133,7 @@ def main():
         target = args.args[0]
     else:
         print(
-            "❌ Error: Invalid arguments. Provide either 'org pipeline build' or a single target (PR#, URL, or org/pipeline/build).",
+            "❌ Error: Invalid arguments. Provide a single target (PR#, URL, or org/pipeline/build).",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -84,23 +142,73 @@ def main():
         print(f"🔍 Inspecting PR #{target} via gh to find Buildkite URL...")
         target = get_build_url_from_pr(target)
 
-    build_id = normalize_build_target(target)
+    pipeline, build_number = normalize_build_target(target)
 
     if args.job_name:
-        print(f"🚀 Retrying jobs matching '{args.job_name}' in build: {build_id}")
-        res = subprocess.run(["bk", "build", "retry", build_id, "--failed"])
-    else:
-        print(f"🚀 Retrying all failed jobs in build: {build_id}")
-        res = subprocess.run(["bk", "build", "retry", build_id, "--failed"])
-
-    if res.returncode != 0:
-        print(
-            f"❌ Failed to retry build '{build_id}' via 'bk' CLI.",
-            file=sys.stderr,
+        retry_jobs_by_name(pipeline, build_number, args.job_name)
+    elif args.rebuild:
+        print(f"🚀 Rebuilding entire build #{build_number} for pipeline: {pipeline}")
+        res = subprocess.run(
+            ["bk", "build", "rebuild", build_number, "-p", pipeline, "--yes"]
         )
         sys.exit(res.returncode)
-
-    print(f"🎉 Successfully triggered retry for build: {build_id}")
+    else:
+        # Default behavior: try job-level retries of failed jobs if any, otherwise rebuild
+        cmd = [
+            "bk",
+            "build",
+            "view",
+            str(build_number),
+            "-p",
+            pipeline,
+            "--json",
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            data = json.loads(res.stdout)
+            failed_jobs = [
+                j
+                for j in data.get("jobs", [])
+                if j.get("state") in ("failed", "broken", "timed_out") and j.get("id")
+            ]
+            if failed_jobs:
+                for j in failed_jobs:
+                    jid = j["id"]
+                    jname = j.get("name") or j.get("label") or jid
+                    print(f"🚀 Retrying failed job '{jname}' (ID: {jid})...")
+                    subprocess.run(["bk", "job", "retry", jid])
+            else:
+                print(
+                    f"🚀 Rebuilding entire build #{build_number} for pipeline: {pipeline}"
+                )
+                res = subprocess.run(
+                    [
+                        "bk",
+                        "build",
+                        "rebuild",
+                        build_number,
+                        "-p",
+                        pipeline,
+                        "--yes",
+                    ]
+                )
+                sys.exit(res.returncode)
+        except Exception:
+            print(
+                f"🚀 Rebuilding entire build #{build_number} for pipeline: {pipeline}"
+            )
+            res = subprocess.run(
+                [
+                    "bk",
+                    "build",
+                    "rebuild",
+                    build_number,
+                    "-p",
+                    pipeline,
+                    "--yes",
+                ]
+            )
+            sys.exit(res.returncode)
 
 
 if __name__ == "__main__":

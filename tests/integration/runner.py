@@ -80,10 +80,13 @@ class TestCase(unittest.TestCase):
         # Put the global tmp not under the test tmp to better match how a real
         # execution has entirely different directories for these.
         self.tmp_dir = outer_test_tmpdir / "bit_tmp"
+        self.test_tmp_dir.mkdir(parents=True, exist_ok=True)
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
         self.bazel_env = {
             "PATH": os.environ["PATH"],
             "TEST_TMPDIR": str(self.test_tmp_dir),
             "TMP": str(self.tmp_dir),
+            "TEMP": str(self.tmp_dir),
             # For some reason, this is necessary for Bazel 6.4 to work.
             # If not present, it can't find some bash helpers in @bazel_tools
             "RUNFILES_DIR": os.environ["TEST_SRCDIR"],

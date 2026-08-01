@@ -12,8 +12,8 @@ python.toolchain(python_version = "3.13")
 # This test module verifies that dependencies can be used with `isolate = True`.
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", isolate = True)
 pip.parse(
-    hub_name = "pypi",
+    hub_name = "pypi_isolated",
     python_version = "3.13",
     requirements_lock = "//:requirements_lock.txt",
 )
-use_repo(pip, "pypi")
+use_repo(pip, pypi = "pypi_isolated")

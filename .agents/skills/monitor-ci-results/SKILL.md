@@ -5,7 +5,17 @@ description: Monitor remote CI results for a PR and autonomously launch
 ---
 
 When the user requests to monitor remote CI results or watch a pull request,
-launch the monitoring script in the background:
+or when monitoring CI after PR updates:
+
+> **Note**: `monitor_remote_ci.py` is a single long-running continuous task.
+> It continuously watches all current and future CI runs for the PR. Do NOT
+> launch duplicate monitoring jobs for the same PR.
+
+1. **Check Existing Process**: Check if a monitor script is already running for
+   the PR (e.g., `pgrep -f "monitor_remote_ci.py <pr_number>"`). If one is
+   already running, do not start another instance.
+2. **Launch Monitoring Script**: If no monitor process is active for
+   `<pr_number>`, launch the script in the background:
 ```bash
 ./.agents/skills/monitor-ci-results/scripts/monitor_remote_ci.py \
   <pr_number> "<your_conversation_id>" &
@@ -13,10 +23,11 @@ launch the monitoring script in the background:
 
 ### ✨ Autonomous Subagent Orchestration
 1. **Background Polling**: `monitor_remote_ci.py` continuously polls both
-   GitHub PR checks and Buildkite workflow executions in the background.
-2. **Blocked Jobs**: When a Buildkite job or GitHub check is in a blocked
-   state waiting for user confirmation, it dispatches a notification via
-   `agentapi send-message` so the user is alerted to confirm running the job.
+   GitHub PR checks and Buildkite workflow executions in the background across
+   new commits and CI re-runs.
+2. **Blocked Jobs**: When a Buildkite job or GitHub check is in a blocked state
+   waiting for user confirmation, it dispatches a notification via `agentapi
+   send-message` so the user is alerted to confirm running the job.
 3. **Failure Reporting**: When any GitHub check or Buildkite job completes
    with errors, `monitor_remote_ci.py` dispatches a high-priority notification
    message reporting the failed check back to your conversation.
