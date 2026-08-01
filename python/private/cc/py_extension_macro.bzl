@@ -11,10 +11,7 @@ load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
 load(":py_extension_rule.bzl", "py_extension_wrapper")
 
 _PY_CC_HEADERS_ALIAS_BASE_TARGET = "//python/private/cc:current_py_cc_headers_private_alias"
-_PY_CC_HEADERS_ALIAS_CANONICAL_LABEL = Label(_PY_CC_HEADERS_ALIAS_BASE_TARGET)
-
 _PY_CC_LIBS_ALIAS_BASE_TARGET = "//python/private/cc:current_py_cc_libs_private_alias"
-_PY_CC_LIBS_ALIAS_CANONICAL_LABEL = Label(_PY_CC_LIBS_ALIAS_BASE_TARGET)
 
 _PY_CC_LIBS_ACTUAL_BASE_TARGET = "//python/cc:current_py_cc_libs"
 _PY_CC_LIBS_ACTUAL_CANONICAL_LABEL = Label(_PY_CC_LIBS_ACTUAL_BASE_TARGET)
@@ -102,7 +99,7 @@ def py_extension(
     # Private alias targets are appended to avoid "duplicate dependency label" errors
     # if a user explicitly passes //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
     # in their deps attribute (including when deps is a select() expression).
-    deps = deps + [_PY_CC_HEADERS_ALIAS_CANONICAL_LABEL]
+    deps = deps + [_PY_CC_HEADERS_ALIAS_BASE_TARGET]
 
     # 1. If srcs or hdrs are specified, create an implicit cc_library for them
     if srcs or hdrs:
@@ -140,7 +137,7 @@ def py_extension(
     if exports_filter != None:
         csl_kwargs["exports_filter"] = exports_filter
     else:
-        csl_kwargs["exports_filter"] = [str(d) for d in final_csl_deps]
+        csl_kwargs["exports_filter"] = final_csl_deps
 
     user_link_flags = user_link_flags + select({
         # On macOS, Apple's ld64 linker requires '-undefined dynamic_lookup' so CPython
@@ -157,7 +154,7 @@ def py_extension(
     #    We explicitly pass $(locations ...) to provide the path of the CPython import library to MSVC link.exe.
     # 3. We pass current_py_cc_libs as an additional linker input to ensure the .lib file is available to the link action.
     deps = deps + select({
-        labels.PLATFORMS_OS_WINDOWS: [_PY_CC_LIBS_ALIAS_CANONICAL_LABEL],
+        labels.PLATFORMS_OS_WINDOWS: [_PY_CC_LIBS_ALIAS_BASE_TARGET],
         "//conditions:default": [],
     })
     user_link_flags = user_link_flags + select({
