@@ -62,6 +62,5 @@ bzl_library(
         "//python/private:rule_builders",
         "//python/private:toolchain_types",
         "@bazel_skylib//lib:dicts",
-        "@rules_cc//cc/common",
     ],
 )

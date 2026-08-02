@@ -5,7 +5,6 @@
 """
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
-load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:builders.bzl", "builders")
@@ -78,7 +77,6 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
         ),
         "src": lambda: attrb.Label(
             mandatory = True,
-            providers = [CcSharedLibraryInfo],
             doc = "The cc_shared_library target to wrap.",
         ),
     },
