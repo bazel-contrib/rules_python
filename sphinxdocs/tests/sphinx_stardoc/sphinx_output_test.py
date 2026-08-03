@@ -13,7 +13,10 @@ class SphinxOutputTest(parameterized.TestCase):
         self._xmls = {}
 
     def assert_xref(self, doc, *, text, href):
-        match = self._doc_element(doc).find(f".//*[.='{text}']")
+        # Find an element with an 'href' attribute whose string content (including
+        # descendants like <span>) equals `text`. [@href] filters out ancestor
+        # elements like <li> or <p> which also match [.='{text}'].
+        match = self._doc_element(doc).find(f".//*[@href][.='{text}']")
         if not match:
             self.fail(f"No element found with {text=}")
         actual = match.attrib.get("href", "<UNSET>")
