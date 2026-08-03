@@ -151,6 +151,7 @@ def py_extension(
     # from CcInfo in py_cc_toolchain because system_provided=True in cc_import leaves DefaultInfo empty.
     py_extension_libs(
         name = win_libs_name,
+        tags = ["manual"],
         visibility = ["//visibility:private"],
     )
 
