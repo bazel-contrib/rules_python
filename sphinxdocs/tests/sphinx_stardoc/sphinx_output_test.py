@@ -113,6 +113,7 @@ class SphinxOutputTest(parameterized.TestCase):
         ("file_with_repo", "@testrepo//lang:rule.bzl", "rule.html"),
         ("package_absolute", "//lang", "target.html"),
         ("package_basename", "lang", "target.html"),
+        ("relative_doc_link", "Rule documentation", "rule.html"),
         # fmt: on
     )
     def test_xrefs(self, text, href):
