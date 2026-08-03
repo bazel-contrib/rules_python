@@ -133,3 +133,27 @@ def _get_platform(ctx):
             ),
         )
     return py_cc_toolchain.platform_tag
+
+def _py_extension_libs_impl(ctx):
+    py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+    py_cc_toolchain = py_toolchain.py_cc_toolchain
+    cc_info = py_cc_toolchain.libs.providers_map["CcInfo"]
+    files = []
+    for input in cc_info.linking_context.linker_inputs.to_list():
+        for lib in input.libraries:
+            if lib.interface_library:
+                files.append(lib.interface_library)
+            elif lib.static_library:
+                files.append(lib.static_library)
+            elif lib.dynamic_library:
+                files.append(lib.dynamic_library)
+    link_files = [f for f in files if not f.path.endswith(".dll")]
+    return [DefaultInfo(files = depset(link_files))]
+
+py_extension_libs = rule(
+    implementation = _py_extension_libs_impl,
+    toolchains = [PY_CC_TOOLCHAIN_TYPE],
+    doc = """\
+Private internal helper rule for extracting Windows C/C++ library files from toolchain.
+""",
+)

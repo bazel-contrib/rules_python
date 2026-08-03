@@ -8,7 +8,7 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:util.bzl", "add_tag", "copy_propagating_kwargs")
-load(":py_extension_rule.bzl", "py_extension_wrapper")
+load(":py_extension_rule.bzl", "py_extension_libs", "py_extension_wrapper")
 
 _EMPTY_CANONICAL_TARGET = str(Label("//python/private/cc:empty"))
 
@@ -17,9 +17,6 @@ _PY_CC_HEADERS_ALIAS_CANONICAL_TARGET = str(Label(_PY_CC_HEADERS_ALIAS_BASE_TARG
 
 _PY_CC_LIBS_ALIAS_BASE_TARGET = "//python/private/cc:current_py_cc_libs_private_alias"
 _PY_CC_LIBS_ALIAS_CANONICAL_TARGET = str(Label(_PY_CC_LIBS_ALIAS_BASE_TARGET))
-
-_PY_CC_LIBS_ACTUAL_BASE_TARGET = "//python/cc:current_py_cc_libs"
-_PY_CC_LIBS_ACTUAL_CANONICAL_TARGET = str(Label(_PY_CC_LIBS_ACTUAL_BASE_TARGET))
 
 def py_extension(
         name,
@@ -148,22 +145,31 @@ def py_extension(
         "//conditions:default": [],
     })
 
+    win_libs_name = "_" + name + "_win_libs"
+
+    # On Windows, create a private target using toolchain resolution to extract .lib files
+    # from CcInfo in py_cc_toolchain because system_provided=True in cc_import leaves DefaultInfo empty.
+    py_extension_libs(
+        name = win_libs_name,
+        visibility = ["//visibility:private"],
+    )
+
     # Windows-specific CPython linking requirements:
     # 1. Windows requires .lib files when linking, so they must be added to deps.
     # 2. CPython import libraries (python3xx.lib) are declared with system_provided = True
     #    in cc_import, suppressing automatic propagation of the .lib file path to link.exe.
-    #    We explicitly pass $(locations ...) to provide the path of the CPython import library to MSVC link.exe.
-    # 3. We pass current_py_cc_libs as an additional linker input to ensure the .lib file is available to the link action.
+    #    We explicitly pass $(locations ...) from win_libs_name to provide the path to MSVC link.exe.
+    # 3. We pass win_libs_name as an additional linker input to ensure the .lib file is available to the link action.
     deps = deps + select({
         labels.PLATFORMS_OS_WINDOWS: [_PY_CC_LIBS_ALIAS_CANONICAL_TARGET],
         "//conditions:default": [],
     })
     user_link_flags = user_link_flags + select({
-        labels.PLATFORMS_OS_WINDOWS: ["$(locations " + _PY_CC_LIBS_ACTUAL_BASE_TARGET + ")"],
+        labels.PLATFORMS_OS_WINDOWS: ["$(locations :" + win_libs_name + ")"],
         "//conditions:default": [],
     })
     additional_linker_inputs = additional_linker_inputs + select({
-        labels.PLATFORMS_OS_WINDOWS: [_PY_CC_LIBS_ACTUAL_CANONICAL_TARGET],
+        labels.PLATFORMS_OS_WINDOWS: [":" + win_libs_name],
         "//conditions:default": [],
     })
 
