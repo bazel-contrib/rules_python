@@ -120,9 +120,10 @@ Whether to implicitly create empty `__init__.py` files in the runfiles tree.
 These are created in every directory containing Python source code or shared
 libraries, and every parent directory of those directories, excluding the repo
 root directory. The default, `-1` (auto), means true unless
-`--incompatible_default_to_explicit_init_py` is used. If false, the user is
-responsible for creating (possibly empty) `__init__.py` files and adding them to
-the `srcs` of Python targets as required.
+`--incompatible_default_to_explicit_init_py` or the `use_explicit_init_py`
+module configuration option are used. If false, the user is responsible for
+creating (possibly empty) `__init__.py` files and adding them to the `srcs` of
+Python targets as required.
                                        """,
         ),
         # TODO(b/203567235): In the Java impl, any file is allowed. While marked
@@ -284,10 +285,22 @@ def create_binary_semantics():
     )
 
 def _should_create_init_files(ctx):
-    if ctx.attr.legacy_create_init == -1:
-        return not read_possibly_native_flag(ctx, "default_to_explicit_init_py")
-    else:
+    # Each target has the first say in this setting.
+    if ctx.attr.legacy_create_init != -1:
         return bool(ctx.attr.legacy_create_init)
+
+    # Check if it's configured by a module extension.
+    canonical_name = ctx.label.repo_name
+    for sep in ("+", "~"):
+        if canonical_name.startswith(sep):
+            canonical_name = ""
+        module_name = canonical_name.rstrip(sep) if sep not in canonical_name else canonical_name.split(sep)[0]
+        module_configured_explicit_initpy = rp_config.modules_using_explicit_initpy.get(module_name, None)
+        if module_configured_explicit_initpy != None:
+            return not module_configured_explicit_initpy
+
+    # Fall back to CLI setting.
+    return not read_possibly_native_flag(ctx, "default_to_explicit_init_py")
 
 def _create_executable(
         ctx,
@@ -1584,11 +1597,15 @@ WARNING: Target {} is using implicit __init__.py creation.
   See https://github.com/bazel-contrib/rules_python/issues/2945
 
   Ensure all __init__.py files are explicitly created and
-  added to the srcs or deps of your targets.
+  added to the srcs or deps of your targets, then enable this
+  setting in your MODULE.bazel:
 
-  Disable implicit creation by setting:
-    legacy_create_init = 0
-  on the target, or globally by setting:
+    rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+    rules_python_config.use_explicit_init_py(enabled = True)
+
+  If this warning is coming from an external module, you can configure this
+  globally with the following Bazel flag:
+
     --incompatible_default_to_explicit_init_py
 ======================================================================
             """.rstrip().format(ctx.label),

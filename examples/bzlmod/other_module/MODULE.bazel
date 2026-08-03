@@ -10,6 +10,10 @@ local_path_override(
     path = "../../..",
 )
 
+# Adopt migration away from legacy __init__.py generation.
+rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+rules_python_config.use_explicit_init_py(enabled = True)
+
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(
     # In a submodule this is ignored
