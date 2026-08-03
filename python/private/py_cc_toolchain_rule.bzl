@@ -144,10 +144,20 @@ The runtime's ABI flags, i.e. `sys.abiflags`.
 If not set, or set to `<AUTO>`, the ABI flags are automatically derived
 from `--//python/config_settings:py_freethreaded` (e.g., `'t'` when
 free-threaded is enabled, or `''` otherwise).
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         ),
         "abi_tag": attr.string(
-            doc = "The ABI tag for extension modules, e.g. 'cpython-311'",
+            doc = """\
+The ABI tag for extension modules, equivalent to the `SOABI` sysconfig var
+(see [PEP 3149](https://peps.python.org/pep-3149/)), e.g. 'cpython-311' or
+'cpython-313t'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
             default = "",
         ),
         "headers": attr.label(
@@ -171,7 +181,12 @@ attribute is available or not.
             providers = [[SentinelInfo], [CcInfo]],
         ),
         "libc": attr.string(
-            doc = "Target C library variant, e.g. 'glibc', 'musl'",
+            doc = """\
+Target C library variant, e.g. 'glibc', 'musl'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
             default = "",
         ),
         "libs": attr.label(
@@ -182,6 +197,9 @@ attribute is available or not.
         "platform_machine": attr.string(
             doc = """
 Target architecture as a PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarch64', 'x86_32'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
             default = "",
         ),
@@ -192,6 +210,9 @@ Target architecture as a PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarc
         "sys_platform": attr.string(
             doc = """
 Target OS as a PEP 508 `sys_platform` marker, e.g. 'linux', 'darwin', 'win32'.
+
+:::{versionadded} 2.2.0
+:::
 """,
             default = "",
         ),
