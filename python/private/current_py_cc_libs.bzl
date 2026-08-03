@@ -28,8 +28,8 @@ def _current_py_cc_libs_impl(ctx):
             data_runfiles = p.data_runfiles
 
     cc_infos = [p for p in py_cc_toolchain.libs.providers_map.values() if hasattr(p, "linking_context")]
-    cc_infos += [p for p in py_cc_toolchain.headers.providers_map.values() if hasattr(p, "linking_context")]
-    for cc_info in cc_infos:
+    if cc_infos:
+        cc_info = cc_infos[0]
         for input in cc_info.linking_context.linker_inputs.to_list():
             for lib in input.libraries:
                 if lib.static_library:
