@@ -1,3 +1,4 @@
+import concurrent.futures
 import contextlib
 import io
 import json
@@ -5,6 +6,7 @@ import logging
 import os
 import shutil
 import sys
+import threading
 import traceback
 import typing
 
@@ -27,6 +29,81 @@ _WORKER_SPHINX_EXT_MODULE_NAME = "bazel_worker_sphinx_ext"
 
 # Config value name for getting the path to the request info file
 _REQUEST_INFO_CONFIG_NAME = "bazel_worker_request_info_path"
+
+
+class ConcurrentCopyTree:
+    def __init__(
+        self,
+        max_workers: typing.Optional[int] = None,
+    ):
+        self._max_workers = max_workers or min(32, (os.cpu_count() or 4) + 4)
+        self._remaining = 0
+        self._lock = threading.Lock()
+        self._finished_cond = threading.Condition(self._lock)
+        self._errors: typing.List[BaseException] = []
+        self._executor: typing.Optional[concurrent.futures.ThreadPoolExecutor] = None
+
+    def copytree(self, srcdir: str, destdir: str) -> None:
+        shutil.rmtree(destdir, ignore_errors=True)
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self._max_workers
+        ) as executor:
+            self._executor = executor
+            self._submit_task(self._copy_dir, srcdir, destdir)
+            with self._lock:
+                while self._remaining > 0:
+                    self._finished_cond.wait()
+            if self._errors:
+                raise self._errors[0]
+
+    def _submit_task(self, fn, *args) -> None:
+        with self._lock:
+            self._remaining += 1
+        future = self._executor.submit(fn, *args)
+        future.add_done_callback(self._check_exception)
+
+    def _check_exception(self, future: concurrent.futures.Future) -> None:
+        exc = future.exception()
+        if exc:
+            with self._lock:
+                self._errors.append(exc)
+
+    def _task_finished(self) -> None:
+        with self._lock:
+            self._remaining -= 1
+            if self._remaining == 0:
+                self._finished_cond.notify_all()
+
+    def _copy_file(self, src: str, dest: str) -> None:
+        try:
+            shutil.copy2(src, dest)
+        except BaseException as e:
+            e.add_note(f"Failed copying file: src={src}, dest={dest}")
+            raise
+        finally:
+            self._task_finished()
+
+    def _copy_dir(self, src: str, dest: str) -> None:
+        try:
+            os.mkdir(dest)
+            real_src = os.path.realpath(src) if os.path.islink(src) else src
+            with os.scandir(real_src) as scanner:
+                for entry in scanner:
+                    c_dest = os.path.join(dest, entry.name)
+                    c_src = entry.path
+                    if entry.is_dir():
+                        self._submit_task(self._copy_dir, c_src, c_dest)
+                    else:
+                        self._submit_task(
+                            self._copy_file,
+                            os.path.realpath(c_src),
+                            c_dest,
+                        )
+        except BaseException as e:
+            e.add_note(f"Failed copying directory: src={src}, dest={dest}")
+            raise
+        finally:
+            self._task_finished()
 
 
 class Worker:
@@ -189,8 +266,13 @@ class Worker:
                     shutil.rmtree(arg.partition("=")[2], ignore_errors=True)
         self._worker_outdirs.add(worker_outdir)
         sphinx_args[1] = worker_outdir
-
-        request_info_path = os.path.join(srcdir, "_bazel_worker_request_info.json")
+        srcdir = sphinx_args[0]
+        destdir = f"{srcdir}.worker-in.d"
+        ConcurrentCopyTree().copytree(srcdir, destdir)
+        sphinx_args[0] = destdir
+        request_info_path = os.path.join(
+            sphinx_args[0], "_bazel_worker_request_info.json"
+        )
         with open(request_info_path, "w") as fp:
             json.dump(request_info, fp)
         sphinx_args.append(f"--define={_REQUEST_INFO_CONFIG_NAME}={request_info_path}")
@@ -341,6 +423,11 @@ def _non_worker_main():
             args.extend(lines)
         else:
             args.append(arg)
+    if len(args) > 1:
+        srcdir = args[1]
+        destdir = f"{srcdir}.worker-in.d"
+        ConcurrentCopyTree().copytree(srcdir, destdir)
+        args[1] = destdir
     sys.argv[:] = args
     return main()
 

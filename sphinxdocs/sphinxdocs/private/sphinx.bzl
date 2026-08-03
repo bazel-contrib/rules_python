@@ -360,12 +360,17 @@ def _sphinx_source_tree_impl(ctx):
         dest_path = paths.join(source_prefix, dest_path)
         if source_file.is_directory:
             dest_file = ctx.actions.declare_directory(dest_path)
+            progress_message = "Symlinking Sphinx source directory %{input} to %{output}"
         else:
             dest_file = ctx.actions.declare_file(dest_path)
+            progress_message = "Symlinking Sphinx source %{input} to %{output}"
+
+        # NOTE: Sphinx/MyST will read through symlinks, which can break relative
+        # xref lookup. Files are copied during the action phase to prevent this.
         ctx.actions.symlink(
             output = dest_file,
             target_file = source_file,
-            progress_message = "Symlinking Sphinx source %{input} to %{output}",
+            progress_message = progress_message,
         )
         sphinx_source_files.append(dest_file)
         return dest_file
