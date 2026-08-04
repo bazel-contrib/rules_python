@@ -6,6 +6,11 @@ description: Merge a pull request into main, monitoring the merge queue, retryin
 When the user asks to merge a pull request (e.g., "merge PR <number>", "merge this PR", or monitor its merge):
 
 1. **Enqueue for Merge**: Run `gh pr merge <pr_number> --auto --squash` to enable auto-merge or add the pull request to the merge queue.
+   - **Force / Admin Merge**: **CRITICAL**: Passing `--admin` to bypass the
+     merge queue or required checks requires explicit user permission or
+     consent. Only pass `--admin` (e.g., `gh pr merge <pr_number> --admin
+     --squash`) if the user has explicitly requested or approved a force/admin
+     merge. Never invoke `--admin` autonomously.
 2. **Invoke a Background Shepherd**: Launch a background subagent with the role `Merge PR Shepherd` to continuously watch the PR until it merges.
 3. **Leverage Existing CI Skills**: 
    - Have the subagent use the **`monitor-ci-results`** skill to watch for CI check failures and generate analysis reports.
