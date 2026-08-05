@@ -301,11 +301,14 @@ class Worker:
         is_first_request = not current_digests
         changed_paths = []
         request_info = {"exec_root": self._exec_root, "inputs": request["inputs"]}
+        prefix = str(srcdir) + "/"
         for entry in request["inputs"]:
             path = entry["path"]
+            if not path.startswith(prefix):
+                continue
             digest = entry["digest"]
             # Make the path srcdir-relative so Sphinx understands it.
-            path = path.removeprefix(str(srcdir) + "/")
+            path = path.removeprefix(prefix)
             incoming_digests[path] = digest
 
             if path not in current_digests:

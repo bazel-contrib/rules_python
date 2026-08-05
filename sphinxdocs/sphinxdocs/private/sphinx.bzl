@@ -36,6 +36,11 @@ Runfiles-root relative path of the root directory for the source files.
 
 Exec-root relative path of the root directory for the source files (which are in DefaultInfo.files)
 """,
+        "transitive_sources": """
+:type: depset[File]
+
+Original target files for the source tree symlinks.
+""",
     },
 )
 
@@ -204,7 +209,12 @@ def sphinx_docs(
 def _sphinx_docs_impl(ctx):
     source_tree_info = ctx.attr.source_tree[_SphinxSourceTreeInfo]
     source_dir_path = source_tree_info.source_root
-    inputs = ctx.attr.source_tree[DefaultInfo].files
+    inputs = depset(
+        transitive = [
+            ctx.attr.source_tree[DefaultInfo].files,
+            source_tree_info.transitive_sources,
+        ],
+    )
 
     per_format_args = {}
     outputs = {}
@@ -351,9 +361,11 @@ def _sphinx_source_tree_impl(ctx):
     # we need to merge the two into a single directory.
     source_prefix = ctx.label.name
     sphinx_source_files = []
+    transitive_sources = []
 
     # Materialize a file under the `_sources` dir
     def _relocate(source_file, dest_path = None):
+        transitive_sources.append(source_file)
         if not dest_path:
             dest_path = source_file.short_path.removeprefix(ctx.attr.strip_prefix)
 
@@ -416,6 +428,7 @@ def _sphinx_source_tree_impl(ctx):
         _SphinxSourceTreeInfo(
             source_root = sphinx_source_dir_path,
             source_dir_runfiles_path = paths.dirname(source_conf_file.short_path),
+            transitive_sources = depset(transitive_sources),
         ),
     ]
 
