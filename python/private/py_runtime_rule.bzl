@@ -422,7 +422,7 @@ The template to use when two stage bootstrapping is enabled
 "Shebang" expression prepended to the bootstrapping Python stub script
 used when executing {rule}`py_binary` targets.
 
-See https://github.com/bazelbuild/bazel/issues/8685 for
+See [bazelbuild/bazel#8685](https://github.com/bazelbuild/bazel/issues/8685) for
 motivation.
 
 Does not apply to Windows.

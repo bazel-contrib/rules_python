@@ -473,7 +473,7 @@ pip_parse(
 ```
 
 After registration, your Python targets will use the toolchain's interpreter during execution, but a system-installed interpreter
-is still used to "bootstrap" Python targets (see https://github.com/bazel-contrib/rules_python/issues/691).
+is still used to "bootstrap" Python targets (see {gh-issue}`691`).
 You may also find some quirks while using this toolchain. Please refer to [python-build-standalone documentation's _Quirks_ section](https://gregoryszorc.com/docs/python-build-standalone/main/quirks.html).
 
 ## Local toolchain

@@ -271,7 +271,7 @@ source files. Possible values are:
   the source file. This is most useful when the code won't be modified.
 
 For more information on pyc invalidation modes, see
-https://docs.python.org/3/library/py_compile.html#py_compile.PycInvalidationMode
+<https://docs.python.org/3/library/py_compile.html#py_compile.PycInvalidationMode>
 """,
             default = PrecompileInvalidationModeAttr.AUTO,
             values = sorted(PrecompileInvalidationModeAttr.__members__.values()),
@@ -281,7 +281,7 @@ https://docs.python.org/3/library/py_compile.html#py_compile.PycInvalidationMode
 The optimization level for precompiled files.
 
 For more information about optimization levels, see the `compile()` function's
-`optimize` arg docs at https://docs.python.org/3/library/functions.html#compile
+`optimize` arg docs at <https://docs.python.org/3/library/functions.html#compile>
 
 NOTE: The value `-1` means "current interpreter", which will be the interpreter
 used _at build time when pycs are generated_, not the interpreter used at
@@ -422,7 +422,7 @@ These values are transitioned on, so will affect the analysis graph and the
 associated memory overhead. The more unique configurations in your overall
 build, the more memory and (often unnecessary) re-analysis and re-building
 can occur. See
-https://bazel.build/extending/config#memory-performance-considerations for
+<https://bazel.build/extending/config#memory-performance-considerations> for
 more information about risks and considerations.
 :::
 

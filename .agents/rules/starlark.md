@@ -1,3 +1,9 @@
+---
+trigger: glob
+description: Starlark Language, Macro, and Testing Invariants
+globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
+---
+
 # Starlark Language & Macro Invariants
 
 ## Macro Target Canonicalization
@@ -6,6 +12,12 @@
   macro's module context rather than the caller's repository context.
 * Note that `python/private/common_labels.bzl` defines `labels`, a struct
   containing common canonicalized label strings used across the project.
+
+## Manual Tag on Internal Macro Helper Targets
+* When macros instantiate internal helper targets (such as private rule targets
+  for artifact extraction or linking support), always include `tags = ["manual"]`.
+* **Why**: This prevents internal helper targets from being implicitly built when
+  wildcard target patterns (e.g., `//...`) are expanded.
 
 ## Private Alias Pattern when Appending to User `deps`
 * When macros append internal helper targets to user-provided dependency lists

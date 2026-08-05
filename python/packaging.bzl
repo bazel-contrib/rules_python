@@ -63,7 +63,7 @@ py_wheel_dist = rule(
     doc = """\
 Prepare a dist/ folder, following Python's packaging standard practice.
 
-See https://packaging.python.org/en/latest/tutorials/packaging-projects/#generating-distribution-archives
+See <https://packaging.python.org/en/latest/tutorials/packaging-projects/#generating-distribution-archives>
 which recommends a dist/ folder containing the wheel file(s), source distributions, etc.
 
 This also has the advantage that stamping information is included in the wheel's filename.
@@ -94,7 +94,7 @@ def py_wheel(
         **kwargs):
     """Builds a Python Wheel.
 
-    Wheels are Python distribution format defined in https://www.python.org/dev/peps/pep-0427/.
+    Wheels are Python distribution format defined in {pep}`PEP 427`.
 
     This macro packages a set of targets into a single wheel.
     It wraps the [py_wheel rule](#py_wheel_rule).
@@ -144,7 +144,7 @@ def py_wheel(
     To publish the wheel to PyPI, the twine package is required and it is installed
     by default on `bzlmod` setups. On legacy `WORKSPACE`, `rules_python`
     doesn't provide `twine` itself
-    (see https://github.com/bazel-contrib/rules_python/issues/1016), but
+    (see {gh-issue}`1016`), but
     you can install it with `pip_parse`, just like we do any other dependencies.
 
     Once you've installed twine, you can pass its label to the `twine`
@@ -160,7 +160,7 @@ def py_wheel(
     )
     ```
 
-    Now you can run a command like the following, which publishes to https://test.pypi.org/
+    Now you can run a command like the following, which publishes to <https://test.pypi.org/>
 
     ```sh
     % TWINE_USERNAME=__token__ TWINE_PASSWORD=pypi-*** \\
@@ -172,7 +172,7 @@ def py_wheel(
         name:  A unique name for this target.
         twine: A label of the external location of the py_library target for twine
         twine_binary: A label of the external location of a binary target for twine.
-        publish_args: arguments passed to twine, e.g. ["--repository-url", "https://pypi.my.org/simple/"].
+        publish_args: arguments passed to twine, e.g. `["--repository-url", "https://pypi.my.org/simple/"]`.
             These are subject to make var expansion, as with the `args` attribute.
             Note that you can also pass additional args to the bazel run command as in the example above.
         **kwargs: other named parameters passed to the underlying [py_wheel rule](#py_wheel_rule)

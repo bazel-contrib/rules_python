@@ -267,9 +267,19 @@ class Worker:
         # implicily bring along what the symlinks point to.
         shutil.copytree(worker_outdir, bazel_outdir, dirs_exist_ok=True)
 
+        # Include both stdout and stderr in the response output so that Sphinx
+        # warnings or diagnostic messages written to stderr are reported to the
+        # Bazel console even when the build succeeds.
+        stdout_output = stdout.getvalue()
+        stderr_output = stderr.getvalue()
+        if stderr_output:
+            output = f"--- STDOUT ---\n{stdout_output}\n--- STDERR ---\n{stderr_output}"
+        else:
+            output = stdout_output
+
         response = {
             "requestId": request.get("requestId", 0),
-            "output": stdout.getvalue(),
+            "output": output,
             "exitCode": 0,
         }
         return response

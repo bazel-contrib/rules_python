@@ -69,12 +69,12 @@ def pip_compile(
             defaults to `["pyproject.toml"]`. Supported formats are:
             * a requirements text file, usually named `requirements.in`
             * A `.toml` file, where the `project.dependencies` list is used as per
-              [PEP621](https://peps.python.org/pep-0621/).
+              {pep}`PEP 621`.
         src: file containing inputs to dependency resolution. If not specified,
             defaults to `pyproject.toml`. Supported formats are:
             * a requirements text file, usually named `requirements.in`
             * A `.toml` file, where the `project.dependencies` list is used as per
-              [PEP621](https://peps.python.org/pep-0621/).
+              {pep}`PEP 621`.
         extra_args: passed to pip-compile (aka `piptools`). See the
             [pip-compile docs](https://pip-tools.readthedocs.io/en/latest/cli/pip-compile)
             for args and meaning (passing `-h` and/or `--version` can help

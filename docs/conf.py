@@ -1,6 +1,9 @@
 # Configuration file for the Sphinx documentation builder.
 
 import os
+import re
+
+from docutils import nodes
 
 # -- Project information
 project = "rules_python"
@@ -219,9 +222,19 @@ suppress_warnings = [
 ]
 
 
+def _pep_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    match = re.search(r"\d+", text)
+    pep_num = match.group(0) if match else text
+    pep_url = f"https://peps.python.org/pep-{pep_num.zfill(4)}/"
+    display_text = text if text.startswith("PEP") else f"PEP {pep_num}"
+    node = nodes.reference(rawtext, display_text, refuri=pep_url, **options)
+    return [node], []
+
+
 def setup(app):
     # Pygments says it supports starlark, but it doesn't seem to actually
     # recognize `starlark` as a name. So just manually map it to python.
     from sphinx.highlighting import lexer_classes
 
     app.add_lexer("starlark", lexer_classes["python"])
+    app.add_role("pep", _pep_role)
