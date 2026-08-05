@@ -301,17 +301,17 @@ class Worker:
         is_first_request = not current_digests
         changed_paths = []
         request_info = {"exec_root": self._exec_root, "inputs": request["inputs"]}
-        prefix = str(srcdir) + "/"
+        srcdir_prefix = str(srcdir) + "/"
         for entry in request["inputs"]:
             path = entry["path"]
             # In persistent worker mode, request["inputs"] includes action-level
             # tools (e.g. sphinx-build, sphinx_build.py) and params files that
             # live outside srcdir. Only synchronize documentation sources inside srcdir.
-            if not path.startswith(prefix):
+            if not path.startswith(srcdir_prefix):
                 continue
             digest = entry["digest"]
             # Make the path srcdir-relative so Sphinx understands it.
-            path = path.removeprefix(prefix)
+            path = path.removeprefix(srcdir_prefix)
             incoming_digests[path] = digest
 
             if path not in current_digests:
