@@ -850,7 +850,7 @@ def whl_library(
         # to allow the same wheel to be extracted only once.
         extract_args["requirement"] = _without_extras(extract_args["requirement"])
         extract_repo_name = "w_{}".format(
-            whl_repo_name(filename, kwargs.get("sha256")),
+            whl_repo_name(filename, None),
         )
 
         maybe(
