@@ -160,17 +160,18 @@ target or loadable symbol, you can inspect {bzl:obj}`features.version` in
 `//python:features.bzl`.
 
 {bzl:obj}`features.version` returns a semver-formatted version string (such as
-`"1.0.0"`, `"0.38.0"`, or `""` for unreleased development builds). Avoid
-lexicographical string comparisons; instead, split on dots, convert each
-component to an integer, and compare them as tuples:
+`"1.0.0"`, `"2.0.0-rc2"`, or `""` for unreleased development builds):
 
 ```starlark
 load("@rules_python//python:features.bzl", "features")
 
 def _to_tuple(v):
-    return tuple([int(x) for x in v.split("-")[0].split(".")])
+    return tuple([
+        int(x) if x.isdigit() else x
+        for x in v.replace("-", ".").split(".")
+    ])
 
-def check_supports_feature():
+def has_foo():
     # If version is empty, it is an unreleased build from main which includes
     # all features.
     if not features.version:
