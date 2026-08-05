@@ -18,17 +18,14 @@ def _py_extension_wrapper_impl(ctx):
 
     ext = _get_extension(ctx)
     use_py_limited_api = bool(ctx.attr.py_limited_api)
-    if use_py_limited_api:
-        output_filename = "{module_name}.abi3.{ext}".format(
+    if is_windows_platform(ctx):
+        output_filename = "{module_name}.{ext}".format(
             module_name = module_name,
             ext = ext,
         )
-    elif is_windows_platform(ctx):
-        py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
-        py_cc_toolchain = py_toolchain.py_cc_toolchain
-        output_filename = "{module_name}.{abi_tag}.{ext}".format(
+    elif use_py_limited_api:
+        output_filename = "{module_name}.abi3.{ext}".format(
             module_name = module_name,
-            abi_tag = py_cc_toolchain.abi_tag,
             ext = ext,
         )
     else:
