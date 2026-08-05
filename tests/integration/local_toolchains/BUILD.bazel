@@ -67,6 +67,7 @@ py_extension(
         "@rules_cc//cc/compiler:msvc-cl": [],
         "//conditions:default": ["-fvisibility=hidden"],
     }),
+    imports = ["."],
 )
 
 py_test(
