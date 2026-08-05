@@ -1,0 +1,12 @@
+load(":py_extension_tests.bzl", "py_extension_analysis_test_suite")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:private"],
+)
+
+licenses(["notice"])
+
+py_extension_analysis_test_suite(
+    name = "py_extension_analysis_tests",
+)

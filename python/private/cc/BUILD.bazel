@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
@@ -17,4 +18,49 @@ filegroup(
 cc_library(
     name = "empty",
     visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+# Private alias to avoid "duplicate dependency label" errors when users
+# explicitly pass //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
+# in the deps attribute (including when deps is a select() expression).
+alias(
+    name = "current_py_cc_headers_private_alias",
+    actual = "//python/cc:current_py_cc_headers",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+# Private alias to avoid "duplicate dependency label" errors when users
+# explicitly pass //python/cc:current_py_cc_headers or //python/cc:current_py_cc_libs
+# in the deps attribute (including when deps is a select() expression).
+alias(
+    name = "current_py_cc_libs_private_alias",
+    actual = "//python/cc:current_py_cc_libs",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+bzl_library(
+    name = "py_extension_macro",
+    srcs = ["py_extension_macro.bzl"],
+    deps = [
+        ":py_extension_rule",
+        "//python/private:common_labels",
+        "//python/private:util",
+        "@rules_cc//cc:core_rules",
+    ],
+)
+
+bzl_library(
+    name = "py_extension_rule",
+    srcs = ["py_extension_rule.bzl"],
+    deps = [
+        "//python/private:attr_builders",
+        "//python/private:attributes",
+        "//python/private:builders",
+        "//python/private:common",
+        "//python/private:py_info",
+        "//python/private:reexports",
+        "//python/private:rule_builders",
+        "//python/private:toolchain_types",
+        "@bazel_skylib//lib:dicts",
+    ],
 )

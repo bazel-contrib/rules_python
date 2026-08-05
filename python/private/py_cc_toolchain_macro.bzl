@@ -14,6 +14,7 @@
 
 """Fronting macro for the py_cc_toolchain rule."""
 
+load("//python/private/pypi:pep508_env.bzl", "platform_machine_select_map", "sys_platform_select_map")
 load(":py_cc_toolchain_rule.bzl", _py_cc_toolchain = "py_cc_toolchain")
 load(":util.bzl", "add_tag")
 
@@ -30,4 +31,10 @@ def py_cc_toolchain(**kwargs):
 
     #  This tag is added to easily identify usages through other macros.
     add_tag(kwargs, "@rules_python//python:py_cc_toolchain")
+
+    if kwargs.get("sys_platform") == None:
+        kwargs["sys_platform"] = select(sys_platform_select_map)
+    if kwargs.get("platform_machine") == None:
+        kwargs["platform_machine"] = select(platform_machine_select_map)
+
     _py_cc_toolchain(**kwargs)

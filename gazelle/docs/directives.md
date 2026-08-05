@@ -837,7 +837,7 @@ Version 1.9.0 includes a fix ({gh-pr}`3498`) for a long-standing issue
 ({gh-issue}`3497`) where ancestor `conftest.py` files were not automatically
 added as dependencies of {bzl:obj}`py_test` targets.
 
-However, some people may not want this behavior (see https://xkcd.com/1172/).
+However, some people may not want this behavior (see <https://xkcd.com/1172/>).
 Thus the `python_include_ancestor_conftest` directive controls this behavior.
 It defaults to `true`, which causes all ancestor `conftest.py` files to be
 included as dependencies for {bzl:obj}`py_test` targets.

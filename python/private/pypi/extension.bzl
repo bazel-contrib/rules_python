@@ -713,7 +713,7 @@ This value is going to be subject to `envsubst` substitutions if necessary, look
 {attr}`pip.parse.envsubst` documentation for more information..
 
 The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
+<https://packaging.python.org/en/latest/specifications/simple-repository-api/>
 
 Index metadata will be used to get the hash digest values for packages even
 if the `--hash` values are not present in the requirements.txt lock file.
@@ -890,10 +890,10 @@ index URL.
 
 This design pattern has been chosen in order to be fully deterministic about which
 packages come from which source. We want to avoid issues similar to what happened in
-https://pytorch.org/blog/compromised-nightly-dependency/.
+<https://pytorch.org/blog/compromised-nightly-dependency/>.
 
 The indexes must support Simple API as described here:
-https://packaging.python.org/en/latest/specifications/simple-repository-api/
+<https://packaging.python.org/en/latest/specifications/simple-repository-api/>
 """,
         ),
         "hub_name": attr.string(

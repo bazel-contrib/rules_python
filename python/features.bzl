@@ -26,6 +26,10 @@ def _features_typedef():
     A map of public API targets available in rules_python for feature detection
     purposes.
 
+    :::{seealso}
+    * {obj}`features.loadable_symbols`
+    :::
+
     :::{versionadded} 1.9.0
     :::
     ::::
@@ -53,6 +57,10 @@ def _features_typedef():
     :type: dict[str, list[str]]
 
     A map of bzl paths to the list of public symbols they export.
+
+    :::{seealso}
+    * {obj}`features.targets`
+    :::
 
     :::{versionadded} 2.2.0
     :::
@@ -102,6 +110,7 @@ _TARGETS = {
     "//python/cc:current_py_cc_headers_abi3": True,
     "//python/cc:py_cc_toolchain": True,
     "//python/cc:py_cc_toolchain_info": True,
+    "//python/cc:py_extension": True,
     "//python/config_settings:venv": True,
     "//python/entry_points:py_console_script_binary": True,
     "//python/local_toolchains:repos": True,
@@ -127,6 +136,10 @@ _TARGETS = {
 }
 
 _LOADABLE_SYMBOLS = {
+    "//python/cc:py_extension.bzl": [
+        # keep sorted
+        "py_extension",
+    ],
     "//python:py_info.bzl": [
         # keep sorted
         "PyInfo",

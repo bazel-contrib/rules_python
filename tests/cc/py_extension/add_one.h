@@ -1,0 +1,6 @@
+#ifndef TESTS_CC_PY_EXTENSION_DYN_DEP_A_H_
+#define TESTS_CC_PY_EXTENSION_DYN_DEP_A_H_
+
+int add_one(int x);
+
+#endif  // TESTS_CC_PY_EXTENSION_DYN_DEP_A_H_

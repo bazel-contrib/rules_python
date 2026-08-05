@@ -17,6 +17,24 @@
 PyCcToolchainInfo = provider(
     doc = "C/C++ information about the Python runtime.",
     fields = {
+        "abi_flags": """\
+:type: str
+
+The runtime's ABI flags, i.e. `sys.abiflags` (e.g. 't' for free-threaded builds).
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        "abi_tag": """\
+:type: str
+
+The ABI tag for extension modules, equivalent to the `SOABI` sysconfig var
+(see [PEP 3149](https://peps.python.org/pep-3149/)), e.g. 'cpython-311' or
+'cpython-313t'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         "headers": """\
 :type: struct
 
@@ -92,10 +110,37 @@ If available, information about C libraries, struct with fields:
     e.g. `:current_py_cc_headers` to act as the underlying headers target it
     represents).
 """,
+        "platform_machine": """
+:type: str
+
+The {pep}`PEP 508` `platform_machine` marker
+value for the target architecture, e.g. 'x86_64', 'aarch64'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        "platform_tag": """\
+:type: str | None
+
+The PEP 3149 / PEP 425 platform tag for extension modules, e.g.
+'x86_64-linux-gnu', 'darwin', or 'win_amd64'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         "python_version": """
 :type: str
 
 The Python Major.Minor version.
+""",
+        "sys_platform": """
+:type: str
+
+The {pep}`0508` `sys_platform` marker value
+for the target OS, e.g. 'linux', 'darwin', 'win32'.
+
+:::{versionadded} 2.2.0
+:::
 """,
     },
 )

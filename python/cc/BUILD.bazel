@@ -79,3 +79,10 @@ alias(
     deprecation = "Use //python/cc:py_cc_toolchain_info instead",
     visibility = ["//visibility:public"],
 )
+
+bzl_library(
+    name = "py_extension",
+    srcs = ["py_extension.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//python/private/cc:py_extension_macro"],
+)

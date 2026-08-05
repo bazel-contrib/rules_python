@@ -16,6 +16,7 @@
 import glob
 import json
 import os
+import platform
 import sys
 import sysconfig
 from typing import Any
@@ -247,6 +248,7 @@ def _get_python_library_info(base_executable) -> dict[str, Any]:
         "abi_dynamic_libraries": _unique_basenames(abi_dynamic_libraries),
         "abi_interface_libraries": _unique_basenames(abi_interface_libraries),
         "abi_flags": abi_flags,
+        "abi_tag": config_vars.get("SOABI") or "",
         "shlib_suffix": ".dylib" if _IS_DARWIN else "",
         "additional_dlls": dlls,
         "defines": defines,
@@ -265,6 +267,8 @@ data = {
     "include": sysconfig.get_path("include"),
     "implementation_name": sys.implementation.name,
     "base_executable": _get_base_executable(),
+    "sys_platform": sys.platform,
+    "platform_machine": platform.machine(),
 }
 data.update(_get_python_library_info(_get_base_executable()))
 print(json.dumps(data))

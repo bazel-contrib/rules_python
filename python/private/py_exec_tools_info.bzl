@@ -41,7 +41,7 @@ toolchain.
 :::{warning}
 This does not work correctly with RBE. Use {obj}`exec_runtime` instead.
 
-Once https://github.com/bazelbuild/bazel/issues/23620 is resolved this warning
+Once [bazelbuild/bazel#23620](https://github.com/bazelbuild/bazel/issues/23620) is resolved this warning
 may be removed.
 :::
 """,

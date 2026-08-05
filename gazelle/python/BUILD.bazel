@@ -54,10 +54,12 @@ copy_file(
             "@rules_python//python/config_settings:is_python_3.10": "@python_stdlib_list//:stdlib_list/lists/3.10.txt",
             "@rules_python//python/config_settings:is_python_3.11": "@python_stdlib_list//:stdlib_list/lists/3.11.txt",
             "@rules_python//python/config_settings:is_python_3.12": "@python_stdlib_list//:stdlib_list/lists/3.12.txt",
+            "@rules_python//python/config_settings:is_python_3.13": "@python_stdlib_list//:stdlib_list/lists/3.13.txt",
+            "@rules_python//python/config_settings:is_python_3.14": "@python_stdlib_list//:stdlib_list/lists/3.14.txt",
             "@rules_python//python/config_settings:is_python_3.8": "@python_stdlib_list//:stdlib_list/lists/3.8.txt",
             "@rules_python//python/config_settings:is_python_3.9": "@python_stdlib_list//:stdlib_list/lists/3.9.txt",
-            # This is the same behaviour as previously
-            "//conditions:default": "@python_stdlib_list//:stdlib_list/lists/3.11.txt",
+            # Fall back to the latest stdlib list
+            "//conditions:default": "@python_stdlib_list//:stdlib_list/lists/3.14.txt",
         },
     ),
     out = "stdlib_list.txt",

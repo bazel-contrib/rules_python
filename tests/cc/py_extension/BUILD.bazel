@@ -1,0 +1,194 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
+load("//python:py_test.bzl", "py_test")
+
+# buildifier: disable=bzl-visibility
+load("//python/cc:py_extension.bzl", "py_extension")
+load(":py_extension_build_test.bzl", "py_extension_build_test")
+
+package(
+    default_visibility = ["//tests/cc/py_extension:__subpackages__"],
+)
+
+licenses(["notice"])
+
+#####
+
+py_extension_build_test(
+    # An extension defined solely by source files, with no deps
+    name = "ext_source",
+    srcs = ["ext_source.c"],
+)
+
+#####
+
+py_extension_build_test(
+    # A python extension that explicitly includes current_py_cc_headers in deps.
+    # Verifies that explicit current_py_cc_headers does not cause a duplicate label error.
+    name = "ext_explicit_headers",
+    srcs = ["ext_source.c"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
+
+py_extension_build_test(
+    # A python extension that includes current_py_cc_headers inside a select() in deps.
+    # Verifies that select() in deps works cleanly without duplicate label or type error.
+    name = "ext_explicit_headers_select",
+    srcs = ["ext_source.c"],
+    deps = select({
+        "//conditions:default": ["@rules_python//python/cc:current_py_cc_headers"],
+    }),
+)
+
+#####
+
+py_extension_build_test(
+    # A python extension that gets its code from a statically-linked library
+    name = "ext_static",
+    deps = [":static_dep"],
+)
+
+cc_library(
+    name = "static_dep",
+    srcs = ["static_dep.c"],
+    hdrs = ["static_dep.h"],
+)
+
+#####
+
+py_extension_build_test(
+    # An extension that also depends on a data file
+    name = "ext_with_data",
+    data = ["some_data.txt"],
+    deps = [":static_dep"],
+)
+
+#####
+
+py_extension_build_test(
+    # A python extension that dynamically links to another shared library
+    name = "ext_shared",
+    dynamic_deps = [
+        ":add_one_shared",
+    ],
+    imports = ["."],
+    deps = [
+        #
+        ":ext_shared_impl",
+    ],
+)
+
+cc_library(
+    name = "ext_shared_impl",
+    srcs = ["ext_shared.c"],
+    copts = [
+        # Gemini says PIC is needed
+        "-fPIC",
+        "-fvisibility=hidden",
+    ],
+    deps = [
+        #":add_one_headers",
+        # todo: if we put this here, we statically link add_one into the
+        # extension.
+        ":add_one_impl",
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+cc_shared_library(
+    name = "add_one_shared",
+    user_link_flags = select({
+        "@platforms//os:windows": ["/EXPORT:add_one"],
+        "//conditions:default": [],
+    }),
+    deps = [":add_one_impl"],
+)
+
+cc_library(
+    name = "add_one_headers",
+    hdrs = ["add_one.h"],
+)
+
+cc_library(
+    name = "add_one_impl",
+    srcs = ["add_one.c"],
+    deps = [
+        ":add_one_headers",
+        ":add_one_helper",
+    ],
+)
+
+cc_library(
+    name = "add_one_helper",
+    srcs = ["add_one_helper.c"],
+    hdrs = ["add_one_helper.h"],
+)
+
+#####
+
+py_extension_build_test(
+    # An extension that uses the Python limited API
+    name = "ext_limited",
+    py_limited_api = "3.8",
+    deps = [":ext_limited_impl"],
+)
+
+cc_library(
+    name = "ext_limited_impl",
+    srcs = ["ext_limited.c"],
+    copts = [
+        "-fPIC",
+        "-fvisibility=hidden",
+    ],
+    defines = ["Py_LIMITED_API=0x3080000"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
+
+py_extension_build_test(
+    # An extension with its PyInit_* function in a static dependency
+    name = "ext_init_in_dep",
+    deps = [":ext_init_in_dep_impl"],
+)
+
+cc_library(
+    name = "ext_init_in_dep_impl",
+    srcs = ["ext_init_in_dep.c"],
+    deps = [
+        "@rules_python//python/cc:current_py_cc_headers",
+    ],
+)
+
+#####
+
+py_test(
+    name = "py_extension_test",
+    srcs = ["py_extension_test.py"],
+    deps = [
+        ":ext_shared",
+        "@dev_pip//pyelftools",
+        "@rules_python//python/runfiles",
+    ],
+)
+
+#####
+
+py_extension(
+    name = "ext_pkg_test",
+    srcs = ["ext_pkg_test.c"],
+)
+
+py_test(
+    name = "py_extension_pkg_test",
+    srcs = ["py_extension_pkg_test.py"],
+    deps = [
+        ":ext_pkg_test",
+    ],
+)
