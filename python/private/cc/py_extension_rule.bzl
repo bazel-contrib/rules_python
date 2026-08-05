@@ -23,6 +23,14 @@ def _py_extension_wrapper_impl(ctx):
             module_name = module_name,
             ext = ext,
         )
+    elif is_windows_platform(ctx):
+        py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+        py_cc_toolchain = py_toolchain.py_cc_toolchain
+        output_filename = "{module_name}.{abi_tag}.{ext}".format(
+            module_name = module_name,
+            abi_tag = py_cc_toolchain.abi_tag,
+            ext = ext,
+        )
     else:
         py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
         py_cc_toolchain = py_toolchain.py_cc_toolchain
