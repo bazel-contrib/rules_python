@@ -71,6 +71,30 @@ def _args(ctx):
         add_all = _add_all,
     )
 
+def _reroot(x, directory):
+    if not directory:
+        return x
+
+    if hasattr(x, "short_path"):
+        x = x.short_path
+
+    return x[len(directory)+1:] or "."
+
+def _reroot_all(xs, directory):
+    return [
+        _reroot(x, directory)
+        for x in xs
+    ]
+
+def _up(x, directory):
+    if not directory:
+        return x
+
+    return "{}/{}".format(
+        "/".join([".."] * (len(directory.split("/"))+0)),
+        getattr(x, "short_path", x),
+    )
+
 def _common_lock(ctx, locker):
     fname = "{}.out".format(ctx.label.name)
 
@@ -117,11 +141,12 @@ def _common_lock(ctx, locker):
                     # select the shortest match
                     project = src.dirname
 
+    directory = getattr(ctx.attr, "directory", None)
     if project == None:
         project = ctx.label.package
 
     if project:
-        args.add_all([project], before_each = "--project")
+        args.add_all([_reroot(project, directory)], before_each = "--project")
 
     args.add_all(ctx.attr.args)
 
@@ -129,7 +154,7 @@ def _common_lock(ctx, locker):
     runtime = exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime
     python = runtime.interpreter or runtime.interpreter_path
     python_files = runtime.files or depset()
-    args.add("--python", python)
+    args.add("--python", _up(python, directory))
 
     # These arguments does not change behaviour, but it reduces the output from
     # the command, which is especially verbose in stderr.
@@ -252,14 +277,20 @@ def _pip_compile_impl(ctx):
         if not ctx.attr.strip_extras:
             args.add("--no-strip-extras")
 
-        args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
-        args.add_all(ctx.files.constraints, before_each = "--constraints")
+        directory = ctx.attr.directory
 
-        args.run_shell.add("--output-file", output)
+        if directory:
+            args.add_all([directory], before_each = "--directory")
+
+        # TODO @aignas 2026-08-04: fix the --directory handling
+        args.add_all(_reroot_all(ctx.files.build_constraints, directory), before_each = "--build-constraints")
+        args.add_all(_reroot_all(ctx.files.constraints, directory), before_each = "--constraints")
+
+        args.run_shell.add("--output-file", _reroot(output, directory))
         mnemonic = "PyRequirementsLockUv"
         progress_message = "Creating a requirements.txt with uv: %{label}"
 
-        args.add_all(ctx.files.srcs)
+        args.add_all(_reroot_all(ctx.files.srcs, directory))
         srcs = ctx.files.srcs + ctx.files.build_constraints + ctx.files.constraints
 
         return srcs, None, mnemonic, progress_message
@@ -341,6 +372,12 @@ Added the {attr}`project` to configure the project setting if autodetection fail
         "constraints": attr.label_list(
             allow_files = True,
             doc = "Public, see the docs in the macro.",
+        ),
+        "directory": attr.string(
+            doc = """\
+Sets the --directory flag if provided. Will fail if at least one of the files
+does not start with the given prefix of the directory.
+""",
         ),
         "generate_hashes": attr.bool(
             doc = "Public, see the docs in the macro.",
@@ -535,6 +572,7 @@ def lock(
         env = None,
         generate_hashes = True,
         python_version = None,
+        directory = None,
         project = None,
         strip_extras = False,
         **kwargs):
@@ -636,6 +674,8 @@ def lock(
         lock_target_kwargs["build_constraints"] = build_constraints
     if constraints:
         lock_target_kwargs["constraints"] = constraints
+    if directory:
+        lock_target_kwargs["directory"] = directory
 
     if out.endswith(".lock"):
         _lock(name = name, **lock_target_kwargs)
