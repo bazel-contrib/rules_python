@@ -45,6 +45,14 @@ class DirectorySyncerError(Exception):
 
 
 class DirectorySyncer:
+    """Synchronizes a working destination directory from a source directory.
+
+    Supports concurrent SHA-aware incremental updates (via sync()) for worker
+    mode and concurrent full directory copying (via copytree()) for non-worker
+    mode, ensuring physical file materialization to prevent relative
+    cross-reference resolution failures.
+    """
+
     def __init__(
         self,
         srcdir: pathlib.Path,
@@ -91,14 +99,22 @@ class DirectorySyncer:
             if self._remaining == 0:
                 self._finished_cond.notify_all()
 
-    def copytree(self) -> None:
-        """Concurrently copies srcdir to destdir without SHA tracking."""
-        self._reset_state()
-        shutil.rmtree(self._destdir, ignore_errors=True)
+    @contextlib.contextmanager
+    def _create_executor(self):
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self._max_workers
         ) as executor:
             self._executor = executor
+            try:
+                yield
+            finally:
+                self._executor = None
+
+    def copytree(self) -> None:
+        """Concurrently copies srcdir to destdir without SHA tracking."""
+        self._reset_state()
+        shutil.rmtree(self._destdir, ignore_errors=True)
+        with self._create_executor():
             self._submit_task(self._copy_dir, self._srcdir, self._destdir)
             self._wait_for_completion()
 
@@ -117,11 +133,7 @@ class DirectorySyncer:
             self._current_shas = dict(entries)
             return
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self._max_workers
-        ) as executor:
-            self._executor = executor
-
+        with self._create_executor():
             # 1. Submit stale path removals concurrently ASAP
             for rel_path in to_remove:
                 dest_path = self._destdir / rel_path
