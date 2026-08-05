@@ -137,6 +137,10 @@ def define_local_runtime_toolchain_impl(
         hdrs = [":includes"],
         defines = defines,  # NOTE: Users should define Py_LIMITED_API=3
         srcs = abi3_libraries + additional_dlls,
+        deps = select({
+            "@bazel_tools//src/conditions:windows": [":abi3_interface"],
+            "//conditions:default": [],
+        }),
     )
 
     cc_library(
@@ -144,6 +148,10 @@ def define_local_runtime_toolchain_impl(
         hdrs = [":includes"],
         defines = defines,
         srcs = libraries + additional_dlls,
+        deps = select({
+            "@bazel_tools//src/conditions:windows": [":interface"],
+            "//conditions:default": [],
+        }),
     )
 
     # runtime configuration
