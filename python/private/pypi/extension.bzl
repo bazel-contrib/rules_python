@@ -22,6 +22,7 @@ load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private:text_util.bzl", "render")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -463,10 +464,27 @@ You cannot use both the additive_build_content and additive_build_content_file a
         out = hub.build()
 
         for whl_name, lib in out.whl_libraries.items():
+            # NOTE @aignas 2026-07-04: if the same wheel is downloaded from multiple
+            # indexes, this will fail, forcing the user to actually download the wheel
+            # from the same and deterministic location. This is usually the case for
+            # public wheels and users should setup the defaults.index_url to correct
+            # fall-back in rules_python we should handle the default index to substitute
+            # any index-url in requirements pointing to the public PyPI mirrors.
             if whl_name in whl_libraries:
-                fail("'{}' already in created".format(whl_name))
-            else:
-                whl_libraries[whl_name] = lib
+                existing = whl_libraries[whl_name]
+
+                diff = repo_utils.diff_dict(existing, lib)
+                if diff:
+                    fail("'{}' already in created:\n{}".format(
+                        whl_name,
+                        "\n".join([
+                            "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                            for key, value in diff.items()
+                            if value
+                        ]),
+                    ))
+
+            whl_libraries[whl_name] = lib
 
         exposed_packages[hub.name] = out.exposed_packages
         extra_aliases[hub.name] = out.extra_aliases
@@ -611,8 +629,13 @@ def _pip_impl(module_ctx):
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
 
+    registered = {}
     for name, args in mods.whl_libraries.items():
-        whl_library(name = name, **args)
+        whl_library(
+            name = name,
+            maybe = repo_utils.maybe(registered),
+            **args
+        )
 
     for hub_name, whl_map in mods.hub_whl_map.items():
         hub_repository(
@@ -991,7 +1014,7 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
 """,
         ),
         "uv_lock": attr.label(
-            doc = """
+            doc = """\
 (label, optional): A label pointing to the uv.lock file. If provided,
 the uv.lock file will be used as the primary source for package metadata.
 

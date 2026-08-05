@@ -53,5 +53,4 @@ whl_deps_library(
     name = "whl_deps_library",
     dep_template = "@integration_test//:{name}_{target}",
     metadata_file = "@whl_archive//:metadata.json",
-    requirement = "requests",
 )

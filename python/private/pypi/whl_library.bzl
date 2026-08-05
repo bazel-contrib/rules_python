@@ -28,6 +28,7 @@ load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":urllib.bzl", "urllib")
 load(":whl_extract.bzl", "whl_extract")
 load(":whl_metadata.bzl", "parse_entry_points", "whl_metadata")
+load(":whl_repo_name.bzl", "whl_repo_name")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
@@ -752,7 +753,7 @@ def _whl_deps_library_impl(rctx):
         repo = rctx.attr.repo or (
             str(rctx.attr.metadata_file) if rctx.attr.metadata_file else None
         ),
-        extras = requirement(rctx.attr.requirement).extras,
+        extras = rctx.attr.extras,
     )
     rctx.file("BUILD.bazel", build_file_contents)
 
@@ -764,9 +765,10 @@ whl_deps_library = repository_rule(
             "dep_template",
             "group_deps",
             "group_name",
-            "requirement",
+            "repo_prefix",
         ]
     } | {
+        "extras": attr.string_list(doc = "The extras to configure for this repo."),
         "metadata": attr.string(
             doc = """
 The subset of the METADATA contents that is needed for generation of the dependencies.
@@ -789,7 +791,16 @@ Does not depend on any python.
     environ = [REPO_DEBUG_ENV_VAR],
 )
 
-def whl_library(name, repo = None, **kwargs):
+def whl_library(
+        name,
+        repo = None,
+        maybe = lambda fn, **kwargs: fn(**kwargs),
+        rules = struct(
+            whl_deps_library = whl_deps_library,
+            pip_archive = pip_archive,
+            whl_archive = whl_archive,
+        ),
+        **kwargs):
     """Create a whl_library.
 
     This proxies to one of the underlying implementations:
@@ -799,6 +810,10 @@ def whl_library(name, repo = None, **kwargs):
     Args:
         name: {type}`str` The name of the repo.
         repo: Unused, will be dropped in the next major release.
+        maybe: This is the repo rule that is used in WORKSPACE mode and in the extension eval to
+            dedupe some of the invocations. This has to be overridden on bzlmod using
+            {obj}`repo_utils.bzlmod_maybe`.
+        rules: Used in tests for mocking.
         **kwargs: The args passed to the underlying implementation.
 
     Returns:
@@ -810,6 +825,83 @@ def whl_library(name, repo = None, **kwargs):
     urls = kwargs.get("urls", [])
     filename = kwargs.get("filename")
     if whl_file or (urls and filename and filename.endswith(".whl")):
-        whl_archive(name = name, **kwargs)
+        filename = filename or Label(whl_file).name
+        if "annotation" in kwargs or "whl_patches" in kwargs:
+            # No reuse of the whl_library because there is an annotation here
+            rules.whl_archive(name = name, **kwargs)
+            return
+
+        extract_args = {
+            k: v
+            for k, v in kwargs.items()
+            if k not in {
+                # These attributes are specific to pip_archive and are not
+                # accepted by whl_archive.
+                "config_load": None,
+                "dep_template": None,
+                "python_interpreter": None,
+                "python_interpreter_target": None,
+            }
+        }
+        if "index_url" in extract_args:
+            extract_args["index_url"] = extract_args["index_url"].strip("/")
+
+        # The extras do not affect the extraction, so normalize the requirement
+        # to allow the same wheel to be extracted only once.
+        extract_args["requirement"] = _without_extras(extract_args["requirement"])
+        extract_repo_name = "w_{}".format(
+            whl_repo_name(filename, None),
+        )
+
+        maybe(
+            rules.whl_archive,
+            name = extract_repo_name,
+            **extract_args
+        )
+
+        req = requirement(kwargs["requirement"])
+
+        deps_args = {
+            k: kwargs.get(k)
+            for k in [
+                "config_load",
+                "dep_template",
+                "group_deps",
+                "group_name",
+                "repo_prefix",
+            ]
+            if kwargs.get(k) != None
+        } | {
+            "metadata_file": "@{}//:metadata.json".format(extract_repo_name),
+        }
+        if req.extras:
+            deps_args["extras"] = req.extras
+        rules.whl_deps_library(
+            name = name,
+            **deps_args
+        )
     else:
-        pip_archive(name = name, **kwargs)
+        # No reuse of the whl_library because we have args that force the extraction of the whl
+        # in the hub context. If we have whl-only pipstar extraction, then we can reuse the
+        # extracted sources.
+        rules.pip_archive(name = name, **kwargs)
+
+def _without_extras(requirement_line):
+    """Remove the extras from a requirement line.
+
+    The extras do not affect which wheel is downloaded and extracted, so they
+    can be removed to allow the same wheel to be extracted only once even when
+    it is referenced with different extras.
+
+    Args:
+        requirement_line: {type}`str` the requirement line, e.g.
+            `foo[bar]==1.0 --hash=sha256:...`.
+
+    Returns:
+        The requirement line without the extras, e.g. `foo==1.0 --hash=sha256:...`.
+    """
+    name_and_version, _, extras = requirement_line.partition("[")
+    if not extras:
+        return requirement_line
+    _, _, rest = extras.partition("]")
+    return name_and_version + rest

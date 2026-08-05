@@ -17,8 +17,74 @@
 This code should only be loaded and used during the repository phase.
 """
 
+load(":text_util.bzl", "render")
+
 REPO_DEBUG_ENV_VAR = "RULES_PYTHON_REPO_DEBUG"
 REPO_VERBOSITY_ENV_VAR = "RULES_PYTHON_REPO_DEBUG_VERBOSITY"
+
+def _maybe(store):
+    def _inner(repo_rule, *, name, **kwargs):
+        existing = store.get(name)
+        if existing:
+            diff = _diff_dict(existing, kwargs)
+            if not diff:
+                return
+
+            fail(
+                "Attempting to create a duplicate rule {name} with different arguments. Already existing declaration has:\n".format(
+                    name = name,
+                ) + "\n".join([
+                    "    {}: {}".format(key, render.indent(render.dict(value)).lstrip())
+                    for key, value in diff.items()
+                    if value
+                ]),
+            )
+
+        store[name] = dict(kwargs)  # make a copy
+        repo_rule(name = name, **kwargs)
+
+    return _inner
+
+def _diff_dict(first, second, *, ignore_keys = {}):
+    """A simple utility to shallow compare dictionaries.
+
+    Args:
+        first: The first dictionary to compare.
+        second: The second dictionary to compare.
+        ignore_keys: A set of keys to ignore during comparison.
+
+    Returns:
+        A dictionary containing the differences, with keys "common", "different",
+        "extra", and "missing", or None if the dictionaries are identical.
+    """
+    missing = {}
+    extra = {
+        key: value
+        for key, value in second.items()
+        if key not in first and key not in ignore_keys
+    }
+    common = {}
+    different = {}
+
+    for key, value in first.items():
+        if key in ignore_keys:
+            continue
+        elif key not in second:
+            missing[key] = value
+        elif value == second[key]:
+            common[key] = value
+        else:
+            different[key] = (value, second[key])
+
+    if missing or extra or different:
+        return {
+            "common": common,
+            "different": different,
+            "extra": extra,
+            "missing": missing,
+        }
+    else:
+        return None
 
 def _is_repo_debug_enabled(mrctx):
     """Tells if debbugging output is requested during repo operatiosn.
@@ -587,6 +653,7 @@ def _rename(mrctx, src, dest):
 
 repo_utils = struct(
     # keep sorted
+    diff_dict = _diff_dict,
     execute_checked = _execute_checked,
     execute_checked_stdout = _execute_checked_stdout,
     execute_unchecked = _execute_unchecked,
@@ -596,6 +663,7 @@ repo_utils = struct(
     is_repo_debug_enabled = _is_repo_debug_enabled,
     logger = _logger,
     maybe_fix_permissions = _maybe_fix_permissions,
+    maybe = _maybe,
     mkdir = _mkdir,
     norm_path = _norm_path,
     relative_to = _relative_to,

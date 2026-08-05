@@ -34,7 +34,8 @@ def whl_repo_name(filename, digest, *target_platforms):
 
     # Strip the `<algo>:` prefix so that the name only contains the hex digest
     # and stays the same as it has always been for bare sha256 values.
-    digest = digest.rpartition(":")[2]
+    if digest:
+        digest = digest.partition(":")[2]
 
     parts = []
 
@@ -48,11 +49,11 @@ def whl_repo_name(filename, digest, *target_platforms):
         else:
             for ext in [".tar", ".zip"]:
                 tail, _, _ = tail.partition(ext)
-            version = tail.replace(".", "_").replace("!", "_")
+            version = tail
     else:
         parsed = parse_whl_name(filename)
         name = normalize_name(parsed.distribution)
-        version = parsed.version.replace(".", "_").replace("!", "_").replace("+", "_").replace("%", "_")
+        version = parsed.version
         python_tag, _, _ = parsed.python_tag.partition(".")
         abi_tag, _, _ = parsed.abi_tag.partition(".")
         platform_tag, _, _ = parsed.platform_tag.partition(".")
@@ -65,7 +66,11 @@ def whl_repo_name(filename, digest, *target_platforms):
     if digest:
         parts.append(digest[:8])
     elif version:
-        parts.insert(1, version)
+        res = version.lower()
+        for c in "-.+@!:/?=&%,~".elems():
+            res = res.replace(c, "_")
+
+        parts.insert(1, res)
 
     parts.extend([p.partition("_")[-1] for p in target_platforms])
 

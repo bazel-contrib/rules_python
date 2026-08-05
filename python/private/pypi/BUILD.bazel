@@ -473,6 +473,7 @@ bzl_library(
         ":urllib",
         ":whl_extract",
         ":whl_metadata",
+        ":whl_repo_name",
         "//python/private:auth",
         "//python/private:envsubst",
         "//python/private:is_standalone_interpreter",

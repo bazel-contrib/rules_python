@@ -14,12 +14,15 @@
 """Module extension for internal dev_dependency=True setup."""
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
-load("//python/private/pypi:whl_library.bzl", "whl_library")
+load("//python/private:repo_utils.bzl", "repo_utils")
+load("//python/private/pypi:whl_library.bzl", _whl_library = "whl_library")
 load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
 load(":runtime_env_repo.bzl", "runtime_env_repo")
 
 def _internal_dev_deps_impl(mctx):
     _ = mctx  # @unused
+    maybe = repo_utils.maybe({})
+    whl_library = lambda **kwargs: _whl_library(maybe = maybe, **kwargs)
 
     # Creates a default toolchain config for RBE.
     # Use this as is if you are using the rbe_ubuntu16_04 container,
@@ -118,6 +121,7 @@ def _internal_dev_deps_impl(mctx):
         root = "//tests/pypi/whl_library/testdata/pkg:BUILD.bazel",
         output = "pkg-1.0-any-none-any.whl",
         requirement = "pkg[optional]",
+        maybe = maybe,
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
         dep_template = "@whl_library_extras_{name}//:{target}",
@@ -126,6 +130,7 @@ def _internal_dev_deps_impl(mctx):
         name = "whl_library_extras_optional_dep",
         root = "//tests/pypi/whl_library/testdata/optional_dep:BUILD.bazel",
         output = "optional_dep-1.0-any-none-any.whl",
+        maybe = maybe,
         requirement = "optional_dep",
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
@@ -149,15 +154,16 @@ def _internal_dev_deps_impl(mctx):
         },
     )
 
-def _whl_library_from_dir(*, name, output, root, **kwargs):
+def _whl_library_from_dir(*, name, output, root, maybe, **kwargs):
     whl_from_dir_repo(
         name = "{}_whl".format(name),
         root = root,
         output = output,
     )
-    whl_library(
+    _whl_library(
         name = name,
         whl_file = "@{}_whl//:{}".format(name, output),
+        maybe = maybe,
         **kwargs
     )
 
