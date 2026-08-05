@@ -78,6 +78,7 @@ pip.parse(
         "linux_x86_64",
         "linux_aarch64",
         "osx_aarch64",
+        "windows_x86_64",
     ],
 )
 use_repo(pip, "rules_python_publish_deps")
