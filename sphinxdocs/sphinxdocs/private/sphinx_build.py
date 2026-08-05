@@ -304,6 +304,9 @@ class Worker:
         prefix = str(srcdir) + "/"
         for entry in request["inputs"]:
             path = entry["path"]
+            # In persistent worker mode, request["inputs"] includes action-level
+            # tools (e.g. sphinx-build, sphinx_build.py) and params files that
+            # live outside srcdir. Only synchronize documentation sources inside srcdir.
             if not path.startswith(prefix):
                 continue
             digest = entry["digest"]
