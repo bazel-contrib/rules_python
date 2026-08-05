@@ -18,12 +18,7 @@ def _py_extension_wrapper_impl(ctx):
 
     ext = _get_extension(ctx)
     use_py_limited_api = bool(ctx.attr.py_limited_api)
-    if is_windows_platform(ctx):
-        output_filename = "{module_name}.{ext}".format(
-            module_name = module_name,
-            ext = ext,
-        )
-    elif use_py_limited_api:
+    if use_py_limited_api:
         output_filename = "{module_name}.abi3.{ext}".format(
             module_name = module_name,
             ext = ext,
