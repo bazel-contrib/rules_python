@@ -28,8 +28,14 @@ to handle PR creation or description drafting.
        (GitHub uses the PR description as the commit message upon merge,
        which reflows text at 72 columns).
      - **Formatting**: Follow repository style guidelines and structure.
-   - Create a Markdown artifact (`pr_info.md`) containing the PR title, body,
-     and link/metadata so the user can review and comment on it.
+   - Create a Markdown artifact (`pr_info.md`) meeting the following requirements:
+     - **User-facing**: Published so it is presented directly in the user interface.
+     - **Interactive feedback enabled**: Allows the user to select lines and leave inline comments on the draft.
+     - **User decision choices**: Ask the user if they want to:
+       1. Create a regular PR
+       2. Create a draft PR
+       3. Provide feedback on the draft text
+       4. Discard the draft text
    - **Propose vs. Create**: If the user requested to propose or draft a PR
      description, **do not** run `gh pr create`—just create the `pr_info.md`
      artifact for the user to review. Otherwise, execute `gh pr create` with
