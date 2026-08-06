@@ -100,7 +100,7 @@ def sphinx_docs(
         sphinx,
         config,
         formats,
-        strip_prefix = "",
+        strip_prefix = None,
         extra_opts = [],
         tools = [],
         allow_persistent_workers = True,
@@ -133,10 +133,10 @@ def sphinx_docs(
         config: {type}`label` the Sphinx config file (`conf.py`) to use.
         formats: (list of str) the formats (`-b` flag) to generate documentation
             in. Each format will become an output group.
-        strip_prefix: {type}`str` A prefix to remove from the file paths of the
-            source files. e.g., given `//sphinxdocs/docs:foo.md`, stripping `docs/` makes
-            Sphinx see `foo.md` in its generated source directory. If not
-            specified, then {any}`native.package_name` is used.
+        strip_prefix: {type}`str | None` A prefix to remove from the file paths of the
+            source files. An empty string (`""`) means no prefix stripping; `None`
+            means {any}`native.package_name` is used. e.g., given `//docs:foo.md`,
+            stripping `docs/` makes Sphinx see `foo.md` in its generated source directory.
         extra_opts: {type}`list[str]` Additional options to pass onto Sphinx building.
             On each provided option, a location expansion is performed.
             See {any}`ctx.expand_location`.
@@ -148,6 +148,7 @@ def sphinx_docs(
             This can improve incremental building of docs.
         **kwargs: {type}`dict` Common attributes to pass onto rules.
     """
+    strip_prefix = strip_prefix if strip_prefix != None else native.package_name()
     add_tag(kwargs, "//sphinxdocs:sphinx_docs")
     common_kwargs = copy_propagating_kwargs(kwargs)
 
@@ -355,7 +356,9 @@ def _sphinx_source_tree_impl(ctx):
     # Materialize a file under the `_sources` dir
     def _relocate(source_file, dest_path = None):
         if not dest_path:
-            dest_path = source_file.short_path.removeprefix(ctx.attr.strip_prefix)
+            # Strip leading slash if strip_prefix lacks a trailing slash,
+            # preventing paths.join from treating it as an absolute root.
+            dest_path = source_file.short_path.removeprefix(ctx.attr.strip_prefix).lstrip("/")
 
         dest_path = paths.join(source_prefix, dest_path)
         if source_file.is_directory:
@@ -378,7 +381,9 @@ def _sphinx_source_tree_impl(ctx):
     # Though Sphinx has a -c flag, we move the config file into the sources
     # directory to make the config more intuitive because some configuration
     # options are relative to the config location, not the sources directory.
-    source_conf_file = _relocate(ctx.file.config)
+    # Sphinx requires the configuration file to be named conf.py:
+    # https://www.sphinx-doc.org/en/master/usage/configuration.html#module-conf
+    source_conf_file = _relocate(ctx.file.config, "conf.py")
     sphinx_source_dir_path = paths.dirname(source_conf_file.path)
 
     for src in ctx.attr.srcs:
