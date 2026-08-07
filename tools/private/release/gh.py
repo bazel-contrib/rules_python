@@ -13,6 +13,7 @@ from tools.private.release.shell import run_cmd
 # GitHub label types
 RELEASE_LABEL = "type: release"
 BACKPORT_LABEL = "type: backport-pr"
+RELEASE_PREPARED_LABEL = "release-prepared"
 
 # GitHub reaction types
 # See: https://docs.github.com/en/rest/reactions/reactions?apiVersion=2022-11-28#about-reactions
