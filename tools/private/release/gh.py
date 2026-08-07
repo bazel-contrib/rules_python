@@ -307,7 +307,7 @@ class GitHub:
             issue_num: The issue number.
             body: The new body content.
         """
-        with tempfile.NamedTemporaryFile("w", delete=False, mode="w") as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
             f.write(body)
             f.flush()
             temp_path = f.name
