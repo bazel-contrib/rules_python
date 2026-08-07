@@ -268,7 +268,7 @@ data = {
     "implementation_name": sys.implementation.name,
     "base_executable": _get_base_executable(),
     "sys_platform": sys.platform,
-    "platform_machine": platform.machine(),
+    "platform_machine": platform.machine().lower(),
 }
 data.update(_get_python_library_info(_get_base_executable()))
 print(json.dumps(data))
