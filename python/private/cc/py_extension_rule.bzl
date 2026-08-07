@@ -25,6 +25,11 @@ def _py_extension_wrapper_impl(ctx):
             module_name = module_name,
             ext = ext,
         )
+    elif is_windows_platform(ctx):
+        output_filename = "{module_name}.{ext}".format(
+            module_name = module_name,
+            ext = ext,
+        )
     else:
         output_filename = "{module_name}.{soabi}.{ext}".format(
             module_name = module_name,
