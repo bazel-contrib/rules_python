@@ -3,3 +3,16 @@ module(name = "other")
 bazel_dep(name = "rules_python", version = "0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "another_module", version = "0")
+
+# Validate behavior of use_explicit_init_py configuration extension when used by
+# a module that's a dependency.
+rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+rules_python_config.use_explicit_init_py(enabled = True)
+
+init_py_test_repo = use_repo_rule("//:ext.bzl", "init_py_test_repo")
+
+init_py_test_repo(name = "init_py_test_repo")
+
+other_ext = use_extension("//:ext.bzl", "other_init_py_test_ext")
+other_ext.repo(name = "init_py_test_extension_repo")
+use_repo(other_ext, "init_py_test_extension_repo")

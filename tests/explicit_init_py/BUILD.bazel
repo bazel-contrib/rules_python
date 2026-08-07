@@ -1,0 +1,6 @@
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+
+test_suite(
+    name = "explicit_init_py",
+    tests = ["@other//:explicit_init_py_tests"] if BZLMOD_ENABLED else [],
+)
