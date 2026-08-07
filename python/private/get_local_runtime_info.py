@@ -268,6 +268,8 @@ data = {
     "implementation_name": sys.implementation.name,
     "base_executable": _get_base_executable(),
     "sys_platform": sys.platform,
+    # Normalize to lowercase: on Windows, platform.machine() returns uppercase
+    # "AMD64" / "ARM64", whereas PEP 508 and toolchains expect lowercase.
     "platform_machine": platform.machine().lower(),
 }
 data.update(_get_python_library_info(_get_base_executable()))
