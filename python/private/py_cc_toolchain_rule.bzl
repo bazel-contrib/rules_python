@@ -104,7 +104,7 @@ def _py_cc_toolchain_impl(ctx):
         version_parts = ctx.attr.python_version.split(".")
         prefix = "cp" if ctx.attr.sys_platform == "win32" else "cpython-"
         soabi = "{}{}{}{}".format(prefix, version_parts[0], version_parts[1], abi_flags)
-        if platform_tag:
+        if platform_tag and ctx.attr.sys_platform != "win32":
             soabi = "{}-{}".format(soabi, platform_tag)
 
     py_cc_toolchain = PyCcToolchainInfo(
