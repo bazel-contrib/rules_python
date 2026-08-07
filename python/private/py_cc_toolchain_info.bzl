@@ -22,7 +22,7 @@ PyCcToolchainInfo = provider(
 
 The runtime's ABI flags, i.e. `sys.abiflags` (e.g. 't' for free-threaded builds).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         "headers": """\
@@ -106,7 +106,7 @@ If available, information about C libraries, struct with fields:
 The {pep}`PEP 508` `platform_machine` marker
 value for the target architecture, e.g. 'x86_64', 'aarch64'.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         "platform_tag": """\
@@ -115,7 +115,7 @@ value for the target architecture, e.g. 'x86_64', 'aarch64'.
 The PEP 3149 / PEP 425 platform tag for extension modules, e.g.
 'x86_64-linux-gnu', 'darwin', or 'win_amd64'.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         "python_version": """
@@ -130,7 +130,7 @@ The SOABI tag for extension modules (see
 [PEP 3149](https://peps.python.org/pep-3149/)), e.g.
 'cpython-311-x86_64-linux-gnu' or 'cp311'.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         "sys_platform": """

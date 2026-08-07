@@ -751,7 +751,7 @@ The version must be specified as `==X.Y.Z` (exact version with full semver).
 This is designed to work with dependency management tools like Renovate.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
     ),
@@ -934,7 +934,7 @@ for this `pip.parse()` call, unless `python_version` is set explicitly.
 The version must be specified as `==X.Y.Z` (exact version with full semver).
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         ),
@@ -952,7 +952,7 @@ a corresponding `python.toolchain()` configured.
 The {obj}`pyproject_toml` attribute for getting the version from a project file.
 :::
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.3.0
 No longer mandatory if the {obj}`pyproject_toml` attribute or
 {obj}`pip.default.pyproject_toml` is specified.
 :::
