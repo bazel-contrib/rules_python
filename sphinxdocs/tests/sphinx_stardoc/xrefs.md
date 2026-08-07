@@ -7,6 +7,7 @@ Various tests of cross referencing support
 
 ## Short name
 
+* [Rule documentation](rule.md)
 * function: {obj}`myfunc`
 * function arg: {obj}`myfunc.arg1`
 * rule: {obj}`my_rule`

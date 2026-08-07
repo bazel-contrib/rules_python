@@ -22,6 +22,7 @@ def semver_type(value):
 
 
 _EXCLUDE_PATTERNS = [
+    "./.agents/*",
     "./.git/*",
     "./.github/*",
     "./.bazelci/*",

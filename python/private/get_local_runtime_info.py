@@ -248,7 +248,7 @@ def _get_python_library_info(base_executable) -> dict[str, Any]:
         "abi_dynamic_libraries": _unique_basenames(abi_dynamic_libraries),
         "abi_interface_libraries": _unique_basenames(abi_interface_libraries),
         "abi_flags": abi_flags,
-        "abi_tag": config_vars.get("SOABI") or "",
+        "soabi": config_vars.get("SOABI") or "",
         "shlib_suffix": ".dylib" if _IS_DARWIN else "",
         "additional_dlls": dlls,
         "defines": defines,
