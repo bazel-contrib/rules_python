@@ -54,12 +54,9 @@ def define_runtime_env_toolchain(name):
         supports_build_time_venv = supports_build_time_venv,
     )
 
-    # This is a dummy runtime whose interpreter_path triggers the native rule
-    # logic to use the legacy behavior on Windows.
-    # TODO(#7844): Remove this target.
     py_runtime(
-        name = "_magic_sentinel_runtime",
-        interpreter_path = "/_magic_pyruntime_sentinel_do_not_use",
+        name = "_runtime_env_py3_runtime_windows",
+        interpreter = "//python/private:runtime_env_toolchain_interpreter.ps1",
         python_version = "PY3",
         visibility = ["//visibility:private"],
         tags = ["manual"],
@@ -69,11 +66,7 @@ def define_runtime_env_toolchain(name):
     py_runtime_pair(
         name = "_runtime_env_py_runtime_pair",
         py3_runtime = select({
-            # If we're on windows, inject the sentinel to tell native rule logic
-            # that we attempted to use the runtime_env toolchain and need to
-            # switch back to legacy behavior.
-            # TODO(#7844): Remove this hack.
-            "@platforms//os:windows": ":_magic_sentinel_runtime",
+            "@platforms//os:windows": ":_runtime_env_py3_runtime_windows",
             "//conditions:default": ":_runtime_env_py3_runtime",
         }),
         visibility = ["//visibility:public"],
