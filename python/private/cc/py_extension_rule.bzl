@@ -25,15 +25,10 @@ def _py_extension_wrapper_impl(ctx):
             module_name = module_name,
             ext = ext,
         )
-    elif py_cc_toolchain.soabi:
+    else:
         output_filename = "{module_name}.{soabi}.{ext}".format(
             module_name = module_name,
             soabi = py_cc_toolchain.soabi,
-            ext = ext,
-        )
-    else:
-        output_filename = "{module_name}.{ext}".format(
-            module_name = module_name,
             ext = ext,
         )
 
