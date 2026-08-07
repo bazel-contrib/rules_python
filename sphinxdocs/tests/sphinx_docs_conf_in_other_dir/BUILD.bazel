@@ -1,0 +1,38 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
+
+_TARGET_COMPATIBLE_WITH = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+genrule(
+    name = "gen_conf",
+    srcs = ["src_conf.py"],
+    outs = ["other_dir/conf.py"],
+    cmd = "cp $(location src_conf.py) $@",
+)
+
+sphinx_docs(
+    name = "docs",
+    srcs = ["index.md"],
+    config = ":gen_conf",
+    formats = ["html"],
+    sphinx = ":sphinx-build",
+    target_compatible_with = _TARGET_COMPATIBLE_WITH,
+)
+
+sphinx_build_binary(
+    name = "sphinx-build",
+    tags = ["manual"],
+    deps = [
+        "@dev_pip//myst_parser",
+        "@dev_pip//sphinx",
+    ],
+)
+
+build_test(
+    name = "docs_build_test",
+    targets = [":docs"],
+)

@@ -88,19 +88,6 @@ def _py_cc_toolchain_impl(ctx):
         if ctx.attr._py_freethreaded_flag[BuildSettingInfo].value == FreeThreadedFlag.YES:
             abi_flags += "t"
 
-    abi_tag = ctx.attr.abi_tag
-    if not abi_tag:
-        # Derive default ABI tag:
-        # On POSIX: cpython-XX[t] (PEP 3149 / PEP 703)
-        # On Windows: cpXX[t] (PEP 3149 / PEP 703, CPython issue & commit):
-        #   - https://peps.python.org/pep-3149/
-        #   - https://peps.python.org/pep-0703/
-        #   - https://github.com/python/cpython/issues/67169
-        #   - https://github.com/python/cpython/commit/03a144bb6ac3d7631a3bdb895e2a1f2d021fb08b
-        version_parts = ctx.attr.python_version.split(".")
-        prefix = "cp" if ctx.attr.sys_platform == "win32" else "cpython-"
-        abi_tag = "{}{}{}{}".format(prefix, version_parts[0], version_parts[1], abi_flags)
-
     libc = ctx.attr.libc or LibcFlag.get_value(ctx)
 
     platform_tag = _get_platform_tag(
@@ -109,9 +96,19 @@ def _py_cc_toolchain_impl(ctx):
         libc = libc,
     )
 
+    soabi = ctx.attr.soabi
+    if not soabi:
+        # Derive default SOABI tag according to PEP 3149:
+        # On POSIX: cpython-XX[t]-<platform_tag>
+        # On Windows: cpXX[t]-<platform_tag> (CPython issue #67169)
+        version_parts = ctx.attr.python_version.split(".")
+        prefix = "cp" if ctx.attr.sys_platform == "win32" else "cpython-"
+        soabi = "{}{}{}{}".format(prefix, version_parts[0], version_parts[1], abi_flags)
+        if platform_tag:
+            soabi = "{}-{}".format(soabi, platform_tag)
+
     py_cc_toolchain = PyCcToolchainInfo(
         abi_flags = abi_flags,
-        abi_tag = abi_tag,
         headers = struct(
             providers_map = {
                 "CcInfo": ctx.attr.headers[CcInfo],
@@ -123,6 +120,7 @@ def _py_cc_toolchain_impl(ctx):
         platform_machine = ctx.attr.platform_machine,
         platform_tag = platform_tag,
         python_version = ctx.attr.python_version,
+        soabi = soabi,
         sys_platform = ctx.attr.sys_platform,
     )
     extra_kwargs = {}
@@ -148,17 +146,6 @@ free-threaded is enabled, or `''` otherwise).
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
-        ),
-        "abi_tag": attr.string(
-            doc = """\
-The ABI tag for extension modules, equivalent to the `SOABI` sysconfig var
-(see [PEP 3149](https://peps.python.org/pep-3149/)), e.g. 'cpython-311' or
-'cpython-313t'.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-""",
-            default = "",
         ),
         "headers": attr.label(
             doc = ("Target that provides the Python headers. Typically this " +
@@ -206,6 +193,16 @@ Target architecture as a PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarc
         "python_version": attr.string(
             doc = "The Major.minor Python version, e.g. 3.11",
             mandatory = True,
+        ),
+        "soabi": attr.string(
+            doc = """\
+The SOABI tag for extension modules (see PEP 3149), e.g.
+'cpython-311-x86_64-linux-gnu' or 'cp311'.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+            default = "",
         ),
         "sys_platform": attr.string(
             doc = """
