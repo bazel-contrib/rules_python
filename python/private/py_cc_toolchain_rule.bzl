@@ -98,14 +98,15 @@ def _py_cc_toolchain_impl(ctx):
 
     soabi = ctx.attr.soabi
     if not soabi:
-        # Derive default SOABI tag according to PEP 3149:
-        # On POSIX: cpython-XX[t]-<platform_tag>
-        # On Windows: cpXX[t]-<platform_tag> (CPython issue #67169)
-        version_parts = ctx.attr.python_version.split(".")
-        prefix = "cp" if ctx.attr.sys_platform == "win32" else "cpython-"
-        soabi = "{}{}{}{}".format(prefix, version_parts[0], version_parts[1], abi_flags)
-        if platform_tag and ctx.attr.sys_platform != "win32":
-            soabi = "{}-{}".format(soabi, platform_tag)
+        if ctx.attr.sys_platform == "win32":
+            soabi = ""
+        else:
+            # Derive default SOABI tag according to PEP 3149 for POSIX:
+            # cpython-XX[t]-<platform_tag>
+            version_parts = ctx.attr.python_version.split(".")
+            soabi = "cpython-{}{}{}".format(version_parts[0], version_parts[1], abi_flags)
+            if platform_tag:
+                soabi = "{}-{}".format(soabi, platform_tag)
 
     py_cc_toolchain = PyCcToolchainInfo(
         abi_flags = abi_flags,

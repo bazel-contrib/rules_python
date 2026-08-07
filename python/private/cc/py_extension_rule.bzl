@@ -17,18 +17,23 @@ def _py_extension_wrapper_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
 
     ext = _get_extension(ctx)
+    py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+    py_cc_toolchain = py_toolchain.py_cc_toolchain
     use_py_limited_api = bool(ctx.attr.py_limited_api)
     if use_py_limited_api:
         output_filename = "{module_name}.abi3.{ext}".format(
             module_name = module_name,
             ext = ext,
         )
-    else:
-        py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
-        py_cc_toolchain = py_toolchain.py_cc_toolchain
+    elif py_cc_toolchain.soabi:
         output_filename = "{module_name}.{soabi}.{ext}".format(
             module_name = module_name,
             soabi = py_cc_toolchain.soabi,
+            ext = ext,
+        )
+    else:
+        output_filename = "{module_name}.{ext}".format(
+            module_name = module_name,
             ext = ext,
         )
 
