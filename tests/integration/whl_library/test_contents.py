@@ -127,6 +127,10 @@ class TestContents(unittest.TestCase):
                     self._normalize_label(x)
                     for x in self._read_file(var)
                     if not x.endswith("toolchain_type")
+                    # The runfiles_groups shim points this attribute at
+                    # @rules_runfiles_group only on Bazel 9+; on older
+                    # versions it is //python:none.
+                    and not self._normalize_label(x).startswith("@rules_runfiles_group//")
                 },
                 {
                     main_dep,
@@ -169,6 +173,7 @@ class TestContents(unittest.TestCase):
                     "@rules_python//python/config_settings:add_srcs_to_runfiles",
                     "@rules_python//python/config_settings:precompile",
                     "@rules_python//python/config_settings:precompile_source_retention",
+                    "@rules_python//python/config_settings:runfiles_groups",
                     "@rules_python//python/config_settings:venvs_site_packages",
                     "@rules_python//python/private:sentinel",
                 },

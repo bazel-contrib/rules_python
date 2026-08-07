@@ -40,6 +40,28 @@ config = struct(
 )
 """
 
+# rules_runfiles_group isn't in Bazel 8's hardcoded list of repositories that
+# are exempt from autoloads, so loading its bzl files from rules_python creates
+# a load cycle there (https://github.com/bazelbuild/bazel/issues/23043). This
+# repo is on that list, so the load is routed through here and stubbed out on
+# Bazel versions with autoloads.
+_RUNFILES_GROUPS_SHIM_TEMPLATE = """
+load("@rules_runfiles_group//runfiles_group:lib.bzl", _runfiles_groups = "runfiles_groups")
+load("@rules_runfiles_group//runfiles_group:providers.bzl", _RunfilesGroupInfo = "RunfilesGroupInfo")
+
+RUNFILES_GROUPS_AVAILABLE = True
+runfiles_groups = _runfiles_groups
+RunfilesGroupInfo = _RunfilesGroupInfo
+ENABLED_FLAG_LABEL = "@rules_runfiles_group//runfiles_group:enabled"
+"""
+
+_RUNFILES_GROUPS_SHIM_UNAVAILABLE_TEMPLATE = """
+RUNFILES_GROUPS_AVAILABLE = False
+runfiles_groups = None
+RunfilesGroupInfo = None
+ENABLED_FLAG_LABEL = "//python:none"
+"""
+
 ROOT_BUILD_TEMPLATE = """
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
@@ -57,6 +79,12 @@ bzl_library(
 bzl_library(
     name = "rules_python_config",
     srcs = ["rules_python_config.bzl"],
+)
+
+bzl_library(
+    name = "runfiles_groups_shim",
+    srcs = ["runfiles_groups_shim.bzl"],
+    deps = [{runfiles_groups_shim_deps}],
 )
 """
 
@@ -114,8 +142,17 @@ def _internal_config_repo_impl(rctx):
         bazel_10_or_later = str(bazel_major_version > 9),
     ))
 
+    if bazel_major_version >= 9:
+        runfiles_groups_shim = _RUNFILES_GROUPS_SHIM_TEMPLATE
+        runfiles_groups_shim_deps = '"@rules_runfiles_group//runfiles_group:lib", "@rules_runfiles_group//runfiles_group:providers"'
+    else:
+        runfiles_groups_shim = _RUNFILES_GROUPS_SHIM_UNAVAILABLE_TEMPLATE
+        runfiles_groups_shim_deps = ""
+    rctx.file("runfiles_groups_shim.bzl", runfiles_groups_shim)
+
     rctx.file("BUILD", ROOT_BUILD_TEMPLATE.format(
         visibility = "@rules_python//:__subpackages__",
+        runfiles_groups_shim_deps = runfiles_groups_shim_deps,
     ))
 
     rctx.file(
