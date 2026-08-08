@@ -15,6 +15,7 @@ from tools.private.release.utils import (
     determine_next_version,
     get_latest_rc_tag,
     semver_type,
+    set_github_output,
 )
 
 
@@ -170,9 +171,7 @@ class Promote:
         self.git.tag(version, commit_sha)
         self.git.push(args.remote, version)
 
-        if github_output := os.environ.get("GITHUB_OUTPUT"):
-            with open(github_output, "a", encoding="utf-8") as f:
-                f.write(f"version={version}\n")
+        set_github_output("version", version)
 
         print(f"Updating tracking issue #{issue_num} checklist...")
         self.gh.update_issue_body(issue_num, updated_body)

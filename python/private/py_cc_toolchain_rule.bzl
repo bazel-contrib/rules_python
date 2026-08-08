@@ -143,7 +143,7 @@ If not set, or set to `<AUTO>`, the ABI flags are automatically derived
 from `--//python/config_settings:py_freethreaded` (e.g., `'t'` when
 free-threaded is enabled, or `''` otherwise).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         ),
@@ -171,7 +171,7 @@ attribute is available or not.
             doc = """\
 Target C library variant, e.g. 'glibc', 'musl'.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
             default = "",
@@ -185,7 +185,7 @@ Target C library variant, e.g. 'glibc', 'musl'.
             doc = """
 Target architecture as a PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarch64', 'x86_32'.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
             default = "",
@@ -199,7 +199,7 @@ Target architecture as a PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarc
 The SOABI tag for extension modules (see PEP 3149), e.g.
 'cpython-311-x86_64-linux-gnu' or 'cp311'.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
             default = "",
