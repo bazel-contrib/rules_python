@@ -2,7 +2,8 @@
 
 This plan documents findings, requirements, and issues discovered during the
 review of Pyrefly static type checking enablement across `rules_python` and
-`sphinxdocs` targets.
+`sphinxdocs` targets, including detailed explanations for targets where
+`no-pyrefly` is intentionally retained.
 
 ---
 
@@ -80,7 +81,77 @@ review of Pyrefly static type checking enablement across `rules_python` and
 
 ---
 
-## 2. Target Status
+## 2. Targets with `no-pyrefly` Tag and Explanations
+
+The following targets retain `tags = ["no-pyrefly"]` due to runtime-injected
+modules, compiled native extensions without type stubs, or dynamically
+generated test bootstrap wrappers:
+
+### 2.1 `//tests/bootstrap_impls:bazel_tools_importable_system_python_test`
+- **Location**: [`tests/bootstrap_impls/BUILD.bazel:108-119`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/bootstrap_impls/BUILD.bazel#L108-L119)
+- **Source**: [`tests/bootstrap_impls/bazel_tools_importable_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/bootstrap_impls/bazel_tools_importable_test.py)
+- **Explanation**: This test verifies legacy `system_python` bootstrapping
+  behaviour and imports `@bazel_tools//tools/python/runfiles` with
+  `legacy_create_init = True`. The `@bazel_tools` built-in repository does not
+  provide `__init__.py` files or static type stubs, causing Pyrefly import
+  resolution failures.
+
+### 2.2 `//tests/build_data:build_data_test`
+- **Location**: [`tests/build_data/BUILD.bazel:4-13`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/build_data/BUILD.bazel#L4-L13)
+- **Source**: [`tests/build_data/build_data_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/build_data/build_data_test.py)
+- **Explanation**: Tests the workspace build data stamping mechanism and
+  imports `bazel_binary_info`. `bazel_binary_info` is an internal synthetic
+  module generated dynamically at build time by the rule action template, so it
+  does not exist as a static Python source file in the repository tree.
+
+### 2.3 `//tests/build_data:print_build_data`
+- **Location**: [`tests/build_data/BUILD.bazel:15-20`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/build_data/BUILD.bazel#L15-L20)
+- **Source**: [`tests/build_data/print_build_data.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/build_data/print_build_data.py)
+- **Explanation**: Helper binary executed during a `genrule` to emit stamped
+  build data. Like `build_data_test`, it directly imports the dynamically
+  injected `bazel_binary_info` synthetic module.
+
+### 2.4 `//tests/cc/py_extension:py_extension_test`
+- **Location**: [`tests/cc/py_extension/BUILD.bazel:171-180`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/cc/py_extension/BUILD.bazel#L171-L180)
+- **Source**: [`tests/cc/py_extension/py_extension_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/cc/py_extension/py_extension_test.py)
+- **Explanation**: Tests dynamic C extension (`py_extension`) shared library
+  linking and symbol resolution. It imports `:ext_shared` (`ext_shared.so`),
+  which is compiled from C sources and has no accompanying `.pyi` type stubs.
+
+### 2.5 `//tests/cc/py_extension:py_extension_pkg_test`
+- **Location**: [`tests/cc/py_extension/BUILD.bazel:189-196`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/cc/py_extension/BUILD.bazel#L189-L196)
+- **Source**: [`tests/cc/py_extension/py_extension_pkg_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/cc/py_extension/py_extension_pkg_test.py)
+- **Explanation**: Tests package-scoped C extension imports using
+  `tests.cc.py_extension.ext_pkg_test`. The extension is a native compiled C
+  module without static type stubs.
+
+### 2.6 `//tests/pytest_test:pytest_script_venv_test`
+- **Location**: [`tests/pytest_test/BUILD.bazel:4-15`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/pytest_test/BUILD.bazel#L4-L15)
+- **Source**: [`tests/pytest_test/basic_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/pytest_test/basic_test.py)
+- **Explanation**: Instantiated via the `pytest_test` macro, which generates an
+  intermediate test runner bootstrap script (`pytest_script_venv_test_boot.py`)
+  via `ctx.actions.expand_template`. Because the generated main entry point
+  is created during analysis/execution, Pyrefly cannot inspect the main file
+  statically from source.
+
+### 2.7 `//tests/pytest_test:pytest_default_test`
+- **Location**: [`tests/pytest_test/BUILD.bazel:17-24`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/pytest_test/BUILD.bazel#L17-L24)
+- **Source**: [`tests/pytest_test/basic_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/pytest_test/basic_test.py)
+- **Explanation**: Like `pytest_script_venv_test`, relies on the `pytest_test`
+  macro with an action-generated bootstrap entry script
+  (`pytest_default_test_boot.py`).
+
+### 2.8 `//tests/venv_site_packages_libs:shared_lib_loading_test`
+- **Location**: [`tests/venv_site_packages_libs/BUILD.bazel:53-73`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/venv_site_packages_libs/BUILD.bazel#L53-L73)
+- **Source**: [`tests/venv_site_packages_libs/shared_lib_loading_test.py`](file:///usr/local/google/home/rlevasseur/.gemini/jetski/worktrees/rules_python/enable_pyrefly_python_targets/tests/venv_site_packages_libs/shared_lib_loading_test.py)
+- **Explanation**: Tests virtual environment runtime shared library discovery
+  and imports `:ext_with_libs` (a compiled C extension) alongside platform-
+  conditional binary analysis libraries (`elftools` / `macholib`). The native C
+  extension lacks static `.pyi` stubs.
+
+---
+
+## 3. Target Status Overview
 
 | Target / Module | Status | Notes |
 |---|---|---|
@@ -91,3 +162,11 @@ review of Pyrefly static type checking enablement across `rules_python` and
 | `//sphinxdocs/src/sphinx_bzl:sphinx_bzl` | Resolved | `_get_bzl_domain()` helper added, overrides kept |
 | `//python/private/pypi/dependency_resolver` | Resolved | `requirements_out` initialized cleanly up front |
 | `sphinxdocs/MODULE.bazel` | Resolved | `hub_name = "dev_pip"` restored with `dev_dependency = True` |
+| `//tests/bootstrap_impls:bazel_tools_importable_system_python_test` | `no-pyrefly` | `@bazel_tools` lacks init/stubs |
+| `//tests/build_data:build_data_test` | `no-pyrefly` | Synthetic `bazel_binary_info` module |
+| `//tests/build_data:print_build_data` | `no-pyrefly` | Synthetic `bazel_binary_info` module |
+| `//tests/cc/py_extension:py_extension_test` | `no-pyrefly` | Compiled C extension without `.pyi` |
+| `//tests/cc/py_extension:py_extension_pkg_test` | `no-pyrefly` | Compiled C extension without `.pyi` |
+| `//tests/pytest_test:pytest_script_venv_test` | `no-pyrefly` | Action-generated bootstrap runner |
+| `//tests/pytest_test:pytest_default_test` | `no-pyrefly` | Action-generated bootstrap runner |
+| `//tests/venv_site_packages_libs:shared_lib_loading_test` | `no-pyrefly` | Compiled C extension without `.pyi` |
