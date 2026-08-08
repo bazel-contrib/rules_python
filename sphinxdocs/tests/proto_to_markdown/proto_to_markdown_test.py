@@ -15,9 +15,9 @@
 import io
 
 from absl.testing import absltest
-from google.protobuf import text_format
+from google.protobuf import text_format  # type: ignore
 from sphinxdocs.private import proto_to_markdown
-from stardoc.proto import stardoc_output_pb2
+from stardoc.proto import stardoc_output_pb2  # type: ignore
 
 _EVERYTHING_MODULE = """\
 module_docstring: "MODULE_DOC_STRING"

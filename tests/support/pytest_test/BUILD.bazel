@@ -19,11 +19,11 @@ bzl_library(
 # These aliases are used to avoid duplicate targets in the deps list
 alias(
     name = "default_pytest",
-    actual = "@pypi//pytest",
+    actual = "@dev_pip//pytest",
 )
 
 # These aliases are used to avoid duplicate targets in the deps list
 alias(
     name = "default_pytest_bazel",
-    actual = "@pypi//pytest_bazel",
+    actual = "@dev_pip//pytest_bazel",
 )

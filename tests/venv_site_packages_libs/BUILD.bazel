@@ -58,6 +58,7 @@ py_reconfig_test(
         "//conditions:default": "script",
     }),
     main = "shared_lib_loading_test.py",
+    tags = ["no-pyrefly"],
     venvs_site_packages = "yes",
     deps = select({
         "@platforms//os:windows": [

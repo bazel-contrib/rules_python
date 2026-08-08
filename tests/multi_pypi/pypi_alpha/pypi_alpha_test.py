@@ -1,6 +1,6 @@
 import sys
 
-from more_itertools import __version__
+from more_itertools import __version__  # type: ignore
 
 if __name__ == "__main__":
     expected_version = "9.1.0"

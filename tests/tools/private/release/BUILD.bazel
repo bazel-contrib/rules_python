@@ -10,7 +10,7 @@ py_library(
     deps = [
         ":release_test_helper",
         "//tools/private/release:release_lib",
-        "@pypi//pytest_mock",
+        "@dev_pip//pytest_mock",
     ],
 )
 

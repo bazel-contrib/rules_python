@@ -16,9 +16,9 @@ import argparse
 import itertools
 import pathlib
 import sys
-from typing import Callable, TextIO, TypeVar
+from typing import Callable, Iterator, Optional, Sequence, TextIO, TypeVar
 
-from stardoc.proto import stardoc_output_pb2
+from stardoc.proto import stardoc_output_pb2  # type: ignore
 
 _AttributeType = stardoc_output_pb2.AttributeType
 
@@ -73,7 +73,7 @@ def _join_csv_and(values: list[str]) -> str:
     return ", ".join(values)
 
 
-def _position_iter(values: list[_T]) -> tuple[bool, bool, _T]:
+def _position_iter(values: Sequence[_T]) -> Iterator[tuple[bool, bool, _T]]:
     for i, value in enumerate(values):
         yield i == 0, i == len(values) - 1, value
 
@@ -438,7 +438,9 @@ class _MySTRenderer:
             self._write(":::::\n")
         self._write("::::::\n")
 
-    def _render_attributes(self, attributes: list[stardoc_output_pb2.AttributeInfo]):
+    def _render_attributes(
+        self, attributes: Sequence[stardoc_output_pb2.AttributeInfo]
+    ):
         for attr in attributes:
             attr_type = self._rule_attr_type_string(attr)
             self._write(f":attr {attr.name}:\n")
@@ -491,10 +493,10 @@ class _MySTRenderer:
     def _render_signature(
         self,
         name: str,
-        parameters: list[_T],
+        parameters: Sequence[_T],
         *,
-        get_name: Callable[_T, str],
-        get_default: Callable[_T, str] = lambda v: None,
+        get_name: Callable[[_T], str],
+        get_default: Callable[[_T], Optional[str]] = lambda v: None,
     ):
         self._write(name, "(")
         for _, is_last, param in _position_iter(parameters):

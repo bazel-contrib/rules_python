@@ -32,7 +32,7 @@ from python.runfiles import runfiles
 
 # Replace the os.replace function with shutil.copy to work around os.replace not being able to
 # replace or move files across filesystems.
-os.replace = shutil.copy
+os.replace = shutil.copy  # type: ignore
 
 # Next, we override the annotation_style_split and annotation_style_line functions to replace the
 # backslashes in the paths with forward slashes. This is so that we can have the same requirements
@@ -137,6 +137,7 @@ def main(
     os.environ["LANG"] = "C.UTF-8"
 
     argv = []
+    requirements_out = requirements_file_relative
 
     UPDATE = True
     # Detect if we are running under `bazel test`.
@@ -172,9 +173,7 @@ def main(
     os.environ["CUSTOM_COMPILE_COMMAND"] = update_command
     os.environ["PIP_CONFIG_FILE"] = os.getenv("PIP_CONFIG_FILE") or os.devnull
 
-    argv.append(
-        f"--output-file={requirements_file_relative if UPDATE else requirements_out}"
-    )
+    argv.append(f"--output-file={requirements_out}")
     argv.extend(
         (src_relative if Path(src_relative).exists() else resolved_src)
         for src_relative, resolved_src in zip(srcs_relative, resolved_srcs)

@@ -10,6 +10,7 @@ pytest_test(
         "@rules_python//python/config_settings:bootstrap_impl": "script",
         "@rules_python//python/config_settings:venvs_site_packages": "yes",
     },
+    tags = ["no-pyrefly"],
     target_compatible_with = SUPPORTS_BZLMOD,
 )
 
@@ -18,5 +19,6 @@ pytest_test(
     srcs = [
         "basic_test.py",
     ],
+    tags = ["no-pyrefly"],
     target_compatible_with = SUPPORTS_BZLMOD,
 )

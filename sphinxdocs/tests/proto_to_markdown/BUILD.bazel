@@ -17,9 +17,8 @@ load("@rules_python//python:py_test.bzl", "py_test")
 py_test(
     name = "proto_to_markdown_test",
     srcs = ["proto_to_markdown_test.py"],
-    tags = ["no-pyrefly"],
     deps = [
         "//sphinxdocs/private:proto_to_markdown_lib",
-        "@dev_pip//absl_py",
+        "@pypi//absl_py",
     ],
 )

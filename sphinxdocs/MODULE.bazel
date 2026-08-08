@@ -21,7 +21,7 @@ dev_pip.parse(
     requirements_lock = "//dev:requirements.txt",
     uv_lock = "//dev:uv.lock",
 )
-use_repo(dev_pip, "dev_pip")
+use_repo(dev_pip, "dev_pip", "pypi")
 
 bazel_dep(name = "rules_bazel_integration_test", version = "0.37.1", dev_dependency = True)
 

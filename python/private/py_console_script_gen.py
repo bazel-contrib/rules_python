@@ -82,7 +82,7 @@ def run(
     *,
     entry_points: pathlib.Path,
     out: pathlib.Path,
-    console_script: str,
+    console_script: str | None,
     console_script_guess: str,
     shebang: str,
 ):

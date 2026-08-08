@@ -9,7 +9,6 @@ py_library(
     name = "sphinx_bzl",
     srcs = glob(["*.py"]),
     imports = [".."],
-    tags = ["no-pyrefly"],
     # Allow depending on it in sphinx_binary targets
     visibility = ["//visibility:public"],
 )

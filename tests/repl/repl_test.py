@@ -6,9 +6,10 @@ import unittest
 from pathlib import Path
 from typing import Iterable
 
-from python import runfiles
+from python.runfiles import runfiles
 
 rfiles = runfiles.Create()
+assert rfiles is not None, "Failed to create runfiles"
 
 # Signals the tests below whether we should be expecting the import of
 # helpers/test_module.py on the REPL to work or not.
@@ -29,10 +30,11 @@ class ReplTest(unittest.TestCase):
         rpath = "rules_python/python/bin/repl"
         if IS_WINDOWS:
             rpath += ".exe"
-        self.repl = rfiles.Rlocation(rpath)
-        assert self.repl
+        repl = rfiles.Rlocation(rpath)
+        assert repl is not None, f"Could not find {rpath}"
         if IS_WINDOWS:
-            self.repl = os.path.normpath(self.repl)
+            repl = os.path.normpath(repl)
+        self.repl: str = repl
 
     def run_code_in_repl(self, lines: Iterable[str], *, env=None) -> str:
         """Runs the lines of code in the REPL and returns the text output."""
@@ -89,7 +91,7 @@ commmand: {self.repl}
     def test_cannot_import_test_module_directly(self):
         """Validates that we cannot import helper/test_module.py since it's not a direct dep."""
         with self.assertRaises(ModuleNotFoundError):
-            import test_module  # noqa: F401
+            pass  # type: ignore
 
     @unittest.skipIf(
         not EXPECT_TEST_MODULE_IMPORTABLE, "test only works without repl_dep set"

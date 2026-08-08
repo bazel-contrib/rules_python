@@ -124,7 +124,6 @@ py_binary(
 py_binary(
     name = "proto_to_markdown",
     srcs = ["proto_to_markdown.py"],
-    tags = ["no-pyrefly"],
     # Only public because it's an implicit attribute
     visibility = NOT_ACTUALLY_PUBLIC,
     deps = [":proto_to_markdown_lib"],
@@ -133,14 +132,12 @@ py_binary(
 py_library(
     name = "sphinx_build_lib",
     srcs = ["sphinx_build.py"],
-    tags = ["no-pyrefly"],
     visibility = ["//:__subpackages__"],
 )
 
 py_library(
     name = "proto_to_markdown_lib",
     srcs = ["proto_to_markdown.py"],
-    tags = ["no-pyrefly"],
     # Only public because it's an implicit attribute
     visibility = NOT_ACTUALLY_PUBLIC,
     deps = [

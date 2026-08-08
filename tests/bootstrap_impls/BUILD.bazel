@@ -112,6 +112,7 @@ py_reconfig_test(
     # Necessary because bazel_tools doesn't have __init__.py files.
     legacy_create_init = True,
     main = "bazel_tools_importable_test.py",
+    tags = ["no-pyrefly"],
     deps = [
         "@bazel_tools//tools/python/runfiles",
     ],

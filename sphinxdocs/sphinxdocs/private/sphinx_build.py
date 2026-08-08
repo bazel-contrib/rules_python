@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import concurrent.futures
 import contextlib
 import io
@@ -10,13 +12,55 @@ import stat
 import sys
 import threading
 import traceback
-import typing
+import types
+from typing import TextIO, TypedDict
 
 import sphinx.application
 from sphinx.cmd.build import main
 
-WorkRequest = object
-WorkResponse = object
+
+class WorkRequestInput(TypedDict, total=False):
+    """Input file with digest for a Bazel persistent worker WorkRequest.
+
+    See https://github.com/bazelbuild/bazel/blob/master/src/main/protobuf/worker_protocol.proto (Input message).
+    """
+
+    path: str
+    digest: str
+
+
+class WorkRequest(TypedDict, total=False):
+    """Bazel persistent worker WorkRequest protocol structure.
+
+    See https://github.com/bazelbuild/bazel/blob/master/src/main/protobuf/worker_protocol.proto (WorkRequest message).
+    """
+
+    id: int
+    requestId: int
+    arguments: list[str]
+    inputs: list[WorkRequestInput]
+    cancel: bool
+
+
+class WorkResponse(TypedDict, total=False):
+    """Bazel persistent worker WorkResponse protocol structure.
+
+    See https://github.com/bazelbuild/bazel/blob/master/src/main/protobuf/worker_protocol.proto (WorkResponse message).
+    """
+
+    id: int
+    requestId: int
+    exitCode: int
+    output: str
+    wasCancelled: bool
+
+
+class RequestInfo(TypedDict, total=False):
+    """JSON structure written for the Sphinx extension with worker request metadata."""
+
+    exec_root: str
+    inputs: list[WorkRequestInput]
+    changed_sources: list[str]
 
 
 class SphinxMainError(Exception):
@@ -36,7 +80,7 @@ _REQUEST_INFO_CONFIG_NAME = "bazel_worker_request_info_path"
 class DirectorySyncerError(Exception):
     """Raised when one or more errors occur during directory synchronization."""
 
-    def __init__(self, errors: typing.List[BaseException]):
+    def __init__(self, errors: list[BaseException]):
         self.errors = errors
         message = f"Encountered {len(errors)} error(s) during sync:\n" + "\n".join(
             f"  - {e}" for e in errors
@@ -57,17 +101,17 @@ class DirectorySyncer:
         self,
         srcdir: pathlib.Path,
         destdir: pathlib.Path,
-        max_workers: typing.Optional[int] = None,
+        max_workers: int | None = None,
     ):
         self._srcdir = srcdir
         self._destdir = destdir
         self._max_workers = max_workers or min(32, (os.cpu_count() or 4) + 4)
-        self._current_shas: typing.Dict[str, str] = {}
+        self._current_shas: dict[str, str] = {}
         self._lock = threading.Lock()
         self._finished_cond = threading.Condition(self._lock)
         self._remaining = 0
-        self._errors: typing.List[BaseException] = []
-        self._executor: typing.Optional[concurrent.futures.ThreadPoolExecutor] = None
+        self._errors: list[BaseException] = []
+        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
 
     def _reset_state(self) -> None:
         with self._lock:
@@ -84,6 +128,7 @@ class DirectorySyncer:
     def _submit_task(self, fn, *args) -> None:
         with self._lock:
             self._remaining += 1
+        assert self._executor is not None
         future = self._executor.submit(fn, *args)
         future.add_done_callback(self._handle_task_done)
 
@@ -118,7 +163,7 @@ class DirectorySyncer:
             self._submit_task(self._copy_dir, self._srcdir, self._destdir)
             self._wait_for_completion()
 
-    def sync(self, entries: typing.Dict[str, str]) -> None:
+    def sync(self, entries: dict[str, str]) -> None:
         """Synchronizes destdir to match entries {relative_path: sha} concurrently."""
         self._reset_state()
 
@@ -198,9 +243,7 @@ class DirectorySyncer:
 class Worker:
     """A Bazel persistent worker for Sphinx builds."""
 
-    def __init__(
-        self, instream: "typing.TextIO", outstream: "typing.TextIO", exec_root: str
-    ):
+    def __init__(self, instream: TextIO, outstream: TextIO, exec_root: str):
         # NOTE: Sphinx performs its own logging re-configuration, so any
         # logging config we do isn't respected by Sphinx. Controlling where
         # stdout and stderr goes are the main mechanisms. Recall that
@@ -219,7 +262,7 @@ class Worker:
 
         # dict[str srcdir, dict[str path, str digest]]
         self._digests = {}
-        self._syncers: typing.Dict[pathlib.Path, DirectorySyncer] = {}
+        self._syncers: dict[pathlib.Path, DirectorySyncer] = {}
 
         # Internal output directories the worker gives to Sphinx that need
         # to be cleaned up upon exit.
@@ -266,11 +309,12 @@ class Worker:
                     )
                 except Exception:
                     logger.exception("Unhandled error: request=%s", request)
+                    request_id = request.get("requestId", 0) if request else 0
+                    req_id_str = request.get("id") if request else "unknown"
                     output = (
-                        f"Unhandled error:\nRequest id: {request.get('id')}\n"
+                        f"Unhandled error:\nRequest id: {req_id_str}\n"
                         + traceback.format_exc()
                     )
-                    request_id = 0 if not request else request.get("requestId", 0)
                     self._send_response(
                         {
                             "exitCode": 3,
@@ -281,18 +325,18 @@ class Worker:
         finally:
             logger.info("Worker shutting down")
 
-    def _get_next_request(self) -> "object | None":
+    def _get_next_request(self) -> WorkRequest | None:
         line = self._instream.readline()
         if not line:
             return None
         return json.loads(line)
 
-    def _send_response(self, response: "WorkResponse") -> None:
+    def _send_response(self, response: WorkResponse) -> None:
         self._outstream.write(json.dumps(response) + "\n")
         self._outstream.flush()
 
-    def _prepare_sphinx(self, request):
-        sphinx_args = request["arguments"]
+    def _prepare_sphinx(self, request: WorkRequest):
+        sphinx_args = request.get("arguments", [])
         srcdir = pathlib.Path(sphinx_args[0])
         destdir = pathlib.Path(f"{srcdir}.worker-in.d")
 
@@ -300,9 +344,12 @@ class Worker:
         current_digests = self._digests.setdefault(str(srcdir), {})
         is_first_request = not current_digests
         changed_paths = []
-        request_info = {"exec_root": self._exec_root, "inputs": request["inputs"]}
+        request_info: RequestInfo = {
+            "exec_root": self._exec_root,
+            "inputs": request.get("inputs", []),
+        }
         srcdir_prefix = str(srcdir) + "/"
-        for entry in request["inputs"]:
+        for entry in request.get("inputs", []):
             path = entry["path"]
             # In persistent worker mode, request["inputs"] includes action-level
             # tools (e.g. sphinx-build, sphinx_build.py) and params files that
@@ -322,7 +369,7 @@ class Worker:
                 changed_paths.append(path)
 
         self._digests[str(srcdir)] = incoming_digests
-        self._extension.changed_paths = changed_paths
+        self._extension.changed_paths = set(changed_paths)
         request_info["changed_sources"] = changed_paths
 
         bazel_outdir = sphinx_args[1]
@@ -365,7 +412,7 @@ class Worker:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             yield stdout, stderr
 
-    def _process_request(self, request: "WorkRequest") -> "WorkResponse | None":
+    def _process_request(self, request: WorkRequest) -> WorkResponse | None:
         logger.info("Request: %s", json.dumps(request, sort_keys=True, indent=2))
         if request.get("cancel"):
             return None
@@ -446,14 +493,13 @@ class Worker:
         return response
 
 
-class BazelWorkerExtension:
+class BazelWorkerExtension(types.ModuleType):
     """A Sphinx extension implemented as a class acting like a module."""
 
-    def __init__(self):
-        # Make it look like a Module object
-        self.__name__ = _WORKER_SPHINX_EXT_MODULE_NAME
+    def __init__(self, name: str = _WORKER_SPHINX_EXT_MODULE_NAME):
+        super().__init__(name)
         # set[str] of src-dir relative path names
-        self.changed_paths = set()
+        self.changed_paths: set[str] = set()
 
     def setup(self, app):
         app.add_config_value(_REQUEST_INFO_CONFIG_NAME, "", "")
