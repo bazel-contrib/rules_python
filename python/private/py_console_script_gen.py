@@ -69,10 +69,11 @@ class EntryPointsParser(configparser.ConfigParser):
     See https://packaging.python.org/en/latest/specifications/entry-points/
     """
 
-    optionxform = staticmethod(str)
+    def optionxform(self, optionstr: str) -> str:
+        return str(optionstr)
 
 
-def _guess_entry_point(guess: str, console_scripts: dict[string, string]) -> str | None:  # noqa: F821
+def _guess_entry_point(guess: str, console_scripts: dict[str, str]) -> str | None:
     for key, candidate in console_scripts.items():
         if guess == key:
             return candidate

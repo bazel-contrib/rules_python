@@ -129,9 +129,12 @@ py_binary(
     deps = [":proto_to_markdown_lib"],
 )
 
+# sphinx_build_lib does not declare dependencies directly as the caller/action
+# injects Sphinx and tool dependencies into the execution environment.
 py_library(
     name = "sphinx_build_lib",
     srcs = ["sphinx_build.py"],
+    tags = ["no-pyrefly"],
     visibility = ["//:__subpackages__"],
 )
 
