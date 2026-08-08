@@ -91,7 +91,7 @@ commmand: {self.repl}
     def test_cannot_import_test_module_directly(self):
         """Validates that we cannot import helper/test_module.py since it's not a direct dep."""
         with self.assertRaises(ModuleNotFoundError):
-            pass  # type: ignore
+            import test_module  # type: ignore # noqa: F401
 
     @unittest.skipIf(
         not EXPECT_TEST_MODULE_IMPORTABLE, "test only works without repl_dep set"
