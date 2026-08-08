@@ -28,7 +28,11 @@ def path_from_runfiles(input: str) -> pathlib.Path:
     Returns:
         the pathlib.Path path to a file which is verified to exist.
     """
-    path = pathlib.Path(runfiles.Create().Rlocation(input))
+    rf = runfiles.Create()
+    assert rf is not None
+    rlocation_path = rf.Rlocation(input)
+    assert rlocation_path is not None
+    path = pathlib.Path(rlocation_path)
     if not path.exists():
         raise ValueError(f"Path '{path}' does not exist")
 
