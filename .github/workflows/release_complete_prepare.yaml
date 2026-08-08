@@ -37,6 +37,8 @@ jobs:
       (github.event.pull_request.merged == true &&
        contains(github.event.pull_request.labels.*.name, 'release-prepared'))
     runs-on: ubuntu-latest
+    outputs:
+      issue: ${{ steps.complete_prepare.outputs.issue }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -49,6 +51,7 @@ jobs:
           bazelisk-version: 1.20.0
 
       - name: Mark Prepare Release Complete
+        id: complete_prepare
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ inputs.pr || github.event.pull_request.number }}
@@ -66,3 +69,10 @@ jobs:
           # Run the complete-prepare subcommand in the release tool to cleanly update checklist metadata
           bazel run //tools/private/release -- \
             complete-prepare "${ARGS[@]}"
+
+  call_create_release_branch:
+    needs: complete_prepare
+    uses: ./.github/workflows/release_create_release_branch.yaml
+    with:
+      issue: ${{ needs.complete_prepare.outputs.issue }}
+    secrets: inherit

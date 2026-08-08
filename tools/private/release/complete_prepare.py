@@ -7,6 +7,7 @@ from tools.private.release.release_issue import (
     parse_checklist_state,
     update_task_in_body,
 )
+from tools.private.release.utils import set_github_output
 
 
 class CompletePrepare:
@@ -80,6 +81,9 @@ class CompletePrepare:
         )
         self.gh.update_issue_body(issue_number, updated_body)
         print("Prepare Release task marked complete successfully!")
+
+        set_github_output("issue", str(issue_number))
+
         return 0
 
     @classmethod
