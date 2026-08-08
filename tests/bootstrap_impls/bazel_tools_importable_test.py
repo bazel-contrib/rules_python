@@ -5,9 +5,9 @@ import unittest
 class BazelToolsImportableTest(unittest.TestCase):
     def test_bazel_tools_importable(self):
         try:
-            import bazel_tools
-            import bazel_tools.tools.python
-            import bazel_tools.tools.python.runfiles  # noqa: F401
+            import bazel_tools  # type: ignore
+            import bazel_tools.tools.python  # type: ignore
+            import bazel_tools.tools.python.runfiles  # type: ignore # noqa: F401
         except ImportError as exc:
             raise AssertionError(
                 "Failed to import bazel_tools.python.runfiles\n"

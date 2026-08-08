@@ -171,7 +171,6 @@ cc_library(
 py_test(
     name = "py_extension_test",
     srcs = ["py_extension_test.py"],
-    tags = ["no-pyrefly"],
     deps = [
         ":ext_shared",
         "@dev_pip//pyelftools",
@@ -189,7 +188,6 @@ py_extension(
 py_test(
     name = "py_extension_pkg_test",
     srcs = ["py_extension_pkg_test.py"],
-    tags = ["no-pyrefly"],
     deps = [
         ":ext_pkg_test",
     ],

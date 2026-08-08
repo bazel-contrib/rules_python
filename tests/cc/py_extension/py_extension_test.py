@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 
-import ext_shared
+import ext_shared  # type: ignore
 from elftools.elf.dynamic import DynamicSection
 from elftools.elf.elffile import ELFFile
 
@@ -26,9 +26,9 @@ class PyExtensionTest(unittest.TestCase):
             self.assertTrue(isinstance(dynamic_section, DynamicSection))
 
             needed_libs = [
-                tag.needed
-                for tag in dynamic_section.iter_tags()
-                if tag.entry.d_tag == "DT_NEEDED"
+                tag.needed  # type: ignore
+                for tag in dynamic_section.iter_tags()  # type: ignore
+                if tag.entry.d_tag == "DT_NEEDED"  # type: ignore
             ]
             self.assertIn("libadd_one_shared.so", needed_libs)
 

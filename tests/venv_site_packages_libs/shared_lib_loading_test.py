@@ -6,13 +6,13 @@ from pathlib import Path
 
 # Optional imports for ELF/Mach-O analysis
 if os.name == "posix" and sys.platform != "darwin":
-    from elftools.elf.elffile import ELFFile
+    from elftools.elf.elffile import ELFFile  # type: ignore
 else:
     ELFFile = None
 
 if sys.platform == "darwin":
-    from macholib import mach_o
-    from macholib.MachO import MachO
+    from macholib import mach_o  # type: ignore
+    from macholib.MachO import MachO  # type: ignore
 else:
     mach_o = None
     MachO = None
@@ -36,7 +36,7 @@ class SharedLibLoadingTest(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "Tests Unix-specific extension loading")
     def test_shared_library_linking_unix(self):
         try:
-            import ext_with_libs.adder
+            import ext_with_libs.adder  # type: ignore
         except ImportError as e:
             spec = importlib.util.find_spec("ext_with_libs.adder")
             if not spec or not spec.origin:
@@ -75,7 +75,7 @@ class SharedLibLoadingTest(unittest.TestCase):
     def test_shared_library_loading_windows(self):
         # We import markupsafe._speedups (a .cp311-win_amd64.pyd extension)
         try:
-            import markupsafe._speedups
+            import markupsafe._speedups  # type: ignore
 
             module = markupsafe._speedups
         except ImportError as e:
@@ -121,30 +121,34 @@ class SharedLibLoadingTest(unittest.TestCase):
     def _get_elf_info(self, path):
         """Extracts linking information from an ELF file."""
         info = {"rpaths": [], "needed": [], "undefined_symbols": []}
+        if ELFFile is None:
+            return info
         with open(path, "rb") as f:
             elf = ELFFile(f)
             dynamic = elf.get_section_by_name(".dynamic")
             if dynamic:
                 for tag in dynamic.iter_tags():
-                    if tag.entry.d_tag == "DT_NEEDED":
-                        info["needed"].append(tag.needed)
-                    elif tag.entry.d_tag == "DT_RPATH":
-                        info["rpaths"].append(tag.rpath)
-                    elif tag.entry.d_tag == "DT_RUNPATH":
-                        info["rpaths"].append(tag.runpath)
+                    if tag.entry.d_tag == "DT_NEEDED":  # type: ignore
+                        info["needed"].append(tag.needed)  # type: ignore
+                    elif tag.entry.d_tag == "DT_RPATH":  # type: ignore
+                        info["rpaths"].append(tag.rpath)  # type: ignore
+                    elif tag.entry.d_tag == "DT_RUNPATH":  # type: ignore
+                        info["rpaths"].append(tag.runpath)  # type: ignore
 
             dynsym = elf.get_section_by_name(".dynsym")
             if dynsym:
                 info["undefined_symbols"] = [
                     s.name
                     for s in dynsym.iter_symbols()
-                    if s.entry["st_shndx"] == "SHN_UNDEF"
+                    if s.entry["st_shndx"] == "SHN_UNDEF"  # type: ignore
                 ]
         return info
 
     def _get_macho_info(self, path):
         """Extracts linking information from a Mach-O file."""
         info = {"rpaths": [], "needed": []}
+        if MachO is None or mach_o is None:
+            return info
         macho = MachO(path)
         for header in macho.headers:
             for cmd_load, cmd, data in header.commands:

@@ -8,14 +8,12 @@ py_test(
         ":tool_build_data.txt",
     ],
     stamp = 1,
-    tags = ["no-pyrefly"],
     deps = ["//python/runfiles"],
 )
 
 py_binary(
     name = "print_build_data",
     srcs = ["print_build_data.py"],
-    tags = ["no-pyrefly"],
     deps = ["//python/runfiles"],
 )
 
