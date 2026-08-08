@@ -420,7 +420,7 @@ class ProcessBackports:
         body = self.gh.get_issue_body(args.issue)
 
         if args.add:
-            items_to_add = []
+            items_to_add: list[dict[str, Any]] = []
             for pr_ref in args.add:
                 try:
                     pr_num = self.gh.resolve_pr_number(pr_ref)

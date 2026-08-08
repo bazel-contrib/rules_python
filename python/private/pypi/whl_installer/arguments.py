@@ -14,7 +14,7 @@
 
 import argparse
 import json
-from typing import Any, Dict, Set
+from typing import Any, Set
 
 
 def parser(**kwargs: Any) -> argparse.ArgumentParser:
@@ -57,7 +57,7 @@ def parser(**kwargs: Any) -> argparse.ArgumentParser:
     return parser
 
 
-def deserialize_structured_args(args: Dict[str, str]) -> Dict:
+def deserialize_structured_args(args: dict[str, Any]) -> dict[str, Any]:
     """Deserialize structured arguments passed from the starlark rules.
 
     Args:

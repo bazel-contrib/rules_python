@@ -31,6 +31,7 @@ class WheelTest(unittest.TestCase):
         self.runfiles = runfiles.Create()
 
     def _get_path(self, filename):
+        assert self.runfiles is not None
         runfiles_path = os.path.join("rules_python/examples/wheel", filename)
         path = self.runfiles.Rlocation(runfiles_path)
         # The runfiles API can return None if the path doesn't exist or

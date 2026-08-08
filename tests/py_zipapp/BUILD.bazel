@@ -17,6 +17,8 @@ py_binary(
         },
     }),
     main = "main.py",
+    # Pyrefly's bazel-check validator rejects explicit import paths with '.' components from :bin_deps.
+    tags = ["no-pyrefly"],
     deps = [":bin_deps"],
 )
 
@@ -62,6 +64,8 @@ py_binary(
         "//python/config_settings:venvs_site_packages": "no",
     },
     main = "main.py",
+    # Pyrefly's bazel-check validator rejects explicit import paths with '.' components from :bin_deps.
+    tags = ["no-pyrefly"],
     deps = [":bin_deps"],
 )
 
@@ -106,6 +110,8 @@ py_library(
     srcs = ["some_dep.py"],
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
     imports = ["."],
+    # Pyrefly's bazel-check validator rejects explicit import paths with '.' components.
+    tags = ["no-pyrefly"],
 )
 
 py_library(

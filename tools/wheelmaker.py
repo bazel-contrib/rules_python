@@ -25,6 +25,7 @@ import stat
 import sys
 import zipfile
 from pathlib import Path
+from typing import Sequence
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 
@@ -287,7 +288,12 @@ class WheelMaker(object):
             self._wheelname_fragment_distribution_name + "-" + self._version
         )
 
-        self._whlfile = None
+        self._whlfile: _WhlFile | None = None
+
+    @property
+    def whlfile(self) -> _WhlFile:
+        assert self._whlfile is not None
+        return self._whlfile
 
     def __enter__(self):
         self._whlfile = _WhlFile(
@@ -303,8 +309,9 @@ class WheelMaker(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        self._whlfile.close()
-        self._whlfile = None
+        if self._whlfile is not None:
+            self._whlfile.close()
+            self._whlfile = None
 
     def wheelname(self) -> str:
         components = [
@@ -325,14 +332,14 @@ class WheelMaker(object):
         return ["-".join([self._python_tag, self._abi, self._platform])]
 
     def distinfo_path(self, basename):
-        return self._whlfile.distinfo_path(basename)
+        return self.whlfile.distinfo_path(basename)
 
     def data_path(self, basename):
-        return self._whlfile.data_path(basename)
+        return self.whlfile.data_path(basename)
 
     def add_file(self, package_filename, real_filename):
         """Add given file to the distribution."""
-        self._whlfile.add_file(package_filename, real_filename)
+        self.whlfile.add_file(package_filename, real_filename)
 
     def add_wheelfile(self):
         """Write WHEEL file to the distribution"""
@@ -344,7 +351,7 @@ Root-Is-Purelib: {}
 """.format("true" if self._platform == "any" else "false")
         for tag in self.disttags():
             wheel_contents += "Tag: %s\n" % tag
-        self._whlfile.add_string(self.distinfo_path("WHEEL"), wheel_contents)
+        self.whlfile.add_string(self.distinfo_path("WHEEL"), wheel_contents)
 
     def add_metadata(self, metadata, name, description):
         """Write METADATA file to the distribution."""
@@ -356,11 +363,11 @@ Root-Is-Purelib: {}
         # provided.
         metadata += description if description else "UNKNOWN"
         metadata += "\n"
-        self._whlfile.add_string(self.distinfo_path("METADATA"), metadata)
+        self.whlfile.add_string(self.distinfo_path("METADATA"), metadata)
 
     def add_recordfile(self):
         """Write RECORD file to the distribution."""
-        self._whlfile.add_recordfile()
+        self.whlfile.add_recordfile()
 
 
 def get_files_to_package(input_files):
@@ -548,7 +555,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args(sys.argv[1:])
 
 
-def _parse_file_pairs(content: List[str]) -> List[List[str]]:  # noqa: F821
+def _parse_file_pairs(content: list[str]) -> list[list[str]]:
     """
     Parse ; delimited lists of files into a 2D list.
     """

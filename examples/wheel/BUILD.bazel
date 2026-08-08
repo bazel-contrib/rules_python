@@ -46,6 +46,12 @@ py_library(
     data = [
         ":gen_dir",
     ],
+    deps = [
+        "//examples/wheel/lib:module_with_data",
+        "//examples/wheel/lib:module_with_type_annotations",
+        "//examples/wheel/lib:simple_module",
+        "//tests/load_from_macro:foo",
+    ],
 )
 
 directory_writer(

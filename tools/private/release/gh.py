@@ -5,7 +5,7 @@ import json
 import os
 import re
 import tempfile
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from tools.private.release.release_issue import BackportTask
 from tools.private.release.shell import run_cmd
@@ -486,7 +486,7 @@ class GitHub:
 
 
 def resolve_merge_commits_for_prs(
-    gh_client: GitHub, pending_items: list[BackportTask]
+    gh_client: Any, pending_items: list[BackportTask]
 ) -> list[BackportTask]:
     """Resolves PR references in pending backports to their merge commit SHAs.
 
