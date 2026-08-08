@@ -26,11 +26,9 @@ def _py_extension_wrapper_impl(ctx):
     else:
         py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
         py_cc_toolchain = py_toolchain.py_cc_toolchain
-        platform_tag = _get_platform(ctx)
-        output_filename = "{module_name}.{abi_tag}-{platform}.{ext}".format(
+        output_filename = "{module_name}.{soabi}.{ext}".format(
             module_name = module_name,
-            abi_tag = py_cc_toolchain.abi_tag,
-            platform = platform_tag,
+            soabi = py_cc_toolchain.soabi,
             ext = ext,
         )
 
@@ -111,26 +109,6 @@ def _get_extension(ctx):
         The extension, e.g. "so" or "pyd"
     """
     return "pyd" if is_windows_platform(ctx) else "so"
-
-def _get_platform(ctx):
-    """Derives the PEP 3149 platform tag from the active Python C++ toolchain.
-
-    Args:
-        ctx: The rule context.
-
-    Returns:
-        The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
-    """
-    py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
-    py_cc_toolchain = py_toolchain.py_cc_toolchain
-    if not py_cc_toolchain.platform_tag:
-        fail(
-            ("ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
-             "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.").format(
-                self = ctx.label,
-            ),
-        )
-    return py_cc_toolchain.platform_tag
 
 def _py_extension_libs_impl(ctx):
     py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]

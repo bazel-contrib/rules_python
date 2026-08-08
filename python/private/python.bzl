@@ -1117,7 +1117,7 @@ Label pointing to pyproject.toml file to read the default Python version from.
 When specified, reads the `requires-python` field from pyproject.toml.
 The version must be specified as `==X.Y.Z` (exact version with full semver).
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
         ),

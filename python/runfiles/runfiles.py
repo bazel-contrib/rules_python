@@ -323,7 +323,7 @@ class Path(pathlib.Path):
         return self._as_path().is_socket()
 
     # override
-    def open(
+    def open(  # pyrefly: ignore[bad-override]
         self,
         mode: str = "r",
         buffering: int = -1,
