@@ -259,6 +259,8 @@ The checklist items use metadata suffix: `| key=value key2=value2`.
 *   **Retry Prepare Release**: Reset the task to `- [ ] Prepare Release | status=awaiting-preparation`.
 *   **Complete Prepare Release**: Comment `/prepare-complete` on the tracking
     issue (or on the preparation PR) to mark the preparation task as done.
+*   **Create Release Branch**: Comment `/create-release-branch` on the tracking
+    issue to cut and push the release branch.
 *   **Force Task Done**: Check the box `- [x]` and add appropriate metadata (e.g. `status=done`).
 
 ## Secrets

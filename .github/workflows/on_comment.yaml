@@ -57,6 +57,9 @@ jobs:
                 if [ -n "$pr_arg" ]; then
                   echo "pr_number=$pr_arg" >> "$GITHUB_OUTPUT"
                 fi
+              # Handle /create-release-branch comment
+              elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/create-release-branch([[:space:]]|$)'; then
+                echo "command=create-release-branch" >> "$GITHUB_OUTPUT"
               # Handle /prepare comment
               elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/prepare([[:space:]]|$)'; then
                 echo "command=prepare" >> "$GITHUB_OUTPUT"
@@ -132,6 +135,14 @@ jobs:
     uses: ./.github/workflows/release_complete_prepare.yaml
     with:
       pr: ${{ needs.parse_comment.outputs.pr_number }}
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
+    secrets: inherit
+
+  call_create_release_branch:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'create-release-branch'
+    uses: ./.github/workflows/release_create_release_branch.yaml
+    with:
       issue: ${{ needs.parse_comment.outputs.issue_number }}
     secrets: inherit
 
