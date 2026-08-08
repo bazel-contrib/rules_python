@@ -120,9 +120,8 @@ class SharedLibLoadingTest(unittest.TestCase):
 
     def _get_elf_info(self, path):
         """Extracts linking information from an ELF file."""
+        assert ELFFile is not None
         info = {"rpaths": [], "needed": [], "undefined_symbols": []}
-        if ELFFile is None:
-            return info
         with open(path, "rb") as f:
             elf = ELFFile(f)
             dynamic = elf.get_section_by_name(".dynamic")
@@ -146,9 +145,8 @@ class SharedLibLoadingTest(unittest.TestCase):
 
     def _get_macho_info(self, path):
         """Extracts linking information from a Mach-O file."""
+        assert MachO is not None and mach_o is not None
         info = {"rpaths": [], "needed": []}
-        if MachO is None or mach_o is None:
-            return info
         macho = MachO(path)
         for header in macho.headers:
             for cmd_load, cmd, data in header.commands:
