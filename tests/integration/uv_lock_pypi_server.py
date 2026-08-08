@@ -118,7 +118,7 @@ def main():
     app = app_from_config(config)
     app = setup_routes_from_config(app, config)
 
-    server = make_server(args.host, args.port, app)
+    server = make_server(args.host, args.port, app)  # type: ignore[arg-type]
     port = server.server_address[1]
 
     base_url = "http://{}:{}".format(args.host, port)
