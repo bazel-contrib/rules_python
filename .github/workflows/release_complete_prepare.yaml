@@ -1,19 +1,41 @@
-name: "Release: Complete Prepare"
+name: "Release: Prepare: Complete"
 
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'The merged preparation PR number (optional if issue provided)'
+        required: false
+        type: string
+      issue:
+        description: 'The Release Tracking Issue Number (optional if pr provided)'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      pr:
+        description: 'The merged preparation PR number (optional if issue provided)'
+        required: false
+        type: string
+      issue:
+        description: 'The Release Tracking Issue Number (optional if pr provided)'
+        required: false
+        type: string
 
 permissions:
   contents: write
   issues: write
 
 jobs:
-  on_pr_merged:
-    # Run only if the release-prepared PR was merged
+  complete_prepare:
+    # Run if triggered manually or if the release-prepared PR was merged
     if: |
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.labels.*.name, 'release-prepared')
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_call' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'release-prepared'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -27,9 +49,20 @@ jobs:
           bazelisk-version: 1.20.0
 
       - name: Mark Prepare Release Complete
-        run: |
-          # Run the complete-prepare subcommand in the release tool to cleanly update checklist metadata
-          bazel run //tools/private/release -- \
-            complete-prepare --pr ${{ github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr || github.event.pull_request.number }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          ARGS=()
+          if [ -n "$PR_NUMBER" ]; then
+            PR_NUMBER="${PR_NUMBER#\#}"
+            ARGS+=("--pr=$PR_NUMBER")
+          fi
+          if [ -n "$ISSUE" ]; then
+            ISSUE="${ISSUE#\#}"
+            ARGS+=("--issue=$ISSUE")
+          fi
+          # Run the complete-prepare subcommand in the release tool to cleanly update checklist metadata
+          bazel run //tools/private/release -- \
+            complete-prepare "${ARGS[@]}"

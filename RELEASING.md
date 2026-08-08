@@ -27,8 +27,12 @@ Release Tracking Issue and automated workflows triggered by comments or issue ed
     This will automatically determine the next version, create a release tracking
     issue, and send a preparation PR.
 
-2.  **Approve and Merge**: Approve and merge the PR. Once merged, a release
-    branch will be created automatically.
+2.  **Approve and Merge**: Approve and merge the PR. Once merged, the
+    [Release: Prepare: Complete](https://github.com/bazel-contrib/rules_python/actions/workflows/release_complete_prepare.yaml)
+    workflow automatically updates the tracking issue checklist, and a release
+    branch will be created. If the automatic trigger is missed, comment
+    `/prepare-complete` on the tracking issue or on the PR, or run the workflow
+    manually with the PR number.
 
 3.  **Add Backports (if needed)**: If there are backports, add them following
     the [How to add backports](#how-to-add-backports) steps.
@@ -253,6 +257,8 @@ You can manually edit the Release Tracking Issue to control the release flow.
 The checklist items use metadata suffix: `| key=value key2=value2`.
 
 *   **Retry Prepare Release**: Reset the task to `- [ ] Prepare Release | status=awaiting-preparation`.
+*   **Complete Prepare Release**: Comment `/prepare-complete` on the tracking
+    issue (or on the preparation PR) to mark the preparation task as done.
 *   **Force Task Done**: Check the box `- [x]` and add appropriate metadata (e.g. `status=done`).
 
 ## Secrets
