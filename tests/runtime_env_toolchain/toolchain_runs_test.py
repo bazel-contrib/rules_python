@@ -1,5 +1,4 @@
 import json
-import pathlib
 import platform
 import sys
 import unittest
@@ -9,13 +8,11 @@ from python.runfiles import runfiles
 
 class RunTest(unittest.TestCase):
     def test_ran(self):
-        rf = runfiles.Create()
-        assert rf is not None, "Failed to create runfiles"
-        settings_path = rf.Rlocation(
-            "rules_python/tests/support/current_build_settings.json"
+        rf = runfiles.CreateOrRaise()
+        settings_path = (
+            rf.root() / "rules_python/tests/support/current_build_settings.json"
         )
-        assert settings_path is not None, "Failed to find settings_path"
-        settings = json.loads(pathlib.Path(settings_path).read_text())
+        settings = json.loads(settings_path.read_text())
 
         if platform.system() == "Windows":
             self.assertEqual(

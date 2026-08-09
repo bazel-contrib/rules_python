@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 
 class BackportTask:
@@ -261,7 +262,7 @@ def parse_backports(body):
     return items
 
 
-def add_backports_to_body(body: str, items: list[dict]) -> str:
+def add_backports_to_body(body: str, items: list[dict[str, Any]]) -> str:
     """Adds new backport checklist items to the ## Backports section.
 
     Args:

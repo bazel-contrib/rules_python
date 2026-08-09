@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import examples.wheel.lib.module_with_data as module_with_data
-import examples.wheel.lib.module_with_type_annotations as module_with_type_annotations
-import examples.wheel.lib.simple_module as simple_module
+import examples.wheel.lib.module_with_data as module_with_data  # type: ignore[import-not-found]
+import examples.wheel.lib.module_with_type_annotations as module_with_type_annotations  # type: ignore[import-not-found]
+import examples.wheel.lib.simple_module as simple_module  # type: ignore[import-not-found]
 
 
 def function():

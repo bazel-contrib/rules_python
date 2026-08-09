@@ -30,8 +30,6 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "main",
     srcs = ["main.py"],
-    # main.py is packaged across golden tests in wheel_test where file sha256 hashes are fixed.
-    tags = ["no-pyrefly"],
     deps = [
         "//examples/wheel/lib:simple_module",
         "//examples/wheel/lib:module_with_data",
@@ -48,8 +46,6 @@ py_library(
     data = [
         ":gen_dir",
     ],
-    # main.py contains imports that are omitted from deps to test packaging without dependencies.
-    tags = ["no-pyrefly"],
 )
 
 directory_writer(

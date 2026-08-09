@@ -23,9 +23,12 @@ import typing
 from collections.abc import Collection
 from typing import Callable, Iterable, TypeVar
 
-from docutils import nodes as docutils_nodes
-from docutils.parsers.rst import directives as docutils_directives, states
-from sphinx import (
+from docutils import nodes as docutils_nodes  # type: ignore[import-not-found]
+from docutils.parsers.rst import (  # type: ignore[import-not-found]
+    directives as docutils_directives,
+    states,
+)
+from sphinx import (  # type: ignore[import-not-found]
     addnodes,
     builders,
     directives as sphinx_directives,
@@ -33,9 +36,9 @@ from sphinx import (
     environment,
     roles,
 )
-from sphinx.highlighting import lexer_classes
-from sphinx.locale import _
-from sphinx.util import (
+from sphinx.highlighting import lexer_classes  # type: ignore[import-not-found]
+from sphinx.locale import _  # type: ignore[import-not-found]
+from sphinx.util import (  # type: ignore[import-not-found]
     docfields,
     docutils as sphinx_docutils,
     inspect,
@@ -337,6 +340,7 @@ class _TypeExprParser(ast.NodeVisitor):
             self.visit(element)
             self._doc_node_stack.pop()
 
+    @override
     def generic_visit(self, node):
         raise InvalidValueError(f"Unexpected ast node: {type(node)} {node}")
 
@@ -344,6 +348,7 @@ class _TypeExprParser(ast.NodeVisitor):
 class _BzlXrefField(docfields.Field):
     """Abstract base class to create cross references for fields."""
 
+    @override
     def make_xrefs(
         self,
         rolename: str,
@@ -504,6 +509,7 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
     required_arguments = 1
     final_argument_whitespace = False
 
+    @override
     def run(self) -> list[docutils_nodes.Node]:
         label = self.arguments[0].strip()
         repo, slashes, file_label = label.partition("//")

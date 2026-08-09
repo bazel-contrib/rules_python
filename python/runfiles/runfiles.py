@@ -728,6 +728,20 @@ class Runfiles:
 
         return None
 
+    # TODO: Update return type to Self when 3.11 is the min version
+    # https://peps.python.org/pep-0673/
+    @staticmethod
+    def CreateOrRaise(env: Optional[Dict[str, str]] = None) -> "Runfiles":
+        """Returns a new `Runfiles` instance or raises RuntimeError.
+
+        Same as `Create`, but raises a `RuntimeError` instead of returning None
+        if runfiles environment cannot be found.
+        """
+        rf = Runfiles.Create(env)
+        if rf is None:
+            raise RuntimeError("Failed to create runfiles from environment")
+        return rf
+
 
 # Support legacy imports by defining a private symbol.
 _Runfiles = Runfiles
@@ -743,3 +757,7 @@ def CreateDirectoryBased(runfiles_dir_path: str) -> Runfiles:
 
 def Create(env: Optional[Dict[str, str]] = None) -> Optional[Runfiles]:
     return Runfiles.Create(env)
+
+
+def CreateOrRaise(env: Optional[Dict[str, str]] = None) -> Runfiles:
+    return Runfiles.CreateOrRaise(env)
