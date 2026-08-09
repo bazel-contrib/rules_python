@@ -13,6 +13,7 @@ from tools.private.release.shell import run_cmd
 # GitHub label types
 RELEASE_LABEL = "type: release"
 BACKPORT_LABEL = "type: backport-pr"
+RELEASE_PREPARED_LABEL = "release-prepared"
 
 # GitHub reaction types
 # See: https://docs.github.com/en/rest/reactions/reactions?apiVersion=2022-11-28#about-reactions
@@ -307,7 +308,7 @@ class GitHub:
             issue_num: The issue number.
             body: The new body content.
         """
-        with tempfile.NamedTemporaryFile("w", delete=False, mode="w") as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
             f.write(body)
             f.flush()
             temp_path = f.name

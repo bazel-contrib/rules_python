@@ -19,6 +19,7 @@ test --test_output=errors
 # Python targets as required.
 build --incompatible_default_to_explicit_init_py
 build --//python/config_settings:incompatible_default_to_explicit_init_py=True
+build --aspects=//tests/support/pyrefly:pyrefly.bzl%pyrefly_aspect
 
 # Ensure ongoing compatibility with this flag.
 common --incompatible_disallow_struct_provider_syntax

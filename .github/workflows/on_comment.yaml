@@ -50,6 +50,16 @@ jobs:
               # Handle /create-rc comment
               if echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/create-rc([[:space:]]|$)'; then
                 echo "command=create-rc" >> "$GITHUB_OUTPUT"
+              # Handle /prepare-complete comment
+              elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/prepare-complete([[:space:]]|$)'; then
+                echo "command=prepare-complete" >> "$GITHUB_OUTPUT"
+                pr_arg=$(echo "$COMMENT_BODY" | grep -E '^[[:space:]]*/prepare-complete([[:space:]]|$)' | sed -E 's/^[[:space:]]*\/prepare-complete[[:space:]]*//' | tr -d '[:space:]#')
+                if [ -n "$pr_arg" ]; then
+                  echo "pr_number=$pr_arg" >> "$GITHUB_OUTPUT"
+                fi
+              # Handle /create-release-branch comment
+              elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/create-release-branch([[:space:]]|$)'; then
+                echo "command=create-release-branch" >> "$GITHUB_OUTPUT"
               # Handle /prepare comment
               elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/prepare([[:space:]]|$)'; then
                 echo "command=prepare" >> "$GITHUB_OUTPUT"
@@ -100,6 +110,9 @@ jobs:
             if echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/backport([[:space:]]|$)'; then
               echo "command=pr-backport" >> "$GITHUB_OUTPUT"
               echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+            elif echo "$COMMENT_BODY" | grep -qE '^[[:space:]]*/prepare-complete([[:space:]]|$)'; then
+              echo "command=prepare-complete" >> "$GITHUB_OUTPUT"
+              echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
             else
               echo "command=none" >> "$GITHUB_OUTPUT"
             fi
@@ -114,6 +127,23 @@ jobs:
     with:
       issue: ${{ needs.parse_comment.outputs.issue_number }}
       comment_id: "${{ github.event.comment.id }}"
+    secrets: inherit
+
+  call_prepare_complete:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'prepare-complete'
+    uses: ./.github/workflows/release_complete_prepare.yaml
+    with:
+      pr: ${{ needs.parse_comment.outputs.pr_number }}
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
+    secrets: inherit
+
+  call_create_release_branch:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'create-release-branch'
+    uses: ./.github/workflows/release_create_release_branch.yaml
+    with:
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
     secrets: inherit
 
   call_prepare:

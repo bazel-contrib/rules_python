@@ -22,6 +22,7 @@ def semver_type(value):
 
 
 _EXCLUDE_PATTERNS = [
+    "./.agents/*",
     "./.git/*",
     "./.github/*",
     "./.bazelci/*",
@@ -183,3 +184,10 @@ def parse_pr_list(value: str) -> list[str]:
         return []
     # Split by space and/or comma
     return [p for p in re.split(r"[\s,]+", value.strip()) if p]
+
+
+def set_github_output(name: str, value: str) -> None:
+    """Sets a GitHub Actions output parameter if GITHUB_OUTPUT is set."""
+    if github_output := os.environ.get("GITHUB_OUTPUT"):
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write(f"{name}={value}\n")

@@ -1,4 +1,5 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_python//python:py_test.bzl", "py_test")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 load(":defs.bzl", "gen_directory")
 
@@ -21,8 +22,18 @@ sphinx_docs(
     ],
     config = "conf.py",
     formats = ["html"],
+    renamed_srcs = {
+        ":gen_binary_asset": "binary_asset.bin",
+    },
     sphinx = ":sphinx-build",
+    strip_prefix = package_name() + "/",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
+)
+
+genrule(
+    name = "gen_binary_asset",
+    outs = ["binary_asset.bin"],
+    cmd = "printf '\\x00\\xff\\xfe\\xfd\\x80\\x90\\x00\\x01\\x02\\x03\\x04' > $@",
 )
 
 gen_directory(
@@ -41,4 +52,11 @@ sphinx_build_binary(
 build_test(
     name = "docs_build_test",
     targets = [":docs"],
+)
+
+py_test(
+    name = "sphinx_docs_output_test",
+    srcs = ["sphinx_docs_output_test.py"],
+    data = [":docs"],
+    deps = ["@dev_pip//absl_py"],
 )

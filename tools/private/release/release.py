@@ -64,6 +64,7 @@ def main():
         # args.command is the run_from_args classmethod of the selected command
         exit_code = args.command(args)
     except Exception as e:
+        sys.stdout.flush()
         print(f"Fatal error: {e}", file=sys.stderr)
         if hasattr(e, "__notes__"):
             for note in e.__notes__:
