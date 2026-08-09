@@ -103,7 +103,7 @@ class Promote:
             return 1
 
         if is_first_release:
-            assert rc_commit_sha is not None
+            assert rc_commit_sha is not None  # type assert
             if rc_commit_sha != branch_sha:
                 print(
                     f"Error: The latest RC tag {latest_rc} ({rc_commit_sha[:8]}) is not at"

@@ -15,9 +15,13 @@
 import io
 
 from absl.testing import absltest
-from google.protobuf import text_format  # type: ignore
+from google.protobuf import (  # pyrefly: ignore[missing-source-for-stubs]
+    text_format,
+)
 from sphinxdocs.private import proto_to_markdown
-from stardoc.proto import stardoc_output_pb2  # type: ignore
+from stardoc.proto import (  # pyrefly: ignore[missing-import]
+    stardoc_output_pb2,
+)
 
 _EVERYTHING_MODULE = """\
 module_docstring: "MODULE_DOC_STRING"

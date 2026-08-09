@@ -6,13 +6,13 @@ from pathlib import Path
 
 # Optional imports for ELF/Mach-O analysis
 if os.name == "posix" and sys.platform != "darwin":
-    from elftools.elf.elffile import ELFFile  # type: ignore
+    from elftools.elf.elffile import ELFFile  # pyrefly: ignore[missing-import]
 else:
     ELFFile = None
 
 if sys.platform == "darwin":
-    from macholib import mach_o  # type: ignore
-    from macholib.MachO import MachO  # type: ignore
+    from macholib import mach_o  # pyrefly: ignore[missing-import]
+    from macholib.MachO import MachO  # pyrefly: ignore[missing-import]
 else:
     mach_o = None
     MachO = None
@@ -36,7 +36,7 @@ class SharedLibLoadingTest(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "Tests Unix-specific extension loading")
     def test_shared_library_linking_unix(self):
         try:
-            import ext_with_libs.adder  # type: ignore
+            import ext_with_libs.adder  # pyrefly: ignore[missing-import]
         except ImportError as e:
             spec = importlib.util.find_spec("ext_with_libs.adder")
             if not spec or not spec.origin:
@@ -75,7 +75,7 @@ class SharedLibLoadingTest(unittest.TestCase):
     def test_shared_library_loading_windows(self):
         # We import markupsafe._speedups (a .cp311-win_amd64.pyd extension)
         try:
-            import markupsafe._speedups  # type: ignore
+            import markupsafe._speedups  # pyrefly: ignore[missing-import]
 
             module = markupsafe._speedups
         except ImportError as e:
@@ -120,32 +120,32 @@ class SharedLibLoadingTest(unittest.TestCase):
 
     def _get_elf_info(self, path):
         """Extracts linking information from an ELF file."""
-        assert ELFFile is not None
+        assert ELFFile is not None  # type assert
         info = {"rpaths": [], "needed": [], "undefined_symbols": []}
         with open(path, "rb") as f:
             elf = ELFFile(f)
             dynamic = elf.get_section_by_name(".dynamic")
             if dynamic:
                 for tag in dynamic.iter_tags():
-                    if tag.entry.d_tag == "DT_NEEDED":  # type: ignore
-                        info["needed"].append(tag.needed)  # type: ignore
-                    elif tag.entry.d_tag == "DT_RPATH":  # type: ignore
-                        info["rpaths"].append(tag.rpath)  # type: ignore
-                    elif tag.entry.d_tag == "DT_RUNPATH":  # type: ignore
-                        info["rpaths"].append(tag.runpath)  # type: ignore
+                    if tag.entry.d_tag == "DT_NEEDED":  # pyrefly: ignore[missing-attribute]
+                        info["needed"].append(tag.needed)  # pyrefly: ignore[missing-attribute]
+                    elif tag.entry.d_tag == "DT_RPATH":  # pyrefly: ignore[missing-attribute]
+                        info["rpaths"].append(tag.rpath)  # pyrefly: ignore[missing-attribute]
+                    elif tag.entry.d_tag == "DT_RUNPATH":  # pyrefly: ignore[missing-attribute]
+                        info["rpaths"].append(tag.runpath)  # pyrefly: ignore[missing-attribute]
 
             dynsym = elf.get_section_by_name(".dynsym")
             if dynsym:
                 info["undefined_symbols"] = [
                     s.name
                     for s in dynsym.iter_symbols()
-                    if s.entry["st_shndx"] == "SHN_UNDEF"  # type: ignore
+                    if s.entry["st_shndx"] == "SHN_UNDEF"  # pyrefly: ignore[missing-attribute]
                 ]
         return info
 
     def _get_macho_info(self, path):
         """Extracts linking information from a Mach-O file."""
-        assert MachO is not None and mach_o is not None
+        assert MachO is not None and mach_o is not None  # type assert
         info = {"rpaths": [], "needed": []}
         macho = MachO(path)
         for header in macho.headers:

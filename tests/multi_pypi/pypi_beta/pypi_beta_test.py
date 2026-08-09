@@ -1,6 +1,8 @@
 import sys
 
-from more_itertools import __version__  # type: ignore
+from more_itertools import (
+    __version__,  # pyrefly: ignore[missing-module-attribute]
+)
 
 if __name__ == "__main__":
     expected_version = "9.0.0"

@@ -32,7 +32,7 @@ from python.runfiles import runfiles
 
 # Replace the os.replace function with shutil.copy to work around os.replace not being able to
 # replace or move files across filesystems.
-os.replace = shutil.copy  # type: ignore
+os.replace = shutil.copy  # pyrefly: ignore[bad-assignment]
 
 # Next, we override the annotation_style_split and annotation_style_line functions to replace the
 # backslashes in the paths with forward slashes. This is so that we can have the same requirements

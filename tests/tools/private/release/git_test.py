@@ -10,7 +10,7 @@ pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 @pytest.fixture(name="git_obj")
 def fixture_git_obj(mocker):
     git = Git(".")
-    git.mock_run_git = mocker.patch.object(git, "_run_git")  # type: ignore
+    git.mock_run_git = mocker.patch.object(git, "_run_git")  # pyrefly: ignore[missing-attribute]
     return git
 
 

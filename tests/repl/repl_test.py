@@ -9,7 +9,7 @@ from typing import Iterable
 from python.runfiles import runfiles
 
 rfiles = runfiles.Create()
-assert rfiles is not None, "Failed to create runfiles"
+assert rfiles is not None, "Failed to create runfiles"  # type assert
 
 # Signals the tests below whether we should be expecting the import of
 # helpers/test_module.py on the REPL to work or not.
@@ -31,7 +31,7 @@ class ReplTest(unittest.TestCase):
         if IS_WINDOWS:
             rpath += ".exe"
         repl = rfiles.Rlocation(rpath)
-        assert repl is not None, f"Could not find {rpath}"
+        assert repl is not None, f"Could not find {rpath}"  # type assert
         if IS_WINDOWS:
             repl = os.path.normpath(repl)
         self.repl: str = repl
@@ -91,7 +91,7 @@ commmand: {self.repl}
     def test_cannot_import_test_module_directly(self):
         """Validates that we cannot import helper/test_module.py since it's not a direct dep."""
         with self.assertRaises(ModuleNotFoundError):
-            import test_module  # type: ignore # noqa: F401
+            import test_module  # pyrefly: ignore[missing-import]  # noqa: F401
 
     @unittest.skipIf(
         not EXPECT_TEST_MODULE_IMPORTABLE, "test only works without repl_dep set"

@@ -16,9 +16,12 @@ import argparse
 import itertools
 import pathlib
 import sys
-from typing import Callable, Iterator, Optional, Sequence, TextIO, TypeVar
+from collections.abc import Callable, Iterator, Sequence
+from typing import Optional, TextIO, TypeVar
 
-from stardoc.proto import stardoc_output_pb2  # type: ignore
+from stardoc.proto import (  # pyrefly: ignore[missing-import]
+    stardoc_output_pb2,
+)
 
 _AttributeType = stardoc_output_pb2.AttributeType
 

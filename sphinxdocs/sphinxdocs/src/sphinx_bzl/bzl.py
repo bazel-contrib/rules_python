@@ -23,12 +23,14 @@ import typing
 from collections.abc import Collection
 from typing import Callable, Iterable, TypeVar
 
-from docutils import nodes as docutils_nodes  # type: ignore[import-not-found]
-from docutils.parsers.rst import (  # type: ignore[import-not-found]
+from docutils import (  # pyrefly: ignore[missing-source-for-stubs]
+    nodes as docutils_nodes,
+)
+from docutils.parsers.rst import (  # pyrefly: ignore[missing-source-for-stubs]
     directives as docutils_directives,
     states,
 )
-from sphinx import (  # type: ignore[import-not-found]
+from sphinx import (  # pyrefly: ignore[missing-import]
     addnodes,
     builders,
     directives as sphinx_directives,
@@ -36,9 +38,11 @@ from sphinx import (  # type: ignore[import-not-found]
     environment,
     roles,
 )
-from sphinx.highlighting import lexer_classes  # type: ignore[import-not-found]
-from sphinx.locale import _  # type: ignore[import-not-found]
-from sphinx.util import (  # type: ignore[import-not-found]
+from sphinx.highlighting import (  # pyrefly: ignore[missing-import]
+    lexer_classes,
+)
+from sphinx.locale import _  # pyrefly: ignore[missing-import]
+from sphinx.util import (  # pyrefly: ignore[missing-import]
     docfields,
     docutils as sphinx_docutils,
     inspect,
@@ -1770,10 +1774,7 @@ class _BzlDomain(domains.Domain):
         else:
             base_name = label.split(":")[-1]
 
-        if alt_names is not None:
-            alt_names = list(alt_names)
-        else:
-            alt_names = []
+        alt_names = list(alt_names) if alt_names else []
         # Add the repo-less version as an alias
         alt_names.append(label + (f"%{symbol}" if symbol else ""))
 
@@ -1858,7 +1859,7 @@ def _on_missing_reference(app, env: environment.BuildEnvironment, node, contnode
     if new_target != original_target:
         # Access the intersphinx extension's internal mapping
         # we try to resolve the reference again with the stripped name
-        from sphinx.ext.intersphinx import (  # type: ignore[import-not-found]
+        from sphinx.ext.intersphinx import (  # pyrefly: ignore[missing-import]
             missing_reference,
         )
 

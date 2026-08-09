@@ -107,10 +107,10 @@ For the remainder of this document, we assume you are using vscode.
         # Import debugpy, provided by VS Code
         try:
             # debugpy._vendored is needed for force_pydevd to perform path manipulation.
-            import debugpy._vendored  # type: ignore[import-not-found]
+            import debugpy._vendored  # pyrefly: ignore[missing-import]
 
             # pydev_monkey patches os and subprocess functions to handle new launched processes.
-            from _pydev_bundle import pydev_monkey  # type: ignore[import-not-found]
+            from _pydev_bundle import pydev_monkey  # pyrefly: ignore[missing-import]
         except ImportError as exc:
             print(f"Error: This script must be run via VS Code's debug adapter. Details: {exc}")
             sys.exit(-1)

@@ -25,7 +25,7 @@ class PathlibTest(unittest.TestCase):
 
     def _create_runfiles(self) -> runfiles.Runfiles:
         r = runfiles.Create({"RUNFILES_DIR": self.root_dir})
-        assert r is not None
+        assert r is not None  # type assert
         return r
 
     def tearDown(self) -> None:

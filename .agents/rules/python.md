@@ -14,9 +14,10 @@
   link to its definition in the docstring.
 
 ## Type Checking & Annotations
-* **Target skipping vs in-file disables**: Prefer disabling specific errors in
-  source files (e.g. `# type: ignore[...]` / `# pyrefly: ignore[...]`) over
-  disabling type checking on targets (e.g. `tags = ["no-pyrefly"]`).
+* **In-file disables vs target skipping**: Prefer `# pyrefly: ignore[<error-code>]`
+  (e.g. `[missing-import]`) over `tags = ["no-pyrefly"]`.
+* **No blanket ignores**: NEVER use bare `# type: ignore` or literal
+  `# type: ignore[...]`.
 * **Type assertions**: When adding assertions for type narrowing, add an
   end-of-line comment: `assert foo is not None  # type assert`.
 * **Consent for `Any`**: Require user consent before changing type annotations

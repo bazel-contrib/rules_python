@@ -15,8 +15,8 @@ import traceback
 import types
 from typing import TextIO, TypedDict
 
-import sphinx.application  # type: ignore[import-not-found]
-from sphinx.cmd.build import main  # type: ignore[import-not-found]
+import sphinx.application  # pyrefly: ignore[missing-import]
+from sphinx.cmd.build import main  # pyrefly: ignore[missing-import]
 
 
 class WorkRequestInput(TypedDict, total=False):

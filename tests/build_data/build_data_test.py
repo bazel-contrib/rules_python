@@ -5,7 +5,7 @@ from python.runfiles import runfiles
 
 class BuildDataTest(unittest.TestCase):
     def test_target_build_data(self):
-        import bazel_binary_info  # type: ignore
+        import bazel_binary_info  # pyrefly: ignore[missing-import]
 
         self.assertIn("build_data.txt", bazel_binary_info.BUILD_DATA_FILE)
 
@@ -19,9 +19,9 @@ class BuildDataTest(unittest.TestCase):
 
     def test_tool_build_data(self):
         rf = runfiles.Create()
-        assert rf is not None
+        assert rf is not None  # type assert
         path = rf.Rlocation("rules_python/tests/build_data/tool_build_data.txt")
-        assert path is not None
+        assert path is not None  # type assert
         with open(path) as fp:
             build_data = fp.read()
 

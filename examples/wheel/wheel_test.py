@@ -111,7 +111,7 @@ class WheelTest(unittest.TestCase):
                 ],
             )
         self.assertFileSha256Equal(
-            filename, "5e638d0dc17c287fa325b0e77574a2cd4d5568ae6deb3414952b30df03d81f89"
+            filename, "7322902ab63fd702afb9730843496637058b5d7449208c624875d06d191d386e"
         )
 
     def test_customized_wheel(self):
@@ -156,7 +156,7 @@ examples/wheel/lib/module_with_data.py,sha256=8s0Khhcqz3yVsBKv2IB5u4l4TMKh7-c_V6
 examples/wheel/lib/module_with_type_annotations.py,sha256=2p_0YFT0TBUufbGCAR_u2vtxF1nM0lf3dX4VGeUtYq0,637
 examples/wheel/lib/module_with_type_annotations.pyi,sha256=fja3ql_WRJ1qO8jyZjWWrTTMcg1J7EpOQivOHY_8vI4,630
 examples/wheel/lib/simple_module.py,sha256=z2hwciab_XPNIBNH8B1Q5fYgnJvQTeYf0ZQJpY8yLLY,637
-examples/wheel/main.py,sha256=0p3pRmL_0_L73Hg4WNE_WJ2LTO1ua06gBxyFVGUfbjo,1149
+examples/wheel/main.py,sha256=THX1qSP_5NUcJrzcFFtpCO7XKFFgPpvanwZo4X_1e-o,1152
 example_customized-0.0.1.dist-info/WHEEL,sha256=sobxWSyDDkdg_rinUth-jxhXHqoNqlmNMJY3aTZn2Us,91
 example_customized-0.0.1.dist-info/METADATA,sha256=QYQcDJFQSIqan8eiXqL67bqsUfgEAwf2hoK_Lgi1S-0,559
 example_customized-0.0.1.dist-info/entry_points.txt,sha256=pqzpbQ8MMorrJ3Jp0ntmpZcuvfByyqzMXXi2UujuXD0,137
@@ -207,7 +207,7 @@ first = first.main:f
 second = second.main:s""",
             )
         self.assertFileSha256Equal(
-            filename, "c5862d4d964988083390ccda0056844aae7b17d182216a17e8748876303ac8ba"
+            filename, "6d08fbb30864cee89396e7857c910c92bec56b6586d40a64b796b4812af15fbf"
         )
 
     def test_filename_escaping(self):
@@ -279,7 +279,7 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "e0025d6e9f06052f828b980c2bd613bc1ffcda2be816134435623726e9277a6b"
+            filename, "0b5a35251ad35fd9e14f3f7e77993f59a7341268f24fb0a255b403cee60d429e"
         )
 
     def test_custom_package_root_multi_prefix_wheel(self):
@@ -313,7 +313,7 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "4c93c69f257709f83b1d6a3cc100a097e6005212b4093a75c9ac456a562ec1be"
+            filename, "437127690584a035dc37542f64c38d1a6d6652655afc81f5a9472706343aae23"
         )
 
     def test_custom_package_root_multi_prefix_reverse_order_wheel(self):
@@ -347,7 +347,7 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "3c0bd675c8e23d5bb2bf2215b2dd19b7c0e123a346866a0e968115dd3607c181"
+            filename, "265cc2ba4c99d0b62f1922f357de961f15f416bcee93ff307e4d4f04e4c067a3"
         )
 
     def test_python_requires_wheel(self):
@@ -372,7 +372,7 @@ UNKNOWN
 """,
             )
         self.assertFileSha256Equal(
-            filename, "1d3996a988b63184c145b5738d02edb85f1ad6897128ba34fb08f39d709fa079"
+            filename, "cb1d0bf64df1cbf23b7d4473a1c113cedbbea0d23209cdb4d2e5fe2edc68ceec"
         )
 
     def test_python_abi3_binary_wheel(self):
@@ -437,7 +437,7 @@ Tag: cp38-abi3-{os_string}_{arch}
                 ],
             )
         self.assertFileSha256Equal(
-            filename, "23cb4e8fcb7441c890939f92fb134ecaa2648bbeeb9431986186eb1b223d78b7"
+            filename, "2358a8ee58dd7ed1a89862e368a0eb00e83ec5de28995ecf0f3c38c2524102dc"
         )
 
     def test_rule_expands_workspace_status_keys_in_wheel_metadata(self):

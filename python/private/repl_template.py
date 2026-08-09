@@ -36,9 +36,9 @@ def start_repl():
             eval(compiled_code, new_globals)
 
     bazel_runfiles = runfiles.Create()
-    assert bazel_runfiles is not None
+    assert bazel_runfiles is not None  # type assert
     rlocation_path = bazel_runfiles.Rlocation(STUB_PATH)
-    assert rlocation_path is not None
+    assert rlocation_path is not None  # type assert
     runpy.run_path(
         rlocation_path,
         init_globals=new_globals,

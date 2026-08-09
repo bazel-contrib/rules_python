@@ -59,7 +59,7 @@ except ImportError:
     raise
 
 if __name__ == "__main__":
-    sys.exit({entry_point}())  # type: ignore
+    sys.exit({entry_point}())  # pyrefly: ignore[not-callable]
 """
 
 

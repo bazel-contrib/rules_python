@@ -36,7 +36,7 @@ if sys.version_info >= (3, 11):
 elif sys.version_info >= (3, 10):
     from typing import TypeAlias
 
-    Self: TypeAlias = "Path"  # type: ignore
+    Self: TypeAlias = "Path"  # pyrefly: ignore[invalid-type-form]
 else:
     from typing import Any as Self
 
@@ -177,8 +177,8 @@ class Path(pathlib.Path):
         obj = super().__new__(cls, *args)
         # Type checkers might complain about adding attributes to Path,
         # but this is standard for pathlib subclasses.
-        obj._runfiles = runfiles  # type: ignore
-        obj._source_repo = source_repo  # type: ignore
+        obj._runfiles = runfiles  # pyrefly: ignore[missing-attribute]
+        obj._source_repo = source_repo  # pyrefly: ignore[missing-attribute]
         return obj
 
     def __init__(
@@ -229,9 +229,9 @@ class Path(pathlib.Path):
     # For Python < 3.12
     # override
     def _make_child(self, args: Tuple[str, ...]) -> Self:
-        obj = super()._make_child(args)  # type: ignore
-        obj._runfiles = self._runfiles  # type: ignore
-        obj._source_repo = self._source_repo  # type: ignore
+        obj = super()._make_child(args)  # pyrefly: ignore[missing-attribute]
+        obj._runfiles = self._runfiles  # pyrefly: ignore[missing-attribute]
+        obj._source_repo = self._source_repo  # pyrefly: ignore[missing-attribute]
         return obj
 
     # override
@@ -374,20 +374,20 @@ class Path(pathlib.Path):
         path_posix = super().__str__().replace("\\", "/")
         if not path_posix or path_posix == ".":
             # pylint: disable=protected-access
-            return self._runfiles._python_runfiles_root  # type: ignore
-        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)  # type: ignore
+            return self._runfiles._python_runfiles_root  # pyrefly: ignore[missing-attribute]
+        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)  # pyrefly: ignore[missing-attribute]
         if resolved is not None:
             return resolved
 
         # pylint: disable=protected-access
-        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # type: ignore
+        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # pyrefly: ignore[missing-attribute]
 
     def __fspath__(self) -> str:
         return str(self)
 
     def runfiles_root(self) -> Self:
         """Returns a Path object representing the runfiles root."""
-        return self._runfiles.root(source_repo=self._source_repo)  # type: ignore
+        return self._runfiles.root(source_repo=self._source_repo)  # pyrefly: ignore[missing-attribute]
 
 
 class _ManifestBased:

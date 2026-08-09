@@ -29,9 +29,9 @@ class RunfilesTest(unittest.TestCase):
     def testRlocationArgumentValidation(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": "whatever"})
         assert r is not None  # mypy doesn't understand the unittest api.
-        self.assertRaises(ValueError, lambda: r.Rlocation(None))  # type: ignore
+        self.assertRaises(ValueError, lambda: r.Rlocation(None))  # pyrefly: ignore[bad-argument-type]
         self.assertRaises(ValueError, lambda: r.Rlocation(""))
-        self.assertRaises(TypeError, lambda: r.Rlocation(1))  # type: ignore
+        self.assertRaises(TypeError, lambda: r.Rlocation(1))  # pyrefly: ignore[bad-argument-type]
         self.assertRaisesRegex(
             ValueError, "is not normalized", lambda: r.Rlocation("../foo")
         )
@@ -71,7 +71,7 @@ class RunfilesTest(unittest.TestCase):
         settings_path = r.Rlocation(
             "rules_python/tests/support/current_build_settings.json"
         )
-        assert settings_path is not None
+        assert settings_path is not None  # type assert
         settings = json.loads(pathlib.Path(settings_path).read_text())
         self.assertIn("bootstrap_impl", settings)
 
@@ -739,7 +739,7 @@ class _MockFile:
             os.rmdir(os.path.dirname(self._path))
 
     def Path(self) -> str:
-        assert self._path is not None
+        assert self._path is not None  # type assert
         return self._path
 
 

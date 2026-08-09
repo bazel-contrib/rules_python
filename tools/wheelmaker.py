@@ -292,7 +292,7 @@ class WheelMaker(object):
 
     @property
     def whlfile(self) -> _WhlFile:
-        assert self._whlfile is not None
+        assert self._whlfile is not None  # type assert
         return self._whlfile
 
     def __enter__(self):
