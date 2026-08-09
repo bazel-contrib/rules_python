@@ -227,7 +227,7 @@ class Path(pathlib.Path):
     # For Python < 3.12
     # override
     def _make_child(self, args: Tuple[str, ...]) -> Self:
-        obj = cast("Path", super()._make_child(args))  # pyrefly: ignore[missing-attribute]
+        obj = cast("Path", getattr(super(), "_make_child")(args))
         obj._runfiles = self._runfiles
         obj._source_repo = self._source_repo
         return cast(Self, obj)

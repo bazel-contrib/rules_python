@@ -8,7 +8,29 @@ import sys
 import urllib.request
 
 
-def fetch_log(build_id, job_id, output_path):
+def fetch_log(job_name, build_id, job_id, output_path):
+    if (
+        "readthedocs" in job_name.lower()
+        or "readthedocs" in build_id.lower()
+        or "readthedocs" in job_id.lower()
+    ):
+        rtd_match = re.search(r"(\d+)", build_id) or re.search(r"(\d+)", job_id)
+        if rtd_match:
+            rtd_id = rtd_match.group(1)
+            rtd_url = f"https://app.readthedocs.org/api/v2/build/{rtd_id}.txt"
+            print(f"📥 Downloading ReadTheDocs failure log from {rtd_url}...")
+            req = urllib.request.Request(rtd_url, headers={"User-Agent": "ci-analyzer"})
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    content = resp.read()
+                    with open(output_path, "wb") as f:
+                        f.write(content)
+                return True
+            except Exception as e:
+                print(
+                    f"⚠️ Failed to download RTD log from {rtd_url}: {e}", file=sys.stderr
+                )
+
     if build_id.startswith("http"):
         log_url = build_id
     elif job_id.startswith("http"):
@@ -17,9 +39,10 @@ def fetch_log(build_id, job_id, output_path):
         log_url = f"https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/{build_id}/jobs/{job_id}/download.txt"
 
     # Check if this is a GitHub Actions job
-    gh_match = re.search(r"github\.com/.*/job/(\d+)", log_url) or re.search(
-        r"^(\d+)$", job_id
-    )
+    gh_match = re.search(r"github\.com/.*/job/(\d+)", log_url)
+    if not gh_match and "github" in job_name.lower() and re.match(r"^\d+$", job_id):
+        gh_match = re.match(r"^(\d+)$", job_id)
+
     if gh_match:
         gh_job_id = gh_match.group(1)
         print(f"📥 Fetching GitHub Action log for job {gh_job_id} using gh CLI...")
@@ -95,7 +118,34 @@ def create_plan(job_name, log_path, errors):
         else "No obvious keyword error lines matched. Please inspect the raw log file."
     )
 
+    is_flake = False
+    flake_reason = ""
+    if any(
+        "fatal: destination path '.' already exists and is not an empty directory." in e
+        for e in errors
+    ):
+        is_flake = True
+        flake_reason = "ReadTheDocs workspace checkout race / dirty container environment where target directory is not empty (`fatal: destination path '.' already exists`). This is an infrastructure flake, not a codebase failure."
+    elif any("exit code 2" in e.lower() for e in errors) and (
+        "docs" in job_name.lower() or "readthedocs" in job_name.lower()
+    ):
+        is_flake = True
+        flake_reason = "Known docs build flake with exit code 2."
+
+    classification = (
+        "⚡ **Classification**: **Infrastructure / Flake Issue** (Not a codebase bug)"
+        if is_flake
+        else "🔍 **Classification**: **Code / Configuration Issue**"
+    )
+    fix_advice = (
+        f"Re-trigger or rebuild the ReadTheDocs build. {flake_reason}"
+        if is_flake
+        else "Resolve the root cause in the relevant source / build files."
+    )
+
     plan = f"""# 🚨 CI Failure Analysis Report: {job_name}
+
+{classification}
 
 ## 📁 CI Log Path
 `{log_path}`
@@ -106,10 +156,9 @@ def create_plan(job_name, log_path, errors):
 ```
 
 ## 🛠️ Suggested Plan to Fix
-1. **Inspect Log**: Review the exact log snippets above or read the full raw log file at `{log_path}`.
-2. **Reproduce Locally**: Run `./replicate_ci "{job_name}"` or the matching `bazel build/test` command locally.
-3. **Apply Fix**: Resolve the root cause in the relevant `BUILD.bazel` or Starlark files.
-4. **Verify & Push**: Run local verification with `--config=fast-tests` and push the updated branch to trigger a clean pipeline.
+1. **Diagnosis**: {flake_reason if is_flake else "Review extracted errors."}
+2. **Action**: {fix_advice}
+3. **Verify**: Check the new build status once re-triggered.
 """
     return plan
 
@@ -131,7 +180,7 @@ def main():
     safe_jname = re.sub(r"[^a-zA-Z0-9]", "_", args.job_name)
     log_path = os.path.join(scratch_dir, f"ci_{safe_jname}_{args.job_id}.log")
 
-    fetch_log(args.build_id, args.job_id, log_path)
+    fetch_log(args.job_name, args.build_id, args.job_id, log_path)
 
     print(f"🚀 Analyzing CI failure log for '{args.job_name}' at '{log_path}'...")
     errors = parse_log(log_path)
