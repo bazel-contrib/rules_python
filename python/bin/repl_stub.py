@@ -57,9 +57,10 @@ try:
 
     # TODO(jpwoodbu): Use readline.backend instead of readline.__doc__ once we can depend on having
     # Python >=3.13.
-    if "libedit" in readline.__doc__:  # pyrefly: ignore[unsupported-operation]
+    doc = readline.__doc__ or ""
+    if "libedit" in doc:
         readline.parse_and_bind("bind ^I rl_complete")
-    elif "GNU readline" in readline.__doc__:  # pyrefly: ignore[unsupported-operation]
+    elif "GNU readline" in doc:
         readline.parse_and_bind("tab: complete")
     else:
         print("Could not enable tab completion: unable to determine readline backend")

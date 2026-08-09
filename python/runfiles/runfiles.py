@@ -29,7 +29,7 @@ import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from typing import Dict, Generator, Optional, Tuple, Union
+from typing import Dict, Generator, Optional, Tuple, Union, cast
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -174,12 +174,10 @@ class Path(pathlib.Path):
         source_repo: Optional[str] = None,
     ) -> Self:
         """Private constructor. Use Runfiles.root() to create instances."""
-        obj = super().__new__(cls, *args)
-        # Type checkers might complain about adding attributes to Path,
-        # but this is standard for pathlib subclasses.
-        obj._runfiles = runfiles  # pyrefly: ignore[missing-attribute]
-        obj._source_repo = source_repo  # pyrefly: ignore[missing-attribute]
-        return obj
+        obj = cast("Path", super().__new__(cls, *args))
+        obj._runfiles = runfiles
+        obj._source_repo = source_repo
+        return cast(Self, obj)
 
     def __init__(
         self,
@@ -229,10 +227,10 @@ class Path(pathlib.Path):
     # For Python < 3.12
     # override
     def _make_child(self, args: Tuple[str, ...]) -> Self:
-        obj = super()._make_child(args)  # type: ignore[misc]  # pyrefly: ignore[missing-attribute]
-        obj._runfiles = self._runfiles  # pyrefly: ignore[missing-attribute]
-        obj._source_repo = self._source_repo  # pyrefly: ignore[missing-attribute]
-        return obj
+        obj = cast("Path", super()._make_child(args))  # pyrefly: ignore[missing-attribute]
+        obj._runfiles = self._runfiles
+        obj._source_repo = self._source_repo
+        return cast(Self, obj)
 
     # override
     @property
