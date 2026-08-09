@@ -24,6 +24,7 @@ lock(
     name = "uv_lock",
     srcs = ["pyproject.toml"],
     out = "uv.lock",
+    directory = "dev",
     python_version = "3.9",
     visibility = ["//:__subpackages__"],
 )

@@ -145,9 +145,11 @@ def _common_lock(ctx, locker):
                     # select the shortest match
                     project = src.dirname
 
-    directory = getattr(ctx.attr, "directory", None)
+    directory = ctx.attr.directory
     if directory:
         workdir = "{}/{}".format(workdir, directory)
+        args.run_shell.add("--directory={}".format(workdir))
+        args.run_info.append("--directory={}".format(directory))
 
     if project == None:
         project = ctx.label.package
@@ -290,9 +292,6 @@ def _pip_compile_impl(ctx):
             args.add("--no-strip-extras")
 
         directory = ctx.attr.directory
-        if directory:
-            args.run_shell.add("--directory={}/{}/{}".format(ctx.label.package, ctx.label.name, directory))
-            args.run_info.append("--directory={}".format(directory))
 
         # TODO @aignas 2026-08-04: fix the --directory handling
         args.add_all(_reroot_all(ctx.files.build_constraints, directory), before_each = "--build-constraints")
@@ -326,6 +325,12 @@ _python_version_transition = transition(
 _common_attrs = {
     "args": attr.string_list(
         doc = "Public, see the docs in the macro.",
+    ),
+    "directory": attr.string(
+        doc = """\
+Sets the --directory flag if provided. Will fail if at least one of the files
+does not start with the given prefix of the directory.
+""",
     ),
     "env": attr.string_dict(
         doc = "Public, see the docs in the macro.",
@@ -384,12 +389,6 @@ Added the {attr}`project` to configure the project setting if autodetection fail
         "constraints": attr.label_list(
             allow_files = True,
             doc = "Public, see the docs in the macro.",
-        ),
-        "directory": attr.string(
-            doc = """\
-Sets the --directory flag if provided. Will fail if at least one of the files
-does not start with the given prefix of the directory.
-""",
         ),
         "generate_hashes": attr.bool(
             doc = "Public, see the docs in the macro.",
@@ -625,7 +624,7 @@ def lock(
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
         directory: {type}`str` The directory into which we should cd when running
-            the command. Only supported for requirements.txt generation.
+            the command.
             {versionadded} VERSION_NEXT_MINOR
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.

@@ -21,12 +21,24 @@ fi
 # 1. If the current uv.lock does not exist yet
 #    1. Run uv
 #    2. Copy the contents to out.
+
+# Copy all of the sources under a new directory, so that `directory` arg is working
+# as expected and we can reroot the sources if needed. This also is a starting point
+# to get the workspaces working properly in the sandbox - with this copying of sources
+# we can remap the paths if needed, but that would require another attribute.
+for src in "${cp_srcs[@]}"; do
+    # First create a dir if it does not exist
+    mkdir -p "$(dirname "{{rootdir}}/$src")"
+    # Then copy the source to the dir
+    cp -v "$src" "{{rootdir}}/$src"
+done
 readonly out="{{out}}"
 if [[ -f "{{src_out}}" ]]; then
     cp "{{src_out}}" "$out"
-    rm "{{src_out}}"
-    ln -s "$(pwd)"/"$out" "{{src_out}}"
+    mkdir -p "$(dirname "{{rootdir}}/{{src_out}}")"
+    ln -s "$(pwd)"/"$out" "{{rootdir}}/{{src_out}}"
 else
-    ln -s "$(pwd)"/"$out" "{{src_out}}"
+    mkdir -p "$(dirname "{{rootdir}}/{{src_out}}")"
+    ln -s "$(pwd)"/"$out" "{{rootdir}}/{{src_out}}"
 fi
 exec "$@"
