@@ -386,7 +386,7 @@ class Path(pathlib.Path):
     def __fspath__(self) -> str:
         return str(self)
 
-    def runfiles_root(self) -> Self:
+    def runfiles_root(self) -> "Path":
         """Returns a Path object representing the runfiles root."""
         assert self._runfiles is not None  # type assert
         return self._runfiles.root(source_repo=self._source_repo)
