@@ -227,6 +227,8 @@ class Path(pathlib.Path):
     # For Python < 3.12
     # override
     def _make_child(self, args: Tuple[str, ...]) -> Self:
+        # _make_child is an internal CPython method in Python < 3.12 omitted from
+        # typeshed stubs. We ignore [misc] for mypy and [missing-attribute] for pyrefly.
         obj = cast("Path", super()._make_child(args))  # type: ignore[misc]  # pyrefly: ignore[missing-attribute]
         obj._runfiles = self._runfiles
         obj._source_repo = self._source_repo
