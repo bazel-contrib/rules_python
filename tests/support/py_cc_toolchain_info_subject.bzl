@@ -25,6 +25,7 @@ def _py_cc_toolchain_info_subject_new(info, *, meta):
         platform_machine = lambda *a, **k: _py_cc_toolchain_info_subject_platform_machine(self, *a, **k),
         platform_tag = lambda *a, **k: _py_cc_toolchain_info_subject_platform_tag(self, *a, **k),
         python_version = lambda *a, **k: _py_cc_toolchain_info_subject_python_version(self, *a, **k),
+        soabi = lambda *a, **k: _py_cc_toolchain_info_subject_soabi(self, *a, **k),
         sys_platform = lambda *a, **k: _py_cc_toolchain_info_subject_sys_platform(self, *a, **k),
         actual = info,
     )
@@ -80,6 +81,12 @@ def _py_cc_toolchain_info_subject_python_version(self):
     return subjects.str(
         self.actual.python_version,
         meta = self.meta.derive("python_version()"),
+    )
+
+def _py_cc_toolchain_info_subject_soabi(self):
+    return subjects.str(
+        self.actual.soabi,
+        meta = self.meta.derive("soabi()"),
     )
 
 def _py_cc_toolchain_info_subject_sys_platform(self):

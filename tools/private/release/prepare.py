@@ -6,6 +6,7 @@ import pathlib
 
 from tools.private.release import changelog_news
 from tools.private.release.gh import (
+    RELEASE_PREPARED_LABEL,
     GitHub,
     MultipleTrackingIssuesError,
     NoTrackingIssueError,
@@ -177,6 +178,7 @@ class Prepare:
                     title=f"Prepare release v{version}",
                     body=f"Work towards #{issue_num}",
                     base="main",
+                    labels=[RELEASE_PREPARED_LABEL],
                 )
                 pr_num = pr_url.split("/")[-1]
                 print(f"Created Pull Request: {pr_url} (PR #{pr_num})")

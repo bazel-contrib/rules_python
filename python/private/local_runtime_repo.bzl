@@ -35,6 +35,7 @@ define_local_runtime_toolchain_impl(
     minor = "{minor}",
     micro = "{micro}",
     abi_flags = "{abi_flags}",
+    soabi = "{soabi}",
     os = "{os}",
     implementation_name = "{implementation_name}",
     interpreter_path = "{interpreter_path}",
@@ -44,6 +45,8 @@ define_local_runtime_toolchain_impl(
     abi3_interface_library = {abi3_interface_library},
     abi3_libraries = {abi3_libraries},
     additional_dlls = {additional_dlls},
+    sys_platform = "{sys_platform}",
+    platform_machine = "{platform_machine}",
 )
 """
 
@@ -53,6 +56,7 @@ def _expand_incompatible_template():
         minor = "0",
         micro = "0",
         abi_flags = "",
+        soabi = "",
         os = "@platforms//:incompatible",
         implementation_name = "incompatible",
         interpreter_path = "/incompatible",
@@ -62,6 +66,8 @@ def _expand_incompatible_template():
         abi3_interface_library = "None",
         abi3_libraries = "[]",
         additional_dlls = "[]",
+        sys_platform = "",
+        platform_machine = "",
     )
 
 def _norm_path(path):
@@ -210,6 +216,7 @@ def _local_runtime_repo_impl(rctx):
         minor = info["minor"],
         micro = info["micro"],
         abi_flags = info["abi_flags"],
+        soabi = info["soabi"],
         os = "@platforms//os:{}".format(repo_utils.get_platforms_os_name(rctx)),
         implementation_name = info["implementation_name"],
         interpreter_path = _norm_path(interpreter_path),
@@ -219,6 +226,8 @@ def _local_runtime_repo_impl(rctx):
         abi3_interface_library = repr(abi3_interface_library),
         abi3_libraries = repr(abi3_libraries),
         additional_dlls = repr(additional_dlls),
+        sys_platform = info["sys_platform"],
+        platform_machine = info["platform_machine"],
     )
     logger.debug(lambda: "BUILD.bazel\n{}".format(build_bazel))
 

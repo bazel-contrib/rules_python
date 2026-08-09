@@ -12,8 +12,10 @@ or when monitoring CI after PR updates:
 > launch duplicate monitoring jobs for the same PR.
 
 1. **Check Existing Process**: Check if a monitor script is already running for
-   the PR (e.g., `pgrep -f "monitor_remote_ci.py <pr_number>"`). If one is
-   already running, do not start another instance.
+   **this specific PR** using `pgrep -f "monitor_remote_ci.py <pr_number>"`. Do
+   NOT use a generic grep without `<pr_number>`, as other active agent
+   conversations may be monitoring different PRs concurrently. If one is
+   already running for this PR, do not start another instance.
 2. **Launch Monitoring Script**: If no monitor process is active for
    `<pr_number>`, launch the script in the background:
 ```bash
@@ -35,3 +37,12 @@ or when monitoring CI after PR updates:
    the monitoring script, immediately launch a separate subagent using the
    `invoke_subagent` tool with the role "CI Failure Analyzer" to run the
    `analyze-ci-failure` skill on the reported failure.
+5. **Autonomous Flake Retry**: If the CI Failure Analyzer subagent confirms
+   that the failure is a transient infrastructure or network flake (e.g. disk
+   I/O error, 504 gateway, sandbox initialization failure), **immediately and
+   autonomously** launch a separate subagent using `invoke_subagent` with the
+   role "CI Job Retrier" and the prompt template in
+   `.agents/skills/monitor-ci-results/retry-job-prompt.md` to run the
+   `buildkite-retry-job` skill for `<pr_number>`. Do not execute the script
+   directly; use the subagent and skill orchestration instead. Continue
+   monitoring without pausing to ask the user.

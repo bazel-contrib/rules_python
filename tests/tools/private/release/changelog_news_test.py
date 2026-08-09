@@ -495,3 +495,61 @@ def test_update_changelog_insertion_point_too_small(tmp_path):
             changelog_path=changelog_path,
             news_dir=news_dir,
         )
+
+
+def test_format_entry():
+    # Multi-line without leading bullet
+    raw = "(foo) bla bla\nblabl bla\nblabla"
+    expected = "* (foo) bla bla\n  blabl bla\n  blabla"
+    assert changelog_news._format_entry(raw) == expected
+
+    # Multi-line with leading bullet
+    raw_with_bullet = "* (foo) bla bla\nblabl bla\nblabla"
+    assert changelog_news._format_entry(raw_with_bullet) == expected
+
+    # Multi-line already indented
+    raw_indented = "* (foo) bla bla\n  blabl bla\n  blabla"
+    assert changelog_news._format_entry(raw_indented) == expected
+
+    # Empty string
+    assert changelog_news._format_entry("") == ""
+
+
+def test_update_changelog_multiline_indentation(tmp_path):
+    # Arrange
+    changelog = """# Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+{#v2-0-0}
+## [2.0.0] - 2026-04-09
+
+[2.0.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0
+"""
+    changelog_path = tmp_path / "CHANGELOG.md"
+    changelog_path.write_text(changelog)
+
+    news_dir = tmp_path / "news"
+    news_dir.mkdir()
+    (news_dir / "1.fixed.md").write_text("(foo) bla bla\nblabl bla\nblabla")
+    (news_dir / "2.added.md").write_text("* (bar) feature one\nsecond line of feature")
+
+    # Act
+    changelog_news.update_changelog(
+        "2.1.0",
+        "2026-06-17",
+        changelog_path=changelog_path,
+        news_dir=news_dir,
+    )
+
+    # Assert
+    new_content = changelog_path.read_text()
+
+    expected_fixed = "### Fixed\n* (foo) bla bla\n  blabl bla\n  blabla"
+    expected_added = "### Added\n* (bar) feature one\n  second line of feature"
+
+    assert expected_fixed in new_content
+    assert expected_added in new_content

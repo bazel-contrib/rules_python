@@ -10,6 +10,9 @@ for information on writing C extension modules.
 
 :::{include} /_includes/experimental_api.md
 :::
+
+:::{versionadded} 2.3.0
+:::
 """
 
 load(

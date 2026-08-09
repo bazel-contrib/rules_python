@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Apply when drafting pull request descriptions.
+description: rules to apply to pull request descriptions
 ---
 
 @CONTRIBUTING.md
@@ -18,3 +18,7 @@ Before drafting any pull request description, strictly adhere to the rules in
 * Once a Pull Request is created, always make new commits or merge commits.
 * **NEVER** amend or rebase commits on an active PR branch to avoid breaking
   code review threads.
+* **NEVER** include a list of per-file edits or changelog bullet points of
+  individual file modifications in PR descriptions or commit messages.
+* High-level overview only: state *why* the change is made and *how* at a
+  conceptual level. Link related issues (e.g. `Work towards #<issue>`).
