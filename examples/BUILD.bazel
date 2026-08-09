@@ -21,6 +21,7 @@ lock(
     name = "bzlmod_requirements_3_9",
     srcs = ["bzlmod/requirements.in"],
     out = "bzlmod/requirements_lock_3_9.txt",
+    directory = "examples/bzlmod",
     args = [
         "--emit-index-url",
         "--universal",

@@ -71,6 +71,32 @@ def _args(ctx):
         add_all = _add_all,
     )
 
+def _reroot(x, directory):
+    if not directory:
+        return x
+
+    if hasattr(x, "short_path"):
+        x = x.short_path
+
+    return x[len(directory) + 1:] or "."
+
+def _reroot_all(xs, directory):
+    return [
+        _reroot(x, directory)
+        for x in xs
+    ]
+
+def _up(x, directory, short_path = False):
+    if not directory:
+        return x
+
+    prefix = "/".join([".."] * (len(directory.split("/"))))
+
+    if short_path:
+        return "{}/{}".format(prefix, x.short_path)
+    else:
+        return "{}/{}".format(prefix, x.path)
+
 def _common_lock(ctx, locker):
     fname = "{}.out".format(ctx.label.name)
 
@@ -102,6 +128,8 @@ def _common_lock(ctx, locker):
         "--no-python-downloads",
         "--no-cache",
     ])
+    rootdir = "{}/{}".format(ctx.label.package, ctx.label.name)
+    workdir = rootdir
 
     project = None
     if ctx.attr.project:
@@ -117,11 +145,17 @@ def _common_lock(ctx, locker):
                     # select the shortest match
                     project = src.dirname
 
+    directory = ctx.attr.directory
+    if directory:
+        workdir = "{}/{}".format(workdir, directory)
+        args.run_shell.add("--directory={}".format(workdir))
+        args.run_info.append("--directory={}".format(directory))
+
     if project == None:
         project = ctx.label.package
 
     if project:
-        args.add_all([project], before_each = "--project")
+        args.add_all([_reroot(project, directory)], before_each = "--project")
 
     args.add_all(ctx.attr.args)
 
@@ -129,7 +163,10 @@ def _common_lock(ctx, locker):
     runtime = exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime
     python = runtime.interpreter or runtime.interpreter_path
     python_files = runtime.files or depset()
-    args.add("--python", python)
+
+    # Handle python
+    args.run_shell.add("--python", _up(python, workdir))
+    args.run_info.extend(["--python", _up(python, directory, short_path = True)])
 
     # These arguments does not change behaviour, but it reduces the output from
     # the command, which is especially verbose in stderr.
@@ -195,8 +232,10 @@ def _common_lock(ctx, locker):
     ctx.actions.expand_template(
         template = ctx.files._template[0],
         substitutions = {
+            '"$SRCS"': " ".join([s.path for s in srcs]),
             '"{{args}}"': windows_args,
             "{{out}}": output_path,
+            "{{rootdir}}": rootdir,
             "{{src_out}}": src_out_path,
         },
         output = script,
@@ -252,14 +291,17 @@ def _pip_compile_impl(ctx):
         if not ctx.attr.strip_extras:
             args.add("--no-strip-extras")
 
-        args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
-        args.add_all(ctx.files.constraints, before_each = "--constraints")
+        directory = ctx.attr.directory
 
-        args.run_shell.add("--output-file", output)
+        # TODO @aignas 2026-08-04: fix the --directory handling
+        args.add_all(_reroot_all(ctx.files.build_constraints, directory), before_each = "--build-constraints")
+        args.add_all(_reroot_all(ctx.files.constraints, directory), before_each = "--constraints")
+
+        args.run_shell.add("--output-file", _reroot(output, directory))
         mnemonic = "PyRequirementsLockUv"
         progress_message = "Creating a requirements.txt with uv: %{label}"
 
-        args.add_all(ctx.files.srcs)
+        args.add_all(_reroot_all(ctx.files.srcs, directory))
         srcs = ctx.files.srcs + ctx.files.build_constraints + ctx.files.constraints
 
         return srcs, None, mnemonic, progress_message
@@ -283,6 +325,12 @@ _python_version_transition = transition(
 _common_attrs = {
     "args": attr.string_list(
         doc = "Public, see the docs in the macro.",
+    ),
+    "directory": attr.string(
+        doc = """\
+Sets the --directory flag if provided. Will fail if at least one of the files
+does not start with the given prefix of the directory.
+""",
     ),
     "env": attr.string_dict(
         doc = "Public, see the docs in the macro.",
@@ -535,6 +583,7 @@ def lock(
         env = None,
         generate_hashes = True,
         python_version = None,
+        directory = None,
         project = None,
         strip_extras = False,
         **kwargs):
@@ -574,6 +623,9 @@ def lock(
             is passed as is and the environment variables are not expanded.
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
+        directory: {type}`str` The directory into which we should cd when running
+            the command.
+            {versionadded} VERSION_NEXT_MINOR
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.
@@ -636,6 +688,8 @@ def lock(
         lock_target_kwargs["build_constraints"] = build_constraints
     if constraints:
         lock_target_kwargs["constraints"] = constraints
+    if directory:
+        lock_target_kwargs["directory"] = directory
 
     if out.endswith(".lock"):
         _lock(name = name, **lock_target_kwargs)
