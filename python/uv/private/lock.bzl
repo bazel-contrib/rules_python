@@ -626,6 +626,7 @@ def lock(
         constraints: {type}`list[Label]` The list of constraints files to use.
         directory: {type}`str` The directory into which we should cd when running
             the command. Only supported for requirements.txt generation.
+            {versionadded} VERSION_NEXT_MINOR
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.
