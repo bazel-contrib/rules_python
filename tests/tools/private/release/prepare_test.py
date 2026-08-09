@@ -1,5 +1,6 @@
 import argparse
 
+from tools.private.release.gh import RELEASE_PREPARED_LABEL
 from tools.private.release.prepare import Prepare
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
@@ -27,6 +28,7 @@ def test_prepare_success_existing_issue(mocker, release_tool_env, mock_git, mock
     assert 1002 in mock_gh.prs
     assert mock_gh.prs[1002]["title"] == "Prepare release v2.0.0"
     assert mock_gh.prs[1002]["body"] == "Work towards #1001"
+    assert mock_gh.prs[1002]["labels"] == [RELEASE_PREPARED_LABEL]
     mock_git.add_modified_and_deleted.assert_called_once()
 
 
@@ -49,6 +51,7 @@ def test_prepare_success_create_issue(mocker, release_tool_env, mock_git, mock_g
     assert 1002 in mock_gh.prs
     assert mock_gh.prs[1002]["title"] == "Prepare release v2.0.0"
     assert mock_gh.prs[1002]["body"] == "Work towards #1001"
+    assert mock_gh.prs[1002]["labels"] == [RELEASE_PREPARED_LABEL]
     mock_git.add_modified_and_deleted.assert_called_once()
 
 
@@ -154,6 +157,7 @@ def test_prepare_create_pr_when_none_associated(
     )
     updated_body = mock_gh.get_issue_body(1001)
     assert "pr=#1002" in updated_body
+    assert mock_gh.prs[1002]["labels"] == [RELEASE_PREPARED_LABEL]
 
 
 def test_prepare_reuse_existing_pr(mocker, release_tool_env, mock_git, mock_gh):

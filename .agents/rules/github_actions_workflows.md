@@ -6,5 +6,7 @@ globs: [".github/workflows/*.yml", ".github/workflows/*.yaml", ".github/*.yaml"]
 
 # GitHub Actions Workflows Rule
 
-* When creating files in `.github/workflows/` (such as `.yml` or `.yaml`
-  files), always use the latest version of the referenced GitHub Actions.
+* Use the latest version of referenced actions in `.github/workflows/`.
+* Preserve `suppress-no-jobs-ran-error` fallback jobs in conditional workflows.
+* Pass inputs (e.g. `${{ inputs.issue }}`) directly to commands without
+  redundant shell parameter stripping or conversions.

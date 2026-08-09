@@ -11,7 +11,7 @@ for information on writing C extension modules.
 :::{include} /_includes/experimental_api.md
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """
 

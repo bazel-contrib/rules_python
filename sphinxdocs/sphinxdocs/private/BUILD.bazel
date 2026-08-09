@@ -130,6 +130,12 @@ py_binary(
 )
 
 py_library(
+    name = "sphinx_build_lib",
+    srcs = ["sphinx_build.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
     name = "proto_to_markdown_lib",
     srcs = ["proto_to_markdown.py"],
     # Only public because it's an implicit attribute
