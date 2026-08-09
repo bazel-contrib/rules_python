@@ -78,7 +78,7 @@ def _reroot(x, directory):
     if hasattr(x, "short_path"):
         x = x.short_path
 
-    return x[len(directory)+1:] or "."
+    return x[len(directory) + 1:] or "."
 
 def _reroot_all(xs, directory):
     return [
@@ -86,14 +86,16 @@ def _reroot_all(xs, directory):
         for x in xs
     ]
 
-def _up(x, directory):
+def _up(x, directory, short_path = False):
     if not directory:
         return x
 
-    return "{}/{}".format(
-        "/".join([".."] * (len(directory.split("/"))+0)),
-        getattr(x, "short_path", x),
-    )
+    prefix = "/".join([".."] * (len(directory.split("/"))))
+
+    if short_path:
+        return "{}/{}".format(prefix, x.short_path)
+    else:
+        return "{}/{}".format(prefix, x.path)
 
 def _common_lock(ctx, locker):
     fname = "{}.out".format(ctx.label.name)
@@ -126,6 +128,8 @@ def _common_lock(ctx, locker):
         "--no-python-downloads",
         "--no-cache",
     ])
+    rootdir = "{}/{}".format(ctx.label.package, ctx.label.name)
+    workdir = rootdir
 
     project = None
     if ctx.attr.project:
@@ -142,6 +146,9 @@ def _common_lock(ctx, locker):
                     project = src.dirname
 
     directory = getattr(ctx.attr, "directory", None)
+    if directory:
+        workdir = "{}/{}".format(workdir, directory)
+
     if project == None:
         project = ctx.label.package
 
@@ -154,7 +161,10 @@ def _common_lock(ctx, locker):
     runtime = exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime
     python = runtime.interpreter or runtime.interpreter_path
     python_files = runtime.files or depset()
-    args.add("--python", _up(python, directory))
+
+    # Handle python
+    args.run_shell.add("--python", _up(python, workdir))
+    args.run_info.extend(["--python", _up(python, directory, short_path = True)])
 
     # These arguments does not change behaviour, but it reduces the output from
     # the command, which is especially verbose in stderr.
@@ -220,8 +230,10 @@ def _common_lock(ctx, locker):
     ctx.actions.expand_template(
         template = ctx.files._template[0],
         substitutions = {
+            '"$SRCS"': " ".join([s.path for s in srcs]),
             '"{{args}}"': windows_args,
             "{{out}}": output_path,
+            "{{rootdir}}": rootdir,
             "{{src_out}}": src_out_path,
         },
         output = script,
@@ -278,9 +290,9 @@ def _pip_compile_impl(ctx):
             args.add("--no-strip-extras")
 
         directory = ctx.attr.directory
-
         if directory:
-            args.add_all([directory], before_each = "--directory")
+            args.run_shell.add("--directory={}/{}/{}".format(ctx.label.package, ctx.label.name, directory))
+            args.run_info.append("--directory={}".format(directory))
 
         # TODO @aignas 2026-08-04: fix the --directory handling
         args.add_all(_reroot_all(ctx.files.build_constraints, directory), before_each = "--build-constraints")
@@ -612,6 +624,8 @@ def lock(
             is passed as is and the environment variables are not expanded.
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
+        directory: {type}`str` The directory into which we should cd when running
+            the command. Only supported for requirements.txt generation.
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.
