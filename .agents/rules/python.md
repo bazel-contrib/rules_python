@@ -9,6 +9,10 @@
 * Use direct attribute access (e.g. `args.foo`) on `argparse.Namespace` with
   well-defined shapes. Avoid defensive `getattr()`.
 
+## TypedDict
+* **External Objects**: When defining a `TypedDict` for an external object,
+  link to its definition in the docstring.
+
 ## Type Checking & Annotations
 * **Target skipping vs in-file disables**: Prefer disabling specific errors in
   source files (e.g. `# type: ignore[...]` / `# pyrefly: ignore[...]`) over
