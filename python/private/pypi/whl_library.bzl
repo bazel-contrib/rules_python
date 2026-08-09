@@ -587,7 +587,7 @@ The expected checksum of the downloaded whl in Subresource Integrity format
 (e.g. `sha256-...` or `sha512-...`). Only used when `urls` is passed. If
 `sha256` is also set, it takes precedence over this attribute.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
     ),
@@ -673,7 +673,7 @@ The `whl_library` is marked as reproducible if using starlark to extract and par
 wheel contents without building an `sdist` first.
 :::
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.3.0
 The whl-only pure Starlark operations have been refactored into {obj}`whl_archive` and the
 previously named {obj}`whl_library` repository became renamed to `pip_archive`.
 :::

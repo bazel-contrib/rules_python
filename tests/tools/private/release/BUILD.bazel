@@ -47,6 +47,17 @@ pytest_test(
 )
 
 pytest_test(
+    name = "complete_prepare_test",
+    srcs = ["complete_prepare_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":conftest",
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
     name = "complete_sync_changelog_test",
     srcs = ["complete_sync_changelog_test.py"],
     target_compatible_with = NOT_WINDOWS,

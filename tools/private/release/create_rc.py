@@ -1,5 +1,6 @@
 """Subcommand to tag and push the next release candidate."""
 
+import os
 import traceback
 from argparse import Namespace
 
@@ -16,6 +17,7 @@ from tools.private.release.release_issue import (
 from tools.private.release.utils import (
     REPO_URL,
     get_latest_rc_tag,
+    set_github_output,
 )
 
 
@@ -142,11 +144,7 @@ class CreateRc:
         self.git.tag(next_rc, target_ref)
         self.git.push(args.remote, next_rc)
 
-        import os
-
-        if "GITHUB_OUTPUT" in os.environ:
-            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                f.write(f"tag_name={next_rc}\n")
+        set_github_output("tag_name", next_rc)
 
         # Check off the appropriate "Tag RC{N}" task in the checklist
         print(f"Checking off Tag RC{next_rc_num} task...")

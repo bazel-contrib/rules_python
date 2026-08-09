@@ -40,7 +40,7 @@ def define_local_runtime_toolchain_impl(
         additional_dlls,
         sys_platform = "",
         platform_machine = "",
-        abi_tag = ""):
+        soabi = ""):
     """Defines a toolchain implementation for a local Python runtime.
 
     Generates public targets:
@@ -76,7 +76,7 @@ def define_local_runtime_toolchain_impl(
             e.g. ["lib/msvcrt123.dll"]
         sys_platform: `str` The PEP 508 `sys_platform` marker, e.g. 'linux', 'darwin', 'win32'.
         platform_machine: `str` The PEP 508 `platform_machine` marker, e.g. 'x86_64', 'aarch64'.
-        abi_tag: `str` The ABI tag for extension modules, e.g. 'cpython-311'.
+        soabi: `str` The SOABI tag for extension modules, e.g. 'cpython-311-x86_64-linux-gnu'.
     """
     major_minor = "{}.{}".format(major, minor)
     major_minor_micro = "{}.{}".format(major_minor, micro)
@@ -137,6 +137,10 @@ def define_local_runtime_toolchain_impl(
         hdrs = [":includes"],
         defines = defines,  # NOTE: Users should define Py_LIMITED_API=3
         srcs = abi3_libraries + additional_dlls,
+        deps = select({
+            "@bazel_tools//src/conditions:windows": [":abi3_interface"],
+            "//conditions:default": [],
+        }),
     )
 
     cc_library(
@@ -144,6 +148,10 @@ def define_local_runtime_toolchain_impl(
         hdrs = [":includes"],
         defines = defines,
         srcs = libraries + additional_dlls,
+        deps = select({
+            "@bazel_tools//src/conditions:windows": [":interface"],
+            "//conditions:default": [],
+        }),
     )
 
     # runtime configuration
@@ -190,7 +198,7 @@ def define_local_runtime_toolchain_impl(
     py_cc_toolchain(
         name = "py_cc_toolchain",
         abi_flags = abi_flags,
-        abi_tag = abi_tag,
+        soabi = soabi,
         headers = ":python_headers",
         headers_abi3 = ":python_headers_abi3",
         libs = ":libpython",

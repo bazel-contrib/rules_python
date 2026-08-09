@@ -50,7 +50,7 @@ def py_extension(
     - `module_name`: Pass `module_name = "custom_name"` to override the base
       module filename.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.3.0
     :::
 
     Args:

@@ -34,6 +34,35 @@ def _get_news_files(news_dir):
     return [p for p in news_path.iterdir() if is_news_file(p)]
 
 
+def _format_entry(content):
+    """Formats news entry content as a markdown bullet list item.
+
+    Continuation lines are indented with two spaces.
+    """
+    lines = content.strip().splitlines()
+    if not lines:
+        return ""
+
+    formatted_lines = []
+    first_line = lines[0]
+    if not (first_line.startswith("* ") or first_line.startswith("- ")):
+        formatted_lines.append(f"* {first_line}")
+    else:
+        formatted_lines.append(first_line)
+
+    for line in lines[1:]:
+        if not line:
+            formatted_lines.append("")
+        elif line.startswith("* ") or line.startswith("- "):
+            formatted_lines.append(line)
+        elif line.startswith("  "):
+            formatted_lines.append(line)
+        else:
+            formatted_lines.append(f"  {line}")
+
+    return "\n".join(formatted_lines)
+
+
 def _parse_new_files(news_files):
     """Parses news files and groups them by category."""
     entries = {}
@@ -48,13 +77,13 @@ def _parse_new_files(news_files):
         if not content:
             continue
 
-        # Format as list item if not already
-        if not (content.startswith("* ") or content.startswith("- ")):
-            content = f"* {content}"
+        formatted_content = _format_entry(content)
+        if not formatted_content:
+            continue
 
         if category not in entries:
             entries[category] = []
-        entries[category].append(content)
+        entries[category].append(formatted_content)
 
     return entries
 
