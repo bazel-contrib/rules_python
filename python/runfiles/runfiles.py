@@ -229,7 +229,7 @@ class Path(pathlib.Path):
     # For Python < 3.12
     # override
     def _make_child(self, args: Tuple[str, ...]) -> Self:
-        obj = super()._make_child(args)  # pyrefly: ignore[missing-attribute]
+        obj = super()._make_child(args)  # type: ignore[misc]  # pyrefly: ignore[missing-attribute]
         obj._runfiles = self._runfiles  # pyrefly: ignore[missing-attribute]
         obj._source_repo = self._source_repo  # pyrefly: ignore[missing-attribute]
         return obj
@@ -371,23 +371,25 @@ class Path(pathlib.Path):
         return "runfiles.Path({!r})".format(self.runfile_path)
 
     def __str__(self) -> str:
+        assert self._runfiles is not None  # type assert
         path_posix = super().__str__().replace("\\", "/")
         if not path_posix or path_posix == ".":
             # pylint: disable=protected-access
-            return self._runfiles._python_runfiles_root  # pyrefly: ignore[missing-attribute]
-        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)  # pyrefly: ignore[missing-attribute]
+            return self._runfiles._python_runfiles_root  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
+        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)
         if resolved is not None:
             return resolved
 
         # pylint: disable=protected-access
-        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # pyrefly: ignore[missing-attribute]
+        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
 
     def __fspath__(self) -> str:
         return str(self)
 
     def runfiles_root(self) -> Self:
         """Returns a Path object representing the runfiles root."""
-        return self._runfiles.root(source_repo=self._source_repo)  # pyrefly: ignore[missing-attribute]
+        assert self._runfiles is not None  # type assert
+        return self._runfiles.root(source_repo=self._source_repo)
 
 
 class _ManifestBased:

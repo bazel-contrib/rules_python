@@ -29,9 +29,9 @@ class RunfilesTest(unittest.TestCase):
     def testRlocationArgumentValidation(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": "whatever"})
         assert r is not None  # mypy doesn't understand the unittest api.
-        self.assertRaises(ValueError, lambda: r.Rlocation(None))  # pyrefly: ignore[bad-argument-type]
+        self.assertRaises(ValueError, lambda: r.Rlocation(None))  # type: ignore[arg-type]  # pyrefly: ignore[bad-argument-type]
         self.assertRaises(ValueError, lambda: r.Rlocation(""))
-        self.assertRaises(TypeError, lambda: r.Rlocation(1))  # pyrefly: ignore[bad-argument-type]
+        self.assertRaises(TypeError, lambda: r.Rlocation(1))  # type: ignore[arg-type]  # pyrefly: ignore[bad-argument-type]
         self.assertRaisesRegex(
             ValueError, "is not normalized", lambda: r.Rlocation("../foo")
         )
