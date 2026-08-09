@@ -349,7 +349,7 @@ class _BzlXrefField(docfields.Field):
     """Abstract base class to create cross references for fields."""
 
     @override
-    def make_xrefs(
+    def make_xrefs(  # pyrefly: ignore[bad-override]
         self,
         rolename: str,
         domain: str,
@@ -510,7 +510,7 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
     final_argument_whitespace = False
 
     @override
-    def run(self) -> list[docutils_nodes.Node]:
+    def run(self) -> list[docutils_nodes.Node]:  # pyrefly: ignore[bad-override]
         label = self.arguments[0].strip()
         repo, slashes, file_label = label.partition("//")
         file_label = slashes + file_label
@@ -615,14 +615,16 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
     }
 
     @override
-    def before_content(self) -> None:
+    def before_content(self) -> None:  # pyrefly: ignore[bad-override]
         symbol_name = self.names[-1].symbol
         if symbol_name:
             self.env.ref_context["bzl:object_id_stack"].append(symbol_name)
             self.env.ref_context["bzl:doc_id_stack"].append(symbol_name)
 
     @override
-    def transform_content(self, content_node: addnodes.desc_content) -> None:
+    def transform_content(  # pyrefly: ignore[bad-override]
+        self, content_node: addnodes.desc_content
+    ) -> None:
         def first_child_with_class_name(
             root, class_name
         ) -> typing.Union[None, docutils_nodes.Element]:
@@ -678,7 +680,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
                 arg_body_field.insert(0, decorated_arg_type_node)
 
     @override
-    def after_content(self) -> None:
+    def after_content(self) -> None:  # pyrefly: ignore[bad-override]
         if self.names[-1].symbol:
             self.env.ref_context["bzl:object_id_stack"].pop()
             self.env.ref_context["bzl:doc_id_stack"].pop()
@@ -686,7 +688,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
     # docs on how to build signatures:
     # https://www.sphinx-doc.org/en/master/extdev/nodes.html#sphinx.addnodes.desc_signature
     @override
-    def handle_signature(
+    def handle_signature(  # pyrefly: ignore[bad-override]
         self, sig: str, sig_node: addnodes.desc_signature
     ) -> _BzlObjectId:
         self._signature_add_object_type(sig_node)
@@ -794,7 +796,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
             sig_node += addnodes.desc_sig_space()
 
     @override
-    def add_target_and_index(
+    def add_target_and_index(  # pyrefly: ignore[bad-override]
         self, name: _BzlObjectId, sig: str, signode: addnodes.desc_signature
     ) -> None:
         super().add_target_and_index(name, sig, signode)
@@ -863,13 +865,15 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
         return []
 
     @override
-    def _object_hierarchy_parts(
+    def _object_hierarchy_parts(  # pyrefly: ignore[bad-override]
         self, sig_node: addnodes.desc_signature
     ) -> tuple[str, ...]:
         return _parse_full_id(sig_node["bzl:object_id"])
 
     @override
-    def _toc_entry_name(self, sig_node: addnodes.desc_signature) -> str:
+    def _toc_entry_name(  # pyrefly: ignore[bad-override]
+        self, sig_node: addnodes.desc_signature
+    ) -> str:
         return sig_node["_toc_parts"][-1]
 
     def _get_object_type_display_name(self) -> str:
@@ -1270,9 +1274,9 @@ class _BzlTarget(_BzlObject):
 
     @override
     def handle_signature(
-        self, sig: str, signode: addnodes.desc_signature
+        self, sig: str, sig_node: addnodes.desc_signature
     ) -> _BzlObjectId:
-        self._signature_add_object_type(signode)
+        self._signature_add_object_type(sig_node)
         if ":" in sig:
             package, target_name = sig.split(":", 1)
         else:
@@ -1282,12 +1286,12 @@ class _BzlTarget(_BzlObject):
 
         package = package + ":"
         if self._TARGET_TYPE == _TargetType.FLAG:
-            signode += addnodes.desc_addname("--", "--")
-        signode += addnodes.desc_addname(package, package)
-        signode += addnodes.desc_name(target_name, target_name)
+            sig_node += addnodes.desc_addname("--", "--")
+        sig_node += addnodes.desc_addname(package, package)
+        sig_node += addnodes.desc_name(target_name, target_name)
 
         obj_id = _BzlObjectId.from_env(self.env, label=package + target_name)
-        signode["bzl:object_id"] = obj_id.full_id
+        sig_node["bzl:object_id"] = obj_id.full_id
         return obj_id
 
     @override
@@ -1631,7 +1635,7 @@ class _BzlDomain(domains.Domain):
     }
 
     @override
-    def get_full_qualified_name(
+    def get_full_qualified_name(  # pyrefly: ignore[bad-override]
         self, node: docutils_nodes.Element
     ) -> typing.Union[str, None]:
         bzl_file = node.get("bzl:file")
@@ -1640,13 +1644,13 @@ class _BzlDomain(domains.Domain):
         return ".".join(filter(None, [bzl_file, symbol_name, ref_target]))
 
     @override
-    def get_objects(self) -> Iterable[_GetObjectsTuple]:
+    def get_objects(self) -> Iterable[_GetObjectsTuple]:  # pyrefly: ignore[bad-override]
         objects: dict[str, _ObjectEntry] = self.data["objects"]
         for entry in objects.values():
             yield entry.to_get_objects_tuple()
 
     @override
-    def resolve_any_xref(
+    def resolve_any_xref(  # pyrefly: ignore[bad-override]
         self,
         env: environment.BuildEnvironment,
         fromdocname: str,
@@ -1669,7 +1673,7 @@ class _BzlDomain(domains.Domain):
         return matches
 
     @override
-    def resolve_xref(
+    def resolve_xref(  # pyrefly: ignore[bad-override]
         self,
         env: environment.BuildEnvironment,
         fromdocname: str,
@@ -1782,7 +1786,7 @@ class _BzlDomain(domains.Domain):
         self.data["doc_names"][docname][base_name] = entry
 
     @override
-    def clear_doc(self, docname: str) -> None:
+    def clear_doc(self, docname: str) -> None:  # pyrefly: ignore[bad-override]
         if docname not in self.data["doc_names"]:
             return
         for base_name, entry in self.data["doc_names"][docname].items():
@@ -1854,7 +1858,9 @@ def _on_missing_reference(app, env: environment.BuildEnvironment, node, contnode
     if new_target != original_target:
         # Access the intersphinx extension's internal mapping
         # we try to resolve the reference again with the stripped name
-        from sphinx.ext.intersphinx import missing_reference
+        from sphinx.ext.intersphinx import (  # type: ignore[import-not-found]
+            missing_reference,
+        )
 
         node["reftarget"] = new_target
         return missing_reference(app, env, node, contnode)
