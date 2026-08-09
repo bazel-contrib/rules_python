@@ -54,7 +54,7 @@ Workspace status keys are expanded using `{NAME}` format, for example:
  - `distribution = "package.{CLASSIFIER}"`
  - `distribution = "{DISTRIBUTION}"`
 
-For the available keys, see https://bazel.build/docs/user-manual#workspace-status
+For the available keys, see <https://bazel.build/docs/user-manual#workspace-status>
 """,
     ),
     "platform": attr.string(
@@ -196,7 +196,7 @@ The {attr}`add_path_prefix` attribute was added.
         default = "",
     ),
     "classifiers": attr.string_list(
-        doc = "A list of strings describing the categories for the package. For valid classifiers see https://pypi.org/classifiers",
+        doc = "A list of strings describing the categories for the package. For valid classifiers see <https://pypi.org/classifiers>",
     ),
     "data_files": attr.label_keyed_string_dict(
         doc = ("""
@@ -233,7 +233,7 @@ be moved under that directory.
     "description_content_type": attr.string(
         doc = ("The type of contents in description_file. " +
                "If not provided, the type will be inferred from the extension of description_file. " +
-               "Also see https://packaging.python.org/en/latest/specifications/core-metadata/#description-content-type"),
+               "Also see <https://packaging.python.org/en/latest/specifications/core-metadata/#description-content-type>"),
     ),
     "description_file": attr.label(
         doc = "A file containing text describing the package.",
@@ -332,7 +332,7 @@ def _escape_filename_distribution_name(name):
 def _escape_filename_segment(segment):
     """Escape a segment of the wheel filename.
 
-    See https://www.python.org/dev/peps/pep-0427/#escaping-and-unicode
+    See {pep}`PEP 427`
     """
 
     # TODO: this is wrong, isalnum replaces non-ascii letters, while we should

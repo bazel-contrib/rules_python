@@ -247,6 +247,9 @@ FreeThreadedFlag = enum(
     NO = "no",
 )
 
+def _libc_flag_get_value(ctx):
+    return ctx.attr._py_linux_libc_flag[BuildSettingInfo].value
+
 # Determines which libc flavor is preferred when selecting the toolchain and
 # linux whl distributions.
 #
@@ -256,4 +259,5 @@ LibcFlag = FlagEnum(
     GLIBC = "glibc",
     # Prefer musl wheels (e.g. musllinux_2_17_x86_64)
     MUSL = "musl",
+    get_value = _libc_flag_get_value,
 )

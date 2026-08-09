@@ -360,13 +360,13 @@ In some cases you may not want to generate the requirements.bzl file as a reposi
 while Bazel is fetching dependencies. For example, if you produce a reusable Bazel module
 such as a ruleset, you may want to include the requirements.bzl file rather than make your users
 install the WORKSPACE setup to generate it.
-See https://github.com/bazel-contrib/rules_python/issues/608
+See {gh-issue}`608`
 
 This is the same workflow as Gazelle, which creates `go_repository` rules with
 [`update-repos`](https://github.com/bazelbuild/bazel-gazelle#update-repos)
 
 To do this, use the "write to source file" pattern documented in
-https://blog.aspect.dev/bazel-can-write-to-the-source-folder
+<https://blog.aspect.dev/bazel-can-write-to-the-source-folder>
 to put a copy of the generated requirements.bzl into your project.
 Then load the requirements.bzl file directly rather than from the generated repository.
 See the example in rules_python/examples/pip_parse_vendored.

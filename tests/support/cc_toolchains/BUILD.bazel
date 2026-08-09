@@ -57,7 +57,9 @@ py_cc_toolchain(
     headers = ":py_headers",
     headers_abi3 = ":py_headers_abi3",
     libs = ":fake_libs",
+    platform_machine = "x86_64",
     python_version = "3.999",
+    sys_platform = "linux",
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
 )
 

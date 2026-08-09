@@ -1,0 +1,12 @@
+load(":dependency_graph_tests.bzl", "dependency_graph_test_suite")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:private"],
+)
+
+licenses(["notice"])
+
+dependency_graph_test_suite(
+    name = "dependency_graph_tests",
+)

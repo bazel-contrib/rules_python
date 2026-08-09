@@ -344,7 +344,7 @@ These values are transitioned on, so will affect the analysis graph and the
 associated memory overhead. The more unique configurations in your overall
 build, the more memory and (often unnecessary) re-analysis and re-building
 can occur. See
-https://bazel.build/extending/config#memory-performance-considerations for
+<https://bazel.build/extending/config#memory-performance-considerations> for
 more information about risks and considerations.
 :::
 """,

@@ -721,7 +721,7 @@ Other changes:
 * (core) `#!/usr/bin/env bash` is now used as a shebang in the stage1 bootstrap template.
 * (gazelle:docs) The Gazelle docs have been migrated from {gh-path}`gazelle/README.md` to
   {gh-path}`gazelle/docs` and are now available on the primary documentation site
-  at https://rules-python.readthedocs.io/en/latest/gazelle/docs/index.html
+  at <https://rules-python.readthedocs.io/en/latest/gazelle/docs/index.html>
 
 [20250808]: https://github.com/astral-sh/python-build-standalone/releases/tag/20250808
 
@@ -1133,7 +1133,7 @@ Other changes:
 {#v1-2-0-changed}
 ### Changed
 * (rules) `py_proto_library` is deprecated in favour of the
-  implementation in https://github.com/protocolbuffers/protobuf. It will be
+  implementation in <https://github.com/protocolbuffers/protobuf>. It will be
   removed in the future release.
 * (pypi) {obj}`pip.override` will now be ignored instead of raising an error,
   fixes [#2550](https://github.com/bazel-contrib/rules_python/issues/2550).
@@ -2117,7 +2117,7 @@ Other changes:
   `common --@rules_python//python/config_settings:python_version=X.Y.Z`.
 
 * New Python versions available: `3.11.7`, `3.12.1` using
-  https://github.com/indygreg/python-build-standalone/releases/tag/20240107.
+  <https://github.com/indygreg/python-build-standalone/releases/tag/20240107>.
 
 * (toolchain) Allow setting `x.y` as the `python_version` parameter in
   the version-aware `py_binary` and `py_test` rules. This allows users to
@@ -2269,7 +2269,7 @@ Other changes:
 
 * (docs) bzlmod extensions are now documented on rules-python.readthedocs.io
 * (docs) Support and backwards compatibility policies have been documented.
-  See https://rules-python.readthedocs.io/en/latest/support.html
+  See <https://rules-python.readthedocs.io/en/latest/support.html>
 * (gazelle) `file` generation mode can now also add `__init__.py` to the srcs
   attribute for every target in the package. This is enabled through a separate
   directive `python_generation_mode_per_file_include_init`.
@@ -2401,7 +2401,7 @@ Breaking changes:
   the `py_binary` rule used to build it.
 
 * New Python versions available: `3.8.17`, `3.11.5` using
-  https://github.com/indygreg/python-build-standalone/releases/tag/20230826.
+  <https://github.com/indygreg/python-build-standalone/releases/tag/20230826>.
 
 * (gazelle) New `# gazelle:python_generation_mode file` directive to support
   generating one `py_library` per file.
@@ -2421,7 +2421,7 @@ Breaking changes:
   time being.
 
 * New Python versions available: `3.8.18`, `3.9.18`, `3.10.13`, `3.11.6`, `3.12.0` using
-  https://github.com/indygreg/python-build-standalone/releases/tag/20231002.
+  <https://github.com/indygreg/python-build-standalone/releases/tag/20231002>.
   `3.12.0` support is considered beta and may have issues.
 
 ### Removed

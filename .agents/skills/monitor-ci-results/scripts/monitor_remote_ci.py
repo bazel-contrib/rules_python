@@ -27,7 +27,7 @@ def get_pr_checks(pr_number):
     if not check_cli("gh"):
         print("❌ 'gh' CLI not installed.", file=sys.stderr)
         return []
-    cmd = ["gh", "pr", "checks", str(pr_number), "--json", "name,link,state"]
+    cmd = ["gh", "pr", "checks", str(pr_number), "--json", "name,link,state,bucket"]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True)
         out = res.stdout
@@ -157,6 +157,8 @@ def main():
                 other = 0
 
                 for job in jobs:
+                    if job.get("retried_in_job_uuid") or job.get("retried_at"):
+                        continue
                     jstate = job.get("state", "unknown")
                     exit_status = job.get("exit_status")
                     is_soft_failed = job.get("soft_failed") is True
@@ -194,6 +196,8 @@ def main():
                 )
 
                 for job in jobs:
+                    if job.get("retried_in_job_uuid") or job.get("retried_at"):
+                        continue
                     jname = job.get("name", "unknown_job")
                     jstate = job.get("state", "unknown")
                     jid = job.get("id", "")
