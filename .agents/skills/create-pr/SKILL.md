@@ -9,11 +9,11 @@ to handle PR creation or description drafting.
 
 ### Instructions
 
-1. **Pre-Review Audit Subagent**: Before drafting or creating a PR, launch a
-   subagent to run the `pre-review-audit` skill on local changes (`git diff`).
-   Verify all checks pass (e.g., `VERSION_NEXT_FEATURE` directives, no Bazel
-   copyright headers, line wrapping, Starlark formatting). Fix any issues
-   found before proceeding.
+1. **Code Review Audit Subagent**: Before drafting or creating a PR, launch a
+   subagent to run the `review-code` skill on local changes (`git diff`).
+   Verify all checks pass (e.g., news entry in `news/`, `VERSION_NEXT_FEATURE`
+   directives, no Bazel copyright headers, line wrapping, Starlark formatting).
+   Fix any issues found before proceeding.
 2. Launch a subagent using `invoke_subagent` with `TypeName: "self"` (or
    `agentapi new-conversation`).
 3. Provide a prompt to the subagent directing it to:
@@ -28,9 +28,12 @@ to handle PR creation or description drafting.
        (GitHub uses the PR description as the commit message upon merge,
        which reflows text at 72 columns).
      - **Formatting**: Follow repository style guidelines and structure.
-   - Create a Markdown artifact (`pr_info.md`) meeting the following requirements:
-     - **User-facing**: Published so it is presented directly in the user interface.
-     - **Interactive feedback enabled**: Allows the user to select lines and leave inline comments on the draft.
+   - Create a Markdown artifact (`pr_info.md`) meeting the following
+     requirements:
+     - **User-facing**: Published so it is presented directly in the user
+       interface.
+     - **Interactive feedback enabled**: Allows the user to select lines and
+       leave inline comments on the draft.
      - **User decision choices**: Ask the user if they want to:
        1. Create a regular PR
        2. Create a draft PR
