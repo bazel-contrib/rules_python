@@ -12,27 +12,27 @@ class ImportlibMetadataTest(unittest.TestCase):
         )
 
         if sys.platform == "win32":
-            bin_prefix = "../../Scripts/"
-            include_prefix = "../../Include/"
+            scripts_prefix = "../../Scripts/"
+            headers_prefix = "../../Include/"
             data_prefix = "../../"
         else:
-            bin_prefix = "../../../bin/"
-            include_prefix = "../../../include/"
+            scripts_prefix = "../../../bin/"
+            headers_prefix = "../../../include/"
             data_prefix = "../../../"
 
         expected_paths = sorted(
             [
-                bin_prefix + "data_overlap.sh",
-                bin_prefix + "data_overlap.sh",
-                bin_prefix + "overlap/both.sh",
-                bin_prefix + "overlap/script1.sh",
-                bin_prefix + "whl_script.sh",
-                bin_prefix + "whl_with_data1_script",
-                include_prefix + "data_overlap.h",
-                include_prefix + "data_overlap.h",
-                include_prefix + "overlap/both.h",
-                include_prefix + "overlap/header1.h",
-                include_prefix + "whl_with_data1/header_file.h",
+                scripts_prefix + "data_overlap.sh",
+                data_prefix + "bin/data_overlap.sh",
+                scripts_prefix + "overlap/both.sh",
+                scripts_prefix + "overlap/script1.sh",
+                scripts_prefix + "whl_script.sh",
+                scripts_prefix + "whl_with_data1_script",
+                headers_prefix + "data_overlap.h",
+                data_prefix + "include/data_overlap.h",
+                headers_prefix + "overlap/both.h",
+                headers_prefix + "overlap/header1.h",
+                headers_prefix + "whl_with_data1/header_file.h",
                 data_prefix + "overlap/both.txt",
                 data_prefix + "overlap/data1.txt",
                 data_prefix + "site-packages/data_overlap.py",

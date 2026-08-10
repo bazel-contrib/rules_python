@@ -5,6 +5,17 @@ REWRITER="$1"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+run_rewriter() {
+  case "$REWRITER" in
+    *.ps1)
+      powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$REWRITER" "$@"
+      ;;
+    *)
+      "$REWRITER" "$@"
+      ;;
+  esac
+}
+
 INPUT="$TMP_DIR/input_RECORD"
 cat <<'EOF' > "$INPUT"
 foo-1.0.data/purelib/pkg/__init__.py,sha256=abc,100
@@ -25,7 +36,7 @@ EOF
 
 # Test Unix rewrite
 UNIX_OUT="$TMP_DIR/unix_RECORD"
-"$REWRITER" "$INPUT" "$UNIX_OUT" "unix" "foo-1.0.data"
+run_rewriter "$INPUT" "$UNIX_OUT" "unix" "foo-1.0.data"
 
 EXPECTED_UNIX="$TMP_DIR/expected_unix"
 cat <<'EOF' > "$EXPECTED_UNIX"
@@ -49,7 +60,7 @@ diff -u "$EXPECTED_UNIX" "$UNIX_OUT"
 
 # Test Windows rewrite
 WIN_OUT="$TMP_DIR/win_RECORD"
-"$REWRITER" "$INPUT" "$WIN_OUT" "windows" "foo-1.0.data"
+run_rewriter "$INPUT" "$WIN_OUT" "windows" "foo-1.0.data"
 
 EXPECTED_WIN="$TMP_DIR/expected_win"
 cat <<'EOF' > "$EXPECTED_WIN"
@@ -70,5 +81,3 @@ foo-1.0.dist-info/RECORD,,
 EOF
 
 diff -u "$EXPECTED_WIN" "$WIN_OUT"
-
-echo "All rewriter assertions passed!"
