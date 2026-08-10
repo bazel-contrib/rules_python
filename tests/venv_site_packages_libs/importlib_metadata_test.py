@@ -48,21 +48,29 @@ class ImportlibMetadataTest(unittest.TestCase):
 
         for f in files:
             resolved = f.locate()
-            self.assertTrue(
-                resolved.exists(),
-                f"Expected file {f} (resolved to {resolved}) to exist",
-            )
-            self.assertTrue(
-                resolved.is_file(),
-                f"Expected {resolved} to be a regular file",
-            )
+            if resolved.exists():
+                self.assertTrue(
+                    resolved.is_file(),
+                    f"Expected {resolved} to be a regular file",
+                )
 
-            # Verify file content can be read both as binary and as text
-            content = f.read_binary()
-            self.assertIsNotNone(content)
+                # Verify file content can be read both as binary and as text
+                content = f.read_binary()
+                self.assertIsNotNone(content)
 
-            text = f.read_text(encoding="utf-8")
-            self.assertIsNotNone(text)
+                text = f.read_text(encoding="utf-8")
+                self.assertIsNotNone(text)
+            else:
+                # On Windows, venv bin scripts have a .bat extension appended.
+                bat_resolved = resolved.parent / (resolved.name + ".bat")
+                self.assertTrue(
+                    bat_resolved.exists(),
+                    f"Expected file {f} (resolved to {resolved} or {bat_resolved}) to exist",
+                )
+                self.assertTrue(
+                    bat_resolved.is_file(),
+                    f"Expected {bat_resolved} to be a regular file",
+                )
 
 
 if __name__ == "__main__":

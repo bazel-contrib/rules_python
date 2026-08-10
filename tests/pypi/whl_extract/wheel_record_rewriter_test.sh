@@ -8,7 +8,15 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 run_rewriter() {
   case "$REWRITER" in
     *.ps1)
-      powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$REWRITER" "$@"
+      in_file="$1"
+      out_file="$2"
+      platform_type="$3"
+      data_dir="$4"
+      if command -v cygpath >/dev/null 2>&1; then
+        in_file="$(cygpath -w "$in_file")"
+        out_file="$(cygpath -w "$out_file")"
+      fi
+      powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$REWRITER" "$in_file" "$out_file" "$platform_type" "$data_dir"
       ;;
     *)
       "$REWRITER" "$@"
@@ -56,7 +64,7 @@ foo-1.0.dist-info/METADATA,sha256=bbb,60
 foo-1.0.dist-info/RECORD,,
 EOF
 
-diff -u "$EXPECTED_UNIX" "$UNIX_OUT"
+diff -u --strip-trailing-cr "$EXPECTED_UNIX" "$UNIX_OUT"
 
 # Test Windows rewrite
 WIN_OUT="$TMP_DIR/win_RECORD"
@@ -80,4 +88,4 @@ foo-1.0.dist-info/METADATA,sha256=bbb,60
 foo-1.0.dist-info/RECORD,,
 EOF
 
-diff -u "$EXPECTED_WIN" "$WIN_OUT"
+diff -u --strip-trailing-cr "$EXPECTED_WIN" "$WIN_OUT"
