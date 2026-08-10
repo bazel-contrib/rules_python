@@ -76,6 +76,9 @@ def fetch_log(job_name, build_id, job_id, output_path):
         return False
 
 
+ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
 def parse_log(log_path):
     if not os.path.exists(log_path):
         return [f"Log file not found at {log_path}"]
@@ -85,28 +88,36 @@ def parse_log(log_path):
 
     errors = []
     for line in lines:
+        clean_line = ANSI_ESCAPE.sub("", line).strip()
+        # Clean buildkite timestamp prefix: _bk;t=...
+        clean_line = re.sub(r"^_bk;t=\d+\s*", "", clean_line)
         if any(
-            keyword in line
+            keyword.lower() in clean_line.lower()
             for keyword in [
-                "ERROR:",
-                "FAILED:",
-                "Critical Path",
-                "Traceback",
-                "Exception",
-                "FileNotFoundError",
+                "error:",
+                "failed:",
+                "critical path",
+                "traceback",
+                "exception",
+                "filenotfounderror",
                 "no such package",
                 "no such target",
                 "exit code",
                 "exit-code",
+                "status 125",
                 "fatal:",
                 "fatal",
                 "##[error]",
-                "Would reformat:",
+                "would reformat:",
                 "would be reformatted",
                 "error]",
+                "error waiting for container",
+                "error during connect:",
+                "user command error:",
             ]
         ):
-            errors.append(line.strip())
+            if clean_line:
+                errors.append(clean_line)
 
     return errors[:30]
 
@@ -131,6 +142,15 @@ def create_plan(job_name, log_path, errors):
     ):
         is_flake = True
         flake_reason = "Known docs build flake with exit code 2."
+    elif any(
+        "error waiting for container" in e.lower()
+        or "status 125" in e.lower()
+        or "error during connect:" in e.lower()
+        or "docker-buildkite-plugin command hook exited with status 125" in e.lower()
+        for e in errors
+    ):
+        is_flake = True
+        flake_reason = "Buildkite agent / Docker runner infrastructure failure (dockerd disconnection / grpc context canceled / exit status 125). This is an infrastructure flake, not a codebase bug."
 
     classification = (
         "⚡ **Classification**: **Infrastructure / Flake Issue** (Not a codebase bug)"
@@ -138,7 +158,7 @@ def create_plan(job_name, log_path, errors):
         else "🔍 **Classification**: **Code / Configuration Issue**"
     )
     fix_advice = (
-        f"Re-trigger or rebuild the ReadTheDocs build. {flake_reason}"
+        f"Retry the failed job (`buildkite-retry-job`). {flake_reason}"
         if is_flake
         else "Resolve the root cause in the relevant source / build files."
     )

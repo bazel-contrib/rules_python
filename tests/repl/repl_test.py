@@ -3,8 +3,8 @@ import subprocess
 import sys  # noqa: F401
 import tempfile
 import unittest
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from python.runfiles import runfiles
 

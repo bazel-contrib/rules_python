@@ -24,8 +24,8 @@ import re
 import stat
 import sys
 import zipfile
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 

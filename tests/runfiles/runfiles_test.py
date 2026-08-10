@@ -17,7 +17,7 @@ import os
 import pathlib
 import tempfile
 import unittest
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from python.runfiles import runfiles
 from python.runfiles.runfiles import _RepositoryMapping
@@ -771,7 +771,7 @@ class RunfilesTest(unittest.TestCase):
 
 class _MockFile:
     def __init__(
-        self, name: Optional[str] = None, contents: Optional[List[Any]] = None
+        self, name: Optional[str] = None, contents: Optional[list[Any]] = None
     ) -> None:
         self._contents = contents or []
         self._name = name or "x"

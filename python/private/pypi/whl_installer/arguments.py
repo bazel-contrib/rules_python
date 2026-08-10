@@ -14,7 +14,7 @@
 
 import argparse
 import json
-from typing import Any, Set
+from typing import Any
 
 
 def parser(**kwargs: Any) -> argparse.ArgumentParser:
@@ -72,7 +72,7 @@ def deserialize_structured_args(args: dict[str, Any]) -> dict[str, Any]:
     return args
 
 
-def get_platforms(args: argparse.Namespace) -> Set:
+def get_platforms(args: argparse.Namespace) -> set:
     """Aggregate platforms into a single set.
 
     Args:

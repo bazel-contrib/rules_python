@@ -19,9 +19,8 @@ import ast
 import collections
 import enum
 import os
-import typing
-from collections.abc import Collection
-from typing import Callable, Iterable, TypeVar
+from collections.abc import Callable, Collection, Iterable, Iterator, Set
+from typing import Any, TypeVar, cast
 
 from docutils import (  # pyrefly: ignore[missing-source-for-stubs]
     nodes as docutils_nodes,
@@ -77,7 +76,7 @@ def _log_debug(message, *args):
     _logger.debug("%s" + message, _LOG_PREFIX, *args)
 
 
-def _position_iter(values: Collection[_T]) -> typing.Iterator[tuple[bool, bool, _T]]:
+def _position_iter(values: Collection[_T]) -> Iterator[tuple[bool, bool, _T]]:
     last_i = len(values) - 1
     for i, value in enumerate(values):
         yield i == 0, i == last_i, value
@@ -142,9 +141,9 @@ def _index_node_tuple(
     entry_type: str,
     entry_name: str,
     target: str,
-    main: typing.Union[str, None] = None,
-    category_key: typing.Union[str, None] = None,
-) -> tuple[str, str, str, typing.Union[str, None], typing.Union[str, None]]:
+    main: str | None = None,
+    category_key: str | None = None,
+) -> tuple[str, str, str, str | None, str | None]:
     # For this tuple definition, see:
     # https://www.sphinx-doc.org/en/master/extdev/nodes.html#sphinx.addnodes.index
     # For the definition of entry_type, see:
@@ -360,10 +359,10 @@ class _BzlXrefField(docfields.Field):
         domain: str,
         target: str,
         innernode: type[sphinx_typing.TextlikeNode] = addnodes.literal_emphasis,
-        contnode: typing.Union[docutils_nodes.Node, None] = None,
-        env: typing.Union[environment.BuildEnvironment, None] = None,
-        inliner: typing.Union[states.Inliner, None] = None,
-        location: typing.Union[docutils_nodes.Node, tuple[str, int], None] = None,
+        contnode: docutils_nodes.Node | None = None,
+        env: environment.BuildEnvironment | None = None,
+        inliner: states.Inliner | None = None,
+        location: docutils_nodes.Node | tuple[str, int] | None = None,
     ) -> list[docutils_nodes.Node]:
         if rolename in ("arg", "attr"):
             return self._make_xrefs_for_arg_attr(
@@ -380,10 +379,10 @@ class _BzlXrefField(docfields.Field):
         domain: str,
         arg_name: str,
         innernode: type[sphinx_typing.TextlikeNode] = addnodes.literal_emphasis,
-        contnode: typing.Union[docutils_nodes.Node, None] = None,
-        env: typing.Union[environment.BuildEnvironment, None] = None,
-        inliner: typing.Union[states.Inliner, None] = None,
-        location: typing.Union[docutils_nodes.Node, tuple[str, int], None] = None,
+        contnode: docutils_nodes.Node | None = None,
+        env: environment.BuildEnvironment | None = None,
+        inliner: states.Inliner | None = None,
+        location: docutils_nodes.Node | tuple[str, int] | None = None,
     ) -> list[docutils_nodes.Node]:
         assert env is not None
         bzl_file = env.ref_context["bzl:file"]
@@ -396,7 +395,7 @@ class _BzlXrefField(docfields.Field):
         anchor_id = f"{anchor_prefix}.{arg_name}"
         full_id = _full_id_from_env(env, [arg_name])
 
-        bzl_domain = typing.cast(_BzlDomain, env.get_domain(domain))
+        bzl_domain = cast(_BzlDomain, env.get_domain(domain))
         bzl_domain.add_object(
             _ObjectEntry(
                 full_id=full_id,
@@ -472,8 +471,8 @@ class _BzlCsvField(_BzlXrefField):
         domain: str,
         item: tuple[str, list[docutils_nodes.Node]],
         env: environment.BuildEnvironment | None = None,
-        inliner: typing.Union[states.Inliner, None] = None,
-        location: typing.Union[docutils_nodes.Element, None] = None,
+        inliner: states.Inliner | None = None,
+        location: docutils_nodes.Element | None = None,
     ) -> docutils_nodes.field:
         field_text = item[1][0].astext()
         parts = [p.strip() for p in field_text.split(",")]
@@ -545,7 +544,7 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
 
         index_description = f"File {label}"
         absolute_label = repo + label
-        bzl_domain = typing.cast(_BzlDomain, self.env.get_domain("bzl"))
+        bzl_domain = cast(_BzlDomain, self.env.get_domain("bzl"))
         bzl_domain.add_object(
             _ObjectEntry(
                 full_id=absolute_label,
@@ -635,7 +634,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
     ) -> None:
         def first_child_with_class_name(
             root, class_name
-        ) -> typing.Union[None, docutils_nodes.Element]:
+        ) -> docutils_nodes.Element | None:
             matches = root.findall(
                 lambda node: (
                     isinstance(node, docutils_nodes.Element)
@@ -870,7 +869,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
 
     def _get_bzl_domain(self) -> _BzlDomain:
         domain_name = self.domain or "bzl"
-        return typing.cast(_BzlDomain, self.env.get_domain(domain_name))
+        return cast(_BzlDomain, self.env.get_domain(domain_name))
 
     def _get_additional_index_types(self):
         return []
@@ -1651,7 +1650,7 @@ class _BzlDomain(domains.Domain):
     @override
     def get_full_qualified_name(  # pyrefly: ignore[bad-override]
         self, node: docutils_nodes.Element
-    ) -> typing.Union[str, None]:
+    ) -> str | None:
         bzl_file = node.get("bzl:file")
         symbol_name = node.get("bzl:symbol")
         ref_target = node.get("reftarget")
@@ -1699,7 +1698,7 @@ class _BzlDomain(domains.Domain):
         target: str,
         node: addnodes.pending_xref,
         contnode: docutils_nodes.Element,
-    ) -> typing.Union[docutils_nodes.Element, None]:
+    ) -> docutils_nodes.Element | None:
         _log_debug(
             "resolve_xref: fromdocname=%s, typ=%s, target=%s", fromdocname, typ, target
         )
@@ -1716,7 +1715,7 @@ class _BzlDomain(domains.Domain):
 
     def _find_entry_for_xref(
         self, fromdocname: str, object_type: str, target: str
-    ) -> typing.Union[_ObjectEntry, None]:
+    ) -> _ObjectEntry | None:
         if target.startswith("--"):
             target = target.strip("-")
             object_type = "flag"
@@ -1821,9 +1820,7 @@ class _BzlDomain(domains.Domain):
                     del self.data["alt_names"][alt_name]
         del self.data["doc_names"][docname]
 
-    def merge_domaindata(
-        self, docnames: typing.AbstractSet[str], otherdata: dict[str, typing.Any]
-    ) -> None:
+    def merge_domaindata(self, docnames: Set[str], otherdata: dict[str, Any]) -> None:
         # Merge in simple dict[key, value] data
         for top_key in ("objects",):
             self.data[top_key].update(otherdata.get(top_key, {}))
