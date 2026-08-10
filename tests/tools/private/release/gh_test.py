@@ -77,3 +77,20 @@ def test_auto_patched_helpers_prevent_real_execution(auto_patch_cmd_helpers):
     gh_obj = GitHub("foo/bar")
     gh_obj._run_gh("issue", "list")
     auto_patch_cmd_helpers.run_gh.assert_called_with("issue", "list")
+
+
+def test_update_issue_body(gh, auto_patch_cmd_helpers):
+    captured_body = {}
+
+    def mock_run(*args, **kwargs):
+        for arg in args:
+            if isinstance(arg, str) and arg.startswith("--body-file="):
+                path = arg.split("=", 1)[1]
+                with open(path, encoding="utf-8") as f:
+                    captured_body["content"] = f.read()
+        return None
+
+    auto_patch_cmd_helpers.run_gh.side_effect = mock_run
+    gh.update_issue_body(123, "new body content")
+    auto_patch_cmd_helpers.run_gh.assert_called_once()
+    assert captured_body["content"] == "new body content"

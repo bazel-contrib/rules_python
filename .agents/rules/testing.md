@@ -13,6 +13,11 @@
 * Changes to transitive module extension dependencies or `.bzl` files loaded by
   extensions update Bazel 9 lockfile hashes, requiring `bazel mod deps
   --lockfile_mode=update` in integration test workspaces.
+* When requirements files (e.g., in `//tools/publish` or root pip parses) are
+  modified or bumped by Dependabot, update the integration lockfile by running
+  `bazel mod deps --lockfile_mode=update` in `tests/integration/bzlmod_lockfile`
+  and verify with
+  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_9.1.0`.
 
 ## Documentation Flake Handling
 * When building `//docs:docs` fails with exit code 2, treat it as a known

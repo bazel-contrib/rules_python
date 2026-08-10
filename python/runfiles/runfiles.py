@@ -323,7 +323,7 @@ class Path(pathlib.Path):
         return self._as_path().is_socket()
 
     # override
-    def open(
+    def open(  # pyrefly: ignore[bad-override]
         self,
         mode: str = "r",
         buffering: int = -1,
@@ -728,6 +728,46 @@ class Runfiles:
 
         return None
 
+    # TODO: Update return type to Self when 3.11 is the min version
+    # https://peps.python.org/pep-0673/
+    @staticmethod
+    def CreateOrRaise(env: Optional[Dict[str, str]] = None) -> "Runfiles":
+        """Returns a new `Runfiles` instance, or raises an error.
+
+        The returned object is either:
+        - manifest-based, meaning it looks up runfile paths from a manifest
+          file, or
+        - directory-based, meaning it looks up runfile paths under a given
+          directory path
+
+        If `env` contains "RUNFILES_MANIFEST_FILE" with non-empty value, this
+        method returns a manifest-based implementation. The object eagerly
+        reads and caches the whole manifest file upon instantiation; this may
+        be relevant for performance consideration.
+
+        Otherwise, if `env` contains "RUNFILES_DIR" with non-empty value
+        (checked in this priority order), this method returns a directory-based
+        implementation.
+
+        If neither cases apply, this method raises a `RuntimeError`.
+
+        Args:
+          env: {string: string}; optional; the map of environment variables. If
+            None, this function uses the environment variable map of this
+            process.
+        Raises:
+          RuntimeError: if runfiles cannot be found.
+
+        :::{versionadded} VERSION_NEXT_FEATURE
+        :::
+        """
+        runfiles = Runfiles.Create(env=env)
+        if runfiles is None:
+            raise RuntimeError(
+                "Cannot create Runfiles: $RUNFILES_MANIFEST_FILE and $RUNFILES_DIR are both unset or empty"
+            )
+        return runfiles
+
 
 # Support legacy imports by defining a private symbol.
 _Runfiles = Runfiles
@@ -743,3 +783,12 @@ def CreateDirectoryBased(runfiles_dir_path: str) -> Runfiles:
 
 def Create(env: Optional[Dict[str, str]] = None) -> Optional[Runfiles]:
     return Runfiles.Create(env)
+
+
+def CreateOrRaise(env: Optional[Dict[str, str]] = None) -> Runfiles:
+    """Refer to `Runfiles.CreateOrRaise`.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    """
+    return Runfiles.CreateOrRaise(env)
