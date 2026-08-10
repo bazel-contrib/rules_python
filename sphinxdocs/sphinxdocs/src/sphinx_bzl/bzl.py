@@ -352,6 +352,7 @@ class _TypeExprParser(ast.NodeVisitor):
 class _BzlXrefField(docfields.Field):
     """Abstract base class to create cross references for fields."""
 
+    # docfields.Field lacks type stubs, so @override triggers bad-override.
     @override
     def make_xrefs(  # pyrefly: ignore[bad-override]
         self,
@@ -513,6 +514,7 @@ class _BzlCurrentFile(sphinx_docutils.SphinxDirective):
     required_arguments = 1
     final_argument_whitespace = False
 
+    # SphinxDirective lacks type stubs, so @override triggers bad-override.
     @override
     def run(self) -> list[docutils_nodes.Node]:  # pyrefly: ignore[bad-override]
         label = self.arguments[0].strip()
@@ -618,6 +620,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
         "origin-key": docutils_directives.unchanged,
     }
 
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def before_content(self) -> None:  # pyrefly: ignore[bad-override]
         symbol_name = self.names[-1].symbol
@@ -625,6 +628,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
             self.env.ref_context["bzl:object_id_stack"].append(symbol_name)
             self.env.ref_context["bzl:doc_id_stack"].append(symbol_name)
 
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def transform_content(  # pyrefly: ignore[bad-override]
         self, contentnode: addnodes.desc_content
@@ -683,6 +687,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
                 # arg_body_field.insert(0, arg_type_node)
                 arg_body_field.insert(0, decorated_arg_type_node)
 
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def after_content(self) -> None:  # pyrefly: ignore[bad-override]
         if self.names[-1].symbol:
@@ -691,6 +696,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
 
     # docs on how to build signatures:
     # https://www.sphinx-doc.org/en/master/extdev/nodes.html#sphinx.addnodes.desc_signature
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def handle_signature(  # pyrefly: ignore[bad-override]
         self, sig: str, signode: addnodes.desc_signature
@@ -799,6 +805,7 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
             sig_node += addnodes.desc_annotation("", self._get_signature_object_type())
             sig_node += addnodes.desc_sig_space()
 
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def add_target_and_index(  # pyrefly: ignore[bad-override]
         self, name: _BzlObjectId, sig: str, signode: addnodes.desc_signature
@@ -868,12 +875,14 @@ class _BzlObject(sphinx_directives.ObjectDescription[_BzlObjectId]):
     def _get_additional_index_types(self):
         return []
 
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def _object_hierarchy_parts(  # pyrefly: ignore[bad-override]
         self, sig_node: addnodes.desc_signature
     ) -> tuple[str, ...]:
         return _parse_full_id(sig_node["bzl:object_id"])
 
+    # ObjectDescription lacks type stubs, so @override triggers bad-override.
     @override
     def _toc_entry_name(  # pyrefly: ignore[bad-override]
         self, sig_node: addnodes.desc_signature
@@ -1638,6 +1647,7 @@ class _BzlDomain(domains.Domain):
         "alt_names": {},
     }
 
+    # domains.Domain lacks type stubs, so @override triggers bad-override.
     @override
     def get_full_qualified_name(  # pyrefly: ignore[bad-override]
         self, node: docutils_nodes.Element
@@ -1647,12 +1657,14 @@ class _BzlDomain(domains.Domain):
         ref_target = node.get("reftarget")
         return ".".join(filter(None, [bzl_file, symbol_name, ref_target]))
 
+    # domains.Domain lacks type stubs, so @override triggers bad-override.
     @override
     def get_objects(self) -> Iterable[_GetObjectsTuple]:  # pyrefly: ignore[bad-override]
         objects: dict[str, _ObjectEntry] = self.data["objects"]
         for entry in objects.values():
             yield entry.to_get_objects_tuple()
 
+    # domains.Domain lacks type stubs, so @override triggers bad-override.
     @override
     def resolve_any_xref(  # pyrefly: ignore[bad-override]
         self,
@@ -1676,6 +1688,7 @@ class _BzlDomain(domains.Domain):
         matches = [(f"bzl:{entry.object_type}", ref_node)]
         return matches
 
+    # domains.Domain lacks type stubs, so @override triggers bad-override.
     @override
     def resolve_xref(  # pyrefly: ignore[bad-override]
         self,
@@ -1786,6 +1799,7 @@ class _BzlDomain(domains.Domain):
         self.data["doc_names"].setdefault(docname, {})
         self.data["doc_names"][docname][base_name] = entry
 
+    # domains.Domain lacks type stubs, so @override triggers bad-override.
     @override
     def clear_doc(self, docname: str) -> None:  # pyrefly: ignore[bad-override]
         if docname not in self.data["doc_names"]:

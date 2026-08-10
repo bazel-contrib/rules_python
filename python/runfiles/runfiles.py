@@ -322,6 +322,8 @@ class Path(pathlib.Path):
     def is_socket(self) -> bool:
         return self._as_path().is_socket()
 
+    # Path.open in pathlib has multiple overloads in typeshed. We use a
+    # simplified delegation signature here.
     # override
     def open(  # pyrefly: ignore[bad-override]
         self,
