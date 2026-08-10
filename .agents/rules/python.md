@@ -17,7 +17,7 @@
 * **In-file disables vs target skipping**: Prefer `# pyrefly: ignore[<error-code>]`
   (e.g. `[missing-import]`) over `tags = ["no-pyrefly"]`.
 * **No blanket ignores**: NEVER use bare `# type: ignore` or literal
-  `# type: ignore[...]`.
+  `# type: ignore[...]`. Use error-specific ignores instead.
 * **Type assertions**: When adding assertions for type narrowing, add an
   end-of-line comment: `assert foo is not None  # type assert`.
 * **Consent for `Any`**: Require user consent before changing type annotations
