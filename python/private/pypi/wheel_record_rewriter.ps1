@@ -63,4 +63,4 @@ foreach ($line in $lines) {
     }
 }
 
-[System.IO.File]::WriteAllLines($OutFile, $outLines, $Utf8NoBom)
+[System.IO.File]::WriteAllText($OutFile, ($outLines -join "`n") + "`n", $Utf8NoBom)
