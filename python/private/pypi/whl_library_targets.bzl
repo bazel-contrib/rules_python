@@ -19,6 +19,7 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
+load(":gen_wheel_record.bzl", "gen_wheel_record")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -159,6 +160,7 @@ def whl_library_srcs(
             py_library = py_library,
             venv_entry_point = venv_entry_point,
             venv_rewrite_shebang = venv_rewrite_shebang,
+            gen_wheel_record = gen_wheel_record,
             env_marker_setting = env_marker_setting,
             create_inits = _create_inits,
         )):
@@ -225,6 +227,16 @@ def whl_library_srcs(
         bins_for_data_label.append(rewrite_target_name)
         data.append(rewrite_target_name)
 
+    record_srcs = native.glob(["rewrite-record/*/RECORD"], allow_empty = True)
+    record_target_name = "record"
+    if record_srcs:
+        rules.gen_wheel_record(
+            name = record_target_name,
+            srcs = record_srcs,
+            tags = ["manual"],
+        )
+        data.append(record_target_name)
+
     if filegroups == None:
         filegroups = {
             EXTRACTED_WHEEL_FILES: dict(
@@ -248,6 +260,8 @@ def whl_library_srcs(
         srcs = native.glob(**glob_kwargs)
         if filegroup_name == DATA_LABEL:
             srcs = srcs + bins_for_data_label
+        if filegroup_name == DIST_INFO_LABEL and record_srcs:
+            srcs = srcs + [record_target_name]
         native.filegroup(
             name = filegroup_name,
             srcs = srcs,

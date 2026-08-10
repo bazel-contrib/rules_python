@@ -41,6 +41,15 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+alias(
+    name = "wheel_record_rewriter",
+    actual = select({
+        "@platforms//os:windows": "wheel_record_rewriter.ps1",
+        "//conditions:default": "wheel_record_rewriter.sh",
+    }),
+    visibility = ["//visibility:public"],
+)
+
 exports_files(
     srcs = ["deps.bzl"],
     visibility = ["//tools/private/update_deps:__pkg__"],
@@ -491,10 +500,19 @@ bzl_library(
 )
 
 bzl_library(
+    name = "gen_wheel_record",
+    srcs = ["gen_wheel_record.bzl"],
+    deps = [
+        "//python/private:common",
+    ],
+)
+
+bzl_library(
     name = "whl_library_targets",
     srcs = ["whl_library_targets.bzl"],
     deps = [
         ":env_marker_setting",
+        ":gen_wheel_record",
         ":labels",
         ":namespace_pkgs",
         ":pep508_deps",

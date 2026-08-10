@@ -30,7 +30,7 @@ def _test_filegroups(env):
     def glob(include, *, exclude = [], allow_empty):
         _ = exclude  # @unused
         env.expect.that_bool(allow_empty).equals(True)
-        if include == ["rewrite-bin/*"] or include == ["bin/*"]:
+        if include in [["rewrite-bin/*"], ["bin/*"], ["rewrite-record/*/RECORD"]]:
             return []
         return include
 
@@ -42,6 +42,7 @@ def _test_filegroups(env):
         ),
         rules = struct(
             venv_rewrite_shebang = lambda **kwargs: None,
+            gen_wheel_record = lambda **kwargs: None,
         ),
     )
 
@@ -84,6 +85,7 @@ def _test_copy(env):
         rules = struct(
             copy_file = lambda **kwargs: calls.append(kwargs),
             venv_rewrite_shebang = lambda **kwargs: None,
+            gen_wheel_record = lambda **kwargs: None,
         ),
     )
 
@@ -242,6 +244,7 @@ def _test_sdist_excludes_record(env):
     m_glob = mocks.glob()
     m_glob.results.append([])  # bin
     m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append([])  # rewrite-record
     m_glob.results.append([])  # srcs
     m_glob.results.append([])  # data
     m_glob.results.append([])  # pyi
@@ -259,6 +262,7 @@ def _test_sdist_excludes_record(env):
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             create_inits = lambda **kwargs: [],
             venv_rewrite_shebang = lambda **kwargs: None,
+            gen_wheel_record = lambda **kwargs: None,
         ),
     )
 
@@ -284,6 +288,7 @@ def _test_exclude_bazel_files(env):
         m_glob = mocks.glob()
         m_glob.results.append([])  # bin
         m_glob.results.append([])  # rewrite-bin
+        m_glob.results.append([])  # rewrite-record
         m_glob.results.append([])  # extracted_whl_files
         m_glob.results.append([])  # dist_info
         m_glob.results.append([])  # data
@@ -297,6 +302,7 @@ def _test_exclude_bazel_files(env):
             ),
             rules = struct(
                 venv_rewrite_shebang = lambda **kwargs: None,
+                gen_wheel_record = lambda **kwargs: None,
             ),
         )
 
@@ -314,6 +320,7 @@ def _test_exclude_bazel_files(env):
         env.expect.that_collection(m_glob.calls).contains_exactly([
             mocks.glob_call(["bin/*"], allow_empty = True),
             mocks.glob_call(["rewrite-bin/*"], allow_empty = True),
+            mocks.glob_call(["rewrite-record/*/RECORD"], allow_empty = True),
             mocks.glob_call(
                 include = ["**"],
                 exclude = expected_exclude,
