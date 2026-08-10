@@ -102,7 +102,7 @@ def normalize_pep440(version):
 def arcname_from(
     name: str,
     distribution_prefix: str,
-    strip_path_prefixes: Sequence[str] = (),  # noqa: F821
+    strip_path_prefixes: Sequence[str] = (),
     add_path_prefix: str = "",
 ) -> str:
     """Return the within-archive name for a given file path name.

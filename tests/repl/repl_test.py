@@ -8,8 +8,7 @@ from pathlib import Path
 
 from python.runfiles import runfiles
 
-rfiles = runfiles.Create()
-assert rfiles is not None, "Failed to create runfiles"  # type assert
+rfiles = runfiles.CreateOrRaise()
 
 # Signals the tests below whether we should be expecting the import of
 # helpers/test_module.py on the REPL to work or not.

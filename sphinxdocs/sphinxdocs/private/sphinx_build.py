@@ -336,7 +336,7 @@ class Worker:
         self._outstream.flush()
 
     def _prepare_sphinx(self, request: WorkRequest):
-        sphinx_args = request.get("arguments", [])
+        sphinx_args = request["arguments"]
         srcdir = pathlib.Path(sphinx_args[0])
         destdir = pathlib.Path(f"{srcdir}.worker-in.d")
 
