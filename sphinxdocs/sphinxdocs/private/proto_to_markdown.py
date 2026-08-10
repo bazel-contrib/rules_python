@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import argparse
 import itertools
 import pathlib
 import sys
 from collections.abc import Callable, Iterator, Sequence
-from typing import Optional, TextIO, TypeVar
+from typing import TextIO, TypeVar
 
 from stardoc.proto import (  # pyrefly: ignore[missing-import]
     stardoc_output_pb2,
@@ -499,7 +501,7 @@ class _MySTRenderer:
         parameters: Sequence[_T],
         *,
         get_name: Callable[[_T], str],
-        get_default: Callable[[_T], Optional[str]] = lambda v: None,
+        get_default: Callable[[_T], str | None] = lambda v: None,
     ):
         self._write(name, "(")
         for _, is_last, param in _position_iter(parameters):

@@ -23,13 +23,16 @@ dependency graphs under bzlmod.
 :::
 """
 
+from __future__ import annotations
+
 import inspect
 import os
 import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from typing import Dict, Generator, Optional, Tuple, Union, cast
+from collections.abc import Generator
+from typing import cast
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -50,8 +53,8 @@ class _RepositoryMapping:
 
     def __init__(
         self,
-        exact_mappings: Dict[Tuple[str, str], str],
-        prefixed_mappings: Dict[Tuple[str, str], str],
+        exact_mappings: dict[tuple[str, str], str],
+        prefixed_mappings: dict[tuple[str, str], str],
     ) -> None:
         """Initialize repository mapping with exact and prefixed mappings.
 
@@ -72,7 +75,7 @@ class _RepositoryMapping:
             )
 
     @staticmethod
-    def create_from_file(repo_mapping_path: Optional[str]) -> "_RepositoryMapping":
+    def create_from_file(repo_mapping_path: str | None) -> _RepositoryMapping:
         """Create RepositoryMapping from a repository mapping manifest file.
 
         Args:
@@ -107,7 +110,7 @@ class _RepositoryMapping:
 
         return _RepositoryMapping(exact_mappings, prefixed_mappings)
 
-    def lookup(self, source_repo: Optional[str], target_apparent: str) -> Optional[str]:
+    def lookup(self, source_repo: str | None, target_apparent: str) -> str | None:
         """Look up repository mapping for the given source and target.
 
         This handles both exact mappings and prefix-based mappings introduced by the
@@ -161,17 +164,17 @@ class Path(pathlib.Path):
 
     # Mypy isn't smart enough to realize `self` in the methods
     # refers to our Path class instead of pathlib.Path
-    _runfiles: Optional["Runfiles"]
-    _source_repo: Optional[str]
+    _runfiles: Runfiles | None
+    _source_repo: str | None
 
     # For Python < 3.12 compatibility when subclassing Path directly
     _flavour = getattr(type(pathlib.Path()), "_flavour", None)
 
     def __new__(
         cls,
-        *args: Union[str, os.PathLike],
-        runfiles: Optional["Runfiles"] = None,
-        source_repo: Optional[str] = None,
+        *args: str | os.PathLike,
+        runfiles: Runfiles | None = None,
+        source_repo: str | None = None,
     ) -> Self:
         """Private constructor. Use Runfiles.root() to create instances."""
         obj = cast("Path", super().__new__(cls, *args))
@@ -181,9 +184,9 @@ class Path(pathlib.Path):
 
     def __init__(
         self,
-        *args: Union[str, os.PathLike],
-        runfiles: Optional["Runfiles"] = None,
-        source_repo: Optional[str] = None,
+        *args: str | os.PathLike,
+        runfiles: Runfiles | None = None,
+        source_repo: str | None = None,
     ) -> None:
         # In Python 3.12+, pathlib was refactored and Path.__init__ now accepts
         # *args. Prior to 3.12, Path did not define __init__, so
@@ -216,7 +219,7 @@ class Path(pathlib.Path):
         )
 
     # override
-    def with_segments(self, *pathsegments: Union[str, os.PathLike]) -> Self:
+    def with_segments(self, *pathsegments: str | os.PathLike) -> Self:
         """Used by Python 3.12+ pathlib to create new path objects."""
         return type(self)(
             *pathsegments,
@@ -226,7 +229,7 @@ class Path(pathlib.Path):
 
     # For Python < 3.12
     # override
-    def _make_child(self, args: Tuple[str, ...]) -> Self:
+    def _make_child(self, args: tuple[str, ...]) -> Self:
         # _make_child is an internal CPython method in Python < 3.12 omitted from
         # typeshed stubs. We ignore [misc] for mypy and [missing-attribute] for pyrefly.
         obj = cast("Path", super()._make_child(args))  # type: ignore[misc]  # pyrefly: ignore[missing-attribute]
@@ -236,7 +239,7 @@ class Path(pathlib.Path):
 
     # override
     @property
-    def parents(self) -> Tuple[Self, ...]:
+    def parents(self) -> tuple[Self, ...]:
         return tuple(
             type(self)(
                 p,
@@ -329,9 +332,9 @@ class Path(pathlib.Path):
         self,
         mode: str = "r",
         buffering: int = -1,
-        encoding: Optional[str] = None,
-        errors: Optional[str] = None,
-        newline: Optional[str] = None,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ):
         return self._as_path().open(
             mode=mode,
@@ -346,9 +349,7 @@ class Path(pathlib.Path):
         return self._as_path().read_bytes()
 
     # override
-    def read_text(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
+    def read_text(self, encoding: str | None = None, errors: str | None = None) -> str:
         return self._as_path().read_text(encoding=encoding, errors=errors)
 
     # override
@@ -405,7 +406,7 @@ class _ManifestBased:
         self._path = path
         self._runfiles = _ManifestBased._LoadRunfiles(path)
 
-    def RlocationChecked(self, path: str) -> Optional[str]:
+    def RlocationChecked(self, path: str) -> str | None:
         """Returns the runtime path of a runfile."""
         exact_match = self._runfiles.get(path)
         if exact_match:
@@ -424,7 +425,7 @@ class _ManifestBased:
                 return prefix_match + "/" + path[prefix_end + 1 :]
 
     @staticmethod
-    def _LoadRunfiles(path: str) -> Dict[str, str]:
+    def _LoadRunfiles(path: str) -> dict[str, str]:
         """Loads the runfiles manifest."""
         result = {}
         with open(path, "r", encoding="utf-8", newline="\n") as f:
@@ -456,7 +457,7 @@ class _ManifestBased:
             return self._path[: -len("_manifest")]
         return ""
 
-    def EnvVars(self) -> Dict[str, str]:
+    def EnvVars(self) -> dict[str, str]:
         directory = self._GetRunfilesDir()
         return {
             "RUNFILES_MANIFEST_FILE": self._path,
@@ -486,7 +487,7 @@ class _DirectoryBased:
     def _GetRunfilesDir(self) -> str:
         return self._runfiles_root
 
-    def EnvVars(self) -> Dict[str, str]:
+    def EnvVars(self) -> dict[str, str]:
         return {
             "RUNFILES_DIR": self._runfiles_root,
             # TODO(laszlocsomor): remove JAVA_RUNFILES once the Java launcher can
@@ -501,14 +502,14 @@ class Runfiles:
     Runfiles are data-dependencies of Bazel-built binaries and tests.
     """
 
-    def __init__(self, strategy: Union[_ManifestBased, _DirectoryBased]) -> None:
+    def __init__(self, strategy: _ManifestBased | _DirectoryBased) -> None:
         self._strategy = strategy
         self._python_runfiles_root = strategy._GetRunfilesDir()
         self._repo_mapping = _RepositoryMapping.create_from_file(
             strategy.RlocationChecked("_repo_mapping")
         )
 
-    def root(self, source_repo: Optional[str] = None) -> Path:
+    def root(self, source_repo: str | None = None) -> Path:
         """Returns a Path object representing the runfiles root.
 
         The repository mapping used by the returned Path object is that of the
@@ -518,7 +519,7 @@ class Runfiles:
             source_repo = self.CurrentRepository(frame=2)
         return Path(runfiles=self, source_repo=source_repo)
 
-    def Rlocation(self, path: str, source_repo: Optional[str] = None) -> Optional[str]:
+    def Rlocation(self, path: str, source_repo: str | None = None) -> str | None:
         """Returns the runtime path of a runfile.
 
         Runfiles are data-dependencies of Bazel-built binaries and tests.
@@ -595,7 +596,7 @@ class Runfiles:
         # we're not using Bzlmod
         return self._strategy.RlocationChecked(path)
 
-    def EnvVars(self) -> Dict[str, str]:
+    def EnvVars(self) -> dict[str, str]:
         """Returns environment variables for subprocesses.
 
         The caller should set the returned key-value pairs in the environment of
@@ -697,7 +698,7 @@ class Runfiles:
     # TODO: Update return type to Self when 3.11 is the min version
     # https://peps.python.org/pep-0673/
     @staticmethod
-    def Create(env: Optional[Dict[str, str]] = None) -> Optional["Runfiles"]:
+    def Create(env: dict[str, str] | None = None) -> Runfiles | None:
         """Returns a new `Runfiles` instance.
 
         The returned object is either:
@@ -735,7 +736,7 @@ class Runfiles:
     # TODO: Update return type to Self when 3.11 is the min version
     # https://peps.python.org/pep-0673/
     @staticmethod
-    def CreateOrRaise(env: Optional[Dict[str, str]] = None) -> "Runfiles":
+    def CreateOrRaise(env: dict[str, str] | None = None) -> Runfiles:
         """Returns a new `Runfiles` instance, or raises an error.
 
         The returned object is either:
@@ -785,11 +786,11 @@ def CreateDirectoryBased(runfiles_dir_path: str) -> Runfiles:
     return Runfiles.CreateDirectoryBased(runfiles_dir_path)
 
 
-def Create(env: Optional[Dict[str, str]] = None) -> Optional[Runfiles]:
+def Create(env: dict[str, str] | None = None) -> Runfiles | None:
     return Runfiles.Create(env)
 
 
-def CreateOrRaise(env: Optional[Dict[str, str]] = None) -> Runfiles:
+def CreateOrRaise(env: dict[str, str] | None = None) -> Runfiles:
     """Refer to `Runfiles.CreateOrRaise`.
 
     :::{versionadded} VERSION_NEXT_FEATURE

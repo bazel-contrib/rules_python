@@ -14,13 +14,14 @@
 
 "Set defaults for the pip-compile command to run it under Bazel"
 
+from __future__ import annotations
+
 import atexit
 import functools
 import os
 import shutil
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import click
 import piptools.writer as piptools_writer
@@ -91,13 +92,13 @@ def _locate(bazel_runfiles, file):
 @click.option("--requirements-windows")
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def main(
-    srcs: Tuple[str, ...],
+    srcs: tuple[str, ...],
     requirements_txt: str,
     target_label_prefix: str,
-    requirements_linux: Optional[str],
-    requirements_darwin: Optional[str],
-    requirements_windows: Optional[str],
-    extra_args: Tuple[str, ...],
+    requirements_linux: str | None,
+    requirements_darwin: str | None,
+    requirements_windows: str | None,
+    extra_args: tuple[str, ...],
 ) -> None:
     bazel_runfiles = runfiles.Create()
 
@@ -229,9 +230,9 @@ def main(
 
 
 def run_pip_compile(
-    args: List[str],
+    args: list[str],
     *,
-    srcs_relative: List[str],
+    srcs_relative: list[str],
     verbose_command: str,
 ) -> None:
     try:

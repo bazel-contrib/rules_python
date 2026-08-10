@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import json
 import os
 import pathlib
 import tempfile
 import unittest
-from typing import Any, Optional
+from typing import Any
 
 from python.runfiles import runfiles
 from python.runfiles.runfiles import _RepositoryMapping
@@ -771,11 +773,11 @@ class RunfilesTest(unittest.TestCase):
 
 class _MockFile:
     def __init__(
-        self, name: Optional[str] = None, contents: Optional[list[Any]] = None
+        self, name: str | None = None, contents: list[Any] | None = None
     ) -> None:
         self._contents = contents or []
         self._name = name or "x"
-        self._path: Optional[str] = None
+        self._path: str | None = None
 
     def __enter__(self) -> Any:
         tmpdir = os.environ.get("TEST_TMPDIR")
