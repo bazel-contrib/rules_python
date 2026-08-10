@@ -1,4 +1,5 @@
 import importlib.metadata
+import sys
 import unittest
 
 
@@ -34,7 +35,17 @@ class ImportlibMetadataTest(unittest.TestCase):
         file_paths = sorted(str(f).replace("\\", "/") for f in files)
         self.assertEqual(file_paths, expected_paths)
 
+        is_windows = sys.platform == "win32"
         for f in files:
+            # On Windows, virtual environments have a 2-level directory depth
+            # (Lib/site-packages) while POSIX virtual environments have a
+            # 3-level depth (lib/pythonX.Y/site-packages). Since wheel
+            # extraction writes POSIX-standard relative paths (../../../) in
+            # RECORD, files outside site-packages cannot be resolved via
+            # locate() on Windows.
+            if is_windows and str(f).startswith(".."):
+                continue
+
             resolved = f.locate()
             self.assertTrue(
                 resolved.exists(),
