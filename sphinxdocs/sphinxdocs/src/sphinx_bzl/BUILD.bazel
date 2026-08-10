@@ -4,6 +4,7 @@ package(
     default_visibility = ["//sphinxdocs:__subpackages__"],
 )
 
+# NOTE: This provides the library on its own, not its dependencies.
 py_library(
     name = "sphinx_bzl",
     srcs = glob(["*.py"]),
