@@ -23,5 +23,11 @@ When the user asks to merge a pull request (e.g., "merge PR <number>", "merge th
      `gh api repos/:owner/:repo/branches --jq '.[].name | select(test("gh-readonly-queue/.*/pr-<pr_number>-"))'`
      and monitor commit statuses/Buildkite builds running on that temporary
      branch.
-4. **Queue Shepherding**: Periodically check `gh pr view <pr_number> --json state,autoMergeRequest`. While `state` is `"OPEN"`, ensure auto-merge is enabled / queued by running `gh pr merge <pr_number> --auto --squash`. If `autoMergeRequest` is null (e.g., ejected from the merge queue due to a CI flake in the temporary queue branch), re-enqueue it for merge by running `gh pr merge <pr_number> --auto --squash` once checks are retried or green.
+4. **Queue Shepherding**: Periodically check `gh pr view <pr_number> --json
+   state,autoMergeRequest,mergeStateStatus,mergeable`. While `state` is
+   `"OPEN"`, ensure auto-merge is enabled / queued by running `gh pr merge
+   <pr_number> --auto --squash`. If `autoMergeRequest` is null (e.g., ejected
+   from the merge queue due to a CI flake in the temporary queue branch),
+   re-enqueue it for merge by running `gh pr merge <pr_number> --auto --squash`
+   once checks are retried or green.
 5. **Completion Notification**: Once `state` becomes `"MERGED"`, send a high-priority message back to the parent conversation.

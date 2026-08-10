@@ -23,4 +23,8 @@
 * **Consent for `Any`**: Require user consent before changing type annotations
   to `Any`.
 
+## Delegating Functions
+* Module-level functions delegating to class methods should have a docstring
+  referring to the class method (e.g. `"""Refer to \`Class.method\`."""`).
+
 
