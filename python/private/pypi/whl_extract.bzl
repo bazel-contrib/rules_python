@@ -61,8 +61,80 @@ def whl_extract(rctx, *, whl_path, logger):
                 logger.debug(lambda: "Renaming: {} -> {}".format(src, dest))
                 repo_utils.rename(rctx, src, dest)
 
+        _rewrite_record(rctx, dist_info_dir, data_dir.basename)
+
         # Ensure that there is no data dir left
         rctx.delete(data_dir)
+
+_DATA_PREFIX_REWRITES = {
+    "data/": "../../../",
+    "headers/": "../../../include/",
+    "platlib/": "",
+    "purelib/": "",
+    "scripts/": "../../../bin/",
+}
+
+# Visible for testing
+def rewrite_record_content(content, data_dir_basename):
+    """Rewrite RECORD file content to reflect extracted paths of .data contents.
+
+    In a wheel archive, files destined for different installation schemes are
+    stored under the `{distribution}-{version}.data/` directory (e.g. `purelib`,
+    `platlib`, `scripts`, `headers`, `data`), and their archive member paths are
+    recorded in `.dist-info/RECORD` with the `.data/` prefix.
+
+    Per PEP 427 (https://peps.python.org/pep-0427/#the-data-directory) and
+    PEP 376 (https://peps.python.org/pep-0376/#record), when a wheel is
+    installed, files in `.data/` are unpacked into their target installation
+    scheme locations (`purelib` and `platlib` into `site-packages`, `scripts`
+    into `bin`, `headers` into `include`, and `data` into `data`/sys.prefix), and
+    the `.data` directory is removed. The `RECORD` file is updated to list the
+    installed paths relative to the directory containing `.dist-info` (i.e.
+    `site-packages`).
+
+    Tools such as `importlib.metadata.files()` resolve paths in `RECORD`
+    relative to `site-packages`. Without rewriting `RECORD`, these tools attempt
+    to locate files under the deleted `.data/` path and fail.
+
+    Args:
+        content: {type}`str` The original RECORD file content.
+        data_dir_basename: {type}`str` The basename of the .data directory
+            (e.g., "foo-1.0.data").
+
+    Returns:
+        {type}`str` The rewritten RECORD file content.
+    """
+    data_prefix = data_dir_basename + "/"
+    quoted_data_prefix = '"' + data_prefix
+
+    new_lines = []
+    for line in content.splitlines():
+        if not line:
+            continue
+        if line.startswith(data_prefix):
+            rest = line[len(data_prefix):]
+            for category, replacement in _DATA_PREFIX_REWRITES.items():
+                if rest.startswith(category):
+                    line = replacement + rest[len(category):]
+                    break
+        elif line.startswith(quoted_data_prefix):
+            rest = line[len(quoted_data_prefix):]
+            for category, replacement in _DATA_PREFIX_REWRITES.items():
+                if rest.startswith(category):
+                    line = '"' + replacement + rest[len(category):]
+                    break
+        new_lines.append(line)
+
+    return "\n".join(new_lines) + "\n"
+
+def _rewrite_record(rctx, dist_info_dir, data_dir_basename):
+    record_file = dist_info_dir.get_child("RECORD")
+    if not record_file.exists:
+        return
+
+    content = rctx.read(record_file)
+    new_content = rewrite_record_content(content, data_dir_basename)
+    rctx.file(record_file, new_content)
 
 def merge_trees(src, dest):
     """Merge src into the destination path.
