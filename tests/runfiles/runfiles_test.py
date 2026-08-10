@@ -195,6 +195,62 @@ class RunfilesTest(unittest.TestCase):
         self.assertIsNone(runfiles.Create({"TEST_SRCDIR": "always ignored"}))
         self.assertIsNone(runfiles.Create({"FOO": "bar"}))
 
+    def testCreatesManifestBasedRunfilesWithCreateOrRaise(self) -> None:
+        with _MockFile(contents=["a/b c/d"]) as mf:
+            r = runfiles.CreateOrRaise(
+                {
+                    "RUNFILES_MANIFEST_FILE": mf.Path(),
+                    "RUNFILES_DIR": "ignored when RUNFILES_MANIFEST_FILE has a value",
+                    "TEST_SRCDIR": "always ignored",
+                }
+            )
+            self.assertEqual(r.Rlocation("a/b"), "c/d")
+            self.assertIsNone(r.Rlocation("foo"))
+
+            r_class = runfiles.Runfiles.CreateOrRaise(
+                {
+                    "RUNFILES_MANIFEST_FILE": mf.Path(),
+                }
+            )
+            self.assertEqual(r_class.Rlocation("a/b"), "c/d")
+
+    def testCreatesDirectoryBasedRunfilesWithCreateOrRaise(self) -> None:
+        r = runfiles.CreateOrRaise(
+            {
+                "RUNFILES_DIR": "runfiles/dir",
+                "TEST_SRCDIR": "always ignored",
+            }
+        )
+        self.assertEqual(r.Rlocation("a/b"), "runfiles/dir/a/b")
+        self.assertEqual(r.Rlocation("foo"), "runfiles/dir/foo")
+
+        r_class = runfiles.Runfiles.CreateOrRaise(
+            {
+                "RUNFILES_DIR": "runfiles/dir",
+            }
+        )
+        self.assertEqual(r_class.Rlocation("a/b"), "runfiles/dir/a/b")
+
+    def testFailsToCreateManifestBasedBecauseManifestDoesNotExistWithCreateOrRaise(
+        self,
+    ) -> None:
+        def _Run():
+            runfiles.CreateOrRaise({"RUNFILES_MANIFEST_FILE": "non-existing path"})
+
+        self.assertRaisesRegex(IOError, "non-existing path", _Run)
+
+    def testFailsToCreateAnyRunfilesWithCreateOrRaise(self) -> None:
+        with self.assertRaises(RuntimeError):
+            runfiles.CreateOrRaise({"TEST_SRCDIR": "always ignored"})
+        with self.assertRaises(RuntimeError):
+            runfiles.CreateOrRaise({"FOO": "bar"})
+        with self.assertRaises(RuntimeError):
+            runfiles.CreateOrRaise({})
+        with self.assertRaises(RuntimeError):
+            runfiles.Runfiles.CreateOrRaise({"TEST_SRCDIR": "always ignored"})
+        with self.assertRaises(RuntimeError):
+            runfiles.Runfiles.CreateOrRaise({})
+
     def testManifestBasedRlocation(self) -> None:
         with _MockFile(
             contents=[

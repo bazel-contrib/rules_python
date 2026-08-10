@@ -9,8 +9,10 @@ to a subagent. NEVER create or draft PRs directly in the main conversation.
 
 ### Instructions
 
-1. **Pre-Review Audit**: Launch a subagent with `pre-review-audit` to verify
-   `git diff` conforms to all rules (line wrapping, copyright, conventions).
+1. **Code Review Audit**: Launch a subagent with `review-code` to verify
+   `git diff` conforms to all rules (news entry in `news/`, line wrapping,
+   copyright, conventions, Starlark formatting). Fix any issues before
+   proceeding.
 2. **Launch Subagent**: Use `invoke_subagent` (`TypeName: "self"`).
 3. **Subagent Prompt Instructions**:
    - Follow `CONTRIBUTING.md` and `@/.agents/rules/pr.md`.
@@ -32,8 +34,10 @@ to a subagent. NEVER create or draft PRs directly in the main conversation.
      `gh pr create` when explicitly requested to create the PR.
    - **Targeting Upstream Repo**: When creating, target upstream using
      `--repo bazel-contrib/rules_python` and `--head <fork_owner>:<branch>`.
-4. **Return Status**: Direct subagent to report PR number/draft status to caller.
+4. **Return Status**: Direct subagent to report PR number/draft status to
+   caller.
 5. **Link Artifact Before Asking**: Upon subagent completion, output a
    clickable markdown link to `pr_info.md` before prompting for confirmation.
 6. **Interactive Actions**: When presenting choices via `ask_question`, always
-   include the clickable markdown link to `pr_info.md` in the `question` prompt.
+   include the clickable markdown link to `pr_info.md` in the `question`
+   prompt.

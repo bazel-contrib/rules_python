@@ -61,7 +61,17 @@ with open(r.Rlocation("my_workspace/path/to/my/data.txt"), "r") as f:
 
 Here `my_workspace` is the name you specified via `module(name = "...")` in your `MODULE.bazel` file (with `--enable_bzlmod`, default as of Bazel 7) or `workspace(name = "...")` in `WORKSPACE` (with `--noenable_bzlmod`).
 
-The code above creates a manifest- or directory-based implementation based on the environment variables in `os.environ`. See `Runfiles.Create()` for more info.
+The code above creates a manifest- or directory-based implementation based on
+the environment variables in `os.environ`. See `Runfiles.Create()` for more
+info.
+
+Alternatively, `Runfiles.CreateOrRaise()` can be used to raise an error
+instead of returning `None` if runfiles cannot be found:
+
+```python
+r = Runfiles.CreateOrRaise()
+```
+
 
 If you want to explicitly create a manifest- or directory-based
 implementation, you can do so as follows:
