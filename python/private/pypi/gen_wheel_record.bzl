@@ -1,5 +1,6 @@
 """Rule for generating platform-specific RECORD files."""
 
+load("//python/private:attributes.bzl", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:common.bzl", "is_windows_platform")
 
 def _gen_wheel_record_impl(ctx):
@@ -52,8 +53,8 @@ def _gen_wheel_record_impl(ctx):
             outputs = [out_file],
             executable = action_exe,
             arguments = [action_args],
-            mnemonic = "PyGenWheelRecord",
-            progress_message = "Generating wheel RECORD %{output}",
+            mnemonic = "PyRewriteWheelRecord",
+            progress_message = "Rewriting wheel RECORD %{output}",
             toolchain = None,
         )
 
@@ -74,10 +75,8 @@ gen_wheel_record = rule(
             allow_files = True,
             cfg = "exec",
         ),
-        "_windows_constraints": attr.label_list(
-            default = [
-                "@platforms//os:windows",
-            ],
+        "_windows_constraints": (
+            WINDOWS_CONSTRAINTS_ATTRS["_windows_constraints"]().build()
         ),
     },
 )

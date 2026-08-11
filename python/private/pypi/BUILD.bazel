@@ -503,6 +503,7 @@ bzl_library(
     name = "gen_wheel_record",
     srcs = ["gen_wheel_record.bzl"],
     deps = [
+        "//python/private:attributes",
         "//python/private:common",
     ],
 )

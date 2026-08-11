@@ -11,6 +11,19 @@ class ImportlibMetadataTest(unittest.TestCase):
             len(files), 0, "importlib.metadata.files returned empty list"
         )
 
+        # Verify it contains expected files.
+        # The RECORD file lists paths relative to the installation root
+        # (site-packages).
+        # Per PEP 376 and PEP 427:
+        # - purelib and platlib files are installed directly under
+        #   site-packages:
+        #   whl_with_data1-1.0.data/purelib/data_overlap.py should be
+        #   installed as data_overlap.py, and
+        #   whl_with_data1-1.0.data/platlib/whl_with_data1/platlib_file.txt
+        #   should be whl_with_data1/platlib_file.txt.
+        # - scripts, headers, and data files installed outside site-packages
+        #   are recorded relative to site-packages traversing up to the venv
+        #   root (e.g. ../../../bin/ on POSIX, ../../Scripts/ on Windows).
         if sys.platform == "win32":
             scripts_prefix = "../../Scripts/"
             headers_prefix = "../../Include/"

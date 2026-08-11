@@ -4,6 +4,21 @@ load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":whl_metadata.bzl", "find_whl_metadata")
 
+# Mapping of wheel .data categories to their extraction destination (relative to
+# repository root).
+_DATA_CATEGORIES = {
+    # category: repo_dest_dir
+    "data": "data",
+    "headers": "include",
+    # In theory there may be directory collisions in platlib/purelib, so it is
+    # best to merge the paths here. What is more, this code has to be reasonably
+    # efficient because some packages like to explicitly indicate if something
+    # is in `platlib` or `purelib` (e.g. libclang wheel).
+    "platlib": "site-packages",
+    "purelib": "site-packages",
+    "scripts": "bin",
+}
+
 def whl_extract(rctx, *, whl_path, logger):
     """Extract whls in Starlark.
 
@@ -34,7 +49,9 @@ def whl_extract(rctx, *, whl_path, logger):
     )
 
     # Get the <prefix>.dist_info dir name
-    data_dir = dist_info_dir.dirname.get_child(dist_info_dir.basename[:-len(".dist-info")] + ".data")
+    data_dir = dist_info_dir.dirname.get_child(
+        dist_info_dir.basename[:-len(".dist-info")] + ".data",
+    )
     if data_dir.exists:
         for prefix, dest_prefix in _DATA_CATEGORIES.items():
             src = data_dir.get_child(prefix)
@@ -52,27 +69,18 @@ def whl_extract(rctx, *, whl_path, logger):
         # the platform-specific RECORD file at build time.
         record_file = dist_info_dir.get_child("RECORD")
         if record_file.exists:
-            rewrite_record_dir = rctx.path("rewrite-record/" + dist_info_dir.basename)
+            rewrite_record_dir = rctx.path(
+                "rewrite-record/" + dist_info_dir.basename,
+            )
             repo_utils.mkdir(rctx, rewrite_record_dir)
-            repo_utils.rename(rctx, record_file, rewrite_record_dir.get_child("RECORD"))
+            repo_utils.rename(
+                rctx,
+                record_file,
+                rewrite_record_dir.get_child("RECORD"),
+            )
 
         # Ensure that there is no data dir left
         rctx.delete(data_dir)
-
-# Mapping of wheel .data categories to their extraction destination (relative to
-# repository root).
-_DATA_CATEGORIES = {
-    # category: repo_dest_dir
-    "data": "data",
-    "headers": "include",
-    # In theory there may be directory collisions in platlib/purelib, so it is
-    # best to merge the paths here. What is more, this code has to be reasonably
-    # efficient because some packages like to explicitly indicate if something
-    # is in `platlib` or `purelib` (e.g. libclang wheel).
-    "platlib": "site-packages",
-    "purelib": "site-packages",
-    "scripts": "bin",
-}
 
 def merge_trees(src, dest):
     """Merge src into the destination path.
@@ -98,21 +106,17 @@ def merge_trees(src, dest):
         for (s, d) in remaining:
             if not d.exists:
                 ret.append((s, d))
-                continue
-
-            if not s.is_dir or not d.is_dir:
-                collisions.append(s)
-                continue
-
-            for file_or_dir in s.readdir():
-                tmp.append((file_or_dir, d.get_child(file_or_dir.basename)))
-
+            elif s.is_dir and d.is_dir:
+                tmp.extend([(c, d.get_child(c.basename)) for c in s.readdir()])
+            else:
+                collisions.append((s, d))
         remaining = tmp
 
-    if remaining:
-        fail("Exceeded maximum directory depth of 10000 during tree merge.")
-
     if collisions:
-        fail("Detected collisions between {} and {}: {}".format(src, dest, collisions))
+        fail(
+            "Collisions found while extracting:\n{}".format(
+                "\n".join(["{} -> {}".format(s, d) for s, d in collisions]),
+            ),
+        )
 
     return ret
