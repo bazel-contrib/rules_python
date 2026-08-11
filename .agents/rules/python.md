@@ -13,3 +13,8 @@
 * **External Objects**: When defining a `TypedDict` for an external object,
   link to its definition in the docstring.
 
+## Delegating Functions
+* Module-level functions delegating to class methods should have a docstring
+  referring to the class method (e.g. `"""Refer to \`Class.method\`."""`).
+
+

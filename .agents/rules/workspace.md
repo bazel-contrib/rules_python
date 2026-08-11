@@ -16,3 +16,5 @@ basis:
   ```bash
   .agents/scripts/setup_triangle_branch.sh <branch>
   ```
+* Never use `git push -u` or `--set-upstream` (it breaks upstream tracking).
+

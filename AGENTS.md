@@ -211,6 +211,14 @@ When modifying locked/resolved requirements files:
     the requirements.txt file. That will update the locked/resolved
     requirements.txt file.
 
+When updating the minimum Python version for dev/docs tooling (e.g. following
+Dependabot alerts):
+  * Update `python_version` in both `lock(name = "requirements", ...)` and
+    `lock(name = "uv_lock", ...)` within `dev/BUILD.bazel`.
+  * Regenerate lockfiles by running:
+    `bazel run //dev:requirements.update && bazel run //dev:uv_lock.update`
+  * Verify docs build via `bazel build //docs:docs`.
+
 ## rules_python idiosyncrasies
 
 When building `//docs:docs`, ignore an error about exit code 2; this is a flake,
