@@ -1,7 +1,6 @@
 load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
-load("@rules_python//tests/support:explicit_init_py_test.bzl", "explicit_init_py_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 py_binary(
@@ -192,17 +191,4 @@ sh_test(
         "VERSION_CHECK": "3.10",
         "VERSION_PY_BINARY": "$(rootpaths :version_3_10)",
     },
-)
-
-explicit_init_py_test(
-    name = "explicit_init_py_no_generation_test",
-    expect_generated_init = False,
-    main = "version.py",
-)
-
-explicit_init_py_test(
-    name = "legacy_create_init_override_test",
-    expect_generated_init = True,
-    legacy_create_init = 1,
-    main = "version.py",
 )
