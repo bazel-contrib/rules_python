@@ -2,6 +2,7 @@ module(name = "other")
 
 bazel_dep(name = "rules_python", version = "0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_testing", version = "0.6.0")
 bazel_dep(name = "another_module", version = "0")
 
 # Validate behavior of use_explicit_init_py configuration extension when used by

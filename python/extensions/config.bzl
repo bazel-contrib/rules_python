@@ -56,7 +56,6 @@ def _config_impl(module_ctx):
     transition_setting_generators = {}
     transition_settings = []
     explicit_init_py_modules = {}
-    is_root = True
     for mod in module_ctx.modules:
         for tag in mod.tags.add_transition_setting:
             setting = str(tag.setting)
@@ -66,9 +65,8 @@ def _config_impl(module_ctx):
             transition_setting_generators[setting].append(mod.name)
         for tag in mod.tags.use_explicit_init_py:
             explicit_init_py_modules[mod.name] = str(tag.enabled)
-            if is_root:
+            if mod.is_root:
                 explicit_init_py_modules[""] = str(tag.enabled)
-        is_root = False
 
     internal_config_repo(
         name = "rules_python_internal",
