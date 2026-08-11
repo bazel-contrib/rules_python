@@ -114,6 +114,10 @@ def parse_log(log_path):
                 "error waiting for container",
                 "error during connect:",
                 "user command error:",
+                "curl: (",
+                "connection reset by peer",
+                "input/output error",
+                "errno 5",
             ]
         ):
             if clean_line:
@@ -151,6 +155,19 @@ def create_plan(job_name, log_path, errors):
     ):
         is_flake = True
         flake_reason = "Buildkite agent / Docker runner infrastructure failure (dockerd disconnection / grpc context canceled / exit status 125). This is an infrastructure flake, not a codebase bug."
+    elif any(
+        "curl:" in e.lower()
+        or "recv failure: connection reset" in e.lower()
+        or "connection reset by peer" in e.lower()
+        for e in errors
+    ):
+        is_flake = True
+        flake_reason = "Network connection reset during runner bootstrap or artifact download (curl recv failure / connection reset). This is an infrastructure network flake."
+    elif any(
+        "input/output error" in e.lower() or "errno 5" in e.lower() for e in errors
+    ):
+        is_flake = True
+        flake_reason = "Transient runner host disk / Darwin sandbox I/O error (OSError: [Errno 5] Input/output error). This is an infrastructure flake, not a codebase defect."
 
     classification = (
         "⚡ **Classification**: **Infrastructure / Flake Issue** (Not a codebase bug)"
