@@ -1601,14 +1601,18 @@ WARNING: Target {} is using implicit __init__.py creation.
   See https://github.com/bazel-contrib/rules_python/issues/2945
 
   Ensure all __init__.py files are explicitly created and
-  added to the srcs or deps of your targets, then enable this
-  setting in your MODULE.bazel:
+  added to the srcs or deps of your targets.
+
+  Disable implicit creation for your module in MODULE.bazel:
 
     rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
     rules_python_config.explicit_init_py(default = True)
 
-  If this warning is coming from an external module, you can configure this
-  globally with the following Bazel flag:
+  Or for a specific target by setting:
+
+    legacy_create_init = 0
+
+  Or globally with the following Bazel flag:
 
     --incompatible_default_to_explicit_init_py
 ======================================================================
