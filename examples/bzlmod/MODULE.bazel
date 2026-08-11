@@ -22,6 +22,10 @@ bazel_dep(name = "rules_java", version = "8.16.1")
 # were fixed.
 bazel_dep(name = "rules_rust", version = "0.67.0")
 
+# Adopt migration away from legacy __init__.py generation.
+rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+rules_python_config.explicit_init_py(default = True)
+
 # We next initialize the python toolchain using the extension.
 # You can set different Python versions in this block.
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")

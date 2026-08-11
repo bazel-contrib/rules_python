@@ -90,6 +90,11 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 * (bzlmod) Added MODULE.bazel flag aliases for Starlark-defined flags:
   `build_python_zip`, `incompatible_default_to_explicit_init_py`,
   `python_path`, and `experimental_python_import_all_repositories`.
+* (bzlmod) Added the `{obj}`explicit_init_py`` tag class to the
+  `{obj}`config`` module extension for configuring implicit `__init__.py` file
+  generation module-wide.
+  ([#3997](https://github.com/bazel-contrib/rules_python/pull/3997),
+  [#2945](https://github.com/bazel-contrib/rules_python/issues/2945))
 * (cc) Added experimental {obj}`py_extension` macro for creating C/C++ Python
   extension modules
   ([#3283](https://github.com/bazel-contrib/rules_python/issues/3283)).
@@ -103,6 +108,7 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   fail the build when a test's main module only contains inert top-level
   statements (definitions, imports, assignments) and never invokes a test
   runner ([#3824](https://github.com/bazel-contrib/rules_python/issues/3824)).
+
 
 
 {#v2-2-0}
