@@ -120,7 +120,7 @@ Whether to implicitly create empty `__init__.py` files in the runfiles tree.
 These are created in every directory containing Python source code or shared
 libraries, and every parent directory of those directories, excluding the repo
 root directory. The default, `-1` (auto), means true unless
-`--incompatible_default_to_explicit_init_py` or the `use_explicit_init_py`
+`--incompatible_default_to_explicit_init_py` or the `explicit_init_py`
 module configuration option are used. If false, the user is responsible for
 creating (possibly empty) `__init__.py` files and adding them to the `srcs` of
 Python targets as required.
@@ -1601,7 +1601,7 @@ WARNING: Target {} is using implicit __init__.py creation.
   setting in your MODULE.bazel:
 
     rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
-    rules_python_config.use_explicit_init_py(enabled = True)
+    rules_python_config.explicit_init_py(default = True)
 
   If this warning is coming from an external module, you can configure this
   globally with the following Bazel flag:

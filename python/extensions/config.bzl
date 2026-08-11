@@ -22,9 +22,9 @@ to repositories that are expensive to create or invalidate frequently.
     },
 )
 
-_use_explicit_init_py = tag_class(
+_explicit_init_py = tag_class(
     doc = """
-Require explicit `__init__.py` files in this module.
+Require explicit `__init__.py` files *in this module*.
 
 Disables the legacy `__init__.py` generation for all `py_*` targets in this
 module, requiring all Python targets to explicitly provide `__init__.py` files
@@ -48,7 +48,7 @@ In the future, this will be enabled by default.
 :::
 """,
     attrs = {
-        "enabled": attr.bool(doc = "Whether this feature is enabled.", mandatory = True),
+        "default": attr.bool(doc = "Whether explicit __init__.py files are required by default.", mandatory = True),
     },
 )
 
@@ -63,10 +63,10 @@ def _config_impl(module_ctx):
                 transition_setting_generators[setting] = []
                 transition_settings.append(setting)
             transition_setting_generators[setting].append(mod.name)
-        for tag in mod.tags.use_explicit_init_py:
-            explicit_init_py_modules[mod.name] = str(tag.enabled)
+        for tag in mod.tags.explicit_init_py:
+            explicit_init_py_modules[mod.name] = str(tag.default)
             if mod.is_root:
-                explicit_init_py_modules[""] = str(tag.enabled)
+                explicit_init_py_modules[""] = str(tag.default)
 
     internal_config_repo(
         name = "rules_python_internal",
@@ -91,6 +91,6 @@ config = module_extension(
     implementation = _config_impl,
     tag_classes = {
         "add_transition_setting": _add_transition_setting,
-        "use_explicit_init_py": _use_explicit_init_py,
+        "explicit_init_py": _explicit_init_py,
     },
 )
