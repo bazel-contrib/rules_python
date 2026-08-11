@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 
-import ext_shared
+import ext_shared  # pyrefly: ignore[missing-import]
 from elftools.elf.dynamic import DynamicSection
 from elftools.elf.elffile import ELFFile
 
@@ -26,9 +26,9 @@ class PyExtensionTest(unittest.TestCase):
             self.assertTrue(isinstance(dynamic_section, DynamicSection))
 
             needed_libs = [
-                tag.needed
+                tag.needed  # pyrefly: ignore[missing-attribute]
                 for tag in dynamic_section.iter_tags()
-                if tag.entry.d_tag == "DT_NEEDED"
+                if tag.entry.d_tag == "DT_NEEDED"  # pyrefly: ignore[missing-attribute]
             ]
             self.assertIn("libadd_one_shared.so", needed_libs)
 

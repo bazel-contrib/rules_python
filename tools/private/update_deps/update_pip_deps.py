@@ -27,7 +27,7 @@ import tempfile
 import textwrap
 from dataclasses import dataclass
 
-from pip._internal.cli.main import main as pip_main
+from pip._internal.cli.main import main as pip_main  # pyrefly: ignore[missing-import]
 
 from tools.private.update_deps.args import path_from_runfiles
 from tools.private.update_deps.update_file import update_file

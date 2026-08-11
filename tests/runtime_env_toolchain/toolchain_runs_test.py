@@ -1,5 +1,4 @@
 import json
-import pathlib
 import platform
 import sys
 import unittest
@@ -9,11 +8,11 @@ from python.runfiles import runfiles
 
 class RunTest(unittest.TestCase):
     def test_ran(self):
-        rf = runfiles.Create()
-        settings_path = rf.Rlocation(
-            "rules_python/tests/support/current_build_settings.json"
+        rf = runfiles.CreateOrRaise()
+        settings_path = (
+            rf.root() / "rules_python/tests/support/current_build_settings.json"
         )
-        settings = json.loads(pathlib.Path(settings_path).read_text())
+        settings = json.loads(settings_path.read_text())
 
         if platform.system() == "Windows":
             self.assertEqual(
@@ -26,6 +25,7 @@ class RunTest(unittest.TestCase):
             )
 
         if settings["bootstrap_impl"] == "script":
+            self.assertEqual(sys.argv[1:], ["argument with spaces"])
             # Verify we're running in a venv
             self.assertNotEqual(sys.prefix, sys.base_prefix)
             # .venv/ occurs for a build-time venv.
@@ -35,4 +35,4 @@ class RunTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(argv=sys.argv[:1])

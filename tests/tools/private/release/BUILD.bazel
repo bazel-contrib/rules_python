@@ -16,11 +16,13 @@ py_library(
 
 py_library(
     name = "release_test_helper",
+    testonly = True,
     srcs = ["release_test_helper.py"],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         "//tools/private/release:mock_gh",
         "//tools/private/release:release_lib",
+        "@pypi//pytest",
     ],
 )
 
@@ -38,6 +40,17 @@ pytest_test(
 pytest_test(
     name = "changelog_news_test",
     srcs = ["changelog_news_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":conftest",
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
+    name = "complete_prepare_test",
+    srcs = ["complete_prepare_test.py"],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         ":conftest",

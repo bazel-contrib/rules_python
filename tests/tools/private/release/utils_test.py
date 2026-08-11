@@ -264,6 +264,10 @@ def test_replace_version_next_excludes_bazel_dirs(release_tool_env):
 blabla
 :::
 """
+    agents_dir = release_tool_env.git_root / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "mock_file.md").write_text(mock_file_content)
+
     bazel_dir = release_tool_env.git_root / "bazel-rules_python"
     bazel_dir.mkdir()
     (bazel_dir / "mock_file.bzl").write_text(mock_file_content)
@@ -282,6 +286,9 @@ blabla
     utils.replace_version_next(version)
 
     # Assert
+    new_content = (agents_dir / "mock_file.md").read_text()
+    assert "VERSION_NEXT_FEATURE" in new_content
+
     new_content = (bazel_dir / "mock_file.bzl").read_text()
     assert "VERSION_NEXT_FEATURE" in new_content
 
@@ -290,3 +297,17 @@ blabla
 
     new_content = (tests_dir / "mock_file.bzl").read_text()
     assert "VERSION_NEXT_FEATURE" in new_content
+
+
+def test_determine_next_version_ignores_agents_markers(mocker, release_tool_env):
+    mocker.patch(
+        "tools.private.release.git.Git.get_current_branch", return_value="main"
+    )
+    mocker.patch("tools.private.release.utils.get_latest_version", return_value="1.2.3")
+    agents_dir = release_tool_env.git_root / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "mock_file.md").write_text(":::{versionadded} VERSION_NEXT_FEATURE")
+
+    next_version = utils.determine_next_version()
+
+    assert next_version == "1.2.4"

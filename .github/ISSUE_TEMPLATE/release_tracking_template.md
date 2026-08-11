@@ -23,6 +23,8 @@ To manually control the release flow, see the [RELEASING.md: Manual Editing](htt
 
 Comment commands:
 - `/prepare`: Determines version, creates tracking issue and preparation PR.
+- `/prepare-complete [PR]`: Marks preparation task as complete.
+- `/create-release-branch`: Cuts and pushes the release branch.
 - `/create-rc`: Tags and publishes a new release candidate (RC).
 - `/process-backports`: Cherry-picks pending backports.
 - `/add-backports <PRs>`: Adds PRs to the backports and processes backports.

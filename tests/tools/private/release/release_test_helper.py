@@ -13,9 +13,11 @@ class ReleaseToolEnv:
 
     Attributes:
         git_root: The root path of the temporary Git repository workspace.
+        github_output_file: Path to the mocked GITHUB_OUTPUT file.
     """
 
     git_root: Path
+    github_output_file: Path
 
 
 DEFAULT_RELEASE_TEMPLATE_CONTENT = (
@@ -55,4 +57,6 @@ def fixture_release_tool_env(tmp_path, monkeypatch):
     template_dir.mkdir(parents=True, exist_ok=True)
     template_file = template_dir / "release_tracking_template.md"
     template_file.write_text(DEFAULT_RELEASE_TEMPLATE_CONTENT, encoding="utf-8")
-    yield ReleaseToolEnv(git_root=tmp_path)
+    github_output_file = tmp_path / "github_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(github_output_file))
+    yield ReleaseToolEnv(git_root=tmp_path, github_output_file=github_output_file)
