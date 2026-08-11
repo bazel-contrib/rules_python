@@ -162,7 +162,7 @@ class Path(pathlib.Path):
     using the associated `Runfiles` instance when converted to a string.
     """
 
-    # Mypy isn't smart enough to realize `self` in the methods
+    # Static type checkers may not realize `self` in the methods
     # refers to our Path class instead of pathlib.Path
     _runfiles: Runfiles | None
     _source_repo: str | None
@@ -231,8 +231,8 @@ class Path(pathlib.Path):
     # override
     def _make_child(self, args: tuple[str, ...]) -> Self:
         # _make_child is an internal CPython method in Python < 3.12 omitted from
-        # typeshed stubs. We ignore [misc] for mypy and [missing-attribute] for pyrefly.
-        obj = cast("Path", super()._make_child(args))  # type: ignore[misc]  # pyrefly: ignore[missing-attribute]
+        # typeshed stubs. We ignore [missing-attribute] for pyrefly.
+        obj = cast("Path", super()._make_child(args))  # pyrefly: ignore[missing-attribute]
         obj._runfiles = self._runfiles
         obj._source_repo = self._source_repo
         return cast(Self, obj)
@@ -378,13 +378,13 @@ class Path(pathlib.Path):
         path_posix = super().__str__().replace("\\", "/")
         if not path_posix or path_posix == ".":
             # pylint: disable=protected-access
-            return self._runfiles._python_runfiles_root  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
+            return self._runfiles._python_runfiles_root  # pyrefly: ignore[missing-attribute]
         resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)
         if resolved is not None:
             return resolved
 
         # pylint: disable=protected-access
-        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
+        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # pyrefly: ignore[missing-attribute]
 
     def __fspath__(self) -> str:
         return str(self)
