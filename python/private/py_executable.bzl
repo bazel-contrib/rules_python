@@ -115,7 +115,7 @@ The {any}`RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` environment variable
         "legacy_create_init": lambda: attrb.Int(
             default = -1,
             values = [-1, 0, 1],
-            doc = """\
+            doc = """
 Whether to implicitly create empty `__init__.py` files in the runfiles tree.
 These are created in every directory containing Python source code or shared
 libraries, and every parent directory of those directories, excluding the repo
@@ -124,7 +124,11 @@ root directory. The default, `-1` (auto), means true unless
 module configuration option are used. If false, the user is responsible for
 creating (possibly empty) `__init__.py` files and adding them to the `srcs` of
 Python targets as required.
-                                       """,
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Now checks module-level `explicit_init_py` configuration before CLI flags.
+:::
+""",
         ),
         # TODO(b/203567235): In the Java impl, any file is allowed. While marked
         # label, it is more treated as a string, and doesn't have to refer to

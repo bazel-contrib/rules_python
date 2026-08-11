@@ -12,9 +12,9 @@ explicit_init_py_test(
 
 _MAIN_PY_CONTENT = "print('hello, world')"
 
-def _repo_impl(ctx):
-    ctx.file("main.py", _MAIN_PY_CONTENT)
-    ctx.file("BUILD.bazel", _BUILD_FILE_CONTENT)
+def _repo_impl(rctx):
+    rctx.file("main.py", _MAIN_PY_CONTENT)
+    rctx.file("BUILD.bazel", _BUILD_FILE_CONTENT)
 
 init_py_test_repo = repository_rule(implementation = _repo_impl)
 

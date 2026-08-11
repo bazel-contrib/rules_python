@@ -46,6 +46,9 @@ py_binary(
 :::{note}
 In the future, this will be enabled by default.
 :::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
     attrs = {
         "default": attr.bool(doc = "Whether explicit __init__.py files are required by default.", mandatory = True),
