@@ -1,7 +1,6 @@
 """Rule for generating platform-specific RECORD files."""
 
-load("@bazel_skylib//lib:dicts.bzl", "dicts")
-load("//python/private:attributes.bzl", "WINDOWS_CONSTRAINTS_ATTRS")
+load("//python/private:attributes.bzl", "WINDOWS_CONSTRAINTS_PLAIN_ATTRS")
 load("//python/private:common.bzl", "is_windows_platform")
 
 def _gen_wheel_record_impl(ctx):
@@ -65,19 +64,16 @@ def _gen_wheel_record_impl(ctx):
 
 gen_wheel_record = rule(
     implementation = _gen_wheel_record_impl,
-    attrs = dicts.add(
-        WINDOWS_CONSTRAINTS_ATTRS,
-        {
-            "srcs": attr.label_list(
-                doc = "The original RECORD files to rewrite.",
-                mandatory = True,
-                allow_files = True,
-            ),
-            "_wheel_record_rewriter": attr.label(
-                default = "//python/private/pypi:wheel_record_rewriter",
-                allow_files = True,
-                cfg = "exec",
-            ),
-        },
-    ),
+    attrs = WINDOWS_CONSTRAINTS_PLAIN_ATTRS | {
+        "srcs": attr.label_list(
+            doc = "The original RECORD files to rewrite.",
+            mandatory = True,
+            allow_files = True,
+        ),
+        "_wheel_record_rewriter": attr.label(
+            default = "//python/private/pypi:wheel_record_rewriter",
+            allow_files = True,
+            cfg = "exec",
+        ),
+    },
 )

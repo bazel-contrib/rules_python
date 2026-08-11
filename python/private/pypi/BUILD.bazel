@@ -505,7 +505,6 @@ bzl_library(
     deps = [
         "//python/private:attributes",
         "//python/private:common",
-        "@bazel_skylib//lib:dicts",
     ],
 )
 

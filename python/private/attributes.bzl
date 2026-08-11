@@ -555,8 +555,16 @@ AGNOSTIC_TEST_ATTRS = _init_agnostic_test_attrs()
 # but still accept Python source-agnostic settings.
 AGNOSTIC_BINARY_ATTRS = dicts.add(AGNOSTIC_EXECUTABLE_ATTRS)
 
-WINDOWS_CONSTRAINTS_ATTRS = {
+WINDOWS_CONSTRAINTS_PLAIN_ATTRS = {
     "_windows_constraints": attr.label_list(
+        default = [
+            "@platforms//os:windows",
+        ],
+    ),
+}
+
+WINDOWS_CONSTRAINTS_ATTRS = {
+    "_windows_constraints": lambda: attrb.LabelList(
         default = [
             "@platforms//os:windows",
         ],
