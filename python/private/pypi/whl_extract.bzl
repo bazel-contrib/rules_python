@@ -106,17 +106,21 @@ def merge_trees(src, dest):
         for (s, d) in remaining:
             if not d.exists:
                 ret.append((s, d))
-            elif s.is_dir and d.is_dir:
-                tmp.extend([(c, d.get_child(c.basename)) for c in s.readdir()])
-            else:
-                collisions.append((s, d))
+                continue
+
+            if not s.is_dir or not d.is_dir:
+                collisions.append(s)
+                continue
+
+            for file_or_dir in s.readdir():
+                tmp.append((file_or_dir, d.get_child(file_or_dir.basename)))
+
         remaining = tmp
 
+    if remaining:
+        fail("Exceeded maximum directory depth of 10000 during tree merge.")
+
     if collisions:
-        fail(
-            "Collisions found while extracting:\n{}".format(
-                "\n".join(["{} -> {}".format(s, d) for s, d in collisions]),
-            ),
-        )
+        fail("Detected collisions between {} and {}: {}".format(src, dest, collisions))
 
     return ret

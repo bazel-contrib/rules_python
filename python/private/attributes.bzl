@@ -556,7 +556,7 @@ AGNOSTIC_TEST_ATTRS = _init_agnostic_test_attrs()
 AGNOSTIC_BINARY_ATTRS = dicts.add(AGNOSTIC_EXECUTABLE_ATTRS)
 
 WINDOWS_CONSTRAINTS_ATTRS = {
-    "_windows_constraints": lambda: attrb.LabelList(
+    "_windows_constraints": attr.label_list(
         default = [
             "@platforms//os:windows",
         ],
