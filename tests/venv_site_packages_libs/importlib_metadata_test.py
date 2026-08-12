@@ -1,4 +1,5 @@
 import importlib.metadata
+import pathlib
 import sys
 import unittest
 
@@ -60,7 +61,7 @@ class ImportlibMetadataTest(unittest.TestCase):
         self.assertEqual(file_paths, expected_paths)
 
         for f in files:
-            resolved = f.locate()
+            resolved = pathlib.Path(f.locate())
             if resolved.exists():
                 self.assertTrue(
                     resolved.is_file(),
