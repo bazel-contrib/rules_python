@@ -26,6 +26,7 @@ py_reconfig_test(
     },
     main = "repl_test.py",
     python_version = "3.12",
+    deps = ["//python/runfiles"],
 )
 
 py_reconfig_test(
@@ -41,4 +42,5 @@ py_reconfig_test(
     main = "repl_test.py",
     python_version = "3.12",
     repl_dep = ":helper/test_module",
+    deps = ["//python/runfiles"],
 )

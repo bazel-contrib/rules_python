@@ -44,6 +44,7 @@ py_reconfig_test(
 py_reconfig_test(
     name = "bootstrap_script_test",
     srcs = ["toolchain_runs_test.py"],
+    args = ["'argument with spaces'"],
     bootstrap_impl = "script",
     data = [
         "//tests/support:current_build_settings",

@@ -5,7 +5,7 @@ py_test(
     srcs = ["directory_syncer_test.py"],
     deps = [
         "//sphinxdocs/private:sphinx_build_lib",
-        "@dev_pip//absl_py",
-        "@dev_pip//sphinx",
+        "@pypi//absl_py",
+        "@pypi//sphinx",
     ],
 )

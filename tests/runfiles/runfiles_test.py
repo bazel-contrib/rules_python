@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import json
 import os
 import pathlib
 import tempfile
 import unittest
-from typing import Any, List, Optional
+from typing import Any
 
 from python.runfiles import runfiles
 from python.runfiles.runfiles import _RepositoryMapping
@@ -28,10 +30,10 @@ class RunfilesTest(unittest.TestCase):
 
     def testRlocationArgumentValidation(self) -> None:
         r = runfiles.Create({"RUNFILES_DIR": "whatever"})
-        assert r is not None  # mypy doesn't understand the unittest api.
-        self.assertRaises(ValueError, lambda: r.Rlocation(None))  # type: ignore
+        assert r is not None  # type assert
+        self.assertRaises(ValueError, lambda: r.Rlocation(None))  # pyrefly: ignore[bad-argument-type]
         self.assertRaises(ValueError, lambda: r.Rlocation(""))
-        self.assertRaises(TypeError, lambda: r.Rlocation(1))  # type: ignore
+        self.assertRaises(TypeError, lambda: r.Rlocation(1))  # pyrefly: ignore[bad-argument-type]
         self.assertRaisesRegex(
             ValueError, "is not normalized", lambda: r.Rlocation("../foo")
         )
@@ -67,11 +69,11 @@ class RunfilesTest(unittest.TestCase):
 
     def testRlocationWithData(self) -> None:
         r = runfiles.Create()
-        assert r is not None  # mypy doesn't understand the unittest api.
+        assert r is not None  # type assert
         settings_path = r.Rlocation(
             "rules_python/tests/support/current_build_settings.json"
         )
-        assert settings_path is not None
+        assert settings_path is not None  # type assert
         settings = json.loads(pathlib.Path(settings_path).read_text())
         self.assertIn("bootstrap_impl", settings)
 
@@ -84,7 +86,7 @@ class RunfilesTest(unittest.TestCase):
                     "TEST_SRCDIR": "always ignored",
                 }
             )
-            assert r is not None  # mypy doesn't understand the unittest api.
+            assert r is not None  # type assert
             self.assertEqual(r.Rlocation("a/b"), "c/d")
             self.assertIsNone(r.Rlocation("foo"))
 
@@ -96,7 +98,7 @@ class RunfilesTest(unittest.TestCase):
                     "TEST_SRCDIR": "always ignored",
                 }
             )
-            assert r is not None  # mypy doesn't understand the unittest api.
+            assert r is not None  # type assert
             self.assertDictEqual(
                 r.EnvVars(),
                 {
@@ -113,7 +115,7 @@ class RunfilesTest(unittest.TestCase):
                     "TEST_SRCDIR": "always ignored",
                 }
             )
-            assert r is not None  # mypy doesn't understand the unittest api.
+            assert r is not None  # type assert
             self.assertDictEqual(
                 r.EnvVars(),
                 {
@@ -134,7 +136,7 @@ class RunfilesTest(unittest.TestCase):
                     "TEST_SRCDIR": "always ignored",
                 }
             )
-            assert r is not None  # mypy doesn't understand the unittest api.
+            assert r is not None  # type assert
             self.assertDictEqual(
                 r.EnvVars(),
                 {
@@ -151,7 +153,7 @@ class RunfilesTest(unittest.TestCase):
                 "TEST_SRCDIR": "always ignored",
             }
         )
-        assert r is not None  # mypy doesn't understand the unittest api.
+        assert r is not None  # type assert
         self.assertEqual(r.Rlocation("a/b"), "runfiles/dir/a/b")
         self.assertEqual(r.Rlocation("foo"), "runfiles/dir/foo")
 
@@ -162,7 +164,7 @@ class RunfilesTest(unittest.TestCase):
                 "TEST_SRCDIR": "always ignored",
             }
         )
-        assert r is not None  # mypy doesn't understand the unittest api.
+        assert r is not None  # type assert
         self.assertDictEqual(
             r.EnvVars(),
             {
@@ -761,7 +763,7 @@ class RunfilesTest(unittest.TestCase):
         else:
             expected = "rules_python"
         r = runfiles.Create()
-        assert r is not None  # mypy doesn't understand the unittest api.
+        assert r is not None  # type assert
         self.assertEqual(r.CurrentRepository(), expected)
 
     @staticmethod
@@ -771,11 +773,11 @@ class RunfilesTest(unittest.TestCase):
 
 class _MockFile:
     def __init__(
-        self, name: Optional[str] = None, contents: Optional[List[Any]] = None
+        self, name: str | None = None, contents: list[Any] | None = None
     ) -> None:
         self._contents = contents or []
         self._name = name or "x"
-        self._path: Optional[str] = None
+        self._path: str | None = None
 
     def __enter__(self) -> Any:
         tmpdir = os.environ.get("TEST_TMPDIR")
@@ -795,7 +797,7 @@ class _MockFile:
             os.rmdir(os.path.dirname(self._path))
 
     def Path(self) -> str:
-        assert self._path is not None
+        assert self._path is not None  # type assert
         return self._path
 
 

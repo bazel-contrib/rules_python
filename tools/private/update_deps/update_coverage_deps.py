@@ -111,8 +111,8 @@ def _map(
     filename: str,
     python_version: str,
     url: str,
-    digests: list,
-    platform: str,
+    digests: dict[str, str],
+    platform: str | tuple[str, str],
     **kwargs: Any,
 ):
     if platform and platform not in _supported_platforms:

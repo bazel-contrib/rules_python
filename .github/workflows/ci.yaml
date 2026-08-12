@@ -17,17 +17,6 @@ permissions:
   contents: read
 
 jobs:
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-      # Checkout the code
-      - uses: actions/checkout@v7
-      - uses: jpetrucciani/mypy-check@master
-        with:
-          path: 'python/runfiles'
-      - uses: jpetrucciani/mypy-check@master
-        with:
-          path: 'tests/runfiles'
   ruff:
     runs-on: ubuntu-latest
     steps:

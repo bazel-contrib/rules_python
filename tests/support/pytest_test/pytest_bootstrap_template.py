@@ -1,6 +1,6 @@
 import sys
 
-import pytest_bazel
+import pytest_bazel  # pyrefly: ignore[missing-import]
 
 TEST_FILES = """%TEST_FILES%""".splitlines()
 

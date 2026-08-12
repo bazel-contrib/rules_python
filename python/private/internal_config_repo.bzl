@@ -37,6 +37,7 @@ config = struct(
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
   BuiltinPyCcLinkParamsProvider = getattr(getattr(native, "legacy_globals", None), "PyCcLinkParamsProvider", {builtin_py_cc_link_params_provider}),
+  modules_using_explicit_initpy = {modules_using_explicit_initpy},
 )
 """
 
@@ -100,6 +101,7 @@ def _internal_config_repo_impl(rctx):
         builtin_py_info_symbol = "PyInfo"
         builtin_py_runtime_info_symbol = "PyRuntimeInfo"
         builtin_py_cc_link_params_provider = "PyCcLinkParamsProvider"
+    explicit_init_py_modules = {k: str(v) == "True" for k, v in rctx.attr.explicit_init_py_modules.items()}
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
         build_python_zip_default = repo_utils.get_platforms_os_name(rctx) == "windows",
@@ -109,6 +111,7 @@ def _internal_config_repo_impl(rctx):
         supports_whl_extraction = str(supports_whl_extraction),
         extract_needs_chmod = str(extract_needs_chmod),
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
+        modules_using_explicit_initpy = str(explicit_init_py_modules),
         bazel_8_or_later = str(bazel_major_version >= 8),
         bazel_9_or_later = str(bazel_major_version >= 9),
         bazel_10_or_later = str(bazel_major_version > 9),
@@ -140,6 +143,7 @@ internal_config_repo = repository_rule(
     configure = True,
     environ = [],
     attrs = {
+        "explicit_init_py_modules": attr.string_dict(),
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),
     },

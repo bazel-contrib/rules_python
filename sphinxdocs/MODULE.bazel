@@ -21,7 +21,7 @@ dev_pip.parse(
     requirements_lock = "//dev:requirements.txt",
     uv_lock = "//dev:uv.lock",
 )
-use_repo(dev_pip, "dev_pip")
+use_repo(dev_pip, "dev_pip", "pypi")
 
 bazel_dep(name = "rules_bazel_integration_test", version = "0.37.1", dev_dependency = True)
 
@@ -39,4 +39,19 @@ use_repo(
     "bazel_binaries",
     "bazel_binaries_bazelisk",
     "build_bazel_bazel_self",
+)
+
+bazel_dep(name = "rules_pyrefly", version = "0.1.0", dev_dependency = True)
+
+pyrefly = use_extension(
+    "@rules_pyrefly//pyrefly:extensions.bzl",
+    "pyrefly",
+    dev_dependency = True,
+)
+pyrefly.toolchain(version = "1.2.0")
+use_repo(pyrefly, "pyrefly_toolchains")
+
+register_toolchains(
+    "@pyrefly_toolchains//:all",
+    dev_dependency = True,
 )

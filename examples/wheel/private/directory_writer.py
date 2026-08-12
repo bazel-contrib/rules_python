@@ -18,10 +18,9 @@
 import argparse
 import json
 from pathlib import Path
-from typing import Tuple
 
 
-def _file_input(value) -> Tuple[Path, str]:
+def _file_input(value) -> tuple[Path, str]:
     path, content = value.split("=", maxsplit=1)
     return (Path(path), json.loads(content))
 

@@ -158,4 +158,5 @@ class MockGitHub:
         return self.pr_comments.get(pr_num, [])
 
     def get_merge_commits_for_prs(self, pending_items: list) -> list:
+        # pyrefly: ignore[bad-argument-type]
         return resolve_merge_commits_for_prs(self, pending_items)
