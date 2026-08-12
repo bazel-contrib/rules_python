@@ -153,9 +153,15 @@ def _resolve_extras(self_name, reqs, extras):
 
         num_extras_before = len(extras)
         extras = extras | new_extras
-        num_extras_after = len(new_extras)
 
-        if num_extras_before == num_extras_after:
+        # We have reached a fixed point once merging in the newly discovered
+        # extras stops growing the set. Comparing against len(new_extras) here
+        # compares the number of extras found in this round against the total
+        # known before it, which are unrelated quantities: it stops early when
+        # the two happen to be equal, dropping extras that are only reachable
+        # through another round, and never triggers at all for the common case
+        # of a package with no self-referencing extras.
+        if num_extras_before == len(extras):
             break
 
     # Poor mans set
