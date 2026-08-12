@@ -44,8 +44,8 @@ sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building
     deps = [
-        "@dev_pip//myst_parser",
-        "@dev_pip//sphinx",
+        "@pypi//myst_parser",
+        "@pypi//sphinx",
     ],
 )
 
@@ -58,5 +58,5 @@ py_test(
     name = "sphinx_docs_output_test",
     srcs = ["sphinx_docs_output_test.py"],
     data = [":docs"],
-    deps = ["@dev_pip//absl_py"],
+    deps = ["@pypi//absl_py"],
 )

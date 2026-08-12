@@ -27,8 +27,8 @@ sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],
     deps = [
-        "@dev_pip//myst_parser",
-        "@dev_pip//sphinx",
+        "@pypi//myst_parser",
+        "@pypi//sphinx",
     ],
 )
 

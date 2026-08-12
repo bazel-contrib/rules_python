@@ -40,7 +40,6 @@ py_library(
         # to the --experimental_python_import_all_repositories setting.
         "../..",
     ],
-    tags = ["pyrefly"],
     visibility = ["//visibility:public"],
 )
 

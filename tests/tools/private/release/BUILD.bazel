@@ -16,11 +16,13 @@ py_library(
 
 py_library(
     name = "release_test_helper",
+    testonly = True,
     srcs = ["release_test_helper.py"],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         "//tools/private/release:mock_gh",
         "//tools/private/release:release_lib",
+        "@pypi//pytest",
     ],
 )
 

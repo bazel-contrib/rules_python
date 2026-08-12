@@ -6,6 +6,7 @@ from python.runfiles import runfiles
 
 def _get_news_dir():
     rf = runfiles.Create()
+    assert rf is not None  # type assert
     path = rf.Rlocation("rules_python/news")
     if path:
         return pathlib.Path(path)

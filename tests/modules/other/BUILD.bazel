@@ -1,4 +1,5 @@
 load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//tests/support:explicit_init_py_test.bzl", "explicit_init_py_test")
 load("@rules_python//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 
 package(
@@ -26,5 +27,30 @@ py_binary(
         # to test that namespace packages install correctly and are importable.
         "//nspkg_delta",
         "//nspkg_gamma",
+    ],
+)
+
+explicit_init_py_test(
+    name = "test_module_dep_no_init",
+    expect_generated_init = False,
+    main = "external_main.py",
+)
+
+explicit_init_py_test(
+    name = "test_legacy_create_init_override",
+    expect_generated_init = True,
+    legacy_create_init = 1,
+    main = "external_main.py",
+)
+
+# These tests are run by @rules_python//tests/explicit_init_py to ensure a
+# module's configuration is respected when it's a dependency.
+test_suite(
+    name = "explicit_init_py_tests",
+    tests = [
+        ":test_legacy_create_init_override",
+        ":test_module_dep_no_init",
+        "@init_py_test_extension_repo//:test",
+        "@init_py_test_repo//:test",
     ],
 )

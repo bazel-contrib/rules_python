@@ -77,7 +77,7 @@ if [ -e "$self_dir/pyvenv.cfg" ] || [ -e "$self_dir/../pyvenv.cfg" ]; then
   # binary, not the actual one invoked.
   # NOTE: exec -a would be simpler, but isn't posix-compatible, and dash shell
   # (Ubuntu/debian default) doesn't support it; see #3009.
-  exec sh -c "$PYTHON_BIN \$@" "$venv_bin" "$@"
+  exec sh -c 'exec "$@"' "$venv_bin" "$PYTHON_BIN" "$@"
 else
   exec "$PYTHON_BIN" "$@"
 fi
