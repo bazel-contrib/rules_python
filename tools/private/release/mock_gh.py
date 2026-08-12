@@ -1,18 +1,23 @@
 """In-memory fake for GitHub API."""
 
 import re
+from typing import override
 
 from tools.private.release.gh import (
     RELEASE_LABEL,
+    GetPrError,
+    GitHubInterface,
+    InvalidPrRefError,
     IssueDict,
     MultipleTrackingIssuesError,
     NoTrackingIssueError,
     PrDict,
     resolve_merge_commits_for_prs,
 )
+from tools.private.release.release_issue import BackportTask
 
 
-class MockGitHub:
+class MockGitHub(GitHubInterface):
     def __init__(self, repo: str = "bazel-contrib/rules_python"):
         self.repo = repo
         self.issues: dict[int, IssueDict] = {}
@@ -22,17 +27,21 @@ class MockGitHub:
         self.reactions: dict[int, list[str]] = {}
         self.pr_comments: dict[int, list[dict]] = {}
 
+    @override
     def post_issue_comment(self, issue_num: int, comment_body: str) -> None:
         self.issue_comments.setdefault(issue_num, []).append(comment_body)
 
+    @override
     def add_comment_reaction(self, comment_id: int, reaction: str) -> None:
         self.reactions.setdefault(comment_id, []).append(reaction)
 
+    @override
     def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:
         if pr_num not in self.prs:
             self.create_pr(title="", body="")
         self.prs[pr_num]["auto_merge"] = {"merge_method": method}
 
+    @override
     def create_issue(
         self, title: str, body: str, labels: list[str] | None = None
     ) -> int:
@@ -47,6 +56,7 @@ class MockGitHub:
         }
         return issue_num
 
+    @override
     def create_release_tracking_issue(self, version: str, template_content: str) -> int:
         # Strip YAML frontmatter if present (simplified copy from gh.py)
         issue_body = template_content
@@ -59,21 +69,25 @@ class MockGitHub:
             title=f"Release {version}", body=issue_body, labels=[RELEASE_LABEL]
         )
 
+    @override
     def get_issue_body(self, issue_num: int) -> str:
         if issue_num not in self.issues:
             raise ValueError(f"Issue #{issue_num} not found in MockGitHub")
         return self.issues[issue_num]["body"]
 
+    @override
     def get_issue_title(self, issue_num: int) -> str:
         if issue_num not in self.issues:
             raise ValueError(f"Issue #{issue_num} not found in MockGitHub")
         return self.issues[issue_num]["title"]
 
+    @override
     def update_issue_body(self, issue_num: int, body: str):
         if issue_num not in self.issues:
             raise ValueError(f"Issue #{issue_num} not found in MockGitHub")
         self.issues[issue_num]["body"] = body
 
+    @override
     def resolve_pr_number(self, pr_ref: str) -> int:
         # Real algorithm copy (doesn't require RPCs)
         clean_ref = pr_ref.lstrip("#")
@@ -85,11 +99,12 @@ class MockGitHub:
             match = re.search(pattern, pr_ref, re.IGNORECASE)
             if match:
                 return int(match.group(1))
-            raise ValueError(
+            raise InvalidPrRefError(
                 f"URL is not for the configured repository ({self.repo}): {pr_ref}"
             )
-        raise ValueError(f"Could not resolve PR ref: {pr_ref}")
+        raise InvalidPrRefError(f"Could not resolve PR ref: {pr_ref}")
 
+    @override
     def get_release_tracking_issue(self, version: str) -> int:
         search_title = f"Release {version}"
         matching = [
@@ -108,6 +123,7 @@ class MockGitHub:
             )
         return matching[0]
 
+    @override
     def create_pr(
         self,
         title: str,
@@ -129,12 +145,14 @@ class MockGitHub:
         }
         return url
 
+    @override
     def get_open_pr(self, branch_name: str) -> PrDict | None:
         for pr in self.prs.values():
             if pr.get("head") == branch_name and pr.get("state") == "OPEN":
                 return pr
         return None
 
+    @override
     def get_open_tracking_issues(self, version: str | None = None) -> list[IssueDict]:
         results = []
         for issue in self.issues.values():
@@ -146,6 +164,7 @@ class MockGitHub:
                     results.append(issue)
         return results
 
+    @override
     def get_pr_info(self, pr_num: int) -> PrDict:
         if pr_num in self.prs:
             return self.prs[pr_num]
@@ -154,9 +173,19 @@ class MockGitHub:
             "mergeCommit": {"oid": f"mock_merge_sha_{pr_num}"},
         }
 
+    @override
+    def get_pr_files(self, pr_num: int) -> list[str]:
+        if pr_num not in self.prs:
+            raise GetPrError(f"Pull Request #{pr_num} not found in MockGitHub")
+        files = self.prs[pr_num].get("files", [])
+        return [f["path"] for f in files]
+
+    @override
     def get_pr_comments(self, pr_num: int) -> list[dict]:
         return self.pr_comments.get(pr_num, [])
 
-    def get_merge_commits_for_prs(self, pending_items: list) -> list:
-        # pyrefly: ignore[bad-argument-type]
+    @override
+    def get_merge_commits_for_prs(
+        self, pending_items: list[BackportTask]
+    ) -> list[BackportTask]:
         return resolve_merge_commits_for_prs(self, pending_items)

@@ -311,3 +311,21 @@ def test_determine_next_version_ignores_agents_markers(mocker, release_tool_env)
     next_version = utils.determine_next_version()
 
     assert next_version == "1.2.4"
+
+
+def test_replace_version_next_in_files(release_tool_env):
+    file1 = release_tool_env.git_root / "file1.py"
+    file1.write_text("v = 'VERSION_NEXT_FEATURE'\n", encoding="utf-8")
+
+    file2 = release_tool_env.git_root / "file2.py"
+    file2.write_text("v = 'VERSION_NEXT_PATCH'\n", encoding="utf-8")
+
+    file3 = release_tool_env.git_root / "file3.py"
+    file3.write_text("v = '1.0.0'\n", encoding="utf-8")
+
+    modified = utils.replace_version_next_in_files([file1, file2, file3], "2.3.0")
+
+    assert modified == [file1, file2]
+    assert file1.read_text(encoding="utf-8") == "v = '2.3.0'\n"
+    assert file2.read_text(encoding="utf-8") == "v = '2.3.0'\n"
+    assert file3.read_text(encoding="utf-8") == "v = '1.0.0'\n"
