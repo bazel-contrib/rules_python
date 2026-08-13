@@ -202,6 +202,25 @@ pytest_test(
     ],
 )
 
+py_library(
+    name = "on_comment",
+    testonly = True,
+    srcs = ["//:.github/workflows/on_comment.py"],
+    imports = ["../../../../.github/workflows"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "on_comment_test",
+    srcs = ["on_comment_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":conftest",
+        ":on_comment",
+        ":release_test_helper",
+    ],
+)
+
 pytest_test(
     name = "utils_test",
     srcs = ["utils_test.py"],
