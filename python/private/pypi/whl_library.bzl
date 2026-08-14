@@ -532,7 +532,9 @@ def _pip_archive_impl(rctx):
     if not rctx.delete("whl_file.json"):
         fail("failed to delete the whl_file.json file")
 
-    return _whl_extract(rctx, whl_path = whl_path, logger = logger, sdist_filename = sdist_filename)
+    # NOTE @aignas 2026-08-14: We never return rctx.metadata for pip archives because the result may
+    # not be reproducible across all machines given the input args to the repository rule.
+    _whl_extract(rctx, whl_path = whl_path, logger = logger, sdist_filename = sdist_filename)
 
 def _remove_files(rctx, *basenames):
     paths = list(rctx.path(".").readdir())

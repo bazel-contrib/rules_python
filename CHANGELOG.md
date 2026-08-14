@@ -29,6 +29,17 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-3-1}
+## [2.3.1] - 2026-08-14
+
+[2.3.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.1
+
+{#v2-3-1-fixed}
+### Fixed
+* Previous refactor that shipped with 2.3 introduced regression for the experimental repository cache
+  users. This restores the previous behavior ([#3791](https://github.com/bazel-contrib/rules_python/pull/3791)).
+
+
 {#v2-3-0}
 ## [2.3.0] - 2026-08-07
 
