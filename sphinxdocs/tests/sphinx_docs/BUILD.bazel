@@ -1,7 +1,7 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_python//python:py_test.bzl", "py_test")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
-load(":defs.bzl", "gen_directory")
+load(":defs.bzl", "custom_docs_library", "gen_directory")
 
 # We only build for Linux and Mac because:
 # 1. The actual doc process only runs on Linux
@@ -28,6 +28,7 @@ sphinx_docs(
     sphinx = ":sphinx-build",
     strip_prefix = package_name() + "/",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    deps = [":custom_docs"],
 )
 
 genrule(
@@ -38,6 +39,27 @@ genrule(
 
 gen_directory(
     name = "generated_directory",
+)
+
+custom_docs_library(
+    name = "custom_docs",
+    page_name = "custom_page",
+    prefix = "custom/",
+    deps = [
+        ":custom_docs_dep",
+        ":custom_docs_empty",
+    ],
+)
+
+# The parent's prefix must not be applied to a dep's files.
+custom_docs_library(
+    name = "custom_docs_dep",
+    page_name = "custom_dep_page",
+    prefix = "custom_dep/",
+)
+
+custom_docs_library(
+    name = "custom_docs_empty",
 )
 
 sphinx_build_binary(
