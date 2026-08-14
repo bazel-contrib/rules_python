@@ -15,11 +15,17 @@ def _get_bool(key: str, default: bool = False) -> bool:
     return val.lower() == "true"
 
 
-def _match_command(command: str, comment_body: str) -> re.Match[str] | None:
+def _match_command(
+    command: str | tuple[str, ...], comment_body: str
+) -> re.Match[str] | None:
     """Matches a slash command at the start of any line, capturing optional trailing args."""
-    cmd = command.lstrip("/")
+    if isinstance(command, str):
+        commands = (command,)
+    else:
+        commands = command
+    pattern = "|".join(re.escape(cmd.lstrip("/")) for cmd in commands)
     return re.search(
-        rf"^\s*/{re.escape(cmd)}(?:\s+(\S.*?))?\s*$",
+        rf"^\s*/(?:{pattern})(?:\s+(\S.*?))?\s*$",
         comment_body,
         re.MULTILINE,
     )
@@ -61,7 +67,7 @@ def _add_comment_reaction(repo: str, comment_id: str, content: str) -> None:
 
 def _react_negative(repo: str, comment_id: str) -> None:
     """Logs error and adds a negative reaction to the comment."""
-    print("Error: No PRs specified for add-backports.", file=sys.stderr)
+    print("::error::No PRs specified for backport.")
     if comment_id and repo:
         _add_comment_reaction(repo=repo, comment_id=comment_id, content="-1")
 
@@ -95,7 +101,7 @@ def _process_release_issue_comment(
         _write_github_output("command", "process-backports")
         return
 
-    if m := _match_command("add-backports", comment_body):
+    if m := _match_command(("backport", "backports"), comment_body):
         raw_args = m.group(1) if m.group(1) else ""
         items = [item for item in re.split(r"[\s,]+", raw_args) if item]
         if csv := ",".join(items):
@@ -128,7 +134,7 @@ def _process_backport_issue_comment(comment_body: str) -> None:
 
 def _process_pr_comment(comment_body: str, pr_number: str) -> None:
     """Processes comments on a pull request."""
-    if _match_command("backport", comment_body):
+    if _match_command(("backport", "backports"), comment_body):
         _write_github_output("command", "pr-backport")
         _write_github_output("pr_number", pr_number)
         return

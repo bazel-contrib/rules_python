@@ -108,7 +108,7 @@ automatically processed.
 
 ### Method B: Comment on the Tracking Issue
 
-Comment `/add-backports <PR_REF> [<PR_REF> ...]` (space or comma separated) on
+Comment `/backport <PR_REF> [<PR_REF> ...]` (space or comma separated) on
 the tracking issue. The `<PR_REF>` can be a PR number (optionally prefixed with
 `#`) or a PR URL (strictly for the configured repository). This will
 automatically add the PRs to the checklist and trigger processing.

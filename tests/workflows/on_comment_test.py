@@ -152,10 +152,10 @@ def test_release_issue_process_backports(monkeypatch, gha_env):
     assert gha_env.read_env() == {"issue_number": "100"}
 
 
-def test_release_issue_add_backports(monkeypatch, gha_env):
+def test_release_issue_backport(monkeypatch, gha_env):
     _run_comment(
         monkeypatch,
-        "/add-backports 1, 2, 3",
+        "/backport 1, 2, 3",
         has_release_label="true",
     )
     assert gha_env.read_outputs() == {
@@ -166,10 +166,10 @@ def test_release_issue_add_backports(monkeypatch, gha_env):
     assert gha_env.read_env() == {"issue_number": "100"}
 
 
-def test_release_issue_add_backports_hashes(monkeypatch, gha_env):
+def test_release_issue_backport_hashes(monkeypatch, gha_env):
     _run_comment(
         monkeypatch,
-        "/add-backports #123 #567",
+        "/backport #123 #567",
         has_release_label="true",
     )
     assert gha_env.read_outputs() == {
@@ -180,12 +180,10 @@ def test_release_issue_add_backports_hashes(monkeypatch, gha_env):
     assert gha_env.read_env() == {"issue_number": "100"}
 
 
-def test_release_issue_add_backports_empty(
-    monkeypatch, gha_env, mock_add_reaction, capsys
-):
+def test_release_issue_backport_empty(monkeypatch, gha_env, mock_add_reaction, capsys):
     _run_comment(
         monkeypatch,
-        "/add-backports",
+        "/backport",
         has_release_label="true",
         repo="bazel-contrib/rules_python",
         comment_id="789",
@@ -196,7 +194,7 @@ def test_release_issue_add_backports_empty(
     }
     assert gha_env.read_env() == {"issue_number": "100"}
     captured = capsys.readouterr()
-    assert "Error: No PRs specified for add-backports." in captured.err
+    assert "::error::No PRs specified for backport." in captured.out
     mock_add_reaction.assert_called_once_with(
         repo="bazel-contrib/rules_python",
         comment_id="789",
@@ -301,6 +299,20 @@ def test_pr_backport(monkeypatch, gha_env):
     _run_comment(
         monkeypatch,
         "/backport",
+        is_pr="true",
+        event_number="300",
+    )
+    assert gha_env.read_outputs() == {
+        "command": "pr-backport",
+        "pr_number": "300",
+    }
+    assert gha_env.read_env() == {}
+
+
+def test_pr_backports_plural_alias(monkeypatch, gha_env):
+    _run_comment(
+        monkeypatch,
+        "/backports",
         is_pr="true",
         event_number="300",
     )
