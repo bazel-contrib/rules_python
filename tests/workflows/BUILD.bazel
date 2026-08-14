@@ -1,0 +1,21 @@
+load("//python:py_library.bzl", "py_library")
+load("//tests/support:support.bzl", "NOT_WINDOWS")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
+
+py_library(
+    name = "on_comment",
+    testonly = True,
+    srcs = ["//.github/workflows:on_comment.py"],
+    imports = ["../../.github/workflows"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "on_comment_test",
+    srcs = ["on_comment_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":on_comment",
+        "@pypi//pytest_mock",
+    ],
+)

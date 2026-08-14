@@ -59,10 +59,7 @@ exports_files([
 ])
 
 exports_files(
-    [
-        ".bazelversion",
-        ".github/workflows/on_comment.py",
-    ],
+    [".bazelversion"],
     visibility = ["//tests:__subpackages__"],
 )
 
