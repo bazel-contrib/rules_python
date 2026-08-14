@@ -548,6 +548,84 @@ bzl_library(
 )
 
 bzl_library(
+    name = "pip_archive",
+    srcs = ["pip_archive.bzl"],
+    deps = [
+        ":attrs",
+        ":deps",
+        ":generate_whl_library_build_bazel",
+        ":patch_whl",
+        ":pep508_requirement",
+        ":pypi_repo_utils",
+        ":urllib",
+        ":whl_extract",
+        ":whl_metadata",
+        "//python/private:auth",
+        "//python/private:envsubst",
+        "//python/private:is_standalone_interpreter",
+        "//python/private:normalize_name",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "whl_archive",
+    srcs = ["whl_archive.bzl"],
+    deps = [
+        ":attrs",
+        ":deps",
+        ":generate_whl_library_build_bazel",
+        ":patch_whl",
+        ":pep508_requirement",
+        ":pypi_repo_utils",
+        ":urllib",
+        ":whl_extract",
+        ":whl_metadata",
+        "//python/private:auth",
+        "//python/private:envsubst",
+        "//python/private:is_standalone_interpreter",
+        "//python/private:normalize_name",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "whl_deps_repo",
+    srcs = ["whl_deps_repo.bzl"],
+    deps = [
+        ":attrs",
+        ":deps",
+        ":generate_whl_library_build_bazel",
+        ":patch_whl",
+        ":pep508_requirement",
+        ":pypi_repo_utils",
+        ":urllib",
+        ":whl_extract",
+        ":whl_metadata",
+        "//python/private:auth",
+        "//python/private:envsubst",
+        "//python/private:is_standalone_interpreter",
+        "//python/private:normalize_name",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "patch_and_extract_whl",
+    srcs = ["patch_and_extract_whl.bzl"],
+    deps = [
+        ":generate_whl_library_build_bazel",
+        ":patch_whl",
+        ":pep508_requirement",
+        ":pypi_repo_utils",
+        ":whl_extract",
+        ":whl_metadata",
+        "//python/private:normalize_name",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
     name = "argparse",
     srcs = ["argparse.bzl"],
 )
