@@ -2,6 +2,7 @@ from tools.private.release.release_issue import (
     add_backports_to_body,
     add_sync_changelog_task_to_body,
     format_metadata_line,
+    load_release_tracking_template,
     parse_checklist_state,
     parse_metadata_line,
 )
@@ -155,3 +156,35 @@ def test_parse_checklist_state_with_sync_changelogs():
     assert not task_126.checked
     assert task_126.status is None
     assert task_126.pr is None
+
+
+def test_load_release_tracking_template(tmp_path):
+    template_file = tmp_path / "template.md"
+    template_file.write_text("""## Checklist
+- [ ] Prepare Release
+- [ ] Create Release branch
+- [ ] Tag RC0
+- [ ] Tag RC1
+- [ ] Tag Final
+
+## Backports
+""")
+
+    # No version specified (defaults to full template)
+    default_template = load_release_tracking_template(template_path=template_file)
+    assert "- [ ] Tag RC0" in default_template
+
+    # Minor release version (keeps RC tasks)
+    full_template = load_release_tracking_template(
+        version="1.2.0", template_path=template_file
+    )
+    assert "- [ ] Tag RC0" in full_template
+    assert "- [ ] Tag RC1" in full_template
+
+    # Patch release version (strips RC tasks)
+    patch_template = load_release_tracking_template(
+        version="1.2.1", template_path=template_file
+    )
+    assert "Tag RC" not in patch_template
+    assert "- [ ] Prepare Release" in patch_template
+    assert "- [ ] Tag Final" in patch_template

@@ -96,8 +96,10 @@ methods:
 ### Method A: Comment on the PR
 
 Comment `/backport` on the PR you wish to backport. This will automatically
-add the PR to the active release's backports checklist. Once the PR is merged,
-the backports will be automatically processed.
+add the PR to the active release's backports checklist, or automatically create
+a patch release tracking issue for the next patch version if no release tracking
+issue currently exists. Once the PR is merged, the backports will be
+automatically processed.
 
 > [!NOTE]
 > Commenting `/backport` on an open PR will block further release publishing

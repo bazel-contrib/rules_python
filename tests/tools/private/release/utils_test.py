@@ -311,3 +311,18 @@ def test_determine_next_version_ignores_agents_markers(mocker, release_tool_env)
     next_version = utils.determine_next_version()
 
     assert next_version == "1.2.4"
+
+
+def test_determine_next_version_on_main_with_is_patch(mocker, release_tool_env):
+    mocker.patch(
+        "tools.private.release.git.Git.get_current_branch", return_value="main"
+    )
+    mocker.patch("tools.private.release.utils.get_latest_version", return_value="1.2.3")
+    (release_tool_env.git_root / "mock_file.bzl").write_text(
+        ":::{versionadded} VERSION_NEXT_FEATURE"
+    )
+
+    # Without is_patch, feature marker causes minor bump
+    assert utils.determine_next_version(is_patch=False) == "1.3.0"
+    # With is_patch=True, it produces a patch bump
+    assert utils.determine_next_version(is_patch=True) == "1.2.4"

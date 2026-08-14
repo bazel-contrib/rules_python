@@ -55,9 +55,10 @@ def _iter_version_placeholder_files():
             yield filepath
 
 
-def get_latest_version():
+def get_latest_version(git=None):
     """Gets the latest version from git tags."""
-    git = Git(".")
+    if git is None:
+        git = Git(os.getcwd())
     tags = git.get_tags()
     versions = [
         (tag, parse_version(tag))
@@ -80,9 +81,10 @@ def get_latest_version():
     return stable_versions[-1]
 
 
-def get_latest_rc_tag(version, remote=None):
+def get_latest_rc_tag(version, remote=None, git=None):
     """Queries git tags and returns the highest RC tag for the version."""
-    git = Git(".")
+    if git is None:
+        git = Git(os.getcwd())
     if remote:
         tags = git.get_remote_tags(remote)
     else:
@@ -109,9 +111,10 @@ def should_increment_minor():
     return False
 
 
-def determine_next_version(branch_name=None):
+def determine_next_version(branch_name=None, git=None, is_patch=False):
     """Determines the next version based on git tags and the current branch."""
-    git = Git(".")
+    if git is None:
+        git = Git(os.getcwd())
     if branch_name is None:
         branch_name = git.get_current_branch()
 
@@ -150,10 +153,10 @@ def determine_next_version(branch_name=None):
                 )
                 return next_version
 
-    latest_version = get_latest_version()
+    latest_version = get_latest_version(git=git)
     major, minor, patch = [int(n) for n in latest_version.split(".")]
 
-    if should_increment_minor():
+    if not is_patch and should_increment_minor():
         return f"{major}.{minor + 1}.0"
     else:
         return f"{major}.{minor}.{patch + 1}"
