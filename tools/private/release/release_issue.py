@@ -7,11 +7,12 @@ def load_release_tracking_template(
     version: str | None = None,
     template_path: pathlib.Path | None = None,
 ) -> str:
-    """Loads the release tracking issue template, stripping RC tasks for patch releases.
+    """Loads the release tracking issue template, stripping non-patch tasks for patch releases.
 
     Args:
         version: Optional version string (e.g. '1.2.1'). If provided and represents a
-            patch release (i.e. does not end in '.0'), strips Tag RC tasks from the template.
+            patch release (i.e. does not end in '.0'), strips .0-only release tasks
+            ('Prepare Release', 'Create Release branch', and 'Tag RC' tasks) from the template.
         template_path: Optional path to the template file. Defaults to
             .github/ISSUE_TEMPLATE/release_tracking_template.md.
 
@@ -29,8 +30,19 @@ def load_release_tracking_template(
     is_patch = version is not None and not version.endswith(".0")
     if is_patch:
         lines = template_content.splitlines()
-        lines = [line for line in lines if not re.search(r"Tag RC\d+", line)]
-        template_content = "\n".join(lines)
+        filtered_lines = []
+        for line in lines:
+            parsed = parse_metadata_line(line)
+            if parsed:
+                name_lower = parsed["name"].lower()
+                if "prepare release" in name_lower:
+                    continue
+                if "create release branch" in name_lower:
+                    continue
+                if re.match(r"^tag rc\d+", name_lower):
+                    continue
+            filtered_lines.append(line)
+        template_content = "\n".join(filtered_lines)
         if not template_content.endswith("\n"):
             template_content += "\n"
 

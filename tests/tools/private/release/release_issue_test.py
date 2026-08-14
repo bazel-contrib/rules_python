@@ -181,10 +181,12 @@ def test_load_release_tracking_template(tmp_path):
     assert "- [ ] Tag RC0" in full_template
     assert "- [ ] Tag RC1" in full_template
 
-    # Patch release version (strips RC tasks)
+    # Patch release version (strips .0-only release tasks: Prepare Release, Create Release branch, Tag RC)
     patch_template = load_release_tracking_template(
         version="1.2.1", template_path=template_file
     )
     assert "Tag RC" not in patch_template
-    assert "- [ ] Prepare Release" in patch_template
+    assert "Prepare Release" not in patch_template
+    assert "Create Release branch" not in patch_template
     assert "- [ ] Tag Final" in patch_template
+    assert "## Backports" in patch_template

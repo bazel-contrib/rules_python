@@ -190,9 +190,8 @@ verification of cherry-picks using a Backport Tracking Issue.
     workflow.
     *   This will automatically create a standard Release Tracking Issue for
         each target version (e.g., `Release 1.7.1`, `Release 1.8.1`, etc.).
-    *   For patch releases, the created release tracking issues will have `Tag
-        RC` tasks automatically removed, as release candidates are not
-        required for patch releases.
+    *   For patch releases, the created release tracking issue will have
+        non-patch release tasks removed.
     *   The backport PR will be automatically added to the checklist of each
         created release tracking issue.
 

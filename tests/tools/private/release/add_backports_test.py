@@ -72,6 +72,9 @@ def test_add_backports_auto_discover_no_issues_creates_patch_release(
     assert "- [ ] #124" in body
     assert "- [ ] Sync Changelog #124" in body
     assert "Tag RC" not in body
+    assert "Prepare Release" not in body
+    assert "Create Release branch" not in body
+    assert "- [ ] Tag Final" in body
 
 
 def test_add_backports_patch_release_no_rc_added(mock_gh):
