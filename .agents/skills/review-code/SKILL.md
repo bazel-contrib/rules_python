@@ -54,6 +54,12 @@ file from `.agents/skills/review-code/`:
 
 ### Action Instructions
 - Launch all sub-agents concurrently using `invoke_subagent`.
-- Collect the reports from each sub-agent and report all violations and
-  suggested improvements clearly with suggested fixes for the user.
-- If all domain audits pass, confirm that the PR is ready for review.
+- Collect the reports from each sub-agent.
+- Create a user-facing review artifact named `code-review-results.md` in the
+  conversation artifact directory. The artifact must include:
+  - Overall summary and verdict across audit categories.
+  - Detailed analysis and findings from each sub-agent.
+  - Actionable findings and fix suggestions with specific code snippets, diffs,
+    and clickable file links for any violations found.
+- In the response, provide a concise summary with the overall verdict and a
+  clickable markdown link to `code-review-results.md`.
