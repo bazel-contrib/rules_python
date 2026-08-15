@@ -23,7 +23,7 @@ class ReleaseToolEnv:
 
 
 def _find_real_template_path() -> Path:
-    r = runfiles.Create()
+    r = runfiles.CreateOrRaise()
     path = r.Rlocation(
         "rules_python/.github/ISSUE_TEMPLATE/release_tracking_template.md"
     )
