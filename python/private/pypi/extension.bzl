@@ -454,6 +454,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # Keeps track of all the hub's whl repos across the different versions.
     # dict[hub, dict[whl, dict[version, str pip]]]
     # Where hub, whl, and pip are the repo names
+    dep_graph = {}
     hub_whl_map = {}
     hub_group_map = {}
     exposed_packages = {}
@@ -468,6 +469,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 whl_libraries[whl_name] = lib
 
+        dep_graph[hub.name] = out.dep_graph
         exposed_packages[hub.name] = out.exposed_packages
         extra_aliases[hub.name] = out.extra_aliases
         hub_group_map[hub.name] = out.group_map
@@ -477,6 +479,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         config = config,
         declared_deps = declared_deps,
         default_hub = config.default_hub or renamed_default_hub,
+        dep_graph = dep_graph,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         facts = simpleapi_cache.get_facts(),
@@ -618,6 +621,7 @@ def _pip_impl(module_ctx):
         hub_repository(
             name = hub_name,
             repo_name = hub_name,
+            dep_graph = mods.dep_graph.get(hub_name, {}),
             extra_hub_aliases = mods.extra_aliases.get(hub_name, {}),
             whl_map = {
                 key: whl_config_settings_to_json(values)
