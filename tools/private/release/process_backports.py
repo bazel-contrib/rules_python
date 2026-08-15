@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import hashlib
+import logging
 import os
 import tempfile
 import traceback
@@ -27,6 +28,8 @@ from tools.private.release.utils import (
     parse_pr_list,
     replace_version_next,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -64,20 +67,22 @@ class ProcessBackports:
                 sha_to_item[sha] = item
                 shas.append(sha)
             elif item.status in ("open-pr", "draft-pr"):
-                print(f"PR {item.pr_ref} is open or draft. Ignoring.")
+                logger.info("PR %s is open or draft. Ignoring.", item.pr_ref)
                 ignored_prs.append(item.pr_ref)
             else:
                 failed_prs.append(item.pr_ref)
                 status_to_set = item.status or "error-unmerged-pr"
                 if dry_run:
-                    print(
-                        f"[DRY RUN] Would update tracking issue checklist for"
-                        f" unresolved PR {item.pr_ref} to status={status_to_set}"
+                    logger.info(
+                        "[DRY RUN] Would update tracking issue checklist for"
+                        " unresolved PR %s to status=%s",
+                        item.pr_ref,
+                        status_to_set,
                     )
                 else:
-                    print(
-                        f"Updating tracking issue checklist for unresolved PR"
-                        f" {item.pr_ref}..."
+                    logger.info(
+                        "Updating tracking issue checklist for unresolved PR %s...",
+                        item.pr_ref,
                     )
                     try:
                         body = update_task_in_body(
@@ -88,9 +93,10 @@ class ProcessBackports:
                         )
                         self.gh.update_issue_body(issue, body)
                     except Exception as e:
-                        print(
-                            f"ERROR: Failed to update tracking issue for"
-                            f" unresolved PR {item.pr_ref}: {format_exception(e)}"
+                        logger.error(
+                            "Failed to update tracking issue for unresolved PR %s: %s",
+                            item.pr_ref,
+                            format_exception(e),
                         )
         return shas, sha_to_item, failed_prs, ignored_prs, body
 
@@ -112,7 +118,7 @@ class ProcessBackports:
         collected_diffs = []
         for sha in sorted_shas:
             item = sha_to_item[sha]
-            print(f"Cherry-picking {item.pr_ref} / {sha}...")
+            logger.info("Cherry-picking %s / %s...", item.pr_ref, sha)
             try:
                 self.git.cherry_pick(sha)
 
@@ -123,14 +129,17 @@ class ProcessBackports:
                         collected_news_files.append(f)
 
                 # Replace version markers FIRST to isolate diff
-                print(f"Replacing version markers for PR {item.pr_ref}...")
+                logger.info("Replacing version markers for PR %s...", item.pr_ref)
                 replace_version_next(version)
 
                 # Get diff of unstaged changes (version marker replacement)
                 diff_content = self.git.diff()
 
                 # Perform news processing (merging news/ files into the changelog)
-                print(f"Merging news fragments into changelog for PR {item.pr_ref}...")
+                logger.info(
+                    "Merging news fragments into changelog for PR %s...",
+                    item.pr_ref,
+                )
                 release_date = datetime.date.today().strftime("%Y-%m-%d")
                 changelog_news.update_changelog(version, release_date)
 
@@ -139,7 +148,7 @@ class ProcessBackports:
 
                 # Amend cherry-pick commit to include news merging and deletions,
                 # and reference the release tracking issue.
-                print(f"Amending cherry-pick commit for PR {item.pr_ref}...")
+                logger.info("Amending cherry-pick commit for PR %s...", item.pr_ref)
                 current_msg = self.git.get_commit_message("HEAD")
                 new_msg = f"{current_msg.strip()}\n\nWork towards #{issue}"
                 self.git.commit(new_msg, amend=True)
@@ -150,8 +159,10 @@ class ProcessBackports:
                         collected_diffs.append((pr_num, diff_content))
                     successful_pr_nums.append(pr_num)
                 except Exception as e:
-                    print(
-                        f"Warning: Failed to resolve PR number for {item.pr_ref}: {format_exception(e)}"
+                    logger.warning(
+                        "Failed to resolve PR number for %s: %s",
+                        item.pr_ref,
+                        format_exception(e),
                     )
 
                 if not dry_run:
@@ -164,30 +175,43 @@ class ProcessBackports:
                         "rc": next_rc_suffix,
                         "commit": new_sha,
                     }
-                    print(f"Updating tracking issue checklist for PR {item.pr_ref}...")
+                    logger.info(
+                        "Updating tracking issue checklist for PR %s...",
+                        item.pr_ref,
+                    )
                     try:
                         body = update_task_in_body(
                             body, item.pr_ref, checked=True, metadata=metadata
                         )
                         self.gh.update_issue_body(issue, body)
                     except Exception as e:
-                        print(
-                            f"ERROR: Failed to update tracking issue for PR"
-                            f" {item.pr_ref}: {format_exception(e)}"
+                        logger.error(
+                            "Failed to update tracking issue for PR %s: %s",
+                            item.pr_ref,
+                            format_exception(e),
                         )
-                    print(f"Success: backported {item.pr_ref} / {sha} to {branch_name}")
-                else:
-                    print(
-                        f"[DRY RUN] Success: {item.pr_ref} / {sha} can be"
-                        f" backported without error."
+                    logger.info(
+                        "Success: backported %s / %s to %s",
+                        item.pr_ref,
+                        sha,
+                        branch_name,
                     )
-                    print(
-                        f"[DRY RUN] Would update tracking issue checklist for"
-                        f" PR {item.pr_ref} to status=done"
+                else:
+                    logger.info(
+                        "[DRY RUN] Success: %s / %s can be backported without error.",
+                        item.pr_ref,
+                        sha,
+                    )
+                    logger.info(
+                        "[DRY RUN] Would update tracking issue checklist for"
+                        " PR %s to status=done",
+                        item.pr_ref,
                     )
             except Exception as e:
-                print(
-                    f"ERROR: Conflict or error on {sha}: {format_exception(e)}. Aborting."
+                logger.error(
+                    "Conflict or error on %s: %s. Aborting.",
+                    sha,
+                    format_exception(e),
                 )
                 try:
                     self.git.cherry_pick_abort()
@@ -196,14 +220,15 @@ class ProcessBackports:
                 failed_prs.append(item.pr_ref)
 
                 if dry_run:
-                    print(
-                        f"[DRY RUN] Would update tracking issue checklist for"
-                        f" failed PR {item.pr_ref} to status=error-merge-conflict"
+                    logger.info(
+                        "[DRY RUN] Would update tracking issue checklist for"
+                        " failed PR %s to status=error-merge-conflict",
+                        item.pr_ref,
                     )
                 else:
-                    print(
-                        f"Updating tracking issue checklist for failed PR"
-                        f" {item.pr_ref}..."
+                    logger.info(
+                        "Updating tracking issue checklist for failed PR %s...",
+                        item.pr_ref,
                     )
                     try:
                         body = update_task_in_body(
@@ -213,14 +238,16 @@ class ProcessBackports:
                             metadata={"status": "error-merge-conflict"},
                         )
                         self.gh.update_issue_body(issue, body)
-                        print(
-                            f"Updated back port of {item.pr_ref} to"
-                            f" status=error-merge-conflict (unchecked)"
+                        logger.info(
+                            "Updated back port of %s to"
+                            " status=error-merge-conflict (unchecked)",
+                            item.pr_ref,
                         )
                     except Exception as e:
-                        print(
-                            f"ERROR: Failed to update tracking issue for"
-                            f" failed PR {item.pr_ref}: {format_exception(e)}"
+                        logger.error(
+                            "Failed to update tracking issue for failed PR %s: %s",
+                            item.pr_ref,
+                            format_exception(e),
                         )
         return CherryPickAndUpdatePrsResult(
             failed_prs=failed_prs,
@@ -246,7 +273,11 @@ class ProcessBackports:
         main_branch = "main"
         backport_branch = f"prepare-{version}-backports-{prs_hash}"
 
-        print(f"Syncing changelog to {main_branch} via branch {backport_branch}...")
+        logger.info(
+            "Syncing changelog to %s via branch %s...",
+            main_branch,
+            backport_branch,
+        )
 
         self.git.fetch(args.remote, refspec=main_branch)
         self.git.checkout(main_branch, track_remote=args.remote)
@@ -255,8 +286,10 @@ class ProcessBackports:
         failed_version_sync_prs = []
         try:
             if args.dry_run:
-                print(
-                    f"[DRY RUN] Would create and checkout branch {backport_branch} from {main_branch}"
+                logger.info(
+                    "[DRY RUN] Would create and checkout branch %s from %s",
+                    backport_branch,
+                    main_branch,
                 )
             else:
                 if self.git.branch_exists(backport_branch):
@@ -265,8 +298,9 @@ class ProcessBackports:
                 else:
                     self.git.checkout(backport_branch, create_branch=True)
 
-            print(
-                f"Updating CHANGELOG.md and removing news files on {backport_branch}..."
+            logger.info(
+                "Updating CHANGELOG.md and removing news files on %s...",
+                backport_branch,
             )
             release_date = datetime.date.today().strftime("%Y-%m-%d")
             changelog_news.update_changelog(
@@ -280,18 +314,26 @@ class ProcessBackports:
             failed_version_sync_prs = self._apply_version_marker_diffs(collected_diffs)
 
             if args.dry_run:
-                print(
-                    f"[DRY RUN] Would commit: 'chore(release): sync changelog for v{version} backports'"
+                logger.info(
+                    "[DRY RUN] Would commit: 'chore(release): sync changelog"
+                    " for v%s backports'",
+                    version,
                 )
-                print(f"[DRY RUN] Would push {backport_branch} to {args.remote}")
-                print(
-                    f"[DRY RUN] Would create PR to {main_branch} with label 'type: sync-changelog'"
+                logger.info(
+                    "[DRY RUN] Would push %s to %s",
+                    backport_branch,
+                    args.remote,
                 )
-                print(
-                    f"[DRY RUN] Would update tracking issue #{args.issue} checklist tasks 'Sync Changelog #<pr>' to PENDING"
+                logger.info(
+                    "[DRY RUN] Would create PR to %s with label 'type: sync-changelog'",
+                    main_branch,
                 )
-                print("[DRY RUN] Diff of changes:")
-                print(self.git.status())
+                logger.info(
+                    "[DRY RUN] Would update tracking issue #%s checklist tasks"
+                    " 'Sync Changelog #<pr>' to PENDING",
+                    args.issue,
+                )
+                logger.info("[DRY RUN] Diff of changes:\n%s", self.git.status())
             else:
                 self.git.add_modified_and_deleted()
                 self.git.commit(
@@ -321,23 +363,24 @@ class ProcessBackports:
                 pr_body_lines.append(f"Release-Tracking-Issue: #{args.issue}")
                 pr_body = "\n".join(pr_body_lines)
 
-                print(f"Creating PR to {main_branch}...")
+                logger.info("Creating PR to %s...", main_branch)
                 pr_url = self.gh.create_pr(
                     title=pr_title,
                     body=pr_body,
                     base=main_branch,
                     labels=["type: sync-changelog"],
                 )
-                print(f"Created PR: {pr_url}")
+                logger.info("Created PR: %s", pr_url)
 
                 try:
                     pr_num = int(pr_url.split("/")[-1])
-                    print(f"Enabling auto-merge for PR #{pr_num}...")
+                    logger.info("Enabling auto-merge for PR #%s...", pr_num)
                     self.gh.enable_auto_merge(pr_num)
 
-                    print(
-                        f"Updating tracking issue #{args.issue} checklist with"
-                        " Sync Changelog tasks..."
+                    logger.info(
+                        "Updating tracking issue #%s checklist with"
+                        " Sync Changelog tasks...",
+                        args.issue,
                     )
                     issue_body = self.gh.get_issue_body(args.issue)
                     for pr in successful_pr_nums:
@@ -351,9 +394,9 @@ class ProcessBackports:
                         )
                     self.gh.update_issue_body(args.issue, issue_body)
                 except Exception as e:
-                    print(
-                        f"Warning: Failed to update tracking issue or enable"
-                        f" auto-merge: {format_exception(e)}"
+                    logger.warning(
+                        "Failed to update tracking issue or enable auto-merge: %s",
+                        format_exception(e),
                     )
         finally:
             if args.dry_run:
@@ -371,11 +414,13 @@ class ProcessBackports:
             return failed_version_sync_prs
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            print(f"Applying {len(collected_diffs)} version marker patches...")
+            logger.info("Applying %d version marker patches...", len(collected_diffs))
             for pr_num, diff_content in collected_diffs:
                 if args.dry_run:
-                    print(
-                        f"[DRY RUN] Would check and apply version marker patch for PR #{pr_num}"
+                    logger.info(
+                        "[DRY RUN] Would check and apply version marker patch"
+                        " for PR #%s",
+                        pr_num,
                     )
 
                 patch_filepath = os.path.join(temp_dir, f"{pr_num}.patch")
@@ -384,15 +429,22 @@ class ProcessBackports:
 
                 if self.git.apply_check(patch_filepath):
                     if args.dry_run:
-                        print(
-                            f"[DRY RUN] Version marker patch for PR #{pr_num} applies cleanly."
+                        logger.info(
+                            "[DRY RUN] Version marker patch for PR #%s applies"
+                            " cleanly.",
+                            pr_num,
                         )
                     else:
-                        print(f"Applying version marker patch for PR #{pr_num}...")
+                        logger.info(
+                            "Applying version marker patch for PR #%s...",
+                            pr_num,
+                        )
                         self.git.apply(patch_filepath)
                 else:
-                    print(
-                        f"Warning: Version marker patch for PR #{pr_num} could not be applied cleanly to main. Skipping."
+                    logger.warning(
+                        "Version marker patch for PR #%s could not be applied"
+                        " cleanly to main. Skipping.",
+                        pr_num,
                     )
                     failed_version_sync_prs.append(pr_num)
         return failed_version_sync_prs
@@ -404,18 +456,21 @@ class ProcessBackports:
         try:
             exit_code = self._run_internal()
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.error("Unexpected error: %s", e)
             traceback.print_exc()
             exit_code = 1
 
         if exit_code != 0 and args.triggering_comment:
-            print(f"Reacting with thumbs-down to comment {args.triggering_comment}...")
+            logger.info(
+                "Reacting with thumbs-down to comment %s...",
+                args.triggering_comment,
+            )
             try:
                 self.gh.add_comment_reaction(
                     args.triggering_comment, GH_REACTION_THUMBS_DOWN
                 )
             except Exception as e:
-                print(f"Failed to add reaction to comment: {e}")
+                logger.error("Failed to add reaction to comment: %s", e)
 
         return exit_code
 
@@ -431,8 +486,10 @@ class ProcessBackports:
                     pr_num = self.gh.resolve_pr_number(pr_ref)
                     items_to_add.append({"ref": f"#{pr_num}"})
                 except Exception as e:
-                    print(
-                        f"Warning: PR ref '{pr_ref}' is invalid: {format_exception(e)}"
+                    logger.warning(
+                        "PR ref '%s' is invalid: %s",
+                        pr_ref,
+                        format_exception(e),
                     )
                     items_to_add.append(
                         {
@@ -441,7 +498,11 @@ class ProcessBackports:
                         }
                     )
 
-            print(f"Adding backports {items_to_add} to tracking issue #{args.issue}...")
+            logger.info(
+                "Adding backports %s to tracking issue #%s...",
+                items_to_add,
+                args.issue,
+            )
             try:
                 body = add_backports_to_body(body, items_to_add)
                 for item in items_to_add:
@@ -460,25 +521,28 @@ class ProcessBackports:
                 )
                 next_rc_num = max(rc_tags.keys()) + 1 if rc_tags else 0
                 if not has_pending_rc:
-                    print(
-                        f"No pending RC task found. Adding 'Tag"
-                        f" RC{next_rc_num}' to checklist..."
+                    logger.info(
+                        "No pending RC task found. Adding 'Tag RC%s' to checklist...",
+                        next_rc_num,
                     )
                     body = add_rc_task_to_body(body, next_rc_num)
             except ValueError as e:
-                print(f"Error: {e}")
+                logger.error("Error: %s", e)
                 return 1
 
             if not args.dry_run:
                 self.gh.update_issue_body(args.issue, body)
-                print("Successfully updated tracking issue checklist.")
+                logger.info("Successfully updated tracking issue checklist.")
             else:
-                print(
+                logger.info(
                     "[DRY RUN] Would update tracking issue checklist with new"
                     " backports."
                 )
                 if not has_pending_rc:
-                    print(f"[DRY RUN] Would add 'Tag RC{next_rc_num}' to checklist.")
+                    logger.info(
+                        "[DRY RUN] Would add 'Tag RC%s' to checklist.",
+                        next_rc_num,
+                    )
 
         items = parse_backports(body)
 
@@ -489,16 +553,16 @@ class ProcessBackports:
         ]
 
         if not pending_items:
-            print("No pending backports found.")
+            logger.info("No pending backports found.")
             return 0
 
-        print(f"Found {len(pending_items)} pending backports to process.")
+        logger.info("Found %d pending backports to process.", len(pending_items))
 
         # Determine branch name from issue title
         issue_title = self.gh.get_issue_title(args.issue)
         version_match = RELEASE_TITLE_RE.search(issue_title)
         if not version_match:
-            print(f"Error: Could not parse version from issue title: {issue_title}")
+            logger.error("Could not parse version from issue title: %s", issue_title)
             return 1
 
         version = version_match.group(1)
@@ -524,18 +588,18 @@ class ProcessBackports:
         )
 
         if not shas:
-            print("No valid merge commits to process.")
+            logger.info("No valid merge commits to process.")
             if failed_prs:
-                print("Failed PRs:")
+                logger.error("Failed PRs:")
                 for pr in failed_prs:
-                    print(f"- {pr}")
+                    logger.error("- %s", pr)
                 return 1
             return 0
 
         # Verify workspace is clean before proceeding
         if self.git.status():
-            print(
-                "ERROR: Git workspace is dirty. Please commit or stash changes"
+            logger.error(
+                "Git workspace is dirty. Please commit or stash changes"
                 " before running backports."
             )
             return 1
@@ -569,7 +633,11 @@ class ProcessBackports:
             body = result.body
         finally:
             if args.dry_run:
-                print(f"[DRY RUN] Resetting branch {branch_name} to {start_sha}")
+                logger.info(
+                    "[DRY RUN] Resetting branch %s to %s",
+                    branch_name,
+                    start_sha,
+                )
                 self.git.reset_hard(reset_to=start_sha)
 
         if successful_pr_nums:
@@ -582,15 +650,15 @@ class ProcessBackports:
             )
 
         if failed_prs:
-            print("ERROR: One or more cherry-picks/resolutions failed:")
+            logger.error("One or more cherry-picks/resolutions failed:")
             for pr in failed_prs:
-                print(f"- {pr}")
+                logger.error("- %s", pr)
             return 1
 
         if args.dry_run:
-            print("Dry run completed successfully. No errors found.")
+            logger.info("Dry run completed successfully. No errors found.")
         else:
-            print("All backports successfully processed!")
+            logger.info("All backports successfully processed!")
         return 0
 
     @classmethod

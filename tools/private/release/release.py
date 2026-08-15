@@ -1,6 +1,7 @@
 """A tool to perform release steps."""
 
 import argparse
+import logging
 import os
 import sys
 
@@ -53,6 +54,11 @@ def create_parser():
 
 
 def main():
+    logging.basicConfig(
+        format="%(levelname)s:%(filename)s:%(lineno)d: %(message)s",
+        level=logging.INFO,
+        stream=sys.stderr,
+    )
     print(f"sys.argv: {sys.argv}")
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
         os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])

@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import logging
 import subprocess
 from unittest.mock import ANY, call
 
@@ -495,7 +496,7 @@ def test_process_backports_version_sync_failure(mocker, mock_git, mock_gh):
 
 
 def test_process_backports_sync_changelog_create_pr_failure(
-    mocker, mock_git, mock_gh, capsys
+    mocker, mock_git, mock_gh, capsys, caplog
 ):
     mocker.patch("tools.private.release.process_backports.changelog_news")
     mocker.patch("tools.private.release.process_backports.replace_version_next")
@@ -543,7 +544,8 @@ def test_process_backports_sync_changelog_create_pr_failure(
     )
     mocker.patch.object(mock_gh, "create_pr", side_effect=err)
 
-    result = ProcessBackports(args, mock_git, mock_gh).run()
+    with caplog.at_level(logging.ERROR):
+        result = ProcessBackports(args, mock_git, mock_gh).run()
 
     assert result == 1
     assert mock_gh.reactions.get(5297050431) == ["-1"]
@@ -551,7 +553,28 @@ def test_process_backports_sync_changelog_create_pr_failure(
     captured = capsys.readouterr()
     assert (
         "Unexpected error: Command '['gh', 'pr', 'create']' returned non-zero"
-        " exit status 1." in captured.out
+        " exit status 1." in caplog.text
     )
     assert "Error running command: gh pr create ..." in captured.err
     assert "Stderr: pull request already exists" in captured.err
+
+
+def test_process_backports_logs_no_pending(mock_git, mock_gh, caplog):
+    args = argparse.Namespace(
+        issue=123,
+        remote="origin",
+        dry_run=False,
+        add=None,
+        triggering_comment=None,
+    )
+    mock_gh.issues[123] = {
+        "title": "Release 2.0.0",
+        "body": "No backports here",
+        "labels": ["type: release"],
+    }
+
+    with caplog.at_level(logging.INFO):
+        result = ProcessBackports(args, mock_git, mock_gh).run()
+
+    assert result == 0
+    assert "No pending backports found." in caplog.text
