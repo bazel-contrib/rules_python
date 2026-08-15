@@ -4,6 +4,7 @@ import enum
 import json
 import os
 import re
+import subprocess
 import tempfile
 from typing import TypedDict
 
@@ -100,6 +101,12 @@ class MultipleTrackingIssuesError(ValueError):
 
 class NoTrackingIssueError(ValueError):
     """Raised when no open tracking issue is found for a version."""
+
+    pass
+
+
+class CreatePrError(Exception):
+    """Raised when creating a pull request fails."""
 
     pass
 
@@ -392,6 +399,9 @@ class GitHub:
 
         Returns:
             The URL of the created PR.
+
+        Raises:
+            CreatePrError: If creating the pull request fails.
         """
         cmd = [
             "create",
@@ -402,8 +412,30 @@ class GitHub:
         if labels:
             for label in labels:
                 cmd.append(f"--label={label}")
-        output = self._gh_pr(*cmd)
-        return output if output else ""
+        try:
+            output = self._gh_pr(*cmd)
+        except subprocess.CalledProcessError as e:
+            msg = f"Failed to create PR '{title}': {e}"
+            if e.stdout:
+                msg += (
+                    f"\n{'=' * 20} STDOUT BEGIN {'=' * 20}\n"
+                    f"{e.stdout}\n"
+                    f"{'=' * 20} STDOUT END {'=' * 20}"
+                )
+            if e.stderr:
+                msg += (
+                    f"\n{'=' * 20} STDERR BEGIN {'=' * 20}\n"
+                    f"{e.stderr}\n"
+                    f"{'=' * 20} STDERR END {'=' * 20}"
+                )
+            raise CreatePrError(msg) from e
+        except Exception as e:
+            raise CreatePrError(f"Failed to create PR '{title}': {e}") from e
+        if not output:
+            raise CreatePrError(
+                f"Failed to create PR '{title}': gh pr create returned no output"
+            )
+        return output
 
     def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:
         """Enables auto-merge for a PR.

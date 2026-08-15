@@ -194,3 +194,12 @@ def set_github_output(name: str, value: str) -> None:
     if github_output := os.environ.get("GITHUB_OUTPUT"):
         with open(github_output, "a", encoding="utf-8") as f:
             f.write(f"{name}={value}\n")
+
+
+def format_exception(e: BaseException) -> str:
+    """Formats an exception to a string, including any attached PEP 678 notes."""
+    msg = str(e)
+    notes = getattr(e, "__notes__", None)
+    if not notes:
+        return msg
+    return "\n".join(filter(None, [msg] + [str(note) for note in notes]))

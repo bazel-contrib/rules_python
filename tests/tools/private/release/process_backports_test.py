@@ -1,7 +1,9 @@
 import argparse
 import datetime
+import logging
 from unittest.mock import ANY, call
 
+from tools.private.release.gh import CreatePrError
 from tools.private.release.process_backports import ProcessBackports
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
@@ -491,3 +493,88 @@ def test_process_backports_version_sync_failure(mocker, mock_git, mock_gh):
     updated_body = mock_gh.get_issue_body(123)
     assert "- [ ] Sync Changelog #124 | status=pending pr=#1001" in updated_body
     assert "- [ ] Sync Changelog #125 | status=pending pr=#1001" in updated_body
+
+
+def test_process_backports_sync_changelog_create_pr_failure(
+    mocker, mock_git, mock_gh, capsys, caplog
+):
+    mocker.patch("tools.private.release.process_backports.changelog_news")
+    mocker.patch("tools.private.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
+    mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
+
+    args = argparse.Namespace(
+        issue=123,
+        remote="origin",
+        dry_run=False,
+        add=None,
+        triggering_comment=5297050431,
+    )
+    mock_gh.issues[123] = {
+        "title": "Release 2.0.0",
+        "body": """
+## Checklist
+- [ ] Prepare Release
+- [ ] Create Release branch
+- [ ] Sync Changelog #124
+- [ ] Tag Final
+
+## Backports
+- [ ] #124 | status=pending
+""",
+        "labels": ["type: release"],
+    }
+    mock_gh.prs[124] = {
+        "state": "MERGED",
+        "mergeCommit": {"oid": "abcdef12"},
+    }
+    mock_git.get_remote_tags.return_value = []
+    mock_git.sort_commits_chronologically.return_value = ["abcdef12"]
+    mock_git.get_commit_sha.side_effect = ["12345678", "12345678", "main_sha"]
+    mock_git.get_commit_message.return_value = 'Cherry-pick "fix bug"'
+    mock_git.get_modified_files.return_value = ["news/124.fixed.md"]
+    mock_git.diff.return_value = "version diff for 124"
+    mock_git.apply_check.return_value = True
+
+    # Make create_pr raise CreatePrError
+    err = CreatePrError(
+        "Failed to create PR 'chore(release): sync changelog for v2.0.0 backports': "
+        "Command '['gh', 'pr', 'create']' returned non-zero exit status 1.\n"
+        "Error running command: gh pr create ...\nStdout: \nStderr: pull request already exists"
+    )
+    mocker.patch.object(mock_gh, "create_pr", side_effect=err)
+
+    with caplog.at_level(logging.ERROR):
+        result = ProcessBackports(args, mock_git, mock_gh).run()
+
+    assert result == 1
+    assert mock_gh.reactions.get(5297050431) == ["-1"]
+
+    captured = capsys.readouterr()
+    assert (
+        "Unexpected error: Failed to create PR 'chore(release): sync changelog for v2.0.0 backports'"
+        in caplog.text
+    )
+    assert "Error running command: gh pr create ..." in captured.err
+    assert "Stderr: pull request already exists" in captured.err
+
+
+def test_process_backports_logs_no_pending(mock_git, mock_gh, caplog):
+    args = argparse.Namespace(
+        issue=123,
+        remote="origin",
+        dry_run=False,
+        add=None,
+        triggering_comment=None,
+    )
+    mock_gh.issues[123] = {
+        "title": "Release 2.0.0",
+        "body": "No backports here",
+        "labels": ["type: release"],
+    }
+
+    with caplog.at_level(logging.INFO):
+        result = ProcessBackports(args, mock_git, mock_gh).run()
+
+    assert result == 0
+    assert "No pending backports found." in caplog.text
