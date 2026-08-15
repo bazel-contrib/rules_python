@@ -36,6 +36,12 @@ class SphinxDocsOutputTest(absltest.TestCase):
         )
         self.assertTrue(os.path.exists(str(page_path)), f"Not found at {page_path}")
 
+    def test_custom_sphinx_docs_library_info_transitives(self):
+        page_path = importlib.resources.files(sphinx_docs).joinpath(
+            "docs/_build/html/custom_transitive/custom_transitive_page.html"
+        )
+        self.assertTrue(os.path.exists(str(page_path)), f"Not found at {page_path}")
+
 
 if __name__ == "__main__":
     absltest.main()

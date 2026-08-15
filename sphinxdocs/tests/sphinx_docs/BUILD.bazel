@@ -45,9 +45,13 @@ custom_docs_library(
     name = "custom_docs",
     page_name = "custom_page",
     prefix = "custom/",
+    transitive_deps = [
+        ":custom_docs_transitive",
+    ],
     deps = [
         ":custom_docs_dep",
         ":custom_docs_empty",
+        ":gen_binary_asset",
     ],
 )
 
@@ -56,6 +60,12 @@ custom_docs_library(
     name = "custom_docs_dep",
     page_name = "custom_dep_page",
     prefix = "custom_dep/",
+)
+
+custom_docs_library(
+    name = "custom_docs_transitive",
+    page_name = "custom_transitive_page",
+    prefix = "custom_transitive/",
 )
 
 custom_docs_library(
