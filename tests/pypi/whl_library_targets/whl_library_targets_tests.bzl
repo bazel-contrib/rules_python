@@ -19,10 +19,45 @@ load(
     "//python/private/pypi:whl_library_targets.bzl",
     "whl_library_deps_targets",
     "whl_library_srcs",
+    "whl_library_targets",
 )  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
+
+def _make_whl_library_targets_py_library_calls(
+        *,
+        srcs,
+        data,
+        generated_inits,
+        enable_implicit_namespace_pkgs = False):
+    py_library_calls = []
+    m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append([])  # rewrite-record
+    m_glob.results.append(srcs)
+    m_glob.results.append(data)
+    m_glob.results.append([])  # pyi
+
+    whl_library_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        requires_dist = ["bar"],
+        dep_template = "@pypi//{name}:{target}",
+        enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
+        filegroups = {},
+        native = struct(glob = m_glob.glob),
+        rules = struct(
+            create_inits = lambda **_: generated_inits,
+            env_marker_setting = lambda **_: None,
+            gen_wheel_record = lambda **_: None,
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            venv_rewrite_shebang = lambda **_: None,
+        ),
+    )
+
+    return py_library_calls
 
 def _test_filegroups(env):
     calls = []
@@ -190,6 +225,87 @@ def _test_whl_library_deps_targets(env):
     ])  # buildifier: @unsorted-dict-items
 
 _tests.append(_test_whl_library_deps_targets)
+
+def _test_whl_library_targets_sourceless(env):
+    for enable_implicit_namespace_pkgs, expected_leaf_srcs in [
+        (False, [] + select({
+            Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
+            "//conditions:default": [],
+        })),
+        (True, []),
+    ]:
+        py_library_calls = _make_whl_library_targets_py_library_calls(
+            srcs = [],
+            data = [],
+            generated_inits = [],
+            enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
+        )
+
+        env.expect.that_collection(py_library_calls).has_size(2)
+        if len(py_library_calls) != 2:
+            return
+
+        env.expect.that_dict(py_library_calls[0]).contains_at_least({
+            "srcs": expected_leaf_srcs,
+        })
+        env.expect.that_dict(py_library_calls[1]).contains_exactly({
+            "name": "pkg",
+            "srcs": [],
+            "deps": ["srcs", "@pypi//bar:pkg"],
+            "tags": [],
+            "visibility": ["//visibility:public"],
+        })  # buildifier: @unsorted-dict-items
+
+_tests.append(_test_whl_library_targets_sourceless)
+
+def _test_whl_library_targets_sourceful(env):
+    for srcs, data, generated_inits, expected_leaf_srcs, expected_wrapper_srcs in [
+        (
+            ["site-packages/foo.py"],
+            [],
+            [],
+            ["site-packages/foo.py"] + select({
+                Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
+                "//conditions:default": [],
+            }),
+            ["srcs"],
+        ),
+        (
+            [],
+            ["site-packages/ext/mod.so"],
+            ["site-packages/ext/__init__.py"],
+            [] + select({
+                Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
+                "//conditions:default": ["site-packages/ext/__init__.py"],
+            }),
+            select({
+                Label("//python/config_settings:_is_venvs_site_packages_yes"): [],
+                "//conditions:default": ["srcs"],
+            }),
+        ),
+    ]:
+        py_library_calls = _make_whl_library_targets_py_library_calls(
+            srcs = srcs,
+            data = data,
+            generated_inits = generated_inits,
+        )
+
+        env.expect.that_collection(py_library_calls).has_size(2)
+        if len(py_library_calls) != 2:
+            return
+
+        env.expect.that_dict(py_library_calls[0]).contains_at_least({
+            "srcs": expected_leaf_srcs,
+        })
+        env.expect.that_dict(py_library_calls[1]).contains_exactly({
+            "name": "pkg",
+            "srcs": expected_wrapper_srcs,
+            "deps": ["srcs", "@pypi//bar:pkg"],
+            "tags": [],
+            "visibility": ["//visibility:public"],
+        })  # buildifier: @unsorted-dict-items
+
+_tests.append(_test_whl_library_targets_sourceful)
 
 def _test_whl_library_deps_targets_no_deps(env):
     alias_calls = []
