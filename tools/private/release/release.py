@@ -17,6 +17,7 @@ from tools.private.release.on_pr_merged import OnPrMerged
 from tools.private.release.prepare import Prepare
 from tools.private.release.process_backports import ProcessBackports
 from tools.private.release.promote import Promote
+from tools.private.release.utils import format_exception
 
 cmds = [
     DetermineNextVersion,
@@ -65,10 +66,7 @@ def main():
         exit_code = args.command(args)
     except Exception as e:
         sys.stdout.flush()
-        print(f"Fatal error: {e}", file=sys.stderr)
-        if hasattr(e, "__notes__"):
-            for note in e.__notes__:
-                print(note, file=sys.stderr)
+        print(f"Fatal error: {format_exception(e)}", file=sys.stderr)
         sys.exit(1)
 
     sys.exit(exit_code if exit_code is not None else 0)

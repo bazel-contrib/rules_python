@@ -326,3 +326,23 @@ def test_determine_next_version_on_main_with_is_patch(mocker, release_tool_env):
     assert utils.determine_next_version(is_patch=False) == "1.3.0"
     # With is_patch=True, it produces a patch bump
     assert utils.determine_next_version(is_patch=True) == "1.2.4"
+
+
+def test_format_exception_no_notes():
+    e = ValueError("something went wrong")
+    assert utils.format_exception(e) == "something went wrong"
+
+
+def test_format_exception_with_notes():
+    e = RuntimeError("failed to execute")
+    e.add_note("Note 1: additional details")
+    e.add_note("Note 2: more info")
+    assert utils.format_exception(e) == (
+        "failed to execute\nNote 1: additional details\nNote 2: more info"
+    )
+
+
+def test_format_exception_empty_message_with_notes():
+    e = Exception()
+    e.add_note("Note only")
+    assert utils.format_exception(e) == "Note only"

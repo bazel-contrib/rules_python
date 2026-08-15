@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import os
 import tempfile
+import traceback
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,6 +22,7 @@ from tools.private.release.release_issue import (
     update_task_in_body,
 )
 from tools.private.release.utils import (
+    format_exception,
     get_latest_rc_tag,
     parse_pr_list,
     replace_version_next,
@@ -88,7 +90,7 @@ class ProcessBackports:
                     except Exception as e:
                         print(
                             f"ERROR: Failed to update tracking issue for"
-                            f" unresolved PR {item.pr_ref}: {e}"
+                            f" unresolved PR {item.pr_ref}: {format_exception(e)}"
                         )
         return shas, sha_to_item, failed_prs, ignored_prs, body
 
@@ -149,7 +151,7 @@ class ProcessBackports:
                     successful_pr_nums.append(pr_num)
                 except Exception as e:
                     print(
-                        f"Warning: Failed to resolve PR number for {item.pr_ref}: {e}"
+                        f"Warning: Failed to resolve PR number for {item.pr_ref}: {format_exception(e)}"
                     )
 
                 if not dry_run:
@@ -171,7 +173,7 @@ class ProcessBackports:
                     except Exception as e:
                         print(
                             f"ERROR: Failed to update tracking issue for PR"
-                            f" {item.pr_ref}: {e}"
+                            f" {item.pr_ref}: {format_exception(e)}"
                         )
                     print(f"Success: backported {item.pr_ref} / {sha} to {branch_name}")
                 else:
@@ -184,7 +186,9 @@ class ProcessBackports:
                         f" PR {item.pr_ref} to status=done"
                     )
             except Exception as e:
-                print(f"ERROR: Conflict or error on {sha}: {e}. Aborting.")
+                print(
+                    f"ERROR: Conflict or error on {sha}: {format_exception(e)}. Aborting."
+                )
                 try:
                     self.git.cherry_pick_abort()
                 except Exception:
@@ -216,7 +220,7 @@ class ProcessBackports:
                     except Exception as e:
                         print(
                             f"ERROR: Failed to update tracking issue for"
-                            f" failed PR {item.pr_ref}: {e}"
+                            f" failed PR {item.pr_ref}: {format_exception(e)}"
                         )
         return CherryPickAndUpdatePrsResult(
             failed_prs=failed_prs,
@@ -349,7 +353,7 @@ class ProcessBackports:
                 except Exception as e:
                     print(
                         f"Warning: Failed to update tracking issue or enable"
-                        f" auto-merge: {e}"
+                        f" auto-merge: {format_exception(e)}"
                     )
         finally:
             if args.dry_run:
@@ -401,6 +405,7 @@ class ProcessBackports:
             exit_code = self._run_internal()
         except Exception as e:
             print(f"Unexpected error: {e}")
+            traceback.print_exc()
             exit_code = 1
 
         if exit_code != 0 and args.triggering_comment:
@@ -426,7 +431,9 @@ class ProcessBackports:
                     pr_num = self.gh.resolve_pr_number(pr_ref)
                     items_to_add.append({"ref": f"#{pr_num}"})
                 except Exception as e:
-                    print(f"Warning: PR ref '{pr_ref}' is invalid: {e}")
+                    print(
+                        f"Warning: PR ref '{pr_ref}' is invalid: {format_exception(e)}"
+                    )
                     items_to_add.append(
                         {
                             "ref": pr_ref,
