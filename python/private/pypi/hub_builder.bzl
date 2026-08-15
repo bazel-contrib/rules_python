@@ -88,6 +88,7 @@ def hub_builder(
         # Functions to download according to the config
         # dict[str python_version, callable]
         _get_index_urls = {},
+        _default_index_url = {},
         # Tells whether to use the downloader for a package.
         # dict[str python_version, dict[str package_name, bool use_downloader]]
         _use_downloader = {},
@@ -257,44 +258,6 @@ def _add_extra_aliases(self, extra_hub_aliases):
             {alias: True for alias in aliases},
         )
 
-def _diff_dict(first, second):
-    """A simple utility to shallow compare dictionaries.
-
-    Args:
-        first: The first dictionary to compare.
-        second: The second dictionary to compare.
-
-    Returns:
-        A dictionary containing the differences, with keys "common", "different",
-        "extra", and "missing", or None if the dictionaries are identical.
-    """
-    missing = {}
-    extra = {
-        key: value
-        for key, value in second.items()
-        if key not in first
-    }
-    common = {}
-    different = {}
-
-    for key, value in first.items():
-        if key not in second:
-            missing[key] = value
-        elif value == second[key]:
-            common[key] = value
-        else:
-            different[key] = (value, second[key])
-
-    if missing or extra or different:
-        return {
-            "common": common,
-            "different": different,
-            "extra": extra,
-            "missing": missing,
-        }
-    else:
-        return None
-
 def _add_whl_library(self, *, python_version, whl, repo):
     """Add a whl_library and kwargs to call it with for the hub.
 
@@ -310,16 +273,10 @@ def _add_whl_library(self, *, python_version, whl, repo):
         # disallow building from sdist.
         return
 
-    # TODO @aignas 2025-06-29: we should not need the version in the repo_name if
-    # we are using pipstar and we are downloading the wheel using the downloader
-    #
-    # However, for that we should first have a different way to reference closures with
-    # extras. For example, if some package depends on `foo[extra]` and another depends on
-    # `foo`, we should have 2 py_library targets.
     repo_name = "{}_{}_{}".format(self.name, version_label(python_version), repo.repo_name)
 
     if repo_name in self._whl_libraries:
-        diff = _diff_dict(self._whl_libraries[repo_name], repo.args)
+        diff = repo_utils.diff_dict(self._whl_libraries[repo_name], repo.args)
         if diff:
             self._logger.fail(lambda: (
                 "Attempting to create a duplicate library {repo_name} for {whl_name} with different arguments. Already existing declaration has:\n".format(
@@ -349,24 +306,25 @@ def _add_whl_library(self, *, python_version, whl, repo):
 ### end of setters, below we have various functions to implement the public methods
 
 def _set_get_index_urls(self, mctx, pip_attr):
+    python_version = pip_attr.python_version
+
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
     # form is honored when deciding whether the experimental index-url mode is
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
     # is treated as truthy and the mode is forced on, even when the env var
     # would expand to the empty string.
-    default_index_url = envsubst(
+    self._default_index_url[python_version] = envsubst(
         pip_attr.experimental_index_url,
         pip_attr.envsubst,
         mctx.getenv,
     ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
-    if not default_index_url:
+    if not self._default_index_url[python_version]:
         # parallel_download is set to True by default, so we are not checking/validating it
         # here
         return False
 
-    python_version = pip_attr.python_version
     self._use_downloader.setdefault(python_version, {}).update({
         normalize_name(s): False
         for s in pip_attr.simpleapi_skip
@@ -374,7 +332,7 @@ def _set_get_index_urls(self, mctx, pip_attr):
     self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = (index_url or default_index_url).rstrip("/"),
+            index_url = (index_url or self._default_index_url[python_version]).rstrip("/"),
             extra_index_urls = [
                 x.rstrip("/")
                 for x in (extra_index_urls or default_extra_index_urls)

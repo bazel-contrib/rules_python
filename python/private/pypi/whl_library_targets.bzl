@@ -100,7 +100,6 @@ def whl_library_targets(
         visibility: {type}`list[str]` The visibility of the targets.
         **kwargs: Extra args passed to the {obj}`whl_library_deps_targets` and {obj}`whl_library_srcs`.
     """
-    create_extra_targets = bool(requires_dist or group_name) and dep_template
     whl_library_srcs(
         name = name,
         sdist_filename = sdist_filename,
@@ -114,27 +113,22 @@ def whl_library_targets(
         copy_executables = copy_executables,
         enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
         namespace_package_files = namespace_package_files,
-        # If there are no dependencies, then let's create the targets with public labels.
-        # Note, we are not supporting grouping the packages in this case, but that is fine.
-        whl_name = WHEEL_FILE if create_extra_targets else WHEEL_FILE_PUBLIC_LABEL,
-        pkg_name = PY_SRCS_LABEL if create_extra_targets else PY_LIBRARY_PUBLIC_LABEL,
         **kwargs
     )
 
-    if create_extra_targets:
-        whl_library_deps_targets(
-            name = name,
-            metadata_name = metadata_name,
-            requires_dist = requires_dist,
-            group_deps = group_deps,  # only needed if requires_dist is present
-            extras = extras,  # only needed if requires_dist is present
-            include = include,  # only needed if requires_dist is present
-            group_name = group_name,  # only needed if requires_dist is present
-            dep_template = dep_template,  # only needed if requires_dist is present
-            repo = None,  # set aliases in the same repo
-            aliases = {},
-            **kwargs
-        )
+    whl_library_deps_targets(
+        name = name,
+        metadata_name = metadata_name,
+        requires_dist = requires_dist,
+        group_deps = group_deps,  # only needed if requires_dist is present
+        extras = extras,  # only needed if requires_dist is present
+        include = include,  # only needed if requires_dist is present
+        group_name = group_name,  # only needed if requires_dist is present
+        dep_template = dep_template,  # only needed if requires_dist is present
+        repo = None,  # set aliases in the same repo
+        aliases = {},
+        **kwargs
+    )
 
 def whl_library_srcs(
         *,
@@ -363,8 +357,8 @@ def whl_library_deps_targets(
         repo,
         aliases = None,
         metadata_name,
-        requires_dist,
-        extras,
+        requires_dist = [],
+        extras = [],
         include = [],
         group_deps = [],
         group_name = None,
@@ -505,6 +499,8 @@ def whl_library_deps_targets(
             name = py_library_label,
             # We include as srcs to ensure that the (locations :pkg) works as expected.
             srcs = [repo_label(PY_SRCS_LABEL)],
+            # Never pre-compile, because we don't have real sources here.
+            precompile = "disabled",
             deps = _deps(
                 # We include as deps, so that `PyInfo` and friends (e.g. `pyi_srcs`) get
                 # propagated. Just passing the target as `srcs` is not enough to propagate

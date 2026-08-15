@@ -175,6 +175,7 @@ def _test_whl_library_deps_targets(env):
             ":is_include_bar_baz_true": ["@pypi//bar_baz:pkg"],
             "//conditions:default": [],
         }),
+        "precompile": "disabled",
         "tags": [],
         "visibility": ["//visibility:public"],
     })  # buildifier: @unsorted-dict-items

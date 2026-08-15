@@ -4,10 +4,15 @@ module(
 
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_python", version = "0.0.0")
+bazel_dep(name = "platforms", version = "0.0.11")
+
 local_path_override(
     module_name = "rules_python",
     path = "../..",
 )
+
+uv = use_extension("@rules_python//python/uv:uv.bzl", "uv")
+uv.configure(version = "0.12.1")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(
@@ -15,26 +20,23 @@ python.defaults(
     python_version = "3.10",
     python_version_env = "BAZEL_PYTHON_VERSION",
 )
-python.toolchain(
-    configure_coverage_tool = True,
-    python_version = "3.10",
-)
-python.toolchain(
-    configure_coverage_tool = True,
-    python_version = "3.11",
-)
-python.toolchain(
-    configure_coverage_tool = True,
-    python_version = "3.12",
-)
-python.toolchain(
-    configure_coverage_tool = True,
-    python_version = "3.13",
-)
-python.toolchain(
-    configure_coverage_tool = True,
-    python_version = "3.14",
-)
+
+PYTHON_VERSIONS = [
+    "3.10",
+    "3.11",
+    "3.12",
+    "3.13",
+    "3.14",
+]
+
+[
+    python.toolchain(
+        configure_coverage_tool = True,
+        python_version = v,
+    )
+    for v in PYTHON_VERSIONS
+]
+
 use_repo(
     python,
     "pythons_hub",
@@ -44,31 +46,14 @@ use_repo(
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 use_repo(pip, "pypi")
 
-pip.parse(
-    hub_name = "pypi",
-    python_version = "3.10",
-    requirements_lock = "//requirements:requirements_lock_3_10.txt",
-)
-pip.parse(
-    hub_name = "pypi",
-    python_version = "3.11",
-    requirements_lock = "//requirements:requirements_lock_3_11.txt",
-)
-pip.parse(
-    hub_name = "pypi",
-    python_version = "3.12",
-    requirements_lock = "//requirements:requirements_lock_3_12.txt",
-)
-pip.parse(
-    hub_name = "pypi",
-    python_version = "3.13",
-    requirements_lock = "//requirements:requirements_lock_3_13.txt",
-)
-pip.parse(
-    hub_name = "pypi",
-    python_version = "3.14",
-    requirements_lock = "//requirements:requirements_lock_3_14.txt",
-)
+[
+    pip.parse(
+        hub_name = "pypi_multi",
+        python_version = v,
+        requirements_lock = "//requirements:requirements.txt",
+    )
+    for v in PYTHON_VERSIONS
+]
 
 # example test dependencies
 bazel_dep(name = "rules_shell", version = "0.2.0", dev_dependency = True)
