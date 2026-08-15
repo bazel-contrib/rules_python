@@ -120,7 +120,7 @@ class TestContents(unittest.TestCase):
     def test_whl_deps_ar_the_same(self):
         for var, main_dep in {
             "WHL_DEPS": "@whl_archive//:pkg",
-            "WHL_TARGET_DEPS": "@whl_deps_library//:pkg",
+            "WHL_TARGET_DEPS": "@whl_deps_repo//:pkg",
         }.items():
             self.assertEqual(
                 {
