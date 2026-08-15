@@ -9,6 +9,14 @@
 * Use direct attribute access (e.g. `args.foo`) on `argparse.Namespace` with
   well-defined shapes. Avoid defensive `getattr()`.
 
+## Exception Handling
+* Inherit custom exceptions from `Exception`, not `RuntimeError`.
+
+## Subprocess
+* Demarcate captured stdout/stderr in exceptions with 20 `=` characters:
+  `==================== STDOUT BEGIN ====================` /
+  `==================== STDOUT END ====================` (same for STDERR).
+
 ## TypedDict
 * **External Objects**: When defining a `TypedDict` for an external object,
   link to its definition in the docstring.
@@ -16,8 +24,9 @@
 ## Type Checking & Annotations
 * **`importlib.metadata` `PackagePath`**: `f.locate()` is typed as `PathLike`.
   Wrap with `pathlib.Path(f.locate())` to call `.exists()`, `.is_file()`, etc.
-* **In-file disables vs target skipping**: Prefer `# pyrefly: ignore[<error-code>]`
-  (e.g. `[missing-import]`) over `tags = ["no-pyrefly"]`.
+* **In-file disables vs target skipping**: Prefer
+  `# pyrefly: ignore[<error-code>]` (e.g. `[missing-import]`) over
+  `tags = ["no-pyrefly"]`.
 * **No blanket ignores**: NEVER use bare `# type: ignore` or literal
   `# type: ignore[...]`. Use error-specific ignores instead.
 * **Ignore comments**: When adding `# pyrefly: ignore[...]` or type

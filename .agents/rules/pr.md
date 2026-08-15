@@ -16,7 +16,10 @@ Before drafting any pull request description, strictly adhere to the rules in
 
 ## Commit & PR Types
 * `fix:` / `feat:`: User-visible changes ONLY.
-* `tests:`: Test-only changes and test-helper fixes (never `fix:` or `fix(tests):`).
+* `workflow:` / `workflows:`: Internal workflow automation, release tooling, and
+  CI scripts (e.g., `workflow(release): ...`).
+* `tests:`: Test-only changes and test-helper fixes (never `fix:` or
+  `fix(tests):`).
 
 ## PR Commit Workflow Invariant
 * Once a Pull Request is created, always make new commits or merge commits.
