@@ -24,6 +24,8 @@ class ReleaseToolEnv:
 
 def _find_real_template_path() -> Path:
     r = runfiles.Create()
+    if r is None:
+        raise RuntimeError("Unable to create runfiles object")
     path = r.Rlocation(
         "rules_python/.github/ISSUE_TEMPLATE/release_tracking_template.md"
     )
