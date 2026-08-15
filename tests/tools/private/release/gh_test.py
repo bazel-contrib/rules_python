@@ -1,7 +1,7 @@
 import pytest
 
 from tools.private.release import shell
-from tools.private.release.gh import GitHub
+from tools.private.release.gh import CreatePrError, GitHub
 from tools.private.release.git import Git
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
@@ -94,3 +94,77 @@ def test_update_issue_body(gh, auto_patch_cmd_helpers):
     gh.update_issue_body(123, "new body content")
     auto_patch_cmd_helpers.run_gh.assert_called_once()
     assert captured_body["content"] == "new body content"
+
+
+def test_create_pr_success(gh, auto_patch_cmd_helpers):
+    auto_patch_cmd_helpers.run_gh.return_value = (
+        "https://github.com/my-owner/my-repo/pull/123"
+    )
+    url = gh.create_pr(
+        title="feat: my feature",
+        body="PR body",
+        base="main",
+        labels=["type: sync-changelog"],
+    )
+    assert url == "https://github.com/my-owner/my-repo/pull/123"
+    auto_patch_cmd_helpers.run_gh.assert_called_with(
+        "pr",
+        "create",
+        "--title=feat: my feature",
+        "--body=PR body",
+        "--base=main",
+        "--label=type: sync-changelog",
+        "--repo=my-owner/my-repo",
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_create_pr_failure_raises_create_pr_error(gh, auto_patch_cmd_helpers):
+    import subprocess
+
+    err = subprocess.CalledProcessError(
+        1,
+        ["gh", "pr", "create"],
+        output="my stdout",
+        stderr="pull request already exists",
+    )
+    auto_patch_cmd_helpers.run_gh.side_effect = err
+
+    with pytest.raises(CreatePrError) as exc_info:
+        gh.create_pr(title="feat: my feature", body="PR body")
+
+    assert (
+        "Failed to create PR 'feat: my feature': Command '['gh', 'pr',"
+        " 'create']' returned non-zero exit status 1." in str(exc_info.value)
+    )
+    assert "==================== STDOUT BEGIN ====================" in str(
+        exc_info.value
+    )
+    assert "my stdout" in str(exc_info.value)
+    assert "==================== STDOUT END ====================" in str(exc_info.value)
+    assert "==================== STDERR BEGIN ====================" in str(
+        exc_info.value
+    )
+    assert "pull request already exists" in str(exc_info.value)
+    assert "==================== STDERR END ====================" in str(exc_info.value)
+    assert exc_info.value.__cause__ is err
+
+
+def test_create_pr_empty_output_raises_create_pr_error(gh, auto_patch_cmd_helpers):
+    auto_patch_cmd_helpers.run_gh.return_value = ""
+    with pytest.raises(CreatePrError, match="gh pr create returned no output"):
+        gh.create_pr(title="feat: my feature", body="PR body")
+
+
+def test_create_pr_generic_exception_raises_create_pr_error(gh, auto_patch_cmd_helpers):
+    err = RuntimeError("network disconnected")
+    auto_patch_cmd_helpers.run_gh.side_effect = err
+
+    with pytest.raises(CreatePrError) as exc_info:
+        gh.create_pr(title="feat: my feature", body="PR body")
+
+    assert "Failed to create PR 'feat: my feature': network disconnected" in str(
+        exc_info.value
+    )
+    assert exc_info.value.__cause__ is err

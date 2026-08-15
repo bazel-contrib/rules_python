@@ -1,9 +1,9 @@
 import argparse
 import datetime
 import logging
-import subprocess
 from unittest.mock import ANY, call
 
+from tools.private.release.gh import CreatePrError
 from tools.private.release.process_backports import ProcessBackports
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
@@ -536,11 +536,11 @@ def test_process_backports_sync_changelog_create_pr_failure(
     mock_git.diff.return_value = "version diff for 124"
     mock_git.apply_check.return_value = True
 
-    # Make create_pr raise CalledProcessError with note attached (as shell.py does)
-    err = subprocess.CalledProcessError(1, ["gh", "pr", "create"])
-    err.add_note(
-        "Error running command: gh pr create ...\nStdout: \nStderr: pull request"
-        " already exists"
+    # Make create_pr raise CreatePrError
+    err = CreatePrError(
+        "Failed to create PR 'chore(release): sync changelog for v2.0.0 backports': "
+        "Command '['gh', 'pr', 'create']' returned non-zero exit status 1.\n"
+        "Error running command: gh pr create ...\nStdout: \nStderr: pull request already exists"
     )
     mocker.patch.object(mock_gh, "create_pr", side_effect=err)
 
@@ -552,8 +552,8 @@ def test_process_backports_sync_changelog_create_pr_failure(
 
     captured = capsys.readouterr()
     assert (
-        "Unexpected error: Command '['gh', 'pr', 'create']' returned non-zero"
-        " exit status 1." in caplog.text
+        "Unexpected error: Failed to create PR 'chore(release): sync changelog for v2.0.0 backports'"
+        in caplog.text
     )
     assert "Error running command: gh pr create ..." in captured.err
     assert "Stderr: pull request already exists" in captured.err
