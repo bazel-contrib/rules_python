@@ -400,7 +400,16 @@ class ProcessBackports:
                     )
         finally:
             if args.dry_run:
+                logger.info(
+                    "[DRY RUN] Resetting branch %s to %s after changelog sync dry run",
+                    main_branch,
+                    main_start_sha,
+                )
                 self.git.reset_hard(reset_to=main_start_sha)
+            logger.info(
+                "Restoring checkout of release branch %s after syncing changelog to main",
+                release_branch,
+            )
             self.git.checkout(release_branch)
 
     def _apply_version_marker_diffs(
