@@ -16,8 +16,12 @@ Before drafting any pull request description, strictly adhere to the rules in
 
 ## Commit & PR Types
 * `fix:` / `feat:`: User-visible changes ONLY.
-* `workflow:` / `workflows:`: Internal workflow automation, release tooling, and
-  CI scripts (e.g., `workflow(release): ...`).
+* `build:` / `build(release):`: Internal release tooling, developer workflows,
+  and build scripts (prefer `build(release):` over `chore:` or `tools:`, since
+  `tools:` could be ambiguous with production tools).
+* `ci:`: `.bazelci` and Buildkite CI configurations.
+* `workflow:` / `workflows:`: GitHub Actions workflow configurations
+  (`.github/workflows/`).
 * `tests:`: Test-only changes and test-helper fixes (never `fix:` or
   `fix(tests):`).
 
