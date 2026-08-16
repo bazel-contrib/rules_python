@@ -41,6 +41,15 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+alias(
+    name = "wheel_record_rewriter",
+    actual = select({
+        "@platforms//os:windows": "wheel_record_rewriter.ps1",
+        "//conditions:default": "wheel_record_rewriter.sh",
+    }),
+    visibility = ["//visibility:public"],
+)
+
 exports_files(
     srcs = ["deps.bzl"],
     visibility = ["//tools/private/update_deps:__pkg__"],
@@ -464,20 +473,8 @@ bzl_library(
     name = "whl_library",
     srcs = ["whl_library.bzl"],
     deps = [
-        ":attrs",
-        ":deps",
-        ":generate_whl_library_build_bazel",
-        ":patch_whl",
-        ":pep508_requirement",
-        ":pypi_repo_utils",
-        ":urllib",
-        ":whl_extract",
-        ":whl_metadata",
-        "//python/private:auth",
-        "//python/private:envsubst",
-        "//python/private:is_standalone_interpreter",
-        "//python/private:normalize_name",
-        "//python/private:repo_utils",
+        ":pip_archive",
+        ":whl_archive",
     ],
 )
 
@@ -491,10 +488,20 @@ bzl_library(
 )
 
 bzl_library(
+    name = "gen_wheel_record",
+    srcs = ["gen_wheel_record.bzl"],
+    deps = [
+        "//python/private:attributes",
+        "//python/private:common",
+    ],
+)
+
+bzl_library(
     name = "whl_library_targets",
     srcs = ["whl_library_targets.bzl"],
     deps = [
         ":env_marker_setting",
+        ":gen_wheel_record",
         ":labels",
         ":namespace_pkgs",
         ":pep508_deps",
@@ -526,6 +533,61 @@ bzl_library(
     name = "index_sources",
     srcs = ["index_sources.bzl"],
     deps = [":hash"],
+)
+
+bzl_library(
+    name = "pip_archive",
+    srcs = ["pip_archive.bzl"],
+    deps = [
+        ":attrs",
+        ":deps",
+        ":patch_and_extract_whl",
+        ":pypi_repo_utils",
+        ":urllib",
+        ":whl_archive",
+        "//python/private:auth",
+        "//python/private:envsubst",
+        "//python/private:is_standalone_interpreter",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "whl_archive",
+    srcs = ["whl_archive.bzl"],
+    deps = [
+        ":attrs",
+        ":patch_and_extract_whl",
+        ":urllib",
+        ":whl_deps_repo",
+        "//python/private:auth",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "whl_deps_repo",
+    srcs = ["whl_deps_repo.bzl"],
+    deps = [
+        ":generate_whl_library_build_bazel",
+        ":pep508_requirement",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "patch_and_extract_whl",
+    srcs = ["patch_and_extract_whl.bzl"],
+    deps = [
+        ":generate_whl_library_build_bazel",
+        ":patch_whl",
+        ":pep508_requirement",
+        ":pypi_repo_utils",
+        ":whl_extract",
+        ":whl_metadata",
+        "//python/private:normalize_name",
+        "//python/private:repo_utils",
+    ],
 )
 
 bzl_library(

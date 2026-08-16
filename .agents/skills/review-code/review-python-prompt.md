@@ -11,5 +11,4 @@ Your sole task is to audit all Python source (`.py`) and test changes in
 4. Verify that tests were executed using Bazel
    (`bazel test --config=fast-tests`) and passed.
 
-Report any violations found clearly with actionable suggested fixes, or report
-that the Python changes pass audit.
+@.agents/skills/review-code/review-report-format.md

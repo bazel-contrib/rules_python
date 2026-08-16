@@ -1,9 +1,7 @@
 """Subcommand to create a release tracking issue."""
 
-import pathlib
-import re
-
 from tools.private.release.gh import GitHub
+from tools.private.release.release_issue import load_release_tracking_template
 from tools.private.release.utils import determine_next_version, semver_type
 
 
@@ -28,19 +26,7 @@ class CreateReleaseIssue:
                 print(f"- {issue['title']}: {issue['url']}")
             return 1
 
-        template_path = pathlib.Path(
-            ".github/ISSUE_TEMPLATE/release_tracking_template.md"
-        )
-        if not template_path.exists():
-            raise FileNotFoundError(f"Template file not found at {template_path}")
-        template_content = template_path.read_text(encoding="utf-8")
-
-        is_first_release = version.endswith(".0")
-        if not is_first_release:
-            # Patch release: remove RC tasks
-            lines = template_content.splitlines()
-            lines = [line for line in lines if not re.search(r"Tag RC\d+", line)]
-            template_content = "\n".join(lines)
+        template_content = load_release_tracking_template(version=version)
 
         issue_num = self.gh.create_release_tracking_issue(version, template_content)
         print(f"Created tracking issue #{issue_num} for v{version}")

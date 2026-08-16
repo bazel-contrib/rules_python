@@ -47,7 +47,7 @@ py_binary(
 In the future, this will be enabled by default.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 """,
     attrs = {

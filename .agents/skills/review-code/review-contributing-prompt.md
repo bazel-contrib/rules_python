@@ -33,5 +33,4 @@ and PR metadata against `CONTRIBUTING.md` and project rules:
 5. Ensure style and conventions described in `CONTRIBUTING.md` are respected
    across all changes.
 
-Report any violations found clearly with actionable suggested fixes, or report
-that the changes pass contribution audit.
+@.agents/skills/review-code/review-report-format.md

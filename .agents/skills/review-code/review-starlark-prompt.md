@@ -13,5 +13,4 @@ in `git diff` against the project's Starlark coding rules and conventions:
    (`"""`), and do NOT use trailing backslashes (`\`) on opening triple-quotes.
 6. Verify analysis tests use `rules_testing`, not `bazel_skylib`.
 
-Report any violations found clearly with actionable suggested fixes, or report
-that the Starlark changes pass audit.
+@.agents/skills/review-code/review-report-format.md

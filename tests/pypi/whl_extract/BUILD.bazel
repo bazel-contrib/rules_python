@@ -1,0 +1,11 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":whl_extract_tests.bzl", "whl_extract_test_suite")
+
+whl_extract_test_suite(name = "whl_extract_tests")
+
+sh_test(
+    name = "wheel_record_rewriter_test",
+    srcs = ["wheel_record_rewriter_test.sh"],
+    args = ["$(location //python/private/pypi:wheel_record_rewriter)"],
+    data = ["//python/private/pypi:wheel_record_rewriter"],
+)

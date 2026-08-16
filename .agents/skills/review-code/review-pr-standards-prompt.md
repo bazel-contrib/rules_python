@@ -13,5 +13,4 @@ Your sole task is to audit PR titles and PR descriptions against
    rebase existing commits (create new commits and merges instead, to preserve
    code review comment threads).
 
-Report any violations found clearly with actionable suggested fixes, or report
-that the PR standards pass audit.
+@.agents/skills/review-code/review-report-format.md

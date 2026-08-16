@@ -14,5 +14,4 @@ against `AGENTS.md`:
 5. Check that all repo rules and macro conventions described in `AGENTS.md`
    are respected.
 
-Report any violations found clearly with actionable suggested fixes, or report
-that the changes pass project conventions audit.
+@.agents/skills/review-code/review-report-format.md

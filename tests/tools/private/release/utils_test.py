@@ -329,3 +329,38 @@ def test_replace_version_next_in_files(release_tool_env):
     assert file1.read_text(encoding="utf-8") == "v = '2.3.0'\n"
     assert file2.read_text(encoding="utf-8") == "v = '2.3.0'\n"
     assert file3.read_text(encoding="utf-8") == "v = '1.0.0'\n"
+
+
+def test_determine_next_version_on_main_with_is_patch(mocker, release_tool_env):
+    mocker.patch(
+        "tools.private.release.git.Git.get_current_branch", return_value="main"
+    )
+    mocker.patch("tools.private.release.utils.get_latest_version", return_value="1.2.3")
+    (release_tool_env.git_root / "mock_file.bzl").write_text(
+        ":::{versionadded} VERSION_NEXT_FEATURE"
+    )
+
+    # Without is_patch, feature marker causes minor bump
+    assert utils.determine_next_version(is_patch=False) == "1.3.0"
+    # With is_patch=True, it produces a patch bump
+    assert utils.determine_next_version(is_patch=True) == "1.2.4"
+
+
+def test_format_exception_no_notes():
+    e = ValueError("something went wrong")
+    assert utils.format_exception(e) == "something went wrong"
+
+
+def test_format_exception_with_notes():
+    e = RuntimeError("failed to execute")
+    e.add_note("Note 1: additional details")
+    e.add_note("Note 2: more info")
+    assert utils.format_exception(e) == (
+        "failed to execute\nNote 1: additional details\nNote 2: more info"
+    )
+
+
+def test_format_exception_empty_message_with_notes():
+    e = Exception()
+    e.add_note("Note only")
+    assert utils.format_exception(e) == "Note only"

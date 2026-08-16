@@ -14,6 +14,13 @@ Before drafting any pull request description, strictly adhere to the rules in
 * Always include `@CONTRIBUTING.md` in rule definitions so that PR formatting
   rules are injected into context whenever PR workflows run.
 
+## Commit & PR Types
+* `fix:` / `feat:`: User-visible changes ONLY.
+* `workflow:` / `workflows:`: Internal workflow automation, release tooling, and
+  CI scripts (e.g., `workflow(release): ...`).
+* `tests:`: Test-only changes and test-helper fixes (never `fix:` or
+  `fix(tests):`).
+
 ## PR Commit Workflow Invariant
 * Once a Pull Request is created, always make new commits or merge commits.
 * **NEVER** amend or rebase commits on an active PR branch to avoid breaking

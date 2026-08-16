@@ -20,5 +20,4 @@ in `git diff` against the project's documentation rules:
    `.agents/rules/news.md` and `CONTRIBUTING.md` (proper `<id>.<category>.md`
    name, no leading bullets, subsystem prefix, `{obj}` refs, issue links).
 
-Report any violations found clearly with actionable suggested fixes, or report
-that the documentation changes pass audit.
+@.agents/skills/review-code/review-report-format.md

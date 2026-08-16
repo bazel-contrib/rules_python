@@ -2,7 +2,6 @@
 
 import argparse
 import datetime
-import pathlib
 
 from tools.private.release import changelog_news
 from tools.private.release.gh import (
@@ -13,6 +12,7 @@ from tools.private.release.gh import (
 )
 from tools.private.release.git import Git
 from tools.private.release.release_issue import (
+    load_release_tracking_template,
     parse_checklist_state,
     update_task_in_body,
 )
@@ -68,14 +68,7 @@ class Prepare:
                 return 1
             except NoTrackingIssueError:
                 # Not found, we need the template
-                template_path = pathlib.Path(
-                    ".github/ISSUE_TEMPLATE/release_tracking_template.md"
-                )
-                if not template_path.exists():
-                    raise FileNotFoundError(
-                        f"Template file not found at {template_path}"
-                    )
-                template_content = template_path.read_text(encoding="utf-8")
+                template_content = load_release_tracking_template(version=version)
 
                 if args.dry_run:
                     print(

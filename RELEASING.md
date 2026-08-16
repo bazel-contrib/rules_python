@@ -96,8 +96,10 @@ methods:
 ### Method A: Comment on the PR
 
 Comment `/backport` on the PR you wish to backport. This will automatically
-add the PR to the active release's backports checklist. Once the PR is merged,
-the backports will be automatically processed.
+add the PR to the active release's backports checklist, or automatically create
+a patch release tracking issue for the next patch version if no release tracking
+issue currently exists. Once the PR is merged, the backports will be
+automatically processed.
 
 > [!NOTE]
 > Commenting `/backport` on an open PR will block further release publishing
@@ -106,7 +108,7 @@ the backports will be automatically processed.
 
 ### Method B: Comment on the Tracking Issue
 
-Comment `/add-backports <PR_REF> [<PR_REF> ...]` (space or comma separated) on
+Comment `/backport <PR_REF> [<PR_REF> ...]` (space or comma separated) on
 the tracking issue. The `<PR_REF>` can be a PR number (optionally prefixed with
 `#`) or a PR URL (strictly for the configured repository). This will
 automatically add the PRs to the checklist and trigger processing.
@@ -219,9 +221,8 @@ verification of cherry-picks using a Backport Tracking Issue.
     workflow.
     *   This will automatically create a standard Release Tracking Issue for
         each target version (e.g., `Release 1.7.1`, `Release 1.8.1`, etc.).
-    *   For patch releases, the created release tracking issues will have `Tag
-        RC` tasks automatically removed, as release candidates are not
-        required for patch releases.
+    *   For patch releases, the created release tracking issue will have
+        non-patch release tasks removed.
     *   The backport PR will be automatically added to the checklist of each
         created release tracking issue.
 

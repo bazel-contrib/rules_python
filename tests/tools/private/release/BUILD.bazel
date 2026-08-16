@@ -18,8 +18,10 @@ py_library(
     name = "release_test_helper",
     testonly = True,
     srcs = ["release_test_helper.py"],
+    data = ["//.github/ISSUE_TEMPLATE:release_tracking_template.md"],
     target_compatible_with = NOT_WINDOWS,
     deps = [
+        "//python/runfiles",
         "//tools/private/release:mock_gh",
         "//tools/private/release:release_lib",
         "@pypi//pytest",
