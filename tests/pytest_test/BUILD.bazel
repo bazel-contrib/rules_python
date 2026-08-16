@@ -34,8 +34,8 @@ pytest_multipy_test(
         "basic_test.py",
     ],
     python_versions = [
-        "3.11",
-        "3.12",
+        "3.14",
+        "3.13",
     ],
     target_compatible_with = SUPPORTS_BZLMOD,
 )

@@ -76,7 +76,10 @@ def pytest_multipy_test(
         **kwargs: Additional arguments passed to pytest_test.
     """
     if "python_version" in kwargs:
-        fail("Cannot specify python_version in pytest_multipy_test; use python_versions instead.")
+        fail(
+            "Cannot specify python_version in pytest_multipy_test; use " +
+            "python_versions instead.",
+        )
     if not python_versions:
         fail("python_versions must not be empty for {}".format(name))
 
