@@ -1,5 +1,12 @@
 load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
-load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
+load(
+    "//tests/support/pytest_test:pytest_test.bzl",
+    "pytest_multipy_test",
+    "pytest_test",
+)
+load(":pytest_test_tests.bzl", "pytest_test_test_suite")
+
+pytest_test_test_suite(name = "pytest_test_tests")
 
 pytest_test(
     name = "pytest_script_venv_test",
@@ -17,6 +24,18 @@ pytest_test(
     name = "pytest_default_test",
     srcs = [
         "basic_test.py",
+    ],
+    target_compatible_with = SUPPORTS_BZLMOD,
+)
+
+pytest_multipy_test(
+    name = "pytest_multipy_default_test",
+    srcs = [
+        "basic_test.py",
+    ],
+    python_versions = [
+        "3.11",
+        "3.12",
     ],
     target_compatible_with = SUPPORTS_BZLMOD,
 )

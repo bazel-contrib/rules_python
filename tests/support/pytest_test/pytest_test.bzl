@@ -37,15 +37,67 @@ def pytest_test(
         output_name = main_file,
     )
 
+    kwargs = dict(kwargs)
+    deps = kwargs.pop("deps", [])
     py_test(
         name = name,
         main = main_file,
         srcs = [bootstrap_target] + srcs,
-        deps = kwargs.pop("deps", []) + [
+        deps = deps + [
             pytest,
             pytest_bazel,
         ],
         **kwargs
+    )
+
+def _get_version_test_name(name, python_version):
+    version_str = str(python_version)
+    if not version_str.startswith("py"):
+        version_str = "py" + version_str
+
+    if name.endswith("_test"):
+        return "{}_{}_test".format(name[:-len("_test")], version_str)
+    elif name.endswith("_tests"):
+        return "{}_{}_tests".format(name[:-len("_tests")], version_str)
+    return "{}_{}".format(name, version_str)
+
+get_version_test_name = _get_version_test_name
+
+def pytest_multipy_test(
+        *,
+        name,
+        python_versions,
+        **kwargs):
+    """Run pytest tests across multiple Python versions.
+
+    Args:
+        name: Name of the test suite target.
+        python_versions: Python versions to test against.
+        **kwargs: Additional arguments passed to pytest_test.
+    """
+    if "python_version" in kwargs:
+        fail("Cannot specify python_version in pytest_multipy_test; use python_versions instead.")
+    if not python_versions:
+        fail("python_versions must not be empty for {}".format(name))
+
+    tests = []
+    for python_version in python_versions:
+        test_name = _get_version_test_name(name, python_version)
+        pytest_test(
+            name = test_name,
+            python_version = python_version,
+            **kwargs
+        )
+        tests.append(":" + test_name)
+
+    test_suite_kwargs = {}
+    if "visibility" in kwargs:
+        test_suite_kwargs["visibility"] = kwargs["visibility"]
+
+    native.test_suite(
+        name = name,
+        tests = tests,
+        **test_suite_kwargs
     )
 
 def _write_pytest_bootstrap_impl(ctx):
