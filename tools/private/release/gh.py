@@ -7,7 +7,10 @@ import os
 import re
 import subprocess
 import tempfile
-from typing import TypedDict, override
+from typing import (
+    TypedDict,
+    override,  # pyrefly: ignore[missing-module-attribute] -- override available in Python 3.12+
+)
 
 from tools.private.release.release_issue import BackportTask
 from tools.private.release.shell import run_cmd

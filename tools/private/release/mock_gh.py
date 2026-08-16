@@ -1,7 +1,9 @@
 """In-memory fake for GitHub API."""
 
 import re
-from typing import override
+from typing import (
+    override,  # pyrefly: ignore[missing-module-attribute] -- override available in Python 3.12+
+)
 
 from tools.private.release.gh import (
     RELEASE_LABEL,
