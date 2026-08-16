@@ -40,9 +40,20 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **Iterable `for` Loops Only (No `while` Loops)**: Starlark does not support
   `while` loops; iterate over fixed-size ranges or explicit collections.
 
+## Depset Element Invariants & Optimizations
+* **Providers over Structs for Depset Elements**: Use `provider()` (without
+  `-Info` suffix, e.g. `*Fileset`) instead of `struct()` for composite objects
+  in depsets; providers perform key sharing and reduce memory overhead.
+* **Depset Element Immutability**: All depset elements and nested provider
+  fields must be immutable when `depset()` is called (eager check before rule
+  freeze). Use `tuple[T]` or `depset[T]` in providers placed into depsets; do
+  not use mutable `list[T]`.
+
 ## Code Style & Conventions
 * **Dict union (`|`)**: Use `|` instead of `dicts.add(...)` from
   `@bazel_skylib//lib:dicts.bzl` when merging dictionaries.
+* **Non-Info Provider Naming**: Add `# buildifier: disable=name-conventions`
+  above `provider()` declarations that do not end in `Info` (e.g. `*Fileset`).
 * **Docstring Formatting Invariants**: Use triple-quoted strings for multi-line
   docstrings without trailing backslashes (`\`) for line continuation.
 * **No Bazel Copyright Headers**: Do not add Bazel copyright headers to new or
