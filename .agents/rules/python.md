@@ -9,6 +9,10 @@
 * Use direct attribute access (e.g. `args.foo`) on `argparse.Namespace` with
   well-defined shapes. Avoid defensive `getattr()`.
 
+## Interface & ABC Docstrings
+* In abstract base class / interface methods, always document `Args:`,
+  `Returns:`, and all custom exceptions raised under `Raises:`.
+
 ## Exception Handling
 * Inherit custom exceptions from `Exception`, not `RuntimeError`.
 
