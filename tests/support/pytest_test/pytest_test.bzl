@@ -29,44 +29,60 @@ def pytest_test(
             not a supported argument.
     """
     if python_versions != None:
-        if "python_version" in kwargs:
-            fail(
-                "Cannot specify both python_version and python_versions " +
-                "in pytest_test; use one or the other.",
-            )
-        if not python_versions:
-            fail("python_versions must not be empty for {}".format(name))
-
-        tests = []
-        for python_version in python_versions:
-            test_name = _get_version_test_name(name, python_version)
-            _single_pytest_test(
-                name = test_name,
-                srcs = srcs,
-                pytest = pytest,
-                pytest_bazel = pytest_bazel,
-                python_version = python_version,
-                **kwargs
-            )
-            tests.append(":" + test_name)
-
-        test_suite_kwargs = {}
-        if "visibility" in kwargs:
-            test_suite_kwargs["visibility"] = kwargs["visibility"]
-
-        native.test_suite(
+        _multi_pytest_test(
             name = name,
-            tests = tests,
-            **test_suite_kwargs
+            srcs = srcs,
+            pytest = pytest,
+            pytest_bazel = pytest_bazel,
+            python_versions = python_versions,
+            **kwargs
         )
-        return
+    else:
+        _single_pytest_test(
+            name = name,
+            srcs = srcs,
+            pytest = pytest,
+            pytest_bazel = pytest_bazel,
+            **kwargs
+        )
 
-    _single_pytest_test(
+def _multi_pytest_test(
+        *,
+        name,
+        srcs,
+        pytest = None,
+        pytest_bazel = None,
+        python_versions,
+        **kwargs):
+    if "python_version" in kwargs:
+        fail(
+            "Cannot specify both python_version and python_versions in " +
+            "pytest_test; use one or the other.",
+        )
+    if not python_versions:
+        fail("python_versions must not be empty for {}".format(name))
+
+    tests = []
+    for python_version in python_versions:
+        test_name = _get_version_test_name(name, python_version)
+        _single_pytest_test(
+            name = test_name,
+            srcs = srcs,
+            pytest = pytest,
+            pytest_bazel = pytest_bazel,
+            python_version = python_version,
+            **kwargs
+        )
+        tests.append(":" + test_name)
+
+    test_suite_kwargs = {}
+    if "visibility" in kwargs:
+        test_suite_kwargs["visibility"] = kwargs["visibility"]
+
+    native.test_suite(
         name = name,
-        srcs = srcs,
-        pytest = pytest,
-        pytest_bazel = pytest_bazel,
-        **kwargs
+        tests = tests,
+        **test_suite_kwargs
     )
 
 def _single_pytest_test(
