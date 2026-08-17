@@ -33,11 +33,13 @@ SYNC_CHANGELOG_FAILURE_COMMENT_TEMPLATE = (
 )
 
 
-def _get_workflow_action_url_text(repo: str) -> str:
+def _get_workflow_action_url_text(repo: str = "") -> str:
     """Returns a link to the GitHub Actions run if available."""
     run_id = os.environ.get("GITHUB_RUN_ID")
     server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
-    repository = os.environ.get("GITHUB_REPOSITORY", repo)
+    repository = (
+        os.environ.get("GITHUB_REPOSITORY") or repo or "bazel-contrib/rules_python"
+    )
     if run_id:
         action_url = f"{server_url}/{repository}/actions/runs/{run_id}"
         return f"See [workflow run]({action_url}) for logs."

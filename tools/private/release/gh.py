@@ -233,6 +233,8 @@ class InvalidPrRefError(ValueError):
 class GitHubInterface(abc.ABC):
     """Abstract interface for GitHub operations."""
 
+    repo: str
+
     @abc.abstractmethod
     def post_issue_comment(self, issue_num: int, comment_body: str) -> None:
         """Posts a comment on an issue or PR.
