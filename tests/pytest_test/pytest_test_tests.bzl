@@ -1,4 +1,4 @@
-"""Tests for pytest_test and pytest_multipy_test."""
+"""Tests for pytest_test."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(

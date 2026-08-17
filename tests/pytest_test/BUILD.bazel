@@ -1,7 +1,6 @@
 load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 load(
     "//tests/support/pytest_test:pytest_test.bzl",
-    "pytest_multipy_test",
     "pytest_test",
 )
 load(":pytest_test_tests.bzl", "pytest_test_test_suite")
@@ -28,7 +27,7 @@ pytest_test(
     target_compatible_with = SUPPORTS_BZLMOD,
 )
 
-pytest_multipy_test(
+pytest_test(
     name = "pytest_multipy_default_test",
     srcs = [
         "basic_test.py",

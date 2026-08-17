@@ -11,6 +11,7 @@ def pytest_test(
         srcs,
         pytest = None,
         pytest_bazel = None,
+        python_versions = None,
         **kwargs):
     """Run pytest tests.
 
@@ -21,9 +22,60 @@ def pytest_test(
         pytest: The pytest target to use. Defaults to @pypi//pytest.
         pytest_bazel: The pytest-bazel target to use. Defaults to
             @pypi//pytest_bazel.
+        python_versions: List of Python versions to test against. If specified,
+            a test is created for each version and grouped under a test_suite
+            named `name`.
         **kwargs: Additional arguments passed to py_test. Note that `main` is
             not a supported argument.
     """
+    if python_versions != None:
+        if "python_version" in kwargs:
+            fail(
+                "Cannot specify both python_version and python_versions " +
+                "in pytest_test; use one or the other.",
+            )
+        if not python_versions:
+            fail("python_versions must not be empty for {}".format(name))
+
+        tests = []
+        for python_version in python_versions:
+            test_name = _get_version_test_name(name, python_version)
+            _single_pytest_test(
+                name = test_name,
+                srcs = srcs,
+                pytest = pytest,
+                pytest_bazel = pytest_bazel,
+                python_version = python_version,
+                **kwargs
+            )
+            tests.append(":" + test_name)
+
+        test_suite_kwargs = {}
+        if "visibility" in kwargs:
+            test_suite_kwargs["visibility"] = kwargs["visibility"]
+
+        native.test_suite(
+            name = name,
+            tests = tests,
+            **test_suite_kwargs
+        )
+        return
+
+    _single_pytest_test(
+        name = name,
+        srcs = srcs,
+        pytest = pytest,
+        pytest_bazel = pytest_bazel,
+        **kwargs
+    )
+
+def _single_pytest_test(
+        *,
+        name,
+        srcs,
+        pytest = None,
+        pytest_bazel = None,
+        **kwargs):
     if pytest == None:
         pytest = _DEFAULT_PYTEST
     if pytest_bazel == None:
@@ -62,46 +114,6 @@ def _get_version_test_name(name, python_version):
     return "{}_{}".format(name, version_str)
 
 get_version_test_name = _get_version_test_name
-
-def pytest_multipy_test(
-        *,
-        name,
-        python_versions,
-        **kwargs):
-    """Run pytest tests across multiple Python versions.
-
-    Args:
-        name: Name of the test suite target.
-        python_versions: Python versions to test against.
-        **kwargs: Additional arguments passed to pytest_test.
-    """
-    if "python_version" in kwargs:
-        fail(
-            "Cannot specify python_version in pytest_multipy_test; use " +
-            "python_versions instead.",
-        )
-    if not python_versions:
-        fail("python_versions must not be empty for {}".format(name))
-
-    tests = []
-    for python_version in python_versions:
-        test_name = _get_version_test_name(name, python_version)
-        pytest_test(
-            name = test_name,
-            python_version = python_version,
-            **kwargs
-        )
-        tests.append(":" + test_name)
-
-    test_suite_kwargs = {}
-    if "visibility" in kwargs:
-        test_suite_kwargs["visibility"] = kwargs["visibility"]
-
-    native.test_suite(
-        name = name,
-        tests = tests,
-        **test_suite_kwargs
-    )
 
 def _write_pytest_bootstrap_impl(ctx):
     output = ctx.actions.declare_file(ctx.attr.output_name)
