@@ -38,11 +38,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Sync Changelog to Main
+      - name: Create Sync PR to Main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE: ${{ inputs.issue }}
         run: |
           bazel run //tools/private/release -- sync-changelog \
-            ${ISSUE:+--issue="$ISSUE"} \
             --remote origin

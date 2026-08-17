@@ -5,8 +5,8 @@ on:
     types: [closed]
 
 permissions:
-  contents: read
-  issues: read
+  contents: write
+  issues: write
   pull-requests: read
 
 jobs:
@@ -17,40 +17,26 @@ jobs:
     steps:
       - run: echo "No-op"
 
-  check_if_backport:
+  parse_pr:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
-      should_process: ${{ steps.check.outputs.should_process }}
+      command: ${{ steps.parse.outputs.command }}
+      pr_number: ${{ steps.parse.outputs.pr_number }}
     steps:
-      - name: Check if PR is a backport candidate
-        id: check
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Parse PR
+        id: parse
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          # Check if there is any active release issue
-          ACTIVE_ISSUES=$(gh issue list --repo ${{ github.repository }} --label "type: release" --state open --json number)
-          if [ "$ACTIVE_ISSUES" = "[]" ] || [ -z "$ACTIVE_ISSUES" ]; then
-            echo "No active release tracking issue found. Skipping."
-            echo "should_process=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          
-          # Check if PR has "/backport" in comments (only comments, not body)
-          PR_DATA=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json comments)
-          
-          if echo "$PR_DATA" | jq -r '.comments[].body' | grep -qE '^[[:space:]]*/backport([[:space:]]|$)'; then
-            echo "Found /backport comment. Proceeding."
-            echo "should_process=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No /backport comment found. Skipping."
-            echo "should_process=false" >> "$GITHUB_OUTPUT"
-          fi
+        run: .github/workflows/on_pr_closed.py
 
   process_backports:
-    needs: check_if_backport
-    if: needs.check_if_backport.outputs.should_process == 'true'
+    needs: parse_pr
+    if: needs.parse_pr.outputs.command == 'process-backports'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -75,23 +61,15 @@ jobs:
       - name: Process Backports
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ needs.parse_pr.outputs.pr_number }}
         run: |
           bazel run //tools/private/release -- on-pr-merged \
             "$PR_NUMBER" \
             --remote origin \
             --no-dry-run
 
-  call_sync_changelog:
-    needs: process_backports
-    uses: ./.github/workflows/release_sync_changelog.yaml
-    secrets: inherit
-
   call_complete_sync_changelog:
-    if: |
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.labels.*.name, 'type: sync-changelog')
+    needs: parse_pr
+    if: needs.parse_pr.outputs.command == 'complete-sync-changelog'
     uses: ./.github/workflows/release_sync_changelog_complete.yaml
     secrets: inherit
-
-

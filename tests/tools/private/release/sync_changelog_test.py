@@ -1,5 +1,4 @@
 import argparse
-import json
 from unittest.mock import MagicMock, call
 
 from tools.private.release.gh import CreatePrError
@@ -98,9 +97,7 @@ def test_sync_changelog_success(mocker, mock_git, mock_gh):
     )
 
 
-def test_sync_changelog_from_github_event_path(
-    mocker, mock_git, mock_gh, tmp_path, monkeypatch
-):
+def test_sync_changelog_from_github_event_path(mocker, mock_git, mock_gh, gha):
     mock_process_news_class = mocker.patch(
         "tools.private.release.sync_changelog.ProcessNews"
     )
@@ -108,9 +105,7 @@ def test_sync_changelog_from_github_event_path(
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
 
-    event_file = tmp_path / "event.json"
-    event_file.write_text(json.dumps({"inputs": {"issue": "123"}}), encoding="utf-8")
-    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+    gha.set_event(inputs={"issue": "123"})
 
     args = argparse.Namespace(
         issue=None,

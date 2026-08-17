@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -20,6 +21,57 @@ class ReleaseToolEnv:
 
     git_root: Path
     github_output_file: Path
+
+
+class GitHubActionsHelper:
+    """Helper for mocking GitHub Actions environment and events."""
+
+    def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        self.tmp_path = tmp_path
+        self.monkeypatch = monkeypatch
+        self.event_file = tmp_path / "github_event.json"
+        self.output_file = tmp_path / "github_output"
+        self.monkeypatch.setenv("GITHUB_OUTPUT", str(self.output_file))
+
+    def set_event(
+        self,
+        *,
+        inputs: dict[str, object] | None = None,
+        issue: int | dict[str, object] | None = None,
+        pr: int | dict[str, object] | None = None,
+        comment: str | dict[str, object] | None = None,
+        raw_payload: dict[str, object] | None = None,
+    ) -> Path:
+        """Configures GITHUB_EVENT_PATH with the specified event payload."""
+        payload: dict[str, object] = {}
+        if raw_payload:
+            payload.update(raw_payload)
+
+        if inputs is not None:
+            payload["inputs"] = inputs
+
+        if isinstance(issue, int):
+            payload["issue"] = {"number": issue}
+        elif isinstance(issue, dict):
+            payload["issue"] = issue
+
+        if isinstance(pr, int):
+            payload["pull_request"] = {"number": pr}
+        elif isinstance(pr, dict):
+            payload["pull_request"] = pr
+
+        if isinstance(comment, str):
+            payload["comment"] = {"body": comment}
+        elif isinstance(comment, dict):
+            payload["comment"] = comment
+
+        self.event_file.write_text(json.dumps(payload), encoding="utf-8")
+        self.monkeypatch.setenv("GITHUB_EVENT_PATH", str(self.event_file))
+        return self.event_file
+
+    def clear_event(self) -> None:
+        """Clears GITHUB_EVENT_PATH environment variable."""
+        self.monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
 
 
 def _find_real_template_path() -> Path:
@@ -52,6 +104,12 @@ def fixture_mock_git():
 @pytest.fixture(name="mock_gh")
 def fixture_mock_gh():
     return MockGitHub()
+
+
+@pytest.fixture(name="gha")
+def fixture_gha(tmp_path, monkeypatch):
+    """Fixture providing GitHub Actions environment helper."""
+    return GitHubActionsHelper(tmp_path=tmp_path, monkeypatch=monkeypatch)
 
 
 @pytest.fixture(name="release_tool_env")

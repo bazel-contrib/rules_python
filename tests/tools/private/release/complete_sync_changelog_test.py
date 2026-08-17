@@ -1,5 +1,4 @@
 import argparse
-import json
 
 from tools.private.release.complete_sync_changelog import CompleteSyncChangelog
 
@@ -50,12 +49,8 @@ def test_complete_sync_changelog_success(mock_gh):
     assert "- [ ] Sync Changelog #126 | status=pending pr=#888" in updated_body
 
 
-def test_complete_sync_changelog_from_github_event_path(mock_gh, tmp_path, monkeypatch):
-    event_file = tmp_path / "event.json"
-    event_file.write_text(
-        json.dumps({"pull_request": {"number": 999}}), encoding="utf-8"
-    )
-    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+def test_complete_sync_changelog_from_github_event_path(mock_gh, gha):
+    gha.set_event(pr=999)
 
     args = argparse.Namespace(pr=None)
     mock_gh.prs[999] = {
@@ -84,8 +79,8 @@ def test_complete_sync_changelog_from_github_event_path(mock_gh, tmp_path, monke
     )
 
 
-def test_complete_sync_changelog_missing_pr(mock_gh, monkeypatch):
-    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+def test_complete_sync_changelog_missing_pr(mock_gh, gha):
+    gha.clear_event()
     args = argparse.Namespace(pr=None)
 
     result = CompleteSyncChangelog(args, mock_gh).run()
