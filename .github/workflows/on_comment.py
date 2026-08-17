@@ -101,7 +101,7 @@ def _process_release_issue_comment(
         _write_github_output("command", "process-backports")
         return
 
-    if _match_command(("sync-changelog", "sync_changelog"), comment_body):
+    if _match_command("sync-changelog", comment_body):
         _write_github_output("command", "sync-changelog")
         return
 

@@ -174,7 +174,7 @@ UI:
 ```shell
 gh workflow run release_sync_changelog.yaml \
     --repo bazel-contrib/rules_python \
-    -f issue=<ISSUE>
+    --raw-field issue=<ISSUE>
 ```
 
 Or comment `/sync-changelog` on the release tracking issue, or run via the
@@ -182,7 +182,7 @@ release tool CLI:
 
 ```shell
 bazel run //tools/private/release -- \
-    sync-changelog --issue <ISSUE> --remote origin --no-dry-run
+    sync-changelog --issue <ISSUE> --remote origin
 ```
 
 ### Failure Behavior

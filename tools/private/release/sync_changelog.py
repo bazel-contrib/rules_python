@@ -3,12 +3,14 @@
 import argparse
 import hashlib
 import logging
+import os
 import traceback
 
 from tools.private.release.gh import (
-    GH_REACTION_THUMBS_DOWN,
+    SYNC_CHANGELOG_LABEL,
     GitHub,
     GitHubInterface,
+    get_github_event_issue_number,
 )
 from tools.private.release.git import Git
 from tools.private.release.process_news import ProcessNews
@@ -17,9 +19,29 @@ from tools.private.release.release_issue import (
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import format_exception, parse_pr_list
+from tools.private.release.utils import (
+    format_exception,
+    parse_pr_list,
+)
 
 logger = logging.getLogger(__name__)
+
+SYNC_CHANGELOG_SUCCESS_COMMENT_TEMPLATE = "Sync changelog PR created: {pr_url}"
+
+SYNC_CHANGELOG_FAILURE_COMMENT_TEMPLATE = (
+    "Warning: Failed to create sync PR to main for backports. {action_url_text}"
+)
+
+
+def _get_workflow_action_url_text(repo: str) -> str:
+    """Returns a link to the GitHub Actions run if available."""
+    run_id = os.environ.get("GITHUB_RUN_ID")
+    server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    repository = os.environ.get("GITHUB_REPOSITORY", repo)
+    if run_id:
+        action_url = f"{server_url}/{repository}/actions/runs/{run_id}"
+        return f"See [workflow run]({action_url}) for logs."
+    return "See workflow logs."
 
 
 class SyncChangelog:
@@ -32,33 +54,32 @@ class SyncChangelog:
 
     def run(self) -> int:
         """Executes the sync-changelog subcommand."""
-        args = self.args
-        exit_code = 0
         try:
-            exit_code = self._run_internal()
+            return self._run_internal()
         except Exception as e:
-            logger.error("Unexpected error: %s", e)
+            logger.error("Unexpected error in sync-changelog: %s", format_exception(e))
             traceback.print_exc()
-            exit_code = 1
+            return 1
 
-        if exit_code != 0 and args.triggering_comment:
-            logger.info(
-                "Reacting with thumbs-down to comment %s...",
-                args.triggering_comment,
+    def _post_failure_comment(self, issue_num: int) -> None:
+        """Posts a failure warning message to the tracking issue."""
+        try:
+            action_url_text = _get_workflow_action_url_text(self.gh.repo)
+            comment_body = SYNC_CHANGELOG_FAILURE_COMMENT_TEMPLATE.format(
+                action_url_text=action_url_text,
             )
-            try:
-                self.gh.add_comment_reaction(
-                    args.triggering_comment, GH_REACTION_THUMBS_DOWN
-                )
-            except Exception as e:
-                logger.error("Failed to add reaction to comment: %s", e)
-
-        return exit_code
+            self.gh.post_issue_comment(issue_num, comment_body)
+        except Exception as e:
+            logger.warning(
+                "Failed to post warning comment to issue #%d: %s",
+                issue_num,
+                format_exception(e),
+            )
 
     def _run_internal(self) -> int:
         """Internal implementation of sync-changelog."""
         args = self.args
-        issue_num = args.issue
+        issue_num = args.issue or get_github_event_issue_number()
         if not issue_num:
             logger.info(
                 "No issue specified. Auto-discovering open release tracking issue..."
@@ -77,11 +98,25 @@ class SyncChangelog:
                 logger.error("No open release tracking issues found.")
                 return 1
 
+        try:
+            return self._sync_for_issue(issue_num)
+        except Exception as e:
+            err_msg = format_exception(e)
+            logger.error(
+                "Failed to sync changelog for issue #%d: %s", issue_num, err_msg
+            )
+            self._post_failure_comment(issue_num)
+            raise
+
+    def _sync_for_issue(self, issue_num: int) -> int:
+        args = self.args
         body = self.gh.get_issue_body(issue_num)
         issue_title = self.gh.get_issue_title(issue_num)
         version_match = RELEASE_TITLE_RE.search(issue_title)
         if not version_match:
-            logger.error("Could not parse version from issue title: %s", issue_title)
+            err = f"Could not parse version from issue title: {issue_title}"
+            logger.error(err)
+            self._post_failure_comment(issue_num)
             return 1
 
         version = version_match.group(1)
@@ -93,11 +128,9 @@ class SyncChangelog:
                     pr_num = self.gh.resolve_pr_number(pr_ref)
                     pending_prs.append(pr_num)
                 except Exception as e:
-                    logger.error(
-                        "Failed to resolve PR reference '%s': %s",
-                        pr_ref,
-                        format_exception(e),
-                    )
+                    err = f"Failed to resolve PR reference '{pr_ref}': {format_exception(e)}"
+                    logger.error(err)
+                    self._post_failure_comment(issue_num)
                     return 1
         else:
             state = parse_checklist_state(body)
@@ -121,10 +154,9 @@ class SyncChangelog:
         )
 
         if self.git.status():
-            logger.error(
-                "Git workspace is dirty. Please commit or stash changes"
-                " before running sync-changelog."
-            )
+            err = "Git workspace is dirty. Please commit or stash changes before running sync-changelog."
+            logger.error(err)
+            self._post_failure_comment(issue_num)
             return 1
 
         sorted_prs = sorted(pending_prs)
@@ -132,25 +164,17 @@ class SyncChangelog:
         prs_hash = hashlib.sha256(prs_str.encode()).hexdigest()[:7]
 
         main_branch = "main"
-        backport_branch = f"prepare-{version}-backports-{prs_hash}"
+        sync_branch = f"sync-changelog-{version}-{prs_hash}"
 
         self.git.fetch(args.remote, refspec=main_branch)
         self.git.checkout(main_branch, track_remote=args.remote)
-        main_start_sha = self.git.get_commit_sha("HEAD")
 
         try:
-            if args.dry_run:
-                logger.info(
-                    "[DRY RUN] Would create and checkout branch %s from %s",
-                    backport_branch,
-                    main_branch,
-                )
+            if self.git.branch_exists(sync_branch):
+                self.git.checkout(sync_branch)
+                self.git.reset_hard(reset_to=main_branch)
             else:
-                if self.git.branch_exists(backport_branch):
-                    self.git.checkout(backport_branch)
-                    self.git.reset_hard(reset_to=main_branch)
-                else:
-                    self.git.checkout(backport_branch, create_branch=True)
+                self.git.checkout(sync_branch, create_branch=True)
 
             # Run ProcessNews to process news files and version markers
             process_news_args = argparse.Namespace(
@@ -160,98 +184,86 @@ class SyncChangelog:
             process_news_runner = ProcessNews(process_news_args, gh=self.gh)
             ret = process_news_runner.run()
             if ret != 0:
-                logger.error("ProcessNews failed for targets: %s", sorted_prs)
+                err = f"ProcessNews failed for targets: {sorted_prs}"
+                logger.error(err)
+                self._post_failure_comment(issue_num)
                 return 1
 
             if not self.git.status():
                 logger.info("No changes to sync after running process-news.")
                 return 0
 
-            if args.dry_run:
-                logger.info(
-                    "[DRY RUN] Would commit: 'chore(release): sync changelog"
-                    " for v%s backports'",
-                    version,
+            self.git.add_modified_and_deleted()
+            self.git.commit(f"chore(release): sync changelog for v{version} backports")
+            self.git.push(args.remote, sync_branch, set_upstream=True, force=True)
+
+            pr_title = f"chore(release): sync changelog for v{version} backports"
+            pr_body_lines = [
+                "Updates CHANGELOG.md and removes news files for backports:",
+            ]
+            for pr_num in sorted_prs:
+                pr_body_lines.append(f"- #{pr_num}")
+
+            pr_body_lines.append("")
+            pr_body_lines.append(f"Work towards #{issue_num}")
+            pr_body_lines.append(f"Release-Tracking-Issue: #{issue_num}")
+            pr_body = "\n".join(pr_body_lines)
+
+            logger.info("Creating PR to %s...", main_branch)
+            pr_url = self.gh.create_pr(
+                title=pr_title,
+                body=pr_body,
+                base=main_branch,
+                labels=[SYNC_CHANGELOG_LABEL],
+            )
+            logger.info("Created PR: %s", pr_url)
+
+            pr_num = int(pr_url.split("/")[-1])
+            try:
+                logger.info("Enabling auto-merge for PR #%s...", pr_num)
+                self.gh.enable_auto_merge(pr_num)
+            except Exception as e:
+                logger.warning(
+                    "Failed to enable auto-merge on PR #%s: %s",
+                    pr_num,
+                    format_exception(e),
                 )
+
+            try:
                 logger.info(
-                    "[DRY RUN] Would push %s to %s",
-                    backport_branch,
-                    args.remote,
-                )
-                logger.info(
-                    "[DRY RUN] Would create PR to %s with label 'type: sync-changelog'",
-                    main_branch,
-                )
-                logger.info(
-                    "[DRY RUN] Would update tracking issue #%s checklist tasks"
-                    " 'Sync Changelog #<pr>' to PENDING",
+                    "Updating tracking issue #%s checklist with"
+                    " Sync Changelog tasks...",
                     issue_num,
                 )
-                logger.info("[DRY RUN] Diff of changes:\n%s", self.git.status())
-            else:
-                self.git.add_modified_and_deleted()
-                self.git.commit(
-                    f"chore(release): sync changelog for v{version} backports"
-                )
-                self.git.push(
-                    args.remote, backport_branch, set_upstream=True, force=True
-                )
-
-                pr_title = f"chore(release): sync changelog for v{version} backports"
-                pr_body_lines = [
-                    "Updates CHANGELOG.md and removes news files for backports:",
-                ]
-                for pr_num in sorted_prs:
-                    pr_body_lines.append(f"- #{pr_num}")
-
-                pr_body_lines.append("")
-                pr_body_lines.append(f"Work towards #{issue_num}")
-                pr_body_lines.append(f"Release-Tracking-Issue: #{issue_num}")
-                pr_body = "\n".join(pr_body_lines)
-
-                logger.info("Creating PR to %s...", main_branch)
-                pr_url = self.gh.create_pr(
-                    title=pr_title,
-                    body=pr_body,
-                    base=main_branch,
-                    labels=["type: sync-changelog"],
-                )
-                logger.info("Created PR: %s", pr_url)
-
-                try:
-                    pr_num = int(pr_url.split("/")[-1])
-                    logger.info("Enabling auto-merge for PR #%s...", pr_num)
-                    self.gh.enable_auto_merge(pr_num)
-
-                    logger.info(
-                        "Updating tracking issue #%s checklist with"
-                        " Sync Changelog tasks...",
-                        issue_num,
+                issue_body = self.gh.get_issue_body(issue_num)
+                for pr in sorted_prs:
+                    task_name = f"Sync Changelog #{pr}"
+                    metadata = {"status": "pending", "pr": f"#{pr_num}"}
+                    issue_body = update_task_in_body(
+                        issue_body,
+                        task_name,
+                        checked=False,
+                        metadata=metadata,
                     )
-                    issue_body = self.gh.get_issue_body(issue_num)
-                    for pr in sorted_prs:
-                        task_name = f"Sync Changelog #{pr}"
-                        metadata = {"status": "pending", "pr": f"#{pr_num}"}
-                        issue_body = update_task_in_body(
-                            issue_body,
-                            task_name,
-                            checked=False,
-                            metadata=metadata,
-                        )
-                    self.gh.update_issue_body(issue_num, issue_body)
-                except Exception as e:
-                    logger.warning(
-                        "Failed to update tracking issue or enable auto-merge: %s",
-                        format_exception(e),
-                    )
+                self.gh.update_issue_body(issue_num, issue_body)
+            except Exception as e:
+                logger.warning(
+                    "Failed to update tracking issue checklist: %s",
+                    format_exception(e),
+                )
+
+            try:
+                success_body = SYNC_CHANGELOG_SUCCESS_COMMENT_TEMPLATE.format(
+                    pr_url=pr_url,
+                )
+                self.gh.post_issue_comment(issue_num, success_body)
+            except Exception as e:
+                logger.warning(
+                    "Failed to post success comment to issue #%s: %s",
+                    issue_num,
+                    format_exception(e),
+                )
         finally:
-            if args.dry_run:
-                logger.info(
-                    "[DRY RUN] Resetting branch %s to %s after changelog sync dry run",
-                    main_branch,
-                    main_start_sha,
-                )
-                self.git.reset_hard(reset_to=main_start_sha)
             self.git.checkout(main_branch)
 
         return 0
@@ -266,7 +278,7 @@ class SyncChangelog:
         parser.add_argument(
             "--issue",
             type=int,
-            help="The tracking issue number (optional; auto-discovered if omitted).",
+            help="The tracking issue number (optional; extracted from GITHUB_EVENT_PATH or auto-discovered if omitted).",
         )
         parser.add_argument(
             "--remote",
@@ -281,17 +293,6 @@ class SyncChangelog:
                 "PR references (numbers, #numbers, or URLs, comma/space"
                 " separated) to sync (optional)."
             ),
-        )
-        parser.add_argument(
-            "--triggering-comment",
-            type=int,
-            help="The ID of the comment that triggered this run (optional).",
-        )
-        parser.add_argument(
-            "--dry-run",
-            action=argparse.BooleanOptionalAction,
-            default=True,
-            help="Perform a dry run (default: True). Use --no-dry-run to actually execute.",
         )
         parser.set_defaults(command=cls.run_from_args)
 

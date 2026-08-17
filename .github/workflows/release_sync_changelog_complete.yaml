@@ -1,26 +1,26 @@
-name: "Release: Sync Changelog"
+name: "Release: Sync Changelog: Complete"
 
 on:
   workflow_dispatch:
     inputs:
-      issue:
-        description: 'The Release Tracking Issue Number (e.g., 142)'
+      pr:
+        description: 'The merged sync-changelog PR number (optional; extracted from GITHUB_EVENT_PATH if omitted)'
         required: false
         type: string
   workflow_call:
     inputs:
-      issue:
-        description: 'The Release Tracking Issue Number (e.g., 142)'
+      pr:
+        description: 'The merged sync-changelog PR number (optional; extracted from GITHUB_EVENT_PATH if omitted)'
         required: false
         type: string
 
 permissions:
   contents: write
   issues: write
-  pull-requests: write
+  pull-requests: read
 
 jobs:
-  sync_changelog:
+  complete_sync_changelog:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,11 +38,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Sync Changelog to Main
+      - name: Complete Sync Changelog
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE: ${{ inputs.issue }}
         run: |
-          bazel run //tools/private/release -- sync-changelog \
-            ${ISSUE:+--issue="$ISSUE"} \
-            --remote origin
+          bazel run //tools/private/release -- complete-sync-changelog

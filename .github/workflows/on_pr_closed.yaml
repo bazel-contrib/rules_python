@@ -82,64 +82,16 @@ jobs:
             --remote origin \
             --no-dry-run
 
-  sync_changelog:
+  call_sync_changelog:
     needs: process_backports
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+    uses: ./.github/workflows/release_sync_changelog.yaml
+    secrets: inherit
 
-      - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-version: 1.20.0
-
-      - name: Configure Git Identity
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Sync Changelog
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          bazel run //tools/private/release -- sync-changelog \
-            --remote origin \
-            --no-dry-run
-
-
-  complete_sync_changelog:
+  call_complete_sync_changelog:
     if: |
       github.event.pull_request.merged == true &&
       contains(github.event.pull_request.labels.*.name, 'type: sync-changelog')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-version: 1.20.0
-
-      - name: Complete Sync Changelog
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          bazel run //tools/private/release -- complete-sync-changelog \
-            --pr "$PR_NUMBER"
+    uses: ./.github/workflows/release_sync_changelog_complete.yaml
+    secrets: inherit
 
 

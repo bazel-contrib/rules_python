@@ -114,7 +114,6 @@ jobs:
     uses: ./.github/workflows/release_sync_changelog.yaml
     with:
       issue: ${{ needs.parse_comment.outputs.issue_number }}
-      comment_id: "${{ github.event.comment.id }}"
     secrets: inherit
 
   call_promote:

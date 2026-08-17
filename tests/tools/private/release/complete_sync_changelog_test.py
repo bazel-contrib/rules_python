@@ -1,4 +1,5 @@
 import argparse
+import json
 
 from tools.private.release.complete_sync_changelog import CompleteSyncChangelog
 
@@ -47,6 +48,49 @@ def test_complete_sync_changelog_success(mock_gh):
     )
     # Task pointing to #888 should remain unchanged
     assert "- [ ] Sync Changelog #126 | status=pending pr=#888" in updated_body
+
+
+def test_complete_sync_changelog_from_github_event_path(mock_gh, tmp_path, monkeypatch):
+    event_file = tmp_path / "event.json"
+    event_file.write_text(
+        json.dumps({"pull_request": {"number": 999}}), encoding="utf-8"
+    )
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+
+    args = argparse.Namespace(pr=None)
+    mock_gh.prs[999] = {
+        "state": "MERGED",
+        "body": "Updates CHANGELOG.md\n\nRelease-Tracking-Issue: #123",
+        "mergeCommit": {"oid": "abcdef1234567890"},
+    }
+    issue_body = """
+## Checklist
+- [ ] Sync Changelog #124 | status=pending pr=#999
+"""
+    mock_gh.issues[123] = {
+        "title": "Release 2.1.0",
+        "body": issue_body,
+        "labels": ["type: release"],
+        "number": 123,
+        "url": "https://github.com/bazel-contrib/rules_python/issues/123",
+    }
+
+    result = CompleteSyncChangelog(args, mock_gh).run()
+
+    assert result == 0
+    assert (
+        "- [x] Sync Changelog #124 | status=done pr=#999 commit= abcdef12"
+        in mock_gh.get_issue_body(123)
+    )
+
+
+def test_complete_sync_changelog_missing_pr(mock_gh, monkeypatch):
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+    args = argparse.Namespace(pr=None)
+
+    result = CompleteSyncChangelog(args, mock_gh).run()
+
+    assert result == 1
 
 
 def test_complete_sync_changelog_not_merged(mock_gh):

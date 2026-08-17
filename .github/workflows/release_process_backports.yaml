@@ -80,6 +80,6 @@ jobs:
     uses: ./.github/workflows/release_sync_changelog.yaml
     with:
       issue: ${{ inputs.issue }}
-      comment_id: ${{ inputs.comment_id }}
     secrets: inherit
+
 

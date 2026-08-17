@@ -1,4 +1,5 @@
 import argparse
+import json
 from unittest.mock import MagicMock, call
 
 from tools.private.release.gh import CreatePrError
@@ -11,9 +12,7 @@ def test_sync_changelog_no_pending(mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -42,9 +41,7 @@ def test_sync_changelog_success(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -72,7 +69,7 @@ def test_sync_changelog_success(mocker, mock_git, mock_gh):
     mock_git.checkout.assert_has_calls(
         [
             call("main", track_remote="origin"),
-            call("prepare-2.0.0-backports-6affdae", create_branch=True),
+            call("sync-changelog-2.0.0-6affdae", create_branch=True),
             call("main"),
         ]
     )
@@ -86,13 +83,57 @@ def test_sync_changelog_success(mocker, mock_git, mock_gh):
     )
     mock_git.push.assert_called_once_with(
         "origin",
-        "prepare-2.0.0-backports-6affdae",
+        "sync-changelog-2.0.0-6affdae",
         set_upstream=True,
         force=True,
     )
 
     updated_body = mock_gh.get_issue_body(123)
     assert "- [ ] Sync Changelog #124 | status=pending pr=#1001" in updated_body
+
+    assert len(mock_gh.issue_comments[123]) == 1
+    assert (
+        mock_gh.issue_comments[123][0]
+        == "Sync changelog PR created: https://github.com/bazel-contrib/rules_python/pull/1001"
+    )
+
+
+def test_sync_changelog_from_github_event_path(
+    mocker, mock_git, mock_gh, tmp_path, monkeypatch
+):
+    mock_process_news_class = mocker.patch(
+        "tools.private.release.sync_changelog.ProcessNews"
+    )
+    mock_process_news_instance = MagicMock()
+    mock_process_news_instance.run.return_value = 0
+    mock_process_news_class.return_value = mock_process_news_instance
+
+    event_file = tmp_path / "event.json"
+    event_file.write_text(json.dumps({"inputs": {"issue": "123"}}), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+
+    args = argparse.Namespace(
+        issue=None,
+        remote="origin",
+        prs=None,
+    )
+    mock_gh.issues[123] = {
+        "title": "Release 2.0.0",
+        "body": """
+## Checklist
+- [ ] Sync Changelog #124
+""",
+        "labels": ["type: release"],
+    }
+    mock_git.status.side_effect = ["", "M CHANGELOG.md"]
+
+    result = SyncChangelog(args, mock_git, mock_gh).run()
+
+    assert result == 0
+    assert (
+        "- [ ] Sync Changelog #124 | status=pending pr=#1001"
+        in mock_gh.get_issue_body(123)
+    )
 
 
 def test_sync_changelog_branch_exists(mocker, mock_git, mock_gh):
@@ -106,9 +147,7 @@ def test_sync_changelog_branch_exists(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -128,45 +167,11 @@ def test_sync_changelog_branch_exists(mocker, mock_git, mock_gh):
     mock_git.checkout.assert_has_calls(
         [
             call("main", track_remote="origin"),
-            call("prepare-2.0.0-backports-6affdae"),
+            call("sync-changelog-2.0.0-6affdae"),
             call("main"),
         ]
     )
     mock_git.reset_hard.assert_called_once_with(reset_to="main")
-
-
-def test_sync_changelog_dry_run(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
-    mock_process_news_instance = MagicMock()
-    mock_process_news_instance.run.return_value = 0
-    mock_process_news_class.return_value = mock_process_news_instance
-
-    args = argparse.Namespace(
-        issue=123,
-        remote="origin",
-        dry_run=True,
-        prs=None,
-        triggering_comment=None,
-    )
-    mock_gh.issues[123] = {
-        "title": "Release 2.0.0",
-        "body": """
-## Checklist
-- [ ] Sync Changelog #124
-""",
-        "labels": ["type: release"],
-    }
-    mock_git.get_commit_sha.return_value = "main_start_sha"
-    mock_git.status.side_effect = ["", "M CHANGELOG.md", "M CHANGELOG.md"]
-
-    result = SyncChangelog(args, mock_git, mock_gh).run()
-
-    assert result == 0
-    mock_git.push.assert_not_called()
-    mock_git.commit.assert_not_called()
-    mock_git.reset_hard.assert_called_once_with(reset_to="main_start_sha")
 
 
 def test_sync_changelog_auto_discover_issue(mocker, mock_git, mock_gh):
@@ -180,9 +185,7 @@ def test_sync_changelog_auto_discover_issue(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=None,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "number": 123,
@@ -202,15 +205,14 @@ def test_sync_changelog_auto_discover_issue(mocker, mock_git, mock_gh):
         "- [ ] Sync Changelog #124 | status=pending pr=#1001"
         in mock_gh.get_issue_body(123)
     )
+    assert len(mock_gh.issue_comments[123]) == 1
 
 
 def test_sync_changelog_multiple_open_issues_fails(mock_git, mock_gh):
     args = argparse.Namespace(
         issue=None,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "number": 123,
@@ -242,9 +244,7 @@ def test_sync_changelog_specific_prs_arg(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=["#124", "125"],
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -275,9 +275,7 @@ def test_sync_changelog_no_changes(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -308,9 +306,7 @@ def test_sync_changelog_process_news_failure(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=55555,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -325,7 +321,12 @@ def test_sync_changelog_process_news_failure(mocker, mock_git, mock_gh):
     result = SyncChangelog(args, mock_git, mock_gh).run()
 
     assert result == 1
-    assert mock_gh.reactions.get(55555) == ["-1"]
+    assert len(mock_gh.issue_comments[123]) == 1
+    assert (
+        "Warning: Failed to create sync PR to main for backports"
+        in mock_gh.issue_comments[123][0]
+    )
+    assert "Traceback" not in mock_gh.issue_comments[123][0]
 
 
 def test_sync_changelog_create_pr_failure(mocker, mock_git, mock_gh):
@@ -339,9 +340,7 @@ def test_sync_changelog_create_pr_failure(mocker, mock_git, mock_gh):
     args = argparse.Namespace(
         issue=123,
         remote="origin",
-        dry_run=False,
         prs=None,
-        triggering_comment=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -359,3 +358,9 @@ def test_sync_changelog_create_pr_failure(mocker, mock_git, mock_gh):
     result = SyncChangelog(args, mock_git, mock_gh).run()
 
     assert result == 1
+    assert len(mock_gh.issue_comments[123]) == 1
+    assert (
+        "Warning: Failed to create sync PR to main for backports"
+        in mock_gh.issue_comments[123][0]
+    )
+    assert "Traceback" not in mock_gh.issue_comments[123][0]

@@ -19,6 +19,7 @@ from tools.private.release.shell import run_cmd
 RELEASE_LABEL = "type: release"
 BACKPORT_LABEL = "type: backport-pr"
 RELEASE_PREPARED_LABEL = "release-prepared"
+SYNC_CHANGELOG_LABEL = "type: sync-changelog"
 
 # GitHub reaction types
 # See: https://docs.github.com/en/rest/reactions/reactions?apiVersion=2022-11-28#about-reactions
@@ -107,8 +108,96 @@ class PrDict(TypedDict, total=False):
     state: str
     isDraft: bool
     mergeCommit: dict[str, str]
-    auto_merge: AutoMergeDict | None
+    auto_merge: AutoMergeDict
     files: list[PrFileDict]
+
+
+class GitHubEventPullRequestDict(TypedDict, total=False):
+    """Pull request object in a GitHub Actions event payload.
+
+    See GitHub Webhook events docs:
+    https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request
+    """
+
+    number: int
+
+
+class GitHubEventIssueDict(TypedDict, total=False):
+    """Issue object in a GitHub Actions event payload.
+
+    See GitHub Webhook events docs:
+    https://docs.github.com/en/webhooks/webhook-events-and-payloads#issues
+    """
+
+    number: int
+
+
+class GitHubEventDict(TypedDict, total=False):
+    """Representation of a GitHub Actions event payload JSON ($GITHUB_EVENT_PATH).
+
+    See GitHub Actions events docs:
+    https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+    """
+
+    inputs: dict[str, object]
+    pull_request: GitHubEventPullRequestDict
+    issue: GitHubEventIssueDict
+    number: int | None
+
+
+def get_github_event_data() -> GitHubEventDict:
+    """Loads JSON data from GITHUB_EVENT_PATH if set."""
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if not event_path or not os.path.isfile(event_path):
+        return {}
+    with open(event_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_github_event_pr_number() -> int | None:
+    """Extracts PR number from GITHUB_EVENT_PATH if available."""
+    data = get_github_event_data()
+    if not data:
+        return None
+    if (
+        "inputs" in data
+        and isinstance(data["inputs"], dict)
+        and data["inputs"].get("pr")
+    ):
+        pr_val = str(data["inputs"]["pr"]).lstrip("#")
+        if pr_val.isdigit():
+            return int(pr_val)
+    if (
+        "pull_request" in data
+        and isinstance(data["pull_request"], dict)
+        and data["pull_request"].get("number")
+    ):
+        return int(data["pull_request"]["number"])
+    if "number" in data and isinstance(data["number"], int):
+        return data["number"]
+    return None
+
+
+def get_github_event_issue_number() -> int | None:
+    """Extracts Issue number from GITHUB_EVENT_PATH if available."""
+    data = get_github_event_data()
+    if not data:
+        return None
+    if (
+        "inputs" in data
+        and isinstance(data["inputs"], dict)
+        and data["inputs"].get("issue")
+    ):
+        issue_val = str(data["inputs"]["issue"]).lstrip("#")
+        if issue_val.isdigit():
+            return int(issue_val)
+    if (
+        "issue" in data
+        and isinstance(data["issue"], dict)
+        and data["issue"].get("number")
+    ):
+        return int(data["issue"]["number"])
+    return None
 
 
 class MultipleTrackingIssuesError(ValueError):

@@ -1,12 +1,15 @@
 """Subcommand to mark sync changelog tasks as complete."""
 
+import logging
 import re
 
-from tools.private.release.gh import GitHub
+from tools.private.release.gh import GitHub, get_github_event_pr_number
 from tools.private.release.release_issue import (
     parse_checklist_state,
     update_task_in_body,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CompleteSyncChangelog:
@@ -19,31 +22,41 @@ class CompleteSyncChangelog:
     def run(self) -> int:
         """Executes the complete-sync-changelog subcommand."""
         args = self.args
-        print(f"Completing sync changelog for PR #{args.pr}...")
+        pr_num = args.pr or get_github_event_pr_number()
+        if not pr_num:
+            logger.error(
+                "No PR specified and could not extract PR number from GITHUB_EVENT_PATH."
+            )
+            return 1
 
-        pr_info = self.gh.get_pr_info(args.pr)
+        logger.info("Completing sync changelog for PR #%d...", pr_num)
+
+        pr_info = self.gh.get_pr_info(pr_num)
         if not pr_info or pr_info.get("state") != "MERGED":
             state = pr_info.get("state", "UNKNOWN")
-            print(f"Error: PR #{args.pr} is not merged yet (state: {state}).")
+            logger.error("PR #%d is not merged yet (state: %s).", pr_num, state)
             return 1
 
         # Resolve issue number from PR body using Release-Tracking-Issue: #<issue>
         pr_body = pr_info.get("body") or ""
         match = re.search(r"Release-Tracking-Issue:\s*#(\d+)", pr_body)
         if not match:
-            print(
-                f"Error: Could not find 'Release-Tracking-Issue: #<issue>' in"
-                f" PR #{args.pr} body: {pr_body}"
+            logger.error(
+                "Could not find 'Release-Tracking-Issue: #<issue>' in PR #%d body: %s",
+                pr_num,
+                pr_body,
             )
             return 1
 
         issue_num = int(match.group(1))
-        print(f"Resolved tracking issue #{issue_num} from PR #{args.pr} body.")
+        logger.info("Resolved tracking issue #%d from PR #%d body.", issue_num, pr_num)
 
         commit_sha = pr_info["mergeCommit"]["oid"]
         short_commit = commit_sha[:8]
-        print(
-            f"PR #{args.pr} merged at commit {commit_sha}. Updating tracking issue..."
+        logger.info(
+            "PR #%d merged at commit %s. Updating tracking issue...",
+            pr_num,
+            commit_sha,
         )
 
         # Update checklist: mark all Sync Changelog tasks pointing to this PR as done
@@ -52,14 +65,14 @@ class CompleteSyncChangelog:
         sync_changelogs = state.get("sync_changelogs", {})
 
         updated_any = False
-        for pr_num, task in sync_changelogs.items():
+        for target_pr_num, task in sync_changelogs.items():
             # Check if this task points to our merged PR
             task_pr = task.metadata.get("pr")
-            if task_pr == f"#{args.pr}":
-                print(f"Marking task '{task.name}' as complete...")
+            if task_pr == f"#{pr_num}":
+                logger.info("Marking task '%s' as complete...", task.name)
                 metadata = {
                     "status": "done",
-                    "pr": f"#{args.pr}",
+                    "pr": f"#{pr_num}",
                     "commit": short_commit,
                 }
                 body = update_task_in_body(
@@ -68,11 +81,11 @@ class CompleteSyncChangelog:
                 updated_any = True
 
         if not updated_any:
-            print(f"Warning: No 'Sync Changelog' tasks found pointing to PR #{args.pr}")
+            logger.warning("No 'Sync Changelog' tasks found pointing to PR #%d", pr_num)
             return 0
 
         self.gh.update_issue_body(issue_num, body)
-        print("Sync changelog tasks marked complete successfully!")
+        logger.info("Sync changelog tasks marked complete successfully!")
         return 0
 
     @classmethod
@@ -85,8 +98,7 @@ class CompleteSyncChangelog:
         parser.add_argument(
             "--pr",
             type=int,
-            required=True,
-            help="The merged sync changelog PR number.",
+            help="The merged sync changelog PR number (optional; extracted from GITHUB_EVENT_PATH if omitted).",
         )
         parser.set_defaults(command=cls.run_from_args)
 
