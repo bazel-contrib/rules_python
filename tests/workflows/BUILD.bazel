@@ -37,3 +37,13 @@ pytest_test(
         "@pypi//pytest_mock",
     ],
 )
+
+pytest_test(
+    name = "workflow_permissions_test",
+    srcs = ["workflow_permissions_test.py"],
+    data = ["//.github/workflows:all_files"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        "//python/runfiles",
+    ],
+)

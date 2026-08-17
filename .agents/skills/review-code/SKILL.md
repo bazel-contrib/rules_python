@@ -52,6 +52,13 @@ file from `.agents/skills/review-code/`:
    - Focus: Audits PR titles and descriptions against Conventional Commits
      formatting and PR update rules in `CONTRIBUTING.md`.
 
+7. **GitHub Workflows Sub-Agent** (`Role: "GitHub Workflows Auditor"`):
+   - Prompt file:
+     `.agents/skills/review-code/review-workflows-prompt.md`
+   - Focus: Audits workflow files (`.github/**`) and workflow tests against
+     `.agents/rules/github_actions_workflows.md` (e.g. `chmod +x` executable
+     permissions, shebangs, action versions, fallback jobs).
+
 ### Action Instructions
 - Immediately create a user-facing review artifact named
   `code-review-results.md` in the conversation artifact directory so progress
