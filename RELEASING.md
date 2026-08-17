@@ -131,6 +131,60 @@ The `<PR_REF>` can be:
     or `https://github.com/bazel-contrib/rules_python/pull/124/files`)
 *   Only URLs for the configured repository are accepted.
 
+### Processing News Files and PR Changes for Backports
+
+To process and merge news files into an existing release in `CHANGELOG.md`
+(e.g. after backporting a PR) and update any `VERSION_NEXT_*` markers added by
+the PR:
+
+```shell
+bazel run //tools/private/release -- \
+    process-news <VERSION> <TARGET> [<TARGET> ...]
+```
+
+The `<TARGET>` can be:
+*   A news file path (e.g., `news/3997.added.md`).
+*   A PR number (e.g., `3997` or `#3997`).
+*   A PR URL (e.g., `https://github.com/bazel-contrib/rules_python/pull/3997`).
+
+When a PR reference is passed, `process-news` resolves the files touched by the
+PR, merges its news file(s) into `CHANGELOG.md`, deletes the processed news
+file(s), and updates any `VERSION_NEXT_FEATURE` / `VERSION_NEXT_PATCH`
+placeholders in the PR's files to `<VERSION>`.
+
+Examples:
+
+```shell
+# Process a single news file
+bazel run //tools/private/release -- process-news 2.3.0 news/3997.added.md
+
+# Process all news files and update version markers for a PR
+bazel run //tools/private/release -- process-news 2.3.0 3997
+```
+
+### Syncing Changelog to Main
+
+When backports are processed, a separate workflow and job creates a sync PR to
+`main` to merge news entries into `CHANGELOG.md` and update `VERSION_NEXT_*`
+placeholders.
+
+You can also manually trigger changelog syncing using the GitHub CLI or Actions
+UI:
+
+```shell
+gh workflow run release_sync_changelog.yaml \
+    --repo bazel-contrib/rules_python \
+    --raw-field issue=<ISSUE>
+```
+
+Or comment `/sync-changelog` on the release tracking issue, or run via the
+release tool CLI:
+
+```shell
+bazel run //tools/private/release -- \
+    sync-changelog --issue <ISSUE> --remote origin
+```
+
 ### Failure Behavior
 If a backport fails to process (e.g., due to cherry-pick conflicts):
 *   The failed backport checklist item will remain unchecked with

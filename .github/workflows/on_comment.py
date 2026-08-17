@@ -101,6 +101,10 @@ def _process_release_issue_comment(
         _write_github_output("command", "process-backports")
         return
 
+    if _match_command("sync-changelog", comment_body):
+        _write_github_output("command", "sync-changelog")
+        return
+
     if m := _match_command(("backport", "backports"), comment_body):
         raw_args = m.group(1) if m.group(1) else ""
         items = [item for item in re.split(r"[\s,]+", raw_args) if item]

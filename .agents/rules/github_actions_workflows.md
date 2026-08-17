@@ -12,6 +12,8 @@ globs: [".github/workflows/*.yml", ".github/workflows/*.yaml", ".github/*.yaml"]
   redundant shell parameter stripping or conversions.
 * Print console messages using GitHub workflow command syntax (e.g.,
   `::error::`, `::warning::`, `::notice::`, `::group::`).
+* **Event Payload Resolution**: Load event details directly from
+  `$GITHUB_EVENT_PATH` rather than passing fields via env vars or CLI flags.
 
 ## Workflow Python Scripts & Testing
 * **Test Location**: Place workflow tests under `tests/workflows/`.

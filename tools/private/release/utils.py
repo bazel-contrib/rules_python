@@ -1,8 +1,10 @@
 """Utility functions for the release tool."""
 
 import argparse
+import collections.abc
 import fnmatch
 import os
+import pathlib
 import re
 
 from packaging.version import parse as parse_version
@@ -35,21 +37,26 @@ _EXCLUDE_PATTERNS = [
 ]
 
 
-def _iter_version_placeholder_files():
+def is_excluded_version_placeholder_path(path: pathlib.Path | str) -> bool:
+    """Checks if a path matches any version placeholder exclusion patterns."""
+    path_str = str(path)
+    if not path_str.startswith("./") and not path_str.startswith("/"):
+        path_str = f"./{path_str}"
+    return any(fnmatch.fnmatch(path_str, pattern) for pattern in _EXCLUDE_PATTERNS)
+
+
+def _iter_version_placeholder_files() -> collections.abc.Iterator[pathlib.Path]:
     for root, dirs, files in os.walk(".", topdown=True):
-        # Filter directories
+        # Filter directories in-place
         dirs[:] = [
             d
             for d in dirs
-            if not any(
-                fnmatch.fnmatch(os.path.join(root, d), pattern)
-                for pattern in _EXCLUDE_PATTERNS
-            )
+            if not is_excluded_version_placeholder_path(os.path.join(root, d))
         ]
 
         for filename in files:
-            filepath = os.path.join(root, filename)
-            if any(fnmatch.fnmatch(filepath, pattern) for pattern in _EXCLUDE_PATTERNS):
+            filepath = pathlib.Path(root) / filename
+            if is_excluded_version_placeholder_path(filepath):
                 continue
 
             yield filepath
@@ -162,20 +169,45 @@ def determine_next_version(branch_name=None, git=None, is_patch=False):
         return f"{major}.{minor}.{patch + 1}"
 
 
-def replace_version_next(version):
-    """Replaces all VERSION_NEXT_* placeholders with the new version."""
-    for filepath in _iter_version_placeholder_files():
+def replace_version_next_in_files(
+    filepaths: collections.abc.Iterable[pathlib.Path], version: str
+) -> list[pathlib.Path]:
+    """Replaces VERSION_NEXT_* placeholders with version in the specified files.
+
+    Args:
+        filepaths: An iterable of pathlib.Path objects to process.
+        version: The release version string to replace placeholders with.
+
+    Returns:
+        List of pathlib.Path objects for files that were modified.
+    """
+    modified: list[pathlib.Path] = []
+    for path in filepaths:
+        if is_excluded_version_placeholder_path(path):
+            continue
         try:
-            with open(filepath, "r") as f:
-                content = f.read()
+            content = path.read_text(encoding="utf-8")
         except (IOError, UnicodeDecodeError):
             continue
 
         if "VERSION_NEXT_FEATURE" in content or "VERSION_NEXT_PATCH" in content:
             new_content = content.replace("VERSION_NEXT_FEATURE", version)
             new_content = new_content.replace("VERSION_NEXT_PATCH", version)
-            with open(filepath, "w") as f:
-                f.write(new_content)
+            path.write_text(new_content, encoding="utf-8")
+            modified.append(path)
+    return modified
+
+
+def replace_version_next(version: str) -> list[pathlib.Path]:
+    """Replaces all VERSION_NEXT_* placeholders with the new version.
+
+    Args:
+        version: The release version string to replace placeholders with.
+
+    Returns:
+        List of pathlib.Path objects for files that were modified.
+    """
+    return replace_version_next_in_files(_iter_version_placeholder_files(), version)
 
 
 def parse_pr_list(value: str) -> list[str]:

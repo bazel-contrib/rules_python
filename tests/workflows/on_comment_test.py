@@ -202,6 +202,19 @@ def test_release_issue_backport_empty(monkeypatch, gha_env, mock_add_reaction, c
     )
 
 
+def test_release_issue_sync_changelog(monkeypatch, gha_env):
+    _run_comment(
+        monkeypatch,
+        "/sync-changelog",
+        has_release_label="true",
+    )
+    assert gha_env.read_outputs() == {
+        "issue_number": "100",
+        "command": "sync-changelog",
+    }
+    assert gha_env.read_env() == {"issue_number": "100"}
+
+
 def test_release_issue_promote(monkeypatch, gha_env):
     _run_comment(
         monkeypatch,

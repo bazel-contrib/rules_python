@@ -33,6 +33,10 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **Why**: This avoids inlining the normalization as part of a complex
   expression later in the macro expansion.
 
+## native.test_suite API
+* Don't forward target `tags` to `native.test_suite`; tags on test suites filter
+  tests instead of setting target execution behavior.
+
 ## Control Flow & Algorithmic Restrictions
 * **Iterative Algorithms Only (No Recursion)**: Starlark does not support
   recursive function calls; always implement iterative algorithms using bounded

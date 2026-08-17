@@ -19,6 +19,8 @@ When the user asks to merge a pull request (e.g., "merge PR <number>", "merge th
      (`retry_buildkite_jobs.py <pr_number>`) to automatically retry any
      transient network flakes (e.g., HTTP 504 gateway timeouts, downloader
      errors).
+   - **Soft-Failing Jobs**: Experimental Buildkite jobs (e.g. `*rolling*`
+     Bazel) are non-blocking soft failures; do not treat them as merge blockers.
    - When the PR is queued, actively discover the merge queue branch via
      `gh api repos/:owner/:repo/branches --jq '.[].name | select(test("gh-readonly-queue/.*/pr-<pr_number>-"))'`
      and monitor commit statuses/Buildkite builds running on that temporary

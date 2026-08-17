@@ -33,6 +33,7 @@ or when monitoring CI after PR updates:
 3. **Failure Reporting**: When any GitHub check or Buildkite job completes
    with errors, `monitor_remote_ci.py` dispatches a high-priority notification
    message reporting the failed check back to your conversation.
+   - Soft failures (e.g. `*rolling*` Bazel) are non-blocking warnings; ignore.
 4. **Subagent Analysis**: Upon receiving a failure notification message from
    the monitoring script, immediately launch a separate subagent using the
    `invoke_subagent` tool with the role "CI Failure Analyzer" to run the
