@@ -1,14 +1,10 @@
-name: "Release: Process Backports"
+name: "Release: Sync Changelog"
 
 on:
   workflow_dispatch:
     inputs:
       issue:
         description: 'The Release Tracking Issue Number (e.g., 142)'
-        required: true
-        type: string
-      add_backports:
-        description: 'CSV list of PR numbers to add and process (optional)'
         required: false
         type: string
       comment_id:
@@ -19,10 +15,6 @@ on:
     inputs:
       issue:
         description: 'The Release Tracking Issue Number (e.g., 142)'
-        required: true
-        type: string
-      add_backports:
-        description: 'CSV list of PR numbers to add and process (optional)'
         required: false
         type: string
       comment_id:
@@ -33,10 +25,10 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 jobs:
-  process_backports:
-    # Always gate GHA runs to ensure we are operating on a type: release labeled issue if metadata is queried
+  sync_changelog:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -54,32 +46,22 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Process Pending Backports
+      - name: Sync Changelog to Main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ADD_BACKPORTS: ${{ inputs.add_backports }}
           COMMENT_ID: ${{ inputs.comment_id }}
           ISSUE: ${{ inputs.issue }}
         run: |
           ARGS=()
-          if [ -n "$ADD_BACKPORTS" ]; then
-            ARGS+=("--add=$ADD_BACKPORTS")
+          if [ -n "$ISSUE" ]; then
+            ISSUE="${ISSUE#\#}"
+            ARGS+=("--issue=$ISSUE")
           fi
           if [ -n "$COMMENT_ID" ]; then
             ARGS+=("--triggering-comment=$COMMENT_ID")
           fi
           
-          bazel run //tools/private/release -- process-backports \
-            --issue "$ISSUE" \
+          bazel run //tools/private/release -- sync-changelog \
             --remote origin \
             --no-dry-run \
             "${ARGS[@]}"
-
-  call_sync_changelog:
-    needs: process_backports
-    uses: ./.github/workflows/release_sync_changelog.yaml
-    with:
-      issue: ${{ inputs.issue }}
-      comment_id: ${{ inputs.comment_id }}
-    secrets: inherit
-

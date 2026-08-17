@@ -108,6 +108,15 @@ jobs:
       comment_id: "${{ github.event.comment.id }}"
     secrets: inherit
 
+  call_sync_changelog:
+    needs: parse_comment
+    if: needs.parse_comment.outputs.command == 'sync-changelog'
+    uses: ./.github/workflows/release_sync_changelog.yaml
+    with:
+      issue: ${{ needs.parse_comment.outputs.issue_number }}
+      comment_id: "${{ github.event.comment.id }}"
+    secrets: inherit
+
   call_promote:
     needs: parse_comment
     if: needs.parse_comment.outputs.command == 'promote'

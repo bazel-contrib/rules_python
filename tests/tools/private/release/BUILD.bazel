@@ -77,6 +77,18 @@ pytest_test(
 )
 
 pytest_test(
+    name = "sync_changelog_test",
+    srcs = ["sync_changelog_test.py"],
+    python_version = "3.14",
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":conftest",
+        ":release_test_helper",
+        "//tools/private/release:release_lib",
+    ],
+)
+
+pytest_test(
     name = "create_release_branch_test",
     srcs = ["create_release_branch_test.py"],
     python_version = "3.14",

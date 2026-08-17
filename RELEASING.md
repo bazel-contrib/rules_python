@@ -162,6 +162,29 @@ bazel run //tools/private/release -- process-news 2.3.0 news/3997.added.md
 bazel run //tools/private/release -- process-news 2.3.0 3997
 ```
 
+### Syncing Changelog to Main
+
+When backports are processed, a separate workflow and job creates a sync PR to
+`main` to merge news entries into `CHANGELOG.md` and update `VERSION_NEXT_*`
+placeholders.
+
+You can also manually trigger changelog syncing using the GitHub CLI or Actions
+UI:
+
+```shell
+gh workflow run release_sync_changelog.yaml \
+    --repo bazel-contrib/rules_python \
+    -f issue=<ISSUE>
+```
+
+Or comment `/sync-changelog` on the release tracking issue, or run via the
+release tool CLI:
+
+```shell
+bazel run //tools/private/release -- \
+    sync-changelog --issue <ISSUE> --remote origin --no-dry-run
+```
+
 ### Failure Behavior
 If a backport fails to process (e.g., due to cherry-pick conflicts):
 *   The failed backport checklist item will remain unchecked with

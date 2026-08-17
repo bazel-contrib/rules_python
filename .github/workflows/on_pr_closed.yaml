@@ -82,6 +82,38 @@ jobs:
             --remote origin \
             --no-dry-run
 
+  sync_changelog:
+    needs: process_backports
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bazel run //tools/private/release -- sync-changelog \
+            --remote origin \
+            --no-dry-run
+
+
   complete_sync_changelog:
     if: |
       github.event.pull_request.merged == true &&

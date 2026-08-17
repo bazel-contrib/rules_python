@@ -19,6 +19,7 @@ from tools.private.release.prepare import Prepare
 from tools.private.release.process_backports import ProcessBackports
 from tools.private.release.process_news import ProcessNews
 from tools.private.release.promote import Promote
+from tools.private.release.sync_changelog import SyncChangelog
 from tools.private.release.utils import format_exception
 
 cmds = [
@@ -31,6 +32,7 @@ cmds = [
     AddBackports,
     ProcessBackports,
     ProcessNews,
+    SyncChangelog,
     OnPrMerged,
     CreateRc,
     Promote,
