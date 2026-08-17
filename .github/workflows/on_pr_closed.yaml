@@ -25,7 +25,7 @@ jobs:
       pr_number: ${{ steps.parse.outputs.pr_number }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Parse PR
