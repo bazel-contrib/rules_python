@@ -47,8 +47,9 @@
 
 ## Runfiles
 * **Fail-fast creation**: Prefer `runfiles.CreateOrRaise()` over
-  `runfiles.Create()` followed by manual `assert` when initializing runfiles in
-  tests and runtime scripts.
+  `runfiles.Create()` + `assert`.
+* **Path navigation**: Prefer `rf.root() / "<repo>/<path>"` over `Rlocation()`;
+  use `.glob()` on `runfiles.Path` instead of multi-root fallback loops.
 
 ## Delegating Functions
 * Module-level functions delegating to class methods should have a docstring
