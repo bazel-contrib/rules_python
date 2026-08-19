@@ -338,7 +338,13 @@ def _pip_archive_impl(rctx):
     patch_and_extract_whl(rctx, whl_path = whl_path, logger = logger, sdist_filename = sdist_filename)
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
-pip_archive_attrs = whl_archive_attrs | {
+pip_archive_attrs = {
+    k: v
+    for k, v in whl_archive_attrs.items()
+    # Only the whl_file parameter is unusable in the pip_archive rule. the rest can be
+    # reused.
+    if k != "whl_file"
+} | {
     k: ATTRS[k]
     for k in [
         # used for pulling deps with pip
