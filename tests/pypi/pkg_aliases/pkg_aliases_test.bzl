@@ -32,7 +32,7 @@ def _test_legacy_aliases(env):
         name = "foo",
         actual = "repo",
         native = struct(
-            alias = lambda name, actual: got.update({name: actual}),
+            alias = lambda name, actual, *, target_compatible_with = None: got.update({name: actual}),
         ),
         extra_aliases = ["my_special"],
     )
@@ -69,7 +69,7 @@ def _test_config_setting_aliases(env):
         },
         extra_aliases = ["my_special"],
         native = struct(
-            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+            alias = lambda *, name, actual, visibility = None, tags = None, target_compatible_with = None: got.update({name: actual}),
         ),
         select = mock_select,
     )
@@ -118,7 +118,7 @@ def _test_config_setting_aliases_many(env):
         },
         extra_aliases = ["my_special"],
         native = struct(
-            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+            alias = lambda *, name, actual, visibility = None, tags = None, target_compatible_with = None: got.update({name: actual}),
             config_setting = lambda **_: None,
         ),
         select = mock_select,
@@ -170,7 +170,7 @@ def _test_multiplatform_whl_aliases(env):
         },
         extra_aliases = [],
         native = struct(
-            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+            alias = lambda *, name, actual, visibility = None, tags = None, target_compatible_with = None: got.update({name: actual}),
         ),
         select = mock_select,
     )
