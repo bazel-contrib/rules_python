@@ -1347,7 +1347,10 @@ def _maybe_add_test_main_validation(ctx, main_py, output_groups):
         return
 
     exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
-    if exec_tools_toolchain == None or exec_tools_toolchain.exec_tools.exec_runtime == None:
+    if (
+        exec_tools_toolchain == None or
+        exec_tools_toolchain.exec_tools.exec_runtime == None
+    ):
         fail(
             "Validating py_test main modules requires the exec tools toolchain " +
             "with an exec runtime, but none was found. Either register one " +

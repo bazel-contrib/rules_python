@@ -63,10 +63,10 @@ env \\
 {env} \\
   {args}
 RESULT: exit_code: {self.exit_code}
-===== STDOUT START =====
-{self.stdout}{maybe_stdout_nl}===== STDOUT END   =====
-===== STDERR START =====
-{self.stderr}{maybe_stderr_nl}===== STDERR END   =====
+==================== STDOUT BEGIN ====================
+{self.stdout}{maybe_stdout_nl}==================== STDOUT END ====================
+==================== STDERR BEGIN ====================
+{self.stderr}{maybe_stderr_nl}==================== STDERR END ====================
 """
 
 
