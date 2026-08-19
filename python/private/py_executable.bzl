@@ -64,7 +64,6 @@ load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_executable_info.bzl", "PyExecutableInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkKind")
 load(":py_internal.bzl", "py_internal")
-load(":py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
@@ -1348,47 +1347,30 @@ def _maybe_add_test_main_validation(ctx, main_py, output_groups):
         return
 
     exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
-    if exec_tools_toolchain == None or exec_tools_toolchain.exec_tools.exec_interpreter == None:
+    if exec_tools_toolchain == None or exec_tools_toolchain.exec_tools.exec_runtime == None:
         fail(
             "Validating py_test main modules requires the exec tools toolchain " +
-            "with an exec interpreter, but none was found. Either register one " +
+            "with an exec runtime, but none was found. Either register one " +
             "or set --@rules_python//python/config_settings:validate_test_main=disabled.",
         )
 
-    exec_tools = exec_tools_toolchain.exec_tools
     validator = ctx.attr._validate_test_main
-    program_info = validator[PyInterpreterProgramInfo]
-    interpreter = exec_tools.exec_interpreter[DefaultInfo].files_to_run
-    validator_files_to_run = validator[DefaultInfo].files_to_run
-
     validation_output = ctx.actions.declare_file(ctx.label.name + "_validate_test_main.txt")
 
     args = ctx.actions.args()
-    args.add_all(program_info.interpreter_args)
-    args.add(validator_files_to_run.executable)
     args.add("--src", main_py)
     args.add("--src_name", main_py.short_path)
     args.add("--label", str(ctx.label))
     args.add("--output", validation_output)
 
-    execution_requirements = {}
-    if testing.ExecutionInfo in validator:
-        execution_requirements = validator[testing.ExecutionInfo].requirements
-
-    ctx.actions.run(
-        executable = interpreter,
+    actions_run(
+        ctx,
+        executable = validator,
         arguments = [args],
         inputs = [main_py],
         outputs = [validation_output],
-        tools = [validator_files_to_run],
         mnemonic = "PyValidateTestMain",
         progress_message = "Validating py_test main %{label}",
-        env = program_info.env | {
-            "PYTHONNOUSERSITE": "1",
-            "PYTHONSAFEPATH": "1",
-        },
-        execution_requirements = execution_requirements,
-        toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE,
     )
     if "_validation" in output_groups:
         output_groups["_validation"] = depset([validation_output], transitive = [output_groups["_validation"]])
