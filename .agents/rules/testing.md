@@ -4,6 +4,13 @@
 * Always pass `--config=fast-tests` when running or building test targets to
   avoid running expensive, flaky integration tests.
 
+## Running Integration Tests Directly
+* Integration tests under `tests/integration/` are tagged
+  `["integration-test", "enormous"]` and are filtered out by
+  `--config=fast-tests`.
+* To run a specific integration test target directly, omit
+  `--config=fast-tests`: `bazel test //tests/integration:<target>`.
+
 ## CRITICAL: Never use `--config=fast-tests` on Non-Test Targets
 * `--config=fast-tests` sets `--build_tests_only=true`, which silently ignores
   non-test targets (such as `//docs:docs` or package libraries), resulting in 0
