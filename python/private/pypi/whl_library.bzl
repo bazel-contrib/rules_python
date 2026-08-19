@@ -14,8 +14,22 @@
 
 ""
 
-load(":pip_archive.bzl", "pip_archive")
-load(":whl_archive.bzl", "whl_archive")
+load(":pip_archive.bzl", "pip_archive", "pip_archive_attrs")
+load(":whl_archive.bzl", "whl_archive", "whl_archive_attrs")
+
+def _filter(kwargs, subset, debug = False):
+    dropped = {}
+    filtered = {}
+    for k, v in kwargs.items():
+        if k in subset:
+            filtered[k] = v
+        else:
+            dropped[k] = v
+
+    if debug:
+        print("Ignored args: {}".format(dropped))  # buildifier: disable=print
+
+    return filtered
 
 def whl_library(name, repo = None, **kwargs):
     """Create a whl_library.
@@ -42,6 +56,6 @@ def whl_library(name, repo = None, **kwargs):
     kwargs.setdefault("dep_template", "@{}{{name}}//:{{target}}".format(kwargs.pop("repo_prefix", "")))
 
     if whl_file or (urls and filename and filename.endswith(".whl")):
-        whl_archive(name = name, **kwargs)
+        whl_archive(name = name, **_filter(kwargs, whl_archive_attrs))
     else:
-        pip_archive(name = name, **kwargs)
+        pip_archive(name = name, **_filter(kwargs, pip_archive_attrs))
