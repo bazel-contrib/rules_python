@@ -88,6 +88,10 @@ The expected checksum of the downloaded whl in Subresource Integrity format
 The list of urls of the whl to be downloaded using bazel downloader. Using this
 attr makes `extra_pip_args` and `download_only` ignored.""",
     ),
+    # attributes only relevant to this rule and not reusable outside
+    "whl_file": attr.label(
+        doc = "The whl file that should be used instead of downloading or building the whl.",
+    ),
     "whl_patches": attr.label_keyed_string_dict(
         doc = """
 A label-keyed-string dict with patch files as keys and json-strings as values.
@@ -125,10 +129,6 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
 
 whl_archive = repository_rule(
     attrs = whl_archive_attrs | {
-        # attributes only relevant to this rule and not reusable outside
-        "whl_file": attr.label(
-            doc = "The whl file that should be used instead of downloading or building the whl.",
-        ),
         "_rule_name": attr.string(default = "whl_archive"),
     },
     doc = """
