@@ -114,7 +114,7 @@ bar==0.0.1 --hash=sha256:deadb00f
         "uv_lock_foo_sha512": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha512:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0"}]}""",
         "uv_lock_foo_with_extras": """{"package":[{"name":"foo","provides-extras":["extra"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
-        "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo.git"},"version":"0.1.0"}]}""",
+        "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo?rev=deadbeef#deadbeef"},"version":"0.1.0"}]}""",
         "uv_lock_rules_python_pkg": """{"package":[{"name":"rules_python","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl"}]}]}""",
     }
 
@@ -1321,7 +1321,7 @@ def _test_uv_lock_cross_consistent(env):
 _tests.append(_test_uv_lock_cross_consistent)
 
 def _test_uv_lock_vcs_entry(env):
-    """Test that VCS entries in uv.lock are handled without crashing."""
+    """Test that VCS entry filenames exclude URL query and fragment components."""
     got = parse_requirements(
         uv_lock = "uv_lock_git_vcs",
     )
@@ -1337,9 +1337,9 @@ def _test_uv_lock_vcs_entry(env):
                     extra_pip_args = [],
                     requirement_line = "foo==0.1.0",
                     target_platforms = ["linux_x86_64"],
-                    filename = "foo.git",
+                    filename = "foo",
                     digest = "",
-                    url = "https://github.com/org/foo.git",
+                    url = "https://github.com/org/foo?rev=deadbeef#deadbeef",
                     yanked = None,
                 ),
             ],
