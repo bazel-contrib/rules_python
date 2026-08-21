@@ -93,35 +93,62 @@ def _get_windows_path_with_unc_prefix(path):
     if not _is_windows() or sys.version_info[0] < 3:
         return path
 
-    # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
-    # removed from common Win32 file and directory functions.
-    # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
-    import platform
-
-    win32_version = None
-    # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
-    for _ in range(3):
-        try:
-            win32_version = platform.win32_ver()[1]
-            break
-        except (ValueError, KeyError):
-            pass
-    if win32_version and win32_version >= "10.0.14393":
-        return path
-
     # import sysconfig only now to maintain python 2.6 compatibility
     import sysconfig
 
     if sysconfig.get_platform() == "mingw":
         return path
 
-    # Lets start the unicode fun
-    unicode_prefix = "\\\\?\\"
-    if path.startswith(unicode_prefix):
+    # Implicit long-path support is not universal across the Win32 API. For
+    # example, DLL loading still requires an explicit extended-length prefix.
+    extended_path_prefix = "\\\\?\\"
+    if path.startswith(extended_path_prefix):
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
+    path = os.path.abspath(path)
+    if path.startswith("\\\\"):
+        return extended_path_prefix + "UNC\\" + path[2:]
+    return extended_path_prefix + path
+
+
+def _install_windows_extension_finder():
+    """Use extended-length paths when loading long Windows extension paths."""
+    if not _is_windows() or sys.version_info[0] < 3:
+        return
+
+    # import these only now to maintain Python 2.6 compatibility
+    import importlib.machinery
+    import sysconfig
+
+    if sysconfig.get_platform() == "mingw":
+        return
+
+    class _WindowsExtensionPathFinder(importlib.machinery.PathFinder):
+        @classmethod
+        def find_spec(cls, fullname, path=None, target=None):
+            spec = super().find_spec(fullname, path, target)
+            if (
+                spec is None
+                or not isinstance(spec.loader, importlib.machinery.ExtensionFileLoader)
+                or len(os.path.abspath(spec.origin)) < 260
+            ):
+                return spec
+
+            # The registry opt-in for long paths only applies to documented
+            # file and directory APIs. It does not include DLL loading APIs,
+            # e.g. LoadLibraryExW. Prefix the actual extension filename instead
+            # of sys.path entries so other APIs continue to receive normal paths.
+            # https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation#functions-without-max_path-restrictions
+            extended_path = _get_windows_path_with_unc_prefix(spec.origin)
+            spec.origin = extended_path
+            spec.loader.path = extended_path
+            return spec
+
+    for index, finder in enumerate(sys.meta_path):
+        if finder is importlib.machinery.PathFinder:
+            sys.meta_path[index] = _WindowsExtensionPathFinder
+            return
 
 
 def _search_path(name):
@@ -143,7 +170,6 @@ def _setup_sys_path():
     def _maybe_add_path(path, reason):
         if path in seen:
             return
-        path = _get_windows_path_with_unc_prefix(path)
         if _is_windows():
             path = path.replace("/", os.sep)
 
@@ -241,4 +267,5 @@ def _fixup_sys_base_executable():
 _fixup_sys_base_executable()
 
 COVERAGE_SETUP = _setup_sys_path()
+_install_windows_extension_finder()
 _print_verbose("DONE")
