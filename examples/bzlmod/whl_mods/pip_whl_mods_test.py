@@ -95,7 +95,7 @@ class PipWhlModsTest(unittest.TestCase):
         self.assertEqual(stdout, "Hello world from copied executable")
 
     def test_data_exclude_glob(self):
-        current_wheel_version = "0.40.0"
+        current_wheel_version = "0.48.0"
 
         r = runfiles.Create()
         dist_info_dir = "{}/site-packages/wheel-{}.dist-info".format(

@@ -30,7 +30,6 @@ manifest:
     six: six
     sqlparse: sqlparse
     tabulate: tabulate
-    tomli: tomli
     tomlkit: tomlkit
     types_pyyaml: types_pyyaml
     types_tabulate: types_tabulate

@@ -203,7 +203,6 @@ dev_pip = use_extension(
         uv_lock = "//dev:uv.lock",
     )
     for python_version in [
-        "3.9",
         "3.10",
         "3.11",
         "3.12",
