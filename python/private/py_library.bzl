@@ -330,7 +330,7 @@ def create_py_library_rule_builder():
     srcs_attr.set_allow_files(True)
     srcs_attr.set_doc(srcs_attr.doc() + """
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.3.2
 As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
 allowed. Ordinary library dependencies should remain in `deps`.
 :::
