@@ -37,5 +37,6 @@
   expansion (`.exe.runfiles/_main/...`) to exceed `MAX_PATH` at runtime.
 * **No `..` Segments**: Win32 ignores `..` on `\\?\` paths. Always call
   `os.path.normpath(...)` before accessing files (e.g., wheel `RECORD` paths).
-* **Comparing Executables**: Subprocesses may drop `\\?\` or `\\?\UNC\` prefixes.
-  Strip prefixes and compare via `os.path.normcase(os.path.normpath(...))`.
+* **Comparing Executables**: Subprocesses may drop `\\?\` or `\\?\UNC\`
+  prefixes. Strip prefixes and compare via
+  `os.path.normcase(os.path.normpath(...))`.
