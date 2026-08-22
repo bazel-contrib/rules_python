@@ -10,8 +10,8 @@ load("@rules_python//python:repositories.bzl", "py_repositories", "python_regist
 py_repositories()
 
 python_register_toolchains(
-    name = "python3_11",
-    python_version = "3.11",
+    name = "python3_14",
+    python_version = "3.14",
 )
 
 load("@rules_python//python:pip.bzl", "pip_parse")
@@ -27,7 +27,7 @@ pip_parse(
     name = "pip_deps_to_be_vendored",
     envsubst = ["PIP_RETRIES"],
     extra_pip_args = ["--retries=${PIP_RETRIES:-5}"],
-    python_interpreter_target = "@python3_11_host//:python",
+    python_interpreter_target = "@python3_14_host//:python",
     requirements_lock = "//:requirements.txt",
 )
 

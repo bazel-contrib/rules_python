@@ -20,14 +20,14 @@ rule. These can be overridden at install time by passing arguments to
 load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 
 python_register_toolchains(
-    name = "python3_11",
-    python_version = "3.11",
+    name = "python3_14",
+    python_version = "3.14",
 )
 
 # Load dependencies vendored by some other ruleset.
 load("@some_rules//:py_deps.bzl", "install_deps")
 
 install_deps(
-    python_interpreter_target = "@python3_11_host//:python",
+    python_interpreter_target = "@python3_14_host//:python",
 )
 ```

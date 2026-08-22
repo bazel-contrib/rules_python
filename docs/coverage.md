@@ -15,7 +15,7 @@ For Bzlmod:
 
 ```starlark
 python.toolchain(
-    "@python3_11_toolchains//:all",
+    "@python3_14_toolchains//:all",
     configure_coverage_tool = True,
 )
 ```

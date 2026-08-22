@@ -50,7 +50,7 @@ class ExampleTest(unittest.TestCase):
             "",
             proc.stderr.decode("utf-8").strip(),
         )
-        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.15\.10")
+        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.17\.7")
 
     def test_pylint_report_has_expected_warnings(self):
         rlocation_path = os.environ.get("PYLINT_REPORT")

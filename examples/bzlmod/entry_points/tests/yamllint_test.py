@@ -46,7 +46,7 @@ class ExampleTest(unittest.TestCase):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.assertEqual(proc.stdout.decode("utf-8").strip(), "yamllint 1.37.1")
+        self.assertEqual(proc.stdout.decode("utf-8").strip(), "yamllint 1.38.0")
 
 
 if __name__ == "__main__":

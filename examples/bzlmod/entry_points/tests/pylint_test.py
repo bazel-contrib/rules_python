@@ -50,7 +50,7 @@ class ExampleTest(unittest.TestCase):
             "",
             proc.stderr.decode("utf-8").strip(),
         )
-        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.15\.10")
+        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.17\.7")
 
 
 if __name__ == "__main__":
