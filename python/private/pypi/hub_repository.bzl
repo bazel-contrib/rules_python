@@ -34,6 +34,7 @@ def _impl(rctx):
         },
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
+        dep_graph = rctx.attr.dep_graph,
         platform_config_settings = rctx.attr.platform_config_settings,
     )
     for path, contents in aliases.items():
@@ -71,6 +72,14 @@ def _impl(rctx):
 
 hub_repository = repository_rule(
     attrs = {
+        "dep_graph": attr.string_list_dict(
+            doc = """
+The dependency graph that is a "{package} {version}" to list of Requires-Dist values.
+
+This is so that we can handle different graphs.
+""",
+            mandatory = False,
+        ),
         "extra_hub_aliases": attr.string_list_dict(
             doc = "Extra aliases to make for specific wheels in the hub repo.",
             mandatory = True,

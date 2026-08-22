@@ -34,6 +34,7 @@ setting maps to and their precedence, refer to documentation on that page.
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
+load("//python/private/pypi:whl_library_targets.bzl", "whl_library_deps_targets")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -41,6 +42,8 @@ load(
     "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
+    "PY_SRCS_LABEL",
+    "WHEEL_FILE",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
@@ -79,6 +82,10 @@ def pkg_aliases(
         actual,
         group_name = None,
         extra_aliases = None,
+        requires_dist = [],  # comes from METADATA or lock file
+        extras = [],  # comes from METADATA or lock file
+        include = [],  # comes from `//:config.bzl#packages`
+        group_deps = [],  # comes as an arg
         **kwargs):
     """Create aliases for an actual package.
 
@@ -91,9 +98,16 @@ def pkg_aliases(
             the aliases to point to mapping to repositories. The keys are passed
             to bazel skylib's `selects.with_or`, so they can be tuples as well.
         group_name: {type}`str` The group name that the pkg belongs to.
+        group_deps: {type}`list[str]` The packages that are in the given group.
         extra_aliases: {type}`list[str]` The extra aliases to be created.
+        requires_dist: {type}`list[str]` The list of dependencies.
+        extras: {type}`list[str]` The extras for which we should add extra
+            dependencies when parsing the requires_dist.
+        include: {type}`list[str]` The subset of packages to include.
         **kwargs: extra kwargs to pass to {bzl:obj}`get_config_settings`.
     """
+    metadata_name = name
+
     alias = kwargs.pop("native", native).alias
     select = kwargs.pop("select", selects.with_or)
 
@@ -102,10 +116,40 @@ def pkg_aliases(
         actual = ":" + PY_LIBRARY_PUBLIC_LABEL,
     )
 
-    target_names = {
-        PY_LIBRARY_PUBLIC_LABEL: PY_LIBRARY_IMPL_LABEL if group_name else PY_LIBRARY_PUBLIC_LABEL,
-        WHEEL_FILE_PUBLIC_LABEL: WHEEL_FILE_IMPL_LABEL if group_name else WHEEL_FILE_PUBLIC_LABEL,
+    if requires_dist:
+        # if it has a group_name set, then it will create the impl label target in the
+        # current macro, we still need to do the aliases to the actual groups package as
+        # per below
+        whl_library_deps_targets(
+            repo = None,
+            aliases = {},  # not none
+            metadata_name = metadata_name,
+            requires_dist = requires_dist,
+            extras = extras,
+            include = include,
+            group_deps = group_deps,
+            group_name = group_name,
+            dep_template = "//{name}:{target}",  # this is const in this setting
+            visibility = ["//visibility:public"],
+        )
+        target_names = {}
+    else:
+        if group_name:
+            py_library_target = PY_LIBRARY_IMPL_LABEL
+            whl_target = WHEEL_FILE_IMPL_LABEL
+        else:
+            py_library_target = PY_LIBRARY_PUBLIC_LABEL
+            whl_target = WHEEL_FILE_PUBLIC_LABEL
+
+        target_names = {
+            PY_LIBRARY_PUBLIC_LABEL: py_library_target,
+            WHEEL_FILE_PUBLIC_LABEL: whl_target,
+        }
+
+    target_names = target_names | {
         DATA_LABEL: DATA_LABEL,
+        WHEEL_FILE: WHEEL_FILE,
+        PY_SRCS_LABEL: PY_SRCS_LABEL,
         DIST_INFO_LABEL: DIST_INFO_LABEL,
         EXTRACTED_WHEEL_FILES: EXTRACTED_WHEEL_FILES,
     } | {
@@ -157,6 +201,8 @@ def pkg_aliases(
         kwargs = {}
         if target_name.startswith("_"):
             kwargs["visibility"] = ["//_groups:__subpackages__"]
+        elif target_name in [WHEEL_FILE, PY_SRCS_LABEL]:
+            kwargs["visibility"] = ["//visibility:private"]
 
         alias(
             name = target_name,

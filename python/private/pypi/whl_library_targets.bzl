@@ -373,13 +373,8 @@ def whl_library_deps_targets(
         visibility = ["//visibility:public"],
         native = native,
         rules = struct(
-            copy_file = copy_file,
-            py_binary = py_binary,
             py_library = py_library,
-            venv_entry_point = venv_entry_point,
-            venv_rewrite_shebang = venv_rewrite_shebang,
             env_marker_setting = env_marker_setting,
-            create_inits = _create_inits,
         )):
     """Create all of the whl_library targets.
 

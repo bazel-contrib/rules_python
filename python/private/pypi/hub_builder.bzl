@@ -118,15 +118,21 @@ def _build(self):
     if self._logger.failed():
         return ret
 
+    dep_graph = {}
     whl_map = {}
     for key, settings in self._whl_map.items():
         for setting, repo in settings.items():
-            whl_map.setdefault(key, {}).setdefault(repo, []).append(setting)
+            whl_map.setdefault(key, {}).setdefault(repo.name, []).append(setting)
+            if repo.dependencies:
+                # TODO @aignas 2026-08-16: add the version to the dep_graph key
+                dep_graph[key] = repo.dependencies
 
     return struct(
         # The config settings for matching repo spokes.
         # dict[str repo_name, dict[str repo_name, list[str]]]
         whl_map = whl_map,
+        # The dependency_graph
+        dep_graph = dep_graph,
         # Maps a wheel to a list of groups
         # dict[str group_name, list[str]]
         group_map = self._group_map,
@@ -295,7 +301,7 @@ def _diff_dict(first, second):
     else:
         return None
 
-def _add_whl_library(self, *, python_version, whl, repo):
+def _add_whl_library(self, *, python_version, whl, repo, dependencies):
     """Add a whl_library and kwargs to call it with for the hub.
 
     Args:
@@ -303,6 +309,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
         python_version: {type}`str` the python version to assume
         whl: struct from `_whl_library_args()`
         repo: struct from `_whl_repo`
+        dependencies: the list of dependencies that this whl depends on
     """
     if repo == None:
         # NOTE @aignas 2025-07-07: we guard against an edge-case where there
@@ -335,7 +342,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
     self._whl_libraries[repo_name] = repo.args
 
     mapping = self._whl_map.setdefault(whl.name, {})
-    if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
+    if repo.config_setting in mapping and mapping[repo.config_setting].name != repo_name:
         fail(
             "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
                 mapping[repo.config_setting],
@@ -344,7 +351,10 @@ def _add_whl_library(self, *, python_version, whl, repo):
             ),
         )
     else:
-        mapping[repo.config_setting] = repo_name
+        mapping[repo.config_setting] = struct(
+            name = repo_name,
+            dependencies = dependencies,
+        )
 
 ### end of setters, below we have various functions to implement the public methods
 
@@ -560,6 +570,7 @@ def _create_whl_repos(
                 python_version = python_version,
                 whl = whl,
                 repo = repo,
+                dependencies = src.dependencies,
             )
 
 def _common_args(self, module_ctx, *, pip_attr):

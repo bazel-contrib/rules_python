@@ -22,6 +22,7 @@ load(
     ":generate_group_library_build_bazel.bzl",
     "generate_group_library_build_bazel",
 )  # buildifier: disable=bzl-visibility
+load(":pep508_requirement.bzl", "requirement")
 
 NO_MATCH_ERROR_MESSAGE_TEMPLATE = """\
 No matching wheel for current configuration's Python version.
@@ -70,24 +71,22 @@ def _render_common_aliases(*, name, aliases, **kwargs):
         "pkg_aliases",
         name = repr(name),
         actual = _repr_actual(aliases),
+        include = "packages",
         **_repr_dict(**kwargs)
     )
-    extra_loads = ""
-    if "whl_config_setting" in pkg_aliases:
-        extra_loads = """load("@rules_python//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")"""
-        extra_loads += "\n"
 
     return """\
 load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
-{extra_loads}
+load("@rules_python//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")
+load("//:config.bzl", "packages")
+
 package(default_visibility = ["//visibility:public"])
 
 {aliases}""".format(
         aliases = pkg_aliases,
-        extra_loads = extra_loads,
     )
 
-def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, **kwargs):
+def render_pkg_aliases(*, aliases, dep_graph = None, requirement_cycles = None, extra_hub_aliases = {}, **kwargs):
     """Create alias declarations for each PyPI package.
 
     The aliases should be appended to the pip_repository BUILD.bazel file. These aliases
@@ -100,6 +99,7 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         requirement_cycles: any package groups to also add.
         extra_hub_aliases: The list of extra aliases for each whl to be added
           in addition to the default ones.
+        dep_graph: The dep graph for the given wheels.
         **kwargs: Extra kwargs to pass to the rules.
 
     Returns:
@@ -110,6 +110,21 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         return contents
     elif type(aliases) != type({}):
         fail("The aliases need to be provided as a dict, got: {}".format(type(aliases)))
+
+    aliases = {
+        normalize_name(name): pkg_aliases
+        for name, pkg_aliases in aliases.items()
+    }
+    dep_graph = dep_graph or {}
+    extras_per_package = {}
+    for _, dependencies in dep_graph.items():
+        for dep in dependencies:
+            dep = requirement(dep)
+            name = normalize_name(dep.name)
+            extras_per_package.setdefault(name, {}).update({
+                x: None
+                for x in dep.extras
+            })
 
     whl_group_mapping = {}
     if requirement_cycles:
@@ -125,11 +140,14 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         }
 
     files = {
-        "{}/BUILD.bazel".format(normalize_name(name)): _render_common_aliases(
-            name = normalize_name(name),
+        "{}/BUILD.bazel".format(name): _render_common_aliases(
+            name = name,
             aliases = pkg_aliases,
-            extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
-            group_name = whl_group_mapping.get(normalize_name(name)),
+            extra_aliases = extra_hub_aliases.get(name, []),
+            group_name = whl_group_mapping.get(name),
+            group_deps = requirement_cycles.get(name),
+            requires_dist = dep_graph.get(name, []),
+            extras = sorted(extras_per_package.get(name, [])),
             **kwargs
         ).strip()
         for name, pkg_aliases in aliases.items()
@@ -137,6 +155,7 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
 
     if requirement_cycles:
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
+
     return files
 
 def _major_minor(python_version):
