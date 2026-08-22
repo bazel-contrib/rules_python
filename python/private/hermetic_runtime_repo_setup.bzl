@@ -31,7 +31,8 @@ def define_hermetic_runtime_toolchain_impl(
         extra_files_glob_exclude,
         python_version,
         python_bin,
-        coverage_tool):
+        coverage_tool,
+        runtime_include_libpython = True):
     """Define a toolchain implementation for a python-build-standalone repo.
 
     It expected this macro is called in the top-level package of an extracted
@@ -51,6 +52,10 @@ def define_hermetic_runtime_toolchain_impl(
             repository.
         coverage_tool: {type}`str` optional target to the coverage tool to
             use.
+        runtime_include_libpython: {type}`bool` a flag to consider python3 to
+            either include it (legacy behaviour) or not include it into the
+            runtime because it is statically linked. If needed, include it via
+            "libpython" target separately.
     """
     _ = name  # @unused
     version_info = version.parse(python_version)
@@ -79,6 +84,8 @@ def define_hermetic_runtime_toolchain_impl(
         "**/__pycache__/*.pyc.*",
     ]
     files_exclude += extra_files_glob_exclude
+    if runtime_include_libpython:
+        files_exclude.append("lib/libpython*")
 
     native.filegroup(
         name = "files",
