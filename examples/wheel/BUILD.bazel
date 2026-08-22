@@ -443,6 +443,60 @@ py_wheel(
     version = "0.0.1",
 )
 
+py_wheel(
+    name = "pep639_wheel",
+    distribution = "example_pep639",
+    extra_distinfo_files = {
+        "//examples/wheel:NOTICE": "licenses/NOTICE",
+        ":data_files_test_group": "examples/wheel/|licenses/group",
+    },
+    license_expression = "Apache-2.0 AND MIT",
+    metadata_fields = {
+        "Classifier": [
+            "Topic :: Software Development :: Build Tools",
+            "License :: OSI Approved :: Apache Software License",
+        ],
+        "Dynamic": ["classifiers"],
+        "Keywords": [
+            "bazel",
+            "pep639",
+        ],
+        "License-File": [
+            "licenses/NOTICE",
+            "licenses/group/README.md",
+        ],
+    },
+    python_tag = "py3",
+    version = "0.0.1",
+    deps = [":example_pkg"],
+)
+
+write_file(
+    name = "merge_metadata_file",
+    out = "merge_metadata.txt",
+    content = [
+        "Summary: Merged summary from file",
+        "License-Expression: MIT",
+        "Keywords: merged",
+        "License-File: LICENSES/MIT.txt",
+        "",
+        "This is the description body from merged metadata file.",
+    ],
+)
+
+py_wheel(
+    name = "merged_metadata_wheel",
+    distribution = "example_merged_metadata",
+    extra_distinfo_files = {
+        "//examples/wheel:NOTICE": "LICENSES/MIT.txt",
+    },
+    metadata_file = ":merge_metadata.txt",
+    python_tag = "py3",
+    summary = "Original summary",
+    version = "0.0.1",
+    deps = [":example_pkg"],
+)
+
 py_test(
     name = "wheel_test",
     srcs = ["wheel_test.py"],
@@ -455,10 +509,12 @@ py_test(
         ":empty_requires_files",
         ":extra_requires",
         ":filename_escaping",
+        ":merged_metadata_wheel",
         ":minimal_data_files",
         ":minimal_with_py_library",
         ":minimal_with_py_library_with_stamp",
         ":minimal_with_py_package",
+        ":pep639_wheel",
         ":python_abi3_binary_wheel",
         ":python_requires_in_a_package",
         ":requires_dist_depends_on_extras",

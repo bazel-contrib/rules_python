@@ -639,6 +639,71 @@ Tag: cp38-abi3-{os_string}_{arch}
                 ],
             )
 
+    def test_pep639_wheel(self):
+        filename = self._get_path("example_pep639-0.0.1-py3-none-any.whl")
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            namelist = zf.namelist()
+            self.assertIn("example_pep639-0.0.1.dist-info/licenses/NOTICE", namelist)
+            self.assertIn(
+                "example_pep639-0.0.1.dist-info/licenses/group/NOTICE", namelist
+            )
+            self.assertIn(
+                "example_pep639-0.0.1.dist-info/licenses/group/README.md",
+                namelist,
+            )
+
+            metadata = zf.read("example_pep639-0.0.1.dist-info/METADATA").decode(
+                "utf-8"
+            )
+            lines = [line.strip() for line in metadata.splitlines()]
+            self.assertIn("Metadata-Version: 2.4", lines)
+            self.assertIn("Name: example_pep639", lines)
+            self.assertIn("Version: 0.0.1", lines)
+            self.assertIn("License-Expression: Apache-2.0 AND MIT", lines)
+            self.assertIn("License-File: licenses/NOTICE", lines)
+            self.assertIn("License-File: licenses/group/README.md", lines)
+            self.assertIn("Keywords: bazel, pep639", lines)
+            self.assertIn("Dynamic: classifiers", lines)
+            self.assertIn(
+                "Classifier: Topic :: Software Development :: Build Tools",
+                lines,
+            )
+            self.assertIn(
+                "Classifier: License :: OSI Approved :: Apache Software License",
+                lines,
+            )
+
+    def test_merged_metadata_wheel(self):
+        filename = self._get_path("example_merged_metadata-0.0.1-py3-none-any.whl")
+
+        with zipfile.ZipFile(filename) as zf:
+            self.assertAllEntriesHasReproducibleMetadata(zf)
+            namelist = zf.namelist()
+            self.assertIn(
+                "example_merged_metadata-0.0.1.dist-info/LICENSES/MIT.txt",
+                namelist,
+            )
+
+            metadata = zf.read(
+                "example_merged_metadata-0.0.1.dist-info/METADATA"
+            ).decode("utf-8")
+            lines = [line.strip() for line in metadata.splitlines()]
+            self.assertIn("Metadata-Version: 2.4", lines)
+            self.assertIn("Name: example_merged_metadata", lines)
+            self.assertIn("Version: 0.0.1", lines)
+            self.assertIn("Summary: Merged summary from file", lines)
+            self.assertNotIn("Summary: Original summary", lines)
+            self.assertIn("License-Expression: MIT", lines)
+            self.assertIn("Keywords: merged", lines)
+            self.assertIn("License-File: LICENSES/MIT.txt", lines)
+            self.assertTrue(
+                metadata.endswith(
+                    "This is the description body from merged metadata file.\n"
+                )
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
