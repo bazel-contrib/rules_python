@@ -23,9 +23,9 @@ load(":version.bzl", "version")
 
 _IS_FREETHREADED_YES = Label("//python/config_settings:_is_py_freethreaded_yes")
 _IS_FREETHREADED_NO = Label("//python/config_settings:_is_py_freethreaded_no")
-_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO = Label("//python/config_settings:_is_py_runtime_include_lib_python_auto")
-_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES = Label("//python/config_settings:_is_py_runtime_include_lib_python_yes")
-_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_NO = Label("//python/config_settings:_is_py_runtime_include_lib_python_no")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO = Label("//python/config_settings:_is_py_runtime_include_libpython_auto")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES = Label("//python/config_settings:_is_py_runtime_include_libpython_yes")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_NO = Label("//python/config_settings:_is_py_runtime_include_libpython_no")
 
 def define_hermetic_runtime_toolchain_impl(
         *,
@@ -257,7 +257,7 @@ def define_hermetic_runtime_toolchain_impl(
                 _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO: [":files_all"],
                 no_libpython_requested: [":files_no_libpython"],
             },
-            error = "BUG",
+            no_match_error = "the archive does not support not including libpython",
         ),
         interpreter = python_bin,
         interpreter_version_info = {
