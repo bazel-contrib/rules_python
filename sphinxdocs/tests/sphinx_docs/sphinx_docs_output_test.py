@@ -23,6 +23,25 @@ class SphinxDocsOutputTest(absltest.TestCase):
                     break
         self.assertEqual("dir_page2.html", actual)
 
+    def test_custom_sphinx_docs_library_info_provider(self):
+        page_path = importlib.resources.files(sphinx_docs).joinpath(
+            "docs/_build/html/custom/custom_page.html"
+        )
+        self.assertTrue(os.path.exists(str(page_path)), f"Not found at {page_path}")
+
+    def test_custom_sphinx_docs_library_info_deps(self):
+        # The dep's own prefix applies; the parent's prefix does not.
+        page_path = importlib.resources.files(sphinx_docs).joinpath(
+            "docs/_build/html/custom_dep/custom_dep_page.html"
+        )
+        self.assertTrue(os.path.exists(str(page_path)), f"Not found at {page_path}")
+
+    def test_custom_sphinx_docs_library_info_transitives(self):
+        page_path = importlib.resources.files(sphinx_docs).joinpath(
+            "docs/_build/html/custom_transitive/custom_transitive_page.html"
+        )
+        self.assertTrue(os.path.exists(str(page_path)), f"Not found at {page_path}")
+
 
 if __name__ == "__main__":
     absltest.main()

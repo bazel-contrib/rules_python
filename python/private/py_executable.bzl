@@ -125,7 +125,7 @@ module configuration option are used. If false, the user is responsible for
 creating (possibly empty) `__init__.py` files and adding them to the `srcs` of
 Python targets as required.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.3.0
 Now checks module-level `explicit_init_py` configuration before CLI flags.
 :::
 """,

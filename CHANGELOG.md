@@ -29,6 +29,18 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-3-1}
+## [2.3.1] - 2026-08-14
+
+[2.3.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.1
+
+{#v2-3-1-fixed}
+### Fixed
+* Previous refactor that shipped with 2.3 introduced regression for the
+  experimental repository cache users. This restores the previous behavior
+  ([#3791](https://github.com/bazel-contrib/rules_python/pull/3791)).
+
+
 {#v2-3-0}
 ## [2.3.0] - 2026-08-07
 
@@ -59,6 +71,15 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 * (pypi) Allow `uv_lock` to be specified in `pip.parse` without requiring
   `requirements_lock` (or other os-specific requirement file attributes) to be
   set.
+* (pypi) Fixed the fixed-point loop that resolves self-referencing extras
+  (`pkg[extra]` entries in a package's own `Requires-Dist`). The loop compared
+  the number of extras discovered in the current round against the number known
+  before it, rather than against the size of the merged set. As a result it
+  could stop before every extra was resolved, silently dropping dependencies
+  only reachable through two or more `pkg[extra]` hops, and for the common case
+  of a package with no self-referencing extras it never converged at all,
+  running all 10000 rounds while evaluating each wheel's generated `BUILD` file
+  ([#4039](https://github.com/bazel-contrib/rules_python/pull/4039)).
 * (pypi) Requirement `--hash=<algo>:<digest>` pins and Simple API
   `#<algo>=<digest>` URL fragments are now parsed for all hash algorithms
   instead of silently dropping everything except `sha256`. Non-sha256 pins are
@@ -90,6 +111,11 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 * (bzlmod) Added MODULE.bazel flag aliases for Starlark-defined flags:
   `build_python_zip`, `incompatible_default_to_explicit_init_py`,
   `python_path`, and `experimental_python_import_all_repositories`.
+* (bzlmod) Added the `{obj}`explicit_init_py`` tag class to the
+  `{obj}`config`` module extension for configuring implicit `__init__.py` file
+  generation module-wide.
+  ([#3997](https://github.com/bazel-contrib/rules_python/pull/3997),
+  [#2945](https://github.com/bazel-contrib/rules_python/issues/2945))
 * (cc) Added experimental {obj}`py_extension` macro for creating C/C++ Python
   extension modules
   ([#3283](https://github.com/bazel-contrib/rules_python/issues/3283)).
