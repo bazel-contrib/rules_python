@@ -15,7 +15,6 @@
 """Macro to generate all of the targets present in a {obj}`whl_library`."""
 
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
-load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
@@ -156,12 +155,10 @@ def whl_library_srcs(
         visibility = ["//visibility:public"],
         rules = struct(
             copy_file = copy_file,
-            py_binary = py_binary,
             py_library = py_library,
             venv_entry_point = venv_entry_point,
             venv_rewrite_shebang = venv_rewrite_shebang,
             gen_wheel_record = gen_wheel_record,
-            env_marker_setting = env_marker_setting,
             create_inits = _create_inits,
         )):
     """Create all of the whl_library targets.
@@ -373,13 +370,8 @@ def whl_library_deps_targets(
         visibility = ["//visibility:public"],
         native = native,
         rules = struct(
-            copy_file = copy_file,
-            py_binary = py_binary,
             py_library = py_library,
-            venv_entry_point = venv_entry_point,
-            venv_rewrite_shebang = venv_rewrite_shebang,
             env_marker_setting = env_marker_setting,
-            create_inits = _create_inits,
         )):
     """Create all of the whl_library targets.
 
