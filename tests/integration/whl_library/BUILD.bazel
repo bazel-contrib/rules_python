@@ -37,8 +37,8 @@ genquery(
 # Extract all deps
 genquery(
     name = "whl_deps_target_deps",
-    expression = "deps(@whl_deps_library//:pkg)",
-    scope = ["@whl_deps_library//:pkg"],
+    expression = "deps(@whl_deps_repo//:pkg)",
+    scope = ["@whl_deps_repo//:pkg"],
 )
 
 py_test(
@@ -51,13 +51,13 @@ py_test(
         "@pip_sdist_archive//:srcs",
         "@whl_archive//:srcs",
         "@whl_archive//:whl",
-        "@whl_deps_library//:whl",
+        "@whl_deps_repo//:whl",
     ],
     env = {
         "SDIST_SRC_FILES": "$(locations @pip_sdist_archive//:srcs)",
         "SRC_FILES": "$(locations @pip_archive//:srcs)",
         "WHL_DEPS": "$(location :whl_target_deps)",
-        "WHL_DEPS_LOCATION": "$(location @whl_deps_library//:whl)",
+        "WHL_DEPS_LOCATION": "$(location @whl_deps_repo//:whl)",
         "WHL_FILES": "$(locations @whl_archive//:srcs)",
         "WHL_LOCATION": "$(location @whl_archive//:whl)",
         "WHL_TARGET_DEPS": "$(location :whl_deps_target_deps)",

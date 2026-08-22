@@ -29,6 +29,21 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-3-2}
+## [2.3.2] - 2026-08-22
+
+[2.3.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.2
+
+{#v2-3-2-fixed}
+### Fixed
+* (pypi) Fixed analysis failures in {obj}`pip.parse` for source-less wheels with
+  dependencies. ([#4053](https://github.com/bazel-contrib/rules_python/issues/4053))
+* (pypi) Fixed the handling of optional args for the {obj}`pip_archive` and {obj}`whl_archive`
+  repository rules within the {obj}`whl_library`. From now on we are dropping unsupported args.
+* (pypi) Fixed {obj}`pip.parse` repository names for Git sources in `uv.lock`
+  files by excluding URL query and fragment components
+  ([#4084](https://github.com/bazel-contrib/rules_python/issues/4084)).
+
 {#v2-3-1}
 ## [2.3.1] - 2026-08-14
 
