@@ -564,6 +564,7 @@ bzl_library(
         ":py_runtime_info",
         ":reexports",
         ":rule_builders",
+        ":runfiles_groups",
         ":toolchain_types",
         ":transition_labels",
         ":venv_runfiles",
@@ -616,6 +617,7 @@ bzl_library(
         ":py_info",
         ":reexports",
         ":rule_builders",
+        ":runfiles_groups",
         ":toolchain_types",
         ":venv_runfiles",
         ":version",
@@ -690,10 +692,24 @@ bzl_library(
         ":py_internal",
         ":py_runtime_info",
         ":reexports",
+        ":runfiles_groups",
         ":version",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",
+    ],
+)
+
+bzl_library(
+    name = "runfiles_groups",
+    srcs = ["runfiles_groups.bzl"],
+    deps = [
+        ":flags",
+        ":py_info",
+        ":py_internal",
+        ":reexports",
+        "@bazel_skylib//rules:common_settings",
+        "@rules_python_internal//:runfiles_groups_shim",
     ],
 )
 

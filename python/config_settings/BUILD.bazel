@@ -10,6 +10,7 @@ load(
     "LibcFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
+    "RunfilesGroupsFlag",
     "ValidateTestMainFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
@@ -76,6 +77,14 @@ string_flag(
     build_setting_default = PrecompileFlag.AUTO,
     values = sorted(PrecompileFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+string_flag(
+    name = "runfiles_groups",
+    build_setting_default = RunfilesGroupsFlag.AUTO,
+    values = RunfilesGroupsFlag.flag_values(),
+    # NOTE: Only public because it is dependency of public rules.
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 

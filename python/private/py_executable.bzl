@@ -67,6 +67,21 @@ load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
+load(
+    ":runfiles_groups.bzl",
+    "APP_GROUP",
+    "RUNFILES_GROUP_ENABLED_LABEL",
+    "app_entry",
+    "build_entries_depset",
+    "collect_data_entries",
+    "collect_dep_entries",
+    "collect_src_entries",
+    "create_runfiles_group_info",
+    "pyc_collection_enabled_by_default",
+    "runtime_entry",
+    "venv_entry",
+    runfiles_groups_enabled = "is_enabled",
+)
 load(":toolchain_types.bzl", "CC_TOOLCHAIN_TYPE", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":venv_runfiles.bzl", "create_venv_app_files")
@@ -90,6 +105,8 @@ EXECUTABLE_ATTRS = dicts.add(
         "_default_to_explicit_init_py_flag": attr.label(default = "//python/config_settings:incompatible_default_to_explicit_init_py"),
         "_python_import_all_repositories_flag": attr.label(default = "//python/config_settings:experimental_python_import_all_repositories"),
         "_python_path_flag": attr.label(default = "//python/config_settings:python_path"),
+        "_runfiles_group_enabled": attr.label(default = RUNFILES_GROUP_ENABLED_LABEL),
+        "_runfiles_groups_flag": attr.label(default = labels.RUNFILES_GROUPS),
     },
     {
         "interpreter_args": lambda: attrb.StringList(
@@ -518,6 +535,11 @@ WARNING: Target: {}
         # depset[ExplicitSymlink]None; symlinks that should be created in
         # the venv to augment app_runfiles
         venv_app_symlinks = venv.lib_symlinks if venv else None,
+        # runfiles|None; the non-interpreter venv files: site-packages
+        # symlinks and small generated files (pth, site init, pyvenv.cfg).
+        venv_files_runfiles = (
+            ctx.runfiles(venv.files_without_interpreter).merge(venv.lib_runfiles) if venv else None
+        ),
         # File|None; the venv `bin/python3` file, if any.
         venv_python_exe = venv.interpreter if venv else None,
         # runfiles|None; runfiles in the venv for the interpreter
@@ -1321,7 +1343,118 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         _maybe_add_test_main_validation(ctx, main_py_source, output_groups)
     _add_provider_output_group_info(providers, py_info, output_groups)
 
+    if runfiles_groups_enabled(ctx):
+        providers.append(_create_runfiles_groups(
+            ctx,
+            executable = executable,
+            runtime_details = runtime_details,
+            runfiles_details = runfiles_details,
+            exec_result = exec_result,
+            cc_details = cc_details,
+            native_deps_details = native_deps_details,
+            extra_deps = extra_deps,
+            required_py_files = required_py_files,
+            required_pyc_files = required_pyc_files,
+            implicit_pyc_files = implicit_pyc_files,
+            implicit_pyc_source_files = implicit_pyc_source_files,
+        ))
+
     return providers
+
+def _create_runfiles_groups(
+        ctx,
+        *,
+        executable,
+        runtime_details,
+        runfiles_details,
+        exec_result,
+        cc_details,
+        native_deps_details,
+        extra_deps,
+        required_py_files,
+        required_pyc_files,
+        implicit_pyc_files,
+        implicit_pyc_source_files):
+    """Creates the public RunfilesGroupInfo provider.
+
+    The union of all groups equals `DefaultInfo.default_runfiles` exactly;
+    packaging rules depend on that invariant. See runfiles_groups.bzl for
+    how the groups fit together.
+    """
+    pyc_collection_enabled = PycCollectionAttr.is_pyc_collection_enabled(ctx)
+
+    # Dependencies compute their entries against the configuration
+    # (see pyc_collection_enabled_by_default). If this binary's
+    # `pyc_collection` attribute overrides that, the dependency-provided
+    # entries don't match what this binary adds to its runfiles, so fall
+    # back to coarse grouping. The same applies to the deprecated implicit
+    # `__init__.py` creation, whose synthesized empty files only exist in
+    # `app_runfiles`.
+    fine_grained = (
+        pyc_collection_enabled == pyc_collection_enabled_by_default(ctx) and
+        not _should_create_init_files(ctx)
+    )
+
+    collected = []
+    if fine_grained:
+        dep_entries = collect_dep_entries(
+            ctx,
+            ctx.attr.deps + extra_deps,
+            pyc_collection_enabled = pyc_collection_enabled,
+        )
+        src_entries = collect_src_entries(ctx.attr.srcs)
+        data_entries = collect_data_entries(ctx.attr.data)
+        collected = [dep_entries, src_entries, data_entries]
+
+        app_files = builders.DepsetBuilder()
+        app_files.add(required_py_files)
+        app_files.add(required_pyc_files)
+        if pyc_collection_enabled:
+            app_files.add(implicit_pyc_files)
+        else:
+            app_files.add(implicit_pyc_source_files)
+        app_files.add(data_entries.own_files)
+        app_files.add(exec_result.extra_default_outputs)
+        app_files.add(executable)
+        if exec_result.stage2_bootstrap:
+            app_files.add(exec_result.stage2_bootstrap)
+        if runfiles_details.build_data_file:
+            app_files.add(runfiles_details.build_data_file)
+        app_runfiles = ctx.runfiles(transitive_files = app_files.build())
+        app_runfiles = app_runfiles.merge_all([
+            cc_details.extra_runfiles,
+            native_deps_details.runfiles,
+        ])
+    else:
+        # `app_runfiles` is everything except the runtime and venv:
+        # the binary's own sources, all dependencies, and data.
+        coarse_files = builders.DepsetBuilder()
+        coarse_files.add(exec_result.extra_default_outputs)
+        coarse_files.add(executable)
+        if exec_result.stage2_bootstrap:
+            coarse_files.add(exec_result.stage2_bootstrap)
+        if runfiles_details.build_data_file:
+            coarse_files.add(runfiles_details.build_data_file)
+        app_runfiles = ctx.runfiles(transitive_files = coarse_files.build())
+        app_runfiles = app_runfiles.merge(runfiles_details.app_runfiles)
+
+    direct = [app_entry(app_runfiles)]
+
+    runtime_runfiles = runtime_details.runfiles
+    if exec_result.venv_interpreter_runfiles:
+        runtime_runfiles = runtime_runfiles.merge(
+            exec_result.venv_interpreter_runfiles,
+        )
+    direct.append(runtime_entry(runtime_runfiles))
+
+    if exec_result.venv_files_runfiles:
+        direct.append(venv_entry(exec_result.venv_files_runfiles))
+
+    collected.append(struct(direct = direct, transitive = []))
+    return create_runfiles_group_info(
+        build_entries_depset(*collected),
+        executable_group = APP_GROUP,
+    )
 
 def _maybe_add_test_main_validation(ctx, main_py, output_groups):
     """Adds a validation action that checks the test main actually runs tests.
