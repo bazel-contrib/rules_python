@@ -120,6 +120,12 @@ we prepare for releases.
 (creating-backport-prs)=
 ## Creating Backport PRs
 
+:::{note}
+Prefer filing a backport issue using the [release or backport tracking
+template][backport-issue], because it triggers automation to perform all
+necessary backporting steps.
+:::
+
 The steps to create a backport PR are:
 
 1.  Create a fork of `rules_python`.
@@ -145,3 +151,5 @@ The steps to create a backport PR are:
       with `-----`.
 6.  Send a PR to update the `main` branch's `CHANGELOG.md` to reflect the
     changes done in the patched release.
+
+[backport-issue]: https://github.com/bazel-contrib/rules_python/issues/new?template=release_tracking_template.md
