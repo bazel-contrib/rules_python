@@ -18,31 +18,6 @@ load("@rules_python//python/uv/private:lock.bzl", "lock")  # buildifier: disable
 licenses(["notice"])  # Apache 2.0
 
 lock(
-    name = "bzlmod_requirements_3_10",
-    srcs = ["bzlmod/requirements.in"],
-    out = "bzlmod/requirements_lock_3_10.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--python-version=3.10",
-    ],
-    python_version = "3.10",
-)
-
-lock(
-    name = "bzlmod_requirements_3_10_windows",
-    srcs = ["bzlmod/requirements.in"],
-    out = "bzlmod/requirements_windows_3_10.txt",
-    args = [
-        "--emit-index-url",
-        "--python-platform",
-        "windows",
-        "--python-version=3.10",
-    ],
-    python_version = "3.10",
-)
-
-lock(
     name = "bzlmod_requirements_3_11",
     srcs = ["bzlmod/requirements.in"],
     out = "bzlmod/requirements_lock_3_11.txt",
