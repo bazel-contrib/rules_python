@@ -15,7 +15,6 @@ manifest:
     flask: Flask
     idna: idna
     imagesize: imagesize
-    importlib_metadata: importlib_metadata
     itsdangerous: itsdangerous
     jinja2: Jinja2
     markupsafe: MarkupSafe
@@ -32,7 +31,6 @@ manifest:
     sphinxcontrib.serializinghtml: sphinxcontrib_serializinghtml
     urllib3: urllib3
     werkzeug: Werkzeug
-    zipp: zipp
   pip_repository:
     name: pip
-integrity: 19c0e03a9cf1d6bbb2dfe301325fefc59a30c3f967f84c2f1baaf915c2805da7
+integrity: 3485d650d5e30f6033be9d11c78f965cb6587840d0160513bbc11e7fda3b5cd5
