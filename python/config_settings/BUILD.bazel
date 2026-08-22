@@ -10,6 +10,7 @@ load(
     "LibcFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
+    "PyRuntimeIncludeLibPython",
     "ValidateTestMainFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
@@ -159,6 +160,40 @@ string_flag(
     build_setting_default = VenvsUseDeclareSymlinkFlag.YES,
     values = VenvsUseDeclareSymlinkFlag.flag_values(),
     visibility = ["//visibility:public"],
+)
+
+string_flag(
+    name = "py_runtime_include_libpython",
+    build_setting_default = PyRuntimeIncludeLibPython.YES,
+    values = PyRuntimeIncludeLibPython.flag_values(),
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "_is_py_runtime_include_libpython_auto",
+    flag_values = {
+        ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.AUTO,
+    },
+    # NOTE: Only public because it is used in python_repository repos.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+config_setting(
+    name = "_is_py_runtime_include_libpython_yes",
+    flag_values = {
+        ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.YES,
+    },
+    # NOTE: Only public because it is used in python_repository repos.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+config_setting(
+    name = "_is_py_runtime_include_libpython_no",
+    flag_values = {
+        ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.NO,
+    },
+    # NOTE: Only public because it is used in python_repository repos.
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # pip.parse related flags
