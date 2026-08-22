@@ -170,6 +170,15 @@ string_flag(
 )
 
 config_setting(
+    name = "_is_py_runtime_include_libpython_auto",
+    flag_values = {
+        ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.AUTO,
+    },
+    # NOTE: Only public because it is used in python_repository repos.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+config_setting(
     name = "_is_py_runtime_include_libpython_yes",
     flag_values = {
         ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.YES,
@@ -179,9 +188,9 @@ config_setting(
 )
 
 config_setting(
-    name = "_is_py_runtime_include_libpython_auto",
+    name = "_is_py_runtime_include_libpython_no",
     flag_values = {
-        ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.AUTO,
+        ":py_runtime_include_libpython": PyRuntimeIncludeLibPython.NO,
     },
     # NOTE: Only public because it is used in python_repository repos.
     visibility = NOT_ACTUALLY_PUBLIC,

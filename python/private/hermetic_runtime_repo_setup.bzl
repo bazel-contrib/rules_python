@@ -23,8 +23,9 @@ load(":version.bzl", "version")
 
 _IS_FREETHREADED_YES = Label("//python/config_settings:_is_py_freethreaded_yes")
 _IS_FREETHREADED_NO = Label("//python/config_settings:_is_py_freethreaded_no")
-_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES = Label("//python/config_settings:_is_py_runtime_include_libpython_yes")
-_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO = Label("//python/config_settings:_is_py_runtime_include_libpython_auto")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO = Label("//python/config_settings:_is_py_runtime_include_lib_python_auto")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES = Label("//python/config_settings:_is_py_runtime_include_lib_python_yes")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_NO = Label("//python/config_settings:_is_py_runtime_include_lib_python_no")
 
 def define_hermetic_runtime_toolchain_impl(
         *,
@@ -33,7 +34,8 @@ def define_hermetic_runtime_toolchain_impl(
         extra_files_glob_exclude,
         python_version,
         python_bin,
-        coverage_tool):
+        coverage_tool,
+        python3_statically_links_libpython = True):
     """Define a toolchain implementation for a python-build-standalone repo.
 
     It expected this macro is called in the top-level package of an extracted
@@ -53,6 +55,13 @@ def define_hermetic_runtime_toolchain_impl(
             repository.
         coverage_tool: {type}`str` optional target to the coverage tool to
             use.
+        python3_statically_links_libpython: {type}`bool` a flag to enable omitting libpython
+            from the py_runtime registration because it is statically linked into `python3`.
+            This is switched via config flag
+            {target}`//python/config_settings/py_runtime_include_libpython`. Do this per-target
+            via transitions or globally.
+            :::{versionadded} VERSION_NEXT_FEATURE
+            :::
     """
     _ = name  # @unused
     version_info = version.parse(python_version)
@@ -234,13 +243,22 @@ def define_hermetic_runtime_toolchain_impl(
             "rc": "candidate",
         }.get(version_info.pre[0])
 
+    if python3_statically_links_libpython:
+        no_libpython_requested = _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_NO
+    else:
+        # We cannot omit it libpython even if the user requests it
+        no_libpython_requested = "@platforms//:incompatible"
+
     py_runtime(
         name = "py3_runtime",
-        files = select({
-            _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES: [":files_all"],
-            _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO: [":files_all"],
-            "//conditions:default": [":files_no_libpython"],
-        }),
+        files = select(
+            {
+                _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES: [":files_all"],
+                _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO: [":files_all"],
+                no_libpython_requested: [":files_no_libpython"],
+            },
+            error = "BUG",
+        ),
         interpreter = python_bin,
         interpreter_version_info = {
             "major": str(version_info.release[0]),

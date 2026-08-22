@@ -245,9 +245,9 @@ def _python_repository_impl(rctx):
     if release and release >= 20250517:
         # Starting with 20250517 we have python3 linked statically
         # https://github.com/astral-sh/python-build-standalone/issues/941
-        runtime_include_libpython = False
+        python3_statically_links_libpython = False
     else:
-        runtime_include_libpython = True
+        python3_statically_links_libpython = True
 
     glob_include = []
     glob_exclude = [
@@ -293,7 +293,7 @@ define_hermetic_runtime_toolchain_impl(
   python_version = {python_version},
   python_bin = {python_bin},
   coverage_tool = {coverage_tool},
-  runtime_include_libpython = {runtime_include_libpython}
+  python3_statically_links_libpython = {python3_statically_links_libpython}
 )
 """.format(
         extra_files_glob_exclude = render.list(glob_exclude),
@@ -301,7 +301,7 @@ define_hermetic_runtime_toolchain_impl(
         python_bin = render.str(python_bin),
         python_version = render.str(rctx.attr.python_version),
         coverage_tool = render.str(coverage_tool),
-        runtime_include_libpython = runtime_include_libpython,
+        python3_statically_links_libpython = python3_statically_links_libpython,
     )
     rctx.delete("python")
     rctx.symlink(python_bin, "python")
