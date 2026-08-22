@@ -131,9 +131,13 @@ The steps to create a backport PR are:
 1.  Create a fork of `rules_python`.
 2.  Checkout the `release/X.Y` branch.
 3.  Use `git cherry-pick -x` to cherry pick the desired fixes.
-4.  Update the release's `CHANGELOG.md` file:
-    * Add a Major.Minor.Patch section if one doesn't exist
-    * Copy the changelog text from `main` to the release's changelog.
+4.  Update the release's `CHANGELOG.md` file using the release tool's
+    `process-news` command:
+    ```shell
+    bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+    ```
+    This merges the PR's news entries into `CHANGELOG.md`, deletes the news
+    files, and updates any `VERSION_NEXT_*` markers.
 5.  Send a PR with the backport's changes.
     * The title should be `backport: PR#N to Major.Minor`
     * The body must preserve the original PR's number, commit hash, description,
@@ -150,6 +154,11 @@ The steps to create a backport PR are:
     * If the PR contains multiple backport commits, separate each's description
       with `-----`.
 6.  Send a PR to update the `main` branch's `CHANGELOG.md` to reflect the
-    changes done in the patched release.
+    changes done in the patched release:
+    * Checkout the `main` branch.
+    * Run the `process-news` command as before:
+      ```shell
+      bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+      ```
 
 [backport-issue]: https://github.com/bazel-contrib/rules_python/issues/new?template=release_tracking_template.md
