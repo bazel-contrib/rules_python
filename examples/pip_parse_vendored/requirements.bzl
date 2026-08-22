@@ -48,7 +48,7 @@ _config = {
     "isolated": True,
     "pip_data_exclude": [],
     "python_interpreter": "python3",
-    "python_interpreter_target": "@python39_host//:python",
+    "python_interpreter_target": "@python3_11_host//:python",
     "quiet": True,
     "repo": "my_project_pip_deps_vendored",
     "repo_prefix": "my_project_pip_deps_vendored_",

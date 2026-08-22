@@ -40,14 +40,15 @@ py_console_script_binary(
 :::{rubric} Using a specific Python version
 :::
 
-A specific Python version can be forced by passing the desired Python version, e.g. to force Python 3.9:
+A specific Python version can be forced by passing the desired Python version,
+e.g. to force Python 3.11:
 ```starlark
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 
 py_console_script_binary(
     name = "yamllint",
     pkg = "@pip//yamllint",
-    python_version = "3.9",
+    python_version = "3.11",
 )
 ```
 
@@ -84,7 +85,7 @@ Alternatively, the {obj}`py_console_script_binary.binary_rule` arg can be passed
 the version-bound `py_binary` symbol, or any other `py_binary`-compatible rule
 of your choosing:
 ```starlark
-load("@python_versions//3.9:defs.bzl", "py_binary")
+load("@python_versions//3.11:defs.bzl", "py_binary")
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 
 py_console_script_binary(

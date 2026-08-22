@@ -30,7 +30,6 @@ manifest:
     six: six
     sqlparse: sqlparse
     tabulate: tabulate
-    tomli: tomli
     tomlkit: tomlkit
     typing_extensions: typing_extensions
     urllib3: urllib3

@@ -31,12 +31,12 @@ rules_python_config.explicit_init_py(default = True)
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(
     # Use python.defaults if you have defined multiple toolchain versions.
-    python_version = "3.9",
+    python_version = "3.10",
     python_version_env = "BAZEL_PYTHON_VERSION",
 )
 python.toolchain(
     configure_coverage_tool = True,
-    python_version = "3.9",
+    python_version = "3.10",
 )
 
 # We are also using a second version of Python in this project.
@@ -46,7 +46,7 @@ python.toolchain(
 # work in progress.
 python.toolchain(
     configure_coverage_tool = True,
-    python_version = "3.10",
+    python_version = "3.11",
 )
 
 # One can override the actual toolchain versions that are available, which can be useful
@@ -56,7 +56,7 @@ python.override(
     # require versions not listed here.
     # available_python_versions = [
     #     "3.10.9",
-    #     "3.9.19",
+    #     "3.10.19",
     #     # The following is used by the `other_module` and we need to include it here
     #     # as well.
     #     "3.11.8",
@@ -65,7 +65,7 @@ python.override(
     # instead of rules_python's defaulting to the latest available version,
     # controls what full version is used when `3.x` is requested.
     minor_mapping = {
-        "3.9": "3.9.25",
+        "3.10": "3.10.20",
     },
 )
 
@@ -100,9 +100,9 @@ python.single_version_platform_override(
 
 # You only need to load this repositories if you are using multiple Python versions.
 # See the tests folder for various examples on using multiple Python versions.
-# The names "python_3_9" and "python_3_10" are autmatically created by the repo
+# The names "python_3_10" and "python_3_11" are autmatically created by the repo
 # rules based on the `python_version` arg values.
-use_repo(python, "python_3_10", "python_3_9", "python_versions", "pythons_hub")
+use_repo(python, "python_3_10", "python_3_11", "python_versions", "pythons_hub")
 
 # EXPERIMENTAL: This is experimental and may be changed or removed without notice
 uv = use_extension(
@@ -210,28 +210,6 @@ pip.parse(
         # },
         "--index-url=${PIP_INDEX_URL:-https://pypi.org/simple}",
     ],
-    hub_name = "pip",
-    python_version = "3.9",
-    requirements_lock = "requirements_lock_3_9.txt",
-    # These modifications were created above and we
-    # are providing pip.parse with the label of the mod
-    # and the name of the wheel.
-    whl_modifications = {
-        "@whl_mods_hub//:requests.json": "requests",
-        "@whl_mods_hub//:wheel.json": "wheel",
-    },
-)
-pip.parse(
-    experimental_requirement_cycles = {
-        "sphinx": [
-            "sphinx",
-            "sphinxcontrib-qthelp",
-            "sphinxcontrib-htmlhelp",
-            "sphinxcontrib-devhelp",
-            "sphinxcontrib-applehelp",
-            "sphinxcontrib-serializinghtml",
-        ],
-    },
     hub_name = "pip",
     python_version = "3.10",
     # The requirements files for each platform that we want to support.

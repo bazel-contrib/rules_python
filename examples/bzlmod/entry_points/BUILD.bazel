@@ -24,10 +24,10 @@ py_console_script_binary(
 )
 
 # A specific Python version can be forced by passing `python_version`
-# attribute, e.g. to force Python 3.9:
+# attribute, e.g. to force Python 3.11:
 py_console_script_binary(
     name = "yamllint",
     pkg = "@pip//yamllint:pkg",
-    python_version = "3.9",
+    python_version = "3.11",
     visibility = ["//entry_points:__subpackages__"],
 )

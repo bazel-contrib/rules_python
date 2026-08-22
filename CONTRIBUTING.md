@@ -36,12 +36,12 @@ gh repo fork bazel-contrib/rules_python --clone --remote
 Next, make sure you have a new enough version of Python installed that supports the
 various code formatters and other devtools. For a quick start,
 [install pyenv](https://github.com/pyenv/pyenv-installer) and
-at least Python 3.9.15:
+at least Python 3.11.11:
 
 ```shell
 curl https://pyenv.run | bash
-pyenv install 3.9.15
-pyenv shell 3.9.15
+pyenv install 3.11.11
+pyenv shell 3.11.11
 ```
 
 ## Development workflow

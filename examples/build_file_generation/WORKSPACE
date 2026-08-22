@@ -33,8 +33,8 @@ py_repositories()
 # This toolchain will allow bazel to download a specific python version, and use that version
 # for compilation.
 python_register_toolchains(
-    name = "python39",
-    python_version = "3.9",
+    name = "python3_11",
+    python_version = "3.11",
 )
 
 load("@rules_python//python:pip.bzl", "pip_parse")
@@ -65,7 +65,7 @@ pip_parse(
     # 3. Wrapper script, like in the autodetecting python toolchain.
     #
     # Here, we use the interpreter constant that resolves to the host interpreter from the default Python toolchain.
-    python_interpreter_target = "@python39_host//:python",
+    python_interpreter_target = "@python3_11_host//:python",
     # Set the location of the lock file.
     requirements_lock = "//:requirements_lock.txt",
     requirements_windows = "//:requirements_windows.txt",

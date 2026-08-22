@@ -10,13 +10,6 @@ py_binary(
 )
 
 py_binary(
-    name = "version_3_9",
-    srcs = ["version.py"],
-    main = "version.py",
-    python_version = "3.9",
-)
-
-py_binary(
     name = "version_3_10",
     srcs = ["version.py"],
     main = "version.py",
@@ -49,18 +42,18 @@ py_test(
 )
 
 py_test(
-    name = "my_lib_3_9_test",
-    srcs = ["my_lib_test.py"],
-    main = "my_lib_test.py",
-    python_version = "3.9",
-    deps = ["//libs/my_lib"],
-)
-
-py_test(
     name = "my_lib_3_10_test",
     srcs = ["my_lib_test.py"],
     main = "my_lib_test.py",
     python_version = "3.10",
+    deps = ["//libs/my_lib"],
+)
+
+py_test(
+    name = "my_lib_3_11_test",
+    srcs = ["my_lib_test.py"],
+    main = "my_lib_test.py",
+    python_version = "3.11",
     deps = ["//libs/my_lib"],
 )
 
@@ -89,16 +82,8 @@ to fix any bugs.""".format(
 py_test(
     name = "version_default_test",
     srcs = ["version_test.py"],
-    env = {"VERSION_CHECK": "3.9"},  # The default defined in the WORKSPACE.
+    env = {"VERSION_CHECK": "3.10"},  # The default defined in the WORKSPACE.
     main = "version_test.py",
-)
-
-py_test(
-    name = "version_3_9_test",
-    srcs = ["version_test.py"],
-    env = {"VERSION_CHECK": "3.9"},
-    main = "version_test.py",
-    python_version = "3.9",
 )
 
 py_test(
@@ -126,24 +111,24 @@ py_test(
 )
 
 py_test(
-    name = "version_default_takes_3_10_subprocess_test",
+    name = "version_default_takes_3_11_subprocess_test",
     srcs = ["cross_version_test.py"],
-    data = [":version_3_10"],
+    data = [":version_3_11"],
     env = {
-        "SUBPROCESS_VERSION_CHECK": "3.10",
-        "SUBPROCESS_VERSION_PY_BINARY": "$(rootpath :version_3_10)",
-        "VERSION_CHECK": "3.9",
+        "SUBPROCESS_VERSION_CHECK": "3.11",
+        "SUBPROCESS_VERSION_PY_BINARY": "$(rootpath :version_3_11)",
+        "VERSION_CHECK": "3.10",
     },
     main = "cross_version_test.py",
 )
 
 py_test(
-    name = "version_3_10_takes_3_9_subprocess_test",
+    name = "version_3_10_takes_3_11_subprocess_test",
     srcs = ["cross_version_test.py"],
-    data = [":version_3_9"],
+    data = [":version_3_11"],
     env = {
-        "SUBPROCESS_VERSION_CHECK": "3.9",
-        "SUBPROCESS_VERSION_PY_BINARY": "$(rootpath :version_3_9)",
+        "SUBPROCESS_VERSION_CHECK": "3.11",
+        "SUBPROCESS_VERSION_PY_BINARY": "$(rootpath :version_3_11)",
         "VERSION_CHECK": "3.10",
     },
     main = "cross_version_test.py",
@@ -151,12 +136,12 @@ py_test(
 )
 
 py_test(
-    name = "version_3_10_takes_3_9_subprocess_test_2",
+    name = "version_3_10_takes_3_11_subprocess_test_2",
     srcs = ["cross_version_test.py"],
-    data = [":version_3_9"],
+    data = [":version_3_11"],
     env = {
-        "SUBPROCESS_VERSION_CHECK": "3.9",
-        "SUBPROCESS_VERSION_PY_BINARY": "$(rootpath :version_3_9)",
+        "SUBPROCESS_VERSION_CHECK": "3.11",
+        "SUBPROCESS_VERSION_PY_BINARY": "$(rootpath :version_3_11)",
         "VERSION_CHECK": "3.10",
     },
     main = "cross_version_test.py",
@@ -168,18 +153,18 @@ sh_test(
     srcs = ["version_test.sh"],
     data = [":version_default"],
     env = {
-        "VERSION_CHECK": "3.9",  # The default defined in the WORKSPACE.
+        "VERSION_CHECK": "3.10",  # The default defined in the WORKSPACE.
         "VERSION_PY_BINARY": "$(rootpaths :version_default)",
     },
 )
 
 sh_test(
-    name = "version_test_binary_3_9",
+    name = "version_test_binary_3_11",
     srcs = ["version_test.sh"],
-    data = [":version_3_9"],
+    data = [":version_3_11"],
     env = {
-        "VERSION_CHECK": "3.9",
-        "VERSION_PY_BINARY": "$(rootpaths :version_3_9)",
+        "VERSION_CHECK": "3.11",
+        "VERSION_PY_BINARY": "$(rootpaths :version_3_11)",
     },
 )
 

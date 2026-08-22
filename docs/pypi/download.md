@@ -241,9 +241,9 @@ Let's say you have two requirements files:
 ```
 # requirements.linux_x86_64.txt
 --platform=manylinux_2_17_x86_64
---python-version=39
+--python-version=311
 --implementation=cp
---abi=cp39
+--abi=cp311
 
 foo==0.0.1 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
@@ -252,9 +252,9 @@ bar==0.0.1 --hash=sha256:deadb00f
 ```
 # requirements.osx_aarch64.txt contents
 --platform=macosx_10_9_arm64
---python-version=39
+--python-version=311
 --implementation=cp
---abi=cp39
+--abi=cp311
 
 foo==0.0.3 --hash=sha256:deadbaaf
 ```
@@ -263,7 +263,7 @@ With these 2 files your {bzl:obj}`pip.parse` could look like:
 ```starlark
 pip.parse(
     hub_name = "pip",
-    python_version = "3.9",
+    python_version = "3.11",
     # Tell `pip` to ignore sdists
     download_only = True,
     requirements_by_platform = {
