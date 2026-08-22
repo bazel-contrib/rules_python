@@ -128,10 +128,13 @@ def _validate_srcs(ctx):
         ):
             continue
 
-        if any([
-            file.is_directory or file.extension in ["py", "py3"]
-            for file in files
-        ]):
+        found_match = False
+        for file in files:
+            if file.is_directory or file.extension in ("py", "py3"):
+                found_match = True
+                break
+
+        if found_match:
             continue
 
         fail(
