@@ -274,9 +274,9 @@ pip.parse(
 ```
 
 With this, `pip.parse` will create a hub repository that is going to
-support only two platforms - `cp314_osx_aarch64` and `cp314_linux_x86_64` - and it
-will only use `wheels` and ignore any sdists that it may find on the PyPI-
-compatible indexes.
+support only two platforms - `cp314_osx_aarch64` and
+`cp314_linux_x86_64` - and it will only use `wheels` and ignore any sdists
+that it may find on the PyPI-compatible indexes.
 
 :::{warning}
 Because bazel is not aware what exactly is downloaded, the same wheel may be downloaded
