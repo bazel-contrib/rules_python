@@ -296,9 +296,13 @@ def parse_backports(body):
     for line in lines:
         parsed = parse_metadata_line(line)
         if parsed:
+            name = parsed["name"].strip()
+            # Ignore empty or placeholder checklist items (e.g. '#PR_NUMBER')
+            if not re.match(r"^#?\d+$", name):
+                continue
             items.append(
                 BackportTask(
-                    pr_ref=parsed["name"],
+                    pr_ref=name,
                     checked=parsed["checked"],
                     status=parsed["metadata"].get("status", "pending"),
                     rc=parsed["metadata"].get("rc"),
@@ -326,6 +330,15 @@ def add_backports_to_body(body: str, items: list[dict[str, Any]]) -> str:
 
     section_content = match.group(2)
 
+    # Filter out empty or placeholder checklist items (e.g. "- [ ] #PR_NUMBER")
+    cleaned_lines = []
+    for line in section_content.splitlines():
+        parsed = parse_metadata_line(line)
+        if parsed and not re.match(r"^#?\d+$", parsed["name"].strip()):
+            continue
+        cleaned_lines.append(line)
+    section_content = "\n".join(cleaned_lines)
+
     # Parse existing backports to avoid duplicates
     existing_items = parse_backports(body)
     existing_refs = {item.pr_ref for item in existing_items}
@@ -348,7 +361,10 @@ def add_backports_to_body(body: str, items: list[dict[str, Any]]) -> str:
         )
 
     if not new_lines:
-        return body
+        section_content_clean = section_content.rstrip("\n")
+        updated_section = section_content_clean + "\n\n"
+        start, end = match.span(2)
+        return body[:start] + updated_section + body[end:]
 
     # Append new lines to the section content.
     section_content_clean = section_content.rstrip("\n")
